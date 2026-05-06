@@ -1,0 +1,37 @@
+{
+  "name": "@rice-mill/desktop",
+  "version": "1.0.0",
+  "private": true,
+  "main": "main/index.js",
+  "scripts": {
+    "dev": "concurrently \"npm run dev:vite\" \"npm run dev:electron\"",
+    "dev:vite": "vite --config ../web/vite.config.ts --port 5173",
+    "dev:electron": "wait-on http://localhost:5173 && electron .",
+    "build": "npm run build:web && electron-builder",
+    "build:web": "cd ../web && npm run build"
+  },
+  "dependencies": {
+    "@rice-mill/shared": "*",
+    "better-sqlite3": "^11.7.0",
+    "axios": "^1.7.9"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.12",
+    "@types/node": "^22.10.2",
+    "concurrently": "^9.1.2",
+    "electron": "^33.3.0",
+    "electron-builder": "^25.1.8",
+    "typescript": "^5.7.2",
+    "wait-on": "^8.0.1"
+  },
+  "build": {
+    "appId": "com.ricemillsystem.app",
+    "productName": "Rice Mill System",
+    "directories": { "output": "dist" },
+    "win": {
+      "target": "nsis",
+      "icon": "assets/icon.ico"
+    },
+    "files": ["main/**/*", "preload/**/*", "../web/dist/**/*"]
+  }
+}

@@ -1,0 +1,141 @@
+import { useState } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import api from "../services/api";
+import { Plus } from "lucide-react";
+import { format } from "date-fns";
+import QuickAdd from "../components/QuickAdd";
+
+export default function CostsPage() {
+  const qc = useQueryClient();
+  const [showForm, setShowForm] = useState(false);
+
+  const { data: expenses = [] } = useQuery({ queryKey: ["expenses"], queryFn: () => api.get("/costs/expenses").then(r => r.data) });
+  const { data: categories = [] } = useQuery({ queryKey: ["expense-categories"], queryFn: () => api.get("/costs/categories").then(r => r.data) });
+  const { data: batches = [] } = useQuery({ queryKey: ["milling-batches"], queryFn: () => api.get("/milling/batches").then(r => r.data) });
+
+  const [form, setForm] = useState({
+    category_id: "", batch_id: "", expense_date: format(new Date(), "yyyy-MM-dd"),
+    amount: "", description: "", reference_no: "",
+  });
+
+  const createExpense = useMutation({
+    mutationFn: (body: typeof form) => api.post("/costs/expenses", {
+      ...body,
+      amount: parseFloat(body.amount),
+      batch_id: body.batch_id || null,
+    }),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["expenses"] }); setShowForm(false); },
+  });
+
+  const totalProduction = expenses
+    .filter((e: any) => categories.find((c: any) => c.id === e.category_id)?.is_production_cost)
+    .reduce((s: number, e: any) => s + Number(e.amount), 0);
+  const totalOverhead = expenses
+    .filter((e: any) => !categories.find((c: any) => c.id === e.category_id)?.is_production_cost)
+    .reduce((s: number, e: any) => s + Number(e.amount), 0);
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-xl font-bold text-gray-900">Expenses & Costs</h2>
+          <p className="text-sm text-gray-500">Track fuel, electricity, labor, maintenance, and more</p>
+        </div>
+        <button onClick={() => setShowForm(!showForm)} className="btn-primary">
+          <Plus size={16} /> Add Expense
+        </button>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="card">
+          <p className="text-sm text-gray-500">Production Costs</p>
+          <p className="text-2xl font-bold text-gray-900 mt-1">₱{totalProduction.toLocaleString()}</p>
+        </div>
+        <div className="card">
+          <p className="text-sm text-gray-500">Overhead</p>
+          <p className="text-2xl font-bold text-gray-900 mt-1">₱{totalOverhead.toLocaleString()}</p>
+        </div>
+        <div className="card">
+          <p className="text-sm text-gray-500">Total Expenses</p>
+          <p className="text-2xl font-bold text-red-600 mt-1">₱{(totalProduction + totalOverhead).toLocaleString()}</p>
+        </div>
+      </div>
+
+      {showForm && (
+        <div className="card space-y-4">
+          <h3 className="font-semibold text-gray-900">Add Expense</h3>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div>
+              <div className="flex items-baseline justify-between mb-1">
+                <label className="block text-sm font-medium text-gray-700">Category</label>
+                <QuickAdd
+                  label="New category"
+                  endpoint="/costs/categories"
+                  queryKey={["expense-categories"]}
+                  fields={[
+                    { key: "name", label: "Name", required: true, full: true, placeholder: "e.g. Sack/Packaging" },
+                    { key: "is_production_cost", label: "Production cost", type: "checkbox", default: true, placeholder: "Production cost (vs. overhead)" },
+                  ]}
+                  onCreated={(c) => setForm((f) => ({ ...f, category_id: c.id }))}
+                />
+              </div>
+              <select className="input" value={form.category_id} onChange={e => setForm(f => ({ ...f, category_id: e.target.value }))}>
+                <option value="">Select category…</option>
+                {categories.map((c: any) => <option key={c.id} value={c.id}>{c.name}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Date</label>
+              <input type="date" className="input" value={form.expense_date} onChange={e => setForm(f => ({ ...f, expense_date: e.target.value }))} />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Amount (₱)</label>
+              <input type="number" className="input" value={form.amount} onChange={e => setForm(f => ({ ...f, amount: e.target.value }))} />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Milling Batch (optional)</label>
+              <select className="input" value={form.batch_id} onChange={e => setForm(f => ({ ...f, batch_id: e.target.value }))}>
+                <option value="">Not batch-specific</option>
+                {batches.map((b: any) => <option key={b.id} value={b.id}>{b.batch_no}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+              <input className="input" value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Reference No.</label>
+              <input className="input" value={form.reference_no} onChange={e => setForm(f => ({ ...f, reference_no: e.target.value }))} />
+            </div>
+          </div>
+          <div className="flex gap-2 justify-end">
+            <button onClick={() => setShowForm(false)} className="btn-secondary">Cancel</button>
+            <button onClick={() => createExpense.mutate(form)} className="btn-primary" disabled={createExpense.isPending}>
+              {createExpense.isPending ? "Saving…" : "Save Expense"}
+            </button>
+          </div>
+        </div>
+      )}
+
+      <div className="card overflow-hidden p-0">
+        <table className="w-full text-sm">
+          <thead className="bg-gray-50 border-b border-gray-200">
+            <tr>{["Date", "Category", "Batch", "Amount", "Description"].map(h => <th key={h} className="px-4 py-3 text-left font-medium text-gray-600">{h}</th>)}</tr>
+          </thead>
+          <tbody className="divide-y divide-gray-100">
+            {expenses.map((e: any) => (
+              <tr key={e.id} className="hover:bg-gray-50">
+                <td className="px-4 py-3">{e.expense_date}</td>
+                <td className="px-4 py-3">{categories.find((c: any) => c.id === e.category_id)?.name || "—"}</td>
+                <td className="px-4 py-3 font-mono text-xs">{batches.find((b: any) => b.id === e.batch_id)?.batch_no || "—"}</td>
+                <td className="px-4 py-3 font-medium text-red-600">₱{Number(e.amount).toLocaleString()}</td>
+                <td className="px-4 py-3 text-gray-500">{e.description || "—"}</td>
+              </tr>
+            ))}
+            {expenses.length === 0 && <tr><td colSpan={5} className="px-4 py-8 text-center text-gray-400">No expenses recorded</td></tr>}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}

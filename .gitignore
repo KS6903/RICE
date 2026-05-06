@@ -1,0 +1,50 @@
+# Dependencies
+node_modules/
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+
+# Build outputs
+dist/
+build/
+out/
+.next/
+
+# Environment
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# Logs
+*.log
+npm-debug.log*
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Electron
+packages/desktop/out/
+packages/desktop/dist/
+release/
+
+# SQLite local databases
+*.db
+*.sqlite
+*.sqlite3
+
+# Python
+*.egg-info/
+.pytest_cache/
+htmlcov/
+
+# Alembic
+backend/migrations/versions/*.pyc
