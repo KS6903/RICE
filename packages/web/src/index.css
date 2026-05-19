@@ -3,7 +3,10 @@
 @tailwind utilities;
 
 @layer base {
-  * { box-sizing: border-box; }
+  * {
+    box-sizing: border-box;
+  }
+
   body {
     font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
     @apply bg-gray-50 text-gray-900;
@@ -12,22 +15,35 @@
 
 @layer components {
   .btn-primary {
-    @apply inline-flex items-center gap-2 px-4 py-2 bg-brand-600 text-white rounded-lg
-           hover:bg-brand-700 active:bg-brand-800 font-medium transition-colors;
+    @apply inline-flex items-center gap-2 px-4 py-2 bg-brand-600 text-white rounded-lg shadow-sm hover:bg-brand-700 active:bg-brand-800 active:scale-[0.98] font-medium transition-all focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-1;
   }
+
   .btn-secondary {
-    @apply inline-flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 text-gray-700
-           rounded-lg hover:bg-gray-50 font-medium transition-colors;
+    @apply inline-flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 text-gray-700 shadow-sm rounded-lg hover:bg-gray-50 hover:border-gray-300 active:scale-[0.98] font-medium transition-all focus:outline-none focus:ring-2 focus:ring-gray-200 focus:ring-offset-1;
   }
+
   .input {
-    @apply w-full px-3 py-2 border border-gray-300 rounded-lg text-sm
-           focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500;
+    @apply w-full px-3 py-2 border border-gray-300 rounded-lg text-sm transition-all shadow-sm focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 hover:border-gray-400;
   }
+
   .card {
-    @apply bg-white rounded-xl shadow-sm border border-gray-200 p-6;
+    @apply bg-white rounded-2xl border border-gray-200/75 p-6 transition-all;
+    box-shadow: 0 2px 8px -2px rgba(0, 0, 0, 0.05), 0 1px 4px -1px rgba(0, 0, 0, 0.03);
   }
-  .badge-green  { @apply inline-flex px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800; }
-  .badge-yellow { @apply inline-flex px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800; }
-  .badge-red    { @apply inline-flex px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800; }
-  .badge-gray   { @apply inline-flex px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600; }
+
+  .badge-green {
+    @apply inline-flex px-2.5 py-0.5 rounded-md text-xs font-medium bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-600/20;
+  }
+
+  .badge-yellow {
+    @apply inline-flex px-2.5 py-0.5 rounded-md text-xs font-medium bg-amber-50 text-amber-700 ring-1 ring-inset ring-amber-600/20;
+  }
+
+  .badge-red {
+    @apply inline-flex px-2.5 py-0.5 rounded-md text-xs font-medium bg-rose-50 text-rose-700 ring-1 ring-inset ring-rose-600/20;
+  }
+
+  .badge-gray {
+    @apply inline-flex px-2.5 py-0.5 rounded-md text-xs font-medium bg-gray-50 text-gray-700 ring-1 ring-inset ring-gray-600/20;
+  }
 }

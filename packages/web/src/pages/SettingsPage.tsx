@@ -22,37 +22,43 @@ export default function SettingsPage() {
   ];
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h2 className="text-xl font-bold text-gray-900">Settings</h2>
-        <p className="text-sm text-gray-500">Manage your account, company, and branches</p>
-      </div>
+    <div className="flex flex-col md:flex-row gap-8">
+      {/* Sidebar Navigation */}
+      <aside className="w-full md:w-64 shrink-0">
+        <div className="mb-6 px-2">
+          <h2 className="text-2xl font-bold text-gray-900 tracking-tight">Settings</h2>
+          <p className="text-sm text-gray-500 mt-1">Manage your account and platform preferences</p>
+        </div>
+        <nav className="flex md:flex-col gap-1 overflow-x-auto pb-4 md:pb-0 scrollbar-hide">
+          {tabs.map(({ key, label, icon: Icon }) => (
+            <button
+              key={key}
+              onClick={() => setTab(key)}
+              className={`flex items-center gap-3 px-3 py-2.5 text-sm font-medium rounded-xl transition-all whitespace-nowrap ${tab === key
+                  ? "bg-brand-50 text-brand-700 shadow-sm ring-1 ring-brand-100"
+                  : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+                }`}
+            >
+              <Icon size={18} className={tab === key ? "text-brand-600" : "text-gray-400"} />
+              {label}
+            </button>
+          ))}
+        </nav>
+      </aside>
 
-      <div className="flex gap-2 border-b border-gray-200">
-        {tabs.map(({ key, label, icon: Icon }) => (
-          <button
-            key={key}
-            onClick={() => setTab(key)}
-            className={`flex items-center gap-2 px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${
-              tab === key
-                ? "border-brand-600 text-brand-700"
-                : "border-transparent text-gray-500 hover:text-gray-700"
-            }`}
-          >
-            <Icon size={16} />
-            {label}
-          </button>
-        ))}
-      </div>
-
-      {tab === "billing" && <BillingTab />}
-      {tab === "company" && <CompanyTab />}
-      {tab === "branches" && <BranchesTab />}
-      {tab === "varieties" && <VarietiesTab />}
-      {tab === "equipment" && <EquipmentTab />}
-      {tab === "categories" && <CategoriesTab />}
-      {tab === "profile" && <ProfileTab />}
-      {tab === "password" && <PasswordTab />}
+      {/* Main Content Area */}
+      <main className="flex-1 max-w-4xl min-w-0">
+        <div className="transition-all duration-300 ease-in-out">
+          {tab === "billing" && <BillingTab />}
+          {tab === "company" && <CompanyTab />}
+          {tab === "branches" && <BranchesTab />}
+          {tab === "varieties" && <VarietiesTab />}
+          {tab === "equipment" && <EquipmentTab />}
+          {tab === "categories" && <CategoriesTab />}
+          {tab === "profile" && <ProfileTab />}
+          {tab === "password" && <PasswordTab />}
+        </div>
+      </main>
     </div>
   );
 }
@@ -83,37 +89,41 @@ function BillingTab() {
     return <div className="card text-sm text-gray-500">No subscription on file. Contact your platform administrator.</div>;
   }
 
-  const planColor = plan.code === "free" ? "bg-gray-100 text-gray-700" : plan.code === "pro" ? "bg-blue-100 text-blue-700" : "bg-purple-100 text-purple-700";
+  const cardGradient = plan.code === "pro" ? "from-blue-900 to-indigo-900" : plan.code === "enterprise" ? "from-purple-900 to-fuchsia-900" : "from-gray-800 to-gray-900";
 
   return (
     <div className="space-y-4 max-w-3xl">
-      <div className="card">
+      <div className={`rounded-2xl shadow-lg bg-gradient-to-br ${cardGradient} p-6 sm:p-8 text-white relative overflow-hidden`}>
+        <div className="absolute top-0 right-0 -mr-16 -mt-16 w-64 h-64 bg-white opacity-5 rounded-full blur-3xl"></div>
         <div className="flex items-start justify-between">
-          <div>
-            <p className="text-sm text-gray-500">Current plan</p>
+          <div className="relative z-10">
+            <p className="text-sm text-gray-300 font-medium tracking-wide uppercase">Current plan</p>
             <div className="flex items-baseline gap-3 mt-1">
-              <h3 className="text-2xl font-bold text-gray-900">{plan.name}</h3>
-              <span className={`text-xs font-semibold uppercase tracking-wide px-2 py-0.5 rounded ${planColor}`}>{plan.code}</span>
+              <h3 className="text-3xl font-bold tracking-tight text-white">{plan.name}</h3>
+              <span className={`text-xs font-bold uppercase tracking-wide px-2.5 py-1 rounded-full bg-white/20 text-white backdrop-blur-sm`}>{plan.code}</span>
             </div>
-            <p className="text-sm text-gray-500 mt-2">
+            <p className="text-gray-300 mt-2">
               {plan.monthly_price > 0 ? `₱${plan.monthly_price.toLocaleString()}/month` : "Free forever"}
             </p>
           </div>
-          <div className="text-right">
-            <p className="text-xs text-gray-500">Status</p>
-            <p className="text-sm font-medium capitalize text-gray-900">{plan.status}</p>
-            {plan.expires_at && <p className="text-xs text-gray-500 mt-1">Expires {new Date(plan.expires_at).toLocaleDateString()}</p>}
+          <div className="text-right relative z-10">
+            <p className="text-xs text-gray-400 font-medium uppercase tracking-wide">Status</p>
+            <p className="text-sm font-semibold capitalize mt-1 flex items-center justify-end gap-1.5 text-white">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)]"></span>
+              {plan.status}
+            </p>
+            {plan.expires_at && <p className="text-xs text-gray-400 mt-2">Expires<br />{new Date(plan.expires_at).toLocaleDateString()}</p>}
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-4 mt-6 pt-6 border-t border-gray-200 text-sm">
+        <div className="grid grid-cols-2 gap-4 mt-8 pt-6 border-t border-white/10 text-sm relative z-10">
           <div>
-            <p className="text-gray-500">User limit</p>
-            <p className="font-medium text-gray-900">{plan.max_users ?? "Unlimited"}</p>
+            <p className="text-gray-400">User limit</p>
+            <p className="font-semibold text-lg">{plan.max_users ?? "Unlimited"}</p>
           </div>
           <div>
-            <p className="text-gray-500">Branch limit</p>
-            <p className="font-medium text-gray-900">{plan.max_branches ?? "Unlimited"}</p>
+            <p className="text-gray-400">Branch limit</p>
+            <p className="font-semibold text-lg">{plan.max_branches ?? "Unlimited"}</p>
           </div>
         </div>
       </div>
