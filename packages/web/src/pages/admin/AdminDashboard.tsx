@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
+import { Link } from "react-router-dom";
 import api from "../../services/api";
-import { Building2, Users, ShoppingCart, Wheat, Factory, TrendingUp, Activity } from "lucide-react";
+import { Building2, Users, ShoppingCart, Wheat, Factory, TrendingUp, Activity, ArrowUpCircle, CreditCard, Inbox } from "lucide-react";
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
 import { format } from "date-fns";
 
@@ -30,8 +31,16 @@ function StatCard({ label, value, icon: Icon, color, sublabel }: {
 export default function AdminDashboard() {
   const { data: stats } = useQuery({ queryKey: ["admin-stats"], queryFn: () => api.get("/admin/stats").then((r) => r.data) });
   const { data: trend = [] } = useQuery({ queryKey: ["admin-signups-trend"], queryFn: () => api.get("/admin/signups-trend?days=30").then((r) => r.data) });
+  const { data: pending } = useQuery({
+    queryKey: ["admin-pending-upgrades"],
+    queryFn: () => api.get("/admin/upgrade-requests/pending-count").then((r) => r.data),
+    refetchInterval: 5 * 1000,
+    refetchOnWindowFocus: true,
+    refetchIntervalInBackground: true,
+  });
 
   const trendData = trend.map((p: any) => ({ date: format(new Date(p.date), "MMM d"), count: p.count }));
+  const pendingCount = pending?.pending || 0;
 
   return (
     <div className="space-y-6">
@@ -40,11 +49,55 @@ export default function AdminDashboard() {
         <p className="text-sm text-slate-500">All tenants, users, and activity across your SaaS</p>
       </div>
 
+      {pendingCount > 0 && (
+        <Link
+          to="/admin/upgrade-requests"
+          className="block rounded-xl border border-indigo-200 bg-indigo-50 p-4 hover:bg-indigo-100 transition-colors"
+        >
+          <div className="flex items-center gap-3">
+            <ArrowUpCircle size={20} className="text-indigo-600 shrink-0" />
+            <div className="flex-1">
+              <p className="font-semibold text-indigo-900">
+                {pendingCount} pending upgrade request{pendingCount === 1 ? "" : "s"}
+              </p>
+              <p className="text-sm text-indigo-700">Tenants are waiting for plan changes — review and approve.</p>
+            </div>
+            <span className="text-indigo-700 font-medium text-sm">Review →</span>
+          </div>
+        </Link>
+      )}
+
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard label="Total Tenants" value={stats?.total_tenants ?? "—"} icon={Building2} color="bg-indigo-600" sublabel={`${stats?.new_tenants_30d ?? 0} new in 30 days`} />
         <StatCard label="Total Users" value={stats?.total_users ?? "—"} icon={Users} color="bg-emerald-600" sublabel={`${stats?.active_users_7d ?? 0} active in 7 days`} />
         <StatCard label="Total Branches" value={stats?.total_branches ?? "—"} icon={Building2} color="bg-amber-600" />
         <StatCard label="Active 7 days" value={stats?.active_users_7d ?? "—"} icon={Activity} color="bg-rose-600" sublabel="users with recent login" />
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <StatCard
+          label="Subscribed Users"
+          value={stats?.subscribed_users ?? 0}
+          icon={CreditCard}
+          color="bg-teal-600"
+          sublabel="on a paid plan"
+        />
+        <StatCard
+          label="Unsubscribed Users"
+          value={stats?.unsubscribed_users ?? 0}
+          icon={CreditCard}
+          color="bg-slate-500"
+          sublabel="on Free or none"
+        />
+        <Link to="/admin/upgrade-requests" className="block focus:outline-none focus:ring-2 focus:ring-indigo-400 rounded-xl">
+          <StatCard
+            label="Plan Requests"
+            value={pendingCount}
+            icon={Inbox}
+            color="bg-indigo-600"
+            sublabel={pendingCount > 0 ? "awaiting review" : "no pending requests"}
+          />
+        </Link>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">

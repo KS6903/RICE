@@ -11,6 +11,16 @@ export interface User {
   company_id: string | null;
   branch_id?: string | null;
   is_platform_admin?: boolean;
+  features?: string[];
+  subscription?: {
+    code: string;
+    name: string;
+    monthly_price: number;
+    max_users: number | null;
+    max_branches: number | null;
+    status: string;
+    expires_at: string | null;
+  } | null;
 }
 
 export interface Company {
@@ -204,4 +214,37 @@ export interface SyncRecord {
   operation: "INSERT" | "UPDATE" | "DELETE";
   payload: Record<string, unknown>;
   updated_at: string;
+}
+
+export interface SubscriptionPlan {
+  id: string;
+  code: string;
+  name: string;
+  description?: string | null;
+  monthly_price: number;
+  max_users: number | null;
+  max_branches: number | null;
+  features: string[];
+  is_active: boolean;
+  sort_order: number;
+}
+
+export type UpgradeRequestStatus = "pending" | "approved" | "rejected" | "cancelled";
+
+export interface UpgradeRequest {
+  id: string;
+  company_id: string;
+  company_name?: string | null;
+  requested_plan_id: string;
+  requested_plan_code: string | null;
+  requested_plan_name: string | null;
+  current_plan_id: string | null;
+  current_plan_code: string | null;
+  current_plan_name: string | null;
+  requested_by?: string | null;
+  status: UpgradeRequestStatus;
+  note: string | null;
+  admin_note: string | null;
+  created_at: string | null;
+  resolved_at: string | null;
 }

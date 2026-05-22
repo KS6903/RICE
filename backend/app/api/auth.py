@@ -11,6 +11,11 @@ from ..core.security import (
 from ..models.user import User, Role
 from ..models.company import Company, Branch
 from ..models.subscription import SubscriptionPlan, Subscription
+from ..services.subscription import (
+    ensure_subscription,
+    effective_status,
+    auto_downgrade_to_free_if_expired,
+)
 
 router = APIRouter()
 
@@ -55,11 +60,12 @@ def signup(body: SignupRequest, db: Session = Depends(get_db)):
     db.add(branch)
     db.flush()
 
-    # Auto-assign Free plan
-    free_plan = db.query(SubscriptionPlan).filter(SubscriptionPlan.code == "free").first()
-    if free_plan:
-        db.add(Subscription(company_id=company.id, plan_id=free_plan.id, status="active"))
-        db.flush()
+    # Auto-assign Free plan (fail loudly if not seeded — every tenant must have a subscription)
+    if ensure_subscription(db, company.id) is None:
+        raise HTTPException(
+            status_code=500,
+            detail="System not initialized — Free plan missing. Run alembic migrations.",
+        )
 
     user = User(
         company_id=company.id,
@@ -125,6 +131,15 @@ def logout(current_user=Depends(get_current_user)):
 
 @router.get("/me")
 def me(current_user=Depends(get_current_user), db: Session = Depends(get_db)):
+    # Every tenant must always have a subscription row. If one is missing
+    # (e.g. tenant created via direct DB seed, not signup), assign Free now.
+    # Then auto-downgrade expired paid subs so the client picks up the new
+    # plan/features on its next poll instead of getting locked out.
+    if current_user.company_id and not current_user.is_platform_admin:
+        ensure_subscription(db, current_user.company_id)
+        auto_downgrade_to_free_if_expired(db, current_user.company_id)
+        db.commit()
+
     from ..core.security import get_user_features
     features = get_user_features(current_user, db)
 
@@ -138,7 +153,7 @@ def me(current_user=Depends(get_current_user), db: Session = Depends(get_db)):
                 "monthly_price": float(sub.plan.monthly_price),
                 "max_users": sub.plan.max_users,
                 "max_branches": sub.plan.max_branches,
-                "status": sub.status,
+                "status": effective_status(sub) or sub.status,
                 "expires_at": sub.expires_at.isoformat() if sub.expires_at else None,
             }
 

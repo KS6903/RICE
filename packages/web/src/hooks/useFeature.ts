@@ -8,7 +8,7 @@ export function useFeature(code: string): boolean {
   const user = useAuthStore((s) => s.user);
   if (!user) return false;
   if (user.is_platform_admin) return true;
-  const features = (user as any).features as string[] | undefined;
+  const features = user.features;
   if (!features) return false;
   if (features.includes("*")) return true;
   return features.includes(code);
@@ -16,13 +16,5 @@ export function useFeature(code: string): boolean {
 
 export function useCurrentPlan() {
   const user = useAuthStore((s) => s.user);
-  return (user as any)?.subscription as {
-    code: string;
-    name: string;
-    monthly_price: number;
-    max_users: number | null;
-    max_branches: number | null;
-    status: string;
-    expires_at: string | null;
-  } | null;
+  return user?.subscription ?? null;
 }

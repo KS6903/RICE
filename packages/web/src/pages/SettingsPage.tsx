@@ -2,8 +2,10 @@ import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import api from "../services/api";
 import { useAuthStore } from "../stores/authStore";
-import { Building2, MapPin, User as UserIcon, KeyRound, Plus, Wheat, Factory, Receipt, Power, History, ChevronDown, ChevronUp, CreditCard, Check, X as XIcon } from "lucide-react";
+import { Building2, MapPin, User as UserIcon, KeyRound, Plus, Wheat, Factory, Receipt, Power, History, ChevronDown, ChevronUp, CreditCard, Check, X as XIcon, Crown, Zap, Rocket, Star, Loader2, Clock, AlertCircle } from "lucide-react";
+import { format } from "date-fns";
 import { useCurrentPlan } from "../hooks/useFeature";
+import type { SubscriptionPlan, UpgradeRequest } from "@rice-mill/shared";
 
 type Tab = "billing" | "company" | "branches" | "varieties" | "equipment" | "categories" | "profile" | "password";
 
@@ -80,19 +82,76 @@ const FEATURE_LABELS: Record<string, string> = {
 
 const ALL_FEATURE_KEYS = Object.keys(FEATURE_LABELS);
 
+function planIcon(code: string, size = 16) {
+  if (code === "enterprise") return <Crown size={size} />;
+  if (code === "pro") return <Zap size={size} />;
+  if (code === "basic") return <Star size={size} />;
+  return <Rocket size={size} />;
+}
+
 function BillingTab() {
+  const qc = useQueryClient();
   const plan = useCurrentPlan();
   const user = useAuthStore((s) => s.user);
-  const features = ((user as any)?.features as string[] | undefined) || [];
+  const features = (user?.features as string[] | undefined) || [];
+  const canRequest = user?.role === "owner" || user?.role === "admin";
+
+  const { data: plans = [] } = useQuery<SubscriptionPlan[]>({
+    queryKey: ["billing-plans"],
+    queryFn: () => api.get("/billing/plans").then((r) => r.data),
+  });
+
+  const { data: requestData } = useQuery<{ request: UpgradeRequest | null }>({
+    queryKey: ["billing-my-request"],
+    queryFn: () => api.get("/billing/upgrade-requests/mine").then((r) => r.data),
+    // Poll so the user sees admin actions (approve / reject / manual plan
+    // change) without having to refresh the page.
+    refetchInterval: 10 * 1000,
+    refetchOnWindowFocus: true,
+  });
+  const myRequest = requestData?.request ?? null;
+  const pendingRequest = myRequest && myRequest.status === "pending" ? myRequest : null;
+  const recentResolved =
+    myRequest && myRequest.status !== "pending" && myRequest.resolved_at &&
+    Date.now() - new Date(myRequest.resolved_at).getTime() < 1000 * 60 * 60 * 24 * 7
+      ? myRequest
+      : null;
+
+  const requestUpgrade = useMutation({
+    mutationFn: (plan_id: string) => api.post("/billing/upgrade-requests", { plan_id }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["billing-my-request"] });
+    },
+  });
+
+  const cancelRequest = useMutation({
+    mutationFn: (id: string) => api.delete(`/billing/upgrade-requests/${id}`),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["billing-my-request"] });
+    },
+  });
 
   if (!plan) {
     return <div className="card text-sm text-gray-500">No subscription on file. Contact your platform administrator.</div>;
   }
 
-  const cardGradient = plan.code === "pro" ? "from-blue-900 to-indigo-900" : plan.code === "enterprise" ? "from-purple-900 to-fuchsia-900" : "from-gray-800 to-gray-900";
+  const cardGradient =
+    plan.code === "enterprise"
+      ? "from-purple-900 to-fuchsia-900"
+      : plan.code === "pro"
+        ? "from-blue-900 to-indigo-900"
+        : plan.code === "basic"
+          ? "from-sky-800 to-blue-900"
+          : "from-gray-800 to-gray-900";
+  const statusDot = plan.status === "active" || plan.status === "trial" ? "bg-emerald-400" : plan.status === "expired" || plan.status === "past_due" ? "bg-rose-400" : "bg-amber-400";
+
+  const requestErrorMessage =
+    typeof (requestUpgrade.error as any)?.response?.data?.detail === "string"
+      ? (requestUpgrade.error as any).response.data.detail
+      : null;
 
   return (
-    <div className="space-y-4 max-w-3xl">
+    <div className="space-y-4 max-w-4xl">
       <div className={`rounded-2xl shadow-lg bg-gradient-to-br ${cardGradient} p-6 sm:p-8 text-white relative overflow-hidden`}>
         <div className="absolute top-0 right-0 -mr-16 -mt-16 w-64 h-64 bg-white opacity-5 rounded-full blur-3xl"></div>
         <div className="flex items-start justify-between">
@@ -109,10 +168,10 @@ function BillingTab() {
           <div className="text-right relative z-10">
             <p className="text-xs text-gray-400 font-medium uppercase tracking-wide">Status</p>
             <p className="text-sm font-semibold capitalize mt-1 flex items-center justify-end gap-1.5 text-white">
-              <span className="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)]"></span>
+              <span className={`w-2 h-2 rounded-full ${statusDot}`}></span>
               {plan.status}
             </p>
-            {plan.expires_at && <p className="text-xs text-gray-400 mt-2">Expires<br />{new Date(plan.expires_at).toLocaleDateString()}</p>}
+            {plan.expires_at && <p className="text-xs text-gray-400 mt-2">Expires<br />{format(new Date(plan.expires_at), "MMM d, yyyy")}</p>}
           </div>
         </div>
 
@@ -128,6 +187,136 @@ function BillingTab() {
         </div>
       </div>
 
+      {pendingRequest && (
+        <div className="rounded-xl border border-indigo-200 bg-indigo-50 p-4 flex items-start gap-3 text-sm">
+          <Clock size={16} className="text-indigo-600 mt-0.5 shrink-0" />
+          <div className="flex-1">
+            <p className="font-medium text-indigo-900">
+              Upgrade to <span className="font-semibold">{pendingRequest.requested_plan_name}</span> requested
+              {pendingRequest.created_at && ` on ${format(new Date(pendingRequest.created_at), "MMM d, yyyy")}`}.
+            </p>
+            <p className="text-indigo-700 mt-0.5">Awaiting platform administrator approval.</p>
+          </div>
+          {canRequest && (
+            <button
+              onClick={() => cancelRequest.mutate(pendingRequest.id)}
+              disabled={cancelRequest.isPending}
+              className="text-xs font-medium text-indigo-700 hover:text-indigo-900 underline"
+            >
+              {cancelRequest.isPending ? "Cancelling…" : "Cancel request"}
+            </button>
+          )}
+        </div>
+      )}
+
+      {!pendingRequest && recentResolved && (
+        <div className={`rounded-xl border p-4 flex items-start gap-3 text-sm ${
+          recentResolved.status === "approved"
+            ? "border-emerald-200 bg-emerald-50 text-emerald-900"
+            : recentResolved.status === "rejected"
+              ? "border-rose-200 bg-rose-50 text-rose-900"
+              : "border-slate-200 bg-slate-50 text-slate-700"
+        }`}>
+          <AlertCircle size={16} className="mt-0.5 shrink-0" />
+          <div className="flex-1">
+            <p className="font-medium capitalize">{recentResolved.status}: upgrade to {recentResolved.requested_plan_name}</p>
+            {recentResolved.admin_note && <p className="mt-1 italic">"{recentResolved.admin_note}"</p>}
+          </div>
+        </div>
+      )}
+
+      <div className="card">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="font-semibold text-gray-900">Available plans</h3>
+          {!canRequest && <span className="text-xs text-gray-500">Only owners/admins can request upgrades</span>}
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {plans.map((p) => {
+            const isCurrent = p.code === plan.code;
+            const isPendingTarget = pendingRequest?.requested_plan_id === p.id;
+            const ring =
+              isCurrent
+                ? "border-emerald-400 ring-2 ring-emerald-200"
+                : p.code === "enterprise"
+                  ? "border-amber-200"
+                  : p.code === "pro"
+                    ? "border-indigo-200"
+                    : p.code === "basic"
+                      ? "border-blue-200"
+                      : "border-slate-200";
+            return (
+              <div key={p.id} className={`rounded-xl border-2 p-4 flex flex-col ${ring}`}>
+                <div className="flex items-center gap-2 mb-1">
+                  {planIcon(p.code, 18)}
+                  <span className="font-bold text-gray-900">{p.name}</span>
+                  {isCurrent && <span className="ml-auto badge-green">Current</span>}
+                </div>
+                <div className="text-2xl font-bold text-gray-900 mt-1">
+                  {p.monthly_price === 0 ? "Free" : `₱${p.monthly_price.toLocaleString()}`}
+                  {p.monthly_price > 0 && <span className="text-xs font-normal text-gray-400">/mo</span>}
+                </div>
+                <p className="text-xs text-gray-500 mt-1 mb-2">{p.description}</p>
+                <div className="text-xs text-gray-500 mb-2">
+                  {p.max_users ? `${p.max_users} users` : "Unlimited users"} ·{" "}
+                  {p.max_branches ? `${p.max_branches} branches` : "Unlimited branches"}
+                </div>
+                <ul className="text-xs text-gray-700 space-y-1 flex-1">
+                  {(p.features || []).map((f) => (
+                    <li key={f} className="flex items-center gap-1.5">
+                      <Check size={12} className="text-emerald-600 shrink-0" />
+                      {FEATURE_LABELS[f] || f.replace(/_/g, " ")}
+                    </li>
+                  ))}
+                </ul>
+                <div className="mt-3">
+                  {isCurrent ? (
+                    <button disabled className="btn-secondary w-full justify-center opacity-60 cursor-default">
+                      Your current plan
+                    </button>
+                  ) : p.code === "free" ? (
+                    <button
+                      disabled
+                      className="btn-secondary w-full justify-center opacity-60 cursor-default"
+                      title="Free is assigned automatically when your subscription ends — you can't request it."
+                    >
+                      Default plan
+                    </button>
+                  ) : isPendingTarget ? (
+                    <button disabled className="btn-secondary w-full justify-center opacity-60 cursor-default">
+                      Pending approval
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => requestUpgrade.mutate(p.id)}
+                      disabled={!canRequest || requestUpgrade.isPending || !!pendingRequest}
+                      className="btn-primary w-full justify-center"
+                      title={
+                        !canRequest
+                          ? "Owner/admin role required"
+                          : pendingRequest
+                            ? "Cancel your pending request to choose another plan"
+                            : undefined
+                      }
+                    >
+                      {requestUpgrade.isPending ? (
+                        <>
+                          <Loader2 size={14} className="animate-spin" /> Requesting…
+                        </>
+                      ) : (
+                        `Request ${p.name}`
+                      )}
+                    </button>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+        {requestErrorMessage && (
+          <p className="text-sm text-rose-600 mt-3">{requestErrorMessage}</p>
+        )}
+      </div>
+
       <div className="card">
         <h3 className="font-semibold text-gray-900 mb-4">What's included in {plan.name}</h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -141,11 +330,6 @@ function BillingTab() {
             );
           })}
         </div>
-      </div>
-
-      <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 text-sm text-amber-900">
-        <p className="font-medium mb-1">Need more features?</p>
-        <p>Contact your platform administrator to upgrade your plan. Pro unlocks Employees and advanced reports; Enterprise adds compliance reports and offline sync.</p>
       </div>
     </div>
   );

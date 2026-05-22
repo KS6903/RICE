@@ -5,13 +5,13 @@ from fastapi import APIRouter, Depends, HTTPException, status, Query
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from ..core.database import get_db
-from ..core.security import get_current_user
+from ..core.security import get_current_user, require_feature
 from ..models.paddy import PalayPurchase, PalayPurchaseItem, PalayInventory, PalayInventoryMovement, DryingRecord
 from ..models.reference import RiceVariety, QualityGrade
 from ..models.supplier_customer import Supplier
 from datetime import datetime, timezone
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(require_feature("paddy"))])
 
 
 # ── Varieties ──────────────────────────────────────────────────────────────────

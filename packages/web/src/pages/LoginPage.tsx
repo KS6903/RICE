@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import api from "../services/api";
 import { useAuthStore } from "../stores/authStore";
+import BrandLogo from "../components/BrandLogo";
 
 export default function LoginPage() {
   const [username, setUsername] = useState("");
@@ -37,10 +38,10 @@ export default function LoginPage() {
     <div className="min-h-screen bg-gradient-to-br from-brand-800 to-brand-900 flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-8">
         <div className="text-center mb-8">
-          <div className="w-16 h-16 bg-brand-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <span className="text-3xl">🌾</span>
+          <div className="flex items-center justify-center gap-2">
+            <BrandLogo width={42} height={21} strokeWidth={6} className="text-amber-500" />
+            <h1 className="text-2xl font-bold text-gray-900">Rice Mill System</h1>
           </div>
-          <h1 className="text-2xl font-bold text-gray-900">Rice Mill System</h1>
           <p className="text-sm text-gray-500 mt-1">Sign in to continue</p>
         </div>
         <form onSubmit={handleLogin} className="space-y-4">

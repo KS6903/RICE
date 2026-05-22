@@ -14,8 +14,35 @@ from ..models.milling import MillingBatch
 from ..models.sales import SalesOrder, Invoice
 from ..models.costs import Expense
 from ..models.subscription import SubscriptionPlan, Subscription
+from ..models.upgrade_request import UpgradeRequest
+from ..services.subscription import (
+    effective_status,
+    sweep_expired,
+    backfill_free,
+    activate_subscription,
+    resolve_pending_upgrade_requests,
+)
 
 router = APIRouter()
+ALLOWED_SUB_STATUSES = {"active", "trial", "past_due", "cancelled", "expired"}
+
+
+def _subscription_payload(sub: Subscription) -> dict:
+    return {
+        "id": str(sub.id),
+        "plan_id": str(sub.plan.id),
+        "plan_code": sub.plan.code,
+        "plan_name": sub.plan.name,
+        "monthly_price": float(sub.plan.monthly_price),
+        "features": list(sub.plan.features or []),
+        "max_users": sub.plan.max_users,
+        "max_branches": sub.plan.max_branches,
+        "status": effective_status(sub) or sub.status,
+        "started_at": sub.started_at.isoformat() if sub.started_at else None,
+        "expires_at": sub.expires_at.isoformat() if sub.expires_at else None,
+        "trial_ends_at": sub.trial_ends_at.isoformat() if sub.trial_ends_at else None,
+        "notes": sub.notes,
+    }
 
 
 @router.get("/plans")
@@ -46,24 +73,7 @@ def get_tenant_subscription(tenant_id: uuid.UUID, _admin=Depends(require_platfor
     sub = db.query(Subscription).filter(Subscription.company_id == tenant_id).first()
     if not sub or not sub.plan:
         return {"company_id": str(tenant_id), "subscription": None}
-    return {
-        "company_id": str(tenant_id),
-        "subscription": {
-            "id": str(sub.id),
-            "plan_id": str(sub.plan.id),
-            "plan_code": sub.plan.code,
-            "plan_name": sub.plan.name,
-            "monthly_price": float(sub.plan.monthly_price),
-            "features": list(sub.plan.features or []),
-            "max_users": sub.plan.max_users,
-            "max_branches": sub.plan.max_branches,
-            "status": sub.status,
-            "started_at": sub.started_at.isoformat() if sub.started_at else None,
-            "expires_at": sub.expires_at.isoformat() if sub.expires_at else None,
-            "trial_ends_at": sub.trial_ends_at.isoformat() if sub.trial_ends_at else None,
-            "notes": sub.notes,
-        },
-    }
+    return {"company_id": str(tenant_id), "subscription": _subscription_payload(sub)}
 
 
 class SubscriptionAssign(BaseModel):
@@ -87,30 +97,115 @@ def assign_tenant_subscription(
     plan = db.get(SubscriptionPlan, body.plan_id)
     if not plan:
         raise HTTPException(status_code=404, detail="Plan not found")
+    normalized_status = body.status.strip().lower()
+    if normalized_status not in ALLOWED_SUB_STATUSES:
+        raise HTTPException(status_code=400, detail=f"Invalid subscription status: '{body.status}'")
 
-    sub = db.query(Subscription).filter(Subscription.company_id == tenant_id).first()
-    if sub:
-        sub.plan_id = plan.id
-        sub.status = body.status
-        sub.expires_at = body.expires_at
-        sub.trial_ends_at = body.trial_ends_at
-        if body.notes is not None:
-            sub.notes = body.notes
-        sub.updated_by = admin.id
-    else:
-        sub = Subscription(
+    if normalized_status == "active":
+        # Route through the shared helper so started_at is reset and any stale
+        # trial_ends_at from a prior trial is cleared.
+        sub = activate_subscription(
+            db,
             company_id=company.id,
             plan_id=plan.id,
-            status=body.status,
+            admin_id=admin.id,
             expires_at=body.expires_at,
-            trial_ends_at=body.trial_ends_at,
             notes=body.notes,
-            updated_by=admin.id,
         )
-        db.add(sub)
+    else:
+        sub = db.query(Subscription).filter(Subscription.company_id == tenant_id).first()
+        if sub:
+            sub.plan_id = plan.id
+            sub.status = normalized_status
+            sub.expires_at = body.expires_at
+            sub.trial_ends_at = body.trial_ends_at
+            if body.notes is not None:
+                sub.notes = body.notes
+            sub.updated_by = admin.id
+        else:
+            sub = Subscription(
+                company_id=company.id,
+                plan_id=plan.id,
+                status=normalized_status,
+                expires_at=body.expires_at,
+                trial_ends_at=body.trial_ends_at,
+                notes=body.notes,
+                updated_by=admin.id,
+            )
+            db.add(sub)
+
+    # Reconcile pending upgrade requests so the admin inbox and the tenant's
+    # billing page don't show a stale "awaiting approval" banner after the
+    # admin has already set the plan directly.
+    resolve_pending_upgrade_requests(db, company.id, plan.id, admin_id=admin.id)
 
     db.commit()
-    return {"message": f"Tenant '{company.name}' is now on the '{plan.name}' plan", "plan_code": plan.code}
+    db.refresh(sub)
+    return {
+        "message": f"Tenant '{company.name}' is now on the '{plan.name}' plan",
+        "plan_code": plan.code,
+        "subscription": _subscription_payload(sub),
+    }
+
+
+class SubscriptionActivate(BaseModel):
+    plan_id: uuid.UUID | None = None
+    notes: str | None = None
+    clear_expiry: bool = True
+
+
+@router.post("/tenants/{tenant_id}/subscription/activate")
+def activate_tenant_subscription(
+    tenant_id: uuid.UUID,
+    body: SubscriptionActivate,
+    admin=Depends(require_platform_admin),
+    db: Session = Depends(get_db),
+):
+    company = db.get(Company, tenant_id)
+    if not company:
+        raise HTTPException(status_code=404, detail="Tenant not found")
+
+    chosen_plan: SubscriptionPlan | None = None
+    if body.plan_id is not None:
+        chosen_plan = db.get(SubscriptionPlan, body.plan_id)
+        if not chosen_plan:
+            raise HTTPException(status_code=404, detail="Plan not found")
+
+    existing = db.query(Subscription).filter(Subscription.company_id == tenant_id).first()
+    if chosen_plan is None:
+        # Keep current plan if there is one; otherwise fall back to Free.
+        if existing and existing.plan:
+            chosen_plan = existing.plan
+        else:
+            chosen_plan = db.query(SubscriptionPlan).filter(SubscriptionPlan.code == "free").first()
+            if not chosen_plan:
+                raise HTTPException(status_code=500, detail="No default plan found (missing 'free' plan)")
+
+    # Preserve a future expires_at unless the caller asked to clear it.
+    keep_expiry = (
+        not body.clear_expiry
+        and existing is not None
+        and existing.expires_at is not None
+    )
+    expires_at = existing.expires_at if keep_expiry else None
+
+    sub = activate_subscription(
+        db,
+        company_id=company.id,
+        plan_id=chosen_plan.id,
+        admin_id=admin.id,
+        expires_at=expires_at,
+        notes=body.notes,
+    )
+
+    resolve_pending_upgrade_requests(db, company.id, chosen_plan.id, admin_id=admin.id)
+
+    db.commit()
+    db.refresh(sub)
+    return {
+        "message": f"Subscription activated for tenant '{company.name}'",
+        "subscription": _subscription_payload(sub),
+    }
 
 
 @router.get("/stats")
@@ -131,6 +226,25 @@ def platform_stats(_admin=Depends(require_platform_admin), db: Session = Depends
         User.last_login >= seven_days_ago,
     ).scalar() or 0
 
+    now = datetime.now(timezone.utc)
+    # "Subscribed" = paying tenant: active/trial status on a paid plan.
+    # Free plan is the default fallback and does not count as a paying subscriber.
+    paid_company_ids = {
+        s.company_id for s in db.query(Subscription).join(SubscriptionPlan).all()
+        if s.status in ("active", "trial")
+        and (s.expires_at is None or s.expires_at > now)
+        and s.plan is not None
+        and s.plan.code != "free"
+    }
+    subscribed_users = db.query(func.count(User.id)).filter(
+        User.is_platform_admin == False,
+        User.company_id.in_(paid_company_ids),
+    ).scalar() or 0
+    unsubscribed_users = db.query(func.count(User.id)).filter(
+        User.is_platform_admin == False,
+        User.company_id.not_in(paid_company_ids) if paid_company_ids else True,
+    ).scalar() or 0
+
     return {
         "total_tenants": total_tenants,
         "total_branches": total_branches,
@@ -140,6 +254,8 @@ def platform_stats(_admin=Depends(require_platform_admin), db: Session = Depends
         "total_orders": total_orders,
         "new_tenants_30d": new_tenants_30d,
         "active_users_7d": active_users_7d,
+        "subscribed_users": subscribed_users,
+        "unsubscribed_users": unsubscribed_users,
     }
 
 
@@ -172,6 +288,26 @@ def list_tenants(_admin=Depends(require_platform_admin), db: Session = Depends(g
     subs = db.query(Subscription).all()
     sub_by_company = {s.company_id: s for s in subs}
 
+    def _sub_block(cid):
+        s = sub_by_company.get(cid)
+        if not s or not s.plan:
+            return {
+                "plan_code": None,
+                "plan_name": None,
+                "subscription_status": None,
+                "started_at": None,
+                "expires_at": None,
+                "has_subscription": False,
+            }
+        return {
+            "plan_code": s.plan.code,
+            "plan_name": s.plan.name,
+            "subscription_status": effective_status(s) or s.status,
+            "started_at": s.started_at.isoformat() if s.started_at else None,
+            "expires_at": s.expires_at.isoformat() if s.expires_at else None,
+            "has_subscription": True,
+        }
+
     return [
         {
             "id": str(c.id),
@@ -187,8 +323,7 @@ def list_tenants(_admin=Depends(require_platform_admin), db: Session = Depends(g
             "branches_count": branch_counts.get(c.id, 0),
             "purchases_count": purchase_counts.get(c.id, 0),
             "orders_count": order_counts.get(c.id, 0),
-            "plan_code": sub_by_company.get(c.id).plan.code if sub_by_company.get(c.id) and sub_by_company.get(c.id).plan else None,
-            "plan_name": sub_by_company.get(c.id).plan.name if sub_by_company.get(c.id) and sub_by_company.get(c.id).plan else None,
+            **_sub_block(c.id),
         }
         for c in companies
     ]
@@ -294,3 +429,155 @@ def list_all_users(_admin=Depends(require_platform_admin), db: Session = Depends
         }
         for u in users
     ]
+
+
+# ─────────────────────────── Subscription maintenance ───────────────────────────
+
+@router.post("/subscriptions/sweep-expired")
+def sweep_expired_subscriptions(_admin=Depends(require_platform_admin), db: Session = Depends(get_db)):
+    """Persist status='expired' for any active/trial subs whose expires_at is past."""
+    count = sweep_expired(db)
+    return {"message": f"Marked {count} subscription(s) as expired", "expired": count}
+
+
+@router.post("/subscriptions/backfill-free")
+def backfill_free_subscriptions(_admin=Depends(require_platform_admin), db: Session = Depends(get_db)):
+    """Assign the Free plan to every tenant currently missing a subscription."""
+    count = backfill_free(db)
+    return {"message": f"Backfilled Free plan for {count} tenant(s)", "backfilled": count}
+
+
+@router.get("/subscriptions/missing-count")
+def missing_subscription_count(_admin=Depends(require_platform_admin), db: Session = Depends(get_db)):
+    """Number of tenants without any subscription row. Drives the 'Fix N tenants' admin nudge."""
+    count = (
+        db.query(func.count(Company.id))
+        .outerjoin(Subscription, Subscription.company_id == Company.id)
+        .filter(Subscription.id.is_(None))
+        .scalar()
+    ) or 0
+    return {"missing": int(count)}
+
+
+# ─────────────────────────── Upgrade-request inbox ───────────────────────────
+
+def _serialize_upgrade_request_row(r: UpgradeRequest, company_names: dict) -> dict:
+    return {
+        "id": str(r.id),
+        "company_id": str(r.company_id),
+        "company_name": company_names.get(r.company_id),
+        "requested_plan_id": str(r.requested_plan_id),
+        "requested_plan_code": r.requested_plan.code if r.requested_plan else None,
+        "requested_plan_name": r.requested_plan.name if r.requested_plan else None,
+        "current_plan_id": str(r.current_plan_id) if r.current_plan_id else None,
+        "current_plan_code": r.current_plan.code if r.current_plan else None,
+        "current_plan_name": r.current_plan.name if r.current_plan else None,
+        "status": r.status,
+        "note": r.note,
+        "admin_note": r.admin_note,
+        "created_at": r.created_at.isoformat() if r.created_at else None,
+        "resolved_at": r.resolved_at.isoformat() if r.resolved_at else None,
+    }
+
+
+@router.get("/upgrade-requests")
+def list_upgrade_requests(
+    status_filter: str | None = "pending",
+    _admin=Depends(require_platform_admin),
+    db: Session = Depends(get_db),
+):
+    q = db.query(UpgradeRequest).order_by(UpgradeRequest.created_at.desc())
+    if status_filter and status_filter != "all":
+        q = q.filter(UpgradeRequest.status == status_filter)
+    rows = q.all()
+    company_names = dict(db.query(Company.id, Company.name).all())
+    return [_serialize_upgrade_request_row(r, company_names) for r in rows]
+
+
+@router.get("/upgrade-requests/pending-count")
+def pending_upgrade_request_count(_admin=Depends(require_platform_admin), db: Session = Depends(get_db)):
+    count = db.query(func.count(UpgradeRequest.id)).filter(UpgradeRequest.status == "pending").scalar() or 0
+
+    # Surface the most recent pending request so the client can toast a
+    # "new request from X" notification without a second round-trip.
+    latest = (
+        db.query(UpgradeRequest)
+        .filter(UpgradeRequest.status == "pending")
+        .order_by(UpgradeRequest.created_at.desc())
+        .first()
+    )
+    latest_payload = None
+    if latest:
+        company_name = db.query(Company.name).filter(Company.id == latest.company_id).scalar()
+        latest_payload = {
+            "id": str(latest.id),
+            "company_id": str(latest.company_id),
+            "company_name": company_name,
+            "requested_plan_name": latest.requested_plan.name if latest.requested_plan else None,
+            "requested_plan_code": latest.requested_plan.code if latest.requested_plan else None,
+            "created_at": latest.created_at.isoformat() if latest.created_at else None,
+        }
+
+    return {"pending": int(count), "latest": latest_payload}
+
+
+class UpgradeRequestResolution(BaseModel):
+    admin_note: str | None = None
+
+
+@router.post("/upgrade-requests/{request_id}/approve")
+def approve_upgrade_request(
+    request_id: uuid.UUID,
+    body: UpgradeRequestResolution,
+    admin=Depends(require_platform_admin),
+    db: Session = Depends(get_db),
+):
+    r = db.get(UpgradeRequest, request_id)
+    if not r:
+        raise HTTPException(status_code=404, detail="Request not found")
+    if r.status != "pending":
+        raise HTTPException(status_code=400, detail=f"Request is already {r.status}")
+
+    plan = db.get(SubscriptionPlan, r.requested_plan_id)
+    if not plan:
+        raise HTTPException(status_code=404, detail="Requested plan no longer exists")
+
+    # Use the shared helper so started_at is reset and any stale trial expiry
+    # from a prior plan does not flip this back to "expired" immediately.
+    activate_subscription(
+        db,
+        company_id=r.company_id,
+        plan_id=plan.id,
+        admin_id=admin.id,
+    )
+
+    r.status = "approved"
+    r.admin_note = body.admin_note
+    r.resolved_at = datetime.now(timezone.utc)
+    r.resolved_by = admin.id
+    # Defensive: cancel any other lingering pending requests for this tenant.
+    # The /billing endpoint normally rejects a second pending with 409, but if
+    # one slipped in through an older code path we don't want it to live on.
+    resolve_pending_upgrade_requests(db, r.company_id, plan.id, admin_id=admin.id)
+    db.commit()
+    return {"message": f"Upgrade approved — tenant moved to {plan.name}"}
+
+
+@router.post("/upgrade-requests/{request_id}/reject")
+def reject_upgrade_request(
+    request_id: uuid.UUID,
+    body: UpgradeRequestResolution,
+    admin=Depends(require_platform_admin),
+    db: Session = Depends(get_db),
+):
+    r = db.get(UpgradeRequest, request_id)
+    if not r:
+        raise HTTPException(status_code=404, detail="Request not found")
+    if r.status != "pending":
+        raise HTTPException(status_code=400, detail=f"Request is already {r.status}")
+    r.status = "rejected"
+    r.admin_note = body.admin_note
+    r.resolved_at = datetime.now(timezone.utc)
+    r.resolved_by = admin.id
+    db.commit()
+    return {"message": "Upgrade request rejected"}

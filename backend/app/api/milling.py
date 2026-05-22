@@ -5,10 +5,10 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from ..core.database import get_db
-from ..core.security import get_current_user
+from ..core.security import get_current_user, require_feature
 from ..models.milling import MillingBatch, MillingBatchInput, MillingBatchOutput, MillingEquipment, MilledRiceInventory, ByproductInventory
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(require_feature("milling"))])
 
 
 class BatchInputIn(BaseModel):

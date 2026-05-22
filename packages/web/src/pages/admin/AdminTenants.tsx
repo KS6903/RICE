@@ -3,9 +3,53 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import api from "../../services/api";
 import { format } from "date-fns";
-import { Search, ExternalLink, Power, History, ChevronDown, ChevronUp } from "lucide-react";
+import { Search, ExternalLink, Power, History, ChevronDown, ChevronUp, AlertCircle, Wand2, ShieldOff, Crown, Zap, Rocket, Star, Infinity as InfinityIcon } from "lucide-react";
 
-const COLS = ["Company", "Signed up", "Mode", "Users", "Branches", "Activity", "Status", ""];
+const COLS = ["Company", "Plan", "Signed up", "Users", "Branches", "Activity", "Status", ""];
+
+function planIcon(code: string | null, size = 12) {
+  if (code === "enterprise") return <Crown size={size} />;
+  if (code === "pro") return <Zap size={size} />;
+  if (code === "basic") return <Star size={size} />;
+  if (code === "free") return <Rocket size={size} />;
+  return null;
+}
+
+function planBadge(code: string | null, name: string | null) {
+  if (!code) return <span className="badge-red text-[10px]">No plan</span>;
+  const cls =
+    code === "enterprise"
+      ? "bg-amber-100 text-amber-800"
+      : code === "pro"
+        ? "bg-indigo-100 text-indigo-800"
+        : code === "basic"
+          ? "bg-blue-100 text-blue-800"
+          : "bg-emerald-100 text-emerald-800";
+  return (
+    <span className={`inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full ${cls}`}>
+      {planIcon(code)} {name}
+    </span>
+  );
+}
+
+function subStatusPill(status: string | null) {
+  if (!status) return null;
+  const cls =
+    status === "active"
+      ? "bg-emerald-50 text-emerald-700"
+      : status === "trial"
+        ? "bg-blue-50 text-blue-700"
+        : status === "past_due"
+          ? "bg-amber-50 text-amber-700"
+          : status === "expired" || status === "cancelled"
+            ? "bg-rose-50 text-rose-700"
+            : "bg-slate-100 text-slate-700";
+  return (
+    <span className={`text-[10px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded ${cls}`}>
+      {status}
+    </span>
+  );
+}
 
 function TenantRow({ t, onToggle, busy }: { t: any; onToggle: (next: boolean) => void; busy: boolean }) {
   return (
@@ -14,8 +58,27 @@ function TenantRow({ t, onToggle, busy }: { t: any; onToggle: (next: boolean) =>
         <div className="font-medium text-slate-900">{t.name}</div>
         {t.email && <div className="text-xs text-slate-500">{t.email}</div>}
       </td>
+      <td className="px-4 py-3">
+        <div className="flex items-center gap-2 flex-wrap">
+          {planBadge(t.plan_code, t.plan_name)}
+          {subStatusPill(t.subscription_status)}
+        </div>
+        {t.has_subscription !== false && (t.started_at || t.expires_at) && (
+          <div className="text-[11px] text-slate-400 mt-0.5 leading-snug">
+            {t.started_at && (
+              <div>Started {format(new Date(t.started_at), "MMM d, yyyy")}</div>
+            )}
+            {t.expires_at ? (
+              <div>Until {format(new Date(t.expires_at), "MMM d, yyyy")}</div>
+            ) : t.subscription_status === "active" ? (
+              <div className="inline-flex items-center gap-1 text-emerald-700">
+                <InfinityIcon size={10} /> Permanent
+              </div>
+            ) : null}
+          </div>
+        )}
+      </td>
       <td className="px-4 py-3 text-slate-600">{t.created_at ? format(new Date(t.created_at), "MMM d, yyyy") : "—"}</td>
-      <td className="px-4 py-3">{t.is_multi_branch ? <span className="badge-green">Multi-branch</span> : <span className="badge-gray">Single</span>}</td>
       <td className="px-4 py-3 font-medium">{t.users_count}</td>
       <td className="px-4 py-3 font-medium">{t.branches_count}</td>
       <td className="px-4 py-3 text-slate-600"><span className="text-xs">{t.purchases_count}p · {t.orders_count}o</span></td>
@@ -52,10 +115,30 @@ export default function AdminTenants() {
     queryFn: () => api.get("/admin/tenants").then((r) => r.data),
   });
 
+  const { data: missing } = useQuery({
+    queryKey: ["admin-missing-subs"],
+    queryFn: () => api.get("/admin/subscriptions/missing-count").then((r) => r.data),
+  });
+
   const toggle = useMutation({
     mutationFn: ({ id, is_active }: { id: string; is_active: boolean }) =>
       api.put(`/admin/tenants/${id}/active`, { is_active }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["admin-tenants"] }),
+  });
+
+  const backfill = useMutation({
+    mutationFn: () => api.post("/admin/subscriptions/backfill-free"),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["admin-tenants"] });
+      qc.invalidateQueries({ queryKey: ["admin-missing-subs"] });
+    },
+  });
+
+  const sweep = useMutation({
+    mutationFn: () => api.post("/admin/subscriptions/sweep-expired"),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["admin-tenants"] });
+    },
   });
 
   const matches = (t: any) =>
@@ -63,6 +146,7 @@ export default function AdminTenants() {
 
   const active = tenants.filter((t: any) => t.is_active && matches(t));
   const inactive = tenants.filter((t: any) => !t.is_active && matches(t));
+  const missingCount = missing?.missing || 0;
 
   return (
     <div className="space-y-6">
@@ -71,16 +155,52 @@ export default function AdminTenants() {
           <h2 className="text-2xl font-bold text-slate-900">Tenants</h2>
           <p className="text-sm text-slate-500">{active.length} active · {inactive.length} deactivated</p>
         </div>
-        <div className="relative">
-          <Search size={16} className="absolute left-3 top-2.5 text-slate-400" />
-          <input
-            className="input pl-9 w-64"
-            placeholder="Search by name or email…"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => sweep.mutate()}
+            disabled={sweep.isPending}
+            className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-600 hover:text-slate-900 px-3 py-2 rounded-lg border border-slate-200 hover:bg-slate-50"
+            title="Mark subscriptions whose expires_at has passed as expired"
+          >
+            <ShieldOff size={14} />
+            {sweep.isPending ? "Sweeping…" : "Sweep expired"}
+          </button>
+          {sweep.isSuccess && (
+            <span className="text-xs text-emerald-600">
+              {(sweep.data as any)?.data?.expired ?? 0} expired
+            </span>
+          )}
+          <div className="relative">
+            <Search size={16} className="absolute left-3 top-2.5 text-slate-400" />
+            <input
+              className="input pl-9 w-64"
+              placeholder="Search by name or email…"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+          </div>
         </div>
       </div>
+
+      {missingCount > 0 && (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 flex items-center gap-3">
+          <AlertCircle size={18} className="text-amber-600 shrink-0" />
+          <div className="flex-1 text-sm text-amber-900">
+            <p className="font-semibold">{missingCount} tenant{missingCount === 1 ? "" : "s"} without a subscription</p>
+            <p className="text-amber-800 mt-0.5">
+              These tenants have no plan and no feature access. Assign the Free plan to restore basic functionality.
+            </p>
+          </div>
+          <button
+            onClick={() => backfill.mutate()}
+            disabled={backfill.isPending}
+            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium bg-amber-600 text-white hover:bg-amber-700 disabled:opacity-60"
+          >
+            <Wand2 size={14} />
+            {backfill.isPending ? "Fixing…" : `Backfill Free plan (${missingCount})`}
+          </button>
+        </div>
+      )}
 
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
         <table className="w-full text-sm">

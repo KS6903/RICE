@@ -72,8 +72,11 @@ def get_user_features(user, db: Session) -> list[str]:
     if not user.company_id:
         return []
     from ..models.subscription import Subscription
+    from ..services.subscription import effective_status, ACTIVE_STATUSES
     sub = db.query(Subscription).filter(Subscription.company_id == user.company_id).first()
-    if not sub or sub.status not in ("active", "trial") or not sub.plan:
+    if not sub or not sub.plan:
+        return []
+    if effective_status(sub) not in ACTIVE_STATUSES:
         return []
     return list(sub.plan.features or [])
 

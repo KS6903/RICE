@@ -1,5 +1,6 @@
 import axios from "axios";
 import { useAuthStore } from "../stores/authStore";
+import { useBillingNoticeStore } from "../stores/billingNoticeStore";
 
 const api = axios.create({
   baseURL: "/api",
@@ -29,6 +30,11 @@ api.interceptors.response.use(
           useAuthStore.getState().logout();
         }
       }
+    }
+    if (err.response?.status === 402) {
+      const detail = err.response?.data?.detail;
+      const message = typeof detail === "string" ? detail : "This action requires a plan upgrade.";
+      useBillingNoticeStore.getState().show(message);
     }
     return Promise.reject(err);
   }

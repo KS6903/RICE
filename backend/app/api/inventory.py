@@ -4,12 +4,12 @@ from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel
 from sqlalchemy.orm import Session, joinedload
 from ..core.database import get_db
-from ..core.security import get_current_user
+from ..core.security import get_current_user, require_feature
 from ..models.milling import MilledRiceInventory, ByproductInventory
 from ..models.paddy import PalayInventory
 from ..models.company import Branch
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(require_feature("inventory"))])
 
 
 class AdjustmentIn(BaseModel):

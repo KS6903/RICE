@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useParams, Link } from "react-router-dom";
 import api from "../../services/api";
@@ -15,13 +15,21 @@ import {
   Crown,
   Zap,
   Rocket,
+  Star,
   AlertCircle,
+  Infinity as InfinityIcon,
+  Calendar,
+  CalendarOff,
+  CircleSlash,
+  CheckCircle2,
+  Clock,
 } from "lucide-react";
 
 /* ─── Plan icon helper ─── */
 function PlanIcon({ code, size = 18 }: { code: string; size?: number }) {
   if (code === "enterprise") return <Crown size={size} />;
   if (code === "pro") return <Zap size={size} />;
+  if (code === "basic") return <Star size={size} />;
   return <Rocket size={size} />;
 }
 
@@ -37,29 +45,172 @@ function statusBadge(status: string) {
   return map[status] || "badge-gray";
 }
 
-/* ─── Plan tier ring color ─── */
-function planRing(code: string, selected: boolean) {
-  if (!selected) return "border-slate-200 hover:border-slate-300";
-  const map: Record<string, string> = {
-    free: "border-emerald-500 ring-2 ring-emerald-200",
-    pro: "border-indigo-500 ring-2 ring-indigo-200",
-    enterprise: "border-amber-500 ring-2 ring-amber-200",
-  };
-  return map[code] || "border-indigo-500 ring-2 ring-indigo-200";
+/* ─── Tier dropdown options ─── */
+const TIER_OPTIONS: { value: string; label: string }[] = [
+  { value: "free", label: "Free" },
+  { value: "basic", label: "Basic" },
+  { value: "pro", label: "Pro" },
+  { value: "enterprise", label: "Enterprise" },
+  { value: "trial", label: "Trial (7 days)" },
+];
+
+/* Default trial duration. Admin can override the expires_at field if needed. */
+const DEFAULT_TRIAL_DAYS = 7;
+
+/** Format a Date as a datetime-local input value (yyyy-MM-ddTHH:mm) in local time. */
+function toDatetimeLocal(d: Date): string {
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+/** "in 4 days" / "in 2 hours" / "expired 3 days ago" — short and human. */
+function relativeTo(now: Date, then: Date): string {
+  const diffMs = then.getTime() - now.getTime();
+  const past = diffMs < 0;
+  const abs = Math.abs(diffMs);
+  const minutes = Math.round(abs / 60000);
+  const hours = Math.round(minutes / 60);
+  const days = Math.round(hours / 24);
+  const unit =
+    days >= 1 ? `${days} day${days === 1 ? "" : "s"}`
+    : hours >= 1 ? `${hours} hour${hours === 1 ? "" : "s"}`
+    : `${minutes} minute${minutes === 1 ? "" : "s"}`;
+  return past ? `${unit} ago` : `in ${unit}`;
+}
+
+/* ─── Subscription Indicator: at-a-glance "is it active, which plan, since when, until when" ─── */
+function SubscriptionIndicator({ sub }: { sub: any | null | undefined }) {
+  if (!sub) {
+    return (
+      <div className="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
+        <AlertCircle size={18} className="text-amber-600 shrink-0 mt-0.5" />
+        <div className="text-sm text-amber-900">
+          <p className="font-semibold">No subscription assigned</p>
+          <p className="text-amber-800 mt-0.5">
+            This tenant has no feature access until you activate a tier below.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  const status: string = sub.status;
+  const isActive = status === "active";
+  const isTrial = status === "trial";
+  const isExpired = status === "expired" || status === "cancelled";
+
+  const banner = isActive
+    ? {
+        wrap: "border-emerald-200 bg-emerald-50",
+        icon: <CheckCircle2 size={20} className="text-emerald-600" />,
+        title: "Active subscription",
+        titleClass: "text-emerald-900",
+      }
+    : isTrial
+      ? {
+          wrap: "border-blue-200 bg-blue-50",
+          icon: <Clock size={20} className="text-blue-600" />,
+          title: "Trial in progress",
+          titleClass: "text-blue-900",
+        }
+      : isExpired
+        ? {
+            wrap: "border-rose-200 bg-rose-50",
+            icon: <CircleSlash size={20} className="text-rose-600" />,
+            title: status === "cancelled" ? "Subscription cancelled" : "Subscription expired",
+            titleClass: "text-rose-900",
+          }
+        : {
+            wrap: "border-slate-200 bg-slate-50",
+            icon: <AlertCircle size={20} className="text-slate-500" />,
+            title: status.replace(/_/g, " "),
+            titleClass: "text-slate-900",
+          };
+
+  const started = sub.started_at ? new Date(sub.started_at) : null;
+  const expires = sub.expires_at ? new Date(sub.expires_at) : null;
+  const now = new Date();
+
+  return (
+    <div className={`rounded-xl border ${banner.wrap}`}>
+      {/* Banner: status + plan + price on one row */}
+      <div className="px-4 py-3 flex items-center gap-3 flex-wrap">
+        {banner.icon}
+        <div className="flex-1 min-w-0">
+          <p className={`text-sm font-semibold ${banner.titleClass}`}>{banner.title}</p>
+          <div className="flex items-center gap-2 mt-0.5">
+            <PlanIcon code={sub.plan_code} size={14} />
+            <span className="text-lg font-bold text-slate-900">{sub.plan_name}</span>
+            <span className="text-xs text-slate-500">
+              {sub.monthly_price === 0 ? "Free" : `₱${sub.monthly_price.toLocaleString()}/mo`}
+            </span>
+            {sub.max_users && (
+              <span className="text-xs text-slate-400">
+                · {sub.max_users} users · {sub.max_branches || "∞"} branches
+              </span>
+            )}
+          </div>
+        </div>
+        <span className={statusBadge(status)}>{status}</span>
+      </div>
+
+      {/* Facts grid: Started / Until */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 border-t border-current/10 bg-white/60">
+        <div className="px-4 py-3 sm:border-r border-slate-200">
+          <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+            <Calendar size={11} /> Started
+          </div>
+          <div className="text-sm font-medium text-slate-900 mt-1">
+            {started ? format(started, "MMM d, yyyy 'at' HH:mm") : "—"}
+          </div>
+          {started && (
+            <div className="text-xs text-slate-500">{relativeTo(now, started)}</div>
+          )}
+        </div>
+        <div className="px-4 py-3">
+          <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+            {expires ? <CalendarOff size={11} /> : <InfinityIcon size={11} />} Until
+          </div>
+          {expires ? (
+            <>
+              <div className="text-sm font-medium text-slate-900 mt-1">
+                {format(expires, "MMM d, yyyy 'at' HH:mm")}
+              </div>
+              <div
+                className={`text-xs ${
+                  expires < now ? "text-rose-600 font-medium" : "text-slate-500"
+                }`}
+              >
+                {expires < now ? "expired " : ""}
+                {relativeTo(now, expires)}
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="text-sm font-medium text-slate-900 mt-1">
+                Never — permanent
+              </div>
+              <div className="text-xs text-slate-500">No expiration set</div>
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  );
 }
 
 /* ─── Subscription Management Card ─── */
-function SubscriptionManager({ tenantId }: { tenantId: string }) {
+function SubscriptionManager({ tenantId, tenantName }: { tenantId: string; tenantName?: string }) {
   const qc = useQueryClient();
 
   /* Fetch available plans */
-  const { data: plans = [] } = useQuery({
+  const { data: plans = [] } = useQuery<any[]>({
     queryKey: ["admin-plans"],
     queryFn: () => api.get("/admin/plans").then((r) => r.data),
   });
 
   /* Fetch current subscription */
-  const { data: subData, isLoading: subLoading } = useQuery({
+  const { data: subData } = useQuery({
     queryKey: ["admin-tenant-sub", tenantId],
     queryFn: () =>
       api.get(`/admin/tenants/${tenantId}/subscription`).then((r) => r.data),
@@ -69,57 +220,145 @@ function SubscriptionManager({ tenantId }: { tenantId: string }) {
   const currentSub = subData?.subscription;
 
   /* Local form state — synced once data loads */
-  const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null);
-  const [status, setStatus] = useState("active");
+  const [tier, setTier] = useState<string>("free");
+  const [trialOfCode, setTrialOfCode] = useState<string>("pro");
   const [expiresAt, setExpiresAt] = useState("");
+  const [isPermanent, setIsPermanent] = useState(false);
   const [notes, setNotes] = useState("");
   const [showForm, setShowForm] = useState(false);
   const [saved, setSaved] = useState(false);
+  const lastSyncKeyRef = useRef<string>("");
 
-  /* Sync defaults when sub data first arrives */
-  if (currentSub && selectedPlanId === null) {
-    setSelectedPlanId(currentSub.plan_id);
-    setStatus(currentSub.status);
-    setExpiresAt(
-      currentSub.expires_at
-        ? currentSub.expires_at.slice(0, 16) // for datetime-local input
-        : ""
-    );
-    setNotes(currentSub.notes || "");
-  }
+  /* Sync local form only when fetched subscription payload actually changes */
+  useEffect(() => {
+    const syncKey = currentSub
+      ? `${tenantId}:${currentSub.id}:${currentSub.plan_code}:${currentSub.status}:${currentSub.expires_at ?? ""}:${currentSub.notes ?? ""}`
+      : `${tenantId}:none`;
+    if (lastSyncKeyRef.current === syncKey) return;
+    lastSyncKeyRef.current = syncKey;
 
-  /* Mutation to assign/update subscription */
-  const assign = useMutation({
-    mutationFn: (payload: any) =>
-      api.put(`/admin/tenants/${tenantId}/subscription`, payload),
-    onSuccess: () => {
+    if (currentSub) {
+      if (currentSub.status === "trial") {
+        setTier("trial");
+        setTrialOfCode(currentSub.plan_code);
+      } else {
+        setTier(currentSub.plan_code);
+      }
+      setExpiresAt(currentSub.expires_at ? currentSub.expires_at.slice(0, 16) : "");
+      // Permanent = active subscription with no expiry. Trials are never permanent.
+      setIsPermanent(currentSub.status !== "trial" && !currentSub.expires_at);
+      setNotes(currentSub.notes || "");
+      return;
+    }
+    setTier("free");
+    setTrialOfCode("pro");
+    setExpiresAt("");
+    setIsPermanent(false);
+    setNotes("");
+  }, [tenantId, currentSub]);
+
+  /* When the admin picks "Trial", auto-fill expires_at with 7 days from now and force non-permanent. */
+  const handleTierChange = (newTier: string) => {
+    setTier(newTier);
+    if (newTier === "trial") {
+      setIsPermanent(false);
+      if (!expiresAt) {
+        const end = new Date();
+        end.setDate(end.getDate() + DEFAULT_TRIAL_DAYS);
+        setExpiresAt(toDatetimeLocal(end));
+      }
+    }
+  };
+
+  const handlePermanentChange = (checked: boolean) => {
+    setIsPermanent(checked);
+    if (checked) {
+      // Permanent = no expiry. Clear the date field.
+      setExpiresAt("");
+    }
+  };
+
+  /* Mutation to assign/update subscription. Writes the PUT response directly into the
+     query cache so the UI reflects the new plan instantly, not on the next poll. */
+  const save = useMutation({
+    mutationFn: async (payload: any) => {
+      const resp = await api.put(`/admin/tenants/${tenantId}/subscription`, payload);
+      return resp.data;
+    },
+    onSuccess: (response: any) => {
+      if (response?.subscription) {
+        qc.setQueryData(["admin-tenant-sub", tenantId], {
+          company_id: tenantId,
+          subscription: response.subscription,
+        });
+      }
       qc.invalidateQueries({ queryKey: ["admin-tenant-sub", tenantId] });
       qc.invalidateQueries({ queryKey: ["admin-tenant", tenantId] });
       qc.invalidateQueries({ queryKey: ["admin-tenants"] });
       setSaved(true);
-      setTimeout(() => setSaved(false), 2500);
+      setShowForm(false);
+      setTimeout(() => setSaved(false), 3500);
     },
   });
 
+  const findPlanByCode = (code: string) => plans.find((p: any) => p.code === code);
+
+  const planIdForTier = (t: string): string | undefined => {
+    if (t === "trial") {
+      return findPlanByCode(trialOfCode)?.id;
+    }
+    return findPlanByCode(t)?.id;
+  };
+
   const handleSave = () => {
-    if (!selectedPlanId) return;
-    assign.mutate({
-      plan_id: selectedPlanId,
+    setSaved(false);
+    const plan_id = planIdForTier(tier);
+    if (!plan_id) return;
+    const status = tier === "trial" ? "trial" : "active";
+
+    let expiresAtIso: string | null = null;
+    if (status === "trial") {
+      // Trial: always has an end date; default to 7 days from now if admin left it blank.
+      let d = expiresAt ? new Date(expiresAt) : null;
+      if (!d || Number.isNaN(d.getTime())) {
+        d = new Date();
+        d.setDate(d.getDate() + DEFAULT_TRIAL_DAYS);
+      }
+      expiresAtIso = d.toISOString();
+    } else if (!isPermanent) {
+      // Active with optional expiry — use the picked date if valid; null otherwise.
+      const d = expiresAt ? new Date(expiresAt) : null;
+      expiresAtIso = d && !Number.isNaN(d.getTime()) ? d.toISOString() : null;
+    }
+
+    save.mutate({
+      plan_id,
       status,
-      expires_at: expiresAt ? new Date(expiresAt).toISOString() : null,
+      expires_at: expiresAtIso,
+      trial_ends_at: status === "trial" ? expiresAtIso : null,
       notes: notes || null,
     });
   };
 
-  if (subLoading) {
-    return (
-      <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
-        <div className="flex items-center gap-2 text-slate-400">
-          <Loader2 size={16} className="animate-spin" /> Loading subscription…
-        </div>
-      </div>
-    );
-  }
+  const saveErrorMessage =
+    typeof (save.error as any)?.response?.data?.detail === "string"
+      ? (save.error as any).response.data.detail
+      : "Failed to save. Please try again.";
+
+  const selectedPlan =
+    tier === "trial" ? findPlanByCode(trialOfCode) : findPlanByCode(tier);
+
+  const buttonLabel = save.isPending
+    ? tier === "trial"
+      ? "Starting trial…"
+      : "Activating…"
+    : tier === "trial"
+      ? currentSub?.status === "trial"
+        ? "Save trial"
+        : "Start trial"
+      : currentSub && currentSub.status === "active" && currentSub.plan_code === tier
+        ? "Save changes"
+        : "Activate subscription";
 
   return (
     <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
@@ -129,162 +368,156 @@ function SubscriptionManager({ tenantId }: { tenantId: string }) {
           <CreditCard size={16} className="text-slate-500" />
           <h3 className="font-semibold text-slate-900">Subscription</h3>
         </div>
-        {!showForm && (
+        {!showForm && currentSub && (
           <button
             onClick={() => setShowForm(true)}
             className="text-indigo-600 hover:text-indigo-700 text-xs font-medium"
           >
-            Change plan
+            Change tier
           </button>
         )}
       </div>
 
-      {/* Current plan summary (always visible) */}
+      {/* Current plan indicator — answers: is it active, which plan, since when, until when */}
       <div className="px-6 py-4">
-        {currentSub ? (
-          <div className="flex items-center gap-4 flex-wrap">
-            <div className="flex items-center gap-2">
-              <PlanIcon code={currentSub.plan_code} />
-              <span className="text-lg font-bold text-slate-900">
-                {currentSub.plan_name}
-              </span>
-            </div>
-            <span className={statusBadge(currentSub.status)}>
-              {currentSub.status}
-            </span>
-            <span className="text-sm text-slate-500">
-              {currentSub.monthly_price === 0
-                ? "Free"
-                : `₱${currentSub.monthly_price.toLocaleString()}/mo`}
-            </span>
-            {currentSub.max_users && (
-              <span className="text-xs text-slate-400">
-                {currentSub.max_users} users ·{" "}
-                {currentSub.max_branches || "∞"} branches
-              </span>
-            )}
-            {currentSub.expires_at && (
-              <span className="text-xs text-slate-400">
-                Expires{" "}
-                {format(new Date(currentSub.expires_at), "MMM d, yyyy")}
-              </span>
-            )}
-          </div>
-        ) : (
-          <div className="flex items-center gap-2 text-sm text-amber-600">
-            <AlertCircle size={14} />
-            No subscription assigned. Choose a plan below.
-          </div>
-        )}
+        <SubscriptionIndicator sub={currentSub} />
       </div>
 
-      {/* Plan picker + options (expanded) */}
+      {/* Tier picker + options */}
       {(showForm || !currentSub) && (
         <div className="px-6 pb-6 space-y-5 border-t border-slate-100 pt-5">
-          {/* Plan cards */}
           <div>
-            <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-3">
-              Choose plan
+            <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">
+              Subscription tier
             </label>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              {plans
-                .filter((p: any) => p.is_active)
-                .map((p: any) => {
-                  const selected = selectedPlanId === p.id;
-                  return (
-                    <button
-                      key={p.id}
-                      onClick={() => setSelectedPlanId(p.id)}
-                      className={`relative text-left rounded-xl border-2 p-4 transition-all ${planRing(
-                        p.code,
-                        selected
-                      )}`}
-                    >
-                      {selected && (
-                        <span className="absolute top-2 right-2 bg-indigo-600 text-white rounded-full p-0.5">
-                          <Check size={10} />
-                        </span>
-                      )}
-                      <div className="flex items-center gap-2 mb-1">
-                        <PlanIcon code={p.code} size={16} />
-                        <span className="font-bold text-slate-900">
-                          {p.name}
-                        </span>
-                      </div>
-                      <div className="text-lg font-bold text-slate-900">
-                        {p.monthly_price === 0
-                          ? "Free"
-                          : `₱${p.monthly_price.toLocaleString()}`}
-                        {p.monthly_price > 0 && (
-                          <span className="text-xs font-normal text-slate-400">
-                            /mo
-                          </span>
-                        )}
-                      </div>
-                      <p className="text-xs text-slate-500 mt-1">
-                        {p.description}
-                      </p>
-                      <div className="mt-2 text-xs text-slate-400">
-                        {p.max_users ? `${p.max_users} users` : "Unlimited users"} ·{" "}
-                        {p.max_branches
-                          ? `${p.max_branches} branches`
-                          : "Unlimited branches"}
-                      </div>
-                      {p.features && (
-                        <div className="mt-2 flex flex-wrap gap-1">
-                          {(p.features as string[]).slice(0, 5).map((f: string) => (
-                            <span
-                              key={f}
-                              className="bg-slate-100 text-slate-600 text-[10px] px-1.5 py-0.5 rounded"
-                            >
-                              {f.replace(/_/g, " ")}
-                            </span>
-                          ))}
-                          {p.features.length > 5 && (
-                            <span className="text-[10px] text-slate-400">
-                              +{p.features.length - 5} more
-                            </span>
-                          )}
-                        </div>
-                      )}
-                    </button>
-                  );
-                })}
-            </div>
+            <select
+              value={tier}
+              onChange={(e) => handleTierChange(e.target.value)}
+              className="input"
+            >
+              {TIER_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+            <p className="text-xs text-slate-400 mt-1">
+              Picking a tier activates it for this tenant.{" "}
+              <span className="font-medium">Trial</span> defaults to{" "}
+              {DEFAULT_TRIAL_DAYS} days (adjust the expiry below to change).
+            </p>
           </div>
 
-          {/* Status + expiry row */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          {tier === "trial" && (
             <div>
               <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">
-                Status
+                Trial of which plan?
               </label>
               <select
-                value={status}
-                onChange={(e) => setStatus(e.target.value)}
+                value={trialOfCode}
+                onChange={(e) => setTrialOfCode(e.target.value)}
                 className="input"
               >
-                <option value="active">Active</option>
-                <option value="trial">Trial</option>
-                <option value="past_due">Past due</option>
-                <option value="cancelled">Cancelled</option>
-                <option value="expired">Expired</option>
+                {plans
+                  .filter((p: any) => p.is_active && p.code !== "free")
+                  .map((p: any) => (
+                    <option key={p.id} value={p.code}>
+                      {p.name} ({p.monthly_price === 0 ? "Free" : `₱${p.monthly_price.toLocaleString()}/mo`})
+                    </option>
+                  ))}
               </select>
+              <p className="text-xs text-slate-400 mt-1">
+                Tenant gets all of this plan's features for the trial duration.
+              </p>
             </div>
+          )}
+
+          {/* Selected tier details */}
+          {selectedPlan && (
+            <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 flex flex-wrap items-center gap-x-6 gap-y-2 text-sm">
+              <div className="flex items-center gap-2">
+                <PlanIcon code={selectedPlan.code} />
+                <span className="font-bold text-slate-900">
+                  {selectedPlan.name}
+                </span>
+                {tier === "trial" && (
+                  <span className="ml-1 inline-flex items-center text-[10px] font-bold uppercase tracking-wide bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded">
+                    Trial
+                  </span>
+                )}
+              </div>
+              <span className="text-slate-700">
+                {selectedPlan.monthly_price === 0
+                  ? "Free"
+                  : `₱${selectedPlan.monthly_price.toLocaleString()}/mo`}
+              </span>
+              <span className="text-slate-600">
+                {selectedPlan.max_users ? `${selectedPlan.max_users} users` : "Unlimited users"} ·{" "}
+                {selectedPlan.max_branches ? `${selectedPlan.max_branches} branches` : "Unlimited branches"}
+              </span>
+              {Array.isArray(selectedPlan.features) && (
+                <div className="basis-full flex flex-wrap gap-1.5 pt-1">
+                  {(selectedPlan.features as string[]).map((f) => (
+                    <span
+                      key={f}
+                      className="bg-white border border-slate-200 text-slate-600 text-[10px] px-1.5 py-0.5 rounded"
+                    >
+                      {f.replace(/_/g, " ")}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Permanent toggle (active tiers only) */}
+          {tier !== "trial" && (
+            <label className="flex items-start gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 cursor-pointer hover:bg-slate-100 transition-colors">
+              <input
+                type="checkbox"
+                checked={isPermanent}
+                onChange={(e) => handlePermanentChange(e.target.checked)}
+                className="mt-0.5 h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+              />
+              <span className="flex-1">
+                <span className="flex items-center gap-1.5 text-sm font-semibold text-slate-900">
+                  <InfinityIcon size={14} />
+                  Permanent subscription
+                </span>
+                <span className="text-xs text-slate-500">
+                  Never expires. Tenant keeps access until you change the tier.
+                </span>
+              </span>
+            </label>
+          )}
+
+          {/* Expiry + notes */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">
-                Expires at
+                {tier === "trial"
+                  ? "Trial ends at"
+                  : isPermanent
+                    ? "Expires at (disabled — permanent)"
+                    : "Expires at"}
               </label>
               <input
                 type="datetime-local"
                 value={expiresAt}
                 onChange={(e) => setExpiresAt(e.target.value)}
-                className="input"
+                disabled={tier !== "trial" && isPermanent}
+                className="input disabled:bg-slate-100 disabled:text-slate-400 disabled:cursor-not-allowed"
               />
+              {tier === "trial" && (
+                <p className="text-xs text-slate-400 mt-1">
+                  Defaulted to {DEFAULT_TRIAL_DAYS} days from now. Tenant
+                  loses access automatically when this passes.
+                </p>
+              )}
             </div>
             <div>
               <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">
-                Notes
+                Notes (optional)
               </label>
               <input
                 type="text"
@@ -297,55 +530,88 @@ function SubscriptionManager({ tenantId }: { tenantId: string }) {
           </div>
 
           {/* Actions */}
-          <div className="flex items-center gap-3 pt-1">
-            <button
-              onClick={handleSave}
-              disabled={!selectedPlanId || assign.isPending}
-              className="btn-primary"
-            >
-              {assign.isPending ? (
-                <>
-                  <Loader2 size={14} className="animate-spin" /> Saving…
-                </>
-              ) : (
-                <>
-                  <Check size={14} /> Save subscription
-                </>
-              )}
-            </button>
-            {currentSub && (
+          <div className="flex flex-col gap-2 pt-1">
+            <div className="flex items-center gap-3 flex-wrap">
               <button
-                onClick={() => setShowForm(false)}
-                className="btn-secondary"
+                onClick={handleSave}
+                disabled={save.isPending || plans.length === 0}
+                className="btn-primary"
               >
-                Cancel
+                {save.isPending ? (
+                  <>
+                    <Loader2 size={14} className="animate-spin" /> {buttonLabel}
+                  </>
+                ) : (
+                  <>
+                    <Check size={14} /> {buttonLabel}
+                  </>
+                )}
               </button>
-            )}
-            {saved && (
-              <span className="text-sm text-emerald-600 font-medium animate-pulse">
-                Subscription updated!
-              </span>
-            )}
-            {assign.isError && (
-              <span className="text-sm text-rose-600">
-                Failed to update. Please try again.
-              </span>
-            )}
+              {currentSub && (
+                <button
+                  onClick={() => setShowForm(false)}
+                  className="btn-secondary"
+                  disabled={save.isPending}
+                >
+                  Cancel
+                </button>
+              )}
+              {save.isError && (
+                <span className="text-sm text-rose-600">{saveErrorMessage}</span>
+              )}
+            </div>
           </div>
+        </div>
+      )}
+
+      {saved && (
+        <div className="mx-6 mb-6 text-sm bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2 text-emerald-800 flex items-start gap-2">
+          <Check size={14} className="mt-0.5 shrink-0" />
+          <span>
+            Subscription saved for <strong>{tenantName || "this tenant"}</strong>.
+            Their session reflects the new tier within ~10 seconds (or instantly
+            when they refocus their tab).
+          </span>
         </div>
       )}
     </div>
   );
 }
 
+/* ─── Empty placeholders so the page renders immediately, no spinner ─── */
+const EMPTY_COMPANY = {
+  id: "",
+  name: "",
+  address: "",
+  tin: "",
+  nfa_license_no: "",
+  da_registration_no: "",
+  phone: "",
+  email: "",
+  currency: "PHP",
+  timezone: "Asia/Manila",
+  is_multi_branch: false,
+  is_active: true,
+  created_at: null as string | null,
+};
+const EMPTY_METRICS = {
+  purchases_count: 0,
+  batches_count: 0,
+  orders_count: 0,
+  invoices_count: 0,
+  total_revenue: 0,
+  total_expenses: 0,
+};
+
 /* ─── Main Page ─── */
 export default function AdminTenantDetail() {
   const { id } = useParams<{ id: string }>();
   const qc = useQueryClient();
-  const { data, isLoading } = useQuery({
+  const { data } = useQuery({
     queryKey: ["admin-tenant", id],
     queryFn: () => api.get(`/admin/tenants/${id}`).then((r) => r.data),
     enabled: !!id,
+    placeholderData: (prev) => prev,
   });
 
   const toggle = useMutation({
@@ -357,12 +623,10 @@ export default function AdminTenantDetail() {
     },
   });
 
-  if (isLoading || !data) {
-    return <div className="text-slate-500">Loading…</div>;
-  }
-
-  const c = data.company;
-  const m = data.metrics;
+  const c = data?.company || EMPTY_COMPANY;
+  const m = data?.metrics || EMPTY_METRICS;
+  const users = (data?.users as any[]) || [];
+  const branches = (data?.branches as any[]) || [];
 
   return (
     <div className="space-y-6">
@@ -377,7 +641,7 @@ export default function AdminTenantDetail() {
         <div>
           <div className="flex items-center gap-3">
             <h2 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
-              <Building2 size={22} /> {c.name}
+              <Building2 size={22} /> {c.name || "Tenant"}
             </h2>
             {c.is_active ? (
               <span className="badge-green">Active</span>
@@ -386,36 +650,38 @@ export default function AdminTenantDetail() {
             )}
           </div>
           <p className="text-sm text-slate-500 mt-1">
-            Tenant ID: <span className="font-mono">{c.id}</span>
+            Tenant ID: <span className="font-mono">{c.id || id}</span>
           </p>
         </div>
-        <button
-          onClick={() => toggle.mutate(!c.is_active)}
-          disabled={toggle.isPending}
-          className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-sm ${
-            c.is_active
-              ? "bg-rose-50 text-rose-700 hover:bg-rose-100"
-              : "bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
-          }`}
-          title={
-            c.is_active
-              ? "Deactivate this tenant — blocks all logins"
-              : "Activate this tenant — restores login"
-          }
-        >
-          <Power size={14} />
-          {toggle.isPending
-            ? "Saving…"
-            : c.is_active
-            ? "Deactivate tenant"
-            : "Activate tenant"}
-        </button>
+        {data && (
+          <button
+            onClick={() => toggle.mutate(!c.is_active)}
+            disabled={toggle.isPending}
+            className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-sm ${
+              c.is_active
+                ? "bg-rose-50 text-rose-700 hover:bg-rose-100"
+                : "bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
+            }`}
+            title={
+              c.is_active
+                ? "Deactivate this tenant — blocks all logins"
+                : "Activate this tenant — restores login"
+            }
+          >
+            <Power size={14} />
+            {toggle.isPending
+              ? "Saving…"
+              : c.is_active
+              ? "Deactivate tenant"
+              : "Activate tenant"}
+          </button>
+        )}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-6">
           {/* ─── Subscription Management ─── */}
-          <SubscriptionManager tenantId={id!} />
+          <SubscriptionManager tenantId={id!} tenantName={c.name} />
 
           <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
             <h3 className="font-semibold text-slate-900 mb-4">
@@ -480,7 +746,7 @@ export default function AdminTenantDetail() {
             <div className="px-6 py-4 border-b border-slate-200 flex items-center gap-2">
               <UsersIcon size={16} className="text-slate-500" />
               <h3 className="font-semibold text-slate-900">
-                Users ({data.users.length})
+                Users ({users.length})
               </h3>
             </div>
             <table className="w-full text-sm">
@@ -504,7 +770,7 @@ export default function AdminTenantDetail() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {data.users.map((u: any) => (
+                {users.map((u: any) => (
                   <tr key={u.id}>
                     <td className="px-4 py-3 font-mono text-xs">
                       {u.username}
@@ -530,6 +796,13 @@ export default function AdminTenantDetail() {
                     </td>
                   </tr>
                 ))}
+                {users.length === 0 && (
+                  <tr>
+                    <td colSpan={6} className="px-4 py-6 text-center text-slate-400">
+                      No users yet.
+                    </td>
+                  </tr>
+                )}
               </tbody>
             </table>
           </div>
@@ -538,7 +811,7 @@ export default function AdminTenantDetail() {
             <div className="px-6 py-4 border-b border-slate-200 flex items-center gap-2">
               <MapPin size={16} className="text-slate-500" />
               <h3 className="font-semibold text-slate-900">
-                Branches ({data.branches.length})
+                Branches ({branches.length})
               </h3>
             </div>
             <table className="w-full text-sm">
@@ -555,7 +828,7 @@ export default function AdminTenantDetail() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {data.branches.map((b: any) => (
+                {branches.map((b: any) => (
                   <tr key={b.id}>
                     <td className="px-4 py-3 font-medium">{b.name}</td>
                     <td className="px-4 py-3">
@@ -574,6 +847,13 @@ export default function AdminTenantDetail() {
                     </td>
                   </tr>
                 ))}
+                {branches.length === 0 && (
+                  <tr>
+                    <td colSpan={3} className="px-4 py-6 text-center text-slate-400">
+                      No branches yet.
+                    </td>
+                  </tr>
+                )}
               </tbody>
             </table>
           </div>

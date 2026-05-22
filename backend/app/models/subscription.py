@@ -5,7 +5,7 @@ from sqlalchemy import String, Boolean, Integer, Numeric, Text, DateTime, Foreig
 from sqlalchemy.orm import mapped_column, Mapped, relationship
 from sqlalchemy.dialects.postgresql import UUID, JSONB
 from ..core.database import Base
-from .base import TimestampMixin
+from .base import TimestampMixin, now_utc
 
 
 class SubscriptionPlan(Base):
@@ -30,7 +30,7 @@ class Subscription(Base, TimestampMixin):
     company_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("companies.id", ondelete="CASCADE"), unique=True)
     plan_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("subscription_plans.id"), nullable=False)
     status: Mapped[str] = mapped_column(String(20), default="active")  # trial, active, past_due, cancelled, expired
-    started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
+    started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc)
     expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     trial_ends_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     notes: Mapped[str | None] = mapped_column(Text)

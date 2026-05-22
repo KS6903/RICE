@@ -8,6 +8,8 @@ from .sales import PriceList, SalesOrder, SalesOrderItem, Invoice, Payment
 from .costs import ExpenseCategory, Expense
 from .compliance import ComplianceReport
 from .sync import SyncLog, SyncConflict
+from .subscription import SubscriptionPlan, Subscription
+from .upgrade_request import UpgradeRequest
 
 __all__ = [
     "Company", "Branch", "User", "Role",
@@ -19,4 +21,6 @@ __all__ = [
     "ExpenseCategory", "Expense",
     "ComplianceReport",
     "SyncLog", "SyncConflict",
+    "SubscriptionPlan", "Subscription",
+    "UpgradeRequest",
 ]
