@@ -4,9 +4,9 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "../../node_modules/.bin/vite",
-    "build": "../../node_modules/.bin/tsc && ../../node_modules/.bin/vite build",
-    "preview": "../../node_modules/.bin/vite preview"
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview"
   },
   "dependencies": {
     "@rice-mill/shared": "*",

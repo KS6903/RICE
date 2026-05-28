@@ -174,6 +174,9 @@ function BillingTab() {
   const { data: plans = [] } = useQuery<SubscriptionPlan[]>({
     queryKey: ["billing-plans"],
     queryFn: () => api.get("/billing/plans").then((r) => r.data),
+    refetchOnWindowFocus: true,
+    refetchOnMount: "always",
+    staleTime: 0,
   });
 
   const { data: requestData } = useQuery<{ request: UpgradeRequest | null }>({
@@ -276,17 +279,52 @@ function BillingTab() {
               <span className={`w-2 h-2 rounded-full ${statusDot}`} />
               {plan.status}
             </p>
-            {plan.expires_at && (
-              <p className="text-xs text-white/75 mt-2 font-medium">
-                Expires
-                <br />
-                {format(new Date(plan.expires_at), "MMM d, yyyy")}
-              </p>
-            )}
           </div>
         </div>
 
-        <div className="relative grid grid-cols-2 gap-4 mt-8 pt-6 border-t border-white/20 text-sm">
+        {/* Expiry strip */}
+        {(() => {
+          if (!plan.expires_at) {
+            return (
+              <div className="relative mt-5 flex items-center gap-2 rounded-xl bg-white/10 ring-1 ring-white/20 px-4 py-2.5 text-sm text-white/90">
+                <Clock size={14} className="shrink-0" />
+                <span className="font-medium">Permanent subscription — no expiry</span>
+              </div>
+            );
+          }
+          const expDate = new Date(plan.expires_at);
+          const daysLeft = Math.ceil((expDate.getTime() - Date.now()) / 86400000);
+          const expired = daysLeft <= 0;
+          const urgent = daysLeft <= 7 && !expired;
+          return (
+            <div className={`relative mt-5 flex items-center justify-between gap-4 rounded-xl px-4 py-2.5 text-sm ring-1 ${
+              expired
+                ? "bg-rose-500/30 ring-rose-300/50 text-white"
+                : urgent
+                  ? "bg-amber-400/30 ring-amber-300/50 text-white"
+                  : "bg-white/10 ring-white/20 text-white/90"
+            }`}>
+              <div className="flex items-center gap-2">
+                <Clock size={14} className="shrink-0" />
+                <span className="font-medium">
+                  {expired ? "Subscription expired" : "Expires on "}
+                  <span className="font-bold">
+                    {!expired && format(expDate, "MMMM d, yyyy")}
+                  </span>
+                </span>
+              </div>
+              {!expired && (
+                <span className={`shrink-0 text-xs font-bold px-2.5 py-1 rounded-full ${
+                  urgent ? "bg-white/25 text-white" : "bg-white/15 text-white/90"
+                }`}>
+                  {daysLeft} day{daysLeft === 1 ? "" : "s"} left
+                </span>
+              )}
+            </div>
+          );
+        })()}
+
+        <div className="relative grid grid-cols-2 gap-4 mt-6 pt-6 border-t border-white/20 text-sm">
           <div>
             <p className="text-white/75 font-medium">User limit</p>
             <p className="font-bold text-lg mt-0.5">{plan.max_users ?? "Unlimited"}</p>

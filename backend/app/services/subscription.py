@@ -82,7 +82,16 @@ def ensure_subscription(db: Session, company_id: uuid.UUID) -> Subscription | No
     free_plan = get_free_plan(db)
     if not free_plan:
         return None
-    sub = Subscription(company_id=company_id, plan_id=free_plan.id, status="active")
+    from datetime import timedelta, time as dt_time
+    now = datetime.now(timezone.utc)
+    expiry_day = (now + timedelta(days=30)).date()
+    expires_at = datetime.combine(expiry_day, dt_time(23, 59, 59), tzinfo=timezone.utc)
+    sub = Subscription(
+        company_id=company_id,
+        plan_id=free_plan.id,
+        status="active",
+        expires_at=expires_at,
+    )
     db.add(sub)
     db.flush()
     return sub

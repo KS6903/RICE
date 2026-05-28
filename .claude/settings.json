@@ -1,7 +1,22 @@
 {
   "permissions": {
     "allow": [
-      "Bash(npx claude-mem *)"
+      "Bash(npx claude-mem *)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:8000/api/auth/login -X POST)",
+      "Bash(curl -s -X POST http://localhost:8000/api/auth/login -H \"Content-Type: application/x-www-form-urlencoded\" -d \"username=admin&password=admin1234\")",
+      "Bash(curl -s -o /dev/null -w \"Backend status: %{http_code}\\\\n\" -X POST http://localhost:8000/api/auth/login)",
+      "Bash(curl -s -o /dev/null -w \"Vite status: %{http_code}\\\\n\" http://localhost:5173)",
+      "Bash(npm run *)",
+      "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\(f'count={len\\(d\\) if isinstance\\(d, list\\) else \\\\\"NOT A LIST\\\\\"}'\\); print\\(json.dumps\\(d, indent=2\\)[:500]\\)\")",
+      "Bash(grep -v \"^$\")",
+      "Bash(.venv/Scripts/python debug_tenants.py)",
+      "Bash(.venv/Scripts/python -m alembic upgrade head)",
+      "Bash(python -c 'import sys,json; raw=sys.stdin.read\\(\\); *)",
+      "Bash(.venv/Scripts/python debug_stats.py)",
+      "Bash(.venv/Scripts/python reset_passwords.py)",
+      "Bash(.venv/Scripts/python -c ' *)",
+      "Bash(npm install *)",
+      "Bash(npx playwright *)"
     ]
   }
 }

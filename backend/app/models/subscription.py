@@ -37,4 +37,5 @@ class Subscription(Base, TimestampMixin):
     notes: Mapped[str | None] = mapped_column(Text)
     updated_by: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"))
 
-    plan = relationship("SubscriptionPlan")
+    plan = relationship("SubscriptionPlan", foreign_keys=[plan_id])
+    queued_plan = relationship("SubscriptionPlan", foreign_keys=[queued_plan_id])

@@ -17,15 +17,16 @@ const INPUT =
 // ── Plans tab ────────────────────────────────────────────────────────────────
 
 type Plan = {
-  id: number;
+  id: string;
   code: string;
   name: string;
-  price_monthly: number;
-  price_annual?: number;
+  description?: string | null;
+  monthly_price: number;
   features: string[];
   max_branches: number | null;
   max_users: number | null;
   is_active: boolean;
+  sort_order: number;
 };
 
 const PLAN_ICONS: Record<string, React.ElementType> = {
@@ -42,7 +43,7 @@ function PlanRow({
 }: {
   plan: Plan;
   onEdit: (p: Plan) => void;
-  onDelete: (id: number) => void;
+  onDelete: (id: string) => void;
 }) {
   const Icon = PLAN_ICONS[plan.code] ?? Rocket;
   return (
@@ -58,7 +59,7 @@ function PlanRow({
       </td>
       <td className="px-4 py-3 text-sm text-slate-600 font-mono">{plan.code}</td>
       <td className="px-4 py-3 text-sm text-slate-900 font-semibold">
-        ₱{Number(plan.price_monthly).toLocaleString()}
+        ₱{Number(plan.monthly_price).toLocaleString()}
         <span className="text-xs font-normal text-slate-400">/mo</span>
       </td>
       <td className="px-4 py-3 text-sm text-slate-600">
@@ -95,18 +96,19 @@ function PlanRow({
 const EMPTY_PLAN = {
   code: "",
   name: "",
-  price_monthly: 0,
-  price_annual: 0,
+  description: "" as string,
+  monthly_price: 0,
   features: [] as string[],
   max_branches: null as number | null,
   max_users: null as number | null,
   is_active: true,
+  sort_order: 0,
 };
 
 function PlansTab() {
   const qc = useQueryClient();
   const [showForm, setShowForm] = useState(false);
-  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState({ ...EMPTY_PLAN });
   const [featuresRaw, setFeaturesRaw] = useState("");
   const [saved, setSaved] = useState(false);
@@ -117,12 +119,15 @@ function PlansTab() {
   });
 
   const upsert = useMutation({
-    mutationFn: (payload: typeof EMPTY_PLAN & { id?: number }) =>
-      payload.id
-        ? api.put(`/admin/plans/${payload.id}`, payload).then((r) => r.data)
-        : api.post("/admin/plans", payload).then((r) => r.data),
+    mutationFn: (payload: typeof EMPTY_PLAN & { id?: string }) => {
+      const { id, ...body } = payload;
+      return id
+        ? api.put(`/admin/plans/${id}`, body).then((r) => r.data)
+        : api.post("/admin/plans", body).then((r) => r.data);
+    },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["admin-plans"] });
+      qc.invalidateQueries({ queryKey: ["billing-plans"] });
       setShowForm(false);
       setEditingId(null);
       setForm({ ...EMPTY_PLAN });
@@ -133,8 +138,11 @@ function PlansTab() {
   });
 
   const del = useMutation({
-    mutationFn: (id: number) => api.delete(`/admin/plans/${id}`),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["admin-plans"] }),
+    mutationFn: (id: string) => api.delete(`/admin/plans/${id}`),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["admin-plans"] });
+      qc.invalidateQueries({ queryKey: ["billing-plans"] });
+    },
   });
 
   const openNew = () => {
@@ -149,12 +157,13 @@ function PlansTab() {
     setForm({
       code: p.code,
       name: p.name,
-      price_monthly: p.price_monthly,
-      price_annual: p.price_annual ?? 0,
+      description: p.description ?? "",
+      monthly_price: p.monthly_price,
       features: p.features,
       max_branches: p.max_branches,
       max_users: p.max_users,
       is_active: p.is_active,
+      sort_order: p.sort_order,
     });
     setFeaturesRaw(p.features.join(", "));
     setShowForm(true);
@@ -213,11 +222,11 @@ function PlansTab() {
             </div>
             <div>
               <label className={LABEL}>Monthly Price (₱)</label>
-              <input type="number" min={0} className={INPUT} value={form.price_monthly} onChange={(e) => setForm((f) => ({ ...f, price_monthly: Number(e.target.value) }))} />
+              <input type="number" min={0} className={INPUT} value={form.monthly_price} onChange={(e) => setForm((f) => ({ ...f, monthly_price: Number(e.target.value) }))} />
             </div>
             <div>
-              <label className={LABEL}>Annual Price (₱, optional)</label>
-              <input type="number" min={0} className={INPUT} value={form.price_annual ?? ""} onChange={(e) => setForm((f) => ({ ...f, price_annual: e.target.value === "" ? undefined : Number(e.target.value) }))} placeholder="Leave blank if N/A" />
+              <label className={LABEL}>Sort Order</label>
+              <input type="number" min={0} className={INPUT} value={form.sort_order} onChange={(e) => setForm((f) => ({ ...f, sort_order: Number(e.target.value) }))} placeholder="Display order" />
             </div>
             <div>
               <label className={LABEL}>Max Branches</label>
@@ -324,9 +333,13 @@ function ProfileTab() {
   }, [user]);
 
   const save = useMutation({
-    mutationFn: () => api.patch("/auth/me", form).then((r) => r.data),
-    onSuccess: (data) => {
-      setUser(data);
+    mutationFn: async () => {
+      await api.put("/auth/me", form);
+      const { data: me } = await api.get("/auth/me");
+      return me;
+    },
+    onSuccess: (me) => {
+      setUser(me);
       setSaved(true);
       setTimeout(() => setSaved(false), 2500);
     },

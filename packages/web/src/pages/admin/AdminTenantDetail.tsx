@@ -57,10 +57,16 @@ const TIER_OPTIONS: { value: string; label: string }[] = [
 /* Default trial duration. Admin can override the expires_at field if needed. */
 const DEFAULT_TRIAL_DAYS = 7;
 
-/** Format a Date as a datetime-local input value (yyyy-MM-ddTHH:mm) in local time. */
-function toDatetimeLocal(d: Date): string {
+/** Format a Date as a date input value (yyyy-MM-dd) in local time. */
+function toDateInput(d: Date): string {
   const pad = (n: number) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
+/** Parse a yyyy-MM-dd string and return a Date set to 23:59:59 local time. */
+function endOfDay(dateStr: string): Date {
+  const d = new Date(dateStr + "T23:59:59");
+  return d;
 }
 
 /** "in 4 days" / "in 2 hours" / "expired 3 days ago" — short and human. */
@@ -161,7 +167,7 @@ function SubscriptionIndicator({ sub }: { sub: any | null | undefined }) {
             <Calendar size={11} /> Started
           </div>
           <div className="text-sm font-medium text-slate-900 mt-1">
-            {started ? format(started, "MMM d, yyyy 'at' HH:mm") : "—"}
+            {started ? format(started, "MMM d, yyyy") : "—"}
           </div>
           {started && (
             <div className="text-xs text-slate-500">{relativeTo(now, started)}</div>
@@ -174,7 +180,7 @@ function SubscriptionIndicator({ sub }: { sub: any | null | undefined }) {
           {expires ? (
             <>
               <div className="text-sm font-medium text-slate-900 mt-1">
-                {format(expires, "MMM d, yyyy 'at' HH:mm")}
+                {format(expires, "MMM d, yyyy")}
               </div>
               <div
                 className={`text-xs ${
@@ -244,7 +250,7 @@ function SubscriptionManager({ tenantId, tenantName }: { tenantId: string; tenan
       } else {
         setTier(currentSub.plan_code);
       }
-      setExpiresAt(currentSub.expires_at ? currentSub.expires_at.slice(0, 16) : "");
+      setExpiresAt(currentSub.expires_at ? currentSub.expires_at.slice(0, 10) : "");
       // Permanent = active subscription with no expiry. Trials are never permanent.
       setIsPermanent(currentSub.status !== "trial" && !currentSub.expires_at);
       setNotes(currentSub.notes || "");
@@ -252,21 +258,25 @@ function SubscriptionManager({ tenantId, tenantName }: { tenantId: string; tenan
     }
     setTier("free");
     setTrialOfCode("pro");
-    setExpiresAt("");
+    const def = new Date();
+    def.setDate(def.getDate() + 30);
+    setExpiresAt(toDateInput(def));
     setIsPermanent(false);
     setNotes("");
   }, [tenantId, currentSub]);
 
-  /* When the admin picks "Trial", auto-fill expires_at with 7 days from now and force non-permanent. */
+  /* When the admin picks a tier, auto-fill expires_at with sensible defaults. */
   const handleTierChange = (newTier: string) => {
     setTier(newTier);
     if (newTier === "trial") {
       setIsPermanent(false);
-      if (!expiresAt) {
-        const end = new Date();
-        end.setDate(end.getDate() + DEFAULT_TRIAL_DAYS);
-        setExpiresAt(toDatetimeLocal(end));
-      }
+      const end = new Date();
+      end.setDate(end.getDate() + DEFAULT_TRIAL_DAYS);
+      setExpiresAt(toDateInput(end));
+    } else if (!isPermanent && !expiresAt) {
+      const end = new Date();
+      end.setDate(end.getDate() + 30);
+      setExpiresAt(toDateInput(end));
     }
   };
 
@@ -318,17 +328,23 @@ function SubscriptionManager({ tenantId, tenantName }: { tenantId: string; tenan
 
     let expiresAtIso: string | null = null;
     if (status === "trial") {
-      // Trial: always has an end date; default to 7 days from now if admin left it blank.
-      let d = expiresAt ? new Date(expiresAt) : null;
-      if (!d || Number.isNaN(d.getTime())) {
-        d = new Date();
-        d.setDate(d.getDate() + DEFAULT_TRIAL_DAYS);
+      // Trial: always has an end date; default to 7 days from now if blank.
+      if (expiresAt) {
+        expiresAtIso = endOfDay(expiresAt).toISOString();
+      } else {
+        const def = new Date();
+        def.setDate(def.getDate() + DEFAULT_TRIAL_DAYS);
+        expiresAtIso = endOfDay(toDateInput(def)).toISOString();
       }
-      expiresAtIso = d.toISOString();
     } else if (!isPermanent) {
-      // Active with optional expiry — use the picked date if valid; null otherwise.
-      const d = expiresAt ? new Date(expiresAt) : null;
-      expiresAtIso = d && !Number.isNaN(d.getTime()) ? d.toISOString() : null;
+      // Active non-permanent — use picked date at 23:59:59; default to 30 days if blank.
+      if (expiresAt) {
+        expiresAtIso = endOfDay(expiresAt).toISOString();
+      } else {
+        const def = new Date();
+        def.setDate(def.getDate() + 30);
+        expiresAtIso = endOfDay(toDateInput(def)).toISOString();
+      }
     }
 
     save.mutate({
@@ -502,7 +518,7 @@ function SubscriptionManager({ tenantId, tenantName }: { tenantId: string; tenan
                     : "Expires at"}
               </label>
               <input
-                type="datetime-local"
+                type="date"
                 value={expiresAt}
                 onChange={(e) => setExpiresAt(e.target.value)}
                 disabled={tier !== "trial" && isPermanent}

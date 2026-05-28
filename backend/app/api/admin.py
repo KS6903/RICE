@@ -45,24 +45,92 @@ def _subscription_payload(sub: Subscription) -> dict:
     }
 
 
+def _plan_payload(p: SubscriptionPlan) -> dict:
+    return {
+        "id": str(p.id),
+        "code": p.code,
+        "name": p.name,
+        "description": p.description,
+        "monthly_price": float(p.monthly_price),
+        "max_users": p.max_users,
+        "max_branches": p.max_branches,
+        "features": list(p.features or []),
+        "is_active": p.is_active,
+        "sort_order": p.sort_order,
+    }
+
+
 @router.get("/plans")
 def list_plans(_admin=Depends(require_platform_admin), db: Session = Depends(get_db)):
     rows = db.query(SubscriptionPlan).order_by(SubscriptionPlan.sort_order).all()
-    return [
-        {
-            "id": str(p.id),
-            "code": p.code,
-            "name": p.name,
-            "description": p.description,
-            "monthly_price": float(p.monthly_price),
-            "max_users": p.max_users,
-            "max_branches": p.max_branches,
-            "features": list(p.features or []),
-            "is_active": p.is_active,
-            "sort_order": p.sort_order,
-        }
-        for p in rows
-    ]
+    return [_plan_payload(p) for p in rows]
+
+
+class PlanUpsert(BaseModel):
+    code: str
+    name: str
+    description: str | None = None
+    monthly_price: float = 0
+    max_users: int | None = None
+    max_branches: int | None = None
+    features: list[str] = []
+    is_active: bool = True
+    sort_order: int = 0
+
+
+@router.post("/plans", status_code=status.HTTP_201_CREATED)
+def create_plan(body: PlanUpsert, _admin=Depends(require_platform_admin), db: Session = Depends(get_db)):
+    if db.query(SubscriptionPlan).filter(SubscriptionPlan.code == body.code).first():
+        raise HTTPException(status_code=409, detail=f"A plan with code '{body.code}' already exists")
+    plan = SubscriptionPlan(
+        code=body.code,
+        name=body.name,
+        description=body.description,
+        monthly_price=body.monthly_price,
+        max_users=body.max_users,
+        max_branches=body.max_branches,
+        features=body.features,
+        is_active=body.is_active,
+        sort_order=body.sort_order,
+    )
+    db.add(plan)
+    db.commit()
+    db.refresh(plan)
+    return _plan_payload(plan)
+
+
+@router.put("/plans/{plan_id}")
+def update_plan(plan_id: uuid.UUID, body: PlanUpsert, _admin=Depends(require_platform_admin), db: Session = Depends(get_db)):
+    plan = db.get(SubscriptionPlan, plan_id)
+    if not plan:
+        raise HTTPException(status_code=404, detail="Plan not found")
+    if body.code != plan.code and db.query(SubscriptionPlan).filter(SubscriptionPlan.code == body.code).first():
+        raise HTTPException(status_code=409, detail=f"A plan with code '{body.code}' already exists")
+    plan.code = body.code
+    plan.name = body.name
+    plan.description = body.description
+    plan.monthly_price = body.monthly_price
+    plan.max_users = body.max_users
+    plan.max_branches = body.max_branches
+    plan.features = body.features
+    plan.is_active = body.is_active
+    plan.sort_order = body.sort_order
+    db.commit()
+    db.refresh(plan)
+    return _plan_payload(plan)
+
+
+@router.delete("/plans/{plan_id}")
+def delete_plan(plan_id: uuid.UUID, _admin=Depends(require_platform_admin), db: Session = Depends(get_db)):
+    plan = db.get(SubscriptionPlan, plan_id)
+    if not plan:
+        raise HTTPException(status_code=404, detail="Plan not found")
+    in_use = db.query(Subscription).filter(Subscription.plan_id == plan.id).first()
+    if in_use:
+        raise HTTPException(status_code=409, detail="Cannot delete: this plan is currently assigned to one or more tenants. Deactivate it instead.")
+    db.delete(plan)
+    db.commit()
+    return {"message": "Plan deleted"}
 
 
 @router.get("/tenants/{tenant_id}/subscription")
@@ -230,7 +298,7 @@ def platform_stats(_admin=Depends(require_platform_admin), db: Session = Depends
     # "Subscribed" = paying tenant: active/trial status on a paid plan.
     # Free plan is the default fallback and does not count as a paying subscriber.
     paid_company_ids = {
-        s.company_id for s in db.query(Subscription).join(SubscriptionPlan).all()
+        s.company_id for s in db.query(Subscription).join(SubscriptionPlan, Subscription.plan_id == SubscriptionPlan.id).all()
         if s.status in ("active", "trial")
         and (s.expires_at is None or s.expires_at > now)
         and s.plan is not None
