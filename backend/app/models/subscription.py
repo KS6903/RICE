@@ -33,6 +33,7 @@ class Subscription(Base, TimestampMixin):
     started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc)
     expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     trial_ends_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    queued_plan_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("subscription_plans.id"), nullable=True)
     notes: Mapped[str | None] = mapped_column(Text)
     updated_by: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"))
 

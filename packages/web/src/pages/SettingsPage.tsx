@@ -2,12 +2,23 @@ import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import api from "../services/api";
 import { useAuthStore } from "../stores/authStore";
-import { Building2, MapPin, User as UserIcon, KeyRound, Plus, Wheat, Factory, Receipt, Power, History, ChevronDown, ChevronUp, CreditCard, Check, X as XIcon, Crown, Zap, Rocket, Star, Loader2, Clock, AlertCircle } from "lucide-react";
+import {
+  Building2, MapPin, User as UserIcon, KeyRound, Plus, Wheat, Factory, Receipt,
+  Power, History, ChevronDown, ChevronUp, CreditCard, Check, X as XIcon, Crown,
+  Zap, Rocket, Star, Loader2, Clock, AlertCircle, Settings as SettingsIcon,
+  CheckCircle2, XCircle,
+} from "lucide-react";
 import { format } from "date-fns";
 import { useCurrentPlan } from "../hooks/useFeature";
 import type { SubscriptionPlan, UpgradeRequest } from "@rice-mill/shared";
 
-type Tab = "billing" | "company" | "branches" | "varieties" | "equipment" | "categories" | "profile" | "password";
+type Tab =
+  | "billing" | "company" | "branches" | "varieties"
+  | "equipment" | "categories" | "profile" | "password";
+
+const LABEL = "block text-sm font-semibold text-secondary mb-1.5";
+const TABLE_HEAD =
+  "px-4 py-3 text-left text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400";
 
 export default function SettingsPage() {
   const [tab, setTab] = useState<Tab>("billing");
@@ -24,33 +35,51 @@ export default function SettingsPage() {
   ];
 
   return (
-    <div className="flex flex-col md:flex-row gap-8">
-      {/* Sidebar Navigation */}
-      <aside className="w-full md:w-64 shrink-0">
-        <div className="mb-6 px-2">
-          <h2 className="text-2xl font-bold text-gray-900 tracking-tight">Settings</h2>
-          <p className="text-sm text-gray-500 mt-1">Manage your account and platform preferences</p>
+    <div className="space-y-6">
+      <div className="flex items-center gap-3">
+        <div className="h-11 w-11 rounded-xl bg-grad-brand grid place-items-center shadow-grad-glow">
+          <SettingsIcon size={20} className="text-white" />
         </div>
-        <nav className="flex md:flex-col gap-1 overflow-x-auto pb-4 md:pb-0 scrollbar-hide">
-          {tabs.map(({ key, label, icon: Icon }) => (
-            <button
-              key={key}
-              onClick={() => setTab(key)}
-              className={`flex items-center gap-3 px-3 py-2.5 text-sm font-medium rounded-xl transition-all whitespace-nowrap ${tab === key
-                  ? "bg-brand-50 text-brand-700 shadow-sm ring-1 ring-brand-100"
-                  : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
-                }`}
-            >
-              <Icon size={18} className={tab === key ? "text-brand-600" : "text-gray-400"} />
-              {label}
-            </button>
-          ))}
-        </nav>
-      </aside>
+        <div>
+          <h2 className="text-2xl font-bold tracking-tight text-primary">Settings</h2>
+          <p className="text-sm text-secondary">Manage your account and platform preferences</p>
+        </div>
+      </div>
 
-      {/* Main Content Area */}
-      <main className="flex-1 max-w-4xl min-w-0">
-        <div className="transition-all duration-300 ease-in-out">
+      <div className="flex flex-col md:flex-row gap-6">
+        <aside className="w-full md:w-64 shrink-0">
+          <nav className="flex md:flex-col gap-1 overflow-x-auto pb-4 md:pb-0 -mx-1 md:mx-0 px-1">
+            {tabs.map(({ key, label, icon: Icon }) => {
+              const active = tab === key;
+              return (
+                <button
+                  key={key}
+                  onClick={() => setTab(key)}
+                  className={`group relative flex items-center gap-3 px-3.5 py-2.5 text-sm font-semibold rounded-xl transition-all whitespace-nowrap ${
+                    active
+                      ? "glass text-primary shadow-sm"
+                      : "text-secondary hover:text-primary hover:bg-slate-100/60 dark:hover:bg-slate-600/15"
+                  }`}
+                >
+                  {active && (
+                    <span className="absolute left-0 top-1/2 -translate-y-1/2 h-5 w-1 rounded-r-full bg-grad-brand" />
+                  )}
+                  <Icon
+                    size={17}
+                    className={
+                      active
+                        ? "text-emerald-600 dark:text-emerald-400"
+                        : "text-muted group-hover:text-secondary"
+                    }
+                  />
+                  {label}
+                </button>
+              );
+            })}
+          </nav>
+        </aside>
+
+        <main className="flex-1 min-w-0 max-w-4xl">
           {tab === "billing" && <BillingTab />}
           {tab === "company" && <CompanyTab />}
           {tab === "branches" && <BranchesTab />}
@@ -59,8 +88,8 @@ export default function SettingsPage() {
           {tab === "categories" && <CategoriesTab />}
           {tab === "profile" && <ProfileTab />}
           {tab === "password" && <PasswordTab />}
-        </div>
-      </main>
+        </main>
+      </div>
     </div>
   );
 }
@@ -89,12 +118,58 @@ function planIcon(code: string, size = 16) {
   return <Rocket size={size} />;
 }
 
+function getSeenRequests(): string[] {
+  try { return JSON.parse(localStorage.getItem("rice-mill-seen-requests") || "[]"); } catch { return []; }
+}
+function markRequestSeen(id: string) {
+  const seen = getSeenRequests();
+  if (!seen.includes(id)) localStorage.setItem("rice-mill-seen-requests", JSON.stringify([...seen, id]));
+}
+
+function ResolvedNotice({ request, onDone }: { request: UpgradeRequest; onDone: () => void }) {
+  const [visible, setVisible] = useState(true);
+  const approved = request.status === "approved";
+
+  useEffect(() => {
+    markRequestSeen(request.id);
+    const fade = setTimeout(() => setVisible(false), 4000);
+    const remove = setTimeout(() => onDone(), 4600);
+    return () => { clearTimeout(fade); clearTimeout(remove); };
+  }, [request.id, onDone]);
+
+  return (
+    <div
+      className={`flex items-center gap-3 rounded-2xl px-4 py-3 shadow-sm border transition-all duration-500 ${
+        visible ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-1"
+      } ${
+        approved
+          ? "bg-emerald-50 border-emerald-200 dark:bg-emerald-950/40 dark:border-emerald-800/60"
+          : "bg-rose-50 border-rose-200 dark:bg-rose-950/40 dark:border-rose-800/60"
+      }`}
+    >
+      {approved
+        ? <CheckCircle2 size={18} className="text-emerald-600 dark:text-emerald-400 shrink-0" />
+        : <XCircle size={18} className="text-rose-600 dark:text-rose-400 shrink-0" />}
+      <p className={`text-sm font-semibold ${approved ? "text-emerald-900 dark:text-emerald-100" : "text-rose-900 dark:text-rose-100"}`}>
+        {approved
+          ? `Your upgrade to ${request.requested_plan_name} has been approved.`
+          : `Your upgrade to ${request.requested_plan_name} was not approved.`}
+        {request.admin_note && (
+          <span className="ml-1 font-normal opacity-80">— {request.admin_note}</span>
+        )}
+      </p>
+    </div>
+  );
+}
+
 function BillingTab() {
   const qc = useQueryClient();
   const plan = useCurrentPlan();
   const user = useAuthStore((s) => s.user);
   const features = (user?.features as string[] | undefined) || [];
   const canRequest = user?.role === "owner" || user?.role === "admin";
+  const isOnPaidPlan = !!plan && plan.monthly_price > 0 && (plan.status === "active" || plan.status === "trial");
+  const [dismissedIds, setDismissedIds] = useState<string[]>(() => getSeenRequests());
 
   const { data: plans = [] } = useQuery<SubscriptionPlan[]>({
     queryKey: ["billing-plans"],
@@ -104,21 +179,30 @@ function BillingTab() {
   const { data: requestData } = useQuery<{ request: UpgradeRequest | null }>({
     queryKey: ["billing-my-request"],
     queryFn: () => api.get("/billing/upgrade-requests/mine").then((r) => r.data),
-    // Poll so the user sees admin actions (approve / reject / manual plan
-    // change) without having to refresh the page.
     refetchInterval: 10 * 1000,
     refetchOnWindowFocus: true,
   });
   const myRequest = requestData?.request ?? null;
   const pendingRequest = myRequest && myRequest.status === "pending" ? myRequest : null;
-  const recentResolved =
-    myRequest && myRequest.status !== "pending" && myRequest.resolved_at &&
-    Date.now() - new Date(myRequest.resolved_at).getTime() < 1000 * 60 * 60 * 24 * 7
+  const resolvedRequest =
+    myRequest && myRequest.status !== "pending" && myRequest.resolved_at
       ? myRequest
       : null;
+  const recentResolved =
+    resolvedRequest && !dismissedIds.includes(resolvedRequest.id) ? resolvedRequest : null;
+
+  const dismissResolved = () => {
+    if (!resolvedRequest) return;
+    markRequestSeen(resolvedRequest.id);
+    setDismissedIds((prev) => [...prev, resolvedRequest.id]);
+  };
 
   const requestUpgrade = useMutation({
-    mutationFn: (plan_id: string) => api.post("/billing/upgrade-requests", { plan_id }),
+    mutationFn: (plan_id: string) =>
+      api.post("/billing/upgrade-requests", {
+        plan_id,
+        request_type: isOnPaidPlan ? "change" : "upgrade",
+      }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["billing-my-request"] });
     },
@@ -132,18 +216,28 @@ function BillingTab() {
   });
 
   if (!plan) {
-    return <div className="card text-sm text-gray-500">No subscription on file. Contact your platform administrator.</div>;
+    return (
+      <div className="card text-sm text-secondary">
+        No subscription on file. Contact your platform administrator.
+      </div>
+    );
   }
 
   const cardGradient =
     plan.code === "enterprise"
-      ? "from-purple-900 to-fuchsia-900"
+      ? "from-purple-700 via-fuchsia-700 to-pink-700"
       : plan.code === "pro"
-        ? "from-blue-900 to-indigo-900"
+        ? "from-indigo-700 via-blue-700 to-cyan-700"
         : plan.code === "basic"
-          ? "from-sky-800 to-blue-900"
-          : "from-gray-800 to-gray-900";
-  const statusDot = plan.status === "active" || plan.status === "trial" ? "bg-emerald-400" : plan.status === "expired" || plan.status === "past_due" ? "bg-rose-400" : "bg-amber-400";
+          ? "from-sky-700 via-blue-700 to-indigo-700"
+          : "from-slate-700 via-slate-800 to-slate-900";
+
+  const statusDot =
+    plan.status === "active" || plan.status === "trial"
+      ? "bg-emerald-400"
+      : plan.status === "expired" || plan.status === "past_due"
+        ? "bg-rose-400"
+        : "bg-amber-400";
 
   const requestErrorMessage =
     typeof (requestUpgrade.error as any)?.response?.data?.detail === "string"
@@ -151,161 +245,230 @@ function BillingTab() {
       : null;
 
   return (
-    <div className="space-y-4 max-w-4xl">
-      <div className={`rounded-2xl shadow-lg bg-gradient-to-br ${cardGradient} p-6 sm:p-8 text-white relative overflow-hidden`}>
-        <div className="absolute top-0 right-0 -mr-16 -mt-16 w-64 h-64 bg-white opacity-5 rounded-full blur-3xl"></div>
-        <div className="flex items-start justify-between">
-          <div className="relative z-10">
-            <p className="text-sm text-gray-300 font-medium tracking-wide uppercase">Current plan</p>
-            <div className="flex items-baseline gap-3 mt-1">
-              <h3 className="text-3xl font-bold tracking-tight text-white">{plan.name}</h3>
-              <span className={`text-xs font-bold uppercase tracking-wide px-2.5 py-1 rounded-full bg-white/20 text-white backdrop-blur-sm`}>{plan.code}</span>
+    <div className="space-y-5">
+      <div
+        className={`relative overflow-hidden rounded-2xl bg-gradient-to-br ${cardGradient} p-6 sm:p-8 text-white shadow-lg`}
+      >
+        <div
+          className="absolute -top-16 -right-16 w-64 h-64 bg-white opacity-10 rounded-full blur-3xl pointer-events-none"
+          aria-hidden
+        />
+        <div className="absolute -bottom-12 -left-12 w-48 h-48 bg-white opacity-5 rounded-full blur-3xl pointer-events-none" aria-hidden />
+
+        <div className="relative flex items-start justify-between gap-4">
+          <div>
+            <p className="text-xs font-bold tracking-wide uppercase text-white/75">Current plan</p>
+            <div className="flex items-baseline gap-3 mt-1.5 flex-wrap">
+              <h3 className="text-3xl font-extrabold tracking-tight">{plan.name}</h3>
+              <span className="text-xs font-bold uppercase tracking-wide px-2.5 py-1 rounded-full bg-white/20 ring-1 ring-white/30 backdrop-blur-sm">
+                {plan.code}
+              </span>
             </div>
-            <p className="text-gray-300 mt-2">
-              {plan.monthly_price > 0 ? `₱${plan.monthly_price.toLocaleString()}/month` : "Free forever"}
+            <p className="text-white/85 mt-2 font-medium">
+              {plan.monthly_price > 0
+                ? `₱${plan.monthly_price.toLocaleString()}/month`
+                : "Free forever"}
             </p>
           </div>
-          <div className="text-right relative z-10">
-            <p className="text-xs text-gray-400 font-medium uppercase tracking-wide">Status</p>
-            <p className="text-sm font-semibold capitalize mt-1 flex items-center justify-end gap-1.5 text-white">
-              <span className={`w-2 h-2 rounded-full ${statusDot}`}></span>
+          <div className="text-right">
+            <p className="text-xs font-bold uppercase tracking-wide text-white/75">Status</p>
+            <p className="text-sm font-bold capitalize mt-1 flex items-center justify-end gap-1.5">
+              <span className={`w-2 h-2 rounded-full ${statusDot}`} />
               {plan.status}
             </p>
-            {plan.expires_at && <p className="text-xs text-gray-400 mt-2">Expires<br />{format(new Date(plan.expires_at), "MMM d, yyyy")}</p>}
+            {plan.expires_at && (
+              <p className="text-xs text-white/75 mt-2 font-medium">
+                Expires
+                <br />
+                {format(new Date(plan.expires_at), "MMM d, yyyy")}
+              </p>
+            )}
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-4 mt-8 pt-6 border-t border-white/10 text-sm relative z-10">
+        <div className="relative grid grid-cols-2 gap-4 mt-8 pt-6 border-t border-white/20 text-sm">
           <div>
-            <p className="text-gray-400">User limit</p>
-            <p className="font-semibold text-lg">{plan.max_users ?? "Unlimited"}</p>
+            <p className="text-white/75 font-medium">User limit</p>
+            <p className="font-bold text-lg mt-0.5">{plan.max_users ?? "Unlimited"}</p>
           </div>
           <div>
-            <p className="text-gray-400">Branch limit</p>
-            <p className="font-semibold text-lg">{plan.max_branches ?? "Unlimited"}</p>
+            <p className="text-white/75 font-medium">Branch limit</p>
+            <p className="font-bold text-lg mt-0.5">{plan.max_branches ?? "Unlimited"}</p>
           </div>
         </div>
       </div>
 
-      {pendingRequest && (
-        <div className="rounded-xl border border-indigo-200 bg-indigo-50 p-4 flex items-start gap-3 text-sm">
-          <Clock size={16} className="text-indigo-600 mt-0.5 shrink-0" />
-          <div className="flex-1">
-            <p className="font-medium text-indigo-900">
-              Upgrade to <span className="font-semibold">{pendingRequest.requested_plan_name}</span> requested
-              {pendingRequest.created_at && ` on ${format(new Date(pendingRequest.created_at), "MMM d, yyyy")}`}.
-            </p>
-            <p className="text-indigo-700 mt-0.5">Awaiting platform administrator approval.</p>
+      {pendingRequest && (() => {
+        const isPlanChange = pendingRequest.request_type === "change";
+        return (
+          <div className="rounded-2xl overflow-hidden shadow-md">
+            <div className="bg-gradient-to-r from-indigo-500 to-violet-500 px-4 py-2.5 flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2">
+                <Clock size={15} className="text-white" />
+                <span className="text-white text-xs font-bold uppercase tracking-wider">
+                  {isPlanChange ? "Plan Change Requested" : "Upgrade Requested"}
+                </span>
+              </div>
+              {canRequest && (
+                <button
+                  onClick={() => cancelRequest.mutate(pendingRequest.id)}
+                  disabled={cancelRequest.isPending}
+                  className="text-white/80 hover:text-white text-xs font-semibold transition-colors disabled:opacity-50"
+                >
+                  {cancelRequest.isPending ? "Cancelling…" : "Cancel"}
+                </button>
+              )}
+            </div>
+            <div className="bg-white dark:bg-slate-900 px-4 py-3.5">
+              <p className="font-bold text-slate-900 dark:text-slate-100">
+                {isPlanChange ? "Change to " : "Upgrade to "}
+                <span className="text-indigo-600 dark:text-indigo-400">{pendingRequest.requested_plan_name}</span>
+                {pendingRequest.created_at && <span className="font-normal text-slate-400 text-sm"> · {format(new Date(pendingRequest.created_at), "MMM d, yyyy")}</span>}
+              </p>
+              <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
+                {isPlanChange
+                  ? "Awaiting admin approval. If approved, the new plan will take effect at the end of your current billing period."
+                  : "Awaiting platform administrator approval."}
+              </p>
+            </div>
           </div>
-          {canRequest && (
-            <button
-              onClick={() => cancelRequest.mutate(pendingRequest.id)}
-              disabled={cancelRequest.isPending}
-              className="text-xs font-medium text-indigo-700 hover:text-indigo-900 underline"
-            >
-              {cancelRequest.isPending ? "Cancelling…" : "Cancel request"}
-            </button>
-          )}
-        </div>
-      )}
+        );
+      })()}
 
       {!pendingRequest && recentResolved && (
-        <div className={`rounded-xl border p-4 flex items-start gap-3 text-sm ${
-          recentResolved.status === "approved"
-            ? "border-emerald-200 bg-emerald-50 text-emerald-900"
-            : recentResolved.status === "rejected"
-              ? "border-rose-200 bg-rose-50 text-rose-900"
-              : "border-slate-200 bg-slate-50 text-slate-700"
-        }`}>
-          <AlertCircle size={16} className="mt-0.5 shrink-0" />
-          <div className="flex-1">
-            <p className="font-medium capitalize">{recentResolved.status}: upgrade to {recentResolved.requested_plan_name}</p>
-            {recentResolved.admin_note && <p className="mt-1 italic">"{recentResolved.admin_note}"</p>}
-          </div>
-        </div>
+        <ResolvedNotice request={recentResolved} onDone={dismissResolved} />
       )}
 
       <div className="card">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="font-semibold text-gray-900">Available plans</h3>
-          {!canRequest && <span className="text-xs text-gray-500">Only owners/admins can request upgrades</span>}
+          <h3 className="text-lg font-bold text-primary">Available plans</h3>
+          {!canRequest && (
+            <span className="text-xs font-medium text-muted">
+              Only owners/admins can request upgrades
+            </span>
+          )}
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {plans.map((p) => {
             const isCurrent = p.code === plan.code;
             const isPendingTarget = pendingRequest?.requested_plan_id === p.id;
-            const ring =
-              isCurrent
-                ? "border-emerald-400 ring-2 ring-emerald-200"
-                : p.code === "enterprise"
-                  ? "border-amber-200"
-                  : p.code === "pro"
-                    ? "border-indigo-200"
-                    : p.code === "basic"
-                      ? "border-blue-200"
-                      : "border-slate-200";
+            const planBorder: Record<string, string> = {
+              free:       "border-sky-300 hover:border-sky-400",
+              basic:      "border-cyan-300 hover:border-cyan-500",
+              pro:        "border-violet-400 hover:border-violet-500",
+              enterprise: "border-amber-300 hover:border-amber-400",
+            };
+            const currentBorder: Record<string, string> = {
+              free:       "border-sky-500 ring-2 ring-sky-400/25",
+              basic:      "border-cyan-500 ring-2 ring-cyan-400/25",
+              pro:        "border-violet-500 ring-2 ring-violet-500/25",
+              enterprise: "border-amber-500 ring-2 ring-amber-400/25",
+            };
+            const cardBg: Record<string, string> = {
+              free:       "bg-gradient-to-br from-sky-50 to-white dark:from-sky-950/30 dark:to-slate-800/80",
+              basic:      "bg-gradient-to-br from-cyan-50 to-white dark:from-cyan-950/30 dark:to-slate-800/80",
+              pro:        "bg-gradient-to-br from-violet-50 to-white dark:from-violet-950/30 dark:to-slate-800/80",
+              enterprise: "bg-gradient-to-br from-amber-50 to-white dark:from-amber-950/30 dark:to-slate-800/80",
+            };
+            const ring = isCurrent
+              ? (currentBorder[p.code] ?? "border-emerald-500 ring-2 ring-emerald-400/25")
+              : (planBorder[p.code] ?? "border-slate-300 hover:border-slate-400");
+            const bg = cardBg[p.code] ?? "bg-white dark:bg-slate-800/70";
+            const accentText: Record<string, string> = {
+              free:       "text-sky-600 dark:text-sky-400",
+              basic:      "text-cyan-600 dark:text-cyan-400",
+              pro:        "text-violet-600 dark:text-violet-400",
+              enterprise: "text-amber-600 dark:text-amber-400",
+            };
+            const checkNeon: Record<string, string> = {
+              free:       "text-sky-400 drop-shadow-[0_0_6px_rgba(56,189,248,0.9)]",
+              basic:      "text-cyan-400 drop-shadow-[0_0_6px_rgba(34,211,238,0.9)]",
+              pro:        "text-violet-400 drop-shadow-[0_0_6px_rgba(167,139,250,0.9)]",
+              enterprise: "text-amber-400 drop-shadow-[0_0_6px_rgba(251,191,36,0.9)]",
+            };
+            const accent = accentText[p.code] ?? "text-emerald-600 dark:text-emerald-400";
+            const checkColor = checkNeon[p.code] ?? "text-emerald-400 drop-shadow-[0_0_6px_rgba(52,211,153,0.9)]";
             return (
-              <div key={p.id} className={`rounded-xl border-2 p-4 flex flex-col ${ring}`}>
+              <div
+                key={p.id}
+                className={`rounded-2xl border-2 p-5 flex flex-col transition-all ${ring} ${bg}`}
+              >
                 <div className="flex items-center gap-2 mb-1">
-                  {planIcon(p.code, 18)}
-                  <span className="font-bold text-gray-900">{p.name}</span>
+                  <span className={accent}>
+                    {planIcon(p.code, 18)}
+                  </span>
+                  <span className="font-bold text-slate-900 dark:text-slate-100">{p.name}</span>
                   {isCurrent && <span className="ml-auto badge-green">Current</span>}
                 </div>
-                <div className="text-2xl font-bold text-gray-900 mt-1">
-                  {p.monthly_price === 0 ? "Free" : `₱${p.monthly_price.toLocaleString()}`}
-                  {p.monthly_price > 0 && <span className="text-xs font-normal text-gray-400">/mo</span>}
+                <div className="flex items-baseline gap-1 mt-1">
+                  <span className="text-2xl font-extrabold text-slate-900 dark:text-slate-100">
+                    {p.monthly_price === 0 ? "Free" : `₱${p.monthly_price.toLocaleString()}`}
+                  </span>
+                  {p.monthly_price > 0 && (
+                    <span className="text-sm font-semibold text-slate-600 dark:text-slate-400">/mo</span>
+                  )}
                 </div>
-                <p className="text-xs text-gray-500 mt-1 mb-2">{p.description}</p>
-                <div className="text-xs text-gray-500 mb-2">
+                <p className="text-sm text-slate-800 dark:text-slate-200 mt-1 mb-2">{p.description}</p>
+                <div className="text-xs text-slate-700 dark:text-slate-300 font-semibold mb-3">
                   {p.max_users ? `${p.max_users} users` : "Unlimited users"} ·{" "}
                   {p.max_branches ? `${p.max_branches} branches` : "Unlimited branches"}
                 </div>
-                <ul className="text-xs text-gray-700 space-y-1 flex-1">
+                <ul className="text-sm text-slate-800 dark:text-slate-200 space-y-1.5 flex-1">
                   {(p.features || []).map((f) => (
                     <li key={f} className="flex items-center gap-1.5">
-                      <Check size={12} className="text-emerald-600 shrink-0" />
+                      <Check size={14} className={`${checkColor} shrink-0`} />
                       {FEATURE_LABELS[f] || f.replace(/_/g, " ")}
                     </li>
                   ))}
                 </ul>
-                <div className="mt-3">
+                <div className="mt-4">
                   {isCurrent ? (
-                    <button disabled className="btn-secondary w-full justify-center opacity-60 cursor-default">
+                    <button
+                      disabled
+                      className="btn-secondary w-full opacity-70 cursor-default"
+                    >
                       Your current plan
                     </button>
                   ) : p.code === "free" ? (
                     <button
                       disabled
-                      className="btn-secondary w-full justify-center opacity-60 cursor-default"
+                      className="btn-secondary w-full opacity-70 cursor-default"
                       title="Free is assigned automatically when your subscription ends — you can't request it."
                     >
                       Default plan
                     </button>
                   ) : isPendingTarget ? (
-                    <button disabled className="btn-secondary w-full justify-center opacity-60 cursor-default">
+                    <button disabled className="btn-secondary w-full opacity-70 cursor-default">
                       Pending approval
                     </button>
                   ) : (
-                    <button
-                      onClick={() => requestUpgrade.mutate(p.id)}
-                      disabled={!canRequest || requestUpgrade.isPending || !!pendingRequest}
-                      className="btn-primary w-full justify-center"
-                      title={
-                        !canRequest
-                          ? "Owner/admin role required"
-                          : pendingRequest
-                            ? "Cancel your pending request to choose another plan"
-                            : undefined
-                      }
-                    >
-                      {requestUpgrade.isPending ? (
-                        <>
-                          <Loader2 size={14} className="animate-spin" /> Requesting…
-                        </>
-                      ) : (
-                        `Request ${p.name}`
+                    <>
+                      <button
+                        onClick={() => requestUpgrade.mutate(p.id)}
+                        disabled={!canRequest || requestUpgrade.isPending || !!pendingRequest}
+                        className="btn-primary w-full"
+                        title={
+                          !canRequest
+                            ? "Owner/admin role required"
+                            : pendingRequest
+                              ? "Cancel your pending request first"
+                              : undefined
+                        }
+                      >
+                        {requestUpgrade.isPending ? (
+                          <><Loader2 size={14} className="animate-spin" /> Requesting…</>
+                        ) : isOnPaidPlan ? (
+                          "Change Plan"
+                        ) : (
+                          `Get ${p.name}`
+                        )}
+                      </button>
+                      {isOnPaidPlan && (
+                        <p className="text-[11px] text-center text-slate-600 dark:text-slate-400 mt-1.5">
+                          Takes effect at end of current billing period
+                        </p>
                       )}
-                    </button>
+                    </>
                   )}
                 </div>
               </div>
@@ -313,19 +476,38 @@ function BillingTab() {
           })}
         </div>
         {requestErrorMessage && (
-          <p className="text-sm text-rose-600 mt-3">{requestErrorMessage}</p>
+          <p className="text-sm font-medium text-rose-600 dark:text-rose-400 mt-3">
+            {requestErrorMessage}
+          </p>
         )}
       </div>
 
       <div className="card">
-        <h3 className="font-semibold text-gray-900 mb-4">What's included in {plan.name}</h3>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+        <h3 className="text-lg font-bold text-primary mb-4">
+          What's included in {plan.name}
+        </h3>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
           {ALL_FEATURE_KEYS.map((key) => {
             const included = features.includes(key);
             return (
               <div key={key} className="flex items-center gap-2 text-sm">
-                {included ? <Check size={14} className="text-emerald-600" /> : <XIcon size={14} className="text-gray-300" />}
-                <span className={included ? "text-gray-900" : "text-gray-400 line-through"}>{FEATURE_LABELS[key]}</span>
+                {included ? (
+                  <Check
+                    size={15}
+                    className="text-emerald-600 dark:text-emerald-400 shrink-0"
+                  />
+                ) : (
+                  <XIcon size={15} className="text-muted shrink-0" />
+                )}
+                <span
+                  className={
+                    included
+                      ? "text-primary font-medium"
+                      : "text-muted line-through"
+                  }
+                >
+                  {FEATURE_LABELS[key]}
+                </span>
               </div>
             );
           })}
@@ -338,18 +520,32 @@ function BillingTab() {
 function VarietyRow({ v, user, onToggle }: { v: any; user: any; onToggle: () => void }) {
   const isOwn = v.company_id === user?.company_id;
   return (
-    <tr className={`hover:bg-gray-50 ${!v.is_active ? "opacity-60" : ""}`}>
-      <td className="px-4 py-3 font-mono text-xs">{v.code}</td>
-      <td className="px-4 py-3 font-medium">{v.name}</td>
-      <td className="px-4 py-3 capitalize">{v.category || "—"}</td>
-      <td className="px-4 py-3">{v.typical_recovery_pct ? `${v.typical_recovery_pct}%` : "—"}</td>
-      <td className="px-4 py-3">{isOwn ? <span className="badge-green">Custom</span> : <span className="badge-gray">System</span>}</td>
-      <td className="px-4 py-3">{v.is_active ? <span className="badge-green">Active</span> : <span className="badge-red">Inactive</span>}</td>
+    <tr
+      className={`hover:bg-slate-50/50 dark:hover:bg-slate-700/15 transition-colors ${
+        !v.is_active ? "opacity-60" : ""
+      }`}
+    >
+      <td className="px-4 py-3 font-mono text-xs text-secondary">{v.code}</td>
+      <td className="px-4 py-3 font-semibold text-primary">{v.name}</td>
+      <td className="px-4 py-3 capitalize text-secondary">{v.category || "—"}</td>
+      <td className="px-4 py-3 text-secondary">
+        {v.typical_recovery_pct ? `${v.typical_recovery_pct}%` : "—"}
+      </td>
+      <td className="px-4 py-3">
+        {isOwn ? <span className="badge-green">Custom</span> : <span className="badge-gray">System</span>}
+      </td>
+      <td className="px-4 py-3">
+        {v.is_active ? <span className="badge-green">Active</span> : <span className="badge-red">Inactive</span>}
+      </td>
       <td className="px-4 py-3">
         {isOwn && (
           <button
             onClick={onToggle}
-            className={`text-xs inline-flex items-center gap-1 ${v.is_active ? "text-rose-600 hover:text-rose-700" : "text-emerald-600 hover:text-emerald-700"}`}
+            className={`text-xs font-semibold inline-flex items-center gap-1 ${
+              v.is_active
+                ? "text-rose-600 dark:text-rose-400 hover:text-rose-700"
+                : "text-emerald-600 dark:text-emerald-400 hover:text-emerald-700"
+            }`}
           >
             <Power size={12} />
             {v.is_active ? "Deactivate" : "Activate"}
@@ -365,17 +561,29 @@ function VarietiesTab() {
   const user = useAuthStore((s) => s.user);
   const [showHistory, setShowHistory] = useState(false);
   const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState({ code: "", name: "", category: "inbred", typical_recovery_pct: "" });
+  const [form, setForm] = useState({
+    code: "",
+    name: "",
+    category: "inbred",
+    typical_recovery_pct: "",
+  });
 
   const { data: varieties = [] } = useQuery({
     queryKey: ["varieties-all"],
-    queryFn: () => api.get(`/paddy/varieties?include_inactive=true`).then((r) => r.data),
+    queryFn: () =>
+      api.get(`/paddy/varieties?include_inactive=true`).then((r) => r.data),
   });
   const active = varieties.filter((v: any) => v.is_active);
   const inactive = varieties.filter((v: any) => !v.is_active);
 
   const create = useMutation({
-    mutationFn: (b: typeof form) => api.post("/paddy/varieties", { ...b, typical_recovery_pct: b.typical_recovery_pct ? parseFloat(b.typical_recovery_pct) : null }),
+    mutationFn: (b: typeof form) =>
+      api.post("/paddy/varieties", {
+        ...b,
+        typical_recovery_pct: b.typical_recovery_pct
+          ? parseFloat(b.typical_recovery_pct)
+          : null,
+      }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["varieties-all"] });
       qc.invalidateQueries({ queryKey: ["varieties"] });
@@ -385,7 +593,8 @@ function VarietiesTab() {
   });
 
   const toggle = useMutation({
-    mutationFn: ({ id, is_active }: { id: string; is_active: boolean }) => api.put(`/paddy/varieties/${id}`, { is_active }),
+    mutationFn: ({ id, is_active }: { id: string; is_active: boolean }) =>
+      api.put(`/paddy/varieties/${id}`, { is_active }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["varieties-all"] });
       qc.invalidateQueries({ queryKey: ["varieties"] });
@@ -394,8 +603,9 @@ function VarietiesTab() {
 
   return (
     <div className="space-y-4">
-      <p className="text-sm text-gray-500">
-        Add custom rice varieties for your company. System varieties (NSIC Rc222 etc.) are shared across all clients but can't be modified.
+      <p className="text-sm text-secondary">
+        Add custom rice varieties for your company. System varieties (NSIC Rc222 etc.) are
+        shared across all clients but can't be modified.
       </p>
       <div className="flex justify-end">
         <button onClick={() => setShowForm(!showForm)} className="btn-primary">
@@ -404,34 +614,68 @@ function VarietiesTab() {
       </div>
 
       {showForm && (
-        <div className="card space-y-3">
-          <h3 className="font-semibold text-gray-900">New variety</h3>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div className="card space-y-4">
+          <h3 className="text-lg font-bold text-primary">New variety</h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Code *</label>
-              <input className="input" placeholder="e.g. RC400" value={form.code} onChange={(e) => setForm((f) => ({ ...f, code: e.target.value.toUpperCase() }))} />
+              <label className={LABEL}>Code *</label>
+              <input
+                className="input"
+                placeholder="e.g. RC400"
+                value={form.code}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, code: e.target.value.toUpperCase() }))
+                }
+              />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Name *</label>
-              <input className="input" placeholder="e.g. NSIC Rc400" value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} />
+              <label className={LABEL}>Name *</label>
+              <input
+                className="input"
+                placeholder="e.g. NSIC Rc400"
+                value={form.name}
+                onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+              />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
-              <select className="input" value={form.category} onChange={(e) => setForm((f) => ({ ...f, category: e.target.value }))}>
+              <label className={LABEL}>Category</label>
+              <select
+                className="input"
+                value={form.category}
+                onChange={(e) => setForm((f) => ({ ...f, category: e.target.value }))}
+              >
                 <option value="inbred">Inbred</option>
                 <option value="hybrid">Hybrid</option>
                 <option value="local">Local</option>
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Typical recovery %</label>
-              <input className="input" type="number" placeholder="65" value={form.typical_recovery_pct} onChange={(e) => setForm((f) => ({ ...f, typical_recovery_pct: e.target.value }))} />
+              <label className={LABEL}>Typical recovery %</label>
+              <input
+                className="input"
+                type="number"
+                placeholder="65"
+                value={form.typical_recovery_pct}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, typical_recovery_pct: e.target.value }))
+                }
+              />
             </div>
           </div>
-          {create.isError && <p className="text-sm text-red-600">{(create.error as any)?.response?.data?.detail || "Failed to add variety."}</p>}
+          {create.isError && (
+            <p className="text-sm font-medium text-rose-600 dark:text-rose-400">
+              {(create.error as any)?.response?.data?.detail || "Failed to add variety."}
+            </p>
+          )}
           <div className="flex gap-2 justify-end">
-            <button onClick={() => setShowForm(false)} className="btn-secondary">Cancel</button>
-            <button onClick={() => create.mutate(form)} className="btn-primary" disabled={create.isPending || !form.code || !form.name}>
+            <button onClick={() => setShowForm(false)} className="btn-secondary">
+              Cancel
+            </button>
+            <button
+              onClick={() => create.mutate(form)}
+              className="btn-primary"
+              disabled={create.isPending || !form.code || !form.name}
+            >
               {create.isPending ? "Saving…" : "Save variety"}
             </button>
           </div>
@@ -440,22 +684,41 @@ function VarietiesTab() {
 
       <div className="card overflow-hidden p-0">
         <table className="w-full text-sm">
-          <thead className="bg-gray-50 border-b border-gray-200">
-            <tr>{["Code", "Name", "Category", "Recovery %", "Source", "Status", ""].map((h) => <th key={h} className="px-4 py-3 text-left font-medium text-gray-600">{h}</th>)}</tr>
+          <thead className="bg-gradient-to-r from-emerald-50/80 via-cyan-50/60 to-violet-50/80 dark:from-emerald-900/20 dark:via-cyan-900/10 dark:to-violet-900/20 border-b border-soft">
+            <tr>
+              {["Code", "Name", "Category", "Recovery %", "Source", "Status", ""].map(
+                (h) => (
+                  <th key={h} className={TABLE_HEAD}>
+                    {h}
+                  </th>
+                )
+              )}
+            </tr>
           </thead>
-          <tbody className="divide-y divide-gray-100">
+          <tbody className="divide-y divide-slate-200/60 dark:divide-slate-700/50">
             {active.map((v: any) => (
-              <VarietyRow key={v.id} v={v} user={user} onToggle={() => toggle.mutate({ id: v.id, is_active: false })} />
+              <VarietyRow
+                key={v.id}
+                v={v}
+                user={user}
+                onToggle={() => toggle.mutate({ id: v.id, is_active: false })}
+              />
             ))}
-            {active.length === 0 && <tr><td colSpan={7} className="px-4 py-8 text-center text-gray-400">No active varieties</td></tr>}
+            {active.length === 0 && (
+              <tr>
+                <td colSpan={7} className="px-4 py-8 text-center text-muted font-medium">
+                  No active varieties
+                </td>
+              </tr>
+            )}
           </tbody>
         </table>
 
         {inactive.length > 0 && (
-          <div className="border-t border-gray-200 bg-gray-50/50">
+          <div className="border-t border-soft bg-slate-50/40 dark:bg-slate-800/30">
             <button
               onClick={() => setShowHistory(!showHistory)}
-              className="w-full px-4 py-3 flex items-center justify-between text-sm font-medium text-gray-600 hover:bg-gray-100 transition-colors"
+              className="w-full px-4 py-3 flex items-center justify-between text-sm font-semibold text-secondary hover:text-primary hover:bg-slate-100/50 dark:hover:bg-slate-600/15 transition-colors"
             >
               <span className="inline-flex items-center gap-2">
                 <History size={14} />
@@ -465,9 +728,14 @@ function VarietiesTab() {
             </button>
             {showHistory && (
               <table className="w-full text-sm">
-                <tbody className="divide-y divide-gray-100">
+                <tbody className="divide-y divide-slate-200/60 dark:divide-slate-700/50">
                   {inactive.map((v: any) => (
-                    <VarietyRow key={v.id} v={v} user={user} onToggle={() => toggle.mutate({ id: v.id, is_active: true })} />
+                    <VarietyRow
+                      key={v.id}
+                      v={v}
+                      user={user}
+                      onToggle={() => toggle.mutate({ id: v.id, is_active: true })}
+                    />
                   ))}
                 </tbody>
               </table>
@@ -481,15 +749,27 @@ function VarietiesTab() {
 
 function EquipmentRow({ e, onToggle }: { e: any; onToggle: () => void }) {
   return (
-    <tr className={`hover:bg-gray-50 ${!e.is_active ? "opacity-60" : ""}`}>
-      <td className="px-4 py-3 font-medium">{e.name}</td>
-      <td className="px-4 py-3 text-gray-500">{e.model || "—"}</td>
-      <td className="px-4 py-3">{e.capacity_kg_per_hr ? `${e.capacity_kg_per_hr} kg/hr` : "—"}</td>
-      <td className="px-4 py-3">{e.is_active ? <span className="badge-green">Active</span> : <span className="badge-red">Inactive</span>}</td>
+    <tr
+      className={`hover:bg-slate-50/50 dark:hover:bg-slate-700/15 transition-colors ${
+        !e.is_active ? "opacity-60" : ""
+      }`}
+    >
+      <td className="px-4 py-3 font-semibold text-primary">{e.name}</td>
+      <td className="px-4 py-3 text-secondary">{e.model || "—"}</td>
+      <td className="px-4 py-3 text-secondary">
+        {e.capacity_kg_per_hr ? `${e.capacity_kg_per_hr} kg/hr` : "—"}
+      </td>
+      <td className="px-4 py-3">
+        {e.is_active ? <span className="badge-green">Active</span> : <span className="badge-red">Inactive</span>}
+      </td>
       <td className="px-4 py-3">
         <button
           onClick={onToggle}
-          className={`text-xs inline-flex items-center gap-1 ${e.is_active ? "text-rose-600 hover:text-rose-700" : "text-emerald-600 hover:text-emerald-700"}`}
+          className={`text-xs font-semibold inline-flex items-center gap-1 ${
+            e.is_active
+              ? "text-rose-600 dark:text-rose-400 hover:text-rose-700"
+              : "text-emerald-600 dark:text-emerald-400 hover:text-emerald-700"
+          }`}
         >
           <Power size={12} />
           {e.is_active ? "Deactivate" : "Activate"}
@@ -507,13 +787,20 @@ function EquipmentTab() {
 
   const { data: equipment = [] } = useQuery({
     queryKey: ["equipment-all"],
-    queryFn: () => api.get(`/milling/equipment?include_inactive=true`).then((r) => r.data),
+    queryFn: () =>
+      api.get(`/milling/equipment?include_inactive=true`).then((r) => r.data),
   });
   const active = equipment.filter((e: any) => e.is_active);
   const inactive = equipment.filter((e: any) => !e.is_active);
 
   const create = useMutation({
-    mutationFn: (b: typeof form) => api.post("/milling/equipment", { ...b, capacity_kg_per_hr: b.capacity_kg_per_hr ? parseFloat(b.capacity_kg_per_hr) : null }),
+    mutationFn: (b: typeof form) =>
+      api.post("/milling/equipment", {
+        ...b,
+        capacity_kg_per_hr: b.capacity_kg_per_hr
+          ? parseFloat(b.capacity_kg_per_hr)
+          : null,
+      }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["equipment-all"] });
       qc.invalidateQueries({ queryKey: ["equipment"] });
@@ -523,7 +810,8 @@ function EquipmentTab() {
   });
 
   const toggle = useMutation({
-    mutationFn: ({ id, is_active }: { id: string; is_active: boolean }) => api.put(`/milling/equipment/${id}`, { is_active }),
+    mutationFn: ({ id, is_active }: { id: string; is_active: boolean }) =>
+      api.put(`/milling/equipment/${id}`, { is_active }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["equipment-all"] });
       qc.invalidateQueries({ queryKey: ["equipment"] });
@@ -532,7 +820,9 @@ function EquipmentTab() {
 
   return (
     <div className="space-y-4">
-      <p className="text-sm text-gray-500">Add and manage milling equipment for your company.</p>
+      <p className="text-sm text-secondary">
+        Add and manage milling equipment for your company.
+      </p>
       <div className="flex justify-end">
         <button onClick={() => setShowForm(!showForm)} className="btn-primary">
           <Plus size={16} /> Add equipment
@@ -540,25 +830,54 @@ function EquipmentTab() {
       </div>
 
       {showForm && (
-        <div className="card space-y-3">
-          <h3 className="font-semibold text-gray-900">New equipment</h3>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div className="card space-y-4">
+          <h3 className="text-lg font-bold text-primary">New equipment</h3>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Name *</label>
-              <input className="input" placeholder="e.g. Mill #1" value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} />
+              <label className={LABEL}>Name *</label>
+              <input
+                className="input"
+                placeholder="e.g. Mill #1"
+                value={form.name}
+                onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+              />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Model</label>
-              <input className="input" placeholder="e.g. SB-30" value={form.model} onChange={(e) => setForm((f) => ({ ...f, model: e.target.value }))} />
+              <label className={LABEL}>Model</label>
+              <input
+                className="input"
+                placeholder="e.g. SB-30"
+                value={form.model}
+                onChange={(e) => setForm((f) => ({ ...f, model: e.target.value }))}
+              />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Capacity (kg/hr)</label>
-              <input className="input" type="number" placeholder="500" value={form.capacity_kg_per_hr} onChange={(e) => setForm((f) => ({ ...f, capacity_kg_per_hr: e.target.value }))} />
+              <label className={LABEL}>Capacity (kg/hr)</label>
+              <input
+                className="input"
+                type="number"
+                placeholder="500"
+                value={form.capacity_kg_per_hr}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, capacity_kg_per_hr: e.target.value }))
+                }
+              />
             </div>
           </div>
+          {create.isError && (
+            <p className="text-sm font-medium text-rose-600 dark:text-rose-400">
+              {(create.error as any)?.response?.data?.detail || "Failed to add equipment."}
+            </p>
+          )}
           <div className="flex gap-2 justify-end">
-            <button onClick={() => setShowForm(false)} className="btn-secondary">Cancel</button>
-            <button onClick={() => create.mutate(form)} className="btn-primary" disabled={create.isPending || !form.name}>
+            <button onClick={() => setShowForm(false)} className="btn-secondary">
+              Cancel
+            </button>
+            <button
+              onClick={() => create.mutate(form)}
+              className="btn-primary"
+              disabled={create.isPending || !form.name}
+            >
               {create.isPending ? "Saving…" : "Save equipment"}
             </button>
           </div>
@@ -567,22 +886,38 @@ function EquipmentTab() {
 
       <div className="card overflow-hidden p-0">
         <table className="w-full text-sm">
-          <thead className="bg-gray-50 border-b border-gray-200">
-            <tr>{["Name", "Model", "Capacity", "Status", ""].map((h) => <th key={h} className="px-4 py-3 text-left font-medium text-gray-600">{h}</th>)}</tr>
+          <thead className="bg-gradient-to-r from-emerald-50/80 via-cyan-50/60 to-violet-50/80 dark:from-emerald-900/20 dark:via-cyan-900/10 dark:to-violet-900/20 border-b border-soft">
+            <tr>
+              {["Name", "Model", "Capacity", "Status", ""].map((h) => (
+                <th key={h} className={TABLE_HEAD}>
+                  {h}
+                </th>
+              ))}
+            </tr>
           </thead>
-          <tbody className="divide-y divide-gray-100">
+          <tbody className="divide-y divide-slate-200/60 dark:divide-slate-700/50">
             {active.map((e: any) => (
-              <EquipmentRow key={e.id} e={e} onToggle={() => toggle.mutate({ id: e.id, is_active: false })} />
+              <EquipmentRow
+                key={e.id}
+                e={e}
+                onToggle={() => toggle.mutate({ id: e.id, is_active: false })}
+              />
             ))}
-            {active.length === 0 && <tr><td colSpan={5} className="px-4 py-8 text-center text-gray-400">No active equipment</td></tr>}
+            {active.length === 0 && (
+              <tr>
+                <td colSpan={5} className="px-4 py-8 text-center text-muted font-medium">
+                  No active equipment
+                </td>
+              </tr>
+            )}
           </tbody>
         </table>
 
         {inactive.length > 0 && (
-          <div className="border-t border-gray-200 bg-gray-50/50">
+          <div className="border-t border-soft bg-slate-50/40 dark:bg-slate-800/30">
             <button
               onClick={() => setShowHistory(!showHistory)}
-              className="w-full px-4 py-3 flex items-center justify-between text-sm font-medium text-gray-600 hover:bg-gray-100 transition-colors"
+              className="w-full px-4 py-3 flex items-center justify-between text-sm font-semibold text-secondary hover:text-primary hover:bg-slate-100/50 dark:hover:bg-slate-600/15 transition-colors"
             >
               <span className="inline-flex items-center gap-2">
                 <History size={14} />
@@ -592,9 +927,13 @@ function EquipmentTab() {
             </button>
             {showHistory && (
               <table className="w-full text-sm">
-                <tbody className="divide-y divide-gray-100">
+                <tbody className="divide-y divide-slate-200/60 dark:divide-slate-700/50">
                   {inactive.map((e: any) => (
-                    <EquipmentRow key={e.id} e={e} onToggle={() => toggle.mutate({ id: e.id, is_active: true })} />
+                    <EquipmentRow
+                      key={e.id}
+                      e={e}
+                      onToggle={() => toggle.mutate({ id: e.id, is_active: true })}
+                    />
                   ))}
                 </tbody>
               </table>
@@ -612,16 +951,26 @@ function CategoriesTab() {
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ name: "", is_production_cost: true });
 
-  const { data: categories = [] } = useQuery({ queryKey: ["expense-categories"], queryFn: () => api.get("/costs/categories").then((r) => r.data) });
+  const { data: categories = [] } = useQuery({
+    queryKey: ["expense-categories"],
+    queryFn: () => api.get("/costs/categories").then((r) => r.data),
+  });
 
   const create = useMutation({
     mutationFn: (b: typeof form) => api.post("/costs/categories", b),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["expense-categories"] }); setShowForm(false); setForm({ name: "", is_production_cost: true }); },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["expense-categories"] });
+      setShowForm(false);
+      setForm({ name: "", is_production_cost: true });
+    },
   });
 
   return (
     <div className="space-y-4">
-      <p className="text-sm text-gray-500">Categorize your expenses (Fuel, Electricity, Labor, etc.). System defaults are shared across all clients.</p>
+      <p className="text-sm text-secondary">
+        Categorize your expenses (Fuel, Electricity, Labor, etc.). System defaults are
+        shared across all clients.
+      </p>
       <div className="flex justify-end">
         <button onClick={() => setShowForm(!showForm)} className="btn-primary">
           <Plus size={16} /> Add category
@@ -629,20 +978,42 @@ function CategoriesTab() {
       </div>
 
       {showForm && (
-        <div className="card space-y-3">
-          <h3 className="font-semibold text-gray-900">New expense category</h3>
+        <div className="card space-y-4">
+          <h3 className="text-lg font-bold text-primary">New expense category</h3>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Category name *</label>
-            <input className="input" placeholder="e.g. Sack/Packaging" value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} />
+            <label className={LABEL}>Category name *</label>
+            <input
+              className="input"
+              placeholder="e.g. Sack/Packaging"
+              value={form.name}
+              onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+            />
           </div>
-          <label className="flex items-center gap-2 text-sm text-gray-700">
-            <input type="checkbox" checked={form.is_production_cost} onChange={(e) => setForm((f) => ({ ...f, is_production_cost: e.target.checked }))} />
-            Production cost (vs. overhead)
+          <label className="flex items-center gap-2.5 text-sm font-medium text-secondary cursor-pointer select-none">
+            <input
+              type="checkbox"
+              className="h-4 w-4 rounded border-soft accent-emerald-500 cursor-pointer"
+              checked={form.is_production_cost}
+              onChange={(e) =>
+                setForm((f) => ({ ...f, is_production_cost: e.target.checked }))
+              }
+            />
+            <span>Production cost (vs. overhead)</span>
           </label>
-          {create.isError && <p className="text-sm text-red-600">{(create.error as any)?.response?.data?.detail || "Failed to add category."}</p>}
+          {create.isError && (
+            <p className="text-sm font-medium text-rose-600 dark:text-rose-400">
+              {(create.error as any)?.response?.data?.detail || "Failed to add category."}
+            </p>
+          )}
           <div className="flex gap-2 justify-end">
-            <button onClick={() => setShowForm(false)} className="btn-secondary">Cancel</button>
-            <button onClick={() => create.mutate(form)} className="btn-primary" disabled={create.isPending || !form.name}>
+            <button onClick={() => setShowForm(false)} className="btn-secondary">
+              Cancel
+            </button>
+            <button
+              onClick={() => create.mutate(form)}
+              className="btn-primary"
+              disabled={create.isPending || !form.name}
+            >
               {create.isPending ? "Saving…" : "Save category"}
             </button>
           </div>
@@ -651,21 +1022,48 @@ function CategoriesTab() {
 
       <div className="card overflow-hidden p-0">
         <table className="w-full text-sm">
-          <thead className="bg-gray-50 border-b border-gray-200">
-            <tr>{["Name", "Type", "Source"].map((h) => <th key={h} className="px-4 py-3 text-left font-medium text-gray-600">{h}</th>)}</tr>
+          <thead className="bg-gradient-to-r from-emerald-50/80 via-cyan-50/60 to-violet-50/80 dark:from-emerald-900/20 dark:via-cyan-900/10 dark:to-violet-900/20 border-b border-soft">
+            <tr>
+              {["Name", "Type", "Source"].map((h) => (
+                <th key={h} className={TABLE_HEAD}>
+                  {h}
+                </th>
+              ))}
+            </tr>
           </thead>
-          <tbody className="divide-y divide-gray-100">
+          <tbody className="divide-y divide-slate-200/60 dark:divide-slate-700/50">
             {categories.map((c: any) => {
               const isOwn = c.company_id === user?.company_id;
               return (
-                <tr key={c.id} className="hover:bg-gray-50">
-                  <td className="px-4 py-3 font-medium">{c.name}</td>
-                  <td className="px-4 py-3">{c.is_production_cost ? <span className="badge-green">Production</span> : <span className="badge-gray">Overhead</span>}</td>
-                  <td className="px-4 py-3">{isOwn ? <span className="badge-green">Custom</span> : <span className="badge-gray">System</span>}</td>
+                <tr
+                  key={c.id}
+                  className="hover:bg-slate-50/50 dark:hover:bg-slate-700/15 transition-colors"
+                >
+                  <td className="px-4 py-3 font-semibold text-primary">{c.name}</td>
+                  <td className="px-4 py-3">
+                    {c.is_production_cost ? (
+                      <span className="badge-green">Production</span>
+                    ) : (
+                      <span className="badge-gray">Overhead</span>
+                    )}
+                  </td>
+                  <td className="px-4 py-3">
+                    {isOwn ? (
+                      <span className="badge-green">Custom</span>
+                    ) : (
+                      <span className="badge-gray">System</span>
+                    )}
+                  </td>
                 </tr>
               );
             })}
-            {categories.length === 0 && <tr><td colSpan={3} className="px-4 py-8 text-center text-gray-400">No categories</td></tr>}
+            {categories.length === 0 && (
+              <tr>
+                <td colSpan={3} className="px-4 py-8 text-center text-muted font-medium">
+                  No categories
+                </td>
+              </tr>
+            )}
           </tbody>
         </table>
       </div>
@@ -675,7 +1073,10 @@ function CategoriesTab() {
 
 function CompanyTab() {
   const qc = useQueryClient();
-  const { data, isLoading } = useQuery({ queryKey: ["company"], queryFn: () => api.get("/branches/company").then((r) => r.data) });
+  const { data, isLoading } = useQuery({
+    queryKey: ["company"],
+    queryFn: () => api.get("/branches/company").then((r) => r.data),
+  });
   const [form, setForm] = useState<any>({});
   const [saved, setSaved] = useState(false);
 
@@ -692,49 +1093,69 @@ function CompanyTab() {
     },
   });
 
-  if (isLoading) return <div className="card text-sm text-gray-500">Loading…</div>;
+  if (isLoading) {
+    return <div className="card text-sm text-secondary">Loading…</div>;
+  }
 
-  const fields: { label: string; key: string; full?: boolean }[] = [
+  const fields: { label: string; key: string; full?: boolean; type?: string }[] = [
     { label: "Company Name *", key: "name", full: true },
     { label: "Address", key: "address", full: true },
     { label: "TIN", key: "tin" },
     { label: "Phone", key: "phone" },
-    { label: "Email", key: "email" },
+    { label: "Email", key: "email", type: "email" },
     { label: "NFA License No.", key: "nfa_license_no" },
     { label: "DA Registration No.", key: "da_registration_no" },
   ];
 
   return (
-    <div className="card max-w-2xl space-y-4">
-      <h3 className="font-semibold text-gray-900">Company Information</h3>
+    <div className="card max-w-2xl space-y-5">
+      <h3 className="text-lg font-bold text-primary">Company Information</h3>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        {fields.map(({ label, key, full }) => (
+        {fields.map(({ label, key, full, type }) => (
           <div key={key} className={full ? "sm:col-span-2" : ""}>
-            <label className="block text-sm font-medium text-gray-700 mb-1">{label}</label>
+            <label className={LABEL}>{label}</label>
             <input
+              type={type || "text"}
               className="input"
               value={form[key] || ""}
-              onChange={(e) => setForm((f: any) => ({ ...f, [key]: e.target.value }))}
+              onChange={(e) =>
+                setForm((f: any) => ({ ...f, [key]: e.target.value }))
+              }
             />
           </div>
         ))}
         <div className="sm:col-span-2">
-          <label className="flex items-center gap-2 text-sm text-gray-700">
+          <label className="flex items-center gap-2.5 text-sm font-medium text-secondary cursor-pointer select-none">
             <input
               type="checkbox"
+              className="h-4 w-4 rounded border-soft accent-emerald-500 cursor-pointer"
               checked={!!form.is_multi_branch}
-              onChange={(e) => setForm((f: any) => ({ ...f, is_multi_branch: e.target.checked }))}
+              onChange={(e) =>
+                setForm((f: any) => ({ ...f, is_multi_branch: e.target.checked }))
+              }
             />
-            Enable multi-branch mode
+            <span>Enable multi-branch mode</span>
           </label>
         </div>
       </div>
       <div className="flex items-center gap-3 pt-2">
-        <button onClick={() => save.mutate(form)} className="btn-primary" disabled={save.isPending || !form.name}>
+        <button
+          onClick={() => save.mutate(form)}
+          className="btn-primary"
+          disabled={save.isPending || !form.name}
+        >
           {save.isPending ? "Saving…" : "Save changes"}
         </button>
-        {saved && <span className="text-sm text-brand-700">Saved ✓</span>}
-        {save.isError && <span className="text-sm text-red-600">Failed to save.</span>}
+        {saved && (
+          <span className="text-sm font-semibold text-emerald-600 dark:text-emerald-400 inline-flex items-center gap-1">
+            <Check size={14} /> Saved
+          </span>
+        )}
+        {save.isError && (
+          <span className="text-sm font-medium text-rose-600 dark:text-rose-400">
+            Failed to save.
+          </span>
+        )}
       </div>
     </div>
   );
@@ -742,7 +1163,10 @@ function CompanyTab() {
 
 function BranchesTab() {
   const qc = useQueryClient();
-  const { data: branches = [] } = useQuery({ queryKey: ["branches"], queryFn: () => api.get("/branches/").then((r) => r.data) });
+  const { data: branches = [] } = useQuery({
+    queryKey: ["branches"],
+    queryFn: () => api.get("/branches/").then((r) => r.data),
+  });
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ name: "", address: "", is_main_branch: false });
 
@@ -758,7 +1182,9 @@ function BranchesTab() {
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
-        <p className="text-sm text-gray-500">{branches.length} branch{branches.length === 1 ? "" : "es"}</p>
+        <p className="text-sm text-secondary font-medium">
+          {branches.length} branch{branches.length === 1 ? "" : "es"}
+        </p>
         <button onClick={() => setShowForm(!showForm)} className="btn-primary">
           <Plus size={16} /> Add branch
         </button>
@@ -766,28 +1192,50 @@ function BranchesTab() {
 
       {showForm && (
         <div className="card space-y-4">
-          <h3 className="font-semibold text-gray-900">New branch</h3>
+          <h3 className="text-lg font-bold text-primary">New branch</h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Name *</label>
-              <input className="input" value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} />
+              <label className={LABEL}>Name *</label>
+              <input
+                className="input"
+                value={form.name}
+                onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+              />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Address</label>
-              <input className="input" value={form.address} onChange={(e) => setForm((f) => ({ ...f, address: e.target.value }))} />
+              <label className={LABEL}>Address</label>
+              <input
+                className="input"
+                value={form.address}
+                onChange={(e) => setForm((f) => ({ ...f, address: e.target.value }))}
+              />
             </div>
           </div>
-          <label className="flex items-center gap-2 text-sm text-gray-700">
+          <label className="flex items-center gap-2.5 text-sm font-medium text-secondary cursor-pointer select-none">
             <input
               type="checkbox"
+              className="h-4 w-4 rounded border-soft accent-emerald-500 cursor-pointer"
               checked={form.is_main_branch}
-              onChange={(e) => setForm((f) => ({ ...f, is_main_branch: e.target.checked }))}
+              onChange={(e) =>
+                setForm((f) => ({ ...f, is_main_branch: e.target.checked }))
+              }
             />
-            Mark as main branch
+            <span>Mark as main branch</span>
           </label>
+          {create.isError && (
+            <p className="text-sm font-medium text-rose-600 dark:text-rose-400">
+              {(create.error as any)?.response?.data?.detail || "Failed to create branch."}
+            </p>
+          )}
           <div className="flex gap-2 justify-end">
-            <button onClick={() => setShowForm(false)} className="btn-secondary">Cancel</button>
-            <button onClick={() => create.mutate(form)} className="btn-primary" disabled={create.isPending || !form.name}>
+            <button onClick={() => setShowForm(false)} className="btn-secondary">
+              Cancel
+            </button>
+            <button
+              onClick={() => create.mutate(form)}
+              className="btn-primary"
+              disabled={create.isPending || !form.name}
+            >
               {create.isPending ? "Creating…" : "Create branch"}
             </button>
           </div>
@@ -796,19 +1244,46 @@ function BranchesTab() {
 
       <div className="card overflow-hidden p-0">
         <table className="w-full text-sm">
-          <thead className="bg-gray-50 border-b border-gray-200">
-            <tr>{["Name", "Address", "Type", "Status"].map((h) => <th key={h} className="px-4 py-3 text-left font-medium text-gray-600">{h}</th>)}</tr>
+          <thead className="bg-gradient-to-r from-emerald-50/80 via-cyan-50/60 to-violet-50/80 dark:from-emerald-900/20 dark:via-cyan-900/10 dark:to-violet-900/20 border-b border-soft">
+            <tr>
+              {["Name", "Address", "Type", "Status"].map((h) => (
+                <th key={h} className={TABLE_HEAD}>
+                  {h}
+                </th>
+              ))}
+            </tr>
           </thead>
-          <tbody className="divide-y divide-gray-100">
+          <tbody className="divide-y divide-slate-200/60 dark:divide-slate-700/50">
             {branches.map((b: any) => (
-              <tr key={b.id} className="hover:bg-gray-50">
-                <td className="px-4 py-3 font-medium">{b.name}</td>
-                <td className="px-4 py-3 text-gray-500">{b.address || "—"}</td>
-                <td className="px-4 py-3">{b.is_main_branch ? <span className="badge-green">Main</span> : <span className="badge-gray">Branch</span>}</td>
-                <td className="px-4 py-3">{b.is_active ? <span className="badge-green">Active</span> : <span className="badge-red">Inactive</span>}</td>
+              <tr
+                key={b.id}
+                className="hover:bg-slate-50/50 dark:hover:bg-slate-700/15 transition-colors"
+              >
+                <td className="px-4 py-3 font-semibold text-primary">{b.name}</td>
+                <td className="px-4 py-3 text-secondary">{b.address || "—"}</td>
+                <td className="px-4 py-3">
+                  {b.is_main_branch ? (
+                    <span className="badge-green">Main</span>
+                  ) : (
+                    <span className="badge-gray">Branch</span>
+                  )}
+                </td>
+                <td className="px-4 py-3">
+                  {b.is_active ? (
+                    <span className="badge-green">Active</span>
+                  ) : (
+                    <span className="badge-red">Inactive</span>
+                  )}
+                </td>
               </tr>
             ))}
-            {branches.length === 0 && <tr><td colSpan={4} className="px-4 py-8 text-center text-gray-400">No branches</td></tr>}
+            {branches.length === 0 && (
+              <tr>
+                <td colSpan={4} className="px-4 py-8 text-center text-muted font-medium">
+                  No branches
+                </td>
+              </tr>
+            )}
           </tbody>
         </table>
       </div>
@@ -819,7 +1294,10 @@ function BranchesTab() {
 function ProfileTab() {
   const user = useAuthStore((s) => s.user);
   const setUser = useAuthStore((s) => s.setUser);
-  const [form, setForm] = useState({ full_name: user?.full_name || "", email: user?.email || "" });
+  const [form, setForm] = useState({
+    full_name: user?.full_name || "",
+    email: user?.email || "",
+  });
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState("");
 
@@ -836,71 +1314,151 @@ function ProfileTab() {
   });
 
   return (
-    <div className="card max-w-xl space-y-4">
-      <h3 className="font-semibold text-gray-900">My profile</h3>
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Username</label>
-        <input className="input bg-gray-50" value={user?.username || ""} disabled />
-      </div>
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Full name</label>
-        <input className="input" value={form.full_name} onChange={(e) => setForm((f) => ({ ...f, full_name: e.target.value }))} />
-      </div>
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-        <input type="email" className="input" value={form.email} onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))} />
-      </div>
+    <div className="card max-w-xl space-y-5">
       <div className="flex items-center gap-3">
-        <button onClick={() => save.mutate(form)} className="btn-primary" disabled={save.isPending}>
+        <div className="h-12 w-12 rounded-full bg-grad-brand grid place-items-center text-white text-base font-bold shadow-grad-glow">
+          {(user?.full_name || user?.username || "?")
+            .split(" ")
+            .map((w) => w[0])
+            .slice(0, 2)
+            .join("")
+            .toUpperCase()}
+        </div>
+        <div>
+          <h3 className="text-lg font-bold text-primary">My profile</h3>
+          <p className="text-xs text-muted font-medium capitalize">{user?.role}</p>
+        </div>
+      </div>
+
+      <div>
+        <label className={LABEL}>Username</label>
+        <input
+          className="input opacity-70 cursor-not-allowed"
+          value={user?.username || ""}
+          disabled
+        />
+      </div>
+      <div>
+        <label className={LABEL}>Full name</label>
+        <input
+          className="input"
+          value={form.full_name}
+          onChange={(e) => setForm((f) => ({ ...f, full_name: e.target.value }))}
+        />
+      </div>
+      <div>
+        <label className={LABEL}>Email</label>
+        <input
+          type="email"
+          className="input"
+          value={form.email}
+          onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
+        />
+      </div>
+      <div className="flex items-center gap-3 pt-2">
+        <button
+          onClick={() => save.mutate(form)}
+          className="btn-primary"
+          disabled={save.isPending}
+        >
           {save.isPending ? "Saving…" : "Save profile"}
         </button>
-        {saved && <span className="text-sm text-brand-700">Saved ✓</span>}
-        {error && <span className="text-sm text-red-600">{error}</span>}
+        {saved && (
+          <span className="text-sm font-semibold text-emerald-600 dark:text-emerald-400 inline-flex items-center gap-1">
+            <Check size={14} /> Saved
+          </span>
+        )}
+        {error && (
+          <span className="text-sm font-medium text-rose-600 dark:text-rose-400">
+            {error}
+          </span>
+        )}
       </div>
     </div>
   );
 }
 
 function PasswordTab() {
-  const [form, setForm] = useState({ current_password: "", new_password: "", confirm: "" });
+  const [form, setForm] = useState({
+    current_password: "",
+    new_password: "",
+    confirm: "",
+  });
   const [msg, setMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null);
 
   const change = useMutation({
-    mutationFn: (body: { current_password: string; new_password: string }) => api.post("/auth/change-password", body),
+    mutationFn: (body: { current_password: string; new_password: string }) =>
+      api.post("/auth/change-password", body),
     onSuccess: () => {
       setMsg({ type: "ok", text: "Password changed successfully." });
       setForm({ current_password: "", new_password: "", confirm: "" });
     },
-    onError: (e: any) => setMsg({ type: "err", text: e.response?.data?.detail || "Failed to change password." }),
+    onError: (e: any) =>
+      setMsg({
+        type: "err",
+        text: e.response?.data?.detail || "Failed to change password.",
+      }),
   });
 
   const submit = () => {
     setMsg(null);
-    if (form.new_password !== form.confirm) return setMsg({ type: "err", text: "New passwords do not match." });
-    if (form.new_password.length < 8) return setMsg({ type: "err", text: "New password must be at least 8 characters." });
-    change.mutate({ current_password: form.current_password, new_password: form.new_password });
+    if (form.new_password !== form.confirm)
+      return setMsg({ type: "err", text: "New passwords do not match." });
+    if (form.new_password.length < 8)
+      return setMsg({
+        type: "err",
+        text: "New password must be at least 8 characters.",
+      });
+    change.mutate({
+      current_password: form.current_password,
+      new_password: form.new_password,
+    });
   };
 
   return (
-    <div className="card max-w-md space-y-4">
-      <h3 className="font-semibold text-gray-900">Change password</h3>
+    <div className="card max-w-md space-y-5">
+      <div className="flex items-center gap-3">
+        <div className="h-11 w-11 rounded-xl bg-grad-brand grid place-items-center shadow-grad-glow">
+          <KeyRound size={18} className="text-white" />
+        </div>
+        <h3 className="text-lg font-bold text-primary">Change password</h3>
+      </div>
+
       {[
         { label: "Current password", key: "current_password" },
         { label: "New password", key: "new_password" },
         { label: "Confirm new password", key: "confirm" },
       ].map(({ label, key }) => (
         <div key={key}>
-          <label className="block text-sm font-medium text-gray-700 mb-1">{label}</label>
+          <label className={LABEL}>{label}</label>
           <input
             type="password"
             className="input"
             value={(form as any)[key]}
             onChange={(e) => setForm((f) => ({ ...f, [key]: e.target.value }))}
+            placeholder="••••••••"
           />
         </div>
       ))}
-      {msg && <p className={`text-sm ${msg.type === "ok" ? "text-brand-700" : "text-red-600"}`}>{msg.text}</p>}
-      <button onClick={submit} className="btn-primary" disabled={change.isPending || !form.current_password || !form.new_password}>
+
+      {msg && (
+        <p
+          className={`text-sm font-semibold inline-flex items-center gap-1.5 ${
+            msg.type === "ok"
+              ? "text-emerald-600 dark:text-emerald-400"
+              : "text-rose-600 dark:text-rose-400"
+          }`}
+        >
+          {msg.type === "ok" ? <Check size={14} /> : <AlertCircle size={14} />}
+          {msg.text}
+        </p>
+      )}
+
+      <button
+        onClick={submit}
+        className="btn-primary w-full"
+        disabled={change.isPending || !form.current_password || !form.new_password}
+      >
         {change.isPending ? "Changing…" : "Change password"}
       </button>
     </div>

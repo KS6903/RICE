@@ -2,7 +2,7 @@ import { Outlet, NavLink, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { useAuthStore } from "../../stores/authStore";
 import api from "../../services/api";
-import { LayoutDashboard, Building2, Users, LogOut, ArrowUpCircle } from "lucide-react";
+import { LayoutDashboard, Building2, Users, LogOut, ArrowUpCircle, Settings } from "lucide-react";
 import { clsx } from "clsx";
 import BrandLogo from "../BrandLogo";
 import UpgradeRequestToast from "../admin/UpgradeRequestToast";
@@ -12,6 +12,7 @@ const NAV = [
   { to: "/admin/tenants", label: "Tenants", icon: Building2 },
   { to: "/admin/upgrade-requests", label: "Upgrade Requests", icon: ArrowUpCircle, withBadge: "upgrades" as const },
   { to: "/admin/users", label: "All Users", icon: Users },
+  { to: "/admin/settings", label: "Settings", icon: Settings },
 ];
 
 export default function AdminShell() {

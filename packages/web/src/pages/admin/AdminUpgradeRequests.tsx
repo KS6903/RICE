@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import api from "../../services/api";
 import { format } from "date-fns";
-import { Check, X, Loader2, MessageCircle, ArrowRight, Inbox } from "lucide-react";
+import { Check, X, Loader2, MessageCircle, ArrowRight, Inbox, RefreshCw, TrendingUp } from "lucide-react";
 import type { UpgradeRequest } from "@rice-mill/shared";
 
 type FilterStatus = "pending" | "approved" | "rejected" | "cancelled" | "all";
@@ -26,16 +26,25 @@ function RequestRow({ r, onApprove, onReject, busy }: {
 }) {
   const [noteOpen, setNoteOpen] = useState(false);
   const [note, setNote] = useState("");
+  const isPlanChange = r.request_type === "change";
 
   return (
     <tr className="hover:bg-slate-50 align-top">
       <td className="px-4 py-3">
-        <Link
-          to={`/admin/tenants/${r.company_id}`}
-          className="font-medium text-indigo-700 hover:text-indigo-900"
-        >
+        <Link to={`/admin/tenants/${r.company_id}`} className="font-medium text-indigo-700 hover:text-indigo-900">
           {r.company_name || r.company_id.slice(0, 8)}
         </Link>
+      </td>
+      <td className="px-4 py-3">
+        <div className="flex items-center gap-1.5">
+          {isPlanChange
+            ? <><RefreshCw size={12} className="text-violet-500 shrink-0" /><span className="text-xs font-semibold text-violet-700 bg-violet-100 px-1.5 py-0.5 rounded">Plan Change</span></>
+            : <><TrendingUp size={12} className="text-indigo-500 shrink-0" /><span className="text-xs font-semibold text-indigo-700 bg-indigo-100 px-1.5 py-0.5 rounded">Upgrade</span></>
+          }
+        </div>
+        {isPlanChange && (
+          <p className="text-xs text-slate-400 mt-1">Takes effect at end of billing period</p>
+        )}
       </td>
       <td className="px-4 py-3 text-sm text-slate-600">
         <span className="badge-gray">{r.current_plan_name || "—"}</span>{" "}
@@ -45,17 +54,13 @@ function RequestRow({ r, onApprove, onReject, busy }: {
       <td className="px-4 py-3 text-xs text-slate-500">
         {r.created_at ? format(new Date(r.created_at), "MMM d, yyyy HH:mm") : "—"}
       </td>
-      <td className="px-4 py-3 text-sm text-slate-600 max-w-[220px]">
-        {r.note ? (
-          <span className="italic">"{r.note}"</span>
-        ) : (
-          <span className="text-slate-400">—</span>
-        )}
+      <td className="px-4 py-3 text-sm text-slate-600 max-w-[180px]">
+        {r.note ? <span className="italic">"{r.note}"</span> : <span className="text-slate-400">—</span>}
       </td>
       <td className="px-4 py-3"><span className={statusBadge(r.status)}>{r.status}</span></td>
       <td className="px-4 py-3">
         {r.status === "pending" ? (
-          <div className="flex flex-col gap-2 min-w-[220px]">
+          <div className="flex flex-col gap-2 min-w-[200px]">
             {noteOpen && (
               <textarea
                 value={note}
@@ -71,7 +76,8 @@ function RequestRow({ r, onApprove, onReject, busy }: {
                 disabled={busy}
                 className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-md bg-emerald-600 text-white text-xs font-medium hover:bg-emerald-700 disabled:opacity-60"
               >
-                <Check size={12} /> Approve
+                <Check size={12} />
+                {isPlanChange ? "Queue Change" : "Approve"}
               </button>
               <button
                 onClick={() => onReject(note || null)}
@@ -84,7 +90,7 @@ function RequestRow({ r, onApprove, onReject, busy }: {
                 onClick={() => setNoteOpen(!noteOpen)}
                 className="inline-flex items-center gap-1 text-xs text-slate-500 hover:text-slate-700"
               >
-                <MessageCircle size={12} /> {noteOpen ? "Hide note" : "Add note"}
+                <MessageCircle size={12} /> {noteOpen ? "Hide" : "Note"}
               </button>
             </div>
           </div>
@@ -132,8 +138,8 @@ export default function AdminUpgradeRequests() {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-2xl font-bold text-slate-900">Upgrade Requests</h2>
-        <p className="text-sm text-slate-500">Tenants asking to change their subscription plan</p>
+        <h2 className="text-2xl font-bold text-slate-900">Subscription Requests</h2>
+        <p className="text-sm text-slate-500">Tenant upgrade requests and plan change queues</p>
       </div>
 
       <div className="flex items-center gap-2">
@@ -154,21 +160,21 @@ export default function AdminUpgradeRequests() {
 
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
         <table className="w-full text-sm">
-          <thead className="bg-slate-50 border-b border-slate-200">
+          <thead className="bg-gradient-to-r from-indigo-50/80 via-violet-50/60 to-slate-50/80 border-b border-slate-200">
             <tr>
-              {["Tenant", "Plan change", "Requested", "Tenant note", "Status", "Action"].map((h) => (
+              {["Tenant", "Type", "Plan", "Requested", "Note", "Status", "Action"].map((h) => (
                 <th key={h} className="px-4 py-3 text-left font-medium text-slate-600">{h}</th>
               ))}
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
             {isLoading && (
-              <tr><td colSpan={6} className="px-4 py-8 text-center text-slate-400">
+              <tr><td colSpan={7} className="px-4 py-8 text-center text-slate-400">
                 <Loader2 size={16} className="inline animate-spin mr-2" />Loading…
               </td></tr>
             )}
             {!isLoading && requests.length === 0 && (
-              <tr><td colSpan={6} className="px-4 py-12 text-center text-slate-400">
+              <tr><td colSpan={7} className="px-4 py-12 text-center text-slate-400">
                 <Inbox size={28} className="mx-auto mb-2 text-slate-300" />
                 No {filter === "all" ? "" : filter} requests.
               </td></tr>

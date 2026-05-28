@@ -67,7 +67,9 @@
       "Bash(curl -s -X POST http://localhost:8000/api/auth/login -d \"username=mill1&password=rice2026\" -H \"Content-Type: application/x-www-form-urlencoded\")",
       "Bash(.venv/Scripts/alembic upgrade *)",
       "Bash(curl -s -X POST http://localhost:8000/api/auth/login -d \"username=mill4&password=rice2026\" -H \"Content-Type: application/x-www-form-urlencoded\")",
-      "Bash(python -c \"import sys,json;d=json.load\\(sys.stdin\\);print\\(d.get\\('message','ERR'\\),'plan_code=', d.get\\('plan_code'\\)\\)\")"
+      "Bash(python -c \"import sys,json;d=json.load\\(sys.stdin\\);print\\(d.get\\('message','ERR'\\),'plan_code=', d.get\\('plan_code'\\)\\)\")",
+      "Bash(../../node_modules/.bin/tsc --noEmit)",
+      "Bash(../../node_modules/.bin/vite build *)"
     ]
   }
 }

@@ -22,6 +22,7 @@ import AdminTenants from "./pages/admin/AdminTenants";
 import AdminTenantDetail from "./pages/admin/AdminTenantDetail";
 import AdminUsers from "./pages/admin/AdminUsers";
 import AdminUpgradeRequests from "./pages/admin/AdminUpgradeRequests";
+import AdminSettingsPage from "./pages/admin/AdminSettingsPage";
 import FeatureGate from "./components/FeatureGate";
 
 function AuthSessionSync() {
@@ -90,6 +91,7 @@ export default function App() {
           <Route path="tenants/:id" element={<AdminTenantDetail />} />
           <Route path="users" element={<AdminUsers />} />
           <Route path="upgrade-requests" element={<AdminUpgradeRequests />} />
+          <Route path="settings" element={<AdminSettingsPage />} />
         </Route>
 
         <Route

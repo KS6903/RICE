@@ -204,7 +204,7 @@ export default function AdminTenants() {
 
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
         <table className="w-full text-sm">
-          <thead className="bg-slate-50 border-b border-slate-200">
+          <thead className="bg-gradient-to-r from-indigo-50/80 via-violet-50/60 to-slate-50/80 border-b border-slate-200">
             <tr>{COLS.map((h) => <th key={h} className="px-4 py-3 text-left font-medium text-slate-600">{h}</th>)}</tr>
           </thead>
           <tbody className="divide-y divide-slate-100">

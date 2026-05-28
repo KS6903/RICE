@@ -1,49 +1,371 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap");
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
+/* ---------------------------------------------------------
+   Design tokens — light & dark themes share the same names.
+   Defined as `R G B` so rgb(var(--token) / 0.5) works.
+   Contrast bumped for senior-friendly readability:
+   light-mode subtle is now slate-600 (~7:1 on white), not
+   slate-400 (which was ~3:1 — failed AA).
+   --------------------------------------------------------- */
 @layer base {
+  :root {
+    --surface: 255 255 255;
+    --surface-muted: 248 250 252;
+    --surface-raised: 255 255 255;
+
+    --ink: 15 23 42;          /* slate-900 — primary text */
+    --ink-muted: 51 65 85;    /* slate-700 — secondary */
+    --ink-subtle: 71 85 105;  /* slate-600 — tertiary, still readable */
+
+    --line: 203 213 225;      /* slate-300 — visible dividers */
+    --line-strong: 148 163 184;
+
+    --glass-bg: 255 255 255;
+    --glass-border: 226 232 240;
+    --glass-alpha: 0.72;
+    --glass-border-alpha: 0.95;
+  }
+
+  .dark {
+    --surface: 15 23 42;
+    --surface-muted: 2 6 23;
+    --surface-raised: 30 41 59;
+
+    --ink: 248 250 252;        /* slate-50 */
+    --ink-muted: 226 232 240;  /* slate-200 — readable in dark */
+    --ink-subtle: 148 163 184; /* slate-400 — ~7.5:1 on slate-900 */
+
+    --line: 51 65 85;          /* slate-700 */
+    --line-strong: 71 85 105;
+
+    --glass-bg: 30 41 59;
+    --glass-border: 71 85 105;
+    --glass-alpha: 0.65;
+    --glass-border-alpha: 0.35;
+  }
+
   * {
     box-sizing: border-box;
   }
 
+  html,
   body {
-    font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-    @apply bg-gray-50 text-gray-900;
+    height: 100%;
+  }
+
+  body {
+    font-family: "Inter", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+      "Segoe UI", sans-serif;
+    /* Senior-friendly base size — scales every `text-sm` etc. proportionally */
+    font-size: 15px;
+    line-height: 1.55;
+    color: rgb(var(--ink));
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+    /* Mesh + base — layered into body's own background so it can NEVER
+       intercept pointer events. (Old version used body::before fixed which
+       could mis-stack against backdrop-filter children.) */
+    background-color: #f1f5f9;
+    background-image:
+      radial-gradient(at 15% 20%, rgba(16, 185, 129, 0.16) 0px, transparent 50%),
+      radial-gradient(at 85% 15%, rgba(139, 92, 246, 0.14) 0px, transparent 50%),
+      radial-gradient(at 50% 90%, rgba(6, 182, 212, 0.12) 0px, transparent 50%),
+      linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
+  }
+
+  .dark body {
+    background-color: #0f172a;
+    background-image:
+      radial-gradient(at 15% 20%, rgba(16, 185, 129, 0.2) 0px, transparent 50%),
+      radial-gradient(at 85% 15%, rgba(139, 92, 246, 0.2) 0px, transparent 50%),
+      radial-gradient(at 50% 90%, rgba(6, 182, 212, 0.15) 0px, transparent 50%),
+      linear-gradient(180deg, #020617 0%, #0f172a 100%);
+  }
+
+  ::-webkit-scrollbar { width: 10px; height: 10px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb {
+    background: rgb(var(--line-strong) / 0.6);
+    border-radius: 999px;
+    border: 2px solid transparent;
+    background-clip: padding-box;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgb(var(--line-strong));
+    background-clip: padding-box;
   }
 }
 
+/* ---------------------------------------------------------
+   Keyframes — defined as plain CSS so JSX `animate-grad-*`
+   classes work without depending on tailwind.config.
+   --------------------------------------------------------- */
+@keyframes grad-shift {
+  0%, 100% { background-position: 0% 50%; }
+  50%      { background-position: 100% 50%; }
+}
+@keyframes grad-float {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-6px); }
+}
+@keyframes grad-fade-up {
+  0%   { opacity: 0; transform: translateY(8px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+/* ---------------------------------------------------------
+   Component & utility classes — all plain CSS, no @apply of
+   custom tokens, so dev-server cache state cannot break them.
+   --------------------------------------------------------- */
 @layer components {
-  .btn-primary {
-    @apply inline-flex items-center gap-2 px-4 py-2 bg-brand-600 text-white rounded-lg shadow-sm hover:bg-brand-700 active:bg-brand-800 active:scale-[0.98] font-medium transition-all focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-1;
+  /* ========== Glass surfaces ========== */
+  .glass {
+    background-color: rgb(var(--glass-bg) / var(--glass-alpha));
+    backdrop-filter: saturate(180%) blur(18px);
+    -webkit-backdrop-filter: saturate(180%) blur(18px);
+    border: 1px solid rgb(var(--glass-border) / var(--glass-border-alpha));
   }
-
-  .btn-secondary {
-    @apply inline-flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 text-gray-700 shadow-sm rounded-lg hover:bg-gray-50 hover:border-gray-300 active:scale-[0.98] font-medium transition-all focus:outline-none focus:ring-2 focus:ring-gray-200 focus:ring-offset-1;
-  }
-
-  .input {
-    @apply w-full px-3 py-2 border border-gray-300 rounded-lg text-sm transition-all shadow-sm focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 hover:border-gray-400;
+  .glass-strong {
+    background-color: rgb(var(--glass-bg) / 0.88);
+    backdrop-filter: saturate(180%) blur(24px);
+    -webkit-backdrop-filter: saturate(180%) blur(24px);
+    border: 1px solid rgb(var(--glass-border) / var(--glass-border-alpha));
   }
 
   .card {
-    @apply bg-white rounded-2xl border border-gray-200/75 p-6 transition-all;
-    box-shadow: 0 2px 8px -2px rgba(0, 0, 0, 0.05), 0 1px 4px -1px rgba(0, 0, 0, 0.03);
+    background-color: rgb(var(--glass-bg) / var(--glass-alpha));
+    backdrop-filter: saturate(180%) blur(18px);
+    -webkit-backdrop-filter: saturate(180%) blur(18px);
+    border: 1px solid rgb(var(--glass-border) / var(--glass-border-alpha));
+    border-radius: 1rem;
+    padding: 1.5rem;
+    color: rgb(var(--ink));
+    transition: box-shadow 0.2s ease, transform 0.2s ease;
+    box-shadow: 0 4px 24px -8px rgba(15, 23, 42, 0.12),
+      inset 0 1px 0 0 rgba(255, 255, 255, 0.55);
+  }
+  .dark .card {
+    box-shadow: 0 8px 32px -12px rgba(0, 0, 0, 0.5),
+      inset 0 1px 0 0 rgba(255, 255, 255, 0.06);
+  }
+  .card:hover {
+    box-shadow: 0 8px 36px -10px rgba(15, 23, 42, 0.18),
+      inset 0 1px 0 0 rgba(255, 255, 255, 0.55);
+  }
+  .dark .card:hover {
+    box-shadow: 0 12px 40px -12px rgba(0, 0, 0, 0.6),
+      inset 0 1px 0 0 rgba(255, 255, 255, 0.08);
   }
 
-  .badge-green {
-    @apply inline-flex px-2.5 py-0.5 rounded-md text-xs font-medium bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-600/20;
+  /* ========== Text tokens (theme-aware) ========== */
+  .text-primary   { color: rgb(var(--ink)); }
+  .text-secondary { color: rgb(var(--ink-muted)); }
+  .text-muted     { color: rgb(var(--ink-subtle)); }
+
+  /* ========== Border tokens ========== */
+  .border-soft        { border-color: rgb(var(--line)); }
+  .border-soft-strong { border-color: rgb(var(--line-strong)); }
+  .divider-soft       { border-top: 1px solid rgb(var(--line)); }
+
+  /* ========== Brand gradient & glow ========== */
+  .bg-grad-brand {
+    background-image: linear-gradient(135deg, #10b981 0%, #06b6d4 55%, #8b5cf6 100%);
+    background-size: 200% 100%;
+  }
+  .bg-grad-brand-anim {
+    background-image: linear-gradient(135deg, #10b981 0%, #06b6d4 55%, #8b5cf6 100%);
+    background-size: 200% 200%;
+    animation: grad-shift 8s ease infinite;
+  }
+  .shadow-grad-glow {
+    box-shadow: 0 0 0 1px rgba(16, 185, 129, 0.25),
+      0 8px 32px -8px rgba(16, 185, 129, 0.45);
+  }
+  .text-grad-brand {
+    background-image: linear-gradient(135deg, #10b981 0%, #06b6d4 55%, #8b5cf6 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
   }
 
-  .badge-yellow {
-    @apply inline-flex px-2.5 py-0.5 rounded-md text-xs font-medium bg-amber-50 text-amber-700 ring-1 ring-inset ring-amber-600/20;
+  /* ========== Animations ========== */
+  .animate-grad-shift   { animation: grad-shift 8s ease infinite; }
+  .animate-grad-float   { animation: grad-float 4s ease-in-out infinite; }
+  .animate-grad-fade-up { animation: grad-fade-up 0.4s ease-out both; }
+
+  /* ========== Buttons ========== */
+  .btn-primary {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.625rem 1.125rem;
+    border-radius: 0.75rem;
+    font-weight: 600;
+    font-size: 0.95rem;
+    color: #fff;
+    background-image: linear-gradient(135deg, #10b981 0%, #06b6d4 55%, #8b5cf6 100%);
+    background-size: 200% 100%;
+    background-position: 0% 0;
+    box-shadow: 0 0 0 1px rgba(16, 185, 129, 0.25),
+      0 8px 32px -8px rgba(16, 185, 129, 0.45);
+    transition: all 0.2s ease;
+  }
+  .btn-primary:hover:not(:disabled) { background-position: 100% 0; }
+  .btn-primary:active:not(:disabled) { transform: scale(0.98); }
+  .btn-primary:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 1px rgba(16, 185, 129, 0.25),
+      0 8px 32px -8px rgba(16, 185, 129, 0.45),
+      0 0 0 4px rgba(16, 185, 129, 0.3);
+  }
+  .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
+
+  .btn-secondary {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.625rem 1.125rem;
+    border-radius: 0.75rem;
+    font-weight: 600;
+    font-size: 0.95rem;
+    color: rgb(var(--ink));
+    background-color: rgb(var(--glass-bg) / var(--glass-alpha));
+    backdrop-filter: saturate(180%) blur(18px);
+    -webkit-backdrop-filter: saturate(180%) blur(18px);
+    border: 1px solid rgb(var(--glass-border) / var(--glass-border-alpha));
+    transition: all 0.2s ease;
+  }
+  .btn-secondary:hover { background-color: rgb(var(--glass-bg) / 0.95); }
+  .btn-secondary:active { transform: scale(0.98); }
+  .btn-secondary:focus-visible {
+    outline: 2px solid rgba(16, 185, 129, 0.4);
+    outline-offset: 2px;
   }
 
-  .badge-red {
-    @apply inline-flex px-2.5 py-0.5 rounded-md text-xs font-medium bg-rose-50 text-rose-700 ring-1 ring-inset ring-rose-600/20;
+  .btn-ghost {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.375rem 0.75rem;
+    border-radius: 0.5rem;
+    font-weight: 500;
+    color: rgb(var(--ink-muted));
+    transition: color 0.15s ease, background-color 0.15s ease;
+  }
+  .btn-ghost:hover {
+    color: rgb(var(--ink));
+    background-color: rgb(var(--line) / 0.45);
   }
 
-  .badge-gray {
-    @apply inline-flex px-2.5 py-0.5 rounded-md text-xs font-medium bg-gray-50 text-gray-700 ring-1 ring-inset ring-gray-600/20;
+  /* ========== Inputs — bigger, higher-contrast for seniors ========== */
+  .input {
+    width: 100%;
+    padding: 0.7rem 0.95rem;
+    border-radius: 0.75rem;
+    font-size: 0.975rem;
+    background-color: rgb(var(--glass-bg) / 0.75);
+    border: 1px solid rgb(var(--line));
+    color: rgb(var(--ink));
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.04);
+    transition: all 0.15s ease;
+  }
+  .input::placeholder { color: rgb(var(--ink-subtle)); }
+  .input:hover { border-color: rgb(var(--line-strong)); }
+  .input:focus {
+    outline: none;
+    border-color: #10b981;
+    box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.22);
+  }
+
+  /* ========== Form label — standard senior-readable size ========== */
+  .form-label {
+    display: block;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: rgb(var(--ink-muted));
+    margin-bottom: 0.4rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
+  /* ========== Badges (tone-coded, theme-aware) ========== */
+  .badge-base {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.2rem 0.625rem;
+    border-radius: 0.5rem;
+    font-size: 0.78rem;
+    font-weight: 600;
+    line-height: 1.2;
+  }
+  /* Light mode: solid opaque backgrounds with white text for max contrast */
+  .badge-green  { background-color: #059669; color: #ffffff; }
+  .badge-yellow { background-color: #d97706; color: #ffffff; }
+  .badge-red    { background-color: #e11d48; color: #ffffff; }
+  .badge-gray   { background-color: #475569; color: #ffffff; }
+  .badge-violet { background-color: #7c3aed; color: #ffffff; }
+  .badge-cyan   { background-color: #0891b2; color: #ffffff; }
+  /* Dark mode: soft tinted backgrounds with bright text */
+  .dark .badge-green  { background-color: rgba(16,185,129,0.18);  color: #6ee7b7; box-shadow: inset 0 0 0 1px rgba(16,185,129,0.35); }
+  .dark .badge-yellow { background-color: rgba(245,158,11,0.18);  color: #fcd34d; box-shadow: inset 0 0 0 1px rgba(245,158,11,0.35); }
+  .dark .badge-red    { background-color: rgba(244,63,94,0.18);   color: #fda4af; box-shadow: inset 0 0 0 1px rgba(244,63,94,0.35); }
+  .dark .badge-gray   { background-color: rgba(100,116,139,0.18); color: #e2e8f0; box-shadow: inset 0 0 0 1px rgba(100,116,139,0.35); }
+  .dark .badge-violet { background-color: rgba(139,92,246,0.18);  color: #c4b5fd; box-shadow: inset 0 0 0 1px rgba(139,92,246,0.35); }
+  .dark .badge-cyan   { background-color: rgba(6,182,212,0.18);   color: #67e8f9; box-shadow: inset 0 0 0 1px rgba(6,182,212,0.35); }
+
+  /* Apply the base style to each variant automatically */
+  .badge-green, .badge-yellow, .badge-red, .badge-gray, .badge-violet, .badge-cyan {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.2rem 0.625rem;
+    border-radius: 0.5rem;
+    font-size: 0.78rem;
+    font-weight: 600;
+    line-height: 1.2;
+  }
+
+  /* ========== Sidebar nav item ========== */
+  .nav-link {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.625rem 0.875rem;
+    border-radius: 0.75rem;
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: rgb(var(--ink-muted));
+    transition: all 0.15s ease;
+  }
+  .nav-link:hover {
+    color: rgb(var(--ink));
+    background-color: rgb(var(--glass-bg) / 0.25);
+  }
+  .nav-link.is-active {
+    color: rgb(var(--ink));
+    background-color: rgb(var(--glass-bg) / 0.85);
+    box-shadow: 0 1px 3px 0 rgba(15, 23, 42, 0.08);
+    font-weight: 600;
+  }
+  .nav-link.is-active::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    height: 1.4rem;
+    width: 3px;
+    border-radius: 0 3px 3px 0;
+    background-image: linear-gradient(180deg, #10b981 0%, #06b6d4 55%, #8b5cf6 100%);
   }
 }

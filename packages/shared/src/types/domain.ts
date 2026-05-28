@@ -230,6 +230,7 @@ export interface SubscriptionPlan {
 }
 
 export type UpgradeRequestStatus = "pending" | "approved" | "rejected" | "cancelled";
+export type UpgradeRequestType = "upgrade" | "change";
 
 export interface UpgradeRequest {
   id: string;
@@ -242,6 +243,7 @@ export interface UpgradeRequest {
   current_plan_code: string | null;
   current_plan_name: string | null;
   requested_by?: string | null;
+  request_type?: UpgradeRequestType | null;
   status: UpgradeRequestStatus;
   note: string | null;
   admin_note: string | null;

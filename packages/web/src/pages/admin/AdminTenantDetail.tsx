@@ -750,7 +750,7 @@ export default function AdminTenantDetail() {
               </h3>
             </div>
             <table className="w-full text-sm">
-              <thead className="bg-slate-50">
+              <thead className="bg-gradient-to-r from-indigo-50/80 via-violet-50/60 to-slate-50/80">
                 <tr>
                   {[
                     "Username",
@@ -815,7 +815,7 @@ export default function AdminTenantDetail() {
               </h3>
             </div>
             <table className="w-full text-sm">
-              <thead className="bg-slate-50">
+              <thead className="bg-gradient-to-r from-indigo-50/80 via-violet-50/60 to-slate-50/80">
                 <tr>
                   {["Name", "Type", "Status"].map((h) => (
                     <th

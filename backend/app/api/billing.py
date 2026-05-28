@@ -39,6 +39,7 @@ def _serialize_request(r: UpgradeRequest) -> dict:
         "current_plan_code": r.current_plan.code if r.current_plan else None,
         "current_plan_name": r.current_plan.name if r.current_plan else None,
         "requested_by": str(r.requested_by) if r.requested_by else None,
+        "request_type": r.request_type,
         "status": r.status,
         "note": r.note,
         "admin_note": r.admin_note,
@@ -86,6 +87,7 @@ def my_subscription(current_user=Depends(get_current_user), db: Session = Depend
 class UpgradeRequestCreate(BaseModel):
     plan_id: uuid.UUID
     note: str | None = None
+    request_type: str = "upgrade"  # "upgrade" or "change"
 
 
 @router.get("/upgrade-requests/mine")
@@ -152,6 +154,7 @@ def create_upgrade_request(
         requested_plan_id=plan.id,
         current_plan_id=current_sub.plan_id if current_sub else None,
         requested_by=current_user.id,
+        request_type=body.request_type if body.request_type in ("upgrade", "change") else "upgrade",
         status="pending",
         note=body.note,
     )

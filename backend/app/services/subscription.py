@@ -171,20 +171,32 @@ def auto_downgrade_to_free_if_expired(db: Session, company_id: uuid.UUID) -> Sub
         db.commit()
         return sub
 
+    # If a plan change was queued, activate it now instead of downgrading to Free.
+    target_plan_id = sub.queued_plan_id if sub.queued_plan_id else free_plan.id
+    target_note = (
+        f"Queued plan change applied — subscription moved to new plan on expiry"
+        if sub.queued_plan_id
+        else f"Auto-downgraded from '{sub.plan.code if sub.plan else 'paid'}' on expiry"
+    )
+    sub.queued_plan_id = None
     activate_subscription(
         db,
         company_id=company_id,
-        plan_id=free_plan.id,
+        plan_id=target_plan_id,
         admin_id=None,
         expires_at=None,
-        notes=f"Auto-downgraded from '{sub.plan.code if sub.plan else 'paid'}' on expiry",
+        notes=target_note,
     )
     resolve_pending_upgrade_requests(
         db,
         company_id=company_id,
-        new_plan_id=free_plan.id,
+        new_plan_id=target_plan_id,
         admin_id=None,
-        auto_note="Cancelled: your subscription expired and was downgraded to Free.",
+        auto_note=(
+            "Applied: your plan change took effect when your previous subscription expired."
+            if target_plan_id != free_plan.id
+            else "Cancelled: your subscription expired and was downgraded to Free."
+        ),
     )
     db.commit()
     return sub
@@ -218,20 +230,30 @@ def sweep_expired(db: Session) -> int:
             r.expires_at = None
             migrated += 1
             continue
+        target_plan_id = r.queued_plan_id if r.queued_plan_id else free_plan.id
+        r.queued_plan_id = None
         activate_subscription(
             db,
             company_id=r.company_id,
-            plan_id=free_plan.id,
+            plan_id=target_plan_id,
             admin_id=None,
             expires_at=None,
-            notes=f"Auto-downgraded from '{r.plan.code if r.plan else 'paid'}' on expiry sweep",
+            notes=(
+                "Queued plan change applied on expiry sweep"
+                if target_plan_id != free_plan.id
+                else f"Auto-downgraded from '{r.plan.code if r.plan else 'paid'}' on expiry sweep"
+            ),
         )
         resolve_pending_upgrade_requests(
             db,
             company_id=r.company_id,
-            new_plan_id=free_plan.id,
+            new_plan_id=target_plan_id,
             admin_id=None,
-            auto_note="Cancelled: subscription expired during the expiry sweep.",
+            auto_note=(
+                "Applied: your plan change took effect when your previous subscription expired."
+                if target_plan_id != free_plan.id
+                else "Cancelled: subscription expired during the expiry sweep."
+            ),
         )
         migrated += 1
     if rows:

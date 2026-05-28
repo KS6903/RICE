@@ -542,25 +542,33 @@ def approve_upgrade_request(
     if not plan:
         raise HTTPException(status_code=404, detail="Requested plan no longer exists")
 
-    # Use the shared helper so started_at is reset and any stale trial expiry
-    # from a prior plan does not flip this back to "expired" immediately.
-    activate_subscription(
-        db,
-        company_id=r.company_id,
-        plan_id=plan.id,
-        admin_id=admin.id,
-    )
+    is_plan_change = r.request_type == "change"
+
+    if is_plan_change:
+        # Queue the plan — apply it only when the current subscription expires.
+        from ..models.subscription import Subscription as Sub
+        sub = db.query(Sub).filter(Sub.company_id == r.company_id).first()
+        if sub and sub.status in ("active", "trial"):
+            sub.queued_plan_id = plan.id
+        else:
+            # Subscription already expired — activate immediately.
+            activate_subscription(db, company_id=r.company_id, plan_id=plan.id, admin_id=admin.id)
+    else:
+        # Standard upgrade — activate right away.
+        activate_subscription(db, company_id=r.company_id, plan_id=plan.id, admin_id=admin.id)
 
     r.status = "approved"
     r.admin_note = body.admin_note
     r.resolved_at = datetime.now(timezone.utc)
     r.resolved_by = admin.id
-    # Defensive: cancel any other lingering pending requests for this tenant.
-    # The /billing endpoint normally rejects a second pending with 409, but if
-    # one slipped in through an older code path we don't want it to live on.
     resolve_pending_upgrade_requests(db, r.company_id, plan.id, admin_id=admin.id)
     db.commit()
-    return {"message": f"Upgrade approved — tenant moved to {plan.name}"}
+    msg = (
+        f"Plan change queued — {plan.name} will activate when current subscription expires."
+        if is_plan_change
+        else f"Upgrade approved — tenant moved to {plan.name}"
+    )
+    return {"message": msg}
 
 
 @router.post("/upgrade-requests/{request_id}/reject")
