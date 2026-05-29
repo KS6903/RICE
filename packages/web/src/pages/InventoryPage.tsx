@@ -1,10 +1,13 @@
 import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { Link } from "react-router-dom";
 import api from "../services/api";
 import {
   Package, Wheat, MapPin, List, Table2, LayoutGrid, BarChart3, Warehouse,
-  Search, ArrowUpDown, Truck, Building2,
+  Search, ArrowUpDown, Building2, Lock, Sparkles, ArrowRight,
 } from "lucide-react";
+import BodegaCanvas from "../components/canvas/BodegaCanvas";
+import { useFeature } from "../hooks/useFeature";
 
 const BYPRODUCT_NAMES: Record<string, string> = {
   ipa: "Ipa (Rice Hull)",
@@ -125,7 +128,7 @@ export default function InventoryPage() {
       {view === "spreadsheet" && <SpreadsheetView items={items} />}
       {view === "cards"       && <CardsView items={items} totalKg={totalKg} />}
       {view === "bins"        && <BinsView items={items} />}
-      {view === "warehouse"   && <WarehouseView items={items} branches={branches} branchFilter={branchFilter} />}
+      {view === "warehouse"   && <BodegaCanvasView branches={branches} branchFilter={branchFilter} setBranchFilter={setBranchFilter} />}
     </div>
   );
 }
@@ -398,334 +401,69 @@ function BinsView({ items }: { items: UnifiedItem[] }) {
   );
 }
 
-/* ─── 5. WAREHOUSE ─── interactive SVG floor plan of a Philippine bodega */
-function WarehouseView({ items, branches, branchFilter }: { items: UnifiedItem[]; branches: any[]; branchFilter: string }) {
-  const [hovered, setHovered] = useState<{ x: number; y: number; item: UnifiedItem } | null>(null);
+/* ─── 5. BODEGA CANVAS ─── plan-gated Konva spatial inventory (Phase 1-4) */
+function BodegaCanvasView({ branches, branchFilter, setBranchFilter }: { branches: any[]; branchFilter: string; setBranchFilter: (id: string) => void }) {
+  const hasCanvas = useFeature("canvas_inventory");
+  if (!hasCanvas) return <CanvasUpsellCard />;
 
-  // Group by branch first — each branch is its own bodega
-  const branchGroups = useMemo(() => {
-    const map: Record<string, { name: string; items: UnifiedItem[] }> = {};
-    for (const i of items) {
-      const key = i.branchId || "_unassigned";
-      const name = i.branchName;
-      if (!map[key]) map[key] = { name, items: [] };
-      map[key].items.push(i);
-    }
-    return Object.values(map);
-  }, [items]);
-
-  if (branchGroups.length === 0) {
+  const activeBranchId = branchFilter || branches[0]?.id;
+  if (!activeBranchId) {
     return (
       <div className="card text-center py-16">
         <Warehouse size={48} className="mx-auto text-muted mb-3" />
-        <p className="text-secondary font-medium">No inventory to display in the bodega.</p>
-        <p className="text-xs text-muted mt-1">Record palay purchases or milling batches first.</p>
+        <p className="text-secondary font-medium">No warehouses available.</p>
+        <p className="text-xs text-muted mt-1">Create a branch first in Settings.</p>
       </div>
     );
   }
-
   return (
-    <div className="space-y-6">
-      <div className="card !p-4 flex items-center gap-3 flex-wrap text-xs">
-        <span className="font-semibold text-secondary uppercase tracking-wide">Legend:</span>
-        <LegendDot color="bg-amber-500"    label="Palay (Paddy)" />
-        <LegendDot color="bg-emerald-500"  label="Milled Rice (Bigas)" />
-        <LegendDot color="bg-slate-500"    label="By-products" />
-        <span className="ml-auto text-muted hidden sm:inline-flex items-center gap-1">
-          <Truck size={12} /> = Loading dock / Pinto ng trak
-        </span>
-      </div>
-
-      {branchGroups.map((bg, idx) => (
-        <BodegaPlan key={idx} branchName={bg.name} items={bg.items} onHover={setHovered} />
-      ))}
-
-      {hovered && (
-        <div
-          className="fixed pointer-events-none z-50 rounded-lg bg-slate-900 text-white text-xs px-3 py-2 shadow-xl ring-1 ring-white/10"
-          style={{ left: hovered.x + 14, top: hovered.y + 14 }}
-        >
-          <p className="font-bold">{hovered.item.variety}</p>
-          <p className="text-white/70">{hovered.item.typeLabel} · {hovered.item.grade}</p>
-          <p className="font-mono mt-1">
-            {hovered.item.quantity_kg.toLocaleString()} kg
-            <span className="text-white/60"> · {(hovered.item.quantity_kg / 50).toFixed(0)} cavans</span>
-          </p>
+    <div className="space-y-4">
+      {branches.length > 1 && (
+        <div className="card !p-3 flex items-center gap-2 text-sm">
+          <Building2 size={15} className="text-slate-500" />
+          <span className="text-secondary">Warehouse:</span>
+          <select
+            className="input w-auto"
+            value={activeBranchId}
+            onChange={(e) => setBranchFilter(e.target.value)}
+          >
+            {branches.map((b: any) => (
+              <option key={b.id} value={b.id}>{b.name}{b.is_main_branch ? " (Main)" : ""}</option>
+            ))}
+          </select>
+          <span className="text-xs text-muted ml-auto">Switch instantly — each warehouse keeps its own layout.</span>
         </div>
       )}
+      <BodegaCanvas branchId={activeBranchId} />
     </div>
   );
 }
 
-function LegendDot({ color, label }: { color: string; label: string }) {
+function CanvasUpsellCard() {
   return (
-    <span className="inline-flex items-center gap-1.5 text-secondary">
-      <span className={`inline-block w-3 h-3 rounded-sm ${color}`} />
-      {label}
-    </span>
-  );
-}
-
-/* The actual SVG bodega floor plan for one warehouse. */
-function BodegaPlan({
-  branchName,
-  items,
-  onHover,
-}: {
-  branchName: string;
-  items: UnifiedItem[];
-  onHover: (h: { x: number; y: number; item: UnifiedItem } | null) => void;
-}) {
-  // Floor plan dimensions (SVG viewBox)
-  const W = 900;
-  const H = 520;
-  const wallPad = 30;
-  const inner = { x: wallPad, y: wallPad, w: W - wallPad * 2, h: H - wallPad * 2 };
-
-  // Three "bodega zones" along the warehouse: left=Palay, middle=Bigas, right=By-products
-  const aisleX = inner.x + inner.w * 0.55;
-  const zones = [
-    { type: "palay" as const, x: inner.x + 20, y: inner.y + 60, w: inner.w * 0.32, h: inner.h - 120, label: "Bodega ng Palay", color: "rgb(245 158 11)" },
-    { type: "milled" as const, x: inner.x + inner.w * 0.34, y: inner.y + 60, w: inner.w * 0.32, h: (inner.h - 140) * 0.55, label: "Bodega ng Bigas", color: "rgb(16 185 129)" },
-    { type: "byproduct" as const, x: inner.x + inner.w * 0.34, y: inner.y + 60 + (inner.h - 140) * 0.55 + 20, w: inner.w * 0.32, h: (inner.h - 140) * 0.45 - 20, label: "By-products", color: "rgb(100 116 139)" },
-  ];
-
-  // Place each item as a "stack" (rectangle scaled by quantity) inside its zone, laid out in a grid
-  const totalsPerType: Record<UnifiedItem["type"], number> = { palay: 0, milled: 0, byproduct: 0 };
-  items.forEach(i => totalsPerType[i.type] += i.quantity_kg);
-
-  const stacksByZone: Record<UnifiedItem["type"], { item: UnifiedItem; rect: { x: number; y: number; w: number; h: number } }[]> = {
-    palay: [], milled: [], byproduct: [],
-  };
-
-  for (const z of zones) {
-    const list = items.filter(i => i.type === z.type);
-    if (list.length === 0) continue;
-
-    // grid cols ~ sqrt of count, rows derived
-    const cols = Math.max(1, Math.ceil(Math.sqrt(list.length)));
-    const rows = Math.ceil(list.length / cols);
-    const gap = 8;
-    const headerH = 26;
-    const usableH = z.h - headerH - 14;
-    const usableW = z.w - 14;
-    const cellW = (usableW - gap * (cols - 1)) / cols;
-    const cellH = (usableH - gap * (rows - 1)) / rows;
-    const maxQty = Math.max(...list.map(i => i.quantity_kg), 1);
-
-    list.forEach((item, idx) => {
-      const r = Math.floor(idx / cols);
-      const c = idx % cols;
-      const cx = z.x + 7 + c * (cellW + gap);
-      const cy = z.y + headerH + r * (cellH + gap);
-      // Stack height grows by quantity ratio (min 25% so empty zones still show a tile)
-      const ratio = 0.25 + 0.75 * (item.quantity_kg / maxQty);
-      const sh = cellH * ratio;
-      const sy = cy + (cellH - sh);
-      stacksByZone[z.type].push({ item, rect: { x: cx, y: sy, w: cellW, h: sh } });
-    });
-  }
-
-  // Loading dock / "pinto" at bottom-center
-  const dock = { x: inner.x + inner.w / 2 - 60, y: H - wallPad - 4, w: 120, h: 8 };
-
-  return (
-    <div className="card !p-0 overflow-hidden">
-      <div className="px-5 py-3 border-b border-slate-200 dark:border-slate-700 flex items-center gap-2">
-        <Building2 size={16} className="text-slate-500" />
-        <h3 className="font-semibold text-primary">{branchName}</h3>
-        <span className="text-xs text-muted ml-auto">
-          Total: <span className="font-bold text-primary tabular-nums">
-            {items.reduce((s, i) => s + i.quantity_kg, 0).toLocaleString()} kg
-          </span>
-        </span>
+    <div className="rounded-2xl overflow-hidden ring-1 ring-slate-200 dark:ring-slate-700 bg-gradient-to-br from-indigo-50 via-violet-50 to-fuchsia-50 dark:from-indigo-950/40 dark:via-violet-950/30 dark:to-fuchsia-950/30 p-8 text-center">
+      <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-white/80 dark:bg-slate-800/80 shadow-sm ring-1 ring-slate-200 dark:ring-slate-700 mb-4">
+        <Lock size={22} className="text-indigo-500" />
       </div>
-
-      <div className="bg-stone-50 dark:bg-slate-950/40 overflow-x-auto">
-        <svg viewBox={`0 0 ${W} ${H}`} className="w-full max-w-[1100px] mx-auto block" style={{ height: "auto" }}>
-          {/* Concrete floor — subtle grid */}
-          <defs>
-            <pattern id="concrete" width="40" height="40" patternUnits="userSpaceOnUse">
-              <rect width="40" height="40" fill="#f5f5f4" />
-              <path d="M0 0 L40 0 M0 0 L0 40" stroke="#e7e5e4" strokeWidth="1" />
-            </pattern>
-            <pattern id="concrete-dark" width="40" height="40" patternUnits="userSpaceOnUse">
-              <rect width="40" height="40" fill="#1c1917" />
-              <path d="M0 0 L40 0 M0 0 L0 40" stroke="#292524" strokeWidth="1" />
-            </pattern>
-            <filter id="sackshadow" x="-20%" y="-20%" width="140%" height="140%">
-              <feDropShadow dx="0" dy="2" stdDeviation="1.5" floodOpacity="0.25" />
-            </filter>
-          </defs>
-
-          {/* Outer wall: galvanized iron + concrete plinth — classic Pinoy bodega */}
-          <rect x={0} y={0} width={W} height={H} fill="url(#concrete)" className="dark:hidden" />
-          <rect x={0} y={0} width={W} height={H} fill="url(#concrete-dark)" className="hidden dark:block" />
-
-          {/* Building outline */}
-          <rect x={wallPad - 4} y={wallPad - 4} width={inner.w + 8} height={inner.h + 8} fill="none" stroke="#475569" strokeWidth="3" rx="6" />
-          <rect x={wallPad} y={wallPad} width={inner.w} height={inner.h} fill="#fafaf9" className="dark:fill-slate-900" stroke="#94a3b8" strokeWidth="1" />
-
-          {/* Building label */}
-          <text x={inner.x + inner.w / 2} y={inner.y + 30} textAnchor="middle"
-                className="fill-slate-500 dark:fill-slate-400"
-                fontSize="14" fontWeight="700" letterSpacing="2">
-            BODEGA · {branchName.toUpperCase()}
-          </text>
-
-          {/* North arrow / compass */}
-          <g transform={`translate(${W - 70}, 65)`}>
-            <circle r="18" fill="white" stroke="#cbd5e1" strokeWidth="1" className="dark:fill-slate-800" />
-            <path d="M 0 -12 L 5 6 L 0 2 L -5 6 Z" fill="#0f172a" className="dark:fill-slate-100" />
-            <text y={-22} textAnchor="middle" fontSize="9" fontWeight="700" className="fill-slate-600 dark:fill-slate-300">N</text>
-          </g>
-
-          {/* Office / receiving area (right column) */}
-          <g>
-            <rect
-              x={aisleX + 10}
-              y={inner.y + 60}
-              width={inner.w - (aisleX - inner.x) - 20}
-              height={120}
-              fill="#fef3c7"
-              stroke="#f59e0b"
-              strokeWidth="1.5"
-              strokeDasharray="4 4"
-              opacity="0.6"
-              rx="4"
-            />
-            <text
-              x={aisleX + 10 + (inner.w - (aisleX - inner.x) - 20) / 2}
-              y={inner.y + 60 + 30}
-              textAnchor="middle"
-              fontSize="11"
-              fontWeight="700"
-              className="fill-amber-700"
-            >
-              OPISINA
-            </text>
-            <text
-              x={aisleX + 10 + (inner.w - (aisleX - inner.x) - 20) / 2}
-              y={inner.y + 60 + 46}
-              textAnchor="middle"
-              fontSize="9"
-              className="fill-amber-600"
-            >
-              (Office / Receiving)
-            </text>
-          </g>
-
-          {/* Aisle marking */}
-          <line x1={aisleX} y1={inner.y + 50} x2={aisleX} y2={inner.y + inner.h - 30} stroke="#cbd5e1" strokeWidth="2" strokeDasharray="2 6" />
-          <text x={aisleX} y={inner.y + inner.h - 14} textAnchor="middle" fontSize="9" className="fill-slate-500 dark:fill-slate-400" fontWeight="600">
-            ← AISLE / PASILYO →
-          </text>
-
-          {/* Zones */}
-          {zones.map((z) => (
-            <g key={z.type}>
-              <rect
-                x={z.x} y={z.y} width={z.w} height={z.h}
-                fill="white"
-                stroke={z.color}
-                strokeWidth="1.5"
-                strokeDasharray="3 3"
-                rx="4"
-                opacity="0.9"
-                className="dark:fill-slate-800/70"
-              />
-              <text x={z.x + z.w / 2} y={z.y + 16} textAnchor="middle" fontSize="11" fontWeight="700" fill={z.color}>
-                {z.label.toUpperCase()}
-              </text>
-              <text x={z.x + z.w / 2} y={z.y + z.h - 6} textAnchor="middle" fontSize="9" className="fill-slate-500 dark:fill-slate-400">
-                {totalsPerType[z.type].toLocaleString()} kg · {(totalsPerType[z.type] / 50).toFixed(0)} cavans
-              </text>
-            </g>
-          ))}
-
-          {/* Stacks (sacks of rice) */}
-          {(["palay", "milled", "byproduct"] as const).flatMap((t) =>
-            stacksByZone[t].map(({ item, rect }) => {
-              const z = zones.find(zz => zz.type === t)!;
-              return (
-                <g
-                  key={item.id}
-                  onMouseMove={(e) => onHover({ x: e.clientX, y: e.clientY, item })}
-                  onMouseLeave={() => onHover(null)}
-                  style={{ cursor: "pointer" }}
-                >
-                  {/* Stack base */}
-                  <rect
-                    x={rect.x}
-                    y={rect.y}
-                    width={rect.w}
-                    height={rect.h}
-                    rx="2"
-                    fill={z.color}
-                    opacity="0.85"
-                    filter="url(#sackshadow)"
-                  />
-                  {/* Stack ridges = individual cavans */}
-                  {(() => {
-                    const ridges = Math.min(5, Math.max(1, Math.floor(rect.h / 8)));
-                    return Array.from({ length: ridges }).map((_, k) => (
-                      <line
-                        key={k}
-                        x1={rect.x + 2}
-                        y1={rect.y + ((k + 1) * rect.h) / (ridges + 1)}
-                        x2={rect.x + rect.w - 2}
-                        y2={rect.y + ((k + 1) * rect.h) / (ridges + 1)}
-                        stroke="white"
-                        strokeWidth="0.7"
-                        opacity="0.4"
-                      />
-                    ));
-                  })()}
-                  {/* Label if there's room */}
-                  {rect.w > 36 && rect.h > 20 && (
-                    <text
-                      x={rect.x + rect.w / 2}
-                      y={rect.y + rect.h / 2 + 3}
-                      textAnchor="middle"
-                      fontSize={Math.min(10, rect.w / 5)}
-                      fill="white"
-                      fontWeight="700"
-                      style={{ pointerEvents: "none" }}
-                    >
-                      {item.variety}
-                    </text>
-                  )}
-                </g>
-              );
-            })
-          )}
-
-          {/* Loading dock + door */}
-          <g>
-            <rect x={dock.x} y={dock.y} width={dock.w} height={dock.h} fill="#475569" rx="2" />
-            <rect x={dock.x - 4} y={dock.y - 14} width={dock.w + 8} height={14} fill="#facc15" rx="2" stroke="#a16207" strokeWidth="1" />
-            <text x={dock.x + dock.w / 2} y={H - 10} textAnchor="middle" fontSize="10" fontWeight="700" className="fill-slate-600 dark:fill-slate-300">
-              PINTO / LOADING DOCK
-            </text>
-          </g>
-
-          {/* Side door */}
-          <g>
-            <rect x={wallPad - 4} y={inner.y + inner.h / 2 - 22} width={8} height={44} fill="#94a3b8" rx="1" />
-            <DoorOpenIcon x={wallPad - 24} y={inner.y + inner.h / 2 - 8} />
-          </g>
-        </svg>
+      <h3 className="text-xl font-bold text-primary mb-1.5">
+        <Sparkles size={16} className="inline -mt-0.5 mr-1 text-amber-500" />
+        Visual Bodega Canvas — a Pro feature
+      </h3>
+      <p className="text-sm text-secondary max-w-md mx-auto leading-relaxed">
+        Drag-and-drop your pallets across a floor plan of your warehouse. See aging at a glance,
+        stack visually, dispatch oldest-first, and watch live moves from any device.
+      </p>
+      <div className="mt-5 flex items-center justify-center gap-2">
+        <Link
+          to="/settings"
+          className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-grad-brand text-white text-sm font-semibold shadow-grad-glow hover:opacity-90 transition-opacity"
+        >
+          Upgrade plan <ArrowRight size={14} />
+        </Link>
       </div>
+      <p className="text-[11px] uppercase tracking-wider font-bold text-muted mt-4">
+        Available on Pro and Enterprise
+      </p>
     </div>
-  );
-}
-
-function DoorOpenIcon({ x, y }: { x: number; y: number }) {
-  // Tiny inline door icon
-  return (
-    <g transform={`translate(${x}, ${y})`}>
-      <rect x={0} y={0} width={14} height={16} fill="none" stroke="#64748b" strokeWidth="1" />
-      <circle cx={10} cy={8} r="0.8" fill="#64748b" />
-    </g>
   );
 }

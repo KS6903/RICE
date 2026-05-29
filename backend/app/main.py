@@ -1,7 +1,9 @@
+import asyncio
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from .core.config import settings
-from .api import auth, users, branches, paddy, milling, inventory, sales, costs, reports, sync, admin, employees, billing
+from .api import auth, users, branches, paddy, milling, inventory, sales, costs, reports, sync, admin, employees, billing, canvas
+from .services.canvas_realtime import manager as ws_manager
 
 app = FastAPI(
     title=settings.APP_NAME,
@@ -31,6 +33,15 @@ app.include_router(sync.router, prefix="/api/sync", tags=["Sync"])
 app.include_router(admin.router, prefix="/api/admin", tags=["Platform Admin"])
 app.include_router(employees.router, prefix="/api/employees", tags=["Employees"])
 app.include_router(billing.router, prefix="/api/billing", tags=["Billing"])
+app.include_router(canvas.router, prefix="/api", tags=["Warehouse Canvas"])
+app.include_router(canvas.ws_router, tags=["Warehouse Canvas (Realtime)"])
+
+
+@app.on_event("startup")
+async def _capture_loop_for_canvas_broadcasts() -> None:
+    """Give the canvas WS manager a handle to the main event loop so sync
+    PATCH handlers can schedule broadcasts onto it."""
+    ws_manager.set_main_loop(asyncio.get_running_loop())
 
 
 @app.get("/api/health")
