@@ -1,6 +1,6 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { Stage, Layer, Rect, Text, Line, Group, Label, Tag } from "react-konva";
+import { Stage, Layer, Rect, Text, Line, Group, Label, Tag, Transformer } from "react-konva";
 import type Konva from "konva";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useSearchParams } from "react-router-dom";
@@ -28,6 +28,7 @@ type Zone = {
   width_m: number; height_m: number;
   color_hex: string;
   is_storage?: boolean;
+  notes?: string;
 };
 
 type CanvasCustomer = {
@@ -149,6 +150,7 @@ export default function BodegaCanvas({ branchId }: { branchId: string }) {
 
   const stageRef = useRef<Konva.Stage>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const transformerRef = useRef<Konva.Transformer>(null);
   const roRafRef = useRef<number | null>(null);
   const lastPalletRef = useRef<Pallet | null>(null);
   const lastZoneRef = useRef<Zone | null>(null);
@@ -189,6 +191,14 @@ export default function BodegaCanvas({ branchId }: { branchId: string }) {
     refetchOnWindowFocus: false,
     enabled: !!branchId,
   });
+
+  const palletCountByZoneId = useMemo(() => {
+    const m = new Map<string, number>();
+    (data?.pallets ?? []).forEach(p => {
+      if (p.zone_id) m.set(p.zone_id, (m.get(p.zone_id) ?? 0) + 1);
+    });
+    return m;
+  }, [data?.pallets]);
 
   // Realtime sync — applies remote pallet.moved/stacked/unstacked events to the cache
   const liveStatus = useRealtimeCanvas(data?.layout.id, branchId);
@@ -513,6 +523,84 @@ export default function BodegaCanvas({ branchId }: { branchId: string }) {
   const displayPallet = selectedPallet ?? lastPalletRef.current;
   const displayZone   = selectedZone   ?? lastZoneRef.current;
 
+  // Attach/detach the Konva Transformer to whichever zone is selected.
+  // Runs when selection or zones list changes so the transformer tracks layout edits.
+  useEffect(() => {
+    const tr = transformerRef.current;
+    const stage = stageRef.current;
+    if (!tr || !stage) return;
+    if (layoutMode && selectedZoneId && data) {
+      const node = stage.findOne(`#zone-${selectedZoneId}`) as Konva.Group | undefined;
+      tr.nodes(node ? [node] : []);
+
+      // Immediately snap any out-of-bounds position back inside the warehouse floor.
+      // boundBoxFunc only constrains live drags; this fixes pre-existing bad data in the
+      // DB so the Transformer bounding box is always visually correct on first select.
+      if (node) {
+        const lw = data.layout.width_m * PX_PER_METER_DEFAULT;
+        const lh = data.layout.height_m * PX_PER_METER_DEFAULT;
+        const firstRect = node.findOne('Rect') as Konva.Rect | undefined;
+        const nw = Math.min(firstRect?.width() ?? 0, lw);
+        const nh = Math.min(firstRect?.height() ?? 0, lh);
+        const cx = Math.max(0, Math.min(node.x(), lw - nw));
+        const cy = Math.max(0, Math.min(node.y(), lh - nh));
+        const needsFix = cx !== node.x() || cy !== node.y() || nw !== (firstRect?.width() ?? nw) || nh !== (firstRect?.height() ?? nh);
+        if (needsFix) {
+          node.x(cx); node.y(cy);
+          const patch: Record<string, number> = { x_m: cx / PX_PER_METER_DEFAULT, y_m: cy / PX_PER_METER_DEFAULT };
+          if (nw !== (firstRect?.width() ?? nw)) patch.width_m  = nw / PX_PER_METER_DEFAULT;
+          if (nh !== (firstRect?.height() ?? nh)) patch.height_m = nh / PX_PER_METER_DEFAULT;
+          zoneUpdateMutation.mutate({ zoneId: selectedZoneId, body: patch });
+        }
+      }
+    } else {
+      tr.nodes([]);
+    }
+    tr.getLayer()?.batchDraw();
+  }, [layoutMode, selectedZoneId, data?.zones.length]);
+
+  // Handles Transformer resize/move end: persist new size AND position,
+  // clamped to warehouse bounds so zones can never overflow the floor.
+  // onTransformEnd fires for BOTH resize (scale != 1) and border-drag move.
+  const onZoneTransformEnd = useEvent(() => {
+    const stage = stageRef.current;
+    if (!stage || !selectedZoneId || !data) return;
+    const node = stage.findOne(`#zone-${selectedZoneId}`) as Konva.Group;
+    if (!node) return;
+    const zone = data.zones.find(z => z.id === selectedZoneId);
+    if (!zone) return;
+    const grid = data.layout.grid_size_m;
+    const layoutW = data.layout.width_m;
+    const layoutH = data.layout.height_m;
+
+    // Read the RECT child's pixel dimensions — these reflect the current React props
+    // (zone.width_m * PX_PER_METER_DEFAULT), which may be updated by a prior optimistic
+    // update. Using the Rect directly avoids stale-closure issues with zone.width_m.
+    const firstRect = node.findOne('Rect') as Konva.Rect | undefined;
+    const baseW = firstRect ? firstRect.width() : zone.width_m * PX_PER_METER_DEFAULT;
+    const baseH = firstRect ? firstRect.height() : zone.height_m * PX_PER_METER_DEFAULT;
+
+    const scaleX = node.scaleX();
+    const scaleY = node.scaleY();
+    const rawW_m = (baseW * scaleX) / PX_PER_METER_DEFAULT;
+    const rawH_m = (baseH * scaleY) / PX_PER_METER_DEFAULT;
+    const rawX_m = node.x() / PX_PER_METER_DEFAULT;
+    const rawY_m = node.y() / PX_PER_METER_DEFAULT;
+
+    // Snap, then clamp to warehouse bounds
+    const newW_m = Math.min(Math.max(grid, snapToGrid(rawW_m, grid)), layoutW);
+    const newH_m = Math.min(Math.max(grid, snapToGrid(rawH_m, grid)), layoutH);
+    const newX_m = Math.min(Math.max(0, snapToGrid(rawX_m, grid)), layoutW - newW_m);
+    const newY_m = Math.min(Math.max(0, snapToGrid(rawY_m, grid)), layoutH - newH_m);
+
+    node.scaleX(1);
+    node.scaleY(1);
+    node.x(newX_m * PX_PER_METER_DEFAULT);
+    node.y(newY_m * PX_PER_METER_DEFAULT);
+
+    zoneUpdateMutation.mutate({ zoneId: selectedZoneId, body: { width_m: newW_m, height_m: newH_m, x_m: newX_m, y_m: newY_m } });
+  });
+
   /* ── Loading / error ─────────────────────────────────────────────────── */
 
   if (isLoading) {
@@ -725,6 +813,7 @@ export default function BodegaCanvas({ branchId }: { branchId: string }) {
                   editing={layoutMode}
                   selected={selectedZoneId === z.id}
                   gridSize={data.layout.grid_size_m}
+                  palletCount={palletCountByZoneId.get(z.id) ?? 0}
                   onClick={onZoneClick}
                   onChange={onZoneChange}
                 />
@@ -749,6 +838,35 @@ export default function BodegaCanvas({ branchId }: { branchId: string }) {
                   />
                 );
               })}
+
+              {/* Canva-style transformer — attaches to selected zone in builder mode */}
+              {layoutMode && (
+                <Transformer
+                  ref={transformerRef}
+                  rotateEnabled={false}
+                  keepRatio={false}
+                  anchorFill="white"
+                  anchorStroke="#0ea5e9"
+                  anchorStrokeWidth={2}
+                  anchorSize={10}
+                  anchorCornerRadius={2}
+                  borderStroke="#0ea5e9"
+                  borderStrokeWidth={1.5}
+                  borderDash={[5, 4]}
+                  padding={4}
+                  onTransformEnd={onZoneTransformEnd}
+                  boundBoxFunc={(_, newBox) => {
+                    const layoutW = data.layout.width_m * PX_PER_METER_DEFAULT;
+                    const layoutH = data.layout.height_m * PX_PER_METER_DEFAULT;
+                    const grid = data.layout.grid_size_m * PX_PER_METER_DEFAULT;
+                    const w = Math.max(grid, Math.min(newBox.width, layoutW));
+                    const h = Math.max(grid, Math.min(newBox.height, layoutH));
+                    const x = Math.max(0, Math.min(newBox.x, layoutW - w));
+                    const y = Math.max(0, Math.min(newBox.y, layoutH - h));
+                    return { x, y, width: w, height: h, rotation: newBox.rotation };
+                  }}
+                />
+              )}
             </Layer>
           </Stage>
 
@@ -881,18 +999,21 @@ type ZoneShapeProps = {
   editing: boolean;
   selected: boolean;
   gridSize: number;
+  palletCount: number;
   onClick: (id: string) => void;
   onChange: (zoneId: string, patch: { x_m?: number; y_m?: number; width_m?: number; height_m?: number }) => void;
 };
 
 const ZoneShape = memo(function ZoneShape({
-  zone, editing, selected, gridSize, onClick, onChange,
+  zone, editing, selected, gridSize, palletCount, onClick, onChange,
 }: ZoneShapeProps) {
   const x = zone.x_m * PX_PER_METER_DEFAULT;
   const y = zone.y_m * PX_PER_METER_DEFAULT;
   const w = zone.width_m * PX_PER_METER_DEFAULT;
   const h = zone.height_m * PX_PER_METER_DEFAULT;
   const isStructural = zone.is_storage === false;
+
+  const hoverRectRef = useRef<Konva.Rect>(null);
 
   // Structural elements: solid fill (wall = dark, door = yellow, walkway = light grey).
   // Storage zones: dashed outline with translucent fill.
@@ -912,35 +1033,56 @@ const ZoneShape = memo(function ZoneShape({
     return null;
   })();
 
+  // Empty storage zones are invisible in view mode — they only appear in builder mode
+  // or when they contain pallets. This removes the "ghost rectangle" visual.
+  const isVisible = isStructural || editing || palletCount > 0;
+
   return (
     <Group
+      id={`zone-${zone.id}`}
       x={x} y={y}
-      draggable={editing}
+      draggable={editing && !selected}
+      listening={isVisible || editing}
       onClick={() => onClick(zone.id)}
       onTap={() => onClick(zone.id)}
       onMouseEnter={(e) => {
         const stage = e.target.getStage();
-        if (stage) stage.container().style.cursor = editing ? "move" : "default";
+        // grab cursor only when zone is directly draggable (unselected in edit mode)
+        if (stage) stage.container().style.cursor = (editing && !selected) ? "grab" : "default";
+        if (editing && !selected) {
+          hoverRectRef.current?.visible(true);
+          hoverRectRef.current?.getLayer()?.batchDraw();
+        }
       }}
       onMouseLeave={(e) => {
         const stage = e.target.getStage();
         if (stage) stage.container().style.cursor = "default";
+        hoverRectRef.current?.visible(false);
+        hoverRectRef.current?.getLayer()?.batchDraw();
+      }}
+      onDragStart={(e) => {
+        const stage = e.target.getStage();
+        if (stage) stage.container().style.cursor = "grabbing";
+        hoverRectRef.current?.visible(false);
       }}
       onDragEnd={(e) => {
+        const stage = e.target.getStage();
+        if (stage) stage.container().style.cursor = "grab";
         const nx_m = e.target.x() / PX_PER_METER_DEFAULT;
         const ny_m = e.target.y() / PX_PER_METER_DEFAULT;
-        const snappedX = snapToGrid(nx_m, gridSize);
-        const snappedY = snapToGrid(ny_m, gridSize);
+        const snappedX = Math.max(0, snapToGrid(nx_m, gridSize));
+        const snappedY = Math.max(0, snapToGrid(ny_m, gridSize));
         e.target.position({ x: snappedX * PX_PER_METER_DEFAULT, y: snappedY * PX_PER_METER_DEFAULT });
         onChange(zone.id, { x_m: snappedX, y_m: snappedY });
       }}
+      opacity={isVisible ? 1 : 0}
     >
       {structuralVisual ? (
         <Rect
           width={w} height={h}
           fill={structuralVisual.fill}
-          stroke={selected ? "#0ea5e9" : structuralVisual.stroke}
-          strokeWidth={selected ? 3 : 1.5}
+          stroke={structuralVisual.stroke}
+          strokeWidth={1.5}
           opacity={structuralVisual.opacity}
           dash={structuralVisual.dash}
           cornerRadius={zone.zone_type === "wall" ? 1 : 3}
@@ -951,54 +1093,54 @@ const ZoneShape = memo(function ZoneShape({
         <Rect
           width={w} height={h}
           fill={zone.color_hex}
-          opacity={0.12}
-          stroke={selected ? "#0ea5e9" : zone.color_hex}
-          strokeWidth={selected ? 3 : 2}
-          dash={selected ? undefined : [6, 4]}
-          cornerRadius={4}
+          opacity={palletCount === 0 ? 0.10 : 0.18}
+          stroke={zone.color_hex}
+          strokeWidth={1.5}
+          cornerRadius={6}
           perfectDrawEnabled={false}
           shadowForStrokeEnabled={false}
         />
       )}
 
-      {!isStructural && (
+      {/* Canva-style hover ring — visible only on hover in edit mode, hidden when selected (Transformer takes over) */}
+      <Rect
+        ref={hoverRectRef}
+        width={w} height={h}
+        fill="transparent"
+        stroke="#60a5fa"
+        strokeWidth={2}
+        cornerRadius={6}
+        visible={false}
+        listening={false}
+        perfectDrawEnabled={false}
+        shadowForStrokeEnabled={false}
+      />
+
+      {!isStructural && isVisible && (
         <>
-          <Text x={6} y={6} text={zone.name.toUpperCase()} fontSize={11} fontStyle="bold" fill={zone.color_hex} opacity={0.9} letterSpacing={1} />
-          <Text x={6} y={h - 18} text={zone.zone_type.replace(/_/g, " ")} fontSize={9} fill={zone.color_hex} opacity={0.6} />
+          <Text x={8} y={8} text={zone.name.toUpperCase()} fontSize={11} fontStyle="bold" fill={zone.color_hex} opacity={0.95} letterSpacing={1} listening={false} perfectDrawEnabled={false} />
+          <Text x={8} y={h - 19} text={zone.zone_type.replace(/_/g, " ")} fontSize={9} fill={zone.color_hex} opacity={0.55} listening={false} perfectDrawEnabled={false} />
+          {palletCount === 0 && editing && w > 80 && h > 60 && (
+            <Text
+              width={w} y={h / 2 - 8}
+              align="center"
+              text="EMPTY"
+              fontSize={10}
+              fontStyle="bold"
+              fill={zone.color_hex}
+              opacity={0.22}
+              letterSpacing={4}
+              listening={false}
+              perfectDrawEnabled={false}
+            />
+          )}
         </>
       )}
       {isStructural && w > 50 && h > 14 && (
         <Text width={w} height={h} align="center" verticalAlign="middle"
               text={zone.name} fontSize={Math.min(11, h * 0.6)}
               fontStyle="bold"
-              fill={zone.zone_type === "wall" ? "white" : "#0f172a"} opacity={0.7} listening={false} />
-      )}
-
-      {/* Resize handle (bottom-right) when editing */}
-      {editing && (
-        <Rect
-          x={w - 8} y={h - 8} width={12} height={12}
-          fill="#0ea5e9" stroke="white" strokeWidth={1.5} cornerRadius={2}
-          draggable
-          dragBoundFunc={(pos) => pos}
-          onDragMove={(e) => {
-            const cur = e.target;
-            const minPx = 0.5 * PX_PER_METER_DEFAULT;
-            const newW = Math.max(minPx, cur.x() + 8);
-            const newH = Math.max(minPx, cur.y() + 8);
-            cur.x(newW - 8);
-            cur.y(newH - 8);
-          }}
-          onDragEnd={(e) => {
-            const cur = e.target;
-            const newW_m = (cur.x() + 8) / PX_PER_METER_DEFAULT;
-            const newH_m = (cur.y() + 8) / PX_PER_METER_DEFAULT;
-            const snappedW = Math.max(0.5, snapToGrid(newW_m, gridSize));
-            const snappedH = Math.max(0.5, snapToGrid(newH_m, gridSize));
-            cur.position({ x: snappedW * PX_PER_METER_DEFAULT - 8, y: snappedH * PX_PER_METER_DEFAULT - 8 });
-            onChange(zone.id, { width_m: snappedW, height_m: snappedH });
-          }}
-        />
+              fill={zone.zone_type === "wall" ? "white" : "#0f172a"} opacity={0.7} listening={false} perfectDrawEnabled={false} />
       )}
     </Group>
   );
@@ -1776,7 +1918,7 @@ function BuilderToolbox({
       <div className="flex items-center gap-3 flex-wrap">
         <Hammer size={14} className="text-violet-600 dark:text-violet-400" />
         <span className="text-xs font-bold uppercase tracking-wide text-violet-900 dark:text-violet-200">Builder mode</span>
-        <span className="text-xs text-violet-700/70 dark:text-violet-300/80">Click a tool, then click the floor to drop it. Drag zones to move them. Drag the blue handle to resize.</span>
+        <span className="text-xs text-violet-700/70 dark:text-violet-300/80">Click a tool, then click the floor to drop it. Click a zone to select it — drag to move, drag handles to resize.</span>
         <button
           onClick={() => setShowLayoutSize(!showLayoutSize)}
           className={`ml-auto flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold ${

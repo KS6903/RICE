@@ -67,7 +67,20 @@
       "Bash(curl -sL https://raw.githubusercontent.com/emilkowalski/skill/main/skills/emil-design-eng/SKILL.md)",
       "Bash(mkdir -p d:/RICE/.claude/skills/emil-design-eng)",
       "Bash(curl -sL https://raw.githubusercontent.com/emilkowalski/skill/main/skills/emil-design-eng/SKILL.md -o d:/RICE/.claude/skills/emil-design-eng/SKILL.md)",
-      "Bash(npx tsc *)"
+      "Bash(npx tsc *)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:5173/)",
+      "Bash(node -e ' *)",
+      "Read(//tmp/**)",
+      "Read(//d/tmp/**)",
+      "Bash(PYTHONPATH=. python -c ' *)",
+      "Bash(python list_users.py)",
+      "Bash(curl -s http://localhost:5175)",
+      "Bash(python backend/list_users.py)",
+      "Bash(.venvScriptspython.exe -c ' *)",
+      "Bash(del d:\\\\RICE\\\\e2e_*.png d:\\\\RICE\\\\final_*.png d:\\\\RICE\\\\drag_*.png)"
+    ],
+    "additionalDirectories": [
+      "d:\\RICE"
     ]
   }
 }
