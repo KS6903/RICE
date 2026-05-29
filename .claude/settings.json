@@ -46,7 +46,28 @@
       "Bash(.venv/Scripts/python test_ws.py)",
       "Bash(PYTHONIOENCODING=utf-8 .venv/Scripts/python -c ' *)",
       "Bash(PYTHONIOENCODING=utf-8 .venv/Scripts/python cleanup_zones.py)",
-      "Bash(grep -n \"^function\\\\|^export\\\\|^const\\\\|/\\\\\\\\*\" d:/RICE/packages/web/src/components/canvas/BodegaCanvas.tsx)"
+      "Bash(grep -n \"^function\\\\|^export\\\\|^const\\\\|/\\\\\\\\*\" d:/RICE/packages/web/src/components/canvas/BodegaCanvas.tsx)",
+      "Bash(gh api *)",
+      "Bash(curl -s -o /dev/null -w \"HTTP %{http_code}\\\\n\" https://github.com/nextlevelbuilder/ui-ux-pro-max-skill)",
+      "Bash(curl -s -o /dev/null -w \"HTTP %{http_code}\\\\n\" https://github.com/nextlevelbuilder)",
+      "Bash(curl -s -o /dev/null -w \"HTTP %{http_code}\\\\n\" https://api.github.com/users/nextlevelbuilder)",
+      "WebFetch(domain:github.com)",
+      "Bash(curl -s -L https://raw.githubusercontent.com/nextlevelbuilder/ui-ux-pro-max-skill/main/README.md)",
+      "Bash(echo \"=== Project .claude/ ===\" *)",
+      "Read(//c/Users/Zhupin/.claude/**)",
+      "Bash(curl -s -w \"\\\\nHTTP %{http_code}\\\\n\" https://registry.npmjs.org/impeccable)",
+      "Bash(npx -y impeccable skills install)",
+      "Bash(npx -y impeccable skills install --force)",
+      "Bash(curl -s -w \"\\\\nHTTP %{http_code}\\\\n\" https://registry.npmjs.org/skills)",
+      "Bash(curl -s -o /dev/null -w \"github user emilkowalski: HTTP %{http_code}\\\\n\" https://api.github.com/users/emilkowalski)",
+      "Bash(curl -s -o /dev/null -w \"repo emilkowalski/skill: HTTP %{http_code}\\\\n\" https://api.github.com/repos/emilkowalski/skill)",
+      "Bash(curl -sL https://api.github.com/repos/emilkowalski/skill/contents)",
+      "Bash(curl -sL https://api.github.com/repos/emilkowalski/skill/contents/skills)",
+      "Bash(curl -sL https://api.github.com/repos/emilkowalski/skill/contents/skills/emil-design-eng)",
+      "Bash(curl -sL https://raw.githubusercontent.com/emilkowalski/skill/main/skills/emil-design-eng/SKILL.md)",
+      "Bash(mkdir -p d:/RICE/.claude/skills/emil-design-eng)",
+      "Bash(curl -sL https://raw.githubusercontent.com/emilkowalski/skill/main/skills/emil-design-eng/SKILL.md -o d:/RICE/.claude/skills/emil-design-eng/SKILL.md)",
+      "Bash(npx tsc *)"
     ]
   }
 }

@@ -109,6 +109,10 @@
   0%, 100% { background-position: 0% 50%; }
   50%      { background-position: 100% 50%; }
 }
+@keyframes panelIn {
+  from { opacity: 0; transform: translateX(12px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
 @keyframes grad-float {
   0%, 100% { transform: translateY(0); }
   50%      { transform: translateY(-6px); }
@@ -197,6 +201,7 @@
   .animate-grad-shift   { animation: grad-shift 8s ease infinite; }
   .animate-grad-float   { animation: grad-float 4s ease-in-out infinite; }
   .animate-grad-fade-up { animation: grad-fade-up 0.4s ease-out both; }
+  .animate-panel-in     { animation: panelIn 0.18s ease-out both; }
 
   /* ========== Buttons ========== */
   .btn-primary {

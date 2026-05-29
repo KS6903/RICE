@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Stage, Layer, Rect, Text, Line, Group, Label, Tag } from "react-konva";
 import type Konva from "konva";
@@ -130,6 +130,14 @@ function snapToGrid(value: number, gridSize: number): number {
   return Math.round(value / gridSize) * gridSize;
 }
 
+/** Stable callback wrapper — identity never changes, always calls the latest fn.
+ *  Lets us memo() children without losing access to fresh state in handlers. */
+function useEvent<T extends (...args: any[]) => any>(fn: T): T {
+  const ref = useRef(fn);
+  useEffect(() => { ref.current = fn; });
+  return useCallback(((...args: any[]) => ref.current(...args)) as T, []);
+}
+
 /* ──────────────────────────────────────────────────────────────────────────── */
 /* Main component                                                                */
 /* ──────────────────────────────────────────────────────────────────────────── */
@@ -141,6 +149,9 @@ export default function BodegaCanvas({ branchId }: { branchId: string }) {
 
   const stageRef = useRef<Konva.Stage>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const roRafRef = useRef<number | null>(null);
+  const lastPalletRef = useRef<Pallet | null>(null);
+  const lastZoneRef = useRef<Zone | null>(null);
   const [stageSize, setStageSize] = useState({ width: 900, height: 600 });
   const [zoom, setZoom] = useState(1);
   const [stagePos, setStagePos] = useState({ x: 40, y: 40 });
@@ -210,16 +221,24 @@ export default function BodegaCanvas({ branchId }: { branchId: string }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedPalletId, data?.layout.id]);
 
-  // Resize observer
+  // Resize observer — rAF-throttled so Stage width updates every frame during
+  // the CSS width transition on the side panel, producing smooth canvas resizing.
   useEffect(() => {
     if (!containerRef.current) return;
     const el = containerRef.current;
     const ro = new ResizeObserver(() => {
-      setStageSize({ width: el.clientWidth, height: Math.max(520, el.clientHeight) });
+      if (roRafRef.current !== null) return;
+      roRafRef.current = requestAnimationFrame(() => {
+        roRafRef.current = null;
+        setStageSize({ width: el.clientWidth, height: Math.max(520, el.clientHeight) });
+      });
     });
     ro.observe(el);
     setStageSize({ width: el.clientWidth, height: Math.max(520, el.clientHeight) });
-    return () => ro.disconnect();
+    return () => {
+      ro.disconnect();
+      if (roRafRef.current !== null) cancelAnimationFrame(roRafRef.current);
+    };
   }, []);
 
   // Auto-fit on first data load
@@ -243,9 +262,12 @@ export default function BodegaCanvas({ branchId }: { branchId: string }) {
     });
   };
 
+  // Wheel zoom: mutate Konva directly + batchDraw for 60fps, then sync React state
+  // at most once per frame so the UI (zoom %, Stage props) doesn't lag, but each
+  // wheel tick doesn't trigger a full Stage subtree re-render.
+  const wheelRafRef = useRef<number | null>(null);
   const handleWheel = (e: Konva.KonvaEventObject<WheelEvent>) => {
     e.evt.preventDefault();
-    const scaleBy = 1.08;
     const stage = e.target.getStage();
     if (!stage) return;
     const oldScale = stage.scaleX();
@@ -255,14 +277,29 @@ export default function BodegaCanvas({ branchId }: { branchId: string }) {
       x: (pointer.x - stage.x()) / oldScale,
       y: (pointer.y - stage.y()) / oldScale,
     };
+    const scaleBy = 1.08;
     const direction = e.evt.deltaY > 0 ? -1 : 1;
     const newScale = Math.max(0.2, Math.min(4, direction > 0 ? oldScale * scaleBy : oldScale / scaleBy));
-    setZoom(newScale);
-    setStagePos({
+    const newPos = {
       x: pointer.x - mousePointTo.x * newScale,
       y: pointer.y - mousePointTo.y * newScale,
+    };
+
+    stage.scale({ x: newScale, y: newScale });
+    stage.position(newPos);
+    stage.batchDraw();
+
+    if (wheelRafRef.current !== null) return;
+    wheelRafRef.current = requestAnimationFrame(() => {
+      wheelRafRef.current = null;
+      setZoom(stage.scaleX());
+      setStagePos({ x: stage.x(), y: stage.y() });
     });
   };
+
+  useEffect(() => () => {
+    if (wheelRafRef.current !== null) cancelAnimationFrame(wheelRafRef.current);
+  }, []);
 
   /* ── Mutations ───────────────────────────────────────────────────────── */
 
@@ -418,31 +455,41 @@ export default function BodegaCanvas({ branchId }: { branchId: string }) {
 
   /* ── Drop handling: did we land on another pallet? If so, prompt stack. ── */
 
-  const handlePalletDragEnd = (pallet: Pallet, dropX_m: number, dropY_m: number) => {
+  // Stable callbacks so PalletShape can be memo()'d. useEvent keeps the identity
+  // fixed while always invoking the latest closure (so we see fresh `data`).
+  const onPalletClick = useCallback((id: string) => setSelectedPalletId(id), []);
+
+  const onPalletDragEnd = useEvent((palletId: string, dropX_m: number, dropY_m: number) => {
     if (!data) return;
+    const pallet = data.pallets.find(p => p.id === palletId);
+    if (!pallet) return;
     const gridSize = data.layout.grid_size_m;
     const snappedX = snapToGrid(dropX_m, gridSize);
     const snappedY = snapToGrid(dropY_m, gridSize);
 
-    // Center of the dropped pallet (for overlap detection)
     const dropCx = snappedX + pallet.width_m / 2;
     const dropCy = snappedY + pallet.depth_m / 2;
 
     const overlapped = data.pallets.find(p => {
       if (p.id === pallet.id) return false;
-      // Check if drop-center falls inside the other pallet's footprint
       return dropCx >= p.x_m && dropCx <= p.x_m + p.width_m
           && dropCy >= p.y_m && dropCy <= p.y_m + p.depth_m;
     });
 
     if (overlapped) {
-      // Open confirm modal — user explicitly approves stack
       setStackPrompt({ child: pallet, parent: overlapped });
       return;
     }
 
     moveMutation.mutate({ palletId: pallet.id, x_m: snappedX, y_m: snappedY });
-  };
+  });
+
+  const onZoneClick = useEvent((id: string) => {
+    if (layoutMode) setSelectedZoneId(id);
+  });
+  const onZoneChange = useEvent((zoneId: string, patch: { x_m?: number; y_m?: number; width_m?: number; height_m?: number }) => {
+    zoneUpdateMutation.mutate({ zoneId, body: patch });
+  });
 
   const confirmStack = () => {
     if (!stackPrompt) return;
@@ -454,6 +501,17 @@ export default function BodegaCanvas({ branchId }: { branchId: string }) {
     () => data?.pallets.find(p => p.id === selectedPalletId) || null,
     [data, selectedPalletId]
   );
+  if (selectedPallet) lastPalletRef.current = selectedPallet;
+
+  // Keep zone ref live so ZoneEditor can finish its closing animation with real data
+  const selectedZone = useMemo(
+    () => (layoutMode && selectedZoneId ? data?.zones.find(z => z.id === selectedZoneId) ?? null : null),
+    [data, layoutMode, selectedZoneId]
+  );
+  if (selectedZone) lastZoneRef.current = selectedZone;
+
+  const displayPallet = selectedPallet ?? lastPalletRef.current;
+  const displayZone   = selectedZone   ?? lastZoneRef.current;
 
   /* ── Loading / error ─────────────────────────────────────────────────── */
 
@@ -607,7 +665,9 @@ export default function BodegaCanvas({ branchId }: { branchId: string }) {
         />
       )}
 
-      <div className="flex gap-4">
+      {/* No gap-4 on the parent — side panels control their own left spacing so the
+          CSS width transition drives the flex layout and the canvas resizes smoothly. */}
+      <div className="flex">
         <div
           ref={containerRef}
           className="flex-1 rounded-2xl overflow-hidden ring-1 ring-slate-200 dark:ring-slate-700 bg-stone-100 dark:bg-slate-950/60"
@@ -665,8 +725,8 @@ export default function BodegaCanvas({ branchId }: { branchId: string }) {
                   editing={layoutMode}
                   selected={selectedZoneId === z.id}
                   gridSize={data.layout.grid_size_m}
-                  onClick={() => layoutMode && setSelectedZoneId(z.id)}
-                  onChange={(patch) => zoneUpdateMutation.mutate({ zoneId: z.id, body: patch })}
+                  onClick={onZoneClick}
+                  onChange={onZoneChange}
                 />
               ))}
               {showHeatmap && <HeatmapOverlay zones={data.zones} pallets={data.pallets} />}
@@ -684,8 +744,8 @@ export default function BodegaCanvas({ branchId }: { branchId: string }) {
                     draggable={editMode && !layoutMode}
                     gridSize={data.layout.grid_size_m}
                     clientColor={ownerColor}
-                    onClick={() => setSelectedPalletId(p.id)}
-                    onDragEnd={(x, y) => handlePalletDragEnd(p, x, y)}
+                    onClick={onPalletClick}
+                    onDragEnd={onPalletDragEnd}
                   />
                 );
               })}
@@ -703,27 +763,48 @@ export default function BodegaCanvas({ branchId }: { branchId: string }) {
           )}
         </div>
 
-        {selectedPallet && (
-          <PalletInspector
-            pallet={selectedPallet}
-            onClose={() => setSelectedPalletId(null)}
-            onUnstack={() => unstackMutation.mutate({ palletId: selectedPallet.id })}
-            canEdit={canEdit}
-          />
+        {/* Pallet inspector — mounted once ever selected, width-transitions open/closed.
+            displayPallet keeps last data alive during the closing animation. */}
+        {displayPallet && (
+          <div
+            className="shrink-0 overflow-hidden transition-[width,opacity] duration-200 ease-out"
+            style={{
+              width: selectedPallet ? 373 : 0,
+              opacity: selectedPallet ? 1 : 0,
+            }}
+          >
+            <div className="flex h-full gap-4 pl-4 animate-panel-in">
+              <div className="w-px self-stretch bg-slate-200 dark:bg-slate-700 rounded-full shrink-0" />
+              <PalletInspector
+                pallet={displayPallet}
+                onClose={() => setSelectedPalletId(null)}
+                onUnstack={() => unstackMutation.mutate({ palletId: displayPallet.id })}
+                canEdit={canEdit}
+              />
+            </div>
+          </div>
         )}
 
-        {layoutMode && selectedZoneId && (() => {
-          const z = data.zones.find(z => z.id === selectedZoneId);
-          if (!z) return null;
-          return (
-            <ZoneEditor
-              zone={z}
-              onClose={() => setSelectedZoneId(null)}
-              onChange={(patch) => zoneUpdateMutation.mutate({ zoneId: z.id, body: patch })}
-              onDelete={() => zoneDeleteMutation.mutate(z.id)}
-            />
-          );
-        })()}
+        {/* Zone editor — same pattern */}
+        {displayZone && (
+          <div
+            className="shrink-0 overflow-hidden transition-[width,opacity] duration-200 ease-out"
+            style={{
+              width: selectedZone ? 353 : 0,
+              opacity: selectedZone ? 1 : 0,
+            }}
+          >
+            <div className="flex h-full gap-4 pl-4 animate-panel-in">
+              <div className="w-px self-stretch bg-slate-200 dark:bg-slate-700 rounded-full shrink-0" />
+              <ZoneEditor
+                zone={displayZone}
+                onClose={() => setSelectedZoneId(null)}
+                onChange={(patch) => zoneUpdateMutation.mutate({ zoneId: displayZone.id, body: patch })}
+                onDelete={() => zoneDeleteMutation.mutate(displayZone.id)}
+              />
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Stack confirmation modal */}
@@ -762,46 +843,51 @@ export default function BodegaCanvas({ branchId }: { branchId: string }) {
 /* Sub-components                                                                */
 /* ──────────────────────────────────────────────────────────────────────────── */
 
-function BodegaFloor({ layout }: { layout: CanvasData["layout"] }) {
+const BodegaFloor = memo(function BodegaFloor({ layout }: { layout: CanvasData["layout"] }) {
   const w = layout.width_m * PX_PER_METER_DEFAULT;
   const h = layout.height_m * PX_PER_METER_DEFAULT;
   const gridStep = layout.grid_size_m * PX_PER_METER_DEFAULT;
-  const lines = [];
 
-  for (let x = 0; x <= w; x += gridStep) {
-    lines.push(
-      <Line key={`vx-${x}`} points={[x, 0, x, h]} stroke="#e5e7eb" strokeWidth={x % (gridStep * 2) === 0 ? 0.8 : 0.4} opacity={0.6} />
-    );
-  }
-  for (let y = 0; y <= h; y += gridStep) {
-    lines.push(
-      <Line key={`hy-${y}`} points={[0, y, w, y]} stroke="#e5e7eb" strokeWidth={y % (gridStep * 2) === 0 ? 0.8 : 0.4} opacity={0.6} />
-    );
-  }
+  const lines = useMemo(() => {
+    const out: React.ReactNode[] = [];
+    for (let x = 0; x <= w; x += gridStep) {
+      out.push(
+        <Line key={`vx-${x}`} points={[x, 0, x, h]} stroke="#e5e7eb" strokeWidth={x % (gridStep * 2) === 0 ? 0.8 : 0.4} opacity={0.6} listening={false} perfectDrawEnabled={false} shadowForStrokeEnabled={false} />
+      );
+    }
+    for (let y = 0; y <= h; y += gridStep) {
+      out.push(
+        <Line key={`hy-${y}`} points={[0, y, w, y]} stroke="#e5e7eb" strokeWidth={y % (gridStep * 2) === 0 ? 0.8 : 0.4} opacity={0.6} listening={false} perfectDrawEnabled={false} shadowForStrokeEnabled={false} />
+      );
+    }
+    return out;
+  }, [w, h, gridStep]);
 
   return (
     <>
-      <Rect x={0} y={0} width={w} height={h} fill="#fafaf9" />
+      <Rect x={0} y={0} width={w} height={h} fill="#fafaf9" listening={false} perfectDrawEnabled={false} shadowForStrokeEnabled={false} />
       {lines}
-      <Rect x={0} y={0} width={w} height={h} stroke="#475569" strokeWidth={6} listening={false} />
-      <Rect x={w / 2 - 50} y={h - 4} width={100} height={4} fill="#475569" />
-      <Rect x={w / 2 - 56} y={h + 4} width={112} height={10} fill="#facc15" stroke="#a16207" strokeWidth={1} />
-      <Text x={w / 2 - 80} y={h + 20} text="LOADING DOCK / PINTO" fontSize={11} fontStyle="bold" fill="#475569" />
-      <Text x={20} y={-26} text={`BODEGA · ${layout.name.toUpperCase()}`} fontSize={14} fontStyle="bold" fill="#64748b" letterSpacing={2} />
+      <Rect x={0} y={0} width={w} height={h} stroke="#475569" strokeWidth={6} listening={false} perfectDrawEnabled={false} shadowForStrokeEnabled={false} />
+      <Rect x={w / 2 - 50} y={h - 4} width={100} height={4} fill="#475569" listening={false} perfectDrawEnabled={false} shadowForStrokeEnabled={false} />
+      <Rect x={w / 2 - 56} y={h + 4} width={112} height={10} fill="#facc15" stroke="#a16207" strokeWidth={1} listening={false} perfectDrawEnabled={false} shadowForStrokeEnabled={false} />
+      <Text x={w / 2 - 80} y={h + 20} text="LOADING DOCK / PINTO" fontSize={11} fontStyle="bold" fill="#475569" listening={false} perfectDrawEnabled={false} />
+      <Text x={20} y={-26} text={`BODEGA · ${layout.name.toUpperCase()}`} fontSize={14} fontStyle="bold" fill="#64748b" letterSpacing={2} listening={false} perfectDrawEnabled={false} />
     </>
   );
-}
+});
 
-function ZoneShape({
-  zone, editing, selected, gridSize, onClick, onChange,
-}: {
+type ZoneShapeProps = {
   zone: Zone;
   editing: boolean;
   selected: boolean;
   gridSize: number;
-  onClick: () => void;
-  onChange: (patch: { x_m?: number; y_m?: number; width_m?: number; height_m?: number }) => void;
-}) {
+  onClick: (id: string) => void;
+  onChange: (zoneId: string, patch: { x_m?: number; y_m?: number; width_m?: number; height_m?: number }) => void;
+};
+
+const ZoneShape = memo(function ZoneShape({
+  zone, editing, selected, gridSize, onClick, onChange,
+}: ZoneShapeProps) {
   const x = zone.x_m * PX_PER_METER_DEFAULT;
   const y = zone.y_m * PX_PER_METER_DEFAULT;
   const w = zone.width_m * PX_PER_METER_DEFAULT;
@@ -830,8 +916,8 @@ function ZoneShape({
     <Group
       x={x} y={y}
       draggable={editing}
-      onClick={onClick}
-      onTap={onClick}
+      onClick={() => onClick(zone.id)}
+      onTap={() => onClick(zone.id)}
       onMouseEnter={(e) => {
         const stage = e.target.getStage();
         if (stage) stage.container().style.cursor = editing ? "move" : "default";
@@ -846,7 +932,7 @@ function ZoneShape({
         const snappedX = snapToGrid(nx_m, gridSize);
         const snappedY = snapToGrid(ny_m, gridSize);
         e.target.position({ x: snappedX * PX_PER_METER_DEFAULT, y: snappedY * PX_PER_METER_DEFAULT });
-        onChange({ x_m: snappedX, y_m: snappedY });
+        onChange(zone.id, { x_m: snappedX, y_m: snappedY });
       }}
     >
       {structuralVisual ? (
@@ -858,6 +944,8 @@ function ZoneShape({
           opacity={structuralVisual.opacity}
           dash={structuralVisual.dash}
           cornerRadius={zone.zone_type === "wall" ? 1 : 3}
+          perfectDrawEnabled={false}
+          shadowForStrokeEnabled={false}
         />
       ) : (
         <Rect
@@ -868,6 +956,8 @@ function ZoneShape({
           strokeWidth={selected ? 3 : 2}
           dash={selected ? undefined : [6, 4]}
           cornerRadius={4}
+          perfectDrawEnabled={false}
+          shadowForStrokeEnabled={false}
         />
       )}
 
@@ -906,17 +996,15 @@ function ZoneShape({
             const snappedW = Math.max(0.5, snapToGrid(newW_m, gridSize));
             const snappedH = Math.max(0.5, snapToGrid(newH_m, gridSize));
             cur.position({ x: snappedW * PX_PER_METER_DEFAULT - 8, y: snappedH * PX_PER_METER_DEFAULT - 8 });
-            onChange({ width_m: snappedW, height_m: snappedH });
+            onChange(zone.id, { width_m: snappedW, height_m: snappedH });
           }}
         />
       )}
     </Group>
   );
-}
+});
 
-function PalletShape({
-  pallet, selected, highlighted, dimmed, draggable, gridSize, clientColor, onClick, onDragEnd,
-}: {
+type PalletShapeProps = {
   pallet: Pallet;
   selected: boolean;
   highlighted: boolean;
@@ -924,58 +1012,72 @@ function PalletShape({
   draggable: boolean;
   gridSize: number;
   clientColor: string | null;
-  onClick: () => void;
-  onDragEnd: (x_m: number, y_m: number) => void;
-}) {
+  onClick: (id: string) => void;
+  onDragEnd: (id: string, x_m: number, y_m: number) => void;
+};
+
+const PalletShape = memo(function PalletShape({
+  pallet, selected, highlighted, dimmed, draggable, gridSize, clientColor, onClick, onDragEnd,
+}: PalletShapeProps) {
   const x = pallet.x_m * PX_PER_METER_DEFAULT;
   const y = pallet.y_m * PX_PER_METER_DEFAULT;
   const w = pallet.width_m * PX_PER_METER_DEFAULT;
   const h = pallet.depth_m * PX_PER_METER_DEFAULT;
-  const [hovered, setHovered] = useState(false);
-  const [isDragging, setIsDragging] = useState(false);
   const fill = AGING_FILL[pallet.aging_status];
   const variety = pallet.batches[0]?.variety_code || "—";
-  const groupOpacity = isDragging ? 0.7 : dimmed ? 0.25 : 1;
+  const baseOpacity = dimmed ? 0.25 : 1;
   const strokeColor = highlighted
     ? "#fbbf24"           // amber-400, FIFO highlight
     : selected
       ? "#0ea5e9"
-      : hovered
-        ? "#0f172a"
-        : "#1f2937";
+      : "#1f2937";
   const strokeW = highlighted ? 4 : selected ? 3 : 1;
+
+  // Refs let hover/drag mutate Konva directly without triggering React renders.
+  const groupRef = useRef<Konva.Group>(null);
+  const rectRef = useRef<Konva.Rect>(null);
 
   return (
     <Group
+      ref={groupRef}
       x={x}
       y={y}
       draggable={draggable}
-      onClick={onClick}
-      onTap={onClick}
-      onDragStart={() => setIsDragging(true)}
+      opacity={baseOpacity}
+      onClick={() => onClick(pallet.id)}
+      onTap={() => onClick(pallet.id)}
+      onDragStart={() => {
+        const g = groupRef.current;
+        if (g) { g.opacity(0.7); g.getLayer()?.batchDraw(); }
+      }}
       onDragEnd={(e) => {
-        setIsDragging(false);
         const newX_m = e.target.x() / PX_PER_METER_DEFAULT;
         const newY_m = e.target.y() / PX_PER_METER_DEFAULT;
         const snappedX = snapToGrid(newX_m, gridSize);
         const snappedY = snapToGrid(newY_m, gridSize);
         e.target.position({ x: snappedX * PX_PER_METER_DEFAULT, y: snappedY * PX_PER_METER_DEFAULT });
-        onDragEnd(snappedX, snappedY);
+        const g = groupRef.current;
+        if (g) { g.opacity(baseOpacity); g.getLayer()?.batchDraw(); }
+        onDragEnd(pallet.id, snappedX, snappedY);
       }}
       onMouseEnter={(e) => {
-        setHovered(true);
         const stage = e.target.getStage();
         if (stage) stage.container().style.cursor = draggable ? "grab" : "pointer";
+        if (!selected && !highlighted) {
+          const r = rectRef.current;
+          if (r) { r.stroke("#0f172a"); r.getLayer()?.batchDraw(); }
+        }
       }}
       onMouseLeave={(e) => {
-        setHovered(false);
         const stage = e.target.getStage();
         if (stage) stage.container().style.cursor = "default";
+        if (!selected && !highlighted) {
+          const r = rectRef.current;
+          if (r) { r.stroke("#1f2937"); r.getLayer()?.batchDraw(); }
+        }
       }}
-      opacity={groupOpacity}
     >
-      <Rect x={1.5} y={2} width={w} height={h} fill="black" opacity={0.18} cornerRadius={2} listening={false} />
-      {/* Client color halo — sits outside the aging fill, only visible if client has a color */}
+      <Rect x={1.5} y={2} width={w} height={h} fill="black" opacity={0.18} cornerRadius={2} listening={false} perfectDrawEnabled={false} shadowForStrokeEnabled={false} />
       {clientColor && (
         <Rect
           x={-2.5} y={-2.5} width={w + 5} height={h + 5}
@@ -984,9 +1086,12 @@ function PalletShape({
           strokeWidth={2.5}
           cornerRadius={4}
           listening={false}
+          perfectDrawEnabled={false}
+          shadowForStrokeEnabled={false}
         />
       )}
       <Rect
+        ref={rectRef}
         width={w}
         height={h}
         fill={fill}
@@ -994,12 +1099,14 @@ function PalletShape({
         stroke={strokeColor}
         strokeWidth={strokeW}
         opacity={0.92}
+        perfectDrawEnabled={false}
+        shadowForStrokeEnabled={false}
         shadowColor={highlighted ? "#fbbf24" : undefined}
         shadowBlur={highlighted ? 12 : 0}
         shadowOpacity={highlighted ? 0.9 : 0}
       />
-      <Line points={[2, h * 0.33, w - 2, h * 0.33]} stroke="white" strokeWidth={0.6} opacity={0.4} listening={false} />
-      <Line points={[2, h * 0.66, w - 2, h * 0.66]} stroke="white" strokeWidth={0.6} opacity={0.4} listening={false} />
+      <Line points={[2, h * 0.33, w - 2, h * 0.33]} stroke="white" strokeWidth={0.6} opacity={0.4} listening={false} perfectDrawEnabled={false} shadowForStrokeEnabled={false} />
+      <Line points={[2, h * 0.66, w - 2, h * 0.66]} stroke="white" strokeWidth={0.6} opacity={0.4} listening={false} perfectDrawEnabled={false} shadowForStrokeEnabled={false} />
       {w > 30 && h > 15 && (
         <Text
           width={w} height={h}
@@ -1009,6 +1116,7 @@ function PalletShape({
           fontStyle="bold"
           fill="white"
           listening={false}
+          perfectDrawEnabled={false}
         />
       )}
       {pallet.z_layer > 0 && (
@@ -1019,7 +1127,7 @@ function PalletShape({
       )}
     </Group>
   );
-}
+});
 
 function LiveBadge({ status }: { status: "offline" | "connecting" | "live" }) {
   const cfg = {
@@ -1302,7 +1410,7 @@ function HeatmapOverlay({ zones, pallets }: { zones: Zone[]; pallets: Pallet[] }
         const pct = Math.round(ratio * 100);
         return (
           <Group key={`heat-${z.id}`} x={x} y={y} listening={false}>
-            <Rect width={w} height={h} fill={colorFor(ratio)} cornerRadius={4} />
+            <Rect width={w} height={h} fill={colorFor(ratio)} cornerRadius={4} perfectDrawEnabled={false} shadowForStrokeEnabled={false} />
             <Label x={w - 50} y={4}>
               <Tag fill="#0f172a" cornerRadius={3} opacity={0.85} />
               <Text
