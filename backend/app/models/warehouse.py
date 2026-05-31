@@ -10,13 +10,14 @@ from .base import TimestampMixin, now_utc
 
 
 class WarehouseLayout(Base, TimestampMixin):
-    """One spatial layout per branch. Dimensions in meters."""
+    """Spatial layout for a branch warehouse. A branch can have multiple layouts."""
     __tablename__ = "warehouse_layouts"
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    branch_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("branches.id", ondelete="CASCADE"), unique=True, nullable=False)
+    branch_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("branches.id", ondelete="CASCADE"), nullable=False)
     company_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("companies.id", ondelete="CASCADE"), nullable=False)
     name: Mapped[str] = mapped_column(String(150), nullable=False)
+    is_default: Mapped[bool] = mapped_column(default=True, nullable=False)
     width_m: Mapped[Decimal] = mapped_column(Numeric(8, 2), default=30, nullable=False)
     height_m: Mapped[Decimal] = mapped_column(Numeric(8, 2), default=20, nullable=False)
     grid_size_m: Mapped[Decimal] = mapped_column(Numeric(4, 2), default=Decimal("0.5"), nullable=False)
@@ -63,8 +64,11 @@ class Pallet(Base, TimestampMixin):
     y_m: Mapped[Decimal] = mapped_column(Numeric(8, 2), nullable=False)
     z_layer: Mapped[int] = mapped_column(SmallInteger, default=0, nullable=False)
     stack_parent_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("pallets.id"))
-    width_m: Mapped[Decimal] = mapped_column(Numeric(4, 2), default=Decimal("1.2"), nullable=False)
-    depth_m: Mapped[Decimal] = mapped_column(Numeric(4, 2), default=Decimal("0.8"), nullable=False)
+    # Footprint defaults to a Euro-style 2.0 m × 1.2 m so pallets read at a glance
+    # on a commercial-sized 30 × 120 m floor (the old 1.2 × 0.8 was too tiny to
+    # spot at the natural zoom). Users can still resize via the canvas Transformer.
+    width_m: Mapped[Decimal] = mapped_column(Numeric(4, 2), default=Decimal("2.0"), nullable=False)
+    depth_m: Mapped[Decimal] = mapped_column(Numeric(4, 2), default=Decimal("1.2"), nullable=False)
     sack_count: Mapped[int] = mapped_column(Integer, nullable=False)
     weight_kg: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
     status: Mapped[str] = mapped_column(String(20), default="in_storage", nullable=False)

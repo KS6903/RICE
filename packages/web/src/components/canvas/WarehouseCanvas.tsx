@@ -11,7 +11,7 @@ import {
   Building2, Package, Wheat, Clock, MapPin, Calendar, User as UserIcon,
   Pencil, Eye, Layers, History, ArrowUp, ArrowDown, ChevronRight,
   Wifi, WifiOff, ArrowDownToLine, Flame, FileBarChart2, Link2, Check,
-  Hammer, Plus, Trash2, Move, Filter, DoorOpen, Square,
+  Hammer, Plus, Trash2, Move, Filter, DoorOpen, Square, Locate, HelpCircle,
 } from "lucide-react";
 import { useRealtimeCanvas } from "./useRealtimeCanvas";
 import { DispatchModal } from "./DispatchModal";
@@ -143,7 +143,17 @@ function useEvent<T extends (...args: any[]) => any>(fn: T): T {
 /* Main component                                                                */
 /* ──────────────────────────────────────────────────────────────────────────── */
 
-export default function BodegaCanvas({ branchId }: { branchId: string }) {
+export default function WarehouseCanvas({
+  branchId, layoutId, onNewLayout,
+}: {
+  branchId: string;
+  layoutId?: string;
+  /** Optional callback wired from the layout tab bar — when provided, the
+   *  slim header renders a "+ New layout" button next to the mode toggles. */
+  onNewLayout?: () => void;
+}) {
+  // Cache key: specific layoutId when available, otherwise falls back to branchId
+  const cacheKey = layoutId || branchId;
   const qc = useQueryClient();
   const userRole = useAuthStore((s) => s.user?.role ?? "");
   const canEdit = WRITE_ROLES.has(userRole);
@@ -151,9 +161,15 @@ export default function BodegaCanvas({ branchId }: { branchId: string }) {
   const stageRef = useRef<Konva.Stage>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const transformerRef = useRef<Konva.Transformer>(null);
+  const palletTransformerRef = useRef<Konva.Transformer>(null);
   const roRafRef = useRef<number | null>(null);
   const lastPalletRef = useRef<Pallet | null>(null);
   const lastZoneRef = useRef<Zone | null>(null);
+  // Hot-path cache — read by Transformer boundBoxFunc on every transform frame
+  // so it doesn't have to scan `data.zones` and re-multiply layout dims for each tick.
+  const transformBoundsRef = useRef<{ isStructural: boolean; layoutW_px: number; layoutH_px: number }>({
+    isStructural: false, layoutW_px: 0, layoutH_px: 0,
+  });
   const [stageSize, setStageSize] = useState({ width: 900, height: 600 });
   const [zoom, setZoom] = useState(1);
   const [stagePos, setStagePos] = useState({ x: 40, y: 40 });
@@ -175,7 +191,7 @@ export default function BodegaCanvas({ branchId }: { branchId: string }) {
   const [showLayoutSize, setShowLayoutSize] = useState(false);
 
   const { data: customers = [] } = useQuery<CanvasCustomer[]>({
-    queryKey: ["canvas-customers", branchId],
+    queryKey: ["canvas-customers", cacheKey],
     queryFn: () => api.get(`/canvas/customers?branch_id=${branchId}`).then(r => r.data),
     refetchOnWindowFocus: false,
   });
@@ -185,9 +201,13 @@ export default function BodegaCanvas({ branchId }: { branchId: string }) {
     return m;
   }, [customers]);
 
+  const canvasUrl = layoutId
+    ? `/warehouses/${branchId}/canvas?layout_id=${layoutId}`
+    : `/warehouses/${branchId}/canvas`;
+
   const { data, isLoading, error } = useQuery<CanvasData>({
-    queryKey: ["canvas", branchId],
-    queryFn: () => api.get(`/warehouses/${branchId}/canvas`).then(r => r.data),
+    queryKey: ["canvas", cacheKey],
+    queryFn: () => api.get(canvasUrl).then(r => r.data),
     refetchOnWindowFocus: false,
     enabled: !!branchId,
   });
@@ -201,7 +221,7 @@ export default function BodegaCanvas({ branchId }: { branchId: string }) {
   }, [data?.pallets]);
 
   // Realtime sync — applies remote pallet.moved/stacked/unstacked events to the cache
-  const liveStatus = useRealtimeCanvas(data?.layout.id, branchId);
+  const liveStatus = useRealtimeCanvas(data?.layout.id, cacheKey);
 
   // Deep-link sync: read ?pallet=PL-... on load → select the matching pallet
   useEffect(() => {
@@ -240,11 +260,11 @@ export default function BodegaCanvas({ branchId }: { branchId: string }) {
       if (roRafRef.current !== null) return;
       roRafRef.current = requestAnimationFrame(() => {
         roRafRef.current = null;
-        setStageSize({ width: el.clientWidth, height: Math.max(520, el.clientHeight) });
+        setStageSize({ width: el.clientWidth, height: Math.max(600, el.clientHeight) });
       });
     });
     ro.observe(el);
-    setStageSize({ width: el.clientWidth, height: Math.max(520, el.clientHeight) });
+    setStageSize({ width: el.clientWidth, height: Math.max(600, el.clientHeight) });
     return () => {
       ro.disconnect();
       if (roRafRef.current !== null) cancelAnimationFrame(roRafRef.current);
@@ -272,11 +292,13 @@ export default function BodegaCanvas({ branchId }: { branchId: string }) {
     });
   };
 
-  // Wheel zoom: mutate Konva directly + batchDraw for 60fps, then sync React state
-  // at most once per frame so the UI (zoom %, Stage props) doesn't lag, but each
-  // wheel tick doesn't trigger a full Stage subtree re-render.
+  // Pinch-to-zoom only (trackpad two-finger spread/retract). Regular wheel
+  // scroll must NEVER zoom — it should just be a no-op on the canvas.
+  // Browsers report pinch gestures as `wheel` events with `ctrlKey: true`,
+  // and ordinary scroll as `ctrlKey: false`. We bail out early for the latter.
   const wheelRafRef = useRef<number | null>(null);
   const handleWheel = (e: Konva.KonvaEventObject<WheelEvent>) => {
+    if (!e.evt.ctrlKey) return;          // <- ignore plain scroll
     e.evt.preventDefault();
     const stage = e.target.getStage();
     if (!stage) return;
@@ -287,18 +309,16 @@ export default function BodegaCanvas({ branchId }: { branchId: string }) {
       x: (pointer.x - stage.x()) / oldScale,
       y: (pointer.y - stage.y()) / oldScale,
     };
-    const scaleBy = 1.08;
+    const scaleBy = 1.04;
     const direction = e.evt.deltaY > 0 ? -1 : 1;
     const newScale = Math.max(0.2, Math.min(4, direction > 0 ? oldScale * scaleBy : oldScale / scaleBy));
     const newPos = {
       x: pointer.x - mousePointTo.x * newScale,
       y: pointer.y - mousePointTo.y * newScale,
     };
-
     stage.scale({ x: newScale, y: newScale });
     stage.position(newPos);
     stage.batchDraw();
-
     if (wheelRafRef.current !== null) return;
     wheelRafRef.current = requestAnimationFrame(() => {
       wheelRafRef.current = null;
@@ -306,10 +326,10 @@ export default function BodegaCanvas({ branchId }: { branchId: string }) {
       setStagePos({ x: stage.x(), y: stage.y() });
     });
   };
-
   useEffect(() => () => {
     if (wheelRafRef.current !== null) cancelAnimationFrame(wheelRafRef.current);
   }, []);
+
 
   /* ── Mutations ───────────────────────────────────────────────────────── */
 
@@ -319,9 +339,9 @@ export default function BodegaCanvas({ branchId }: { branchId: string }) {
     mutationFn: ({ palletId, x_m, y_m }: { palletId: string; x_m: number; y_m: number }) =>
       api.patch(`/pallets/${palletId}/move`, { x_m, y_m }).then(r => r.data),
     onMutate: async ({ palletId, x_m, y_m }) => {
-      await qc.cancelQueries({ queryKey: ["canvas", branchId] });
-      const previous = qc.getQueryData<CanvasData>(["canvas", branchId]);
-      qc.setQueryData<CanvasData>(["canvas", branchId], (old) => {
+      await qc.cancelQueries({ queryKey: ["canvas", cacheKey] });
+      const previous = qc.getQueryData<CanvasData>(["canvas", cacheKey]);
+      qc.setQueryData<CanvasData>(["canvas", cacheKey], (old) => {
         if (!old) return old;
         return {
           ...old,
@@ -331,13 +351,13 @@ export default function BodegaCanvas({ branchId }: { branchId: string }) {
       return { previous };
     },
     onError: (err: any, _vars, ctx) => {
-      if (ctx?.previous) qc.setQueryData(["canvas", branchId], ctx.previous);
+      if (ctx?.previous) qc.setQueryData(["canvas", cacheKey], ctx.previous);
       const detail = err?.response?.data?.detail || "Could not move pallet.";
       setErrorBanner(detail);
       setTimeout(() => setErrorBanner(null), 4000);
     },
     onSuccess: (updated: Pallet) => {
-      qc.setQueryData<CanvasData>(["canvas", branchId], (old) => {
+      qc.setQueryData<CanvasData>(["canvas", cacheKey], (old) => {
         if (!old) return old;
         return { ...old, pallets: old.pallets.map(p => p.id === updated.id ? updated : p) };
       });
@@ -348,7 +368,7 @@ export default function BodegaCanvas({ branchId }: { branchId: string }) {
     mutationFn: ({ palletId, parentId }: { palletId: string; parentId: string }) =>
       api.patch(`/pallets/${palletId}/stack`, { parent_pallet_id: parentId }).then(r => r.data),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["canvas", branchId] });
+      qc.invalidateQueries({ queryKey: ["canvas", cacheKey] });
     },
     onError: (err: any) => {
       const detail = err?.response?.data?.detail || "Could not stack pallet.";
@@ -361,12 +381,43 @@ export default function BodegaCanvas({ branchId }: { branchId: string }) {
     mutationFn: ({ palletId, x_m, y_m }: { palletId: string; x_m?: number; y_m?: number }) =>
       api.patch(`/pallets/${palletId}/unstack`, { x_m, y_m }).then(r => r.data),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["canvas", branchId] });
+      qc.invalidateQueries({ queryKey: ["canvas", cacheKey] });
     },
     onError: (err: any) => {
       const detail = err?.response?.data?.detail || "Could not unstack pallet.";
       setErrorBanner(detail);
       setTimeout(() => setErrorBanner(null), 4000);
+    },
+  });
+
+  // Pallet resize — optimistic so the Konva Transformer settles instantly,
+  // server reconciles afterward.
+  const palletResizeMutation = useMutation({
+    mutationFn: ({ palletId, width_m, depth_m }: { palletId: string; width_m: number; depth_m: number }) =>
+      api.patch(`/pallets/${palletId}/resize`, { width_m, depth_m }).then(r => r.data),
+    onMutate: async ({ palletId, width_m, depth_m }) => {
+      await qc.cancelQueries({ queryKey: ["canvas", cacheKey] });
+      const previous = qc.getQueryData<CanvasData>(["canvas", cacheKey]);
+      qc.setQueryData<CanvasData>(["canvas", cacheKey], (old) => {
+        if (!old) return old;
+        return {
+          ...old,
+          pallets: old.pallets.map(p => p.id === palletId ? { ...p, width_m, depth_m } : p),
+        };
+      });
+      return { previous };
+    },
+    onError: (err: any, _vars, ctx) => {
+      if (ctx?.previous) qc.setQueryData(["canvas", cacheKey], ctx.previous);
+      const detail = err?.response?.data?.detail || "Could not resize pallet.";
+      setErrorBanner(detail);
+      setTimeout(() => setErrorBanner(null), 4000);
+    },
+    onSuccess: (updated: Pallet) => {
+      qc.setQueryData<CanvasData>(["canvas", cacheKey], (old) => {
+        if (!old) return old;
+        return { ...old, pallets: old.pallets.map(p => p.id === updated.id ? updated : p) };
+      });
     },
   });
 
@@ -378,10 +429,14 @@ export default function BodegaCanvas({ branchId }: { branchId: string }) {
   };
 
   const layoutPatchMutation = useMutation({
-    mutationFn: (body: { name?: string; width_m?: number; height_m?: number; grid_size_m?: number }) =>
-      api.patch(`/warehouses/${branchId}/layout`, body).then(r => r.data),
+    mutationFn: (body: { name?: string; width_m?: number; height_m?: number; grid_size_m?: number }) => {
+      const url = layoutId
+        ? `/warehouses/${branchId}/layout?layout_id=${layoutId}`
+        : `/warehouses/${branchId}/layout`;
+      return api.patch(url, body).then(r => r.data);
+    },
     onSuccess: (updated: any) => {
-      qc.setQueryData<CanvasData>(["canvas", branchId], (old) => {
+      qc.setQueryData<CanvasData>(["canvas", cacheKey], (old) => {
         if (!old) return old;
         return { ...old, layout: { ...old.layout, ...updated } };
       });
@@ -390,13 +445,17 @@ export default function BodegaCanvas({ branchId }: { branchId: string }) {
   });
 
   const zoneCreateMutation = useMutation({
-    mutationFn: (body: any) =>
-      api.post(`/warehouses/${branchId}/zones`, body).then(r => r.data),
+    mutationFn: (body: any) => {
+      const url = layoutId
+        ? `/warehouses/${branchId}/zones?layout_id=${layoutId}`
+        : `/warehouses/${branchId}/zones`;
+      return api.post(url, body).then(r => r.data);
+    },
     onMutate: async (body: any) => {
       // Optimistic: tack a temp zone on so the user sees their drag immediately
-      await qc.cancelQueries({ queryKey: ["canvas", branchId] });
+      await qc.cancelQueries({ queryKey: ["canvas", cacheKey] });
       const tmpId = `_tmp_${Date.now()}`;
-      qc.setQueryData<CanvasData>(["canvas", branchId], (old) => {
+      qc.setQueryData<CanvasData>(["canvas", cacheKey], (old) => {
         if (!old) return old;
         return {
           ...old,
@@ -412,14 +471,14 @@ export default function BodegaCanvas({ branchId }: { branchId: string }) {
       return { tmpId };
     },
     onSuccess: (zone: Zone, _vars, ctx: any) => {
-      qc.setQueryData<CanvasData>(["canvas", branchId], (old) => {
+      qc.setQueryData<CanvasData>(["canvas", cacheKey], (old) => {
         if (!old) return old;
         return { ...old, zones: old.zones.map(z => z.id === ctx?.tmpId ? zone : z) };
       });
       setSelectedZoneId(zone.id);
     },
     onError: (err: any, _vars, ctx: any) => {
-      qc.setQueryData<CanvasData>(["canvas", branchId], (old) => {
+      qc.setQueryData<CanvasData>(["canvas", cacheKey], (old) => {
         if (!old) return old;
         return { ...old, zones: old.zones.filter(z => z.id !== ctx?.tmpId) };
       });
@@ -431,22 +490,22 @@ export default function BodegaCanvas({ branchId }: { branchId: string }) {
     mutationFn: ({ zoneId, body }: { zoneId: string; body: any }) =>
       api.patch(`/zones/${zoneId}`, body).then(r => r.data),
     onMutate: async ({ zoneId, body }) => {
-      await qc.cancelQueries({ queryKey: ["canvas", branchId] });
-      const previous = qc.getQueryData<CanvasData>(["canvas", branchId]);
-      qc.setQueryData<CanvasData>(["canvas", branchId], (old) => {
+      await qc.cancelQueries({ queryKey: ["canvas", cacheKey] });
+      const previous = qc.getQueryData<CanvasData>(["canvas", cacheKey]);
+      qc.setQueryData<CanvasData>(["canvas", cacheKey], (old) => {
         if (!old) return old;
         return { ...old, zones: old.zones.map(z => z.id === zoneId ? { ...z, ...body } : z) };
       });
       return { previous };
     },
     onSuccess: (zone: Zone) => {
-      qc.setQueryData<CanvasData>(["canvas", branchId], (old) => {
+      qc.setQueryData<CanvasData>(["canvas", cacheKey], (old) => {
         if (!old) return old;
         return { ...old, zones: old.zones.map(z => z.id === zone.id ? zone : z) };
       });
     },
     onError: (err: any, _vars, ctx: any) => {
-      if (ctx?.previous) qc.setQueryData(["canvas", branchId], ctx.previous);
+      if (ctx?.previous) qc.setQueryData(["canvas", cacheKey], ctx.previous);
       flashError(err?.response?.data?.detail || "Could not update zone.");
     },
   });
@@ -454,7 +513,7 @@ export default function BodegaCanvas({ branchId }: { branchId: string }) {
   const zoneDeleteMutation = useMutation({
     mutationFn: (zoneId: string) => api.delete(`/zones/${zoneId}`).then(r => r.data),
     onSuccess: (_data, zoneId) => {
-      qc.setQueryData<CanvasData>(["canvas", branchId], (old) => {
+      qc.setQueryData<CanvasData>(["canvas", cacheKey], (old) => {
         if (!old) return old;
         return { ...old, zones: old.zones.filter(z => z.id !== zoneId) };
       });
@@ -533,24 +592,35 @@ export default function BodegaCanvas({ branchId }: { branchId: string }) {
       const node = stage.findOne(`#zone-${selectedZoneId}`) as Konva.Group | undefined;
       tr.nodes(node ? [node] : []);
 
-      // Immediately snap any out-of-bounds position back inside the warehouse floor.
-      // boundBoxFunc only constrains live drags; this fixes pre-existing bad data in the
-      // DB so the Transformer bounding box is always visually correct on first select.
+      // For storage zones: snap any out-of-bounds position back inside the floor.
+      // Structural zones (door, wall, walkway, loading_dock) are intentionally
+      // allowed outside the boundary, so skip the correction for them.
       if (node) {
-        const lw = data.layout.width_m * PX_PER_METER_DEFAULT;
-        const lh = data.layout.height_m * PX_PER_METER_DEFAULT;
-        const firstRect = node.findOne('Rect') as Konva.Rect | undefined;
-        const nw = Math.min(firstRect?.width() ?? 0, lw);
-        const nh = Math.min(firstRect?.height() ?? 0, lh);
-        const cx = Math.max(0, Math.min(node.x(), lw - nw));
-        const cy = Math.max(0, Math.min(node.y(), lh - nh));
-        const needsFix = cx !== node.x() || cy !== node.y() || nw !== (firstRect?.width() ?? nw) || nh !== (firstRect?.height() ?? nh);
-        if (needsFix) {
-          node.x(cx); node.y(cy);
-          const patch: Record<string, number> = { x_m: cx / PX_PER_METER_DEFAULT, y_m: cy / PX_PER_METER_DEFAULT };
-          if (nw !== (firstRect?.width() ?? nw)) patch.width_m  = nw / PX_PER_METER_DEFAULT;
-          if (nh !== (firstRect?.height() ?? nh)) patch.height_m = nh / PX_PER_METER_DEFAULT;
-          zoneUpdateMutation.mutate({ zoneId: selectedZoneId, body: patch });
+        const selectedZone = data.zones.find(z => z.id === selectedZoneId);
+        const isStructural = selectedZone?.is_storage === false;
+        // Refresh the per-frame cache read by Transformer.boundBoxFunc — avoids
+        // re-finding the zone and re-multiplying layout dims on every transform tick.
+        transformBoundsRef.current = {
+          isStructural,
+          layoutW_px: data.layout.width_m * PX_PER_METER_DEFAULT,
+          layoutH_px: data.layout.height_m * PX_PER_METER_DEFAULT,
+        };
+        if (!isStructural) {
+          const lw = data.layout.width_m * PX_PER_METER_DEFAULT;
+          const lh = data.layout.height_m * PX_PER_METER_DEFAULT;
+          const firstRect = node.findOne('Rect') as Konva.Rect | undefined;
+          const nw = Math.min(firstRect?.width() ?? 0, lw);
+          const nh = Math.min(firstRect?.height() ?? 0, lh);
+          const cx = Math.max(0, Math.min(node.x(), lw - nw));
+          const cy = Math.max(0, Math.min(node.y(), lh - nh));
+          const needsFix = cx !== node.x() || cy !== node.y() || nw !== (firstRect?.width() ?? nw) || nh !== (firstRect?.height() ?? nh);
+          if (needsFix) {
+            node.x(cx); node.y(cy);
+            const patch: Record<string, number> = { x_m: cx / PX_PER_METER_DEFAULT, y_m: cy / PX_PER_METER_DEFAULT };
+            if (nw !== (firstRect?.width() ?? nw)) patch.width_m  = nw / PX_PER_METER_DEFAULT;
+            if (nh !== (firstRect?.height() ?? nh)) patch.height_m = nh / PX_PER_METER_DEFAULT;
+            zoneUpdateMutation.mutate({ zoneId: selectedZoneId, body: patch });
+          }
         }
       }
     } else {
@@ -558,6 +628,49 @@ export default function BodegaCanvas({ branchId }: { branchId: string }) {
     }
     tr.getLayer()?.batchDraw();
   }, [layoutMode, selectedZoneId, data?.zones.length]);
+
+  // ── Pallet resize Transformer ─────────────────────────────────────────────
+  // Attach the pallet-only Transformer to the currently selected pallet when
+  // we're in edit mode (so users can resize a pallet by dragging its corners).
+  useEffect(() => {
+    const tr = palletTransformerRef.current;
+    const stage = stageRef.current;
+    if (!tr || !stage) return;
+    if (editMode && !layoutMode && selectedPalletId && data) {
+      const node = stage.findOne(`#pallet-${selectedPalletId}`) as Konva.Group | undefined;
+      tr.nodes(node ? [node] : []);
+    } else {
+      tr.nodes([]);
+    }
+    tr.getLayer()?.batchDraw();
+  }, [editMode, layoutMode, selectedPalletId, data?.pallets.length]);
+
+  const onPalletTransformEnd = useEvent(() => {
+    const stage = stageRef.current;
+    if (!stage || !selectedPalletId || !data) return;
+    const node = stage.findOne(`#pallet-${selectedPalletId}`) as Konva.Group;
+    if (!node) return;
+    const p = data.pallets.find(x => x.id === selectedPalletId);
+    if (!p) return;
+
+    const sx = node.scaleX();
+    const sy = node.scaleY();
+    let new_w_m = (p.width_m * sx);
+    let new_d_m = (p.depth_m * sy);
+
+    // Clamp to backend's accepted range so we don't 400 on submit.
+    new_w_m = Math.max(0.4, Math.min(6.0, new_w_m));
+    new_d_m = Math.max(0.4, Math.min(6.0, new_d_m));
+    new_w_m = Math.round(new_w_m * 100) / 100;
+    new_d_m = Math.round(new_d_m * 100) / 100;
+
+    // Reset scale so the new size persists via props (width/depth) instead of scale.
+    node.scaleX(1);
+    node.scaleY(1);
+    node.getLayer()?.batchDraw();
+
+    palletResizeMutation.mutate({ palletId: selectedPalletId, width_m: new_w_m, depth_m: new_d_m });
+  });
 
   // Handles Transformer resize/move end: persist new size AND position,
   // clamped to warehouse bounds so zones can never overflow the floor.
@@ -587,11 +700,15 @@ export default function BodegaCanvas({ branchId }: { branchId: string }) {
     const rawX_m = node.x() / PX_PER_METER_DEFAULT;
     const rawY_m = node.y() / PX_PER_METER_DEFAULT;
 
-    // Snap, then clamp to warehouse bounds
-    const newW_m = Math.min(Math.max(grid, snapToGrid(rawW_m, grid)), layoutW);
-    const newH_m = Math.min(Math.max(grid, snapToGrid(rawH_m, grid)), layoutH);
-    const newX_m = Math.min(Math.max(0, snapToGrid(rawX_m, grid)), layoutW - newW_m);
-    const newY_m = Math.min(Math.max(0, snapToGrid(rawY_m, grid)), layoutH - newH_m);
+    // Structural zones (door, wall, walkway, loading_dock) may live anywhere;
+    // storage zones are clamped inside the warehouse floor.
+    const isStructural = zone.is_storage === false;
+    const newW_m = Math.max(grid, snapToGrid(rawW_m, grid));
+    const newH_m = Math.max(grid, snapToGrid(rawH_m, grid));
+    const snappedX = snapToGrid(rawX_m, grid);
+    const snappedY = snapToGrid(rawY_m, grid);
+    const newX_m = isStructural ? snappedX : Math.min(Math.max(0, snappedX), layoutW - newW_m);
+    const newY_m = isStructural ? snappedY : Math.min(Math.max(0, snappedY), layoutH - newH_m);
 
     node.scaleX(1);
     node.scaleY(1);
@@ -605,7 +722,7 @@ export default function BodegaCanvas({ branchId }: { branchId: string }) {
 
   if (isLoading) {
     return (
-      <div className="card flex items-center justify-center h-[520px] gap-2 text-secondary">
+      <div className="card flex items-center justify-center h-[600px] gap-2 text-secondary">
         <Loader2 size={18} className="animate-spin" /> Loading warehouse canvas…
       </div>
     );
@@ -620,105 +737,87 @@ export default function BodegaCanvas({ branchId }: { branchId: string }) {
   }
 
   return (
-    <div className="space-y-4">
-      {/* Toolbar */}
-      <div className="card !p-3 flex items-center gap-3 flex-wrap">
-        <div className="flex items-center gap-2">
-          <Building2 size={16} className="text-slate-500" />
-          <span className="font-semibold text-primary">{data.layout.name}</span>
-          <span className="text-xs text-muted">{data.layout.width_m}m × {data.layout.height_m}m</span>
+    <div className="space-y-3">
+      {/* ─── Slim header bar — name + dimensions + live + mode toggles ─── */}
+      <div data-testid="warehouse-header" className="glass rounded-2xl px-4 py-2.5 flex items-center gap-3">
+        <div className="flex items-center gap-2.5 min-w-0">
+          <span className="shrink-0 w-7 h-7 rounded-lg bg-grad-brand flex items-center justify-center shadow-grad-glow">
+            <Building2 size={14} className="text-white" />
+          </span>
+          <h2 className="font-semibold text-primary text-sm truncate">{data.layout.name}</h2>
+          <span className="shrink-0 text-[11px] font-medium text-secondary bg-slate-100 dark:bg-slate-800/70 px-2 py-0.5 rounded-md tabular-nums">
+            {data.layout.width_m}m × {data.layout.height_m}m
+          </span>
+          {/* Orientation chip — tiny floor-plan thumbnail + label */}
+          {(() => {
+            const w = Number(data.layout.width_m);
+            const h = Number(data.layout.height_m);
+            const orient: "Vertical" | "Horizontal" | "Square" =
+              w === h ? "Square" : (h > w ? "Vertical" : "Horizontal");
+            // Scale to a 22×14 thumbnail max
+            const scale = Math.min(22 / w, 14 / h);
+            const tw = Math.max(4, Math.round(w * scale));
+            const th = Math.max(4, Math.round(h * scale));
+            return (
+              <span
+                data-testid="warehouse-orientation"
+                className="shrink-0 inline-flex items-center gap-1.5 text-[11px] font-semibold text-secondary bg-slate-100 dark:bg-slate-800/70 px-2 py-0.5 rounded-md"
+                title={`${orient} orientation`}
+              >
+                <span className="inline-flex items-center justify-center w-[26px] h-[16px] bg-slate-200/70 dark:bg-slate-700/60 rounded ring-1 ring-inset ring-slate-300/60 dark:ring-slate-600/50">
+                  <span
+                    className="bg-emerald-400/80 ring-1 ring-emerald-500/60 rounded-[2px]"
+                    style={{ width: tw, height: th }}
+                  />
+                </span>
+                {orient}
+              </span>
+            );
+          })()}
           <LiveBadge status={liveStatus} />
         </div>
 
-        <div className="ml-auto flex items-center gap-2 text-xs">
-          <AgingPill label="Fresh"    color={AGING_FILL.fresh}    count={data.summary.by_aging.fresh} />
-          <AgingPill label="Warning"  color={AGING_FILL.warning}  count={data.summary.by_aging.warning} />
-          <AgingPill label="Critical" color={AGING_FILL.critical} count={data.summary.by_aging.critical} />
-          <AgingPill label="Expired"  color={AGING_FILL.expired}  count={data.summary.by_aging.expired} />
-        </div>
-
-        <button
-          onClick={() => setShowDispatch(true)}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold ring-1 ring-emerald-500/30 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-950/30 dark:text-emerald-300 dark:hover:bg-emerald-950/50 transition-colors"
-          title="Find oldest pallets to dispatch (FIFO)"
-        >
-          <ArrowDownToLine size={13} /> FIFO
-        </button>
-
-        <button
-          onClick={() => setShowHeatmap(h => !h)}
-          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
-            showHeatmap
-              ? "bg-rose-600 text-white shadow-sm hover:bg-rose-700"
-              : "ring-1 ring-rose-500/30 bg-rose-50 text-rose-700 hover:bg-rose-100 dark:bg-rose-950/30 dark:text-rose-300"
-          }`}
-          title="Show zone utilization heatmap"
-        >
-          <Flame size={13} /> Heatmap
-        </button>
-
-        <button
-          onClick={() => setShowAging(true)}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold ring-1 ring-amber-500/30 bg-amber-50 text-amber-700 hover:bg-amber-100 dark:bg-amber-950/30 dark:text-amber-300 dark:hover:bg-amber-950/50 transition-colors"
-          title="Aging breakdown by zone"
-        >
-          <FileBarChart2 size={13} /> Report
-        </button>
-
-        {highlightedIds.length > 0 && (
-          <button
-            onClick={() => setHighlightedIds([])}
-            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold ring-1 ring-amber-500/40 bg-amber-50 text-amber-700 hover:bg-amber-100 dark:bg-amber-950/30 dark:text-amber-300"
-            title="Clear highlight"
-          >
-            <XIcon size={12} /> Clear ({highlightedIds.length})
-          </button>
-        )}
-
-        {customers.length > 0 && (
-          <CustomerFilter
-            customers={customers}
-            selected={selectedClientNames}
-            onChange={setSelectedClientNames}
-          />
-        )}
-
         {canEdit && (
-          <>
+          <div className="ml-auto flex items-center gap-1.5">
+            {onNewLayout && (
+              <button
+                data-testid="header-new-layout"
+                onClick={onNewLayout}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold ring-1 ring-emerald-400 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-500/10 transition-all"
+                title="Create a new warehouse layout"
+              >
+                <Plus size={12} />
+                New layout
+              </button>
+            )}
             <button
               onClick={() => { setEditMode(m => !m); if (!editMode) setLayoutMode(false); }}
               disabled={layoutMode}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all disabled:opacity-40 disabled:cursor-not-allowed ${
                 editMode
                   ? "bg-sky-600 text-white shadow-sm hover:bg-sky-700"
                   : "ring-1 ring-slate-300 dark:ring-slate-600 text-secondary hover:bg-slate-100 dark:hover:bg-slate-700/40"
               }`}
-              title={editMode ? "Switch to view mode" : "Enable drag-to-move pallets"}
+              title={editMode ? "Click to stop moving and just look" : "Click to start moving pallets around"}
             >
-              {editMode ? <Pencil size={13} /> : <Eye size={13} />}
-              {editMode ? "Edit pallets" : "View mode"}
+              {editMode ? <Pencil size={12} /> : <Eye size={12} />}
+              {editMode ? "Move pallets" : "View only"}
             </button>
             <button
               onClick={() => { setLayoutMode(m => !m); setEditMode(false); setPendingZoneType(null); setSelectedZoneId(null); }}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
                 layoutMode
                   ? "bg-violet-600 text-white shadow-sm hover:bg-violet-700"
                   : "ring-1 ring-violet-300 dark:ring-violet-600 text-violet-700 dark:text-violet-300 hover:bg-violet-50 dark:hover:bg-violet-950/40"
               }`}
-              title={layoutMode ? "Exit Builder Mode" : "Edit zones, walls, and warehouse dimensions"}
+              title={layoutMode ? "Click to stop editing the floor plan" : "Click to draw walls, doors, and zones"}
             >
-              <Hammer size={13} />
-              {layoutMode ? "Builder ON" : "Edit Layout"}
+              <Hammer size={12} />
+              {layoutMode ? "Editing floor plan" : "Edit floor plan"}
             </button>
-          </>
+            <HelpButton />
+          </div>
         )}
-
-        <div className="flex items-center gap-1">
-          <button onClick={() => setZoom(z => Math.min(4, z * 1.2))} className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700/40 text-secondary" title="Zoom in"><ZoomIn size={15} /></button>
-          <button onClick={() => setZoom(z => Math.max(0.2, z / 1.2))} className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700/40 text-secondary" title="Zoom out"><ZoomOut size={15} /></button>
-          <button onClick={fitToView} className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700/40 text-secondary" title="Fit to view"><Maximize2 size={15} /></button>
-          <span className="text-xs text-muted ml-1 tabular-nums">{(zoom * 100).toFixed(0)}%</span>
-        </div>
       </div>
 
       {/* Error banner (drag rejection, stack-limit, etc.) */}
@@ -729,12 +828,12 @@ export default function BodegaCanvas({ branchId }: { branchId: string }) {
         </div>
       )}
 
-      {/* Edit-mode hint */}
+      {/* Edit-mode hint — plain-language reminder of how Move mode works */}
       {editMode && (
         <div className="card !p-3 bg-sky-50 dark:bg-sky-950/30 border-sky-200 dark:border-sky-800/60 flex items-center gap-2 text-sm">
           <Pencil size={13} className="text-sky-600 dark:text-sky-400 shrink-0" />
           <span className="text-sky-900 dark:text-sky-100">
-            Edit mode is on. Drag pallets to reposition. Drop one on another to <strong>stack</strong>. Snaps to {data.layout.grid_size_m}m grid.
+            <strong>Move mode is on.</strong> Drag any pallet to a new spot. Drop one pallet on top of another to <strong>stack</strong> them. Click a pallet to see details or to resize it.
           </span>
         </div>
       )}
@@ -758,8 +857,8 @@ export default function BodegaCanvas({ branchId }: { branchId: string }) {
       <div className="flex">
         <div
           ref={containerRef}
-          className="flex-1 rounded-2xl overflow-hidden ring-1 ring-slate-200 dark:ring-slate-700 bg-stone-100 dark:bg-slate-950/60"
-          style={{ minHeight: 520, height: "calc(100vh - 280px)" }}
+          className="relative flex-1 rounded-2xl overflow-hidden ring-1 ring-slate-700 dark:ring-slate-800 bg-slate-800 dark:bg-slate-900"
+          style={{ minHeight: 600, height: "calc(100vh - 200px)" }}
         >
           <Stage
             ref={stageRef}
@@ -790,11 +889,12 @@ export default function BodegaCanvas({ branchId }: { branchId: string }) {
                 const y_m = (pos.y - stage.y()) / stage.scaleY() / PX_PER_METER_DEFAULT;
                 const grid = data.layout.grid_size_m;
                 const def = DEFAULT_NEW_ZONE_SIZE[pendingZoneType] ?? { w: 4, h: 3 };
+                const isStructuralType = STRUCTURAL_TYPES.has(pendingZoneType);
                 zoneCreateMutation.mutate({
                   zone_type: pendingZoneType,
                   name: defaultZoneName(pendingZoneType),
-                  x_m: snapToGrid(Math.max(0, x_m - def.w / 2), grid),
-                  y_m: snapToGrid(Math.max(0, y_m - def.h / 2), grid),
+                  x_m: snapToGrid(isStructuralType ? x_m - def.w / 2 : Math.max(0, x_m - def.w / 2), grid),
+                  y_m: snapToGrid(isStructuralType ? y_m - def.h / 2 : Math.max(0, y_m - def.h / 2), grid),
                   width_m: def.w,
                   height_m: def.h,
                 });
@@ -803,7 +903,7 @@ export default function BodegaCanvas({ branchId }: { branchId: string }) {
             }}
           >
             <Layer listening={false}>
-              <BodegaFloor layout={data.layout} />
+              <WarehouseFloor layout={data.layout} />
             </Layer>
             <Layer>
               {data.zones.map(z => (
@@ -856,27 +956,180 @@ export default function BodegaCanvas({ branchId }: { branchId: string }) {
                   padding={4}
                   onTransformEnd={onZoneTransformEnd}
                   boundBoxFunc={(_, newBox) => {
-                    const layoutW = data.layout.width_m * PX_PER_METER_DEFAULT;
-                    const layoutH = data.layout.height_m * PX_PER_METER_DEFAULT;
+                    // Hot path — runs on every transform tick (~60Hz). Read pre-computed
+                    // cache from transformBoundsRef instead of scanning data.zones each
+                    // frame, so resizing stays at a steady 60 fps even on dense layouts.
                     const grid = data.layout.grid_size_m * PX_PER_METER_DEFAULT;
-                    const w = Math.max(grid, Math.min(newBox.width, layoutW));
-                    const h = Math.max(grid, Math.min(newBox.height, layoutH));
-                    const x = Math.max(0, Math.min(newBox.x, layoutW - w));
-                    const y = Math.max(0, Math.min(newBox.y, layoutH - h));
-                    return { x, y, width: w, height: h, rotation: newBox.rotation };
+                    const { isStructural, layoutW_px, layoutH_px } = transformBoundsRef.current;
+                    const w = Math.max(grid, newBox.width);
+                    const h = Math.max(grid, newBox.height);
+                    if (isStructural) {
+                      return { x: newBox.x, y: newBox.y, width: w, height: h, rotation: newBox.rotation };
+                    }
+                    const x = Math.max(0, Math.min(newBox.x, layoutW_px - w));
+                    const y = Math.max(0, Math.min(newBox.y, layoutH_px - h));
+                    return { x, y, width: Math.min(w, layoutW_px), height: Math.min(h, layoutH_px), rotation: newBox.rotation };
+                  }}
+                />
+              )}
+
+              {/* Pallet resize transformer — only active in edit mode (not builder mode),
+                  attached via useEffect to the selected pallet's Group node. */}
+              {editMode && !layoutMode && (
+                <Transformer
+                  ref={palletTransformerRef}
+                  rotateEnabled={false}
+                  keepRatio={false}
+                  anchorFill="white"
+                  anchorStroke="#0ea5e9"
+                  anchorStrokeWidth={2}
+                  anchorSize={8}
+                  anchorCornerRadius={2}
+                  borderStroke="#0ea5e9"
+                  borderStrokeWidth={1.5}
+                  borderDash={[4, 3]}
+                  padding={2}
+                  onTransformEnd={onPalletTransformEnd}
+                  boundBoxFunc={(_, newBox) => {
+                    // Clamp to ~6 m max footprint expressed in pixels at the default scale.
+                    const MIN_PX = 0.4 * PX_PER_METER_DEFAULT;
+                    const MAX_PX = 6.0 * PX_PER_METER_DEFAULT;
+                    const w = Math.max(MIN_PX, Math.min(MAX_PX, newBox.width));
+                    const h = Math.max(MIN_PX, Math.min(MAX_PX, newBox.height));
+                    return { ...newBox, width: w, height: h };
                   }}
                 />
               )}
             </Layer>
           </Stage>
 
-          {data.pallets.length === 0 && (
+          {/* ──────────────────────────────────────────────────────────────── */}
+          {/* Floating chrome — single unified top bar, Canva-style            */}
+          {/* All controls live in one floating row aligned with the FIFO box. */}
+          {/* Wrapper is click-through; only the interactive controls capture  */}
+          {/* pointer events so the canvas still receives drops underneath.    */}
+          {/* ──────────────────────────────────────────────────────────────── */}
+          <div data-testid="warehouse-floating-bar" className="absolute top-3 left-3 right-3 z-10 pointer-events-none flex justify-center">
             <div
-              className="absolute inset-x-0 bottom-6 mx-auto max-w-md rounded-xl bg-white/95 dark:bg-slate-800/95 px-5 py-3 text-sm text-secondary text-center shadow-lg ring-1 ring-slate-200 dark:ring-slate-700 pointer-events-none"
-              style={{ position: "relative", marginTop: -60 }}
+              data-testid="warehouse-action-bar"
+              className="glass-strong rounded-2xl p-1.5 flex items-center gap-1 shadow-2xl flex-wrap max-w-full [&_button]:pointer-events-auto"
             >
-              <Package size={16} className="inline mr-1.5 -mt-0.5 text-amber-500" />
-              No pallets in this bodega yet.
+              {/* Aging summary cluster */}
+              <div data-testid="warehouse-aging-summary" className="flex items-center gap-1 px-1">
+                <AgingPill label="Fresh"    color={AGING_FILL.fresh}    count={data.summary.by_aging.fresh} />
+                <AgingPill label="Warning"  color={AGING_FILL.warning}  count={data.summary.by_aging.warning} />
+                <AgingPill label="Critical" color={AGING_FILL.critical} count={data.summary.by_aging.critical} />
+                <AgingPill label="Expired"  color={AGING_FILL.expired}  count={data.summary.by_aging.expired} />
+              </div>
+
+              <div className="w-px h-6 bg-slate-300/50 dark:bg-slate-600/50 rounded-full" aria-hidden />
+
+              {/* FIFO / Heatmap / Report action cluster — descriptive tooltips
+                  spell out exactly what each button does in plain language. */}
+              <button
+                onClick={() => setShowDispatch(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-emerald-700 dark:text-emerald-300 hover:bg-emerald-500/15 dark:hover:bg-emerald-400/15 transition-colors"
+                title="FIFO — find the oldest pallets to send out first"
+              >
+                <ArrowDownToLine size={13} /> FIFO
+              </button>
+              <button
+                onClick={() => setShowHeatmap(h => !h)}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-colors ${
+                  showHeatmap
+                    ? "bg-rose-600 text-white shadow-sm"
+                    : "text-rose-700 dark:text-rose-300 hover:bg-rose-500/15 dark:hover:bg-rose-400/15"
+                }`}
+                title="Heatmap — colour zones by how full they are"
+              >
+                <Flame size={13} /> Heatmap
+              </button>
+              <button
+                onClick={() => setShowAging(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-amber-700 dark:text-amber-300 hover:bg-amber-500/15 dark:hover:bg-amber-400/15 transition-colors"
+                title="Report — see which zones hold the oldest stock"
+              >
+                <FileBarChart2 size={13} /> Report
+              </button>
+
+              {/* Recenter — labeled pill so users who panned far can jump back to the warehouse */}
+              <button
+                data-testid="warehouse-recenter"
+                onClick={fitToView}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-sky-700 dark:text-sky-300 hover:bg-sky-500/15 dark:hover:bg-sky-400/15 transition-colors"
+                title="Recenter the camera on the warehouse"
+              >
+                <Locate size={13} /> Recenter
+              </button>
+
+              {/* Customer filter (only when customers exist) */}
+              {customers.length > 0 && (
+                <>
+                  <div className="w-px h-6 bg-slate-300/50 dark:bg-slate-600/50 rounded-full" aria-hidden />
+                  <div data-testid="warehouse-customer-filter" className="flex items-center">
+                    <CustomerFilter
+                      customers={customers}
+                      selected={selectedClientNames}
+                      onChange={setSelectedClientNames}
+                    />
+                  </div>
+                </>
+              )}
+
+              {/* Zoom cluster — bigger 9×9 tap targets so the buttons are
+                  easy to hit, even with a tremor or trackpad pointer. */}
+              <div className="w-px h-6 bg-slate-300/50 dark:bg-slate-600/50 rounded-full" aria-hidden />
+              <div data-testid="warehouse-zoom-toolbar" className="flex items-center gap-0.5">
+                <button
+                  onClick={() => setZoom(z => Math.max(0.2, z / 1.2))}
+                  className="w-9 h-9 rounded-lg flex items-center justify-center text-secondary hover:text-primary hover:bg-slate-200/60 dark:hover:bg-slate-700/40"
+                  title="Zoom out — see more of the warehouse"
+                  aria-label="Zoom out"
+                >
+                  <ZoomOut size={16} />
+                </button>
+                <span className="text-xs font-semibold text-secondary tabular-nums w-11 text-center select-none">
+                  {(zoom * 100).toFixed(0)}%
+                </span>
+                <button
+                  onClick={() => setZoom(z => Math.min(4, z * 1.2))}
+                  className="w-9 h-9 rounded-lg flex items-center justify-center text-secondary hover:text-primary hover:bg-slate-200/60 dark:hover:bg-slate-700/40"
+                  title="Zoom in — see pallets up close"
+                  aria-label="Zoom in"
+                >
+                  <ZoomIn size={16} />
+                </button>
+              </div>
+
+              {/* Clear highlight chip (only when something is highlighted) */}
+              {highlightedIds.length > 0 && (
+                <>
+                  <div className="w-px h-6 bg-slate-300/50 dark:bg-slate-600/50 rounded-full" aria-hidden />
+                  <button
+                    onClick={() => setHighlightedIds([])}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-amber-700 dark:text-amber-300 hover:bg-amber-500/15 dark:hover:bg-amber-400/15 transition-colors"
+                    title="Clear highlight"
+                  >
+                    <XIcon size={13} /> Clear ({highlightedIds.length})
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
+
+          {/* Empty state — bottom-right, with plain-language guidance on
+              how to actually fill the warehouse. Helps new tenants and people
+              who just added a brand-new warehouse understand where stock
+              comes from (it's added on the Milling / Paddy pages, not here). */}
+          {data.pallets.length === 0 && (
+            <div className="absolute bottom-3 right-3 z-10 max-w-xs rounded-xl bg-white dark:bg-slate-900 ring-1 ring-soft px-4 py-3 text-sm text-secondary shadow-2xl">
+              <div className="flex items-center gap-2 mb-1">
+                <Package size={16} className="text-amber-500 shrink-0" />
+                <span className="font-semibold text-primary">This warehouse is empty</span>
+              </div>
+              <p className="text-xs leading-snug">
+                Pallets show up here after you record stock. Buy paddy on the <strong className="text-primary">Paddy / Palay</strong> page, or finish a batch on the <strong className="text-primary">Milling</strong> page.
+              </p>
             </div>
           )}
         </div>
@@ -961,7 +1214,7 @@ export default function BodegaCanvas({ branchId }: { branchId: string }) {
 /* Sub-components                                                                */
 /* ──────────────────────────────────────────────────────────────────────────── */
 
-const BodegaFloor = memo(function BodegaFloor({ layout }: { layout: CanvasData["layout"] }) {
+const WarehouseFloor = memo(function WarehouseFloor({ layout }: { layout: CanvasData["layout"] }) {
   const w = layout.width_m * PX_PER_METER_DEFAULT;
   const h = layout.height_m * PX_PER_METER_DEFAULT;
   const gridStep = layout.grid_size_m * PX_PER_METER_DEFAULT;
@@ -970,26 +1223,41 @@ const BodegaFloor = memo(function BodegaFloor({ layout }: { layout: CanvasData["
     const out: React.ReactNode[] = [];
     for (let x = 0; x <= w; x += gridStep) {
       out.push(
-        <Line key={`vx-${x}`} points={[x, 0, x, h]} stroke="#e5e7eb" strokeWidth={x % (gridStep * 2) === 0 ? 0.8 : 0.4} opacity={0.6} listening={false} perfectDrawEnabled={false} shadowForStrokeEnabled={false} />
+        <Line key={`vx-${x}`} points={[x, 0, x, h]} stroke="#c9b896" strokeWidth={x % (gridStep * 2) === 0 ? 1 : 0.5} opacity={0.7} listening={false} perfectDrawEnabled={false} shadowForStrokeEnabled={false} />
       );
     }
     for (let y = 0; y <= h; y += gridStep) {
       out.push(
-        <Line key={`hy-${y}`} points={[0, y, w, y]} stroke="#e5e7eb" strokeWidth={y % (gridStep * 2) === 0 ? 0.8 : 0.4} opacity={0.6} listening={false} perfectDrawEnabled={false} shadowForStrokeEnabled={false} />
+        <Line key={`hy-${y}`} points={[0, y, w, y]} stroke="#c9b896" strokeWidth={y % (gridStep * 2) === 0 ? 1 : 0.5} opacity={0.7} listening={false} perfectDrawEnabled={false} shadowForStrokeEnabled={false} />
       );
     }
     return out;
   }, [w, h, gridStep]);
 
+  const scaleBarPx = 5 * PX_PER_METER_DEFAULT;
   return (
     <>
-      <Rect x={0} y={0} width={w} height={h} fill="#fafaf9" listening={false} perfectDrawEnabled={false} shadowForStrokeEnabled={false} />
+      {/* Drop shadow — gives the floor plan a lifted, architectural feel */}
+      <Rect x={7} y={9} width={w} height={h} fill="#000000" opacity={0.28} cornerRadius={3} listening={false} perfectDrawEnabled={false} shadowForStrokeEnabled={false} />
+      {/* Warm concrete floor */}
+      <Rect x={0} y={0} width={w} height={h} fill="#fef8ec" listening={false} perfectDrawEnabled={false} shadowForStrokeEnabled={false} />
       {lines}
-      <Rect x={0} y={0} width={w} height={h} stroke="#475569" strokeWidth={6} listening={false} perfectDrawEnabled={false} shadowForStrokeEnabled={false} />
-      <Rect x={w / 2 - 50} y={h - 4} width={100} height={4} fill="#475569" listening={false} perfectDrawEnabled={false} shadowForStrokeEnabled={false} />
-      <Rect x={w / 2 - 56} y={h + 4} width={112} height={10} fill="#facc15" stroke="#a16207" strokeWidth={1} listening={false} perfectDrawEnabled={false} shadowForStrokeEnabled={false} />
-      <Text x={w / 2 - 80} y={h + 20} text="LOADING DOCK / PINTO" fontSize={11} fontStyle="bold" fill="#475569" listening={false} perfectDrawEnabled={false} />
-      <Text x={20} y={-26} text={`BODEGA · ${layout.name.toUpperCase()}`} fontSize={14} fontStyle="bold" fill="#64748b" letterSpacing={2} listening={false} perfectDrawEnabled={false} />
+      {/* Architectural outer wall */}
+      <Rect x={0} y={0} width={w} height={h} stroke="#1e293b" strokeWidth={7} listening={false} perfectDrawEnabled={false} shadowForStrokeEnabled={false} />
+      {/* Inner border accent line */}
+      <Rect x={3.5} y={3.5} width={w - 7} height={h - 7} stroke="#475569" strokeWidth={0.8} opacity={0.35} listening={false} perfectDrawEnabled={false} shadowForStrokeEnabled={false} />
+      {/* Erase border at loading dock opening */}
+      <Rect x={w / 2 - 56} y={h - 3.5} width={112} height={7} fill="#fef8ec" listening={false} perfectDrawEnabled={false} shadowForStrokeEnabled={false} />
+      {/* Loading dock bumper strip */}
+      <Rect x={w / 2 - 72} y={h + 2} width={144} height={15} fill="#fde047" stroke="#92400e" strokeWidth={1.5} cornerRadius={3} listening={false} perfectDrawEnabled={false} shadowForStrokeEnabled={false} />
+      <Text x={w / 2 - 68} y={h + 5} width={136} align="center" text="LOADING DOCK / PINTO" fontSize={9} fontStyle="bold" fill="#78350f" letterSpacing={1} listening={false} perfectDrawEnabled={false} />
+      {/* Floor plan label (top-left, outside border) */}
+      <Text x={20} y={-30} text={`BODEGA  ·  ${layout.name.toUpperCase()}`} fontSize={12} fontStyle="bold" fill="#94a3b8" letterSpacing={3} listening={false} perfectDrawEnabled={false} />
+      {/* Scale bar (bottom-right, inside floor) */}
+      <Rect x={w - scaleBarPx - 16} y={h - 22} width={scaleBarPx} height={3} fill="#94a3b8" opacity={0.5} cornerRadius={1.5} listening={false} perfectDrawEnabled={false} shadowForStrokeEnabled={false} />
+      <Rect x={w - scaleBarPx - 16} y={h - 27} width={1.5} height={11} fill="#94a3b8" opacity={0.5} listening={false} perfectDrawEnabled={false} shadowForStrokeEnabled={false} />
+      <Rect x={w - 15} y={h - 27} width={1.5} height={11} fill="#94a3b8" opacity={0.5} listening={false} perfectDrawEnabled={false} shadowForStrokeEnabled={false} />
+      <Text x={w - scaleBarPx - 16} y={h - 13} width={scaleBarPx} align="center" text="5 m" fontSize={8} fill="#94a3b8" opacity={0.65} listening={false} perfectDrawEnabled={false} />
     </>
   );
 });
@@ -1034,15 +1302,18 @@ const ZoneShape = memo(function ZoneShape({
   })();
 
   // Empty storage zones are invisible in view mode — they only appear in builder mode
-  // or when they contain pallets. This removes the "ghost rectangle" visual.
+  // or when they contain pallets. Skip rendering entirely (vs. opacity 0) so the node
+  // is dropped from the Konva scene graph — every avoided draw cycle is FPS we keep
+  // while the user pans/drags pallets across a dense layout.
   const isVisible = isStructural || editing || palletCount > 0;
+  if (!isVisible) return null;
 
   return (
     <Group
       id={`zone-${zone.id}`}
       x={x} y={y}
       draggable={editing && !selected}
-      listening={isVisible || editing}
+      listening={true}
       onClick={() => onClick(zone.id)}
       onTap={() => onClick(zone.id)}
       onMouseEnter={(e) => {
@@ -1070,12 +1341,13 @@ const ZoneShape = memo(function ZoneShape({
         if (stage) stage.container().style.cursor = "grab";
         const nx_m = e.target.x() / PX_PER_METER_DEFAULT;
         const ny_m = e.target.y() / PX_PER_METER_DEFAULT;
-        const snappedX = Math.max(0, snapToGrid(nx_m, gridSize));
-        const snappedY = Math.max(0, snapToGrid(ny_m, gridSize));
+        // Structural zones (door, wall, walkway, loading_dock) snap to grid but
+        // are not clamped inside the floor — they may straddle or sit outside.
+        const snappedX = zone.is_storage === false ? snapToGrid(nx_m, gridSize) : Math.max(0, snapToGrid(nx_m, gridSize));
+        const snappedY = zone.is_storage === false ? snapToGrid(ny_m, gridSize) : Math.max(0, snapToGrid(ny_m, gridSize));
         e.target.position({ x: snappedX * PX_PER_METER_DEFAULT, y: snappedY * PX_PER_METER_DEFAULT });
         onChange(zone.id, { x_m: snappedX, y_m: snappedY });
       }}
-      opacity={isVisible ? 1 : 0}
     >
       {structuralVisual ? (
         <Rect
@@ -1093,9 +1365,9 @@ const ZoneShape = memo(function ZoneShape({
         <Rect
           width={w} height={h}
           fill={zone.color_hex}
-          opacity={palletCount === 0 ? 0.10 : 0.18}
+          opacity={palletCount === 0 ? 0.20 : 0.36}
           stroke={zone.color_hex}
-          strokeWidth={1.5}
+          strokeWidth={2}
           cornerRadius={6}
           perfectDrawEnabled={false}
           shadowForStrokeEnabled={false}
@@ -1116,7 +1388,7 @@ const ZoneShape = memo(function ZoneShape({
         shadowForStrokeEnabled={false}
       />
 
-      {!isStructural && isVisible && (
+      {!isStructural && (
         <>
           <Text x={8} y={8} text={zone.name.toUpperCase()} fontSize={11} fontStyle="bold" fill={zone.color_hex} opacity={0.95} letterSpacing={1} listening={false} perfectDrawEnabled={false} />
           <Text x={8} y={h - 19} text={zone.zone_type.replace(/_/g, " ")} fontSize={9} fill={zone.color_hex} opacity={0.55} listening={false} perfectDrawEnabled={false} />
@@ -1181,6 +1453,7 @@ const PalletShape = memo(function PalletShape({
 
   return (
     <Group
+      id={`pallet-${pallet.id}`}
       ref={groupRef}
       x={x}
       y={y}
@@ -1243,10 +1516,23 @@ const PalletShape = memo(function PalletShape({
         opacity={0.92}
         perfectDrawEnabled={false}
         shadowForStrokeEnabled={false}
-        shadowColor={highlighted ? "#fbbf24" : undefined}
-        shadowBlur={highlighted ? 12 : 0}
-        shadowOpacity={highlighted ? 0.9 : 0}
       />
+      {/* Highlight halo — bright amber ring instead of Konva shadowBlur, which is
+          ~10× cheaper per redraw (no Gaussian blur), so panning a FIFO highlight
+          batch of many pallets keeps a steady 60 fps. */}
+      {highlighted && (
+        <Rect
+          x={-3} y={-3}
+          width={w + 6} height={h + 6}
+          fill="transparent"
+          stroke="#fbbf24"
+          strokeWidth={2}
+          cornerRadius={4}
+          listening={false}
+          perfectDrawEnabled={false}
+          shadowForStrokeEnabled={false}
+        />
+      )}
       <Line points={[2, h * 0.33, w - 2, h * 0.33]} stroke="white" strokeWidth={0.6} opacity={0.4} listening={false} perfectDrawEnabled={false} shadowForStrokeEnabled={false} />
       <Line points={[2, h * 0.66, w - 2, h * 0.66]} stroke="white" strokeWidth={0.6} opacity={0.4} listening={false} perfectDrawEnabled={false} shadowForStrokeEnabled={false} />
       {w > 30 && h > 15 && (
@@ -1270,6 +1556,68 @@ const PalletShape = memo(function PalletShape({
     </Group>
   );
 });
+
+/* Senior-friendly help popover — plain-language tour of the warehouse canvas.
+   Click "?" to open, click anywhere outside or press Esc to close. */
+function HelpButton() {
+  const [open, setOpen] = useState(false);
+  const btnRef = useRef<HTMLButtonElement>(null);
+  const popRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const onDown = (e: MouseEvent) => {
+      if (
+        popRef.current && !popRef.current.contains(e.target as Node) &&
+        btnRef.current && !btnRef.current.contains(e.target as Node)
+      ) setOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setOpen(false); };
+    window.addEventListener("mousedown", onDown);
+    window.addEventListener("keydown", onKey);
+    return () => {
+      window.removeEventListener("mousedown", onDown);
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [open]);
+
+  return (
+    <div className="relative">
+      <button
+        ref={btnRef}
+        type="button"
+        onClick={() => setOpen(o => !o)}
+        className="flex items-center justify-center w-9 h-9 rounded-lg text-slate-500 dark:text-slate-400 hover:text-primary hover:bg-slate-100 dark:hover:bg-slate-700/40"
+        title="How does this work?"
+        aria-label="Open help"
+        aria-expanded={open}
+      >
+        <HelpCircle size={18} />
+      </button>
+      {open && (
+        <div
+          ref={popRef}
+          role="dialog"
+          aria-label="Warehouse canvas help"
+          className="absolute right-0 top-full mt-2 z-50 w-80 bg-white dark:bg-slate-900 rounded-xl shadow-2xl ring-1 ring-soft p-4 text-sm"
+          style={{ transform: "translateZ(0)" }}
+        >
+          <h3 className="font-bold text-primary text-base mb-2">How to use this warehouse</h3>
+          <ul className="space-y-2.5 text-secondary leading-snug">
+            <li className="flex gap-2"><span className="text-emerald-500 font-bold">·</span><span><strong className="text-primary">Just looking?</strong> Click and drag the empty floor to look around. Pinch with two fingers to zoom in.</span></li>
+            <li className="flex gap-2"><span className="text-sky-500 font-bold">·</span><span>Press <strong className="text-primary">"View only"</strong> to switch to <strong className="text-primary">"Move pallets"</strong>. Drag a pallet to a new spot. Drop one pallet on top of another to stack them.</span></li>
+            <li className="flex gap-2"><span className="text-violet-500 font-bold">·</span><span>Press <strong className="text-primary">"Edit floor plan"</strong> to add walls, doors, or storage zones. Pick a tool, then click on the floor to place it.</span></li>
+            <li className="flex gap-2"><span className="text-amber-500 font-bold">·</span><span>Lost the warehouse? Click <strong className="text-primary">"Recenter"</strong> in the top bar to bring it back to the middle.</span></li>
+            <li className="flex gap-2"><span className="text-rose-500 font-bold">·</span><span>Need to send out old stock first? Click <strong className="text-primary">"FIFO"</strong> to find the oldest pallets.</span></li>
+          </ul>
+          <p className="text-[11px] text-muted mt-3 pt-3 border-t border-soft">
+            Nothing you click can break your data — everything saves automatically and updates other devices live.
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}
 
 function LiveBadge({ status }: { status: "offline" | "connecting" | "live" }) {
   const cfg = {
@@ -1891,12 +2239,14 @@ function BuilderToolbox({
   useEffect(() => { setW(layout.width_m); setH(layout.height_m); setName(layout.name); setGrid(layout.grid_size_m); }, [layout.width_m, layout.height_m, layout.name, layout.grid_size_m]);
 
   const storage = STORAGE_ZONE_TYPES;
-  const structural = ["wall", "door", "walkway", "loading_dock"];
+  // "loading_dock" intentionally omitted from the structural toolbox — "door"
+  // already covers the dock/pinto use case in practice.
+  const structural = ["wall", "door", "walkway"];
 
   const ToolBtn = ({ t }: { t: string }) => {
     const isStructural = STRUCTURAL_TYPES.has(t);
     const active = pendingZoneType === t;
-    const Icon = t === "wall" ? Square : t === "door" ? DoorOpen : t === "walkway" ? Move : t === "loading_dock" ? Package : Plus;
+    const Icon = t === "wall" ? Square : t === "door" ? DoorOpen : t === "walkway" ? Move : Plus;
     return (
       <button
         onClick={() => setPendingZoneType(active ? null : t)}
@@ -1917,8 +2267,8 @@ function BuilderToolbox({
     <div className="card !p-3 bg-violet-50/60 dark:bg-violet-950/20 border-violet-200 dark:border-violet-800/60 space-y-2">
       <div className="flex items-center gap-3 flex-wrap">
         <Hammer size={14} className="text-violet-600 dark:text-violet-400" />
-        <span className="text-xs font-bold uppercase tracking-wide text-violet-900 dark:text-violet-200">Builder mode</span>
-        <span className="text-xs text-violet-700/70 dark:text-violet-300/80">Click a tool, then click the floor to drop it. Click a zone to select it — drag to move, drag handles to resize.</span>
+        <span className="text-xs font-bold uppercase tracking-wide text-violet-900 dark:text-violet-200">Floor-plan editor</span>
+        <span className="text-xs text-violet-700/70 dark:text-violet-300/80">Pick a tool below, then click anywhere on the floor to place it. Click a zone to select it — then drag to move or use the handles to resize.</span>
         <button
           onClick={() => setShowLayoutSize(!showLayoutSize)}
           className={`ml-auto flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold ${
@@ -2039,7 +2389,7 @@ function ZoneEditor({
               {STORAGE_ZONE_TYPES.map(t => <option key={t} value={t}>{ZONE_TYPE_META[t]?.label ?? t}</option>)}
             </optgroup>
             <optgroup label="Structural">
-              {["wall", "door", "walkway", "loading_dock"].map(t => <option key={t} value={t}>{ZONE_TYPE_META[t]?.label ?? t}</option>)}
+              {["wall", "door", "walkway"].map(t => <option key={t} value={t}>{ZONE_TYPE_META[t]?.label ?? t}</option>)}
             </optgroup>
           </select>
         </div>

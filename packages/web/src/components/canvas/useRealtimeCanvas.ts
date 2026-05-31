@@ -16,8 +16,10 @@ type CanvasEvent =
   | { event: "pong"; payload: {} };
 
 /** Subscribes to /ws/canvas/{layout_id} and applies remote events to the
- *  ["canvas", branchId] React Query cache. Auto-reconnects with backoff. */
-export function useRealtimeCanvas(layoutId: string | undefined, branchId: string) {
+ *  ["canvas", cacheKey] React Query cache. Auto-reconnects with backoff. */
+/** cacheKey must match the React Query key used for the canvas data: layoutId when a specific
+ *  layout is selected, otherwise branchId (the fallback used before a layout is picked). */
+export function useRealtimeCanvas(layoutId: string | undefined, cacheKey: string) {
   const qc = useQueryClient();
   const token = useAuthStore((s) => s.accessToken);
   const userId = useAuthStore((s) => s.user?.id ?? "");
@@ -56,7 +58,7 @@ export function useRealtimeCanvas(layoutId: string | undefined, branchId: string
         if (data.event === "hello" || data.event === "pong") return;
 
         const apply = (updated: any) => {
-          qc.setQueryData(["canvas", branchId], (old: any) => {
+          qc.setQueryData(["canvas", cacheKey], (old: any) => {
             if (!old) return old;
             return {
               ...old,
@@ -73,22 +75,22 @@ export function useRealtimeCanvas(layoutId: string | undefined, branchId: string
           apply(payload.pallet);
           qc.invalidateQueries({ queryKey: ["pallet-movements", payload.pallet.id] });
         } else if (data.event === "zone.created") {
-          qc.setQueryData(["canvas", branchId], (old: any) => {
+          qc.setQueryData(["canvas", cacheKey], (old: any) => {
             if (!old) return old;
             return { ...old, zones: [...old.zones, payload.zone] };
           });
         } else if (data.event === "zone.updated") {
-          qc.setQueryData(["canvas", branchId], (old: any) => {
+          qc.setQueryData(["canvas", cacheKey], (old: any) => {
             if (!old) return old;
             return { ...old, zones: old.zones.map((z: any) => z.id === payload.zone.id ? payload.zone : z) };
           });
         } else if (data.event === "zone.deleted") {
-          qc.setQueryData(["canvas", branchId], (old: any) => {
+          qc.setQueryData(["canvas", cacheKey], (old: any) => {
             if (!old) return old;
             return { ...old, zones: old.zones.filter((z: any) => z.id !== payload.zone_id) };
           });
         } else if (data.event === "layout.updated") {
-          qc.setQueryData(["canvas", branchId], (old: any) => {
+          qc.setQueryData(["canvas", cacheKey], (old: any) => {
             if (!old) return old;
             return { ...old, layout: { ...old.layout, ...payload.layout } };
           });
@@ -121,7 +123,7 @@ export function useRealtimeCanvas(layoutId: string | undefined, branchId: string
       }
       wsRef.current = null;
     };
-  }, [layoutId, token, branchId, userId, qc]);
+  }, [layoutId, token, cacheKey, userId, qc]);
 
   return status;
 }

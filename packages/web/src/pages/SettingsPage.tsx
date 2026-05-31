@@ -6,7 +6,7 @@ import {
   Building2, MapPin, User as UserIcon, KeyRound, Plus, Wheat, Factory, Receipt,
   Power, History, ChevronDown, ChevronUp, CreditCard, Check, X as XIcon, Crown,
   Zap, Rocket, Star, Loader2, Clock, AlertCircle, Settings as SettingsIcon,
-  CheckCircle2, XCircle,
+  CheckCircle2, XCircle, Pencil,
 } from "lucide-react";
 import { format } from "date-fns";
 import { useCurrentPlan } from "../hooks/useFeature";
@@ -107,7 +107,7 @@ const FEATURE_LABELS: Record<string, string> = {
   reports_advanced: "Advanced reports (AR aging, valuation)",
   compliance_reports: "DA / NFA compliance reports",
   offline_sync: "Offline sync (Electron desktop)",
-  canvas_inventory: "Visual Bodega canvas (spatial inventory)",
+  canvas_inventory: "Visual Warehouse canvas (spatial inventory)",
 };
 
 const ALL_FEATURE_KEYS = Object.keys(FEATURE_LABELS);
@@ -1208,6 +1208,8 @@ function BranchesTab() {
   });
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ name: "", address: "", is_main_branch: false });
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editValues, setEditValues] = useState({ name: "", address: "" });
 
   const create = useMutation({
     mutationFn: (body: typeof form) => api.post("/branches/", body),
@@ -1217,6 +1219,20 @@ function BranchesTab() {
       setForm({ name: "", address: "", is_main_branch: false });
     },
   });
+
+  const update = useMutation({
+    mutationFn: ({ id, body }: { id: string; body: Partial<typeof editValues> }) =>
+      api.put(`/branches/${id}`, body).then(r => r.data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["branches"] });
+      setEditingId(null);
+    },
+  });
+
+  function startEdit(b: any) {
+    setEditingId(b.id);
+    setEditValues({ name: b.name, address: b.address || "" });
+  }
 
   return (
     <div className="space-y-4">
@@ -1285,40 +1301,101 @@ function BranchesTab() {
         <table className="w-full text-sm">
           <thead className="bg-gradient-to-r from-emerald-50/80 via-cyan-50/60 to-violet-50/80 dark:from-emerald-900/20 dark:via-cyan-900/10 dark:to-violet-900/20 border-b border-soft">
             <tr>
-              {["Name", "Address", "Type", "Status"].map((h) => (
-                <th key={h} className={TABLE_HEAD}>
+              {["Name", "Address", "Type", "Status", ""].map((h, i) => (
+                <th key={i} className={TABLE_HEAD}>
                   {h}
                 </th>
               ))}
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-200/60 dark:divide-slate-700/50">
-            {branches.map((b: any) => (
-              <tr
-                key={b.id}
-                className="hover:bg-slate-50/50 dark:hover:bg-slate-700/15 transition-colors"
-              >
-                <td className="px-4 py-3 font-semibold text-primary">{b.name}</td>
-                <td className="px-4 py-3 text-secondary">{b.address || "—"}</td>
-                <td className="px-4 py-3">
-                  {b.is_main_branch ? (
-                    <span className="badge-green">Main</span>
-                  ) : (
-                    <span className="badge-gray">Branch</span>
-                  )}
-                </td>
-                <td className="px-4 py-3">
-                  {b.is_active ? (
-                    <span className="badge-green">Active</span>
-                  ) : (
-                    <span className="badge-red">Inactive</span>
-                  )}
-                </td>
-              </tr>
-            ))}
+            {branches.map((b: any) => {
+              const isEditing = editingId === b.id;
+              return (
+                <tr
+                  key={b.id}
+                  className="group hover:bg-slate-50/50 dark:hover:bg-slate-700/15"
+                >
+                  <td className="px-4 py-3 font-semibold text-primary">
+                    {isEditing ? (
+                      <input
+                        autoFocus
+                        className="input !py-1 text-sm w-full max-w-xs"
+                        value={editValues.name}
+                        onChange={(e) => setEditValues((v) => ({ ...v, name: e.target.value }))}
+                        onKeyDown={(e) => {
+                          if (e.key === "Escape") setEditingId(null);
+                          if (e.key === "Enter" && editValues.name.trim()) {
+                            update.mutate({ id: b.id, body: { name: editValues.name.trim(), address: editValues.address } });
+                          }
+                        }}
+                      />
+                    ) : b.name}
+                  </td>
+                  <td className="px-4 py-3 text-secondary">
+                    {isEditing ? (
+                      <input
+                        className="input !py-1 text-sm w-full max-w-xs"
+                        placeholder="Address"
+                        value={editValues.address}
+                        onChange={(e) => setEditValues((v) => ({ ...v, address: e.target.value }))}
+                      />
+                    ) : (b.address || "—")}
+                  </td>
+                  <td className="px-4 py-3">
+                    {b.is_main_branch ? (
+                      <span className="badge-green">Main</span>
+                    ) : (
+                      <span className="badge-gray">Branch</span>
+                    )}
+                  </td>
+                  <td className="px-4 py-3">
+                    {b.is_active ? (
+                      <span className="badge-green">Active</span>
+                    ) : (
+                      <span className="badge-red">Inactive</span>
+                    )}
+                  </td>
+                  <td className="px-4 py-3 text-right">
+                    {isEditing ? (
+                      <div className="flex items-center justify-end gap-1">
+                        <button
+                          type="button"
+                          aria-label="Save"
+                          disabled={!editValues.name.trim() || update.isPending}
+                          onClick={() => update.mutate({ id: b.id, body: { name: editValues.name.trim(), address: editValues.address } })}
+                          className="p-1.5 rounded-md text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 dark:hover:bg-emerald-900/30 disabled:opacity-40"
+                        >
+                          <Check size={14} />
+                        </button>
+                        <button
+                          type="button"
+                          aria-label="Cancel"
+                          onClick={() => setEditingId(null)}
+                          className="p-1.5 rounded-md text-slate-500 hover:text-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700/40"
+                        >
+                          <XIcon size={14} />
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        aria-label={`Rename ${b.name}`}
+                        onClick={() => startEdit(b)}
+                        // Always visible (dimmed) — the opacity-toggle on hover
+                        // caused flicker when the mouse crossed the icon edge.
+                        className="p-1.5 rounded-md text-muted/70 hover:text-primary hover:bg-slate-100 dark:hover:bg-slate-700/40"
+                      >
+                        <Pencil size={14} />
+                      </button>
+                    )}
+                  </td>
+                </tr>
+              );
+            })}
             {branches.length === 0 && (
               <tr>
-                <td colSpan={4} className="px-4 py-8 text-center text-muted font-medium">
+                <td colSpan={5} className="px-4 py-8 text-center text-muted font-medium">
                   No branches
                 </td>
               </tr>

@@ -35,15 +35,58 @@ router = APIRouter(dependencies=[
 
 
 # ── Default layout template ──────────────────────────────────────────────────
-# Standard rice-mill bodega: 30m × 20m floor with 5 zones.
+# Standard rice-mill warehouse footprints, sized to actual industry capacity.
+# Defaults to "commercial" so new tenants get the biggest canvas to scale into.
 DEFAULT_LAYOUT_WIDTH_M = 30.0
-DEFAULT_LAYOUT_HEIGHT_M = 20.0
+DEFAULT_LAYOUT_HEIGHT_M = 120.0
 
-DEFAULT_ZONES = [
-    # type, name, x, y, w, h, color
-    ("milling",          "Milling Floor",    1.0,  1.0, 13.0, 18.0,  "#94a3b8"),
-    ("premium_storage",  "Premium Storage", 15.0,  1.0, 14.0, 18.0,  "#10b981"),
-]
+WAREHOUSE_SIZE_PRESETS: dict[str, dict] = {
+    # capacity_label is shown to users alongside the dimensions
+    "small":      {"width_m": 15.0, "height_m":  35.0, "capacity_label": "1–2 t/h"},
+    "medium":     {"width_m": 18.0, "height_m":  60.0, "capacity_label": "3–5 t/h"},
+    "large":      {"width_m": 24.0, "height_m":  80.0, "capacity_label": "6–10 t/h"},
+    "commercial": {"width_m": 30.0, "height_m": 120.0, "capacity_label": ">10 t/h"},
+}
+
+
+def _compute_default_zones(width_m: float, height_m: float) -> list[tuple]:
+    """Generate a proportional default-zone layout that scales to any warehouse
+    footprint. Zones flow front-to-back along the long axis:
+    receive → dry → mill → premium+customer storage (side-by-side) → general → ship.
+
+    Returns a list of (zone_type, name, x_m, y_m, w_m, h_m, color_hex) tuples.
+    Coords are clamped to fit inside `width_m × height_m` with a 1 m margin.
+    """
+    pad = 1.0
+    w = max(width_m - 2 * pad, 1.0)   # usable width
+    h = max(height_m - 2 * pad, 1.0)  # usable depth
+
+    # Front-to-back band proportions of the usable depth
+    BAND = [
+        ("paddy_intake",  "Paddy Intake",   0.10, "#fbbf24"),
+        ("drying",        "Drying Area",    0.08, "#f59e0b"),
+        ("milling",       "Milling Floor",  0.18, "#94a3b8"),
+        ("storage_split", None,             0.30, None),
+        ("general",       "General Storage", 0.25, "#a78bfa"),
+        ("shipping_dock", "Shipping Dock",  0.09, "#ec4899"),
+    ]
+    out: list[tuple] = []
+    y = pad
+    for ztype, name, frac, color in BAND:
+        band_h = round(h * frac, 2)
+        if ztype == "storage_split":
+            half = round(w / 2 - 0.5, 2)
+            out.append(("premium_storage",  "Premium Storage",   pad,             y, half, band_h, "#10b981"))
+            out.append(("customer_storage", "Customer Holding",  pad + half + 1,  y, half, band_h, "#3b82f6"))
+        else:
+            out.append((ztype, name, pad, y, w, band_h, color))
+        y = round(y + band_h, 2)
+    return out
+
+
+# Kept for backward-compat — any older callsite that reads this static list now
+# gets a freshly-computed default-size zone set instead of stale 30×20 coords.
+DEFAULT_ZONES = _compute_default_zones(DEFAULT_LAYOUT_WIDTH_M, DEFAULT_LAYOUT_HEIGHT_M)
 
 # Structural elements: visual-only, cannot hold pallets. Drag-validation rejects
 # moves that land on these. Anything not listed here is treated as storage.
@@ -147,12 +190,13 @@ def _next_pallet_code(db: Session, company_id: uuid.UUID) -> str:
     return f"{prefix}{next_num:04d}"
 
 
-def _bootstrap_layout(db: Session, branch: Branch) -> WarehouseLayout:
-    """Create a default layout + zones for a branch that has none yet."""
+def _bootstrap_layout(db: Session, branch: Branch, name: str | None = None, is_default: bool = True) -> WarehouseLayout:
+    """Create a layout + default zones for a branch."""
     layout = WarehouseLayout(
         branch_id=branch.id,
         company_id=branch.company_id,
-        name=f"{branch.name} Bodega",
+        name=name or f"{branch.name} Warehouse",
+        is_default=is_default,
         width_m=Decimal(str(DEFAULT_LAYOUT_WIDTH_M)),
         height_m=Decimal(str(DEFAULT_LAYOUT_HEIGHT_M)),
         grid_size_m=Decimal("0.5"),
@@ -271,10 +315,18 @@ def _bootstrap_pallets_from_inventory(db: Session, layout: WarehouseLayout) -> i
     return created
 
 
+def _get_default_layout(db: Session, branch_id: uuid.UUID) -> WarehouseLayout | None:
+    """Return the is_default=True layout for a branch, falling back to any layout."""
+    layouts = db.query(WarehouseLayout).filter(WarehouseLayout.branch_id == branch_id).all()
+    if not layouts:
+        return None
+    return next((l for l in layouts if l.is_default), layouts[0])
+
+
 def _get_or_bootstrap(db: Session, branch: Branch) -> WarehouseLayout:
-    layout = db.query(WarehouseLayout).filter(WarehouseLayout.branch_id == branch.id).first()
+    layout = _get_default_layout(db, branch.id)
     if not layout:
-        layout = _bootstrap_layout(db, branch)
+        layout = _bootstrap_layout(db, branch, is_default=True)
         _bootstrap_pallets_from_inventory(db, layout)
         db.commit()
         db.refresh(layout)
@@ -284,15 +336,27 @@ def _get_or_bootstrap(db: Session, branch: Branch) -> WarehouseLayout:
 @router.get("/warehouses/{branch_id}/canvas")
 def get_warehouse_canvas(
     branch_id: uuid.UUID,
+    layout_id: uuid.UUID | None = None,
     current_user=Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """Returns the full canvas payload for one branch's warehouse."""
+    """Returns the full canvas payload for one branch's warehouse.
+
+    Pass ?layout_id=<uuid> to fetch a specific layout; omit it for the default.
+    """
     branch = db.get(Branch, branch_id)
     if not branch or branch.company_id != current_user.company_id:
         raise HTTPException(status_code=404, detail="Branch not found")
 
-    layout = _get_or_bootstrap(db, branch)
+    if layout_id:
+        layout = db.query(WarehouseLayout).filter(
+            WarehouseLayout.id == layout_id,
+            WarehouseLayout.branch_id == branch_id,
+        ).first()
+        if not layout:
+            raise HTTPException(status_code=404, detail="Layout not found")
+    else:
+        layout = _get_or_bootstrap(db, branch)
     today = date.today()
 
     # Refresh status on every read so colors stay current as time passes
@@ -467,6 +531,52 @@ def move_pallet(
         from_zone_id=from_zone_id,
         to_zone_id=pallet.zone_id,
     ))
+    db.commit()
+    db.refresh(pallet)
+    payload = _serialize_pallet(pallet, date.today())
+    ws_manager.broadcast_sync(pallet.layout_id, "pallet.moved", {"pallet": payload, "by_user_id": str(current_user.id)})
+    return payload
+
+
+class PalletResize(BaseModel):
+    width_m: float
+    depth_m: float
+
+
+@router.patch("/pallets/{pallet_id}/resize")
+def resize_pallet(
+    pallet_id: uuid.UUID,
+    body: PalletResize,
+    current_user=Depends(require_roles(*WRITE_ROLES)),
+    db: Session = Depends(get_db),
+):
+    """Resize a pallet's footprint. Clamps to layout bounds and refuses overlaps
+    with structural elements at the new size."""
+    pallet = _ensure_owned_pallet(db, pallet_id, current_user)
+    layout = db.get(WarehouseLayout, pallet.layout_id)
+    if not layout:
+        raise HTTPException(status_code=500, detail="Layout missing for pallet")
+
+    # Sensible footprint limits — small enough to fit any zone, big enough to read
+    if body.width_m < 0.4 or body.width_m > 6.0:
+        raise HTTPException(status_code=400, detail="width_m must be between 0.4 and 6.0")
+    if body.depth_m < 0.4 or body.depth_m > 6.0:
+        raise HTTPException(status_code=400, detail="depth_m must be between 0.4 and 6.0")
+
+    margin = 0.05
+    lw, lh = float(layout.width_m), float(layout.height_m)
+    new_w = round(min(body.width_m, max(0.4, lw - float(pallet.x_m) - margin)), 2)
+    new_d = round(min(body.depth_m, max(0.4, lh - float(pallet.y_m) - margin)), 2)
+
+    structural_hit = _structural_overlap(layout, float(pallet.x_m), float(pallet.y_m), new_w, new_d, db)
+    if structural_hit:
+        raise HTTPException(
+            status_code=409,
+            detail=f"New size would overlap a {structural_hit.zone_type.replace('_', ' ')} ('{structural_hit.name}').",
+        )
+
+    pallet.width_m = Decimal(str(new_w))
+    pallet.depth_m = Decimal(str(new_d))
     db.commit()
     db.refresh(pallet)
     payload = _serialize_pallet(pallet, date.today())
@@ -807,7 +917,7 @@ def aging_report(
     current_user=Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """Per-zone + per-aging-state pallet counts for one branch's bodega.
+    """Per-zone + per-aging-state pallet counts for one branch's warehouse.
 
     Returns the data behind the heatmap and the aging-report panel. Includes
     the 5 oldest pallets currently in stock for quick FIFO triage.
@@ -817,7 +927,7 @@ def aging_report(
         raise HTTPException(status_code=404, detail="Branch not found")
     layout = db.query(WarehouseLayout).filter(WarehouseLayout.branch_id == branch_id).first()
     if not layout:
-        raise HTTPException(status_code=404, detail="No bodega layout for this branch")
+        raise HTTPException(status_code=404, detail="No warehouse layout for this branch")
 
     zones = db.query(WarehouseZone).filter(WarehouseZone.layout_id == layout.id).all()
     pallets = (
@@ -923,16 +1033,26 @@ class LayoutPatch(BaseModel):
 def patch_layout(
     branch_id: uuid.UUID,
     body: LayoutPatch,
+    layout_id: uuid.UUID | None = None,
     current_user=Depends(require_roles(*WRITE_ROLES)),
     db: Session = Depends(get_db),
 ):
-    """Resize / rename the warehouse layout itself."""
+    """Resize / rename the warehouse layout itself.
+
+    Pass ?layout_id=<uuid> to target a specific layout; omit for the branch default.
+    """
     branch = db.get(Branch, branch_id)
     if not branch or branch.company_id != current_user.company_id:
         raise HTTPException(status_code=404, detail="Branch not found")
-    layout = db.query(WarehouseLayout).filter(WarehouseLayout.branch_id == branch_id).first()
+    if layout_id:
+        layout = db.query(WarehouseLayout).filter(
+            WarehouseLayout.id == layout_id,
+            WarehouseLayout.branch_id == branch_id,
+        ).first()
+    else:
+        layout = _get_default_layout(db, branch_id)
     if not layout:
-        raise HTTPException(status_code=404, detail="No bodega layout for this branch")
+        raise HTTPException(status_code=404, detail="No warehouse layout for this branch")
 
     if body.name is not None:
         layout.name = body.name.strip() or layout.name
@@ -983,25 +1103,34 @@ class ZoneCreate(BaseModel):
 def create_zone(
     branch_id: uuid.UUID,
     body: ZoneCreate,
+    layout_id: uuid.UUID | None = None,
     current_user=Depends(require_roles(*WRITE_ROLES)),
     db: Session = Depends(get_db),
 ):
-    """Draw a new zone on the floor. Used by the builder's drag-to-create tool."""
+    """Draw a new zone on the floor. Pass ?layout_id=<uuid> to target a specific layout."""
     if body.zone_type not in ALLOWED_ZONE_TYPES:
         raise HTTPException(status_code=400, detail=f"Unknown zone_type '{body.zone_type}'")
     branch = db.get(Branch, branch_id)
     if not branch or branch.company_id != current_user.company_id:
         raise HTTPException(status_code=404, detail="Branch not found")
-    layout = db.query(WarehouseLayout).filter(WarehouseLayout.branch_id == branch_id).first()
+    if layout_id:
+        layout = db.query(WarehouseLayout).filter(
+            WarehouseLayout.id == layout_id,
+            WarehouseLayout.branch_id == branch_id,
+        ).first()
+    else:
+        layout = _get_default_layout(db, branch_id)
     if not layout:
-        raise HTTPException(status_code=404, detail="No bodega layout for this branch")
+        raise HTTPException(status_code=404, detail="No warehouse layout for this branch")
 
-    # Clamp to layout bounds
     lw, lh = float(layout.width_m), float(layout.height_m)
-    w = max(0.5, min(lw, body.width_m))
-    h = max(0.5, min(lh, body.height_m))
-    x = max(0.0, min(lw - w, body.x_m))
-    y = max(0.0, min(lh - h, body.y_m))
+    is_structural = not _is_storage_zone(body.zone_type)
+    # Storage zones are clamped inside the floor; structural zones (door, wall,
+    # walkway, loading_dock) may straddle or sit outside the boundary.
+    w = max(0.5, body.width_m if is_structural else min(lw, body.width_m))
+    h = max(0.5, body.height_m if is_structural else min(lh, body.height_m))
+    x = body.x_m if is_structural else max(0.0, min(lw - w, body.x_m))
+    y = body.y_m if is_structural else max(0.0, min(lh - h, body.y_m))
 
     color = body.color_hex or _default_color_for(body.zone_type)
     zone = WarehouseZone(
@@ -1073,10 +1202,13 @@ def patch_zone(
     new_h = body.height_m if body.height_m is not None else float(zone.height_m)
     new_x = body.x_m if body.x_m is not None else float(zone.x_m)
     new_y = body.y_m if body.y_m is not None else float(zone.y_m)
-    new_w = max(0.5, min(lw, new_w))
-    new_h = max(0.5, min(lh, new_h))
-    new_x = max(0.0, min(lw - new_w, new_x))
-    new_y = max(0.0, min(lh - new_h, new_y))
+    # Structural zones (door, wall, walkway, loading_dock) may be placed anywhere;
+    # only enforce a minimum size. Storage zones are clamped inside the floor.
+    is_structural = not _is_storage_zone(zone.zone_type)
+    new_w = max(0.5, new_w if is_structural else min(lw, new_w))
+    new_h = max(0.5, new_h if is_structural else min(lh, new_h))
+    new_x = new_x if is_structural else max(0.0, min(lw - new_w, new_x))
+    new_y = new_y if is_structural else max(0.0, min(lh - new_h, new_y))
     zone.width_m = Decimal(str(round(new_w, 2)))
     zone.height_m = Decimal(str(round(new_h, 2)))
     zone.x_m = Decimal(str(round(new_x, 2)))
@@ -1149,12 +1281,17 @@ def list_canvas_customers(
         RiceBatch.company_id == current_user.company_id,
     )
     if branch_id:
-        layout = db.query(WarehouseLayout).filter(
-            WarehouseLayout.branch_id == branch_id,
-            WarehouseLayout.company_id == current_user.company_id,
-        ).first()
-        if layout:
-            q = q.filter(Pallet.layout_id == layout.id)
+        # Multi-layout: a branch can hold several layouts. Scope to pallets in
+        # any of THIS branch's layouts (was previously only .first() which would
+        # silently miss pallets if the test seed created extra empty layouts).
+        layout_ids = [
+            row.id for row in db.query(WarehouseLayout.id).filter(
+                WarehouseLayout.branch_id == branch_id,
+                WarehouseLayout.company_id == current_user.company_id,
+            ).all()
+        ]
+        if layout_ids:
+            q = q.filter(Pallet.layout_id.in_(layout_ids))
 
     rows = q.all()
 
@@ -1216,6 +1353,195 @@ def list_canvas_customers(
         out.append(info)
 
     return out
+
+
+# ── Multi-layout management ──────────────────────────────────────────────────
+
+
+def _serialize_layout_summary(layout: WarehouseLayout) -> dict:
+    return {
+        "id": str(layout.id),
+        "name": layout.name,
+        "is_default": layout.is_default,
+        "width_m": float(layout.width_m),
+        "height_m": float(layout.height_m),
+        "grid_size_m": float(layout.grid_size_m),
+        "version": layout.version,
+        "created_at": layout.created_at.isoformat() if layout.created_at else None,
+    }
+
+
+@router.get("/branches/{branch_id}/layouts")
+def list_branch_layouts(
+    branch_id: uuid.UUID,
+    current_user=Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """List all warehouse layouts for a branch."""
+    branch = db.get(Branch, branch_id)
+    if not branch or branch.company_id != current_user.company_id:
+        raise HTTPException(status_code=404, detail="Branch not found")
+    layouts = (
+        db.query(WarehouseLayout)
+        .filter(WarehouseLayout.branch_id == branch_id)
+        .order_by(WarehouseLayout.created_at)
+        .all()
+    )
+    return [_serialize_layout_summary(l) for l in layouts]
+
+
+class LayoutCreate(BaseModel):
+    name: str
+    # Either pick a named preset (small/medium/large/commercial) OR supply
+    # explicit width_m/height_m. Explicit values win when both are sent.
+    size_preset: str | None = None
+    width_m: float | None = None
+    height_m: float | None = None
+    grid_size_m: float = 0.5
+    seed_default_zones: bool = True
+
+
+@router.get("/warehouse-size-presets")
+def list_warehouse_size_presets():
+    """Catalogue of stock commercial warehouse footprints exposed to the UI
+    so the New-layout form can render a size picker without hard-coding."""
+    return [
+        {
+            "code": code,
+            "label": code.capitalize(),
+            **spec,
+            "floor_area_m2": round(spec["width_m"] * spec["height_m"]),
+        }
+        for code, spec in WAREHOUSE_SIZE_PRESETS.items()
+    ]
+
+
+@router.post("/branches/{branch_id}/layouts", status_code=201)
+def create_branch_layout(
+    branch_id: uuid.UUID,
+    body: LayoutCreate,
+    current_user=Depends(require_roles(*WRITE_ROLES)),
+    db: Session = Depends(get_db),
+):
+    """Create a new warehouse layout for a branch (does not change the default)."""
+    branch = db.get(Branch, branch_id)
+    if not branch or branch.company_id != current_user.company_id:
+        raise HTTPException(status_code=404, detail="Branch not found")
+
+    name = body.name.strip()
+    if not name:
+        raise HTTPException(status_code=400, detail="name is required")
+
+    # Resolve dimensions: explicit body values win; otherwise consult preset;
+    # otherwise fall back to commercial default.
+    preset = WAREHOUSE_SIZE_PRESETS.get((body.size_preset or "commercial").lower())
+    if body.size_preset and not preset:
+        raise HTTPException(
+            status_code=400,
+            detail=f"unknown size_preset '{body.size_preset}'. Use one of: {', '.join(WAREHOUSE_SIZE_PRESETS)}",
+        )
+    width_m = body.width_m if body.width_m is not None else (preset or {}).get("width_m", DEFAULT_LAYOUT_WIDTH_M)
+    height_m = body.height_m if body.height_m is not None else (preset or {}).get("height_m", DEFAULT_LAYOUT_HEIGHT_M)
+
+    if width_m < 5 or width_m > 200:
+        raise HTTPException(status_code=400, detail="width_m must be 5–200")
+    if height_m < 5 or height_m > 200:
+        raise HTTPException(status_code=400, detail="height_m must be 5–200")
+    if body.grid_size_m < 0.1 or body.grid_size_m > 2.0:
+        raise HTTPException(status_code=400, detail="grid_size_m must be 0.1–2.0")
+
+    existing = db.query(WarehouseLayout).filter(WarehouseLayout.branch_id == branch_id).count()
+    layout = WarehouseLayout(
+        branch_id=branch.id,
+        company_id=branch.company_id,
+        name=name,
+        is_default=existing == 0,
+        width_m=Decimal(str(round(width_m, 2))),
+        height_m=Decimal(str(round(height_m, 2))),
+        grid_size_m=Decimal(str(round(body.grid_size_m, 2))),
+    )
+    db.add(layout)
+    db.flush()
+
+    if body.seed_default_zones:
+        # Zones are computed proportionally so they fit ANY chosen footprint —
+        # a 15×35 small mill gets the same six bands as a 30×120 commercial one,
+        # just scaled to fit.
+        for ztype, zname, x, y, w, h, color in _compute_default_zones(width_m, height_m):
+            db.add(WarehouseZone(
+                layout_id=layout.id,
+                zone_type=ztype,
+                name=zname,
+                x_m=Decimal(str(x)), y_m=Decimal(str(y)),
+                width_m=Decimal(str(w)), height_m=Decimal(str(h)),
+                color_hex=color,
+            ))
+
+    db.commit()
+    db.refresh(layout)
+    return _serialize_layout_summary(layout)
+
+
+@router.patch("/layouts/{layout_id}/set-default")
+def set_default_layout(
+    layout_id: uuid.UUID,
+    current_user=Depends(require_roles(*WRITE_ROLES)),
+    db: Session = Depends(get_db),
+):
+    """Mark a layout as the default for its branch (unmarks any previous default)."""
+    layout = db.get(WarehouseLayout, layout_id)
+    if not layout or layout.company_id != current_user.company_id:
+        raise HTTPException(status_code=404, detail="Layout not found")
+
+    db.query(WarehouseLayout).filter(
+        WarehouseLayout.branch_id == layout.branch_id,
+        WarehouseLayout.id != layout_id,
+    ).update({"is_default": False})
+    layout.is_default = True
+    db.commit()
+    return _serialize_layout_summary(layout)
+
+
+@router.delete("/layouts/{layout_id}", status_code=204)
+def delete_layout(
+    layout_id: uuid.UUID,
+    current_user=Depends(require_roles(*WRITE_ROLES)),
+    db: Session = Depends(get_db),
+):
+    """Delete a layout and all its zones/pallets.
+
+    Cannot delete the last layout for a branch; cannot delete while pallets
+    exist in the layout (move or discard them first).
+    """
+    layout = db.get(WarehouseLayout, layout_id)
+    if not layout or layout.company_id != current_user.company_id:
+        raise HTTPException(status_code=404, detail="Layout not found")
+
+    sibling_count = db.query(WarehouseLayout).filter(
+        WarehouseLayout.branch_id == layout.branch_id
+    ).count()
+    if sibling_count <= 1:
+        raise HTTPException(status_code=400, detail="Cannot delete the only layout for a branch")
+
+    pallet_count = db.query(Pallet).filter(Pallet.layout_id == layout_id).count()
+    if pallet_count > 0:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Layout has {pallet_count} pallets — move or discard them before deleting",
+        )
+
+    was_default = layout.is_default
+    db.delete(layout)
+    db.flush()
+
+    if was_default:
+        sibling = db.query(WarehouseLayout).filter(
+            WarehouseLayout.branch_id == layout.branch_id
+        ).first()
+        if sibling:
+            sibling.is_default = True
+
+    db.commit()
 
 
 @router.get("/dispatch/variety-options")

@@ -1,12 +1,15 @@
 import { useState, useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import api from "../services/api";
 import {
   Package, Wheat, MapPin, List, Table2, LayoutGrid, BarChart3, Warehouse,
   Search, ArrowUpDown, Building2, Lock, Sparkles, ArrowRight,
+  Plus, Trash2, Star, Pencil, X as XIcon, Check, Maximize2,
 } from "lucide-react";
-import BodegaCanvas from "../components/canvas/BodegaCanvas";
+import WarehouseCanvas from "../components/canvas/WarehouseCanvas";
+import InventoryDetailDrawer from "../components/inventory/InventoryDetailDrawer";
+import WarehousePicker from "../components/inventory/WarehousePicker";
 import { useFeature } from "../hooks/useFeature";
 
 const BYPRODUCT_NAMES: Record<string, string> = {
@@ -38,6 +41,7 @@ const TYPE_COLORS: Record<UnifiedItem["type"], { fill: string; ring: string; bar
 export default function InventoryPage() {
   const [branchFilter, setBranchFilter] = useState<string>("");
   const [view, setView] = useState<ViewMode>("classic");
+  const [selected, setSelected] = useState<UnifiedItem | null>(null);
   const branchQuery = branchFilter ? `?branch_id=${branchFilter}` : "";
 
   const { data: branches = [] } = useQuery<any[]>({ queryKey: ["branches"], queryFn: () => api.get("/branches/").then(r => r.data) });
@@ -82,7 +86,7 @@ export default function InventoryPage() {
     { key: "spreadsheet", label: "Spreadsheet", icon: Table2 },
     { key: "cards",       label: "Cards",       icon: LayoutGrid },
     { key: "bins",        label: "Bins",        icon: BarChart3 },
-    { key: "warehouse",   label: "Bodega",      icon: Warehouse },
+    { key: "warehouse",   label: "Warehouse",   icon: Warehouse },
   ];
 
   return (
@@ -93,13 +97,11 @@ export default function InventoryPage() {
           <p className="text-sm text-secondary">Stock of palay, milled rice, and by-products — 5 ways to view it</p>
         </div>
         <div className="flex items-center gap-2">
-          <MapPin size={16} className="text-muted" />
-          <select className="input w-auto" value={branchFilter} onChange={(e) => setBranchFilter(e.target.value)}>
-            <option value="">All warehouses ({branches.length})</option>
-            {branches.map((b: any) => (
-              <option key={b.id} value={b.id}>{b.name}{b.is_main_branch ? " (Main)" : ""}</option>
-            ))}
-          </select>
+          <WarehousePicker
+            branches={branches as any[]}
+            selectedId={branchFilter}
+            onSelect={setBranchFilter}
+          />
         </div>
       </div>
 
@@ -126,9 +128,20 @@ export default function InventoryPage() {
 
       {view === "classic"     && <ClassicView palay={palay} milled={milled} byproducts={byproducts} summary={summary} branchFilter={branchFilter} />}
       {view === "spreadsheet" && <SpreadsheetView items={items} />}
-      {view === "cards"       && <CardsView items={items} totalKg={totalKg} />}
-      {view === "bins"        && <BinsView items={items} />}
-      {view === "warehouse"   && <BodegaCanvasView branches={branches} branchFilter={branchFilter} setBranchFilter={setBranchFilter} />}
+      {view === "cards"       && <CardsView items={items} totalKg={totalKg} onSelect={setSelected} />}
+      {view === "bins"        && <BinsView items={items} onSelect={setSelected} />}
+      {view === "warehouse"   && <WarehouseCanvasView branches={branches} branchFilter={branchFilter} setBranchFilter={setBranchFilter} />}
+
+      <InventoryDetailDrawer
+        item={selected}
+        totalKg={totalKg}
+        onClose={() => setSelected(null)}
+        onViewInWarehouse={(branchId) => {
+          if (branchId) setBranchFilter(branchId);
+          setView("warehouse");
+          setSelected(null);
+        }}
+      />
     </div>
   );
 }
@@ -303,36 +316,93 @@ function SpreadsheetView({ items }: { items: UnifiedItem[] }) {
 }
 
 /* ─── 3. CARDS ─── modern card grid with progress against total */
-function CardsView({ items, totalKg }: { items: UnifiedItem[]; totalKg: number }) {
+const TYPE_ICON_BY_KIND: Record<UnifiedItem["type"], React.ElementType> = {
+  palay: Wheat,
+  milled: Package,
+  byproduct: Package,
+};
+
+const TYPE_BAR_GRAD: Record<UnifiedItem["type"], string> = {
+  palay: "from-amber-500 to-orange-400",
+  milled: "from-emerald-500 to-teal-400",
+  byproduct: "from-slate-500 to-slate-400",
+};
+
+function CardsView({ items, totalKg, onSelect }: { items: UnifiedItem[]; totalKg: number; onSelect: (item: UnifiedItem) => void }) {
   if (items.length === 0) {
     return <div className="card text-sm text-secondary text-center py-10">Inventory is empty.</div>;
   }
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-      {items.map((i) => {
+      {items.map((i, idx) => {
         const c = TYPE_COLORS[i.type];
+        const Icon = TYPE_ICON_BY_KIND[i.type];
+        const grad = TYPE_BAR_GRAD[i.type];
         const pct = totalKg > 0 ? (i.quantity_kg / totalKg) * 100 : 0;
+        const cavans = i.quantity_kg / 50;
+        const isStaggered = idx < 12;
         return (
-          <div key={i.id} className={`card !p-5 ring-1 ${c.ring}`}>
-            <div className="flex items-start justify-between mb-3">
-              <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider ${c.fill} ${c.text}`}>
-                {i.typeLabel}
+          <button
+            key={i.id}
+            type="button"
+            data-testid="inventory-card"
+            onClick={() => onSelect(i)}
+            className={`group card !p-5 ring-1 ${c.ring} text-left cursor-pointer transition-transform duration-150 hover:-translate-y-0.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 ${isStaggered ? "animate-grad-fade-up" : ""}`}
+            style={isStaggered ? { animationDelay: `${idx * 30}ms` } : undefined}
+          >
+            {/* Header: dot + type label · pct chip */}
+            <div className="flex items-center justify-between mb-3.5">
+              <div className="flex items-center gap-2 min-w-0">
+                <span className={`shrink-0 w-2.5 h-2.5 rounded-full ${c.bar} shadow-[0_0_0_3px_rgba(255,255,255,0.4)]`} aria-hidden />
+                <span className={`text-[10px] font-bold uppercase tracking-[0.08em] truncate ${c.text}`}>
+                  {i.typeLabel}
+                </span>
+              </div>
+              <span className="shrink-0 text-[10px] font-semibold text-muted tabular-nums bg-slate-100/60 dark:bg-slate-700/40 px-1.5 py-0.5 rounded-md">
+                {pct.toFixed(1)}%
               </span>
-              <span className="text-[10px] font-bold text-muted">{pct.toFixed(1)}% of stock</span>
             </div>
-            <p className="font-bold text-lg text-primary leading-tight">{i.variety}</p>
-            <p className="text-xs text-muted mt-0.5">Grade: <span className="font-medium text-secondary">{i.grade}</span></p>
+
+            {/* Title row: icon + variety */}
+            <div className="flex items-start gap-2">
+              <Icon size={18} className={`mt-0.5 shrink-0 ${c.text}`} />
+              <div className="min-w-0">
+                <p className="font-bold text-lg text-primary leading-tight truncate">{i.variety}</p>
+                <p className="text-xs text-muted mt-0.5">Grade <span className="font-semibold text-secondary">{i.grade}</span></p>
+              </div>
+            </div>
+
+            {/* Quantity hero */}
             <div className="mt-4">
-              <p className="text-2xl font-extrabold text-primary tabular-nums">{i.quantity_kg.toLocaleString()} <span className="text-sm font-medium text-muted">kg</span></p>
-              <p className="text-xs text-muted">{(i.quantity_kg / 50).toFixed(1)} cavans</p>
+              <p className="text-[26px] font-extrabold text-primary tabular-nums leading-none">
+                {i.quantity_kg.toLocaleString()}
+                <span className="text-sm font-medium text-muted ml-1">kg</span>
+              </p>
+              <p className="text-xs text-muted mt-1 tabular-nums">{cavans.toFixed(1)} cavans</p>
             </div>
-            <div className="mt-3 h-1.5 w-full bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
-              <div className={`h-full ${c.bar} transition-all`} style={{ width: `${Math.min(100, pct * 2)}%` }} />
+
+            {/* Progress bar — track + fill */}
+            <div className="mt-3 h-1.5 w-full bg-slate-200/70 dark:bg-slate-700/60 rounded-full overflow-hidden">
+              <div
+                role="progressbar"
+                aria-valuenow={Math.round(pct)}
+                aria-valuemin={0}
+                aria-valuemax={100}
+                aria-label={`${pct.toFixed(1)}% of total stock`}
+                className={`h-full bg-gradient-to-r ${grad} transition-[width] duration-500`}
+                style={{ width: `${Math.max(pct, 1.5)}%` }}
+              />
             </div>
-            <p className="mt-3 text-xs text-muted flex items-center gap-1">
-              <MapPin size={11} /> {i.branchName}
-            </p>
-          </div>
+
+            {/* Footer: warehouse chip + drill-in hint */}
+            <div className="mt-3.5 flex items-center justify-between">
+              <span className="inline-flex items-center gap-1.5 text-xs font-medium text-secondary bg-slate-100/70 dark:bg-slate-800/50 px-2 py-1 rounded-md max-w-[78%] truncate">
+                <Building2 size={11} className="shrink-0 text-muted" />
+                <span className="truncate">{i.branchName}</span>
+              </span>
+              <ArrowRight size={14} className="text-muted opacity-0 -translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 transition-all" />
+            </div>
+          </button>
         );
       })}
     </div>
@@ -340,21 +410,32 @@ function CardsView({ items, totalKg }: { items: UnifiedItem[]; totalKg: number }
 }
 
 /* ─── 4. BINS ─── horizontal bar chart, items as labeled bars */
-function BinsView({ items }: { items: UnifiedItem[] }) {
+const SECTION_UNDERLINE: Record<UnifiedItem["type"], string> = {
+  palay: "bg-gradient-to-r from-amber-500 via-orange-400 to-transparent",
+  milled: "bg-gradient-to-r from-emerald-500 via-teal-400 to-transparent",
+  byproduct: "bg-gradient-to-r from-slate-500 via-slate-400 to-transparent",
+};
+
+const SECTION_EMPTY: Record<UnifiedItem["type"], string> = {
+  palay: "No palay in stock",
+  milled: "No milled rice in stock",
+  byproduct: "No by-products on hand",
+};
+
+function BinsView({ items, onSelect }: { items: UnifiedItem[]; onSelect: (item: UnifiedItem) => void }) {
   const grouped = useMemo(() => {
     const g: Record<UnifiedItem["type"], UnifiedItem[]> = { palay: [], milled: [], byproduct: [] };
     items.forEach(i => g[i.type].push(i));
     Object.values(g).forEach(arr => arr.sort((a,b) => b.quantity_kg - a.quantity_kg));
     return g;
   }, [items]);
-  const maxKg = Math.max(...items.map(i => i.quantity_kg), 1);
 
   if (items.length === 0) {
     return <div className="card text-sm text-secondary text-center py-10">Inventory is empty.</div>;
   }
 
   const sections: { type: UnifiedItem["type"]; label: string; icon: React.ReactNode }[] = [
-    { type: "palay",     label: "Palay (Paddy)",      icon: <Wheat size={16} className="text-amber-500" /> },
+    { type: "palay",     label: "Palay (Paddy)",       icon: <Wheat size={16} className="text-amber-500" /> },
     { type: "milled",    label: "Milled Rice (Bigas)", icon: <Package size={16} className="text-emerald-500" /> },
     { type: "byproduct", label: "By-products",         icon: <Package size={16} className="text-slate-500" /> },
   ];
@@ -363,38 +444,80 @@ function BinsView({ items }: { items: UnifiedItem[] }) {
     <div className="space-y-6">
       {sections.map(({ type, label, icon }) => {
         const list = grouped[type];
-        if (list.length === 0) return null;
         const c = TYPE_COLORS[type];
+        const grad = TYPE_BAR_GRAD[type];
+        const sectionTotal = list.reduce((s, x) => s + x.quantity_kg, 0);
+        const sectionMax = Math.max(...list.map(x => x.quantity_kg), 1);
+
         return (
-          <div key={type} className="card">
-            <div className="flex items-center gap-2 mb-4">
+          <section key={type} data-testid={`bins-section-${type}`} className="card">
+            <div className="flex items-center gap-2 mb-1.5">
               {icon}
               <h3 className="font-semibold text-primary">{label}</h3>
-              <span className="ml-auto text-xs text-muted">{list.length} bin{list.length === 1 ? "" : "s"}</span>
+              <span className="ml-auto inline-flex items-center gap-1.5 text-[11px] font-semibold text-secondary bg-slate-100 dark:bg-slate-800/60 ring-1 ring-slate-200/80 dark:ring-slate-700 px-2 py-0.5 rounded-md tabular-nums">
+                {list.length} bin{list.length === 1 ? "" : "s"}
+                {list.length > 0 && (
+                  <>
+                    <span className="text-muted">·</span>
+                    {sectionTotal.toLocaleString()} kg
+                  </>
+                )}
+              </span>
             </div>
-            <div className="space-y-3">
-              {list.map(i => {
-                const w = (i.quantity_kg / maxKg) * 100;
-                return (
-                  <div key={i.id}>
-                    <div className="flex items-center justify-between text-sm mb-1">
-                      <span className="font-medium text-primary">
-                        {i.variety} <span className="text-xs text-muted">· {i.grade} · {i.branchName}</span>
-                      </span>
-                      <span className="font-semibold text-primary tabular-nums">
-                        {i.quantity_kg.toLocaleString()} kg <span className="text-xs text-muted">({(i.quantity_kg / 50).toFixed(0)} cavans)</span>
-                      </span>
-                    </div>
-                    <div className="h-5 w-full bg-slate-100 dark:bg-slate-800 rounded-md overflow-hidden relative ring-1 ring-slate-200 dark:ring-slate-700">
-                      <div className={`h-full ${c.bar} transition-all`} style={{ width: `${w}%` }}>
-                        <div className="h-full w-full opacity-30 bg-[repeating-linear-gradient(45deg,transparent_0_6px,rgba(255,255,255,0.4)_6px_12px)]" />
+            <div className={`h-px w-full ${SECTION_UNDERLINE[type]} opacity-60 mb-4`} aria-hidden />
+
+            {list.length === 0 ? (
+              <p className="text-sm text-muted italic py-3 px-1">{SECTION_EMPTY[type]}</p>
+            ) : (
+              <div className="space-y-3">
+                {list.map(i => {
+                  const w = (i.quantity_kg / sectionMax) * 100;
+                  const sectionPct = sectionTotal > 0 ? (i.quantity_kg / sectionTotal) * 100 : 0;
+                  return (
+                    <button
+                      key={i.id}
+                      type="button"
+                      data-testid="inventory-bin-row"
+                      onClick={() => onSelect(i)}
+                      className="group block w-full text-left rounded-lg px-2 -mx-2 py-2 transition-colors hover:bg-slate-100/60 dark:hover:bg-slate-800/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400"
+                    >
+                      <div className="flex items-end justify-between gap-3 mb-1.5">
+                        <div className="min-w-0">
+                          <span className="font-semibold text-primary text-sm truncate block">{i.variety}</span>
+                          <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                            <span className={`inline-flex items-center text-[10px] font-semibold px-1.5 py-0.5 rounded ${c.fill} ${c.text}`}>
+                              {i.grade}
+                            </span>
+                            <span className="inline-flex items-center gap-1 text-[10px] font-medium text-muted bg-slate-100 dark:bg-slate-800/60 px-1.5 py-0.5 rounded">
+                              <Building2 size={9} /> {i.branchName}
+                            </span>
+                          </div>
+                        </div>
+                        <div className="text-right shrink-0">
+                          <p className="font-bold text-sm text-primary tabular-nums leading-none">
+                            {i.quantity_kg.toLocaleString()} <span className="text-xs font-medium text-muted">kg</span>
+                          </p>
+                          <p className="text-[10px] text-muted tabular-nums mt-0.5">
+                            {(i.quantity_kg / 50).toFixed(0)} cavans · {sectionPct.toFixed(1)}%
+                          </p>
+                        </div>
                       </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
+                      <div className="relative h-2 w-full bg-slate-100 dark:bg-slate-800/80 rounded-full overflow-hidden ring-1 ring-inset ring-slate-200/70 dark:ring-slate-700/60">
+                        <div
+                          role="progressbar"
+                          aria-valuenow={Math.round(sectionPct)}
+                          aria-valuemin={0}
+                          aria-valuemax={100}
+                          className={`h-full bg-gradient-to-r ${grad} transition-[width,filter] duration-500 group-hover:brightness-110`}
+                          style={{ width: `${Math.max(w, 2)}%` }}
+                        />
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </section>
         );
       })}
     </div>
@@ -402,7 +525,17 @@ function BinsView({ items }: { items: UnifiedItem[] }) {
 }
 
 /* ─── 5. BODEGA CANVAS ─── plan-gated Konva spatial inventory (Phase 1-4) */
-function BodegaCanvasView({ branches, branchFilter, setBranchFilter }: { branches: any[]; branchFilter: string; setBranchFilter: (id: string) => void }) {
+type LayoutSummary = {
+  id: string;
+  name: string;
+  is_default: boolean;
+  width_m: number;
+  height_m: number;
+  grid_size_m: number;
+  version: number;
+};
+
+function WarehouseCanvasView({ branches, branchFilter, setBranchFilter }: { branches: any[]; branchFilter: string; setBranchFilter: (id: string) => void }) {
   const hasCanvas = useFeature("canvas_inventory");
   if (!hasCanvas) return <CanvasUpsellCard />;
 
@@ -416,25 +549,398 @@ function BodegaCanvasView({ branches, branchFilter, setBranchFilter }: { branche
       </div>
     );
   }
+  return <WarehouseCanvasWithLayouts branches={branches} activeBranchId={activeBranchId} setBranchFilter={setBranchFilter} />;
+}
+
+type WarehouseSizePreset = {
+  code: string;
+  label: string;
+  width_m: number;
+  height_m: number;
+  capacity_label: string;
+  floor_area_m2: number;
+};
+
+function WarehouseCanvasWithLayouts({ branches, activeBranchId, setBranchFilter }: { branches: any[]; activeBranchId: string; setBranchFilter: (id: string) => void }) {
+  const qc = useQueryClient();
+  const [selectedLayoutId, setSelectedLayoutId] = useState<string | null>(null);
+  const [showNewForm, setShowNewForm] = useState(false);
+  const [newLayoutName, setNewLayoutName] = useState("");
+  const [newLayoutPreset, setNewLayoutPreset] = useState<string>("commercial");
+  // "vertical" = long axis runs front-to-back (depth > width — default).
+  // "horizontal" = long axis runs left-to-right (width swapped with depth).
+  const [newLayoutOrientation, setNewLayoutOrientation] = useState<"vertical" | "horizontal">("vertical");
+  const [renamingId, setRenamingId] = useState<string | null>(null);
+  const [renameValue, setRenameValue] = useState("");
+
+  const { data: layouts = [], isLoading: layoutsLoading } = useQuery<LayoutSummary[]>({
+    queryKey: ["layouts", activeBranchId],
+    queryFn: () => api.get(`/branches/${activeBranchId}/layouts`).then(r => r.data),
+    refetchOnWindowFocus: false,
+    enabled: !!activeBranchId,
+  });
+
+  // Stock warehouse footprints (small / medium / large / commercial) — fetched once
+  // and cached forever because the catalogue is static.
+  const { data: sizePresets = [] } = useQuery<WarehouseSizePreset[]>({
+    queryKey: ["warehouse-size-presets"],
+    queryFn: () => api.get("/warehouse-size-presets").then(r => r.data),
+    staleTime: Infinity,
+  });
+
+  // Once layouts load, default selection to the is_default layout
+  const activeLayoutId = selectedLayoutId || layouts.find(l => l.is_default)?.id || layouts[0]?.id;
+
+  const createMutation = useMutation({
+    mutationFn: ({ name, size_preset, orientation }: { name: string; size_preset: string; orientation: "vertical" | "horizontal" }) => {
+      const preset = sizePresets.find(p => p.code === size_preset);
+      // Backend stores width × height verbatim. For "horizontal" orientation
+      // we swap the preset's natural (vertical) dimensions so the long axis
+      // lies along width instead of height.
+      const body: Record<string, unknown> = {
+        name,
+        seed_default_zones: true,
+      };
+      if (preset && orientation === "horizontal") {
+        body.width_m = preset.height_m;
+        body.height_m = preset.width_m;
+      } else {
+        body.size_preset = size_preset;
+      }
+      return api.post(`/branches/${activeBranchId}/layouts`, body).then(r => r.data);
+    },
+    onSuccess: (created: LayoutSummary) => {
+      qc.invalidateQueries({ queryKey: ["layouts", activeBranchId] });
+      setSelectedLayoutId(created.id);
+      setShowNewForm(false);
+      setNewLayoutName("");
+      setNewLayoutPreset("commercial");
+      setNewLayoutOrientation("vertical");
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (layoutId: string) => api.delete(`/layouts/${layoutId}`),
+    onSuccess: (_data, deletedId) => {
+      qc.invalidateQueries({ queryKey: ["layouts", activeBranchId] });
+      if (selectedLayoutId === deletedId) setSelectedLayoutId(null);
+    },
+    onError: (err: any) => {
+      alert(err?.response?.data?.detail || "Cannot delete this layout.");
+    },
+  });
+
+  const setDefaultMutation = useMutation({
+    mutationFn: (layoutId: string) => api.patch(`/layouts/${layoutId}/set-default`).then(r => r.data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["layouts", activeBranchId] }),
+  });
+
+  const renameMutation = useMutation({
+    mutationFn: ({ layoutId, name }: { layoutId: string; name: string }) =>
+      api.patch(`/warehouses/${activeBranchId}/layout?layout_id=${layoutId}`, { name }).then(r => r.data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["layouts", activeBranchId] });
+      setRenamingId(null);
+    },
+  });
+
+  const activeBranch = branches.find((b: any) => b.id === activeBranchId);
+
   return (
-    <div className="space-y-4">
-      {branches.length > 1 && (
-        <div className="card !p-3 flex items-center gap-2 text-sm">
-          <Building2 size={15} className="text-slate-500" />
-          <span className="text-secondary">Warehouse:</span>
-          <select
-            className="input w-auto"
-            value={activeBranchId}
-            onChange={(e) => setBranchFilter(e.target.value)}
-          >
-            {branches.map((b: any) => (
-              <option key={b.id} value={b.id}>{b.name}{b.is_main_branch ? " (Main)" : ""}</option>
-            ))}
-          </select>
-          <span className="text-xs text-muted ml-auto">Switch instantly — each warehouse keeps its own layout.</span>
+    <div className="space-y-3">
+      {/* Passive "Viewing" indicator — replaces the second (in-canvas) warehouse
+          picker so users only ever see ONE place to switch warehouses (the page
+          header). Shown only when more than one warehouse exists, so single-
+          warehouse tenants don't see redundant chrome. */}
+      {branches.length > 1 && activeBranch && (
+        <div className="flex items-center gap-2 text-xs text-muted px-1">
+          <Building2 size={13} className="text-slate-500" />
+          <span>Viewing warehouse:</span>
+          <span className="font-semibold text-primary">{(activeBranch as any).name}</span>
+          {(activeBranch as any).is_main_branch && (
+            <span className="text-[10px] font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-100 dark:bg-emerald-950/40 px-1.5 py-0.5 rounded">Main</span>
+          )}
+          <span className="text-muted">— switch via the dropdown at the top right.</span>
         </div>
       )}
-      <BodegaCanvas branchId={activeBranchId} />
+
+      {/* Layout tab bar — tabs are name-only. Per-tab edit/star/delete icons
+          were too noisy when many layouts exist, so actions moved into a
+          single toolbar below that acts on the currently-selected layout. */}
+      {(() => {
+        const activeLayout = layouts.find(l => l.id === activeLayoutId);
+        return (
+          <>
+            <div className="flex items-center gap-0.5 flex-wrap px-1.5 py-1.5 bg-slate-100 dark:bg-slate-800/80 rounded-xl ring-1 ring-slate-200 dark:ring-slate-700">
+              {layoutsLoading && <span className="text-xs text-muted px-2">Loading layouts…</span>}
+              {layouts.map((layout) => {
+                const isActive = layout.id === activeLayoutId;
+                const isRenamingHere = renamingId === layout.id && isActive;
+                return (
+                  <div
+                    key={layout.id}
+                    className={`relative flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium cursor-pointer select-none ${
+                      isActive
+                        ? "bg-white dark:bg-slate-900 text-primary shadow-sm ring-1 ring-slate-200 dark:ring-slate-700"
+                        : "text-slate-500 dark:text-slate-400 hover:text-primary hover:bg-white/70 dark:hover:bg-slate-700/50"
+                    }`}
+                    onClick={() => setSelectedLayoutId(layout.id)}
+                  >
+                    {layout.is_default && (
+                      <Star size={11} className="text-amber-400" fill="currentColor" />
+                    )}
+                    {isRenamingHere ? (
+                      <form
+                        onSubmit={(e) => { e.preventDefault(); if (renameValue.trim()) renameMutation.mutate({ layoutId: layout.id, name: renameValue.trim() }); }}
+                        onClick={(e) => e.stopPropagation()}
+                        className="flex items-center gap-1"
+                      >
+                        <input
+                          autoFocus
+                          className="input !py-0.5 !px-1.5 text-sm w-40"
+                          value={renameValue}
+                          onChange={(e) => setRenameValue(e.target.value)}
+                          onKeyDown={(e) => e.key === "Escape" && setRenamingId(null)}
+                        />
+                        <button type="submit" className="text-emerald-500 hover:text-emerald-600"><Check size={13} /></button>
+                        <button type="button" onClick={() => setRenamingId(null)} className="text-slate-400 hover:text-slate-600"><XIcon size={13} /></button>
+                      </form>
+                    ) : (
+                      <span>{layout.name}</span>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Single action bar — operates on the active layout. Replaces
+                the per-tab icon cluster that cluttered the tab bar when a
+                tenant had many layouts. */}
+            {activeLayout && !renamingId && (
+              <div data-testid="layout-action-bar" className="flex items-center gap-2 px-1 text-xs">
+                <span className="text-muted">Selected:</span>
+                <span className="font-semibold text-primary truncate max-w-[200px]">{activeLayout.name}</span>
+                {activeLayout.is_default && (
+                  <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-700 dark:text-amber-300 bg-amber-100 dark:bg-amber-950/40 px-1.5 py-0.5 rounded-md">
+                    <Star size={9} fill="currentColor" /> Default
+                  </span>
+                )}
+                <div className="ml-auto flex items-center gap-1">
+                  <button
+                    type="button"
+                    title="Rename this layout"
+                    onClick={() => { setRenamingId(activeLayout.id); setRenameValue(activeLayout.name); }}
+                    className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-secondary hover:text-primary hover:bg-slate-100 dark:hover:bg-slate-700/40"
+                  >
+                    <Pencil size={12} /> Rename
+                  </button>
+                  {!activeLayout.is_default && (
+                    <button
+                      type="button"
+                      title="Make this the default layout"
+                      onClick={() => setDefaultMutation.mutate(activeLayout.id)}
+                      className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-secondary hover:text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950/30"
+                    >
+                      <Star size={12} /> Set default
+                    </button>
+                  )}
+                  {layouts.length > 1 && (
+                    <button
+                      type="button"
+                      title="Delete this layout"
+                      onClick={() => {
+                        if (confirm(`Delete "${activeLayout.name}"? This cannot be undone.`)) {
+                          deleteMutation.mutate(activeLayout.id);
+                        }
+                      }}
+                      className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30"
+                    >
+                      <Trash2 size={12} /> Delete
+                    </button>
+                  )}
+                  <span className="ml-2 flex items-center gap-1 text-[11px] text-slate-400 dark:text-slate-500 font-mono shrink-0">
+                    <Maximize2 size={10} />
+                    {activeLayout.width_m}m × {activeLayout.height_m}m
+                  </span>
+                </div>
+              </div>
+            )}
+          </>
+        );
+      })()}
+
+      {/* Canvas */}
+      {/* key=layoutId forces a fresh canvas mount on layout switch — guarantees
+          stagePos, zoom, selection, and edit-mode reset so the previous layout's
+          camera offset never makes the new floor plan appear off-screen / empty. */}
+      {activeLayoutId && (
+        <WarehouseCanvas
+          key={activeLayoutId}
+          branchId={activeBranchId}
+          layoutId={activeLayoutId}
+          onNewLayout={() => setShowNewForm(true)}
+        />
+      )}
+
+      {/* Centered "New layout" modal */}
+      {showNewForm && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="new-layout-title"
+          onKeyDown={(e) => { if (e.key === "Escape") setShowNewForm(false); }}
+        >
+          <button
+            type="button"
+            aria-label="Close"
+            className="absolute inset-0 bg-slate-900/45 backdrop-blur-sm"
+            onClick={() => setShowNewForm(false)}
+          />
+          <div
+            data-testid="new-layout-modal"
+            className="relative w-full max-w-[460px] glass-strong rounded-2xl shadow-2xl ring-1 ring-soft p-5 animate-grad-fade-up"
+          >
+            <div className="flex items-start justify-between mb-3">
+              <div>
+                <h3 id="new-layout-title" className="text-lg font-bold text-primary">New warehouse layout</h3>
+                <p className="text-xs text-muted mt-0.5">Pick a footprint, set the orientation, then name it.</p>
+              </div>
+              <button
+                type="button"
+                aria-label="Close"
+                onClick={() => setShowNewForm(false)}
+                className="btn-ghost !p-1.5"
+              >
+                <XIcon size={16} />
+              </button>
+            </div>
+
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                if (newLayoutName.trim()) {
+                  createMutation.mutate({
+                    name: newLayoutName.trim(),
+                    size_preset: newLayoutPreset,
+                    orientation: newLayoutOrientation,
+                  });
+                }
+              }}
+              className="space-y-4"
+            >
+              <div>
+                <label className="block text-[10px] font-bold uppercase tracking-wider text-muted mb-1">Layout name</label>
+                <input
+                  autoFocus
+                  className="input !py-2 text-sm w-full"
+                  placeholder="e.g. North wing, Phase 2…"
+                  value={newLayoutName}
+                  onChange={(e) => setNewLayoutName(e.target.value)}
+                />
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-bold uppercase tracking-wider text-muted mb-1.5">Warehouse size</label>
+                <div className="grid grid-cols-2 gap-2">
+                  {sizePresets.map((p) => {
+                    const sel = newLayoutPreset === p.code;
+                    return (
+                      <button
+                        key={p.code}
+                        type="button"
+                        data-testid={`size-preset-${p.code}`}
+                        onClick={() => setNewLayoutPreset(p.code)}
+                        className={`text-left px-3 py-2 rounded-lg ring-1 transition-all ${
+                          sel
+                            ? "bg-emerald-500/10 ring-emerald-400 text-primary shadow-sm"
+                            : "ring-soft text-secondary hover:ring-emerald-300 hover:bg-slate-50/50 dark:hover:bg-slate-700/30"
+                        }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="font-semibold text-sm">{p.label}</span>
+                          <span className="text-[10px] font-mono text-muted tabular-nums">{p.width_m}×{p.height_m}m</span>
+                        </div>
+                        <div className="text-[11px] text-muted mt-0.5 tabular-nums">
+                          {p.floor_area_m2.toLocaleString()} m² · {p.capacity_label}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-bold uppercase tracking-wider text-muted mb-1.5">Orientation</label>
+                <div className="grid grid-cols-2 gap-2" role="radiogroup">
+                  {(() => {
+                    const preset = sizePresets.find(p => p.code === newLayoutPreset);
+                    const w = preset?.width_m ?? 30;
+                    const h = preset?.height_m ?? 120;
+                    const orientations: Array<{ code: "vertical" | "horizontal"; label: string; w: number; h: number; hint: string }> = [
+                      { code: "vertical",   label: "Vertical",   w, h, hint: "Long axis runs front-to-back" },
+                      { code: "horizontal", label: "Horizontal", w: h, h: w, hint: "Long axis runs left-to-right" },
+                    ];
+                    return orientations.map(o => {
+                      const sel = newLayoutOrientation === o.code;
+                      // Mini visual: scale to fit a 60×40 thumbnail
+                      const scale = Math.min(60 / o.w, 40 / o.h);
+                      const tw = Math.max(8, o.w * scale);
+                      const th = Math.max(8, o.h * scale);
+                      return (
+                        <button
+                          key={o.code}
+                          type="button"
+                          role="radio"
+                          aria-checked={sel}
+                          data-testid={`orientation-${o.code}`}
+                          onClick={() => setNewLayoutOrientation(o.code)}
+                          className={`flex items-center gap-3 px-3 py-2 rounded-lg ring-1 transition-all text-left ${
+                            sel
+                              ? "bg-emerald-500/10 ring-emerald-400 text-primary shadow-sm"
+                              : "ring-soft text-secondary hover:ring-emerald-300 hover:bg-slate-50/50 dark:hover:bg-slate-700/30"
+                          }`}
+                        >
+                          <div className="shrink-0 w-[68px] h-[48px] flex items-center justify-center bg-slate-100 dark:bg-slate-800/70 rounded ring-1 ring-inset ring-slate-200 dark:ring-slate-700">
+                            <div
+                              className={sel ? "bg-emerald-400/60 ring-1 ring-emerald-500" : "bg-slate-400/40 ring-1 ring-slate-400"}
+                              style={{ width: tw, height: th, borderRadius: 2 }}
+                            />
+                          </div>
+                          <div className="min-w-0">
+                            <div className="font-semibold text-sm leading-tight">{o.label}</div>
+                            <div className="text-[10px] text-muted mt-0.5 tabular-nums">{o.w}m × {o.h}m</div>
+                            <div className="text-[10px] text-muted leading-snug">{o.hint}</div>
+                          </div>
+                        </button>
+                      );
+                    });
+                  })()}
+                </div>
+              </div>
+
+              {createMutation.isError && (
+                <p className="text-[11px] text-rose-600 dark:text-rose-400 font-medium">
+                  {(createMutation.error as any)?.response?.data?.detail || "Could not create layout."}
+                </p>
+              )}
+
+              <div className="flex items-center justify-end gap-2 pt-1 border-t border-soft -mx-5 px-5 -mb-5 py-3 mt-4">
+                <button type="button" onClick={() => setShowNewForm(false)} className="btn-secondary !py-1.5 !px-3 text-sm">
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={!newLayoutName.trim() || createMutation.isPending}
+                  className="btn-primary !py-1.5 !px-3 text-sm disabled:opacity-50"
+                >
+                  {createMutation.isPending ? "Creating…" : "Create layout"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -447,7 +953,7 @@ function CanvasUpsellCard() {
       </div>
       <h3 className="text-xl font-bold text-primary mb-1.5">
         <Sparkles size={16} className="inline -mt-0.5 mr-1 text-amber-500" />
-        Visual Bodega Canvas — a Pro feature
+        Visual Warehouse Canvas — a Pro feature
       </h3>
       <p className="text-sm text-secondary max-w-md mx-auto leading-relaxed">
         Drag-and-drop your pallets across a floor plan of your warehouse. See aging at a glance,
