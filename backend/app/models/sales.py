@@ -42,8 +42,14 @@ class SalesOrder(Base, TimestampMixin):
     total_amount: Mapped[Decimal | None] = mapped_column(Numeric(14, 2))
     remarks: Mapped[str | None] = mapped_column(Text)
     created_by: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"))
+    # Courier assignment — agent OR miller, mutually exclusive (enforced in the API layer).
+    assigned_agent_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("agents.id"))
+    assigned_miller_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("millers.id"))
+    delivered_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
     customer: Mapped["Customer"] = relationship("Customer")
+    assigned_agent: Mapped["Agent | None"] = relationship("Agent", foreign_keys=[assigned_agent_id])
+    assigned_miller: Mapped["Miller | None"] = relationship("Miller", foreign_keys=[assigned_miller_id])
     items: Mapped[list["SalesOrderItem"]] = relationship("SalesOrderItem", back_populates="order", cascade="all, delete-orphan")
     invoices: Mapped[list["Invoice"]] = relationship("Invoice", back_populates="order")
 

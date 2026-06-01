@@ -22,7 +22,7 @@ class Supplier(Base, TimestampMixin):
     province: Mapped[str | None] = mapped_column(String(100))
     farmer_id: Mapped[str | None] = mapped_column(String(50))  # RSBSA or PhilSys ID
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
-    canvas_color_hex: Mapped[str | None] = mapped_column(String(7))
+    canva_color_hex: Mapped[str | None] = mapped_column(String(7))
 
 
 class Customer(Base, TimestampMixin):
@@ -41,4 +41,4 @@ class Customer(Base, TimestampMixin):
     payment_terms_days: Mapped[int] = mapped_column(Integer, default=0)
     is_p20_accredited: Mapped[bool] = mapped_column(Boolean, default=False)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
-    canvas_color_hex: Mapped[str | None] = mapped_column(String(7))
+    canva_color_hex: Mapped[str | None] = mapped_column(String(7))

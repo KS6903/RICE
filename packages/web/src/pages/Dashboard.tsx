@@ -3,6 +3,7 @@ import api from "../services/api";
 import {
   Package, Wheat, Factory, TrendingUp, AlertCircle, ArrowUpRight, Sparkles,
 } from "lucide-react";
+import WeatherWidget from "../components/WeatherWidget";
 import {
   Area, AreaChart, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
 } from "recharts";
@@ -130,6 +131,13 @@ export default function Dashboard() {
             </div>
           </div>
         </div>
+      </section>
+
+      {/* Current weather at the user's location — same widget that lives in
+          the topbar, just in its expanded variant so the dashboard reads as a
+          single focal panel. */}
+      <section data-testid="dashboard-weather">
+        <WeatherWidget variant="expanded" />
       </section>
 
       {/* KPI grid */}

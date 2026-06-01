@@ -1,0 +1,27 @@
+
+> rice-mill-system@1.0.0 dev:web
+> npm run dev --workspace=packages/web
+
+
+> @rice-mill/web@1.0.0 dev
+> vite
+
+
+  [32m[1mVITE[22m v6.4.2[39m  [2mready in [0m[1m34827[22m[2m[0m ms[22m
+
+  [32m➜[39m  [1mLocal[22m:   [36mhttp://localhost:[1m5173[22m/[39m
+[2m  [32m➜[39m  [1mNetwork[22m[2m: use [22m[1m--host[22m[2m to expose[22m
+[2m3:50:14 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/index.css, /src/components/WeatherWidget.tsx[22m
+[2m3:50:42 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/components/WeatherWidget.tsx, /src/index.css[22m
+[2m3:50:48 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2msrc/hooks/useGeolocation.ts[22m
+[2m4:02:38 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2msrc/hooks/useGeolocation.ts[22m
+[2m4:03:10 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/index.css, /src/components/WeatherWidget.tsx[22m
+[2m4:03:33 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/components/WeatherWidget.tsx, /src/index.css[22m
+[2m4:03:44 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/components/WeatherWidget.tsx, /src/index.css[22m
+[2m4:21:27 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/components/WeatherWidget.tsx, /src/index.css[22m
+[2m4:21:31 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/components/WeatherWidget.tsx, /src/index.css[22m
+[2m4:21:40 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/components/WeatherWidget.tsx, /src/index.css[22m
+[2m4:21:54 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/components/layout/Header.tsx, /src/index.css[22m
+[2m4:21:57 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/components/layout/Header.tsx, /src/index.css[22m
+[2m4:36:54 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/InventoryPage.tsx, /src/index.css[22m
+[2m4:37:05 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/InventoryPage.tsx, /src/index.css[22m

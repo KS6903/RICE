@@ -1,10 +1,10 @@
-"""Spatial warehouse canvas: layouts, zones, pallets, rice batches, movements.
+"""Spatial warehouse canva: layouts, zones, pallets, rice batches, movements.
 
-Revision ID: 011_warehouse_canvas
+Revision ID: 011_warehouse_canva
 Revises: 010_plan_change_queue
 Create Date: 2026-05-28
 
-Phase 1 of the Enterprise Visual Canvas Inventory System. Adds the spatial
+Phase 1 of the Enterprise Visual Canva Inventory System. Adds the spatial
 layer alongside the existing milled_rice_inventory/palay_inventory tables.
 
 Tables:
@@ -18,7 +18,7 @@ from alembic import op
 import sqlalchemy as sa
 from sqlalchemy.dialects.postgresql import UUID
 
-revision = "011_warehouse_canvas"
+revision = "011_warehouse_canva"
 down_revision = "010_plan_change_queue"
 branch_labels = None
 depends_on = None
@@ -130,14 +130,14 @@ def upgrade():
     )
     op.create_index("idx_movements_pallet", "pallet_movements", ["pallet_id"])
 
-    # Canvas color on suppliers/customers
-    op.add_column("suppliers", sa.Column("canvas_color_hex", sa.String(7), nullable=True))
-    op.add_column("customers", sa.Column("canvas_color_hex", sa.String(7), nullable=True))
+    # Canva color on suppliers/customers
+    op.add_column("suppliers", sa.Column("canva_color_hex", sa.String(7), nullable=True))
+    op.add_column("customers", sa.Column("canva_color_hex", sa.String(7), nullable=True))
 
 
 def downgrade():
-    op.drop_column("customers", "canvas_color_hex")
-    op.drop_column("suppliers", "canvas_color_hex")
+    op.drop_column("customers", "canva_color_hex")
+    op.drop_column("suppliers", "canva_color_hex")
     op.drop_index("idx_movements_pallet", "pallet_movements")
     op.drop_table("pallet_movements")
     op.drop_index("idx_batches_company", "rice_batches")

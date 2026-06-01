@@ -13,7 +13,7 @@ import {
   Wifi, WifiOff, ArrowDownToLine, Flame, FileBarChart2, Link2, Check,
   Hammer, Plus, Trash2, Move, Filter, DoorOpen, Square, Locate, HelpCircle,
 } from "lucide-react";
-import { useRealtimeCanvas } from "./useRealtimeCanvas";
+import { useRealtimeCanva } from "./useRealtimeCanva";
 import { DispatchModal } from "./DispatchModal";
 
 /* ──────────────────────────────────────────────────────────────────────────── */
@@ -31,7 +31,7 @@ type Zone = {
   notes?: string;
 };
 
-type CanvasCustomer = {
+type CanvaCustomer = {
   client_id: string | null;
   client_type: string | null;
   client_name: string;
@@ -72,7 +72,7 @@ type Pallet = {
   batches: Batch[];
 };
 
-type CanvasData = {
+type CanvaData = {
   layout: { id: string; name: string; branch_name: string; width_m: number; height_m: number; grid_size_m: number };
   zones: Zone[];
   pallets: Pallet[];
@@ -143,7 +143,7 @@ function useEvent<T extends (...args: any[]) => any>(fn: T): T {
 /* Main component                                                                */
 /* ──────────────────────────────────────────────────────────────────────────── */
 
-export default function WarehouseCanvas({
+export default function WarehouseCanva({
   branchId, layoutId, onNewLayout,
 }: {
   branchId: string;
@@ -190,9 +190,9 @@ export default function WarehouseCanvas({
   const [selectedClientNames, setSelectedClientNames] = useState<string[]>([]); // empty = show all
   const [showLayoutSize, setShowLayoutSize] = useState(false);
 
-  const { data: customers = [] } = useQuery<CanvasCustomer[]>({
-    queryKey: ["canvas-customers", cacheKey],
-    queryFn: () => api.get(`/canvas/customers?branch_id=${branchId}`).then(r => r.data),
+  const { data: customers = [] } = useQuery<CanvaCustomer[]>({
+    queryKey: ["canva-customers", cacheKey],
+    queryFn: () => api.get(`/canva/customers?branch_id=${branchId}`).then(r => r.data),
     refetchOnWindowFocus: false,
   });
   const clientColorByName = useMemo(() => {
@@ -201,13 +201,13 @@ export default function WarehouseCanvas({
     return m;
   }, [customers]);
 
-  const canvasUrl = layoutId
-    ? `/warehouses/${branchId}/canvas?layout_id=${layoutId}`
-    : `/warehouses/${branchId}/canvas`;
+  const canvaUrl = layoutId
+    ? `/warehouses/${branchId}/canva?layout_id=${layoutId}`
+    : `/warehouses/${branchId}/canva`;
 
-  const { data, isLoading, error } = useQuery<CanvasData>({
-    queryKey: ["canvas", cacheKey],
-    queryFn: () => api.get(canvasUrl).then(r => r.data),
+  const { data, isLoading, error } = useQuery<CanvaData>({
+    queryKey: ["canva", cacheKey],
+    queryFn: () => api.get(canvaUrl).then(r => r.data),
     refetchOnWindowFocus: false,
     enabled: !!branchId,
   });
@@ -221,7 +221,7 @@ export default function WarehouseCanvas({
   }, [data?.pallets]);
 
   // Realtime sync — applies remote pallet.moved/stacked/unstacked events to the cache
-  const liveStatus = useRealtimeCanvas(data?.layout.id, cacheKey);
+  const liveStatus = useRealtimeCanva(data?.layout.id, cacheKey);
 
   // Deep-link sync: read ?pallet=PL-... on load → select the matching pallet
   useEffect(() => {
@@ -252,7 +252,7 @@ export default function WarehouseCanvas({
   }, [selectedPalletId, data?.layout.id]);
 
   // Resize observer — rAF-throttled so Stage width updates every frame during
-  // the CSS width transition on the side panel, producing smooth canvas resizing.
+  // the CSS width transition on the side panel, producing smooth canva resizing.
   useEffect(() => {
     if (!containerRef.current) return;
     const el = containerRef.current;
@@ -293,7 +293,7 @@ export default function WarehouseCanvas({
   };
 
   // Pinch-to-zoom only (trackpad two-finger spread/retract). Regular wheel
-  // scroll must NEVER zoom — it should just be a no-op on the canvas.
+  // scroll must NEVER zoom — it should just be a no-op on the canva.
   // Browsers report pinch gestures as `wheel` events with `ctrlKey: true`,
   // and ordinary scroll as `ctrlKey: false`. We bail out early for the latter.
   const wheelRafRef = useRef<number | null>(null);
@@ -339,9 +339,9 @@ export default function WarehouseCanvas({
     mutationFn: ({ palletId, x_m, y_m }: { palletId: string; x_m: number; y_m: number }) =>
       api.patch(`/pallets/${palletId}/move`, { x_m, y_m }).then(r => r.data),
     onMutate: async ({ palletId, x_m, y_m }) => {
-      await qc.cancelQueries({ queryKey: ["canvas", cacheKey] });
-      const previous = qc.getQueryData<CanvasData>(["canvas", cacheKey]);
-      qc.setQueryData<CanvasData>(["canvas", cacheKey], (old) => {
+      await qc.cancelQueries({ queryKey: ["canva", cacheKey] });
+      const previous = qc.getQueryData<CanvaData>(["canva", cacheKey]);
+      qc.setQueryData<CanvaData>(["canva", cacheKey], (old) => {
         if (!old) return old;
         return {
           ...old,
@@ -351,13 +351,13 @@ export default function WarehouseCanvas({
       return { previous };
     },
     onError: (err: any, _vars, ctx) => {
-      if (ctx?.previous) qc.setQueryData(["canvas", cacheKey], ctx.previous);
+      if (ctx?.previous) qc.setQueryData(["canva", cacheKey], ctx.previous);
       const detail = err?.response?.data?.detail || "Could not move pallet.";
       setErrorBanner(detail);
       setTimeout(() => setErrorBanner(null), 4000);
     },
     onSuccess: (updated: Pallet) => {
-      qc.setQueryData<CanvasData>(["canvas", cacheKey], (old) => {
+      qc.setQueryData<CanvaData>(["canva", cacheKey], (old) => {
         if (!old) return old;
         return { ...old, pallets: old.pallets.map(p => p.id === updated.id ? updated : p) };
       });
@@ -368,7 +368,7 @@ export default function WarehouseCanvas({
     mutationFn: ({ palletId, parentId }: { palletId: string; parentId: string }) =>
       api.patch(`/pallets/${palletId}/stack`, { parent_pallet_id: parentId }).then(r => r.data),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["canvas", cacheKey] });
+      qc.invalidateQueries({ queryKey: ["canva", cacheKey] });
     },
     onError: (err: any) => {
       const detail = err?.response?.data?.detail || "Could not stack pallet.";
@@ -381,7 +381,7 @@ export default function WarehouseCanvas({
     mutationFn: ({ palletId, x_m, y_m }: { palletId: string; x_m?: number; y_m?: number }) =>
       api.patch(`/pallets/${palletId}/unstack`, { x_m, y_m }).then(r => r.data),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["canvas", cacheKey] });
+      qc.invalidateQueries({ queryKey: ["canva", cacheKey] });
     },
     onError: (err: any) => {
       const detail = err?.response?.data?.detail || "Could not unstack pallet.";
@@ -396,9 +396,9 @@ export default function WarehouseCanvas({
     mutationFn: ({ palletId, width_m, depth_m }: { palletId: string; width_m: number; depth_m: number }) =>
       api.patch(`/pallets/${palletId}/resize`, { width_m, depth_m }).then(r => r.data),
     onMutate: async ({ palletId, width_m, depth_m }) => {
-      await qc.cancelQueries({ queryKey: ["canvas", cacheKey] });
-      const previous = qc.getQueryData<CanvasData>(["canvas", cacheKey]);
-      qc.setQueryData<CanvasData>(["canvas", cacheKey], (old) => {
+      await qc.cancelQueries({ queryKey: ["canva", cacheKey] });
+      const previous = qc.getQueryData<CanvaData>(["canva", cacheKey]);
+      qc.setQueryData<CanvaData>(["canva", cacheKey], (old) => {
         if (!old) return old;
         return {
           ...old,
@@ -408,13 +408,13 @@ export default function WarehouseCanvas({
       return { previous };
     },
     onError: (err: any, _vars, ctx) => {
-      if (ctx?.previous) qc.setQueryData(["canvas", cacheKey], ctx.previous);
+      if (ctx?.previous) qc.setQueryData(["canva", cacheKey], ctx.previous);
       const detail = err?.response?.data?.detail || "Could not resize pallet.";
       setErrorBanner(detail);
       setTimeout(() => setErrorBanner(null), 4000);
     },
     onSuccess: (updated: Pallet) => {
-      qc.setQueryData<CanvasData>(["canvas", cacheKey], (old) => {
+      qc.setQueryData<CanvaData>(["canva", cacheKey], (old) => {
         if (!old) return old;
         return { ...old, pallets: old.pallets.map(p => p.id === updated.id ? updated : p) };
       });
@@ -436,7 +436,7 @@ export default function WarehouseCanvas({
       return api.patch(url, body).then(r => r.data);
     },
     onSuccess: (updated: any) => {
-      qc.setQueryData<CanvasData>(["canvas", cacheKey], (old) => {
+      qc.setQueryData<CanvaData>(["canva", cacheKey], (old) => {
         if (!old) return old;
         return { ...old, layout: { ...old.layout, ...updated } };
       });
@@ -453,9 +453,9 @@ export default function WarehouseCanvas({
     },
     onMutate: async (body: any) => {
       // Optimistic: tack a temp zone on so the user sees their drag immediately
-      await qc.cancelQueries({ queryKey: ["canvas", cacheKey] });
+      await qc.cancelQueries({ queryKey: ["canva", cacheKey] });
       const tmpId = `_tmp_${Date.now()}`;
-      qc.setQueryData<CanvasData>(["canvas", cacheKey], (old) => {
+      qc.setQueryData<CanvaData>(["canva", cacheKey], (old) => {
         if (!old) return old;
         return {
           ...old,
@@ -471,14 +471,14 @@ export default function WarehouseCanvas({
       return { tmpId };
     },
     onSuccess: (zone: Zone, _vars, ctx: any) => {
-      qc.setQueryData<CanvasData>(["canvas", cacheKey], (old) => {
+      qc.setQueryData<CanvaData>(["canva", cacheKey], (old) => {
         if (!old) return old;
         return { ...old, zones: old.zones.map(z => z.id === ctx?.tmpId ? zone : z) };
       });
       setSelectedZoneId(zone.id);
     },
     onError: (err: any, _vars, ctx: any) => {
-      qc.setQueryData<CanvasData>(["canvas", cacheKey], (old) => {
+      qc.setQueryData<CanvaData>(["canva", cacheKey], (old) => {
         if (!old) return old;
         return { ...old, zones: old.zones.filter(z => z.id !== ctx?.tmpId) };
       });
@@ -490,22 +490,22 @@ export default function WarehouseCanvas({
     mutationFn: ({ zoneId, body }: { zoneId: string; body: any }) =>
       api.patch(`/zones/${zoneId}`, body).then(r => r.data),
     onMutate: async ({ zoneId, body }) => {
-      await qc.cancelQueries({ queryKey: ["canvas", cacheKey] });
-      const previous = qc.getQueryData<CanvasData>(["canvas", cacheKey]);
-      qc.setQueryData<CanvasData>(["canvas", cacheKey], (old) => {
+      await qc.cancelQueries({ queryKey: ["canva", cacheKey] });
+      const previous = qc.getQueryData<CanvaData>(["canva", cacheKey]);
+      qc.setQueryData<CanvaData>(["canva", cacheKey], (old) => {
         if (!old) return old;
         return { ...old, zones: old.zones.map(z => z.id === zoneId ? { ...z, ...body } : z) };
       });
       return { previous };
     },
     onSuccess: (zone: Zone) => {
-      qc.setQueryData<CanvasData>(["canvas", cacheKey], (old) => {
+      qc.setQueryData<CanvaData>(["canva", cacheKey], (old) => {
         if (!old) return old;
         return { ...old, zones: old.zones.map(z => z.id === zone.id ? zone : z) };
       });
     },
     onError: (err: any, _vars, ctx: any) => {
-      if (ctx?.previous) qc.setQueryData(["canvas", cacheKey], ctx.previous);
+      if (ctx?.previous) qc.setQueryData(["canva", cacheKey], ctx.previous);
       flashError(err?.response?.data?.detail || "Could not update zone.");
     },
   });
@@ -513,7 +513,7 @@ export default function WarehouseCanvas({
   const zoneDeleteMutation = useMutation({
     mutationFn: (zoneId: string) => api.delete(`/zones/${zoneId}`).then(r => r.data),
     onSuccess: (_data, zoneId) => {
-      qc.setQueryData<CanvasData>(["canvas", cacheKey], (old) => {
+      qc.setQueryData<CanvaData>(["canva", cacheKey], (old) => {
         if (!old) return old;
         return { ...old, zones: old.zones.filter(z => z.id !== zoneId) };
       });
@@ -723,7 +723,7 @@ export default function WarehouseCanvas({
   if (isLoading) {
     return (
       <div className="card flex items-center justify-center h-[600px] gap-2 text-secondary">
-        <Loader2 size={18} className="animate-spin" /> Loading warehouse canvas…
+        <Loader2 size={18} className="animate-spin" /> Loading warehouse canva…
       </div>
     );
   }
@@ -731,7 +731,7 @@ export default function WarehouseCanvas({
     return (
       <div className="card text-center py-16">
         <AlertCircle size={32} className="mx-auto text-rose-500 mb-2" />
-        <p className="text-secondary">Could not load warehouse canvas.</p>
+        <p className="text-secondary">Could not load warehouse canva.</p>
       </div>
     );
   }
@@ -853,7 +853,7 @@ export default function WarehouseCanvas({
       )}
 
       {/* No gap-4 on the parent — side panels control their own left spacing so the
-          CSS width transition drives the flex layout and the canvas resizes smoothly. */}
+          CSS width transition drives the flex layout and the canva resizes smoothly. */}
       <div className="flex">
         <div
           ref={containerRef}
@@ -1007,7 +1007,7 @@ export default function WarehouseCanvas({
           {/* Floating chrome — single unified top bar, Canva-style            */}
           {/* All controls live in one floating row aligned with the FIFO box. */}
           {/* Wrapper is click-through; only the interactive controls capture  */}
-          {/* pointer events so the canvas still receives drops underneath.    */}
+          {/* pointer events so the canva still receives drops underneath.    */}
           {/* ──────────────────────────────────────────────────────────────── */}
           <div data-testid="warehouse-floating-bar" className="absolute top-3 left-3 right-3 z-10 pointer-events-none flex justify-center">
             <div
@@ -1214,7 +1214,7 @@ export default function WarehouseCanvas({
 /* Sub-components                                                                */
 /* ──────────────────────────────────────────────────────────────────────────── */
 
-const WarehouseFloor = memo(function WarehouseFloor({ layout }: { layout: CanvasData["layout"] }) {
+const WarehouseFloor = memo(function WarehouseFloor({ layout }: { layout: CanvaData["layout"] }) {
   const w = layout.width_m * PX_PER_METER_DEFAULT;
   const h = layout.height_m * PX_PER_METER_DEFAULT;
   const gridStep = layout.grid_size_m * PX_PER_METER_DEFAULT;
@@ -1557,7 +1557,7 @@ const PalletShape = memo(function PalletShape({
   );
 });
 
-/* Senior-friendly help popover — plain-language tour of the warehouse canvas.
+/* Senior-friendly help popover — plain-language tour of the warehouse canva.
    Click "?" to open, click anywhere outside or press Esc to close. */
 function HelpButton() {
   const [open, setOpen] = useState(false);
@@ -1598,7 +1598,7 @@ function HelpButton() {
         <div
           ref={popRef}
           role="dialog"
-          aria-label="Warehouse canvas help"
+          aria-label="Warehouse canva help"
           className="absolute right-0 top-full mt-2 z-50 w-80 bg-white dark:bg-slate-900 rounded-xl shadow-2xl ring-1 ring-soft p-4 text-sm"
           style={{ transform: "translateZ(0)" }}
         >
@@ -2126,7 +2126,7 @@ export function CopyPalletLinkButton({ palletCode }: { palletCode: string }) {
 function CustomerFilter({
   customers, selected, onChange,
 }: {
-  customers: CanvasCustomer[];
+  customers: CanvaCustomer[];
   selected: string[];
   onChange: (next: string[]) => void;
 }) {

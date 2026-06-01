@@ -1,4 +1,4 @@
-"""Spatial warehouse canvas models — Phase 1 of the visual inventory system."""
+"""Spatial warehouse canva models — Phase 1 of the visual inventory system."""
 import uuid
 from datetime import datetime, date
 from decimal import Decimal
@@ -52,7 +52,7 @@ class WarehouseZone(Base):
 
 
 class Pallet(Base, TimestampMixin):
-    """Physical pallet on the warehouse floor — what gets dragged on the canvas."""
+    """Physical pallet on the warehouse floor — what gets dragged on the canva."""
     __tablename__ = "pallets"
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
@@ -66,7 +66,7 @@ class Pallet(Base, TimestampMixin):
     stack_parent_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("pallets.id"))
     # Footprint defaults to a Euro-style 2.0 m × 1.2 m so pallets read at a glance
     # on a commercial-sized 30 × 120 m floor (the old 1.2 × 0.8 was too tiny to
-    # spot at the natural zoom). Users can still resize via the canvas Transformer.
+    # spot at the natural zoom). Users can still resize via the canva Transformer.
     width_m: Mapped[Decimal] = mapped_column(Numeric(4, 2), default=Decimal("2.0"), nullable=False)
     depth_m: Mapped[Decimal] = mapped_column(Numeric(4, 2), default=Decimal("1.2"), nullable=False)
     sack_count: Mapped[int] = mapped_column(Integer, nullable=False)

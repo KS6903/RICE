@@ -1,8 +1,8 @@
-"""In-memory WebSocket pub/sub for the warehouse canvas.
+"""In-memory WebSocket pub/sub for the warehouse canva.
 
 Single-process, single-instance — fine for Phase 3 dev. For horizontal scaling,
 swap _ConnectionManager for a Redis-backed implementation without touching
-the call sites in api/canvas.py.
+the call sites in api/canva.py.
 """
 import asyncio
 import json
@@ -14,7 +14,7 @@ from typing import Any
 from fastapi import WebSocket
 
 
-class CanvasConnectionManager:
+class CanvaConnectionManager:
     """Holds active WebSocket subscribers keyed by layout_id."""
 
     def __init__(self) -> None:
@@ -89,4 +89,4 @@ class CanvasConnectionManager:
             )
 
 
-manager = CanvasConnectionManager()
+manager = CanvaConnectionManager()

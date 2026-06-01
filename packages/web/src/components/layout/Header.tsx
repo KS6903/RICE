@@ -7,6 +7,7 @@ import { useNavigate, Link } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { useCurrentPlan } from "../../hooks/useFeature";
 import { useThemeStore } from "../../stores/themeStore";
+import LocationPicker from "../LocationPicker";
 
 function PlanBadge() {
   const plan = useCurrentPlan();
@@ -122,6 +123,10 @@ export default function Header() {
       </div>
 
       <div className="flex items-center gap-3 ml-auto">
+        {/* Weather + location picker — saved favorites follow the user across
+            every page and every login. */}
+        <LocationPicker />
+
         <span className={`hidden sm:inline-flex ${isOnline ? "badge-green" : "badge-yellow"}`}>
           {isOnline ? <Wifi size={12} /> : <WifiOff size={12} />}
           {isOnline ? "Online" : "Offline"}

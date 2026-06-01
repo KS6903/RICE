@@ -16,7 +16,7 @@ async function openWarehouse(page: import("@playwright/test").Page) {
   await expect(page.getByTestId("warehouse-header")).toBeVisible({ timeout: 10_000 });
 }
 
-test.describe("Warehouse canvas — modern Canva-style chrome", () => {
+test.describe("Warehouse canva — modern Canva-style chrome", () => {
   test("view switcher button is labelled 'Warehouse' (not 'Bodega')", async ({ page }) => {
     await login(page);
     await page.goto("/inventory");
@@ -44,7 +44,7 @@ test.describe("Warehouse canvas — modern Canva-style chrome", () => {
     expect(pageErrors, `page errors: ${pageErrors.join("\n")}`).toEqual([]);
   });
 
-  test("aging summary floats top-left over the canvas", async ({ page }) => {
+  test("aging summary floats top-left over the canva", async ({ page }) => {
     await login(page);
     await openWarehouse(page);
 
@@ -98,7 +98,7 @@ test.describe("Warehouse canvas — modern Canva-style chrome", () => {
     // The ? help button lives in the slim header
     await page.getByTestId("warehouse-header").getByRole("button", { name: /open help/i }).click();
 
-    const dialog = page.getByRole("dialog", { name: /warehouse canvas help/i });
+    const dialog = page.getByRole("dialog", { name: /warehouse canva help/i });
     await expect(dialog).toBeVisible();
     // Friendly phrases for non-technical users
     await expect(dialog.getByText(/just looking/i)).toBeVisible();

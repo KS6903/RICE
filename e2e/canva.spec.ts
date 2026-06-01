@@ -10,7 +10,7 @@ async function login(page: import("@playwright/test").Page) {
   await expect(page).not.toHaveURL(/\/login/, { timeout: 10_000 });
 }
 
-test.describe("Warehouse canvas", () => {
+test.describe("Warehouse canva", () => {
   test("loads and shows edit-mode toggle for owner", async ({ page }) => {
     const pageErrors: string[] = [];
     page.on("pageerror", (e) => pageErrors.push(e.message));
@@ -19,7 +19,7 @@ test.describe("Warehouse canvas", () => {
     await page.goto("/inventory");
     await page.getByRole("button", { name: /^Warehouse$/ }).click();
 
-    // Wait for the canvas toolbar (which contains the layout name)
+    // Wait for the canva toolbar (which contains the layout name)
     await expect(page.getByText(/main branch warehouse/i).first()).toBeVisible({ timeout: 10_000 });
     await expect(page.getByText(/30m × \d+m/i).first()).toBeVisible();
 
@@ -178,7 +178,7 @@ test.describe("Warehouse canvas", () => {
     // The new layout was auto-selected on create, so the action bar acts on it.
     await page.getByTestId("layout-action-bar").getByRole("button", { name: /^Delete$/ }).click();
 
-    // Tab should be gone from both tab bar and canvas toolbar
+    // Tab should be gone from both tab bar and canva toolbar
     await expect(page.getByText(layoutName).first()).not.toBeVisible({ timeout: 8_000 });
   });
 
@@ -219,7 +219,7 @@ test.describe("Warehouse canvas", () => {
 // ──────────────────────────────────────────────────────────────────────────────
 
 test.describe("Door (pinto) zone placement", () => {
-  /** Helper — log in, open Warehouse, enter Builder mode, return canvas bounding box. */
+  /** Helper — log in, open Warehouse, enter Builder mode, return canva bounding box. */
   async function enterBuilderMode(page: import("@playwright/test").Page) {
     await page.goto("/login");
     await page.getByPlaceholder("your.username").fill(TENANT.username);
@@ -234,43 +234,43 @@ test.describe("Door (pinto) zone placement", () => {
     await page.getByRole("button", { name: /Edit floor plan/i }).click();
     await expect(page.getByText(/Floor-plan editor/i)).toBeVisible();
 
-    const canvas = page.locator("canvas").first();
-    await expect(canvas).toBeVisible();
-    return canvas;
+    const canva = page.locator("canva").first();
+    await expect(canva).toBeVisible();
+    return canva;
   }
 
   test("Door tool is present in structural toolbox and can be armed", async ({ page }) => {
-    const canvas = await enterBuilderMode(page);
+    const canva = await enterBuilderMode(page);
     await expect(page.getByRole("button", { name: /Door/, exact: true })).toBeVisible();
 
     await page.getByRole("button", { name: /Door/, exact: true }).click();
     await expect(page.getByText(/Tool armed: Door/i)).toBeVisible();
-    // Canvas cursor changes to crosshair when armed
-    const cursor = await canvas.evaluate((el: HTMLCanvasElement) => el.style.cursor || "default");
+    // Canva cursor changes to crosshair when armed
+    const cursor = await canva.evaluate((el: HTMLCanvaElement) => el.style.cursor || "default");
     // Disarm by clicking again
     await page.getByRole("button", { name: /Door/, exact: true }).click();
     await expect(page.getByText(/Tool armed/i)).not.toBeVisible();
   });
 
-  test("Door zone placed on canvas opens ZoneEditor with structural badge", async ({ page }) => {
+  test("Door zone placed on canva opens ZoneEditor with structural badge", async ({ page }) => {
     const pageErrors: string[] = [];
     page.on("pageerror", (e) => pageErrors.push(e.message));
 
-    const canvas = await enterBuilderMode(page);
-    const box = await canvas.boundingBox();
-    if (!box) throw new Error("Canvas not found");
+    const canva = await enterBuilderMode(page);
+    const box = await canva.boundingBox();
+    if (!box) throw new Error("Canva not found");
 
     // Arm Door tool
     await page.getByRole("button", { name: /Door/, exact: true }).click();
     await expect(page.getByText(/Tool armed: Door/i)).toBeVisible();
 
-    // Click near the top-centre of the canvas — maps to coordinates at the very
+    // Click near the top-centre of the canva — maps to coordinates at the very
     // top edge of the warehouse floor (y < 1 m, before any zone starts).
     // The floating chrome panels above use pointer-events-none on their wrappers
-    // so clicks pass through to the canvas everywhere except on their buttons.
-    // force:true is required because Playwright sees the canvas as "intercepted"
+    // so clicks pass through to the canva everywhere except on their buttons.
+    // force:true is required because Playwright sees the canva as "intercepted"
     // by overlapping DOM siblings (the toolbox card).
-    await canvas.click({ position: { x: box!.width * 0.5, y: 15 }, force: true });
+    await canva.click({ position: { x: box!.width * 0.5, y: 15 }, force: true });
 
     // ZoneEditor should open automatically for the newly placed zone
     await expect(page.getByText(/Structural element — cannot hold pallets/i)).toBeVisible({ timeout: 6_000 });
@@ -331,11 +331,11 @@ test.describe("Door (pinto) zone placement", () => {
 
     // Verify the zone was NOT auto-corrected by re-reading from the API
     const readRes = await request.get(
-      `http://localhost:8000/api/warehouses/${branchId}/canvas?layout_id=${layoutId}`,
+      `http://localhost:8000/api/warehouses/${branchId}/canva?layout_id=${layoutId}`,
       { headers },
     );
-    const canvas = await readRes.json();
-    const doorZone = canvas.zones.find((z: any) => z.id === created.id);
+    const canva = await readRes.json();
+    const doorZone = canva.zones.find((z: any) => z.id === created.id);
     expect(doorZone, "Zone should still exist").toBeTruthy();
     expect(doorZone.x_m).toBe(-1.0);
     expect(doorZone.y_m).toBe(-1.0);
@@ -345,14 +345,14 @@ test.describe("Door (pinto) zone placement", () => {
   });
 
   test("Door zone can be renamed and deleted via ZoneEditor", async ({ page }) => {
-    const canvas = await enterBuilderMode(page);
-    const box = await canvas.boundingBox();
+    const canva = await enterBuilderMode(page);
+    const box = await canva.boundingBox();
     // Arm Door tool and place a zone
     await page.getByRole("button", { name: /Door/, exact: true }).click();
     await expect(page.getByText(/Tool armed: Door/i)).toBeVisible();
-    // Click near the bottom of the canvas — past the last zone row (y > 19 m).
-    // force:true bypasses the "intercepted" check for <canvas> elements.
-    await canvas.click({ position: { x: (box?.width ?? 900) * 0.5, y: (box?.height ?? 600) - 15 }, force: true });
+    // Click near the bottom of the canva — past the last zone row (y > 19 m).
+    // force:true bypasses the "intercepted" check for <canva> elements.
+    await canva.click({ position: { x: (box?.width ?? 900) * 0.5, y: (box?.height ?? 600) - 15 }, force: true });
 
     // Wait for ZoneEditor to appear
     await expect(page.getByText(/Structural element — cannot hold pallets/i)).toBeVisible({ timeout: 6_000 });

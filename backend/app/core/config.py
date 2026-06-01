@@ -11,6 +11,10 @@ class Settings(BaseSettings):
     ALLOWED_ORIGINS: str = "http://localhost:5173,http://localhost:3000"
     APP_NAME: str = "Rice Mill System"
     DEBUG: bool = False
+    # Optional — when present, /api/weather hits Google's Weather API. Otherwise
+    # the endpoint falls back to Open-Meteo (no key required), so the widget
+    # works out of the box.
+    GOOGLE_WEATHER_API_KEY: str | None = None
 
     @property
     def origins_list(self) -> list[str]:

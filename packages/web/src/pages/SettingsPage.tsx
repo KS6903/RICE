@@ -107,7 +107,7 @@ const FEATURE_LABELS: Record<string, string> = {
   reports_advanced: "Advanced reports (AR aging, valuation)",
   compliance_reports: "DA / NFA compliance reports",
   offline_sync: "Offline sync (Electron desktop)",
-  canvas_inventory: "Visual Warehouse canvas (spatial inventory)",
+  canva_inventory: "Visual Warehouse canva (spatial inventory)",
 };
 
 const ALL_FEATURE_KEYS = Object.keys(FEATURE_LABELS);

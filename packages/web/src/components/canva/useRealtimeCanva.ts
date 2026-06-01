@@ -4,7 +4,7 @@ import { useAuthStore } from "../../stores/authStore";
 
 type Status = "offline" | "connecting" | "live";
 
-type CanvasEvent =
+type CanvaEvent =
   | { event: "hello"; payload: { layout_id: string; ok: boolean } }
   | { event: "pallet.moved"; payload: { pallet: any; by_user_id: string } }
   | { event: "pallet.stacked"; payload: { pallet: any; parent_id: string; by_user_id: string } }
@@ -15,11 +15,11 @@ type CanvasEvent =
   | { event: "layout.updated"; payload: { layout: any; by_user_id: string } }
   | { event: "pong"; payload: {} };
 
-/** Subscribes to /ws/canvas/{layout_id} and applies remote events to the
- *  ["canvas", cacheKey] React Query cache. Auto-reconnects with backoff. */
-/** cacheKey must match the React Query key used for the canvas data: layoutId when a specific
+/** Subscribes to /ws/canva/{layout_id} and applies remote events to the
+ *  ["canva", cacheKey] React Query cache. Auto-reconnects with backoff. */
+/** cacheKey must match the React Query key used for the canva data: layoutId when a specific
  *  layout is selected, otherwise branchId (the fallback used before a layout is picked). */
-export function useRealtimeCanvas(layoutId: string | undefined, cacheKey: string) {
+export function useRealtimeCanva(layoutId: string | undefined, cacheKey: string) {
   const qc = useQueryClient();
   const token = useAuthStore((s) => s.accessToken);
   const userId = useAuthStore((s) => s.user?.id ?? "");
@@ -38,7 +38,7 @@ export function useRealtimeCanvas(layoutId: string | undefined, cacheKey: string
       const proto = window.location.protocol === "https:" ? "wss" : "ws";
       // Vite proxies websockets too when configured; here we hit the backend directly
       // because the dev proxy in vite.config.ts only forwards /api over HTTP.
-      const url = `${proto}://${window.location.hostname}:8000/ws/canvas/${layoutId}?token=${encodeURIComponent(token)}`;
+      const url = `${proto}://${window.location.hostname}:8000/ws/canva/${layoutId}?token=${encodeURIComponent(token)}`;
       const ws = new WebSocket(url);
       wsRef.current = ws;
 
@@ -52,13 +52,13 @@ export function useRealtimeCanvas(layoutId: string | undefined, cacheKey: string
       };
 
       ws.onmessage = (e) => {
-        let data: CanvasEvent;
+        let data: CanvaEvent;
         try { data = JSON.parse(e.data); } catch { return; }
 
         if (data.event === "hello" || data.event === "pong") return;
 
         const apply = (updated: any) => {
-          qc.setQueryData(["canvas", cacheKey], (old: any) => {
+          qc.setQueryData(["canva", cacheKey], (old: any) => {
             if (!old) return old;
             return {
               ...old,
@@ -75,22 +75,22 @@ export function useRealtimeCanvas(layoutId: string | undefined, cacheKey: string
           apply(payload.pallet);
           qc.invalidateQueries({ queryKey: ["pallet-movements", payload.pallet.id] });
         } else if (data.event === "zone.created") {
-          qc.setQueryData(["canvas", cacheKey], (old: any) => {
+          qc.setQueryData(["canva", cacheKey], (old: any) => {
             if (!old) return old;
             return { ...old, zones: [...old.zones, payload.zone] };
           });
         } else if (data.event === "zone.updated") {
-          qc.setQueryData(["canvas", cacheKey], (old: any) => {
+          qc.setQueryData(["canva", cacheKey], (old: any) => {
             if (!old) return old;
             return { ...old, zones: old.zones.map((z: any) => z.id === payload.zone.id ? payload.zone : z) };
           });
         } else if (data.event === "zone.deleted") {
-          qc.setQueryData(["canvas", cacheKey], (old: any) => {
+          qc.setQueryData(["canva", cacheKey], (old: any) => {
             if (!old) return old;
             return { ...old, zones: old.zones.filter((z: any) => z.id !== payload.zone_id) };
           });
         } else if (data.event === "layout.updated") {
-          qc.setQueryData(["canvas", cacheKey], (old: any) => {
+          qc.setQueryData(["canva", cacheKey], (old: any) => {
             if (!old) return old;
             return { ...old, layout: { ...old.layout, ...payload.layout } };
           });

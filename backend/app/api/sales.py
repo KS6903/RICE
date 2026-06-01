@@ -8,6 +8,7 @@ from ..core.database import get_db
 from ..core.security import get_current_user, require_feature
 from ..models.sales import SalesOrder, SalesOrderItem, Invoice, Payment, PriceList
 from ..models.supplier_customer import Customer
+from ..services.canva_color import pick_unused_color
 
 router = APIRouter(dependencies=[Depends(require_feature("sales"))])
 
@@ -53,7 +54,15 @@ def list_customers(
 
 @router.post("/customers", status_code=status.HTTP_201_CREATED)
 def create_customer(body: CustomerCreate, current_user=Depends(get_current_user), db: Session = Depends(get_db)):
-    customer = Customer(company_id=current_user.company_id, branch_id=current_user.branch_id, **body.model_dump())
+    # System-generated canva color from the shared per-tenant pool — never
+    # accepted from the client.
+    color = pick_unused_color(db, current_user.company_id)
+    customer = Customer(
+        company_id=current_user.company_id,
+        branch_id=current_user.branch_id,
+        canva_color_hex=color,
+        **body.model_dump(),
+    )
     db.add(customer)
     db.commit()
     db.refresh(customer)

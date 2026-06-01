@@ -1,7 +1,7 @@
 import { NavLink } from "react-router-dom";
 import {
   LayoutDashboard, Wheat, Factory, Package,
-  ShoppingCart, Receipt, BarChart3, Users, Settings, IdCard, Lock, Sparkles
+  ShoppingCart, Receipt, BarChart3, Users, Settings, IdCard, Lock, Sparkles, Truck
 } from "lucide-react";
 import { clsx } from "clsx";
 import { useFeature } from "../../hooks/useFeature";
@@ -13,6 +13,7 @@ const NAV = [
   { to: "/milling", label: "Milling", icon: Factory, feature: "milling" },
   { to: "/inventory", label: "Inventory", icon: Package, feature: "inventory" },
   { to: "/sales", label: "Sales", icon: ShoppingCart, feature: "sales" },
+  { to: "/dispatch", label: "Dispatch", icon: Truck, feature: "sales" },
   { to: "/costs", label: "Expenses", icon: Receipt, feature: "expenses" },
   { to: "/reports", label: "Reports", icon: BarChart3, feature: "dashboard" },
   { to: "/employees", label: "Employees", icon: IdCard, feature: "employees" },

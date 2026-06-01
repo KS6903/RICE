@@ -1,6 +1,6 @@
 """Generate 12 demo pallets for the first non-admin company's first branch.
 
-Useful for showcasing the spatial canvas without needing real milling history.
+Useful for showcasing the spatial canva without needing real milling history.
 Run AFTER `alembic upgrade head`. Idempotent: skips if pallets already exist.
 
 Usage: python seed_demo_pallets.py
@@ -14,7 +14,7 @@ from app.models.user import User
 from app.models.reference import RiceVariety
 from app.models.warehouse import WarehouseLayout, WarehouseZone, Pallet, RiceBatch
 from app.services.rice_shelf_life import compute_best_before, aging_status
-from app.api.canvas import _get_or_bootstrap, _next_pallet_code
+from app.api.canva import _get_or_bootstrap, _next_pallet_code
 
 VARIETIES = ["Rc222", "Rc216", "Rc218", "SINAG"]
 CLIENT_NAMES = ["Juan Cruz Farms", "Lola Maria Co-op", "Pedro Reyes Hacienda", "Mill stock"]

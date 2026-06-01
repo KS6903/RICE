@@ -55,7 +55,7 @@ test.describe("Inventory — warehouse picker, pack-out, recenter, layout switch
     }
   });
 
-  test("Warehouse canvas exposes a labeled 'Recenter' button", async ({ page }) => {
+  test("Warehouse canva exposes a labeled 'Recenter' button", async ({ page }) => {
     await login(page);
     await page.goto("/inventory");
     await page.getByRole("button", { name: /^Warehouse$/ }).click();
@@ -119,14 +119,14 @@ test.describe("Inventory — warehouse picker, pack-out, recenter, layout switch
     await expect(page.getByTestId("warehouse-orientation")).toContainText(/horizontal/i);
   });
 
-  test("In-canvas warehouse picker (multi-branch) does not expose 'Add warehouse'", async ({ page }) => {
+  test("In-canva warehouse picker (multi-branch) does not expose 'Add warehouse'", async ({ page }) => {
     // The bottom-of-popover "Add" footer is only meaningful at the page header;
-    // inside the canvas section it should be hidden. We verify by checking that
-    // when the picker is the in-canvas one (allowAdd=false), there's no Add button.
+    // inside the canva section it should be hidden. We verify by checking that
+    // when the picker is the in-canva one (allowAdd=false), there's no Add button.
     await login(page);
     await page.goto("/inventory");
     await page.getByRole("button", { name: /^Warehouse$/ }).click();
-    // The picker in the canvas section only renders when branches.length > 1.
+    // The picker in the canva section only renders when branches.length > 1.
     // We can still verify the page-level picker exposes Add but the test scope
     // here is just to confirm the page-level one still works (regression).
     await page.getByTestId("warehouse-picker").getByRole("button").first().click();
@@ -145,7 +145,42 @@ test.describe("Inventory — warehouse picker, pack-out, recenter, layout switch
     await expect(chip).toContainText(/vertical|horizontal|square/i);
   });
 
-  test("Switching between layouts re-mounts the canvas with the new floor plan", async ({ page }) => {
+  test("Adding a new warehouse auto-switches and shows a Create-first-layout CTA (not a blank page)", async ({ page }) => {
+    await login(page);
+    await page.goto("/inventory");
+    await page.getByRole("button", { name: /^Warehouse$/ }).click();
+    await expect(page.getByTestId("warehouse-header")).toBeVisible({ timeout: 10_000 });
+
+    // Open the page-header WarehousePicker and add a brand-new branch via its footer
+    await page.getByTestId("warehouse-picker").getByRole("button").first().click();
+    const popover = page.getByTestId("warehouse-picker-popover");
+    await expect(popover).toBeVisible();
+    await popover.getByRole("button", { name: /add warehouse/i }).click();
+
+    const newName = `E2E Empty WH ${Date.now()}`;
+    await popover.locator('input[placeholder*="Warehouse name"]').fill(newName);
+    await popover.getByRole("button", { name: /^Add$/ }).click();
+
+    // After auto-switch, the freshly-created branch has no layouts yet — the page
+    // must show a clear empty-state CTA instead of a blank screen.
+    const emptyState = page.getByTestId("warehouse-empty-state");
+    await expect(emptyState).toBeVisible({ timeout: 10_000 });
+    await expect(emptyState).toContainText(new RegExp(newName, "i"));
+
+    // The CTA opens the same New-layout modal, and creating a layout exits the
+    // empty state (regression guard against the blank-page bug).
+    await page.getByTestId("empty-state-create-layout").click();
+    const modal = page.getByTestId("new-layout-modal");
+    await expect(modal).toBeVisible();
+    await modal.locator("input").first().fill(`First Layout ${Date.now()}`);
+    await modal.getByRole("button", { name: /^Create layout$/i }).click();
+
+    // Canva now renders with the new layout — empty state is gone.
+    await expect(page.getByTestId("warehouse-header")).toBeVisible({ timeout: 10_000 });
+    await expect(emptyState).toHaveCount(0);
+  });
+
+  test("Switching between layouts re-mounts the canva with the new floor plan", async ({ page }) => {
     await login(page);
     await page.goto("/inventory");
     await page.getByRole("button", { name: /^Warehouse$/ }).click();
@@ -162,7 +197,7 @@ test.describe("Inventory — warehouse picker, pack-out, recenter, layout switch
     await popover.getByRole("button", { name: /^Create layout$/i }).click();
     await expect(page.getByText(layoutName).first()).toBeVisible({ timeout: 5_000 });
 
-    // Canvas header should reflect the new layout name (re-mount picked up the new layoutId)
+    // Canva header should reflect the new layout name (re-mount picked up the new layoutId)
     await expect(page.getByTestId("warehouse-header").getByText(layoutName)).toBeVisible({ timeout: 5_000 });
 
     // Switch back to the default layout — header should change again, never blank

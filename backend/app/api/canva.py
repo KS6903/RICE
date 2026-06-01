@@ -1,4 +1,4 @@
-"""Spatial warehouse canvas — Phase 1 read endpoint.
+"""Spatial warehouse canva — Phase 1 read endpoint.
 
 Returns layout + zones + pallets + batches for a branch. If no layout exists yet,
 auto-bootstraps a sensible default layout and generates virtual pallets from the
@@ -23,20 +23,20 @@ from ..models.reference import RiceVariety
 from ..services.rice_shelf_life import (
     compute_best_before, aging_status, days_until_expiry,
 )
-from ..services.canvas_realtime import manager as ws_manager
+from ..services.canva_realtime import manager as ws_manager
 
 # Roles allowed to mutate spatial state (move/stack/unstack)
 WRITE_ROLES = ("owner", "admin", "mill_operator")
 
 router = APIRouter(dependencies=[
     Depends(require_feature("inventory")),
-    Depends(require_feature("canvas_inventory")),
+    Depends(require_feature("canva_inventory")),
 ])
 
 
 # ── Default layout template ──────────────────────────────────────────────────
 # Standard rice-mill warehouse footprints, sized to actual industry capacity.
-# Defaults to "commercial" so new tenants get the biggest canvas to scale into.
+# Defaults to "commercial" so new tenants get the biggest canva to scale into.
 DEFAULT_LAYOUT_WIDTH_M = 30.0
 DEFAULT_LAYOUT_HEIGHT_M = 120.0
 
@@ -333,14 +333,14 @@ def _get_or_bootstrap(db: Session, branch: Branch) -> WarehouseLayout:
     return layout
 
 
-@router.get("/warehouses/{branch_id}/canvas")
-def get_warehouse_canvas(
+@router.get("/warehouses/{branch_id}/canva")
+def get_warehouse_canva(
     branch_id: uuid.UUID,
     layout_id: uuid.UUID | None = None,
     current_user=Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """Returns the full canvas payload for one branch's warehouse.
+    """Returns the full canva payload for one branch's warehouse.
 
     Pass ?layout_id=<uuid> to fetch a specific layout; omit it for the default.
     """
@@ -746,8 +746,8 @@ def _authenticate_ws(token: str | None, db: Session) -> User | None:
         return None
 
 
-@ws_router.websocket("/ws/canvas/{layout_id}")
-async def canvas_ws(websocket: WebSocket, layout_id: uuid.UUID, token: str | None = None):
+@ws_router.websocket("/ws/canva/{layout_id}")
+async def canva_ws(websocket: WebSocket, layout_id: uuid.UUID, token: str | None = None):
     """Live updates for one warehouse layout.
 
     Auth: ?token=<access JWT>. Subscribers must belong to the same company as
@@ -760,10 +760,10 @@ async def canvas_ws(websocket: WebSocket, layout_id: uuid.UUID, token: str | Non
             await websocket.close(code=http_status.WS_1008_POLICY_VIOLATION, reason="Invalid token")
             return
 
-        # Plan gate: only Pro+ tenants get realtime canvas
+        # Plan gate: only Pro+ tenants get realtime canva
         features = get_user_features(user, db)
-        if "*" not in features and "canvas_inventory" not in features:
-            await websocket.close(code=http_status.WS_1008_POLICY_VIOLATION, reason="Plan does not include canvas_inventory")
+        if "*" not in features and "canva_inventory" not in features:
+            await websocket.close(code=http_status.WS_1008_POLICY_VIOLATION, reason="Plan does not include canva_inventory")
             return
 
         layout = db.get(WarehouseLayout, layout_id)
@@ -824,7 +824,7 @@ def recommend_fifo(
     db: Session = Depends(get_db),
 ):
     """Return the ordered list of pallets to pull (oldest milling_date first)
-    that together cover `weight_kg`. Used to highlight pallets on the canvas
+    that together cover `weight_kg`. Used to highlight pallets on the canva
     when fulfilling a sales order.
 
     Behavior:
@@ -1012,7 +1012,7 @@ def aging_report(
 # ── Phase 5: warehouse builder (layout + zone CRUD) ──────────────────────────
 
 
-@router.get("/canvas/zone-types")
+@router.get("/canva/zone-types")
 def list_zone_types(_user=Depends(get_current_user)):
     """Returns the allowed zone-type taxonomy. Frontend uses this to populate
     the zone-editor dropdown and the builder toolbox."""
@@ -1267,15 +1267,19 @@ def _default_name_for(zone_type: str) -> str:
 # ── Customer-specific stock ──────────────────────────────────────────────────
 
 
-@router.get("/canvas/customers")
-def list_canvas_customers(
+@router.get("/canva/customers")
+def list_canva_customers(
     branch_id: uuid.UUID | None = None,
     current_user=Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """Distinct clients (suppliers/customers/mill_own) with active pallets in
-    the canvas, with their assigned canvas color and occupancy stats."""
+    """Distinct clients (suppliers / customers / agents / millers / mill_own)
+    with active pallets in the canva, with their assigned canva color and
+    occupancy stats. Colors are tenant-unique across all four party tables —
+    auto-assigned colors are persisted back to the source row so they stick."""
     from ..models.supplier_customer import Customer, Supplier
+    from ..models.dispatch import Agent, Miller
+    from ..services.canva_color import pick_unused_color
 
     q = db.query(RiceBatch, Pallet).join(Pallet, Pallet.id == RiceBatch.pallet_id).filter(
         RiceBatch.company_id == current_user.company_id,
@@ -1311,46 +1315,90 @@ def list_canvas_customers(
         agg[key]["pallet_ids"].add(str(pallet.id))
         agg[key]["weight_kg"] += float(batch.weight_kg)
 
-    # Resolve colors from suppliers/customers tables (canvas_color_hex column)
-    cust_colors = dict(
-        db.query(Customer.id, Customer.canvas_color_hex)
-        .filter(Customer.company_id == current_user.company_id)
-        .all()
-    )
-    sup_colors = dict(
-        db.query(Supplier.id, Supplier.canvas_color_hex)
-        .filter(Supplier.company_id == current_user.company_id)
-        .all()
-    )
+    # Resolve colors from all four party tables.  Customers / Suppliers /
+    # Agents / Millers share one tenant-wide color pool — see
+    # services/canva_color.py.
+    cust_rows = db.query(Customer.id, Customer.canva_color_hex).filter(
+        Customer.company_id == current_user.company_id
+    ).all()
+    sup_rows = db.query(Supplier.id, Supplier.canva_color_hex).filter(
+        Supplier.company_id == current_user.company_id
+    ).all()
+    agent_rows = db.query(Agent.id, Agent.canva_color_hex).filter(
+        Agent.company_id == current_user.company_id
+    ).all()
+    miller_rows = db.query(Miller.id, Miller.canva_color_hex).filter(
+        Miller.company_id == current_user.company_id
+    ).all()
+    cust_colors = dict(cust_rows)
+    sup_colors = dict(sup_rows)
+    agent_colors = dict(agent_rows)
+    miller_colors = dict(miller_rows)
 
-    # Stable pool of fallback colors for clients that haven't been given one yet
-    FALLBACKS = [
-        "#0ea5e9", "#8b5cf6", "#f43f5e", "#10b981", "#f59e0b",
-        "#ec4899", "#22d3ee", "#84cc16", "#a855f7", "#ef4444",
-    ]
+    # Sorted iteration so fallback color assignment is deterministic per request.
     sorted_keys = sorted(agg.keys(), key=lambda k: (k[2] or "").lower())
-    fallback_idx = 0
 
+    # When a party row exists but has no color yet, pick one from the shared
+    # pool and PERSIST it — previously colors were chosen transient per request
+    # and visibly drifted between page loads.
+    def _persist_color(table: type, row_id: uuid.UUID, lookup: dict) -> str:
+        existing = lookup.get(row_id)
+        if existing:
+            return existing
+        color = pick_unused_color(db, current_user.company_id)
+        obj = db.get(table, row_id)
+        if obj is not None:
+            obj.canva_color_hex = color
+            lookup[row_id] = color
+        return color
+
+    dirty = False
     out = []
     for key in sorted_keys:
         info = agg[key]
-        client_id = key[0]
-        if client_id:
-            color = (
-                cust_colors.get(uuid.UUID(client_id))
-                or sup_colors.get(uuid.UUID(client_id))
-                or None
-            )
-        else:
-            color = None
+        client_id_str = key[0]
+        client_type = (key[1] or "").lower()
+        color: str | None = None
+        if client_id_str:
+            try:
+                cid = uuid.UUID(client_id_str)
+            except (ValueError, AttributeError):
+                cid = None
+            if cid is not None:
+                if client_type == "agent":
+                    color = _persist_color(Agent, cid, agent_colors)
+                    dirty = dirty or color == agent_colors.get(cid)
+                elif client_type == "miller":
+                    color = _persist_color(Miller, cid, miller_colors)
+                    dirty = dirty or color == miller_colors.get(cid)
+                elif client_type == "customer":
+                    color = _persist_color(Customer, cid, cust_colors)
+                    dirty = dirty or color == cust_colors.get(cid)
+                elif client_type == "supplier":
+                    color = _persist_color(Supplier, cid, sup_colors)
+                    dirty = dirty or color == sup_colors.get(cid)
+                else:
+                    # Unknown client_type — try every table as a fallback so
+                    # legacy data keeps working.
+                    color = (
+                        cust_colors.get(cid)
+                        or sup_colors.get(cid)
+                        or agent_colors.get(cid)
+                        or miller_colors.get(cid)
+                    )
         if not color:
-            color = FALLBACKS[fallback_idx % len(FALLBACKS)]
-            fallback_idx += 1
+            # No identifiable party row (e.g. client_type="mill_own"). Pick a
+            # tenant-unique color from the pool — purely transient since there's
+            # no row to persist it onto.
+            color = pick_unused_color(db, current_user.company_id)
 
         info["color_hex"] = color
         info["pallet_count"] = len(info["pallet_ids"])
         info["pallet_ids"] = sorted(info["pallet_ids"])
         out.append(info)
+
+    if dirty:
+        db.commit()
 
     return out
 

@@ -7,7 +7,7 @@ import {
   Search, ArrowUpDown, Building2, Lock, Sparkles, ArrowRight,
   Plus, Trash2, Star, Pencil, X as XIcon, Check, Maximize2,
 } from "lucide-react";
-import WarehouseCanvas from "../components/canvas/WarehouseCanvas";
+import WarehouseCanvas from "../components/canva/WarehouseCanva";
 import InventoryDetailDrawer from "../components/inventory/InventoryDetailDrawer";
 import WarehousePicker from "../components/inventory/WarehousePicker";
 import { useFeature } from "../hooks/useFeature";
@@ -130,7 +130,7 @@ export default function InventoryPage() {
       {view === "spreadsheet" && <SpreadsheetView items={items} />}
       {view === "cards"       && <CardsView items={items} totalKg={totalKg} onSelect={setSelected} />}
       {view === "bins"        && <BinsView items={items} onSelect={setSelected} />}
-      {view === "warehouse"   && <WarehouseCanvasView branches={branches} branchFilter={branchFilter} setBranchFilter={setBranchFilter} />}
+      {view === "warehouse"   && <WarehousevasView branches={branches} branchFilter={branchFilter} setBranchFilter={setBranchFilter} />}
 
       <InventoryDetailDrawer
         item={selected}
@@ -593,6 +593,9 @@ function WarehouseCanvasWithLayouts({ branches, activeBranchId, setBranchFilter 
 
   const createMutation = useMutation({
     mutationFn: ({ name, size_preset, orientation }: { name: string; size_preset: string; orientation: "vertical" | "horizontal" }) => {
+      if (!activeBranchId) {
+        throw new Error("Pick a warehouse first — none is currently selected.");
+      }
       const preset = sizePresets.find(p => p.code === size_preset);
       // Backend stores width × height verbatim. For "horizontal" orientation
       // we swap the preset's natural (vertical) dimensions so the long axis
@@ -616,6 +619,16 @@ function WarehouseCanvasWithLayouts({ branches, activeBranchId, setBranchFilter 
       setNewLayoutName("");
       setNewLayoutPreset("commercial");
       setNewLayoutOrientation("vertical");
+    },
+    onError: (err: any) => {
+      // Surface the real cause to the console so devs (and the user) can see
+      // exactly what blew up instead of staring at the generic fallback.
+      // eslint-disable-next-line no-console
+      console.error("[createLayout] failed", {
+        status: err?.response?.status,
+        data: err?.response?.data,
+        message: err?.message,
+      });
     },
   });
 
@@ -664,10 +677,41 @@ function WarehouseCanvasWithLayouts({ branches, activeBranchId, setBranchFilter 
         </div>
       )}
 
-      {/* Layout tab bar — tabs are name-only. Per-tab edit/star/delete icons
+      {/* First-run empty state — a brand-new warehouse has no layouts yet.
+          Without this, the tab bar / action bar / canvas all render nothing,
+          leaving the user staring at a blank page with no way to proceed.
+          Surface a clear CTA that opens the same "New layout" modal. */}
+      {!layoutsLoading && layouts.length === 0 ? (
+        <div data-testid="warehouse-empty-state" className="card text-center py-12">
+          <div className="mx-auto w-14 h-14 rounded-2xl bg-grad-brand flex items-center justify-center shadow-grad-glow mb-4">
+            <Warehouse size={26} className="text-white" />
+          </div>
+          <h3 className="text-lg font-bold text-primary mb-1.5">
+            {activeBranch ? `${(activeBranch as any).name} has no floor plan yet` : "No floor plan yet"}
+          </h3>
+          <p className="text-sm text-secondary max-w-md mx-auto leading-relaxed mb-5">
+            Set up your first warehouse layout — pick a size, name it, and we'll
+            seed a sensible default with paddy intake, drying, milling, and
+            storage zones already drawn in.
+          </p>
+          <button
+            type="button"
+            data-testid="empty-state-create-layout"
+            onClick={() => setShowNewForm(true)}
+            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-grad-brand text-white text-sm font-semibold shadow-grad-glow hover:opacity-90 transition-opacity"
+          >
+            <Plus size={15} /> Create first layout
+          </button>
+          <p className="text-[11px] text-muted mt-4">
+            Stock pallets appear here once milling batches are recorded on the
+            <span className="font-semibold"> Milling </span> page.
+          </p>
+        </div>
+      ) : (
+      /* Layout tab bar — tabs are name-only. Per-tab edit/star/delete icons
           were too noisy when many layouts exist, so actions moved into a
-          single toolbar below that acts on the currently-selected layout. */}
-      {(() => {
+          single toolbar below that acts on the currently-selected layout. */
+      (() => {
         const activeLayout = layouts.find(l => l.id === activeLayoutId);
         return (
           <>
@@ -767,7 +811,8 @@ function WarehouseCanvasWithLayouts({ branches, activeBranchId, setBranchFilter 
             )}
           </>
         );
-      })()}
+      })()
+      )}
 
       {/* Canvas */}
       {/* key=layoutId forces a fresh canvas mount on layout switch — guarantees
@@ -919,11 +964,35 @@ function WarehouseCanvasWithLayouts({ branches, activeBranchId, setBranchFilter 
                 </div>
               </div>
 
-              {createMutation.isError && (
-                <p className="text-[11px] text-rose-600 dark:text-rose-400 font-medium">
-                  {(createMutation.error as any)?.response?.data?.detail || "Could not create layout."}
-                </p>
-              )}
+              {createMutation.isError && (() => {
+                const err = createMutation.error as any;
+                const status = err?.response?.status as number | undefined;
+                const detail = err?.response?.data?.detail;
+                let msg: string;
+                if (Array.isArray(detail)) {
+                  // Pydantic 422 — pick the first field issue, e.g. "name: Field required"
+                  const first = detail[0];
+                  const loc = Array.isArray(first?.loc) ? first.loc.filter((x: any) => x !== "body").join(".") : "";
+                  msg = loc ? `${loc}: ${first?.msg ?? "invalid"}` : (first?.msg ?? "Validation failed");
+                } else if (typeof detail === "string") {
+                  msg = detail;
+                } else if (err?.message && err.message !== "Network Error") {
+                  msg = err.message;
+                } else if (!err?.response) {
+                  msg = "Can't reach the server. Is the backend running on port 8000?";
+                } else {
+                  msg = `Server returned ${status ?? "an error"} with no details. Check the browser console / backend logs.`;
+                }
+                return (
+                  <div className="text-xs text-rose-700 dark:text-rose-300 bg-rose-50 dark:bg-rose-950/30 ring-1 ring-rose-200 dark:ring-rose-800/60 rounded-lg px-2.5 py-2 flex items-start gap-2">
+                    <span aria-hidden className="shrink-0 mt-0.5">⚠</span>
+                    <div className="min-w-0">
+                      <p className="font-semibold">Couldn't create the layout{status ? ` (HTTP ${status})` : ""}.</p>
+                      <p className="opacity-90 break-words">{msg}</p>
+                    </div>
+                  </div>
+                );
+              })()}
 
               <div className="flex items-center justify-end gap-2 pt-1 border-t border-soft -mx-5 px-5 -mb-5 py-3 mt-4">
                 <button type="button" onClick={() => setShowNewForm(false)} className="btn-secondary !py-1.5 !px-3 text-sm">

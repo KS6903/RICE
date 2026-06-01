@@ -10,7 +10,7 @@ from decimal import Decimal
 from app.core.database import SessionLocal
 from app.models.warehouse import WarehouseLayout, WarehouseZone, Pallet
 
-# Same as DEFAULT_ZONES in canvas.py
+# Same as DEFAULT_ZONES in canva.py
 MILLING       = ("milling",         "Milling Floor",    1.0,  1.0, 13.0, 18.0, "#94a3b8")
 PREMIUM       = ("premium_storage", "Premium Storage", 15.0,  1.0, 14.0, 18.0, "#10b981")
 KEEP_TYPES = {"milling", "premium_storage"}

@@ -12,6 +12,7 @@ import PaddyPage from "./pages/PaddyPage";
 import MillingPage from "./pages/MillingPage";
 import InventoryPage from "./pages/InventoryPage";
 import SalesPage from "./pages/SalesPage";
+import DispatchPage from "./pages/DispatchPage";
 import CostsPage from "./pages/CostsPage";
 import ReportsPage from "./pages/ReportsPage";
 import UsersPage from "./pages/UsersPage";
@@ -107,6 +108,7 @@ export default function App() {
           <Route path="milling" element={<FeatureGate code="milling" label="Milling"><MillingPage /></FeatureGate>} />
           <Route path="inventory" element={<FeatureGate code="inventory" label="Inventory"><InventoryPage /></FeatureGate>} />
           <Route path="sales" element={<FeatureGate code="sales" label="Sales"><SalesPage /></FeatureGate>} />
+          <Route path="dispatch" element={<FeatureGate code="sales" label="Dispatch"><DispatchPage /></FeatureGate>} />
           <Route path="costs" element={<FeatureGate code="expenses" label="Expenses"><CostsPage /></FeatureGate>} />
           <Route path="reports" element={<FeatureGate code="dashboard" label="Reports"><ReportsPage /></FeatureGate>} />
           <Route path="users" element={<FeatureGate code="users" label="Users"><UsersPage /></FeatureGate>} />

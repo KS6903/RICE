@@ -9,6 +9,7 @@ from ..core.security import get_current_user, require_feature
 from ..models.paddy import PalayPurchase, PalayPurchaseItem, PalayInventory, PalayInventoryMovement, DryingRecord
 from ..models.reference import RiceVariety, QualityGrade
 from ..models.supplier_customer import Supplier
+from ..services.canva_color import pick_unused_color
 from datetime import datetime, timezone
 
 router = APIRouter(dependencies=[Depends(require_feature("paddy"))])
@@ -118,9 +119,13 @@ class SupplierUpdate(BaseModel):
 
 @router.post("/suppliers", status_code=status.HTTP_201_CREATED)
 def create_supplier(body: SupplierCreate, current_user=Depends(get_current_user), db: Session = Depends(get_db)):
+    # System-generated canva color from the shared per-tenant pool — never
+    # accepted from the client.
+    color = pick_unused_color(db, current_user.company_id)
     supplier = Supplier(
         company_id=current_user.company_id,
         branch_id=current_user.branch_id,
+        canva_color_hex=color,
         **body.model_dump()
     )
     db.add(supplier)
