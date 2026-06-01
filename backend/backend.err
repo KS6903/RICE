@@ -45,3 +45,9 @@ INFO:     connection closed
 INFO:     ('127.0.0.1', 52464) - "WebSocket /ws/canva/37d71db5-c17c-434e-a240-b28965777560?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIwOGIyOGZlOS1iZDUzLTRkMmQtOGFmOC04Y2U4NmM4NGViYjAiLCJjb21wYW55X2lkIjoiMjEyN2E3ODgtYzZkMi00MDc5LThjY2ItNGFlYTk0ZTFiYjQxIiwicm9sZSI6Im93bmVyIiwiaXNfcGxhdGZvcm1fYWRtaW4iOmZhbHNlLCJleHAiOjE3ODAzMDYwOTEsInR5cGUiOiJhY2Nlc3MifQ.58JxxPP4KyMNiclFN_PCCArLSLsUYotD0tTOsxqETB0" 403
 INFO:     connection rejected (403 Forbidden)
 INFO:     connection closed
+INFO:     ('127.0.0.1', 57387) - "WebSocket /ws/canva/37d71db5-c17c-434e-a240-b28965777560?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIwOGIyOGZlOS1iZDUzLTRkMmQtOGFmOC04Y2U4NmM4NGViYjAiLCJjb21wYW55X2lkIjoiMjEyN2E3ODgtYzZkMi00MDc5LThjY2ItNGFlYTk0ZTFiYjQxIiwicm9sZSI6Im93bmVyIiwiaXNfcGxhdGZvcm1fYWRtaW4iOmZhbHNlLCJleHAiOjE3ODAzMDYwOTEsInR5cGUiOiJhY2Nlc3MifQ.58JxxPP4KyMNiclFN_PCCArLSLsUYotD0tTOsxqETB0" 403
+INFO:     connection rejected (403 Forbidden)
+INFO:     connection closed
+INFO:     ('127.0.0.1', 63939) - "WebSocket /ws/canva/37d71db5-c17c-434e-a240-b28965777560?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIwOGIyOGZlOS1iZDUzLTRkMmQtOGFmOC04Y2U4NmM4NGViYjAiLCJjb21wYW55X2lkIjoiMjEyN2E3ODgtYzZkMi00MDc5LThjY2ItNGFlYTk0ZTFiYjQxIiwicm9sZSI6Im93bmVyIiwiaXNfcGxhdGZvcm1fYWRtaW4iOmZhbHNlLCJleHAiOjE3ODAzMDYwOTEsInR5cGUiOiJhY2Nlc3MifQ.58JxxPP4KyMNiclFN_PCCArLSLsUYotD0tTOsxqETB0" 403
+INFO:     connection rejected (403 Forbidden)
+INFO:     connection closed
