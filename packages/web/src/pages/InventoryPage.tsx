@@ -7,7 +7,7 @@ import {
   Search, ArrowUpDown, Building2, Lock, Sparkles, ArrowRight,
   Plus, Trash2, Star, Pencil, X as XIcon, Check, Maximize2,
 } from "lucide-react";
-import WarehouseCanvas from "../components/canva/WarehouseCanva";
+import WarehouseCanva from "../components/canva/WarehouseCanva";
 import InventoryDetailDrawer from "../components/inventory/InventoryDetailDrawer";
 import WarehousePicker from "../components/inventory/WarehousePicker";
 import { useFeature } from "../hooks/useFeature";
@@ -130,7 +130,7 @@ export default function InventoryPage() {
       {view === "spreadsheet" && <SpreadsheetView items={items} />}
       {view === "cards"       && <CardsView items={items} totalKg={totalKg} onSelect={setSelected} />}
       {view === "bins"        && <BinsView items={items} onSelect={setSelected} />}
-      {view === "warehouse"   && <WarehousevasView branches={branches} branchFilter={branchFilter} setBranchFilter={setBranchFilter} />}
+      {view === "warehouse"   && <WarehouseCanvaView branches={branches} branchFilter={branchFilter} setBranchFilter={setBranchFilter} />}
 
       <InventoryDetailDrawer
         item={selected}
@@ -524,7 +524,7 @@ function BinsView({ items, onSelect }: { items: UnifiedItem[]; onSelect: (item: 
   );
 }
 
-/* ─── 5. BODEGA CANVAS ─── plan-gated Konva spatial inventory (Phase 1-4) */
+/* ─── 5. BODEGA CANVA ─── plan-gated Konva spatial inventory (Phase 1-4) */
 type LayoutSummary = {
   id: string;
   name: string;
@@ -535,9 +535,9 @@ type LayoutSummary = {
   version: number;
 };
 
-function WarehouseCanvasView({ branches, branchFilter, setBranchFilter }: { branches: any[]; branchFilter: string; setBranchFilter: (id: string) => void }) {
-  const hasCanvas = useFeature("canvas_inventory");
-  if (!hasCanvas) return <CanvasUpsellCard />;
+function WarehouseCanvaView({ branches, branchFilter, setBranchFilter }: { branches: any[]; branchFilter: string; setBranchFilter: (id: string) => void }) {
+  const hasCanva = useFeature("canva_inventory");
+  if (!hasCanva) return <CanvaUpsellCard />;
 
   const activeBranchId = branchFilter || branches[0]?.id;
   if (!activeBranchId) {
@@ -549,7 +549,7 @@ function WarehouseCanvasView({ branches, branchFilter, setBranchFilter }: { bran
       </div>
     );
   }
-  return <WarehouseCanvasWithLayouts branches={branches} activeBranchId={activeBranchId} setBranchFilter={setBranchFilter} />;
+  return <WarehouseCanvaWithLayouts branches={branches} activeBranchId={activeBranchId} setBranchFilter={setBranchFilter} />;
 }
 
 type WarehouseSizePreset = {
@@ -561,7 +561,7 @@ type WarehouseSizePreset = {
   floor_area_m2: number;
 };
 
-function WarehouseCanvasWithLayouts({ branches, activeBranchId, setBranchFilter }: { branches: any[]; activeBranchId: string; setBranchFilter: (id: string) => void }) {
+function WarehouseCanvaWithLayouts({ branches, activeBranchId, setBranchFilter }: { branches: any[]; activeBranchId: string; setBranchFilter: (id: string) => void }) {
   const qc = useQueryClient();
   const [selectedLayoutId, setSelectedLayoutId] = useState<string | null>(null);
   const [showNewForm, setShowNewForm] = useState(false);
@@ -661,7 +661,7 @@ function WarehouseCanvasWithLayouts({ branches, activeBranchId, setBranchFilter 
 
   return (
     <div className="space-y-3">
-      {/* Passive "Viewing" indicator — replaces the second (in-canvas) warehouse
+      {/* Passive "Viewing" indicator — replaces the second (in-canva) warehouse
           picker so users only ever see ONE place to switch warehouses (the page
           header). Shown only when more than one warehouse exists, so single-
           warehouse tenants don't see redundant chrome. */}
@@ -678,7 +678,7 @@ function WarehouseCanvasWithLayouts({ branches, activeBranchId, setBranchFilter 
       )}
 
       {/* First-run empty state — a brand-new warehouse has no layouts yet.
-          Without this, the tab bar / action bar / canvas all render nothing,
+          Without this, the tab bar / action bar / canva all render nothing,
           leaving the user staring at a blank page with no way to proceed.
           Surface a clear CTA that opens the same "New layout" modal. */}
       {!layoutsLoading && layouts.length === 0 ? (
@@ -814,12 +814,12 @@ function WarehouseCanvasWithLayouts({ branches, activeBranchId, setBranchFilter 
       })()
       )}
 
-      {/* Canvas */}
-      {/* key=layoutId forces a fresh canvas mount on layout switch — guarantees
+      {/* Canva */}
+      {/* key=layoutId forces a fresh canva mount on layout switch — guarantees
           stagePos, zoom, selection, and edit-mode reset so the previous layout's
           camera offset never makes the new floor plan appear off-screen / empty. */}
       {activeLayoutId && (
-        <WarehouseCanvas
+        <WarehouseCanva
           key={activeLayoutId}
           branchId={activeBranchId}
           layoutId={activeLayoutId}
@@ -1014,7 +1014,7 @@ function WarehouseCanvasWithLayouts({ branches, activeBranchId, setBranchFilter 
   );
 }
 
-function CanvasUpsellCard() {
+function CanvaUpsellCard() {
   return (
     <div className="rounded-2xl overflow-hidden ring-1 ring-slate-200 dark:ring-slate-700 bg-gradient-to-br from-indigo-50 via-violet-50 to-fuchsia-50 dark:from-indigo-950/40 dark:via-violet-950/30 dark:to-fuchsia-950/30 p-8 text-center">
       <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-white/80 dark:bg-slate-800/80 shadow-sm ring-1 ring-slate-200 dark:ring-slate-700 mb-4">
@@ -1022,7 +1022,7 @@ function CanvasUpsellCard() {
       </div>
       <h3 className="text-xl font-bold text-primary mb-1.5">
         <Sparkles size={16} className="inline -mt-0.5 mr-1 text-amber-500" />
-        Visual Warehouse Canvas — a Pro feature
+        Visual Warehouse Canva — a Pro feature
       </h3>
       <p className="text-sm text-secondary max-w-md mx-auto leading-relaxed">
         Drag-and-drop your pallets across a floor plan of your warehouse. See aging at a glance,

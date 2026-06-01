@@ -157,7 +157,11 @@
       "Bash(\".venv/Scripts/python.exe\" -c \"from app.main import app; routes=[r.path for r in app.routes if hasattr\\(r,'path'\\)]; print\\('total routes:', len\\(routes\\)\\); print\\('weather route present:', '/api/weather' in routes\\); print\\('canva route present:', any\\('canva' in p for p in routes\\)\\); print\\('any leftover \\\\\"canvas\\\\\" in routes:', [p for p in routes if 'canvas' in p]\\)\")",
       "Bash(rm -f backend.err backend.out)",
       "Bash(\".venv/Scripts/python.exe\" migrate_user_locations.py)",
-      "PowerShell(Stop-Process -Force -ErrorAction SilentlyContinue)"
+      "PowerShell(Stop-Process -Force -ErrorAction SilentlyContinue)",
+      "Bash(git -C d:/RICE ls-files test-results/)",
+      "Bash(git -C d:/RICE rm -r --cached test-results/)",
+      "Bash(Remove-Item -Recurse -Force d:/RICE/test-results/* -ErrorAction SilentlyContinue)",
+      "Bash(git -C d:/RICE status test-results/)"
     ],
     "additionalDirectories": [
       "d:\\RICE"

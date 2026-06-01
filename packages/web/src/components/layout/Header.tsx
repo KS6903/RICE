@@ -103,7 +103,7 @@ export default function Header() {
     .toUpperCase();
 
   return (
-    <header className="h-16 glass-strong border-b border-soft flex items-center justify-between px-6 shrink-0">
+    <header className="h-16 glass-strong border-b border-soft flex items-center justify-between px-6 shrink-0 relative z-10">
       <div className="hidden md:flex items-center gap-2 flex-1 max-w-md">
         <div className="relative w-full">
           <Search
