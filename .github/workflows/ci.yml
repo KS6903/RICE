@@ -1,0 +1,73 @@
+name: CI
+
+# Lightweight CI added in Phase 0 of the OOP-standardization refactor.
+# Backend: characterization + unit tests against a real Postgres, plus scoped
+# ruff/mypy. Frontend: Vitest + typecheck (eslint/prettier are advisory while we
+# migrate legacy code per "lint on touch").
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      # conftest derives "<db> Test" and creates it via the maintenance DB.
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/rice
+      SECRET_KEY: ci-test-secret-key
+      REDIS_URL: ""
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-dev.txt
+      - name: Lint (ruff, scoped)
+        run: ruff check tests
+      - name: Type-check (mypy, scoped)
+        run: mypy
+      - name: Tests (pytest)
+        run: pytest
+
+  frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Type-check
+        run: npm run typecheck --workspace=packages/web
+      - name: Unit tests (Vitest)
+        run: npm run test:web
+      - name: Lint (advisory during migration)
+        run: npm run lint --workspace=packages/web
+        continue-on-error: true
+      - name: Format check (advisory during migration)
+        run: npm run format:check
+        continue-on-error: true

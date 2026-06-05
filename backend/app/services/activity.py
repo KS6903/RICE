@@ -5,12 +5,13 @@ Centralises the audit-trail insert and the permanent purge of warehouses whose
 """
 import uuid
 from datetime import timedelta
+
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from ..models.activity import ActivityLog
-from ..models.company import Branch
 from ..models.base import now_utc
+from ..models.company import Branch
 
 TRASH_RETENTION_DAYS = 30
 

@@ -7,7 +7,6 @@ long-term storage, 15-16% is short-term only, and >16% needs immediate use.
 from datetime import date, timedelta
 from decimal import Decimal
 
-
 # (max_moisture_pct, safe_storage_days)
 MOISTURE_SHELF_LIFE_DAYS: list[tuple[float, int]] = [
     (12.0, 365),  # ≤12%  → 12 months

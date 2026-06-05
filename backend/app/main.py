@@ -2,6 +2,7 @@ import asyncio
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from .core.config import settings
+from .core.exceptions import register_exception_handlers
 from .api import auth, users, branches, paddy, milling, inventory, sales, costs, reports, sync, admin, employees, billing, canva, dispatch, weather, locations, activity
 from .services.canva_realtime import manager as ws_manager
 
@@ -19,6 +20,10 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Map domain exceptions (app.core.exceptions) to HTTP responses. Additive — the
+# many existing `raise HTTPException(...)` sites are unchanged.
+register_exception_handlers(app)
 
 app.include_router(auth.router, prefix="/api/auth", tags=["Auth"])
 app.include_router(users.router, prefix="/api/users", tags=["Users"])

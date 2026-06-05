@@ -1,11 +1,12 @@
 """Subscription helpers shared across signup, auth, admin, and billing."""
 import uuid
 from datetime import datetime, timezone
+
 from sqlalchemy.orm import Session
+
+from ..core.security import invalidate_company_features
 from ..models.subscription import Subscription, SubscriptionPlan
 from ..models.upgrade_request import UpgradeRequest
-from ..core.security import invalidate_company_features
-
 
 ACTIVE_STATUSES = ("active", "trial")
 
@@ -83,7 +84,8 @@ def ensure_subscription(db: Session, company_id: uuid.UUID) -> Subscription | No
     free_plan = get_free_plan(db)
     if not free_plan:
         return None
-    from datetime import timedelta, time as dt_time
+    from datetime import time as dt_time
+    from datetime import timedelta
     now = datetime.now(timezone.utc)
     expiry_day = (now + timedelta(days=30)).date()
     expires_at = datetime.combine(expiry_day, dt_time(23, 59, 59), tzinfo=timezone.utc)
@@ -188,7 +190,7 @@ def auto_downgrade_to_free_if_expired(db: Session, company_id: uuid.UUID) -> Sub
     # If a plan change was queued, activate it now instead of downgrading to Free.
     target_plan_id = sub.queued_plan_id if sub.queued_plan_id else free_plan.id
     target_note = (
-        f"Queued plan change applied — subscription moved to new plan on expiry"
+        "Queued plan change applied — subscription moved to new plan on expiry"
         if sub.queued_plan_id
         else f"Auto-downgraded from '{sub.plan.code if sub.plan else 'paid'}' on expiry"
     )

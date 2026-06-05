@@ -24,14 +24,12 @@ from __future__ import annotations
 
 import hashlib
 import uuid
-from typing import Iterable
 
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
-from ..models.supplier_customer import Customer, Supplier
 from ..models.dispatch import Agent, Miller
-
+from ..models.supplier_customer import Customer, Supplier
 
 # 30 visually distinct colors — chosen so adjacent slots have different hues
 # rather than only different shades. Keeps medium tenants from collision-fallback

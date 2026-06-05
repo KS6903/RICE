@@ -1,0 +1,74 @@
+# Tooling config for the RICE backend.
+# Added as part of the OOP-standardization refactor (Phase 0 — safety scaffolding).
+# This file configures dev tools only; it does NOT change runtime behavior.
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+addopts = "-q"
+filterwarnings = [
+    # passlib probes bcrypt's version in a way that warns on newer bcrypt; harmless.
+    "ignore::DeprecationWarning",
+]
+
+[tool.ruff]
+# Match the existing code style. Start lenient; we tighten over time.
+line-length = 120
+target-version = "py311"
+# Legacy modules are refactored phase-by-phase. Only lint what we've touched so
+# far so `ruff check` stays green during the rollout. Add paths as domains land.
+extend-exclude = ["migrations"]
+
+[tool.ruff.lint]
+# E/F = pyflakes+pycodestyle essentials, I = import sorting.
+select = ["E", "F", "I"]
+ignore = [
+    "E501",  # line length handled by the formatter, not enforced as a hard error
+]
+
+[tool.ruff.lint.per-file-ignores]
+# conftest must set test env vars BEFORE importing app.*, so its imports are
+# intentionally not top-of-file and not auto-sortable.
+"tests/conftest.py" = ["E402", "I001"]
+
+[tool.ruff.format]
+quote-style = "double"
+
+[tool.mypy]
+python_version = "3.11"
+ignore_missing_imports = true
+# Only report errors in files we've explicitly adopted; imports into legacy
+# modules (e.g. app/models forward-refs) are followed for types but not reported.
+follow_imports = "silent"
+# Scope type-checking to the new clean layers only. Legacy app/api is checked
+# as each domain is refactored. This keeps `mypy` actionable, not noisy.
+# Expand this list as new OOP layers land (app/repositories, app/services/base.py, ...).
+files = [
+    "app/core",
+    "app/repositories",
+    "app/schemas",
+    "app/services/base.py",
+    "app/services/paddy_service.py",
+    "app/services/inventory_service.py",
+    "app/services/activity_service.py",
+    "app/services/milling_service.py",
+    "app/services/costs_service.py",
+    "app/services/employee_service.py",
+    "app/api/paddy.py",
+    "app/api/inventory.py",
+    "app/api/activity.py",
+    "app/api/milling.py",
+    "app/api/costs.py",
+    "app/api/employees.py",
+]
+check_untyped_defs = true
+warn_redundant_casts = true
+
+# Legacy core modules not yet refactored to the OOP standard. Each entry is
+# removed when its module is cleaned up. config/cache use pydantic-settings and
+# optional-import patterns that need plugins to type cleanly; security/database
+# land in Phase 3f. New OOP layers (exceptions, repositories, services) ARE checked.
+[[tool.mypy.overrides]]
+module = ["app.core.security", "app.core.database", "app.core.config", "app.core.cache"]
+ignore_errors = true

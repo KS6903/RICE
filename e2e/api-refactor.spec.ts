@@ -1,0 +1,179 @@
+import { test, expect, request, type APIRequestContext } from "@playwright/test";
+
+/**
+ * End-to-end API checks for the OOP-refactored domains (paddy, inventory,
+ * activity). These hit the REAL running backend over HTTP with a real login and
+ * the seeded tenant, so they verify the layered refactor (schemas → repositories
+ * → services → thin controllers) preserves the live HTTP contract end-to-end.
+ *
+ * Requires the backend running (uvicorn on :8000) and the seed tenant. Override
+ * the base URL with E2E_API_BASE if the backend runs elsewhere.
+ */
+const BACKEND = process.env.E2E_API_BASE || "http://localhost:8001";
+const TENANT = { username: "mill1", password: "password123" };
+
+test.describe("Refactored API contract (paddy / inventory / activity)", () => {
+  let api: APIRequestContext;
+  let token: string;
+
+  test.beforeAll(async () => {
+    api = await request.newContext({ baseURL: BACKEND });
+    // OAuth2 password flow: form-encoded username/password.
+    const res = await api.post("/api/auth/login", {
+      form: { username: TENANT.username, password: TENANT.password },
+    });
+    expect(res.ok(), `login failed (${res.status()})`).toBeTruthy();
+    token = (await res.json()).access_token;
+    expect(token).toBeTruthy();
+  });
+
+  test.afterAll(async () => {
+    await api.dispose();
+  });
+
+  const auth = () => ({ Authorization: `Bearer ${token}` });
+
+  test("GET /api/paddy/varieties returns variety rows with the expected fields", async () => {
+    const res = await api.get("/api/paddy/varieties", { headers: auth() });
+    expect(res.status()).toBe(200);
+    const body = await res.json();
+    expect(Array.isArray(body)).toBeTruthy();
+    for (const v of body) {
+      expect(v).toHaveProperty("code");
+      expect(v).toHaveProperty("name");
+      expect(v).toHaveProperty("is_active");
+    }
+  });
+
+  // Codes must fit rice_varieties.code VARCHAR(20); keep them short.
+  test("POST then GET a variety round-trips through the service layer", async () => {
+    const code = `E2E${Date.now() % 1_000_000}`;
+    const created = await api.post("/api/paddy/varieties", {
+      headers: auth(),
+      data: { code, name: "E2E Variety" },
+    });
+    expect(created.status()).toBe(201);
+    expect((await created.json()).code).toBe(code);
+
+    const listed = await api.get("/api/paddy/varieties", { headers: auth() });
+    const codes = (await listed.json()).map((v: { code: string }) => v.code);
+    expect(codes).toContain(code);
+  });
+
+  test("duplicate variety code is rejected with 409 + detail", async () => {
+    const code = `DUP${Date.now() % 1_000_000}`;
+    const first = await api.post("/api/paddy/varieties", { headers: auth(), data: { code, name: "Dup" } });
+    expect(first.status()).toBe(201);
+    const dup = await api.post("/api/paddy/varieties", { headers: auth(), data: { code, name: "Dup" } });
+    expect(dup.status()).toBe(409);
+    expect((await dup.json()).detail).toContain("already exists");
+  });
+
+  test("GET /api/paddy/inventory rows have the serialized shape", async () => {
+    const res = await api.get("/api/paddy/inventory", { headers: auth() });
+    expect(res.status()).toBe(200);
+    const rows = await res.json();
+    for (const r of rows) {
+      expect(Object.keys(r).sort()).toEqual(
+        ["branch", "branch_id", "grade", "id", "quantity_kg", "variety"].sort(),
+      );
+    }
+  });
+
+  test("GET /api/inventory/summary returns the totals envelope", async () => {
+    const res = await api.get("/api/inventory/summary", { headers: auth() });
+    expect(res.status()).toBe(200);
+    const body = await res.json();
+    expect(Object.keys(body).sort()).toEqual(
+      ["by_branch", "byproducts", "milled_rice_total_kg", "palay_total_kg"].sort(),
+    );
+    expect(typeof body.palay_total_kg).toBe("number");
+  });
+
+  test("GET /api/inventory/milled-rice returns a list", async () => {
+    const res = await api.get("/api/inventory/milled-rice", { headers: auth() });
+    expect(res.status()).toBe(200);
+    expect(Array.isArray(await res.json())).toBeTruthy();
+  });
+
+  test("GET /api/activity/ is reachable for an owner and returns audit rows", async () => {
+    const res = await api.get("/api/activity/", { headers: auth() });
+    expect(res.status()).toBe(200);
+    const rows = await res.json();
+    expect(Array.isArray(rows)).toBeTruthy();
+    for (const r of rows) {
+      expect(Object.keys(r).sort()).toEqual(
+        ["action", "created_at", "detail", "entity_label", "entity_type", "id", "user_name"].sort(),
+      );
+    }
+  });
+
+  test("GET /api/milling/equipment returns a list", async () => {
+    const res = await api.get("/api/milling/equipment", { headers: auth() });
+    expect(res.status()).toBe(200);
+    expect(Array.isArray(await res.json())).toBeTruthy();
+  });
+
+  test("POST /api/milling/equipment creates equipment", async () => {
+    const res = await api.post("/api/milling/equipment", {
+      headers: auth(),
+      data: { name: `Mill ${Date.now() % 100000}` },
+    });
+    expect(res.status()).toBe(201);
+    const body = await res.json();
+    expect(body.name).toContain("Mill");
+    expect(body.is_active).toBe(true);
+  });
+
+  test("GET /api/milling/batches returns a list", async () => {
+    const res = await api.get("/api/milling/batches", { headers: auth() });
+    expect(res.status()).toBe(200);
+    expect(Array.isArray(await res.json())).toBeTruthy();
+  });
+
+  test("GET /api/costs/categories returns a list", async () => {
+    const res = await api.get("/api/costs/categories", { headers: auth() });
+    expect(res.status()).toBe(200);
+    expect(Array.isArray(await res.json())).toBeTruthy();
+  });
+
+  test("POST /api/costs/categories creates a category", async () => {
+    const res = await api.post("/api/costs/categories", {
+      headers: auth(),
+      data: { name: `Cat ${Date.now() % 100000}` },
+    });
+    expect(res.status()).toBe(201);
+    expect((await res.json()).is_production_cost).toBe(true);
+  });
+
+  test("GET /api/costs/expenses returns a list", async () => {
+    const res = await api.get("/api/costs/expenses", { headers: auth() });
+    expect(res.status()).toBe(200);
+    expect(Array.isArray(await res.json())).toBeTruthy();
+  });
+
+  test("GET /api/employees/ returns serialized employees", async () => {
+    const res = await api.get("/api/employees/", { headers: auth() });
+    expect(res.status()).toBe(200);
+    const rows = await res.json();
+    expect(Array.isArray(rows)).toBeTruthy();
+    for (const e of rows) {
+      expect(e).toHaveProperty("full_name");
+      expect(e).toHaveProperty("is_active");
+    }
+  });
+
+  test("POST /api/employees/ creates an employee with composed full_name", async () => {
+    const res = await api.post("/api/employees/", {
+      headers: auth(),
+      data: { first_name: "E2E", last_name: `T${Date.now() % 100000}` },
+    });
+    expect(res.status()).toBe(201);
+    expect((await res.json()).full_name).toContain("E2E");
+  });
+
+  test("feature/auth gate: a request without a token is rejected", async () => {
+    const res = await api.get("/api/paddy/varieties");
+    expect(res.status()).toBe(401);
+  });
+});

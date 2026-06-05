@@ -1,87 +1,50 @@
+"""Costs/expenses domain HTTP controllers — thin routing over CostsService (Phase 3d)."""
 import uuid
-from datetime import date
-from decimal import Decimal
-from fastapi import APIRouter, Depends, HTTPException, status
-from pydantic import BaseModel
+
+from fastapi import APIRouter, Depends, status
 from sqlalchemy.orm import Session
+
 from ..core.database import get_db
 from ..core.security import get_current_user, require_feature
-from ..models.costs import Expense, ExpenseCategory
+from ..repositories.costs import ExpenseCategoryRepository, ExpenseRepository
+from ..schemas.costs import CategoryCreate, CategoryUpdate, ExpenseCreate
+from ..services.costs_service import CostsService
 
 router = APIRouter(dependencies=[Depends(require_feature("expenses"))])
 
 
-class CategoryCreate(BaseModel):
-    name: str
-    is_production_cost: bool = True
-
-
-class CategoryUpdate(BaseModel):
-    name: str | None = None
-    is_production_cost: bool | None = None
-
-
-class ExpenseCreate(BaseModel):
-    category_id: uuid.UUID
-    batch_id: uuid.UUID | None = None
-    expense_date: date
-    amount: Decimal
-    description: str | None = None
-    reference_no: str | None = None
+def get_costs_service(
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+) -> CostsService:
+    return CostsService(
+        db,
+        current_user,
+        categories=ExpenseCategoryRepository(db),
+        expenses=ExpenseRepository(db),
+    )
 
 
 @router.get("/categories")
-def list_categories(current_user=Depends(get_current_user), db: Session = Depends(get_db)):
-    return db.query(ExpenseCategory).filter(
-        (ExpenseCategory.company_id == current_user.company_id) | (ExpenseCategory.company_id.is_(None))
-    ).order_by(ExpenseCategory.name).all()
+def list_categories(svc: CostsService = Depends(get_costs_service)):
+    return svc.list_categories()
 
 
 @router.post("/categories", status_code=status.HTTP_201_CREATED)
-def create_category(body: CategoryCreate, current_user=Depends(get_current_user), db: Session = Depends(get_db)):
-    existing = db.query(ExpenseCategory).filter(
-        ExpenseCategory.company_id == current_user.company_id,
-        ExpenseCategory.name == body.name,
-    ).first()
-    if existing:
-        raise HTTPException(status_code=409, detail=f"Category '{body.name}' already exists")
-    cat = ExpenseCategory(company_id=current_user.company_id, **body.model_dump())
-    db.add(cat)
-    db.commit()
-    db.refresh(cat)
-    return cat
+def create_category(body: CategoryCreate, svc: CostsService = Depends(get_costs_service)):
+    return svc.create_category(body)
 
 
 @router.put("/categories/{category_id}")
-def update_category(category_id: uuid.UUID, body: CategoryUpdate, current_user=Depends(get_current_user), db: Session = Depends(get_db)):
-    cat = db.get(ExpenseCategory, category_id)
-    if not cat:
-        raise HTTPException(status_code=404, detail="Category not found")
-    if cat.company_id != current_user.company_id:
-        raise HTTPException(status_code=403, detail="Cannot edit shared/system categories. Create your own copy.")
-    for field, val in body.model_dump(exclude_none=True).items():
-        setattr(cat, field, val)
-    db.commit()
-    db.refresh(cat)
-    return cat
+def update_category(category_id: uuid.UUID, body: CategoryUpdate, svc: CostsService = Depends(get_costs_service)):
+    return svc.update_category(category_id, body)
 
 
 @router.get("/expenses")
-def list_expenses(skip: int = 0, limit: int = 100, current_user=Depends(get_current_user), db: Session = Depends(get_db)):
-    return db.query(Expense).filter(
-        Expense.company_id == current_user.company_id
-    ).order_by(Expense.expense_date.desc()).offset(skip).limit(limit).all()
+def list_expenses(skip: int = 0, limit: int = 100, svc: CostsService = Depends(get_costs_service)):
+    return svc.list_expenses(skip=skip, limit=limit)
 
 
 @router.post("/expenses", status_code=status.HTTP_201_CREATED)
-def create_expense(body: ExpenseCreate, current_user=Depends(get_current_user), db: Session = Depends(get_db)):
-    expense = Expense(
-        company_id=current_user.company_id,
-        branch_id=current_user.branch_id,
-        created_by=current_user.id,
-        **body.model_dump()
-    )
-    db.add(expense)
-    db.commit()
-    db.refresh(expense)
-    return expense
+def create_expense(body: ExpenseCreate, svc: CostsService = Depends(get_costs_service)):
+    return svc.create_expense(body)

@@ -13,15 +13,20 @@
     "build:web": "npm run build --workspace=packages/web",
     "build:desktop": "npm run build --workspace=packages/desktop",
     "build:shared": "npm run build --workspace=packages/shared",
+    "test:web": "npm run test --workspace=packages/web",
     "test:e2e": "playwright test",
+    "test:e2e:api": "playwright test --config=playwright.api.config.ts",
     "test:e2e:ui": "playwright test --ui",
-    "test:e2e:report": "playwright show-report"
+    "test:e2e:report": "playwright show-report",
+    "format": "prettier --write \"packages/*/src/**/*.{ts,tsx}\"",
+    "format:check": "prettier --check \"packages/*/src/**/*.{ts,tsx}\""
   },
   "engines": {
     "node": ">=20.0.0",
     "npm": ">=10.0.0"
   },
   "devDependencies": {
-    "@playwright/test": "^1.60.0"
+    "@playwright/test": "^1.60.0",
+    "prettier": "^3.4.2"
   }
 }
