@@ -172,6 +172,41 @@ test.describe("Refactored API contract (paddy / inventory / activity)", () => {
     expect((await res.json()).full_name).toContain("E2E");
   });
 
+  test("GET /api/sales/customers returns a list", async () => {
+    const res = await api.get("/api/sales/customers", { headers: auth() });
+    expect(res.status()).toBe(200);
+    expect(Array.isArray(await res.json())).toBeTruthy();
+  });
+
+  test("sales order -> invoice flow computes totals and advances status", async () => {
+    const customer = await (
+      await api.post("/api/sales/customers", { headers: auth(), data: { name: `Cust ${Date.now() % 100000}` } })
+    ).json();
+
+    const orderRes = await api.post("/api/sales/orders", {
+      headers: auth(),
+      data: {
+        customer_id: customer.id,
+        order_date: "2026-06-05",
+        discount_pct: "10",
+        items: [{ item_type: "milled_rice", quantity_kg: "100", unit_price_per_kg: "50" }],
+      },
+    });
+    expect(orderRes.status()).toBe(201);
+    const order = await orderRes.json();
+    expect(order.order_no).toMatch(/^SO-\d{8}-\d{4}$/);
+    expect(Number(order.total_amount)).toBe(4500); // 5000 - 10%
+
+    const invRes = await api.post("/api/sales/invoices", {
+      headers: auth(),
+      data: { order_id: order.id, invoice_date: "2026-06-05" },
+    });
+    expect(invRes.status()).toBe(201);
+    const inv = await invRes.json();
+    expect(inv.invoice_no).toMatch(/^INV-\d{8}-\d{4}$/);
+    expect(Number(inv.total_amount)).toBe(4500);
+  });
+
   test("feature/auth gate: a request without a token is rejected", async () => {
     const res = await api.get("/api/paddy/varieties");
     expect(res.status()).toBe(401);

@@ -55,12 +55,14 @@ files = [
     "app/services/milling_service.py",
     "app/services/costs_service.py",
     "app/services/employee_service.py",
+    "app/services/sales_service.py",
     "app/api/paddy.py",
     "app/api/inventory.py",
     "app/api/activity.py",
     "app/api/milling.py",
     "app/api/costs.py",
     "app/api/employees.py",
+    "app/api/sales.py",
 ]
 check_untyped_defs = true
 warn_redundant_casts = true

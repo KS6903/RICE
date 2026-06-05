@@ -252,7 +252,9 @@
       "Bash(.venv/Scripts/python.exe -m pytest tests/characterization/test_costs.py -q)",
       "Bash(.venv/Scripts/python.exe -m ruff check --fix tests app/repositories/costs.py app/services/costs_service.py app/api/costs.py app/schemas/costs.py)",
       "Bash(.venv/Scripts/python.exe -m pytest tests/characterization/test_employees.py -q)",
-      "Bash(.venv/Scripts/python.exe -m ruff check --fix tests app/repositories/employees.py app/services/employee_service.py app/api/employees.py app/schemas/employees.py)"
+      "Bash(.venv/Scripts/python.exe -m ruff check --fix tests app/repositories/employees.py app/services/employee_service.py app/api/employees.py app/schemas/employees.py)",
+      "Bash(.venv/Scripts/python.exe -m pytest tests/characterization/test_sales.py -q)",
+      "Bash(.venv/Scripts/python.exe -m ruff check --fix tests app/repositories/sales.py app/services/sales_service.py app/api/sales.py app/schemas/sales.py)"
     ],
     "additionalDirectories": [
       "d:\\RICE"
