@@ -1,4 +1,6 @@
 from datetime import datetime, timezone
+import secrets
+import string
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
 from pydantic import BaseModel, EmailStr
@@ -16,6 +18,13 @@ from ..services.subscription import (
     effective_status,
     auto_downgrade_to_free_if_expired,
 )
+
+try:
+    from google.oauth2 import id_token
+    from google.auth.transport import requests as google_requests
+except ImportError:
+    id_token = None
+    google_requests = None
 
 router = APIRouter()
 
@@ -36,6 +45,12 @@ class SignupRequest(BaseModel):
     username: str
     email: EmailStr
     password: str
+    is_multi_branch: bool = False
+
+
+class GoogleAuthRequest(BaseModel):
+    credential: str
+    company_name: str | None = None
     is_multi_branch: bool = False
 
 
@@ -121,6 +136,87 @@ def refresh(body: RefreshRequest):
     return TokenResponse(
         access_token=create_access_token(clean),
         refresh_token=create_refresh_token(clean),
+    )
+
+
+@router.post("/google", response_model=TokenResponse)
+def google_auth(body: GoogleAuthRequest, db: Session = Depends(get_db)):
+    from ..core.config import settings
+    if id_token is None or not settings.GOOGLE_CLIENT_ID:
+        raise HTTPException(status_code=501, detail="Google authentication is not configured on the server")
+
+    try:
+        id_info = id_token.verify_oauth2_token(
+            body.credential, google_requests.Request(), settings.GOOGLE_CLIENT_ID
+        )
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Invalid Google token: {str(e)}")
+
+    email = id_info.get("email")
+    full_name = id_info.get("name")
+
+    user = db.query(User).filter(User.email == email).first()
+
+    if user:
+        # Login flow
+        if not user.is_active:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Account disabled")
+        if user.company_id and user.company is not None and not user.company.is_active:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Your company account has been deactivated.")
+
+        user.last_login = datetime.now(timezone.utc)
+        db.commit()
+    else:
+        # Signup flow
+        if not body.company_name:
+            raise HTTPException(status_code=400, detail="Company name is required for new accounts via Google")
+
+        owner_role = db.query(Role).filter_by(name="owner").first()
+        if not owner_role:
+            raise HTTPException(status_code=500, detail="System not initialized.")
+
+        company = Company(name=body.company_name, is_multi_branch=body.is_multi_branch)
+        db.add(company)
+        db.flush()
+
+        branch = Branch(company_id=company.id, name=body.company_name, is_main_branch=True)
+        db.add(branch)
+        db.flush()
+
+        if ensure_subscription(db, company.id) is None:
+            raise HTTPException(status_code=500, detail="System not initialized — Free plan missing.")
+
+        # Generate random password and unique username
+        random_password = ''.join(secrets.choice(string.ascii_letters + string.digits) for _ in range(32))
+        base_username = email.split("@")[0]
+        username = base_username
+        counter = 1
+        while db.query(User).filter(User.username == username).first():
+            username = f"{base_username}{counter}"
+            counter += 1
+
+        user = User(
+            company_id=company.id,
+            branch_id=branch.id,
+            username=username,
+            email=email,
+            full_name=full_name,
+            password_hash=hash_password(random_password),
+            role_id=owner_role.id,
+        )
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+
+    payload = {
+        "sub": str(user.id),
+        "company_id": str(user.company_id) if user.company_id else None,
+        "role": user.role.name if user.role else None,
+        "is_platform_admin": user.is_platform_admin,
+    }
+    return TokenResponse(
+        access_token=create_access_token(payload),
+        refresh_token=create_refresh_token(payload),
     )
 
 

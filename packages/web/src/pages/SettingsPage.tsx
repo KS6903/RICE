@@ -11,25 +11,37 @@ import {
 import { format } from "date-fns";
 import { useCurrentPlan } from "../hooks/useFeature";
 import type { SubscriptionPlan, UpgradeRequest } from "@rice-mill/shared";
+import ActivityLogList from "../components/activity/ActivityLogList";
+import type { ActivityRow } from "../components/activity/format";
+import { Trash2, RotateCcw } from "lucide-react";
 
 type Tab =
   | "billing" | "company" | "branches" | "varieties"
-  | "equipment" | "categories" | "profile" | "password";
+  | "equipment" | "categories" | "activity" | "profile" | "password";
 
 const LABEL = "block text-sm font-semibold text-secondary mb-1.5";
 const TABLE_HEAD =
   "px-4 py-3 text-left text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400";
 
 export default function SettingsPage() {
-  const [tab, setTab] = useState<Tab>("billing");
+  const role = useAuthStore((s) => s.user?.role);
+  const isManager = role === "owner" || role === "admin";
+  // Non-managers (cashier, encoder, mill_operator, accountant) only manage their
+  // own account — everything else here is an owner/admin surface.
+  const [tab, setTab] = useState<Tab>(isManager ? "billing" : "profile");
 
   const tabs: { key: Tab; label: string; icon: React.ElementType }[] = [
-    { key: "billing", label: "Billing", icon: CreditCard },
-    { key: "company", label: "Company", icon: Building2 },
-    { key: "branches", label: "Branches", icon: MapPin },
-    { key: "varieties", label: "Rice Varieties", icon: Wheat },
-    { key: "equipment", label: "Equipment", icon: Factory },
-    { key: "categories", label: "Expense Categories", icon: Receipt },
+    // Company/management settings — owners & admins only.
+    ...(isManager ? [
+      { key: "billing" as Tab, label: "Billing", icon: CreditCard },
+      { key: "company" as Tab, label: "Company", icon: Building2 },
+      { key: "branches" as Tab, label: "Branches", icon: MapPin },
+      { key: "varieties" as Tab, label: "Rice Varieties", icon: Wheat },
+      { key: "equipment" as Tab, label: "Equipment", icon: Factory },
+      { key: "categories" as Tab, label: "Expense Categories", icon: Receipt },
+      { key: "activity" as Tab, label: "Activity Log", icon: History },
+    ] : []),
+    // Personal settings — available to every role.
     { key: "profile", label: "My Profile", icon: UserIcon },
     { key: "password", label: "Password", icon: KeyRound },
   ];
@@ -86,6 +98,7 @@ export default function SettingsPage() {
           {tab === "varieties" && <VarietiesTab />}
           {tab === "equipment" && <EquipmentTab />}
           {tab === "categories" && <CategoriesTab />}
+          {tab === "activity" && <ActivityTab />}
           {tab === "profile" && <ProfileTab />}
           {tab === "password" && <PasswordTab />}
         </main>
@@ -1210,6 +1223,8 @@ function BranchesTab() {
   const [form, setForm] = useState({ name: "", address: "", is_main_branch: false });
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editValues, setEditValues] = useState({ name: "", address: "" });
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [showTrash, setShowTrash] = useState(false);
 
   const create = useMutation({
     mutationFn: (body: typeof form) => api.post("/branches/", body),
@@ -1229,6 +1244,43 @@ function BranchesTab() {
     },
   });
 
+  // Warehouses the owner is allowed to bulk-delete (everything except main).
+  const selectable = (branches as any[]).filter((b) => !b.is_main_branch);
+
+  const bulkDelete = useMutation({
+    mutationFn: (ids: string[]) => api.post("/branches/bulk-delete", { ids }).then((r) => r.data),
+    onSuccess: (res: any) => {
+      qc.invalidateQueries({ queryKey: ["branches"] });
+      qc.invalidateQueries({ queryKey: ["branches-trash"] });
+      qc.invalidateQueries({ queryKey: ["activity"] });
+      setSelected(new Set());
+      const skipped = res?.skipped ?? [];
+      if (skipped.length) {
+        alert(skipped.map((s: any) => s.reason).join("\n"));
+      }
+    },
+  });
+
+  function toggle(id: string) {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  }
+  function toggleAll() {
+    setSelected((prev) =>
+      prev.size === selectable.length ? new Set() : new Set(selectable.map((b: any) => b.id))
+    );
+  }
+  function confirmBulkDelete() {
+    const ids = [...selected];
+    if (!ids.length) return;
+    if (confirm(`Move ${ids.length} warehouse${ids.length === 1 ? "" : "s"} to trash? You can restore within 30 days.`)) {
+      bulkDelete.mutate(ids);
+    }
+  }
+
   function startEdit(b: any) {
     setEditingId(b.id);
     setEditValues({ name: b.name, address: b.address || "" });
@@ -1236,14 +1288,36 @@ function BranchesTab() {
 
   return (
     <div className="space-y-4">
-      <div className="flex justify-between items-center">
+      <div className="flex justify-between items-center gap-3 flex-wrap">
         <p className="text-sm text-secondary font-medium">
           {branches.length} branch{branches.length === 1 ? "" : "es"}
         </p>
-        <button onClick={() => setShowForm(!showForm)} className="btn-primary">
-          <Plus size={16} /> Add branch
-        </button>
+        <div className="flex items-center gap-2">
+          <button onClick={() => setShowTrash((v) => !v)} className="btn-secondary">
+            <History size={16} /> {showTrash ? "Hide history" : "History / Trash"}
+          </button>
+          <button onClick={() => setShowForm(!showForm)} className="btn-primary">
+            <Plus size={16} /> Add branch
+          </button>
+        </div>
       </div>
+
+      {selected.size > 0 && (
+        <div className="flex items-center justify-between gap-3 rounded-xl px-4 py-2.5 bg-rose-50 dark:bg-rose-950/30 ring-1 ring-rose-200 dark:ring-rose-800/60">
+          <span className="text-sm font-semibold text-rose-700 dark:text-rose-300">
+            {selected.size} selected
+          </span>
+          <div className="flex items-center gap-2">
+            <button onClick={() => setSelected(new Set())} className="btn-secondary !py-1.5 !px-3 text-sm">Clear</button>
+            <button onClick={confirmBulkDelete} disabled={bulkDelete.isPending}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-rose-600 text-white text-sm font-semibold hover:bg-rose-700 disabled:opacity-50">
+              <Trash2 size={15} /> {bulkDelete.isPending ? "Deleting…" : "Delete selected"}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {showTrash && <BranchTrashPanel />}
 
       {showForm && (
         <div className="card space-y-4">
@@ -1301,6 +1375,17 @@ function BranchesTab() {
         <table className="w-full text-sm">
           <thead className="bg-gradient-to-r from-emerald-50/80 via-cyan-50/60 to-violet-50/80 dark:from-emerald-900/20 dark:via-cyan-900/10 dark:to-violet-900/20 border-b border-soft">
             <tr>
+              <th className={`${TABLE_HEAD} w-10`}>
+                <input
+                  type="checkbox"
+                  aria-label="Select all warehouses"
+                  className="h-4 w-4 rounded border-soft accent-rose-500 cursor-pointer disabled:opacity-40"
+                  disabled={selectable.length === 0}
+                  checked={selectable.length > 0 && selected.size === selectable.length}
+                  ref={(el) => { if (el) el.indeterminate = selected.size > 0 && selected.size < selectable.length; }}
+                  onChange={toggleAll}
+                />
+              </th>
               {["Name", "Address", "Type", "Status", ""].map((h, i) => (
                 <th key={i} className={TABLE_HEAD}>
                   {h}
@@ -1316,6 +1401,17 @@ function BranchesTab() {
                   key={b.id}
                   className="group hover:bg-slate-50/50 dark:hover:bg-slate-700/15"
                 >
+                  <td className="px-4 py-3">
+                    <input
+                      type="checkbox"
+                      aria-label={`Select ${b.name}`}
+                      className="h-4 w-4 rounded border-soft accent-rose-500 cursor-pointer disabled:opacity-30"
+                      disabled={b.is_main_branch}
+                      title={b.is_main_branch ? "The main warehouse can't be deleted" : undefined}
+                      checked={selected.has(b.id)}
+                      onChange={() => toggle(b.id)}
+                    />
+                  </td>
                   <td className="px-4 py-3 font-semibold text-primary">
                     {isEditing ? (
                       <input
@@ -1395,13 +1491,86 @@ function BranchesTab() {
             })}
             {branches.length === 0 && (
               <tr>
-                <td colSpan={5} className="px-4 py-8 text-center text-muted font-medium">
+                <td colSpan={6} className="px-4 py-8 text-center text-muted font-medium">
                   No branches
                 </td>
               </tr>
             )}
           </tbody>
         </table>
+      </div>
+    </div>
+  );
+}
+
+function BranchTrashPanel() {
+  const qc = useQueryClient();
+  const { data: trashed = [], isLoading } = useQuery<any[]>({
+    queryKey: ["branches-trash"],
+    queryFn: () => api.get("/branches/trash").then((r) => r.data),
+  });
+
+  const restore = useMutation({
+    mutationFn: (id: string) => api.post(`/branches/${id}/restore`).then((r) => r.data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["branches"] });
+      qc.invalidateQueries({ queryKey: ["branches-trash"] });
+      qc.invalidateQueries({ queryKey: ["activity"] });
+    },
+  });
+
+  return (
+    <div className="card space-y-3">
+      <div className="flex items-center gap-2">
+        <History size={16} className="text-muted" />
+        <h3 className="font-semibold text-primary">Recently deleted warehouses</h3>
+      </div>
+      <p className="text-xs text-muted">Deleted warehouses are kept for 30 days, then permanently removed.</p>
+      {isLoading ? (
+        <p className="text-sm text-muted py-4 text-center">Loading…</p>
+      ) : trashed.length === 0 ? (
+        <p className="text-sm text-muted py-4 text-center">Trash is empty.</p>
+      ) : (
+        <ul className="divide-y divide-slate-100 dark:divide-slate-800">
+          {trashed.map((b) => (
+            <li key={b.id} className="flex items-center justify-between gap-3 py-2.5">
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-primary truncate">{b.name}</p>
+                <p className="text-xs text-muted">
+                  {b.deleted_by_name ? `Deleted by ${b.deleted_by_name} · ` : ""}
+                  <span className={b.days_remaining <= 3 ? "text-rose-600 dark:text-rose-400 font-semibold" : ""}>
+                    {b.days_remaining}d left
+                  </span>
+                </p>
+              </div>
+              <button
+                onClick={() => restore.mutate(b.id)}
+                disabled={restore.isPending}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg btn-secondary text-sm font-semibold disabled:opacity-50"
+              >
+                <RotateCcw size={14} /> Restore
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+function ActivityTab() {
+  const { data: rows = [], isLoading } = useQuery<ActivityRow[]>({
+    queryKey: ["activity"],
+    queryFn: () => api.get("/activity/").then((r) => r.data),
+  });
+  return (
+    <div className="space-y-4">
+      <div>
+        <h3 className="text-lg font-bold text-primary">Activity log</h3>
+        <p className="text-sm text-secondary">Who deleted, restored, or purged warehouses — most recent first.</p>
+      </div>
+      <div className="card">
+        <ActivityLogList rows={rows} loading={isLoading} />
       </div>
     </div>
   );

@@ -15,6 +15,10 @@ class Settings(BaseSettings):
     # the endpoint falls back to Open-Meteo (no key required), so the widget
     # works out of the box.
     GOOGLE_WEATHER_API_KEY: str | None = None
+    GOOGLE_CLIENT_ID: str | None = None
+    # Optional Redis cache. When unset (or unreachable), the app runs without
+    # caching and reads straight from PostgreSQL — Redis is never required.
+    REDIS_URL: str | None = None
 
     @property
     def origins_list(self) -> list[str]:

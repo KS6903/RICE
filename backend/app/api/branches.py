@@ -1,4 +1,5 @@
 import uuid
+from datetime import timedelta
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
@@ -6,6 +7,8 @@ from ..core.database import get_db
 from ..core.security import get_current_user, require_roles, hash_password
 from ..models.company import Company, Branch
 from ..models.user import User, Role
+from ..models.base import now_utc
+from ..services.activity import log_activity, purge_expired_branches, TRASH_RETENTION_DAYS
 
 router = APIRouter()
 
@@ -126,7 +129,106 @@ def update_company(body: CompanyUpdate, current_user=Depends(require_roles("owne
 
 @router.get("/")
 def list_branches(current_user=Depends(get_current_user), db: Session = Depends(get_db)):
-    return db.query(Branch).filter(Branch.company_id == current_user.company_id).all()
+    # Trashed (soft-deleted) warehouses are hidden everywhere this feeds:
+    # the warehouse picker, inventory views, and the Settings branch list.
+    return db.query(Branch).filter(
+        Branch.company_id == current_user.company_id,
+        Branch.deleted_at.is_(None),
+    ).all()
+
+
+class BulkDeleteIn(BaseModel):
+    ids: list[uuid.UUID]
+
+
+@router.post("/bulk-delete")
+def bulk_delete_branches(body: BulkDeleteIn, current_user=Depends(require_roles("owner", "admin")), db: Session = Depends(get_db)):
+    """Soft-delete (trash) multiple warehouses at once.
+
+    Skips the main branch and refuses to trash the last remaining live branch.
+    Each successful trash writes a warehouse.delete activity row.
+    """
+    live = db.query(Branch).filter(
+        Branch.company_id == current_user.company_id,
+        Branch.deleted_at.is_(None),
+    ).all()
+    live_by_id = {b.id: b for b in live}
+    live_count = len(live)
+
+    deleted: list[str] = []
+    skipped: list[dict] = []
+    for bid in body.ids:
+        branch = live_by_id.get(bid)
+        if not branch:
+            skipped.append({"id": str(bid), "reason": "Not found or already trashed."})
+            continue
+        if branch.is_main_branch:
+            skipped.append({"id": str(bid), "reason": "The main warehouse can't be deleted."})
+            continue
+        if live_count - len(deleted) <= 1:
+            skipped.append({"id": str(bid), "reason": "You must keep at least one warehouse."})
+            continue
+        branch.deleted_at = now_utc()
+        branch.deleted_by = current_user.id
+        log_activity(
+            db, company_id=current_user.company_id, user_id=current_user.id,
+            action="warehouse.delete", entity_type="branch",
+            entity_id=branch.id, entity_label=branch.name,
+        )
+        deleted.append(str(bid))
+
+    db.commit()
+    return {"deleted": deleted, "skipped": skipped}
+
+
+@router.get("/trash")
+def list_trashed_branches(current_user=Depends(require_roles("owner", "admin")), db: Session = Depends(get_db)):
+    """Warehouses in the 30-day trash. Lazily purges anything past retention
+    first, so expired warehouses disappear (and get a purge log) on view."""
+    purge_expired_branches(db, current_user.company_id)
+
+    rows = db.query(Branch).filter(
+        Branch.company_id == current_user.company_id,
+        Branch.deleted_at.isnot(None),
+    ).order_by(Branch.deleted_at.desc()).all()
+
+    deleter_ids = {b.deleted_by for b in rows if b.deleted_by}
+    names = {}
+    if deleter_ids:
+        for u in db.query(User).filter(User.id.in_(deleter_ids)).all():
+            names[u.id] = u.full_name or u.username
+
+    out = []
+    for b in rows:
+        expires_at = b.deleted_at + timedelta(days=TRASH_RETENTION_DAYS)
+        days_remaining = max(0, (expires_at - now_utc()).days)
+        out.append({
+            "id": str(b.id),
+            "name": b.name,
+            "is_main_branch": b.is_main_branch,
+            "deleted_at": b.deleted_at.isoformat(),
+            "deleted_by_name": names.get(b.deleted_by),
+            "days_remaining": days_remaining,
+        })
+    return out
+
+
+@router.post("/{branch_id}/restore")
+def restore_branch(branch_id: uuid.UUID, current_user=Depends(require_roles("owner", "admin")), db: Session = Depends(get_db)):
+    branch = db.get(Branch, branch_id)
+    if not branch or branch.company_id != current_user.company_id:
+        raise HTTPException(status_code=404, detail="Branch not found")
+    if branch.deleted_at is None:
+        raise HTTPException(status_code=409, detail="This warehouse is not in the trash.")
+    branch.deleted_at = None
+    branch.deleted_by = None
+    log_activity(
+        db, company_id=current_user.company_id, user_id=current_user.id,
+        action="warehouse.restore", entity_type="branch",
+        entity_id=branch.id, entity_label=branch.name,
+    )
+    db.commit()
+    return {"restored": True, "id": str(branch.id)}
 
 
 @router.post("/", status_code=status.HTTP_201_CREATED)

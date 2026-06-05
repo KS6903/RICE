@@ -3,14 +3,18 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import api from "../services/api";
 import {
-  Package, Wheat, MapPin, List, Table2, LayoutGrid, BarChart3, Warehouse,
+  Package, Wheat, MapPin, List, Table2, LayoutGrid, BarChart3, Warehouse, Boxes,
   Search, ArrowUpDown, Building2, Lock, Sparkles, ArrowRight,
   Plus, Trash2, Star, Pencil, X as XIcon, Check, Maximize2,
 } from "lucide-react";
 import WarehouseCanva from "../components/canva/WarehouseCanva";
+import NewWarehouseView from "../components/warehouse/NewWarehouseView";
+import ManageLayoutsModal from "../components/warehouse/ManageLayoutsModal";
 import InventoryDetailDrawer from "../components/inventory/InventoryDetailDrawer";
 import WarehousePicker from "../components/inventory/WarehousePicker";
+import AddInventoryModal from "../components/inventory/AddInventoryModal";
 import { useFeature } from "../hooks/useFeature";
+import { useAuthStore } from "../stores/authStore";
 
 const BYPRODUCT_NAMES: Record<string, string> = {
   ipa: "Ipa (Rice Hull)",
@@ -18,7 +22,7 @@ const BYPRODUCT_NAMES: Record<string, string> = {
   binlid: "Binlid (Broken Rice)",
 };
 
-type ViewMode = "classic" | "spreadsheet" | "cards" | "bins" | "warehouse";
+type ViewMode = "classic" | "spreadsheet" | "cards" | "bins" | "warehouse" | "new-warehouse";
 
 type UnifiedItem = {
   id: string;
@@ -42,7 +46,14 @@ export default function InventoryPage() {
   const [branchFilter, setBranchFilter] = useState<string>("");
   const [view, setView] = useState<ViewMode>("classic");
   const [selected, setSelected] = useState<UnifiedItem | null>(null);
+  const [showAdd, setShowAdd] = useState(false);
   const branchQuery = branchFilter ? `?branch_id=${branchFilter}` : "";
+
+  // Adding stock is an owner/admin action — mirrors the backend role gate so we
+  // don't dangle a button that would just 403. The button sits in the page
+  // header, so it's available on every view tab.
+  const role = useAuthStore((s) => s.user?.role);
+  const canAddInventory = role === "owner" || role === "admin";
 
   const { data: branches = [] } = useQuery<any[]>({ queryKey: ["branches"], queryFn: () => api.get("/branches/").then(r => r.data) });
   const { data: milled = [] } = useQuery<any[]>({ queryKey: ["milled-rice", branchFilter], queryFn: () => api.get(`/inventory/milled-rice${branchQuery}`).then(r => r.data) });
@@ -87,6 +98,7 @@ export default function InventoryPage() {
     { key: "cards",       label: "Cards",       icon: LayoutGrid },
     { key: "bins",        label: "Bins",        icon: BarChart3 },
     { key: "warehouse",   label: "Warehouse",   icon: Warehouse },
+    { key: "new-warehouse", label: "New Warehouse", icon: Boxes },
   ];
 
   return (
@@ -94,7 +106,7 @@ export default function InventoryPage() {
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h2 className="text-2xl font-bold tracking-tight text-primary">Inventory</h2>
-          <p className="text-sm text-secondary">Stock of palay, milled rice, and by-products — 5 ways to view it</p>
+          <p className="text-sm text-secondary">Stock of palay, milled rice, and by-products — 6 ways to view it</p>
         </div>
         <div className="flex items-center gap-2">
           <WarehousePicker
@@ -102,6 +114,16 @@ export default function InventoryPage() {
             selectedId={branchFilter}
             onSelect={setBranchFilter}
           />
+          {canAddInventory && (
+            <button
+              type="button"
+              data-testid="add-inventory-btn"
+              onClick={() => setShowAdd(true)}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-grad-brand text-white text-sm font-semibold shadow-grad-glow hover:opacity-90 transition-opacity whitespace-nowrap"
+            >
+              <Plus size={15} /> Add inventory
+            </button>
+          )}
         </div>
       </div>
 
@@ -131,6 +153,7 @@ export default function InventoryPage() {
       {view === "cards"       && <CardsView items={items} totalKg={totalKg} onSelect={setSelected} />}
       {view === "bins"        && <BinsView items={items} onSelect={setSelected} />}
       {view === "warehouse"   && <WarehouseCanvaView branches={branches} branchFilter={branchFilter} setBranchFilter={setBranchFilter} />}
+      {view === "new-warehouse" && <NewWarehouseView branches={branches} branchFilter={branchFilter} setBranchFilter={setBranchFilter} />}
 
       <InventoryDetailDrawer
         item={selected}
@@ -142,6 +165,14 @@ export default function InventoryPage() {
           setSelected(null);
         }}
       />
+
+      {showAdd && (
+        <AddInventoryModal
+          branches={branches as any[]}
+          defaultBranchId={branchFilter}
+          onClose={() => setShowAdd(false)}
+        />
+      )}
     </div>
   );
 }
@@ -563,6 +594,9 @@ type WarehouseSizePreset = {
 
 function WarehouseCanvaWithLayouts({ branches, activeBranchId, setBranchFilter }: { branches: any[]; activeBranchId: string; setBranchFilter: (id: string) => void }) {
   const qc = useQueryClient();
+  const role = useAuthStore((s) => s.user?.role);
+  const canManageLayouts = role === "owner" || role === "admin" || role === "mill_operator";
+  const [showManageLayouts, setShowManageLayouts] = useState(false);
   const [selectedLayoutId, setSelectedLayoutId] = useState<string | null>(null);
   const [showNewForm, setShowNewForm] = useState(false);
   const [newLayoutName, setNewLayoutName] = useState("");
@@ -802,6 +836,17 @@ function WarehouseCanvaWithLayouts({ branches, activeBranchId, setBranchFilter }
                       <Trash2 size={12} /> Delete
                     </button>
                   )}
+                  {canManageLayouts && layouts.length > 1 && (
+                    <button
+                      type="button"
+                      title="Select and delete multiple layouts"
+                      data-testid="manage-layouts-btn"
+                      onClick={() => setShowManageLayouts(true)}
+                      className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-secondary hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30"
+                    >
+                      <Trash2 size={12} /> Delete multiple
+                    </button>
+                  )}
                   <span className="ml-2 flex items-center gap-1 text-[11px] text-slate-400 dark:text-slate-500 font-mono shrink-0">
                     <Maximize2 size={10} />
                     {activeLayout.width_m}m × {activeLayout.height_m}m
@@ -812,6 +857,14 @@ function WarehouseCanvaWithLayouts({ branches, activeBranchId, setBranchFilter }
           </>
         );
       })()
+      )}
+
+      {showManageLayouts && (
+        <ManageLayoutsModal
+          layouts={layouts}
+          activeBranchId={activeBranchId}
+          onClose={() => setShowManageLayouts(false)}
+        />
       )}
 
       {/* Canva */}
@@ -1014,7 +1067,7 @@ function WarehouseCanvaWithLayouts({ branches, activeBranchId, setBranchFilter }
   );
 }
 
-function CanvaUpsellCard() {
+export function CanvaUpsellCard() {
   return (
     <div className="rounded-2xl overflow-hidden ring-1 ring-slate-200 dark:ring-slate-700 bg-gradient-to-br from-indigo-50 via-violet-50 to-fuchsia-50 dark:from-indigo-950/40 dark:via-violet-950/30 dark:to-fuchsia-950/30 p-8 text-center">
       <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-white/80 dark:bg-slate-800/80 shadow-sm ring-1 ring-slate-200 dark:ring-slate-700 mb-4">

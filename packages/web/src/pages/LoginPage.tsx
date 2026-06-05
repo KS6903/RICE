@@ -6,6 +6,7 @@ import { useThemeStore } from "../stores/themeStore";
 import {
   Sparkles, ShieldCheck, Wifi, Building2, Sun, Moon, AlertCircle,
 } from "lucide-react";
+import { GoogleLogin } from "@react-oauth/google";
 
 export default function LoginPage() {
   const [username, setUsername] = useState("");
@@ -34,6 +35,24 @@ export default function LoginPage() {
       navigate(me.is_platform_admin ? "/admin" : "/");
     } catch (err: any) {
       setError(err.response?.data?.detail || "Invalid username or password.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleGoogleSuccess = async (credentialResponse: any) => {
+    setLoading(true);
+    setError("");
+    try {
+      const { data } = await api.post("/auth/google", {
+        credential: credentialResponse.credential,
+      });
+      setTokens(data.access_token, data.refresh_token);
+      const { data: me } = await api.get("/auth/me");
+      setUser(me);
+      navigate(me.is_platform_admin ? "/admin" : "/");
+    } catch (err: any) {
+      setError(err.response?.data?.detail || "Google login failed.");
     } finally {
       setLoading(false);
     }
@@ -163,6 +182,20 @@ export default function LoginPage() {
             >
               {loading ? "Signing in…" : "Sign in"}
             </button>
+
+            <div className="relative flex items-center py-2">
+              <div className="flex-grow border-t border-slate-200 dark:border-slate-800"></div>
+              <span className="flex-shrink-0 mx-4 text-sm text-secondary">or</span>
+              <div className="flex-grow border-t border-slate-200 dark:border-slate-800"></div>
+            </div>
+
+            <div className="flex justify-center w-full [&>div]:w-full">
+              <GoogleLogin
+                onSuccess={handleGoogleSuccess}
+                onError={() => setError("Google login failed.")}
+                useOneTap
+              />
+            </div>
           </form>
 
           <p className="mt-8 text-center text-base text-secondary">

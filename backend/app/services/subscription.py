@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 from sqlalchemy.orm import Session
 from ..models.subscription import Subscription, SubscriptionPlan
 from ..models.upgrade_request import UpgradeRequest
+from ..core.security import invalidate_company_features
 
 
 ACTIVE_STATUSES = ("active", "trial")
@@ -94,6 +95,7 @@ def ensure_subscription(db: Session, company_id: uuid.UUID) -> Subscription | No
     )
     db.add(sub)
     db.flush()
+    invalidate_company_features(company_id)
     return sub
 
 
@@ -140,6 +142,7 @@ def activate_subscription(
         )
         db.add(sub)
     db.flush()
+    invalidate_company_features(company_id)
     return sub
 
 
@@ -171,6 +174,7 @@ def auto_downgrade_to_free_if_expired(db: Session, company_id: uuid.UUID) -> Sub
         # caller at least sees a consistent "expired" status.
         sub.status = "expired"
         db.commit()
+        invalidate_company_features(company_id)
         return sub
 
     if sub.plan_id == free_plan.id:
@@ -178,6 +182,7 @@ def auto_downgrade_to_free_if_expired(db: Session, company_id: uuid.UUID) -> Sub
         # stops being treated as expired.
         sub.expires_at = None
         db.commit()
+        invalidate_company_features(company_id)
         return sub
 
     # If a plan change was queued, activate it now instead of downgrading to Free.
@@ -231,12 +236,15 @@ def sweep_expired(db: Session) -> int:
             r.status = "expired"
         if rows:
             db.commit()
+        for r in rows:
+            invalidate_company_features(r.company_id)
         return len(rows)
 
     migrated = 0
     for r in rows:
         if r.plan_id == free_plan.id:
             r.expires_at = None
+            invalidate_company_features(r.company_id)
             migrated += 1
             continue
         target_plan_id = r.queued_plan_id if r.queued_plan_id else free_plan.id

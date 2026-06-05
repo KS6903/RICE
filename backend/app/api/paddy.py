@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, status, Query
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from ..core.database import get_db
-from ..core.security import get_current_user, require_feature
+from ..core.security import get_current_user, require_feature, require_roles
 from ..models.paddy import PalayPurchase, PalayPurchaseItem, PalayInventory, PalayInventoryMovement, DryingRecord
 from ..models.reference import RiceVariety, QualityGrade
 from ..models.supplier_customer import Supplier
@@ -80,6 +80,29 @@ def list_grades(current_user=Depends(get_current_user), db: Session = Depends(ge
     return db.query(QualityGrade).filter(
         (QualityGrade.company_id == current_user.company_id) | (QualityGrade.company_id.is_(None))
     ).all()
+
+
+class GradeCreate(BaseModel):
+    code: str
+    name: str | None = None
+
+
+@router.post("/grades", status_code=status.HTTP_201_CREATED)
+def create_grade(body: GradeCreate, current_user=Depends(require_roles("owner", "admin")), db: Session = Depends(get_db)):
+    code = body.code.strip()
+    if not code:
+        raise HTTPException(status_code=422, detail="Grade code is required.")
+    existing = db.query(QualityGrade).filter(
+        QualityGrade.company_id == current_user.company_id,
+        QualityGrade.code == code,
+    ).first()
+    if existing:
+        raise HTTPException(status_code=409, detail=f"Grade '{code}' already exists in your company.")
+    grade = QualityGrade(company_id=current_user.company_id, code=code, name=(body.name or code).strip())
+    db.add(grade)
+    db.commit()
+    db.refresh(grade)
+    return grade
 
 
 @router.get("/suppliers")

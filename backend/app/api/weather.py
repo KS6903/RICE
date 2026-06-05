@@ -32,6 +32,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request
 
 from ..core.config import settings
 from ..core.security import get_current_user
+from ..core.cache import cache, TTL_WEATHER, TTL_IP_GEO
 
 router = APIRouter()
 
@@ -125,7 +126,17 @@ def _cache_key(lat: float, lon: float) -> tuple[float, float]:
     return (round(lat, 2), round(lon, 2))
 
 
+def _redis_weather_key(lat: float, lon: float) -> str:
+    r_lat, r_lon = _cache_key(lat, lon)
+    return f"weather:{r_lat}:{r_lon}"
+
+
 def _cached(lat: float, lon: float) -> dict | None:
+    # Redis first — shared across workers and survives restarts. Falls through
+    # to the per-process in-memory cache when Redis is unavailable.
+    redis_hit = cache.get_json(_redis_weather_key(lat, lon))
+    if redis_hit is not None:
+        return redis_hit
     key = _cache_key(lat, lon)
     hit = _CACHE.get(key)
     if not hit:
@@ -138,6 +149,7 @@ def _cached(lat: float, lon: float) -> dict | None:
 
 
 def _store(lat: float, lon: float, payload: dict) -> None:
+    cache.set_json(_redis_weather_key(lat, lon), payload, ttl=TTL_WEATHER)
     _CACHE[_cache_key(lat, lon)] = (time.time() + _CACHE_TTL_SECONDS, payload)
 
 
@@ -182,8 +194,13 @@ def _resolve_ip_location(ip: str | None) -> tuple[float, float, str | None]:
     — useful in local dev when the backend can't see the end-user's real IP.
     """
     cache_key = ip or "__self__"
-    hit = _IP_CACHE.get(cache_key)
     now = time.time()
+    redis_key = f"weather:ipgeo:{cache_key}"
+    # Redis first (shared), then per-process in-memory fallback.
+    redis_hit = cache.get_json(redis_key)
+    if redis_hit is not None:
+        return (redis_hit[0], redis_hit[1], redis_hit[2])
+    hit = _IP_CACHE.get(cache_key)
     if hit and hit[0] > now:
         return (hit[1], hit[2], hit[3])
 
@@ -212,6 +229,7 @@ def _resolve_ip_location(ip: str | None) -> tuple[float, float, str | None]:
     country = data.get("country_name") or None
     label = ", ".join(p for p in (city, country) if p) or None
 
+    cache.set_json(redis_key, [lat, lon, label], ttl=TTL_IP_GEO)
     _IP_CACHE[cache_key] = (now + _IP_CACHE_TTL_SECONDS, lat, lon, label)
     return (lat, lon, label)
 

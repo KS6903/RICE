@@ -1,5 +1,6 @@
 import uuid
-from sqlalchemy import String, Boolean, Text, ForeignKey
+from datetime import datetime
+from sqlalchemy import String, Boolean, Text, ForeignKey, DateTime
 from sqlalchemy.orm import mapped_column, Mapped, relationship
 from sqlalchemy.dialects.postgresql import UUID
 from ..core.database import Base
@@ -36,6 +37,13 @@ class Branch(Base):
     address: Mapped[str | None] = mapped_column(Text)
     is_main_branch: Mapped[bool] = mapped_column(Boolean, default=False)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    # Soft-delete: live when NULL, otherwise sitting in the 30-day trash until purged.
+    deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    deleted_by: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"))
 
     company: Mapped["Company"] = relationship("Company", back_populates="branches")
-    users: Mapped[list["User"]] = relationship("User", back_populates="branch")
+    # foreign_keys is required because deleted_by also points at users.id,
+    # giving SQLAlchemy two FK paths between branches and users.
+    users: Mapped[list["User"]] = relationship(
+        "User", back_populates="branch", foreign_keys="[User.branch_id]"
+    )

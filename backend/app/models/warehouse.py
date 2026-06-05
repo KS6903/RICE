@@ -23,6 +23,8 @@ class WarehouseLayout(Base, TimestampMixin):
     grid_size_m: Mapped[Decimal] = mapped_column(Numeric(4, 2), default=Decimal("0.5"), nullable=False)
     background_url: Mapped[str | None] = mapped_column(Text)
     version: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
+    deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    deleted_by: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"))
 
     zones: Mapped[list["WarehouseZone"]] = relationship("WarehouseZone", back_populates="layout", cascade="all, delete-orphan")
     pallets: Mapped[list["Pallet"]] = relationship("Pallet", back_populates="layout", cascade="all, delete-orphan")

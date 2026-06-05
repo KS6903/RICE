@@ -3,6 +3,8 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useParams, Link } from "react-router-dom";
 import api from "../../services/api";
 import { format } from "date-fns";
+import ActivityLogList from "../../components/activity/ActivityLogList";
+import type { ActivityRow } from "../../components/activity/format";
 import {
   ArrowLeft,
   Building2,
@@ -43,6 +45,16 @@ function statusBadge(status: string) {
     expired: "badge-red",
   };
   return map[status] || "badge-gray";
+}
+
+/* ─── Per-user activity log (warehouse delete/restore/purge) ─── */
+function TenantActivityLog({ tenantId }: { tenantId: string }) {
+  const { data: rows = [], isLoading } = useQuery<ActivityRow[]>({
+    queryKey: ["admin-tenant-activity", tenantId],
+    queryFn: () => api.get(`/admin/tenants/${tenantId}/activity`).then((r) => r.data),
+    enabled: !!tenantId,
+  });
+  return <ActivityLogList rows={rows} loading={isLoading} />;
 }
 
 /* ─── Tier dropdown options ─── */
@@ -872,6 +884,12 @@ export default function AdminTenantDetail() {
                 )}
               </tbody>
             </table>
+          </div>
+
+          <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-5">
+            <h3 className="font-semibold text-slate-900 mb-1">Activity log</h3>
+            <p className="text-xs text-slate-500 mb-3">Warehouse delete / restore / purge actions, per user.</p>
+            <TenantActivityLog tenantId={id!} />
           </div>
         </div>
 

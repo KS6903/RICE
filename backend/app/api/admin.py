@@ -6,7 +6,7 @@ from pydantic import BaseModel
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 from ..core.database import get_db
-from ..core.security import require_platform_admin
+from ..core.security import require_platform_admin, invalidate_company_features
 from ..models.company import Company, Branch
 from ..models.user import User, Role
 from ..models.paddy import PalayPurchase
@@ -117,6 +117,10 @@ def update_plan(plan_id: uuid.UUID, body: PlanUpsert, _admin=Depends(require_pla
     plan.sort_order = body.sort_order
     db.commit()
     db.refresh(plan)
+    # Editing a plan's feature set changes entitlements for every company on it —
+    # drop each one's cached features so they pick up the change on the next request.
+    for (company_id,) in db.query(Subscription.company_id).filter(Subscription.plan_id == plan.id).all():
+        invalidate_company_features(company_id)
     return _plan_payload(plan)
 
 
@@ -209,6 +213,9 @@ def assign_tenant_subscription(
 
     db.commit()
     db.refresh(sub)
+    # Direct-set (non-"active") path bypasses activate_subscription, so drop the
+    # entitlements cache here too. Idempotent — cheap to call unconditionally.
+    invalidate_company_features(company.id)
     return {
         "message": f"Tenant '{company.name}' is now on the '{plan.name}' plan",
         "plan_code": plan.code,
@@ -453,6 +460,15 @@ def get_tenant(tenant_id: uuid.UUID, _admin=Depends(require_platform_admin), db:
             "total_revenue": float(revenue_total),
         },
     }
+
+
+@router.get("/tenants/{tenant_id}/activity")
+def get_tenant_activity(tenant_id: uuid.UUID, _admin=Depends(require_platform_admin), db: Session = Depends(get_db)):
+    from .activity import serialize_logs
+    company = db.get(Company, tenant_id)
+    if not company:
+        raise HTTPException(status_code=404, detail="Tenant not found")
+    return serialize_logs(db, tenant_id)
 
 
 class TenantActiveToggle(BaseModel):

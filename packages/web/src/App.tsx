@@ -25,6 +25,7 @@ import AdminUsers from "./pages/admin/AdminUsers";
 import AdminUpgradeRequests from "./pages/admin/AdminUpgradeRequests";
 import AdminSettingsPage from "./pages/admin/AdminSettingsPage";
 import FeatureGate from "./components/FeatureGate";
+import RoleGate from "./components/RoleGate";
 
 function AuthSessionSync() {
   const accessToken = useAuthStore((s) => s.accessToken);
@@ -104,15 +105,15 @@ export default function App() {
           }
         >
           <Route index element={<Dashboard />} />
-          <Route path="paddy" element={<FeatureGate code="paddy" label="Paddy procurement"><PaddyPage /></FeatureGate>} />
-          <Route path="milling" element={<FeatureGate code="milling" label="Milling"><MillingPage /></FeatureGate>} />
-          <Route path="inventory" element={<FeatureGate code="inventory" label="Inventory"><InventoryPage /></FeatureGate>} />
-          <Route path="sales" element={<FeatureGate code="sales" label="Sales"><SalesPage /></FeatureGate>} />
-          <Route path="dispatch" element={<FeatureGate code="sales" label="Dispatch"><DispatchPage /></FeatureGate>} />
-          <Route path="costs" element={<FeatureGate code="expenses" label="Expenses"><CostsPage /></FeatureGate>} />
-          <Route path="reports" element={<FeatureGate code="dashboard" label="Reports"><ReportsPage /></FeatureGate>} />
-          <Route path="users" element={<FeatureGate code="users" label="Users"><UsersPage /></FeatureGate>} />
-          <Route path="employees" element={<FeatureGate code="employees" label="Employees" requires="Pro or Enterprise"><EmployeesPage /></FeatureGate>} />
+          <Route path="paddy" element={<RoleGate section="paddy"><FeatureGate code="paddy" label="Paddy procurement"><PaddyPage /></FeatureGate></RoleGate>} />
+          <Route path="milling" element={<RoleGate section="milling"><FeatureGate code="milling" label="Milling"><MillingPage /></FeatureGate></RoleGate>} />
+          <Route path="inventory" element={<RoleGate section="inventory"><FeatureGate code="inventory" label="Inventory"><InventoryPage /></FeatureGate></RoleGate>} />
+          <Route path="sales" element={<RoleGate section="sales"><FeatureGate code="sales" label="Sales"><SalesPage /></FeatureGate></RoleGate>} />
+          <Route path="dispatch" element={<RoleGate section="dispatch"><FeatureGate code="sales" label="Dispatch"><DispatchPage /></FeatureGate></RoleGate>} />
+          <Route path="costs" element={<RoleGate section="expenses"><FeatureGate code="expenses" label="Expenses"><CostsPage /></FeatureGate></RoleGate>} />
+          <Route path="reports" element={<RoleGate section="reports"><FeatureGate code="dashboard" label="Reports"><ReportsPage /></FeatureGate></RoleGate>} />
+          <Route path="users" element={<RoleGate section="users"><FeatureGate code="users" label="Users"><UsersPage /></FeatureGate></RoleGate>} />
+          <Route path="employees" element={<RoleGate section="employees"><FeatureGate code="employees" label="Employees" requires="Pro or Enterprise"><EmployeesPage /></FeatureGate></RoleGate>} />
           <Route path="settings" element={<SettingsPage />} />
         </Route>
       </Routes>

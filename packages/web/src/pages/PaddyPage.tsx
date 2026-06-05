@@ -5,6 +5,7 @@ import { Plus, Power, History, ChevronDown, ChevronUp } from "lucide-react";
 import { format } from "date-fns";
 import { SUPPLIER_TYPES } from "@rice-mill/shared";
 import QuickAdd from "../components/QuickAdd";
+import { useAccess } from "../hooks/useAccess";
 
 function StatusBadge({ status }: { status: string }) {
   const map: Record<string, string> = {
@@ -15,6 +16,7 @@ function StatusBadge({ status }: { status: string }) {
 
 export default function PaddyPage() {
   const qc = useQueryClient();
+  const { canEdit } = useAccess();
   const [showForm, setShowForm] = useState(false);
   const [tab, setTab] = useState<"purchases" | "suppliers" | "inventory">("purchases");
 
@@ -77,9 +79,11 @@ export default function PaddyPage() {
           <h2 className="text-xl font-bold text-gray-900">Palay (Paddy)</h2>
           <p className="text-sm text-gray-500">Procurement, suppliers, and palay inventory</p>
         </div>
-        <button onClick={() => setShowForm(!showForm)} className="btn-primary">
-          <Plus size={16} /> New Purchase
-        </button>
+        {canEdit("paddy") && (
+          <button onClick={() => setShowForm(!showForm)} className="btn-primary">
+            <Plus size={16} /> New Purchase
+          </button>
+        )}
       </div>
 
       {showForm && (
@@ -227,9 +231,11 @@ export default function PaddyPage() {
       {tab === "suppliers" && (
         <>
           <div className="flex justify-end">
+            {canEdit("paddy") && (
             <button onClick={() => setShowSupplierForm(!showSupplierForm)} className="btn-primary">
               <Plus size={16} /> Add supplier
             </button>
+            )}
           </div>
 
           {showSupplierForm && (

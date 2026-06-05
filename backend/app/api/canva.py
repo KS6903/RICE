@@ -5,7 +5,7 @@ auto-bootstraps a sensible default layout and generates virtual pallets from the
 branch's existing milled_rice_inventory so day-one is not empty.
 """
 import uuid
-from datetime import datetime, date, timezone
+from datetime import datetime, date, timezone, timedelta
 from decimal import Decimal
 from fastapi import APIRouter, Depends, HTTPException, WebSocket, WebSocketDisconnect, status as http_status
 from pydantic import BaseModel
@@ -1009,6 +1009,147 @@ def aging_report(
     }
 
 
+# ── "New Warehouse" rack/grid view — flat, list-optimized aggregation ─────────
+
+
+def _serialize_rack_pallet(p: Pallet, today: date) -> dict:
+    """Slim pallet shape for the rack/grid list — variety/aging/client only.
+
+    Unlike _serialize_pallet this drops x/y/stacking/dimensions (irrelevant to a
+    list view) and folds the batches down to the fields the rack rows show.
+    """
+    rank = {"expired": 3, "critical": 2, "warning": 1, "fresh": 0}
+    statuses = [b.status for b in p.batches]
+    worst = max(statuses, key=lambda s: rank.get(s, 0)) if statuses else "fresh"
+    # Earliest milling date drives "days old" (oldest batch on the pallet → FIFO)
+    milling_dates = [b.milling_date for b in p.batches if b.milling_date]
+    earliest = min(milling_dates) if milling_dates else today
+    first = p.batches[0] if p.batches else None
+    return {
+        "id": str(p.id),
+        "pallet_code": p.pallet_code,
+        "variety_code": first.variety.code if first and first.variety else None,
+        "variety_name": first.variety.name if first and first.variety else None,
+        "days_old": (today - earliest).days,
+        "milling_date": earliest.isoformat(),
+        "aging_status": worst,
+        "weight_kg": float(p.weight_kg),
+        "sack_count": p.sack_count,
+        "client_name": first.client_name if first else None,
+        # Full batch breakdown powers the pallet detail panel (no extra fetch).
+        "batches": [_serialize_batch(b, today) for b in p.batches],
+    }
+
+
+@router.get("/warehouses/{branch_id}/rack-view")
+def get_rack_view(
+    branch_id: uuid.UUID,
+    layout_id: uuid.UUID | None = None,
+    current_user=Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Zones-as-racks aggregation for the "New Warehouse" list view.
+
+    Same data as /canva but grouped by zone with per-rack occupancy + aging
+    rollups and oldest-first pallet lists. Structural zones (walls/doors) are
+    excluded; pallets with no zone come back under `unzoned`.
+    """
+    branch = db.get(Branch, branch_id)
+    if not branch or branch.company_id != current_user.company_id:
+        raise HTTPException(status_code=404, detail="Branch not found")
+
+    if layout_id:
+        layout = db.query(WarehouseLayout).filter(
+            WarehouseLayout.id == layout_id,
+            WarehouseLayout.branch_id == branch_id,
+        ).first()
+        if not layout:
+            raise HTTPException(status_code=404, detail="Layout not found")
+    else:
+        layout = _get_or_bootstrap(db, branch)
+    today = date.today()
+
+    # Keep aging colors current on every read (mirrors get_warehouse_canva).
+    for batch in db.query(RiceBatch).filter(RiceBatch.company_id == branch.company_id).all():
+        new_status = aging_status(batch.milling_date, batch.moisture_pct, today)
+        if batch.status != new_status:
+            batch.status = new_status
+    db.commit()
+
+    zones = db.query(WarehouseZone).filter(WarehouseZone.layout_id == layout.id).all()
+    pallets = (
+        db.query(Pallet)
+        .filter(Pallet.layout_id == layout.id)
+        .options(joinedload(Pallet.batches).joinedload(RiceBatch.variety),
+                 joinedload(Pallet.batches).joinedload(RiceBatch.grade))
+        .all()
+    )
+
+    # Group pallets by zone_id
+    by_zone: dict[str | None, list[Pallet]] = {}
+    for p in pallets:
+        key = str(p.zone_id) if p.zone_id else None
+        by_zone.setdefault(key, []).append(p)
+
+    def _empty_aging() -> dict:
+        return {"fresh": 0, "warning": 0, "critical": 0, "expired": 0}
+
+    racks: list[dict] = []
+    totals_aging = _empty_aging()
+    capacity_kg = 0.0
+
+    for z in zones:
+        if not _is_storage_zone(z.zone_type):
+            continue  # walls/doors/walkways never hold pallets
+        zone_pallets = by_zone.get(str(z.id), [])
+        rows = [_serialize_rack_pallet(p, today) for p in zone_pallets]
+        rows.sort(key=lambda r: r["milling_date"])  # oldest first (FIFO)
+        used_kg = sum(r["weight_kg"] for r in rows)
+        cap = float(z.max_weight_kg) if z.max_weight_kg else None
+        if cap:
+            capacity_kg += cap
+        by_aging = _empty_aging()
+        for r in rows:
+            by_aging[r["aging_status"]] += 1
+            totals_aging[r["aging_status"]] += 1
+        racks.append({
+            "zone_id": str(z.id),
+            "name": z.name,
+            "zone_type": z.zone_type,
+            "color_hex": z.color_hex,
+            "capacity_kg": cap,
+            "used_kg": used_kg,
+            "occupancy_pct": round(100.0 * used_kg / cap, 1) if cap else None,
+            "pallet_count": len(rows),
+            "by_aging": by_aging,
+            "pallets": rows,
+        })
+
+    # Pallets with no zone assignment
+    unzoned_rows = [_serialize_rack_pallet(p, today) for p in by_zone.get(None, [])]
+    unzoned_rows.sort(key=lambda r: r["milling_date"])
+    for r in unzoned_rows:
+        totals_aging[r["aging_status"]] += 1
+
+    total_weight = sum(float(p.weight_kg) for p in pallets)
+    return {
+        "layout": {
+            "id": str(layout.id),
+            "name": layout.name,
+            "branch_name": branch.name,
+        },
+        "summary": {
+            "total_pallets": len(pallets),
+            "total_weight_kg": total_weight,
+            "capacity_kg": capacity_kg or None,
+            "occupancy_pct": round(100.0 * total_weight / capacity_kg, 1) if capacity_kg else None,
+            "by_aging": totals_aging,
+        },
+        "racks": racks,
+        "unzoned": unzoned_rows,
+    }
+
+
 # ── Phase 5: warehouse builder (layout + zone CRUD) ──────────────────────────
 
 
@@ -1419,6 +1560,80 @@ def _serialize_layout_summary(layout: WarehouseLayout) -> dict:
     }
 
 
+_LAYOUT_TRASH_DAYS = 30
+
+
+def _purge_expired_layouts(db: Session, branch_id: uuid.UUID) -> None:
+    """Hard-delete trashed layouts whose 30-day window has elapsed.
+    Zones and pallets cascade via the ORM relationship."""
+    cutoff = datetime.now(timezone.utc) - timedelta(days=_LAYOUT_TRASH_DAYS)
+    expired = (
+        db.query(WarehouseLayout)
+        .filter(WarehouseLayout.branch_id == branch_id, WarehouseLayout.deleted_at.isnot(None), WarehouseLayout.deleted_at < cutoff)
+        .all()
+    )
+    for l in expired:
+        db.delete(l)
+    if expired:
+        db.commit()
+
+
+@router.get("/branches/{branch_id}/layouts/trash")
+def list_trashed_layouts(
+    branch_id: uuid.UUID,
+    current_user=Depends(require_roles(*WRITE_ROLES)),
+    db: Session = Depends(get_db),
+):
+    """Layouts in the 30-day trash. Lazily purges expired ones first."""
+    branch = db.get(Branch, branch_id)
+    if not branch or branch.company_id != current_user.company_id:
+        raise HTTPException(status_code=404, detail="Branch not found")
+    _purge_expired_layouts(db, branch_id)
+    rows = (
+        db.query(WarehouseLayout)
+        .filter(WarehouseLayout.branch_id == branch_id, WarehouseLayout.deleted_at.isnot(None))
+        .order_by(WarehouseLayout.deleted_at.desc())
+        .all()
+    )
+    deleter_ids = {r.deleted_by for r in rows if r.deleted_by}
+    names: dict = {}
+    if deleter_ids:
+        for u in db.query(User).filter(User.id.in_(deleter_ids)).all():
+            names[u.id] = u.full_name or u.username
+    out = []
+    for l in rows:
+        expires_at = l.deleted_at + timedelta(days=_LAYOUT_TRASH_DAYS)
+        days_remaining = max(0, (expires_at - datetime.now(timezone.utc)).days)
+        out.append({
+            "id": str(l.id),
+            "name": l.name,
+            "is_default": l.is_default,
+            "width_m": float(l.width_m),
+            "height_m": float(l.height_m),
+            "deleted_at": l.deleted_at.isoformat(),
+            "deleted_by_name": names.get(l.deleted_by),
+            "days_remaining": days_remaining,
+        })
+    return out
+
+
+@router.post("/layouts/{layout_id}/restore")
+def restore_layout(
+    layout_id: uuid.UUID,
+    current_user=Depends(require_roles(*WRITE_ROLES)),
+    db: Session = Depends(get_db),
+):
+    layout = db.get(WarehouseLayout, layout_id)
+    if not layout or layout.company_id != current_user.company_id:
+        raise HTTPException(status_code=404, detail="Layout not found")
+    if layout.deleted_at is None:
+        raise HTTPException(status_code=409, detail="Layout is not in the trash.")
+    layout.deleted_at = None
+    layout.deleted_by = None
+    db.commit()
+    return {"restored": True, "id": str(layout.id)}
+
+
 @router.get("/branches/{branch_id}/layouts")
 def list_branch_layouts(
     branch_id: uuid.UUID,
@@ -1431,7 +1646,7 @@ def list_branch_layouts(
         raise HTTPException(status_code=404, detail="Branch not found")
     layouts = (
         db.query(WarehouseLayout)
-        .filter(WarehouseLayout.branch_id == branch_id)
+        .filter(WarehouseLayout.branch_id == branch_id, WarehouseLayout.deleted_at.is_(None))
         .order_by(WarehouseLayout.created_at)
         .all()
     )
@@ -1556,40 +1771,108 @@ def delete_layout(
     current_user=Depends(require_roles(*WRITE_ROLES)),
     db: Session = Depends(get_db),
 ):
-    """Delete a layout and all its zones/pallets.
+    """Soft-delete a layout (moves it to the 30-day trash).
 
-    Cannot delete the last layout for a branch; cannot delete while pallets
-    exist in the layout (move or discard them first).
+    Cannot trash the last live layout for a branch. Promotes a sibling to
+    default if the default layout is trashed.
     """
     layout = db.get(WarehouseLayout, layout_id)
     if not layout or layout.company_id != current_user.company_id:
         raise HTTPException(status_code=404, detail="Layout not found")
+    if layout.deleted_at is not None:
+        raise HTTPException(status_code=409, detail="Layout is already in the trash.")
 
-    sibling_count = db.query(WarehouseLayout).filter(
-        WarehouseLayout.branch_id == layout.branch_id
+    live_count = db.query(WarehouseLayout).filter(
+        WarehouseLayout.branch_id == layout.branch_id,
+        WarehouseLayout.deleted_at.is_(None),
     ).count()
-    if sibling_count <= 1:
-        raise HTTPException(status_code=400, detail="Cannot delete the only layout for a branch")
+    if live_count <= 1:
+        raise HTTPException(status_code=400, detail="Each warehouse must keep at least one layout.")
 
-    pallet_count = db.query(Pallet).filter(Pallet.layout_id == layout_id).count()
-    if pallet_count > 0:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Layout has {pallet_count} pallets — move or discard them before deleting",
-        )
+    layout.deleted_at = datetime.now(timezone.utc)
+    layout.deleted_by = current_user.id
 
-    was_default = layout.is_default
-    db.delete(layout)
-    db.flush()
-
-    if was_default:
+    if layout.is_default:
+        layout.is_default = False
         sibling = db.query(WarehouseLayout).filter(
-            WarehouseLayout.branch_id == layout.branch_id
+            WarehouseLayout.branch_id == layout.branch_id,
+            WarehouseLayout.deleted_at.is_(None),
+            WarehouseLayout.id != layout.id,
         ).first()
         if sibling:
             sibling.is_default = True
 
     db.commit()
+
+
+class LayoutBulkDelete(BaseModel):
+    ids: list[uuid.UUID]
+
+
+@router.post("/layouts/bulk-delete")
+def bulk_delete_layouts(
+    body: LayoutBulkDelete,
+    current_user=Depends(require_roles(*WRITE_ROLES)),
+    db: Session = Depends(get_db),
+):
+    """Soft-delete (trash) multiple layouts at once.
+
+    Keeps at least one live layout per branch. Trashed layouts and their zones
+    and pallets are preserved and recoverable for 30 days, then purged.
+    """
+    now = datetime.now(timezone.utc)
+    deleted: list[str] = []
+    skipped: list[dict] = []
+    # Track live layout count per branch as we process so we don't try to trash
+    # all of them in one request.
+    live_counts: dict[uuid.UUID, int] = {}
+
+    for lid in body.ids:
+        layout = db.get(WarehouseLayout, lid)
+        if not layout or layout.company_id != current_user.company_id:
+            skipped.append({"id": str(lid), "reason": "Layout not found."})
+            continue
+        if layout.deleted_at is not None:
+            skipped.append({"id": str(lid), "reason": "Already in trash."})
+            continue
+        bid = layout.branch_id
+        if bid not in live_counts:
+            live_counts[bid] = db.query(WarehouseLayout).filter(
+                WarehouseLayout.branch_id == bid, WarehouseLayout.deleted_at.is_(None)
+            ).count()
+        if live_counts[bid] <= 1:
+            skipped.append({"id": str(lid), "reason": "Each warehouse must keep at least one layout."})
+            continue
+
+        layout.deleted_at = now
+        layout.deleted_by = current_user.id
+        if layout.is_default:
+            layout.is_default = False
+        live_counts[bid] -= 1
+        deleted.append(str(lid))
+
+    db.flush()
+
+    # Promote a sibling to default for any branch that lost its default.
+    for lid_str in deleted:
+        layout = db.get(WarehouseLayout, uuid.UUID(lid_str))
+        if layout:
+            bid = layout.branch_id
+            has_default = db.query(WarehouseLayout).filter(
+                WarehouseLayout.branch_id == bid,
+                WarehouseLayout.deleted_at.is_(None),
+                WarehouseLayout.is_default == True,
+            ).count()
+            if not has_default:
+                sibling = db.query(WarehouseLayout).filter(
+                    WarehouseLayout.branch_id == bid,
+                    WarehouseLayout.deleted_at.is_(None),
+                ).first()
+                if sibling:
+                    sibling.is_default = True
+
+    db.commit()
+    return {"deleted": deleted, "skipped": skipped}
 
 
 @router.get("/dispatch/variety-options")

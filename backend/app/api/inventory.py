@@ -1,15 +1,19 @@
 import uuid
 from decimal import Decimal
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, HTTPException, status
 from pydantic import BaseModel
 from sqlalchemy.orm import Session, joinedload
 from ..core.database import get_db
-from ..core.security import get_current_user, require_feature
+from ..core.security import get_current_user, require_feature, require_roles
 from ..models.milling import MilledRiceInventory, ByproductInventory
 from ..models.paddy import PalayInventory
 from ..models.company import Branch
 
 router = APIRouter(dependencies=[Depends(require_feature("inventory"))])
+
+# Only owners/admins may add stock by hand — keeps the books trustworthy by
+# matching the write tier used elsewhere (branches, users, billing).
+MANAGE_ROLES = ("owner", "admin")
 
 
 class AdjustmentIn(BaseModel):
@@ -17,6 +21,16 @@ class AdjustmentIn(BaseModel):
     inventory_id: uuid.UUID
     quantity_kg: Decimal
     notes: str | None = None
+
+
+class StockCreate(BaseModel):
+    inventory_type: str  # palay, milled_rice, byproduct
+    quantity_kg: Decimal
+    branch_id: uuid.UUID | None = None
+    variety_id: uuid.UUID | None = None      # palay + milled_rice
+    grade_id: uuid.UUID | None = None        # palay
+    grade_name: str | None = None            # milled_rice
+    byproduct_type: str | None = None        # byproduct
 
 
 def _branch_map(db: Session, company_id) -> dict:
@@ -129,3 +143,114 @@ def adjust_inventory(body: AdjustmentIn, current_user=Depends(get_current_user),
         inv.quantity_kg = max(Decimal("0"), inv.quantity_kg + body.quantity_kg)
     db.commit()
     return {"adjusted": True, "new_quantity_kg": float(inv.quantity_kg) if inv else 0}
+
+
+@router.post("/stock", status_code=status.HTTP_201_CREATED)
+def add_stock(
+    body: StockCreate,
+    current_user=Depends(require_roles(*MANAGE_ROLES)),
+    db: Session = Depends(get_db),
+):
+    """Owner/admin manually adds stock to inventory.
+
+    Upserts onto a matching row (same branch + variety/grade/type) so the
+    inventory lists don't fill up with duplicate entries — repeated adds to the
+    same SKU just accumulate on one row, mirroring how milling output lands.
+    """
+    if body.quantity_kg is None or body.quantity_kg <= 0:
+        raise HTTPException(status_code=422, detail="Quantity must be greater than zero.")
+
+    if body.branch_id:
+        branch = db.get(Branch, body.branch_id)
+        if not branch or branch.company_id != current_user.company_id:
+            raise HTTPException(status_code=404, detail="Warehouse not found.")
+
+    company_id = current_user.company_id
+
+    if body.inventory_type == "palay":
+        if not body.variety_id:
+            raise HTTPException(status_code=422, detail="Variety is required for palay.")
+        inv = (
+            db.query(PalayInventory)
+            .filter(
+                PalayInventory.company_id == company_id,
+                PalayInventory.branch_id == body.branch_id,
+                PalayInventory.variety_id == body.variety_id,
+                PalayInventory.grade_id == body.grade_id,
+            )
+            .first()
+        )
+        if not inv:
+            inv = PalayInventory(
+                company_id=company_id,
+                branch_id=body.branch_id,
+                variety_id=body.variety_id,
+                grade_id=body.grade_id,
+                quantity_kg=Decimal("0"),
+            )
+            db.add(inv)
+        inv.quantity_kg = inv.quantity_kg + body.quantity_kg
+
+    elif body.inventory_type == "milled_rice":
+        if not body.variety_id:
+            raise HTTPException(status_code=422, detail="Variety is required for milled rice.")
+        inv = (
+            db.query(MilledRiceInventory)
+            .filter(
+                MilledRiceInventory.company_id == company_id,
+                MilledRiceInventory.branch_id == body.branch_id,
+                MilledRiceInventory.variety_id == body.variety_id,
+                MilledRiceInventory.grade_name == body.grade_name,
+            )
+            .first()
+        )
+        if not inv:
+            inv = MilledRiceInventory(
+                company_id=company_id,
+                branch_id=body.branch_id,
+                variety_id=body.variety_id,
+                grade_name=body.grade_name,
+                quantity_kg=Decimal("0"),
+            )
+            db.add(inv)
+        inv.quantity_kg = inv.quantity_kg + body.quantity_kg
+
+    elif body.inventory_type == "byproduct":
+        # By-product type is a free-form slug so owners can introduce their own
+        # named goods (and custom stock types route through here too).
+        btype = (body.byproduct_type or "").strip().lower()
+        if not btype:
+            raise HTTPException(status_code=422, detail="By-product type is required.")
+        body.byproduct_type = btype
+        inv = (
+            db.query(ByproductInventory)
+            .filter(
+                ByproductInventory.company_id == company_id,
+                ByproductInventory.branch_id == body.branch_id,
+                ByproductInventory.byproduct_type == body.byproduct_type,
+            )
+            .first()
+        )
+        if not inv:
+            inv = ByproductInventory(
+                company_id=company_id,
+                branch_id=body.branch_id,
+                byproduct_type=body.byproduct_type,
+                quantity_kg=Decimal("0"),
+            )
+            db.add(inv)
+        inv.quantity_kg = inv.quantity_kg + body.quantity_kg
+
+    else:
+        raise HTTPException(
+            status_code=422,
+            detail="inventory_type must be one of: palay, milled_rice, byproduct.",
+        )
+
+    db.commit()
+    db.refresh(inv)
+    return {
+        "id": str(inv.id),
+        "inventory_type": body.inventory_type,
+        "quantity_kg": float(inv.quantity_kg),
+    }

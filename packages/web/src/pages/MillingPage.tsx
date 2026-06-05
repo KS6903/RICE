@@ -4,6 +4,7 @@ import api from "../services/api";
 import { Plus } from "lucide-react";
 import { format } from "date-fns";
 import QuickAdd from "../components/QuickAdd";
+import { useAccess } from "../hooks/useAccess";
 
 function StatusBadge({ status }: { status: string }) {
   const map: Record<string, string> = { in_progress: "badge-yellow", completed: "badge-green", cancelled: "badge-red" };
@@ -12,6 +13,7 @@ function StatusBadge({ status }: { status: string }) {
 
 export default function MillingPage() {
   const qc = useQueryClient();
+  const { canEdit } = useAccess();
   const [showForm, setShowForm] = useState(false);
 
   const { data: batches = [] } = useQuery({ queryKey: ["milling-batches"], queryFn: () => api.get("/milling/batches").then(r => r.data) });
@@ -42,9 +44,11 @@ export default function MillingPage() {
           <h2 className="text-xl font-bold text-gray-900">Milling Operations</h2>
           <p className="text-sm text-gray-500">Track milling batches, recovery rate, and by-products</p>
         </div>
-        <button onClick={() => setShowForm(!showForm)} className="btn-primary">
-          <Plus size={16} /> New Batch
-        </button>
+        {canEdit("milling") && (
+          <button onClick={() => setShowForm(!showForm)} className="btn-primary">
+            <Plus size={16} /> New Batch
+          </button>
+        )}
       </div>
 
       {showForm && (

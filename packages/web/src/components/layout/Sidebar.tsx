@@ -5,22 +5,24 @@ import {
 } from "lucide-react";
 import { clsx } from "clsx";
 import { useFeature } from "../../hooks/useFeature";
+import { useAccess } from "../../hooks/useAccess";
 import { useSubLock } from "../SubscriptionGuard";
+import type { AppSection } from "@rice-mill/shared";
 
-const NAV = [
-  { to: "/", label: "Dashboard", icon: LayoutDashboard, end: true, feature: "dashboard" as string | null },
-  { to: "/paddy", label: "Paddy / Palay", icon: Wheat, feature: "paddy" },
-  { to: "/milling", label: "Milling", icon: Factory, feature: "milling" },
-  { to: "/inventory", label: "Inventory", icon: Package, feature: "inventory" },
-  { to: "/sales", label: "Sales", icon: ShoppingCart, feature: "sales" },
-  { to: "/dispatch", label: "Dispatch", icon: Truck, feature: "sales" },
-  { to: "/costs", label: "Expenses", icon: Receipt, feature: "expenses" },
-  { to: "/reports", label: "Reports", icon: BarChart3, feature: "dashboard" },
-  { to: "/employees", label: "Employees", icon: IdCard, feature: "employees" },
-  { to: "/users", label: "Users", icon: Users, feature: "users" },
+const NAV: { to: string; label: string; icon: React.ElementType; end?: boolean; feature: string | null; section: AppSection }[] = [
+  { to: "/", label: "Dashboard", icon: LayoutDashboard, end: true, feature: "dashboard", section: "dashboard" },
+  { to: "/paddy", label: "Paddy / Palay", icon: Wheat, feature: "paddy", section: "paddy" },
+  { to: "/milling", label: "Milling", icon: Factory, feature: "milling", section: "milling" },
+  { to: "/inventory", label: "Inventory", icon: Package, feature: "inventory", section: "inventory" },
+  { to: "/sales", label: "Sales", icon: ShoppingCart, feature: "sales", section: "sales" },
+  { to: "/dispatch", label: "Dispatch", icon: Truck, feature: "sales", section: "dispatch" },
+  { to: "/costs", label: "Expenses", icon: Receipt, feature: "expenses", section: "expenses" },
+  { to: "/reports", label: "Reports", icon: BarChart3, feature: "dashboard", section: "reports" },
+  { to: "/employees", label: "Employees", icon: IdCard, feature: "employees", section: "employees" },
+  { to: "/users", label: "Users", icon: Users, feature: "users", section: "users" },
 ];
 
-function NavItem({ to, label, icon: Icon, end, feature, locked }: { to: string; label: string; icon: React.ElementType; end?: boolean; feature: string | null; locked?: boolean }) {
+function NavItem({ to, label, icon: Icon, end, feature, locked, readOnly }: { to: string; label: string; icon: React.ElementType; end?: boolean; feature: string | null; locked?: boolean; readOnly?: boolean }) {
   const has = useFeature(feature || "dashboard");
   const allowed = has && !locked;
   const target = allowed ? to : "/settings";
@@ -34,7 +36,7 @@ function NavItem({ to, label, icon: Icon, end, feature, locked }: { to: string; 
       }
       title={
         allowed
-          ? undefined
+          ? readOnly ? "View only — your role can't make changes here" : undefined
           : locked
             ? "Subscription required — click to view billing"
             : "Upgrade required — click to view billing"
@@ -50,6 +52,11 @@ function NavItem({ to, label, icon: Icon, end, feature, locked }: { to: string; 
             )}
           />
           <span className="flex-1">{label}</span>
+          {allowed && readOnly && (
+            <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
+              View
+            </span>
+          )}
           {!allowed && <Lock size={13} className="text-amber-500" />}
         </>
       )}
@@ -60,6 +67,9 @@ function NavItem({ to, label, icon: Icon, end, feature, locked }: { to: string; 
 export default function Sidebar() {
   const subLock = useSubLock();
   const locked = subLock !== null;
+  const { canView, isReadOnly } = useAccess();
+  // Hide sections the user's role can't see at all; mark view-only ones.
+  const visibleNav = NAV.filter((item) => canView(item.section));
   return (
     <aside className="relative w-64 shrink-0 flex flex-col glass border-r border-soft">
       <div className="pointer-events-none absolute -top-10 -left-10 h-40 w-40 rounded-full bg-grad-brand opacity-20 blur-3xl" />
@@ -82,7 +92,7 @@ export default function Sidebar() {
         <p className="px-3 pb-2 text-[11px] font-bold uppercase tracking-[0.1em] text-muted">
           Operations
         </p>
-        {NAV.map((item) => <NavItem key={item.to} {...item} locked={locked} />)}
+        {visibleNav.map((item) => <NavItem key={item.to} {...item} locked={locked} readOnly={isReadOnly(item.section)} />)}
       </nav>
 
       <div className="relative px-3 py-3 border-t border-soft">

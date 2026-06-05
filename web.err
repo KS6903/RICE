@@ -14,3 +14,221 @@ AggregateError [ECONNREFUSED]:
 AggregateError [ECONNREFUSED]: 
     at internalConnectMultiple (node:net:1134:18)
     at afterConnectMultiple (node:net:1715:7)
+[2m10:01:33 PM[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/auth/me[39m
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1134:18)
+    at afterConnectMultiple (node:net:1715:7)
+[2m4:37:06 PM[22m [31m[1m[vite][22m[39m [31mInternal server error: D:\RICE\packages\web\src\components\warehouse\ManageLayoutsModal.tsx: Unterminated JSX contents. (126:10)
+
+[0m [90m 124 |[31m         [33m<[31m[33m/[31m[33mp[31m[33m>[31m
+ [90m 125 |[31m       [33m<[31m[33m/[31m[33mdiv[31m[33m>[31m
+[31m[1m>[22m[31m[90m 126 |[31m     [33m<[31m[33m/[31m[33mdiv[31m[33m>[31m
+ [90m     |[31m           [31m[1m^[22m[31m
+ [90m 127 |[31m   )[33m;[31m
+ [90m 128 |[31m }
+ [90m 129 |[31m[0m[39m
+  Plugin: [35mvite:react-babel[39m
+  File: [36mD:/RICE/packages/web/src/components/warehouse/ManageLayoutsModal.tsx[39m:126:10
+[33m  124|          </p>
+  125|        </div>
+  126|      </div>
+     |            ^
+  127|    );
+  128|  }[39m
+      at constructor (D:\RICE\node_modules\@babel\parser\lib\index.js:365:19)
+      at TypeScriptParserMixin.raise (D:\RICE\node_modules\@babel\parser\lib\index.js:6616:19)
+      at TypeScriptParserMixin.jsxReadToken (D:\RICE\node_modules\@babel\parser\lib\index.js:4460:20)
+      at TypeScriptParserMixin.getTokenFromCode (D:\RICE\node_modules\@babel\parser\lib\index.js:4786:12)
+      at TypeScriptParserMixin.getTokenFromCode (D:\RICE\node_modules\@babel\parser\lib\index.js:10004:11)
+      at TypeScriptParserMixin.nextToken (D:\RICE\node_modules\@babel\parser\lib\index.js:5799:10)
+      at TypeScriptParserMixin.next (D:\RICE\node_modules\@babel\parser\lib\index.js:5709:10)
+      at TypeScriptParserMixin.eat (D:\RICE\node_modules\@babel\parser\lib\index.js:5713:12)
+      at TypeScriptParserMixin.expect (D:\RICE\node_modules\@babel\parser\lib\index.js:6915:15)
+      at TypeScriptParserMixin.jsxParseClosingElementAt (D:\RICE\node_modules\@babel\parser\lib\index.js:4692:10)
+      at TypeScriptParserMixin.jsxParseElementAt (D:\RICE\node_modules\@babel\parser\lib\index.js:4707:37)
+      at TypeScriptParserMixin.jsxParseElementAt (D:\RICE\node_modules\@babel\parser\lib\index.js:4710:32)
+      at TypeScriptParserMixin.jsxParseElement (D:\RICE\node_modules\@babel\parser\lib\index.js:4761:17)
+      at TypeScriptParserMixin.parseExprAtom (D:\RICE\node_modules\@babel\parser\lib\index.js:4771:19)
+      at TypeScriptParserMixin.parseExprSubscripts (D:\RICE\node_modules\@babel\parser\lib\index.js:11098:23)
+      at TypeScriptParserMixin.parseUpdate (D:\RICE\node_modules\@babel\parser\lib\index.js:11083:21)
+      at TypeScriptParserMixin.parseMaybeUnary (D:\RICE\node_modules\@babel\parser\lib\index.js:11063:23)
+      at TypeScriptParserMixin.parseMaybeUnary (D:\RICE\node_modules\@babel\parser\lib\index.js:9854:18)
+      at TypeScriptParserMixin.parseMaybeUnaryOrPrivate (D:\RICE\node_modules\@babel\parser\lib\index.js:10916:61)
+      at TypeScriptParserMixin.parseExprOps (D:\RICE\node_modules\@babel\parser\lib\index.js:10921:23)
+      at TypeScriptParserMixin.parseMaybeConditional (D:\RICE\node_modules\@babel\parser\lib\index.js:10898:23)
+      at TypeScriptParserMixin.parseMaybeAssign (D:\RICE\node_modules\@babel\parser\lib\index.js:10848:21)
+      at D:\RICE\node_modules\@babel\parser\lib\index.js:9792:39
+      at TypeScriptParserMixin.tryParse (D:\RICE\node_modules\@babel\parser\lib\index.js:6924:20)
+      at TypeScriptParserMixin.parseMaybeAssign (D:\RICE\node_modules\@babel\parser\lib\index.js:9792:18)
+      at D:\RICE\node_modules\@babel\parser\lib\index.js:10817:39
+      at TypeScriptParserMixin.allowInAnd (D:\RICE\node_modules\@babel\parser\lib\index.js:12443:12)
+      at TypeScriptParserMixin.parseMaybeAssignAllowIn (D:\RICE\node_modules\@babel\parser\lib\index.js:10817:17)
+      at TypeScriptParserMixin.parseMaybeAssignAllowInOrVoidPattern (D:\RICE\node_modules\@babel\parser\lib\index.js:12510:17)
+      at TypeScriptParserMixin.parseParenAndDistinguishExpression (D:\RICE\node_modules\@babel\parser\lib\index.js:11692:28)
+      at TypeScriptParserMixin.parseExprAtom (D:\RICE\node_modules\@babel\parser\lib\index.js:11348:23)
+      at TypeScriptParserMixin.parseExprAtom (D:\RICE\node_modules\@babel\parser\lib\index.js:4776:20)
+      at TypeScriptParserMixin.parseExprSubscripts (D:\RICE\node_modules\@babel\parser\lib\index.js:11098:23)
+      at TypeScriptParserMixin.parseUpdate (D:\RICE\node_modules\@babel\parser\lib\index.js:11083:21)
+      at TypeScriptParserMixin.parseMaybeUnary (D:\RICE\node_modules\@babel\parser\lib\index.js:11063:23)
+      at TypeScriptParserMixin.parseMaybeUnary (D:\RICE\node_modules\@babel\parser\lib\index.js:9854:18)
+      at TypeScriptParserMixin.parseMaybeUnaryOrPrivate (D:\RICE\node_modules\@babel\parser\lib\index.js:10916:61)
+      at TypeScriptParserMixin.parseExprOps (D:\RICE\node_modules\@babel\parser\lib\index.js:10921:23)
+      at TypeScriptParserMixin.parseMaybeConditional (D:\RICE\node_modules\@babel\parser\lib\index.js:10898:23)
+      at TypeScriptParserMixin.parseMaybeAssign (D:\RICE\node_modules\@babel\parser\lib\index.js:10848:21)
+      at TypeScriptParserMixin.parseMaybeAssign (D:\RICE\node_modules\@babel\parser\lib\index.js:9803:20)
+      at TypeScriptParserMixin.parseExpressionBase (D:\RICE\node_modules\@babel\parser\lib\index.js:10801:23)
+      at D:\RICE\node_modules\@babel\parser\lib\index.js:10797:39
+      at TypeScriptParserMixin.allowInAnd (D:\RICE\node_modules\@babel\parser\lib\index.js:12438:16)
+      at TypeScriptParserMixin.parseExpression (D:\RICE\node_modules\@babel\parser\lib\index.js:10797:17)
+      at TypeScriptParserMixin.parseReturnStatement (D:\RICE\node_modules\@babel\parser\lib\index.js:13159:28)
+      at TypeScriptParserMixin.parseStatementContent (D:\RICE\node_modules\@babel\parser\lib\index.js:12815:21)
+      at TypeScriptParserMixin.parseStatementContent (D:\RICE\node_modules\@babel\parser\lib\index.js:9525:18)
+      at TypeScriptParserMixin.parseStatementLike (D:\RICE\node_modules\@babel\parser\lib\index.js:12784:17)
+      at TypeScriptParserMixin.parseStatementListItem (D:\RICE\node_modules\@babel\parser\lib\index.js:12764:17)
+[2m4:53:05 PM[22m [31m[1m[vite][22m[39m [31mInternal server error: Failed to resolve import "@react-oauth/google" from "src/pages/LoginPage.tsx". Does the file exist?[39m
+  Plugin: [35mvite:import-analysis[39m
+  File: [36mD:/RICE/packages/web/src/pages/LoginPage.tsx[39m:9:28
+[33m  30 |    AlertCircle
+  31 |  } from "lucide-react";
+  32 |  import { GoogleLogin } from "@react-oauth/google";
+     |                               ^
+  33 |  export default function LoginPage() {
+  34 |    _s();[39m
+      at TransformPluginContext._formatLog (file:///D:/RICE/node_modules/vite/dist/node/chunks/dep-Dq2t6Dq0.js:42553:41)
+      at TransformPluginContext.error (file:///D:/RICE/node_modules/vite/dist/node/chunks/dep-Dq2t6Dq0.js:42550:16)
+      at normalizeUrl (file:///D:/RICE/node_modules/vite/dist/node/chunks/dep-Dq2t6Dq0.js:40529:23)
+      at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+      at async file:///D:/RICE/node_modules/vite/dist/node/chunks/dep-Dq2t6Dq0.js:40648:37
+      at async Promise.all (index 9)
+      at async TransformPluginContext.transform (file:///D:/RICE/node_modules/vite/dist/node/chunks/dep-Dq2t6Dq0.js:40575:7)
+      at async EnvironmentPluginContainer.transform (file:///D:/RICE/node_modules/vite/dist/node/chunks/dep-Dq2t6Dq0.js:42348:18)
+      at async loadAndTransform (file:///D:/RICE/node_modules/vite/dist/node/chunks/dep-Dq2t6Dq0.js:35740:27)
+      at async viteTransformMiddleware (file:///D:/RICE/node_modules/vite/dist/node/chunks/dep-Dq2t6Dq0.js:37264:24)
+[2m4:53:10 PM[22m [31m[1m[vite][22m[39m [31mInternal server error: Failed to resolve import "@react-oauth/google" from "src/pages/SignupPage.tsx". Does the file exist?[39m
+  Plugin: [35mvite:import-analysis[39m
+  File: [36mD:/RICE/packages/web/src/pages/SignupPage.tsx[39m:9:28
+[33m  32 |    Check
+  33 |  } from "lucide-react";
+  34 |  import { GoogleLogin } from "@react-oauth/google";
+     |                               ^
+  35 |  export default function SignupPage() {
+  36 |    _s();[39m
+      at TransformPluginContext._formatLog (file:///D:/RICE/node_modules/vite/dist/node/chunks/dep-Dq2t6Dq0.js:42553:41)
+      at TransformPluginContext.error (file:///D:/RICE/node_modules/vite/dist/node/chunks/dep-Dq2t6Dq0.js:42550:16)
+      at normalizeUrl (file:///D:/RICE/node_modules/vite/dist/node/chunks/dep-Dq2t6Dq0.js:40529:23)
+      at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+      at async file:///D:/RICE/node_modules/vite/dist/node/chunks/dep-Dq2t6Dq0.js:40648:37
+      at async Promise.all (index 9)
+      at async TransformPluginContext.transform (file:///D:/RICE/node_modules/vite/dist/node/chunks/dep-Dq2t6Dq0.js:40575:7)
+      at async EnvironmentPluginContainer.transform (file:///D:/RICE/node_modules/vite/dist/node/chunks/dep-Dq2t6Dq0.js:42348:18)
+      at async loadAndTransform (file:///D:/RICE/node_modules/vite/dist/node/chunks/dep-Dq2t6Dq0.js:35740:27)
+      at async viteTransformMiddleware (file:///D:/RICE/node_modules/vite/dist/node/chunks/dep-Dq2t6Dq0.js:37264:24)
+[2m5:01:12 PM[22m [31m[1m[vite][22m[39m [31m[2m(client)[22m[39m Pre-transform error: Failed to resolve import "@react-oauth/google" from "src/pages/LoginPage.tsx". Does the file exist?
+  Plugin: [35mvite:import-analysis[39m
+  File: [36mD:/RICE/packages/web/src/pages/LoginPage.tsx[39m:9:28
+[33m  30 |    AlertCircle
+  31 |  } from "lucide-react";
+  32 |  import { GoogleLogin } from "@react-oauth/google";
+     |                               ^
+  33 |  export default function LoginPage() {
+  34 |    _s();[39m
+[2m5:01:12 PM[22m [31m[1m[vite][22m[39m [31mInternal server error: Failed to resolve import "@react-oauth/google" from "src/pages/SignupPage.tsx". Does the file exist?[39m
+  Plugin: [35mvite:import-analysis[39m
+  File: [36mD:/RICE/packages/web/src/pages/SignupPage.tsx[39m:9:28
+[33m  32 |    Check
+  33 |  } from "lucide-react";
+  34 |  import { GoogleLogin } from "@react-oauth/google";
+     |                               ^
+  35 |  export default function SignupPage() {
+  36 |    _s();[39m
+      at TransformPluginContext._formatLog (file:///D:/RICE/node_modules/vite/dist/node/chunks/dep-Dq2t6Dq0.js:42553:41)
+      at TransformPluginContext.error (file:///D:/RICE/node_modules/vite/dist/node/chunks/dep-Dq2t6Dq0.js:42550:16)
+      at normalizeUrl (file:///D:/RICE/node_modules/vite/dist/node/chunks/dep-Dq2t6Dq0.js:40529:23)
+      at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+      at async file:///D:/RICE/node_modules/vite/dist/node/chunks/dep-Dq2t6Dq0.js:40648:37
+      at async Promise.all (index 9)
+      at async TransformPluginContext.transform (file:///D:/RICE/node_modules/vite/dist/node/chunks/dep-Dq2t6Dq0.js:40575:7)
+      at async EnvironmentPluginContainer.transform (file:///D:/RICE/node_modules/vite/dist/node/chunks/dep-Dq2t6Dq0.js:42348:18)
+      at async loadAndTransform (file:///D:/RICE/node_modules/vite/dist/node/chunks/dep-Dq2t6Dq0.js:35740:27)
+[2m5:01:12 PM[22m [31m[1m[vite][22m[39m [31m[2m(client)[22m[39m Pre-transform error: Failed to resolve import "@react-oauth/google" from "src/pages/SignupPage.tsx". Does the file exist?
+  Plugin: [35mvite:import-analysis[39m
+  File: [36mD:/RICE/packages/web/src/pages/SignupPage.tsx[39m:9:28
+[33m  32 |    Check
+  33 |  } from "lucide-react";
+  34 |  import { GoogleLogin } from "@react-oauth/google";
+     |                               ^
+  35 |  export default function SignupPage() {
+  36 |    _s();[39m
+[2m5:01:12 PM[22m [31m[1m[vite][22m[39m [31mInternal server error: Failed to resolve import "@react-oauth/google" from "src/pages/LoginPage.tsx". Does the file exist?[39m
+  Plugin: [35mvite:import-analysis[39m
+  File: [36mD:/RICE/packages/web/src/pages/LoginPage.tsx[39m:9:28
+[33m  30 |    AlertCircle
+  31 |  } from "lucide-react";
+  32 |  import { GoogleLogin } from "@react-oauth/google";
+     |                               ^
+  33 |  export default function LoginPage() {
+  34 |    _s();[39m
+      at TransformPluginContext._formatLog (file:///D:/RICE/node_modules/vite/dist/node/chunks/dep-Dq2t6Dq0.js:42553:41)
+      at TransformPluginContext.error (file:///D:/RICE/node_modules/vite/dist/node/chunks/dep-Dq2t6Dq0.js:42550:16)
+      at normalizeUrl (file:///D:/RICE/node_modules/vite/dist/node/chunks/dep-Dq2t6Dq0.js:40529:23)
+      at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+      at async file:///D:/RICE/node_modules/vite/dist/node/chunks/dep-Dq2t6Dq0.js:40648:37
+      at async Promise.all (index 9)
+      at async TransformPluginContext.transform (file:///D:/RICE/node_modules/vite/dist/node/chunks/dep-Dq2t6Dq0.js:40575:7)
+      at async EnvironmentPluginContainer.transform (file:///D:/RICE/node_modules/vite/dist/node/chunks/dep-Dq2t6Dq0.js:42348:18)
+      at async loadAndTransform (file:///D:/RICE/node_modules/vite/dist/node/chunks/dep-Dq2t6Dq0.js:35740:27)
+      at async viteTransformMiddleware (file:///D:/RICE/node_modules/vite/dist/node/chunks/dep-Dq2t6Dq0.js:37264:24)
+[2m5:23:27 PM[22m [31m[1m[vite][22m[39m [31mInternal server error: Failed to resolve import "@react-oauth/google" from "src/main.tsx". Does the file exist?[39m
+  Plugin: [35mvite:import-analysis[39m
+  File: [36mD:/RICE/packages/web/src/main.tsx[39m:4:36
+[33m  3  |  import ReactDOM from "react-dom/client";
+  4  |  import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+  5  |  import { GoogleOAuthProvider } from "@react-oauth/google";
+     |                                       ^
+  6  |  import App from "./App";
+  7  |  import "./index.css";[39m
+      at TransformPluginContext._formatLog (file:///D:/RICE/node_modules/vite/dist/node/chunks/dep-Dq2t6Dq0.js:42553:41)
+      at TransformPluginContext.error (file:///D:/RICE/node_modules/vite/dist/node/chunks/dep-Dq2t6Dq0.js:42550:16)
+      at normalizeUrl (file:///D:/RICE/node_modules/vite/dist/node/chunks/dep-Dq2t6Dq0.js:40529:23)
+      at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+      at async file:///D:/RICE/node_modules/vite/dist/node/chunks/dep-Dq2t6Dq0.js:40648:37
+      at async Promise.all (index 4)
+      at async TransformPluginContext.transform (file:///D:/RICE/node_modules/vite/dist/node/chunks/dep-Dq2t6Dq0.js:40575:7)
+      at async EnvironmentPluginContainer.transform (file:///D:/RICE/node_modules/vite/dist/node/chunks/dep-Dq2t6Dq0.js:42348:18)
+      at async loadAndTransform (file:///D:/RICE/node_modules/vite/dist/node/chunks/dep-Dq2t6Dq0.js:35740:27)
+[2m5:23:27 PM[22m [31m[1m[vite][22m[39m Pre-transform error: Failed to resolve import "@react-oauth/google" from "src/main.tsx". Does the file exist?
+  Plugin: [35mvite:import-analysis[39m
+  File: [36mD:/RICE/packages/web/src/main.tsx[39m:4:36
+[33m  3  |  import ReactDOM from "react-dom/client";
+  4  |  import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+  5  |  import { GoogleOAuthProvider } from "@react-oauth/google";
+     |                                       ^
+  6  |  import App from "./App";
+  7  |  import "./index.css";[39m
+[2m5:23:28 PM[22m [31m[1m[vite][22m[39m [31m[2m(client)[22m[39m Pre-transform error: Failed to resolve import "@react-oauth/google" from "src/pages/SignupPage.tsx". Does the file exist?
+  Plugin: [35mvite:import-analysis[39m
+  File: [36mD:/RICE/packages/web/src/pages/SignupPage.tsx[39m:9:28
+[33m  32 |    Check
+  33 |  } from "lucide-react";
+  34 |  import { GoogleLogin } from "@react-oauth/google";
+     |                               ^
+  35 |  export default function SignupPage() {
+  36 |    _s();[39m
+[2m5:23:28 PM[22m [31m[1m[vite][22m[39m [31m[2m(client)[22m[39m Pre-transform error: Failed to resolve import "@react-oauth/google" from "src/pages/LoginPage.tsx". Does the file exist?
+  Plugin: [35mvite:import-analysis[39m
+  File: [36mD:/RICE/packages/web/src/pages/LoginPage.tsx[39m:9:28
+[33m  30 |    AlertCircle
+  31 |  } from "lucide-react";
+  32 |  import { GoogleLogin } from "@react-oauth/google";
+     |                               ^
+  33 |  export default function LoginPage() {
+  34 |    _s();[39m
+[2m5:23:30 PM[22m [31m[1m[vite][22m[39m Pre-transform error: Failed to resolve import "@react-oauth/google" from "src/main.tsx". Does the file exist?
+  Plugin: [35mvite:import-analysis[39m
+  File: [36mD:/RICE/packages/web/src/main.tsx[39m:4:36
+[33m  3  |  import ReactDOM from "react-dom/client";
+  4  |  import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+  5  |  import { GoogleOAuthProvider } from "@react-oauth/google";
+     |                                       ^
+  6  |  import App from "./App";
+  7  |  import "./index.css";[39m

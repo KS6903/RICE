@@ -10,7 +10,7 @@ from app.core.config import settings
 from app.core.database import Base
 
 # Import all models so Alembic can detect all tables
-from app.models import company, user, reference, supplier_customer, paddy, milling, sales, costs, compliance, sync, employee, subscription  # noqa: F401
+from app.models import company, user, reference, supplier_customer, paddy, milling, sales, costs, compliance, sync, employee, subscription, activity  # noqa: F401
 
 config = context.config
 

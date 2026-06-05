@@ -2,7 +2,7 @@ import asyncio
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from .core.config import settings
-from .api import auth, users, branches, paddy, milling, inventory, sales, costs, reports, sync, admin, employees, billing, canva, dispatch, weather, locations
+from .api import auth, users, branches, paddy, milling, inventory, sales, costs, reports, sync, admin, employees, billing, canva, dispatch, weather, locations, activity
 from .services.canva_realtime import manager as ws_manager
 
 app = FastAPI(
@@ -38,6 +38,7 @@ app.include_router(canva.ws_router, tags=["Warehouse Canva (Realtime)"])
 app.include_router(dispatch.router, prefix="/api", tags=["Dispatch"])
 app.include_router(weather.router, prefix="/api", tags=["Weather"])
 app.include_router(locations.router, prefix="/api", tags=["Saved Locations"])
+app.include_router(activity.router, prefix="/api/activity", tags=["Activity Log"])
 
 
 @app.on_event("startup")
@@ -47,6 +48,18 @@ async def _capture_loop_for_canva_broadcasts() -> None:
     ws_manager.set_main_loop(asyncio.get_running_loop())
 
 
+@app.on_event("startup")
+async def _probe_cache() -> None:
+    """Surface Redis connectivity at boot (best-effort — never blocks startup)."""
+    from .core.cache import cache
+    cache.available()
+
+
 @app.get("/api/health")
 def health_check():
-    return {"status": "ok", "app": settings.APP_NAME}
+    from .core.cache import cache
+    return {
+        "status": "ok",
+        "app": settings.APP_NAME,
+        "cache": "up" if cache.available() else "down",
+    }

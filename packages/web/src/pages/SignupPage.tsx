@@ -6,6 +6,7 @@ import { useThemeStore } from "../stores/themeStore";
 import {
   Sparkles, Building2, Building, Sun, Moon, AlertCircle, ArrowRight, ArrowLeft, Check,
 } from "lucide-react";
+import { GoogleLogin } from "@react-oauth/google";
 
 export default function SignupPage() {
   const navigate = useNavigate();
@@ -48,6 +49,26 @@ export default function SignupPage() {
       navigate("/");
     } catch (e: any) {
       setError(e.response?.data?.detail || "Signup failed. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleGoogleSuccess = async (credentialResponse: any) => {
+    setLoading(true);
+    setError("");
+    try {
+      const { data } = await api.post("/auth/google", {
+        credential: credentialResponse.credential,
+        company_name: form.company_name,
+        is_multi_branch: form.is_multi_branch,
+      });
+      setTokens(data.access_token, data.refresh_token);
+      const { data: me } = await api.get("/auth/me");
+      setUser(me);
+      navigate("/");
+    } catch (err: any) {
+      setError(err.response?.data?.detail || "Google signup failed.");
     } finally {
       setLoading(false);
     }
@@ -295,6 +316,19 @@ export default function SignupPage() {
                   {loading ? "Creating…" : "Create account"}
                   {!loading && <ArrowRight size={16} />}
                 </button>
+              </div>
+
+              <div className="relative flex items-center py-2 mt-4">
+                <div className="flex-grow border-t border-slate-200 dark:border-slate-800"></div>
+                <span className="flex-shrink-0 mx-4 text-sm text-secondary">or</span>
+                <div className="flex-grow border-t border-slate-200 dark:border-slate-800"></div>
+              </div>
+
+              <div className="flex justify-center w-full [&>div]:w-full mt-4">
+                <GoogleLogin
+                  onSuccess={handleGoogleSuccess}
+                  onError={() => setError("Google signup failed.")}
+                />
               </div>
             </div>
           )}

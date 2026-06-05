@@ -32,5 +32,7 @@ class User(Base, TimestampMixin):
     last_login: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
     company: Mapped["Company"] = relationship("Company", back_populates="users")
-    branch: Mapped["Branch"] = relationship("Branch", back_populates="users")
+    branch: Mapped["Branch"] = relationship(
+        "Branch", back_populates="users", foreign_keys="[User.branch_id]"
+    )
     role: Mapped["Role"] = relationship("Role", back_populates="users")

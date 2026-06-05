@@ -7,6 +7,7 @@ import {
 import api from "../services/api";
 import ColorSwatch from "../components/dispatch/ColorSwatch";
 import CourierPicker, { CourierParty } from "../components/dispatch/CourierPicker";
+import { useAccess } from "../hooks/useAccess";
 
 type Tab = "delivery" | "operators";
 
@@ -122,6 +123,7 @@ export default function DispatchPage() {
 
 function DeliveryTab() {
   const qc = useQueryClient();
+  const { canEdit } = useAccess();
   const [assigning, setAssigning] = useState<DispatchOrder | null>(null);
 
   const { data: orders = [], isLoading } = useQuery<DispatchOrder[]>({
@@ -203,6 +205,10 @@ function DeliveryTab() {
                     </td>
                     <td className="px-4 py-3 text-right">
                       <div className="flex items-center justify-end gap-1.5">
+                        {!canEdit("dispatch") && (
+                          <span className="text-xs text-muted">View only</span>
+                        )}
+                        {canEdit("dispatch") && (
                         <button
                           type="button"
                           data-testid={`assign-courier-${o.id}`}
@@ -212,7 +218,8 @@ function DeliveryTab() {
                         >
                           <Pencil size={12} /> Courier
                         </button>
-                        {o.status !== "delivered" && (
+                        )}
+                        {canEdit("dispatch") && o.status !== "delivered" && (
                           <button
                             type="button"
                             data-testid={`mark-delivered-${o.id}`}
@@ -336,6 +343,7 @@ type Filter = "all" | "agent" | "miller";
 
 function FieldOperatorsTab() {
   const qc = useQueryClient();
+  const { canEdit } = useAccess();
   const [filter, setFilter] = useState<Filter>("all");
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -407,6 +415,7 @@ function FieldOperatorsTab() {
         <p className="text-xs text-muted">
           {activeCount} active · system reserves a unique color per operator
         </p>
+        {canEdit("dispatch") && (
         <button
           onClick={() => { setShowForm((s) => !s); setEditingId(null); setError(null); }}
           className="btn-primary"
@@ -414,6 +423,7 @@ function FieldOperatorsTab() {
         >
           <Plus size={16} /> Add field operator
         </button>
+        )}
       </div>
 
       {showForm && (
