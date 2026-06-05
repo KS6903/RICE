@@ -327,6 +327,25 @@ test.describe("Refactored API contract (paddy / inventory / activity)", () => {
     }
   });
 
+  test("GET /api/auth/me returns the profile with features + subscription", async () => {
+    const res = await api.get("/api/auth/me", { headers: auth() });
+    expect(res.status()).toBe(200);
+    const body = await res.json();
+    for (const k of ["username", "role", "features", "subscription", "is_platform_admin"]) {
+      expect(body).toHaveProperty(k);
+    }
+  });
+
+  test("auth refresh issues a fresh access token", async () => {
+    const login = await api.post("/api/auth/login", {
+      form: { username: TENANT.username, password: TENANT.password },
+    });
+    const { refresh_token } = await login.json();
+    const res = await api.post("/api/auth/refresh", { data: { refresh_token } });
+    expect(res.status()).toBe(200);
+    expect((await res.json()).access_token).toBeTruthy();
+  });
+
   test("feature/auth gate: a request without a token is rejected", async () => {
     const res = await api.get("/api/paddy/varieties");
     expect(res.status()).toBe(401);

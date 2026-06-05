@@ -34,6 +34,18 @@ class BadRequestError(AppException):
     code = "bad_request"
 
 
+class UnauthorizedError(AppException):
+    status_code = 401
+    code = "unauthorized"
+
+
+class NotConfiguredError(AppException):
+    """A server-side capability isn't configured (e.g. Google OAuth) — HTTP 501."""
+
+    status_code = 501
+    code = "not_configured"
+
+
 class NotFoundError(AppException):
     status_code = 404
     code = "not_found"
