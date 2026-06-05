@@ -243,6 +243,54 @@ test.describe("Refactored API contract (paddy / inventory / activity)", () => {
     expect(Array.isArray(await res.json())).toBeTruthy();
   });
 
+  test("GET /api/reports/pnl returns the P&L envelope", async () => {
+    const res = await api.get("/api/reports/pnl", {
+      headers: auth(),
+      params: { period_start: "2026-01-01", period_end: "2026-12-31" },
+    });
+    expect(res.status()).toBe(200);
+    const body = await res.json();
+    for (const k of ["revenue", "cost_of_goods", "gross_profit", "net_profit"]) {
+      expect(body).toHaveProperty(k);
+    }
+  });
+
+  test("offline sync: push then pull round-trips a record", async () => {
+    const recordId = crypto.randomUUID();
+    const push = await api.post("/api/sync/push", {
+      headers: auth(),
+      data: {
+        client_id: "e2e",
+        records: [
+          {
+            table_name: "paddy",
+            record_id: recordId,
+            operation: "INSERT",
+            payload: { x: 1 },
+            updated_at: "2026-06-05T00:00:00Z",
+          },
+        ],
+      },
+    });
+    expect(push.status()).toBe(200);
+    expect((await push.json()).synced).toBe(1);
+
+    const pull = await api.get("/api/sync/pull", {
+      headers: auth(),
+      params: { since: "2020-01-01T00:00:00Z" },
+    });
+    expect(pull.status()).toBe(200);
+    const body = await pull.json();
+    expect(body).toHaveProperty("server_time");
+    expect(body.records.some((r: { record_id: string }) => r.record_id === recordId)).toBeTruthy();
+  });
+
+  test("GET /api/sync/conflicts returns a list", async () => {
+    const res = await api.get("/api/sync/conflicts", { headers: auth() });
+    expect(res.status()).toBe(200);
+    expect(Array.isArray(await res.json())).toBeTruthy();
+  });
+
   test("feature/auth gate: a request without a token is rejected", async () => {
     const res = await api.get("/api/paddy/varieties");
     expect(res.status()).toBe(401);
