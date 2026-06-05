@@ -262,7 +262,10 @@
       "Bash(.venv/Scripts/python.exe -m pytest tests/characterization/test_branches.py -q)",
       "Bash(.venv/Scripts/python.exe -m ruff check --fix tests app/repositories/branches.py app/services/branch_service.py app/api/branches.py app/schemas/branches.py)",
       "Bash(.venv/Scripts/python.exe -m pytest tests/characterization/test_sync.py tests/characterization/test_reports.py -q)",
-      "Bash(.venv/Scripts/python.exe -m ruff check --fix tests app/repositories/sync.py app/services/reports_service.py app/services/sync_service.py app/api/reports.py app/api/sync.py app/schemas/sync.py)"
+      "Bash(.venv/Scripts/python.exe -m ruff check --fix tests app/repositories/sync.py app/services/reports_service.py app/services/sync_service.py app/api/reports.py app/api/sync.py app/schemas/sync.py)",
+      "Bash(.venv/Scripts/python.exe -m ruff check --fix tests app/services/weather.py app/api/weather.py)",
+      "Bash(.venv/Scripts/python.exe -m pytest tests/characterization/test_dispatch.py -q)",
+      "Bash(.venv/Scripts/python.exe -m ruff check --fix tests app/repositories/dispatch.py app/services/dispatch_service.py app/api/dispatch.py app/schemas/dispatch.py)"
     ],
     "additionalDirectories": [
       "d:\\RICE"

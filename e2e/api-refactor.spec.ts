@@ -291,6 +291,42 @@ test.describe("Refactored API contract (paddy / inventory / activity)", () => {
     expect(Array.isArray(await res.json())).toBeTruthy();
   });
 
+  test("GET /api/agents returns a list and POST creates one with a color", async () => {
+    const list = await api.get("/api/agents", { headers: auth() });
+    expect(list.status()).toBe(200);
+    expect(Array.isArray(await list.json())).toBeTruthy();
+
+    const created = await api.post("/api/agents", {
+      headers: auth(),
+      data: { name: `Agent ${Date.now() % 100000}` },
+    });
+    expect(created.status()).toBe(201);
+    expect((await created.json()).canva_color_hex).toBeTruthy();
+  });
+
+  test("GET /api/dispatch/palette returns palette + in_use", async () => {
+    const res = await api.get("/api/dispatch/palette", { headers: auth() });
+    expect(res.status()).toBe(200);
+    const body = await res.json();
+    expect(Array.isArray(body.palette)).toBeTruthy();
+    expect(Array.isArray(body.in_use)).toBeTruthy();
+  });
+
+  test("GET /api/dispatch/orders returns a list", async () => {
+    const res = await api.get("/api/dispatch/orders", { headers: auth() });
+    expect(res.status()).toBe(200);
+    expect(Array.isArray(await res.json())).toBeTruthy();
+  });
+
+  test("GET /api/weather (explicit coords) returns the normalized schema", async () => {
+    const res = await api.get("/api/weather", { headers: auth(), params: { lat: 14.6, lon: 121.0 } });
+    expect(res.status()).toBe(200);
+    const body = await res.json();
+    for (const k of ["provider", "temp_c", "condition", "condition_code", "location", "fetched_at"]) {
+      expect(body).toHaveProperty(k);
+    }
+  });
+
   test("feature/auth gate: a request without a token is rejected", async () => {
     const res = await api.get("/api/paddy/varieties");
     expect(res.status()).toBe(401);
