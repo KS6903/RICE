@@ -1,262 +1,88 @@
+"""Branches/company HTTP controllers — thin routing over BranchService (Phase 3)."""
 import uuid
-from datetime import timedelta
-from fastapi import APIRouter, Depends, HTTPException, status
-from pydantic import BaseModel
+
+from fastapi import APIRouter, Depends, status
 from sqlalchemy.orm import Session
+
 from ..core.database import get_db
-from ..core.security import get_current_user, require_roles, hash_password
-from ..models.company import Company, Branch
-from ..models.user import User, Role
-from ..models.base import now_utc
-from ..services.activity import log_activity, purge_expired_branches, TRASH_RETENTION_DAYS
+from ..core.security import get_current_user, require_roles
+from ..schemas.branches import (
+    BranchCreate,
+    BranchUpdate,
+    BulkDeleteIn,
+    CompanyUpdate,
+    SetupRequest,
+)
+from ..services.branch_service import BranchService
 
 router = APIRouter()
 
-
-class BranchCreate(BaseModel):
-    name: str
-    address: str | None = None
-    is_main_branch: bool = False
+WRITE_ROLES = ("owner", "admin")
 
 
-class BranchUpdate(BaseModel):
-    name: str | None = None
-    address: str | None = None
-    is_active: bool | None = None
+def get_branch_service(
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+) -> BranchService:
+    return BranchService(db, current_user)
 
 
-class SetupCompany(BaseModel):
-    name: str
-    tin: str | None = None
-    nfa_license_no: str | None = None
-    da_registration_no: str | None = None
-    phone: str | None = None
-    email: str | None = None
-    is_multi_branch: bool = False
+def get_setup_service(db: Session = Depends(get_db)) -> BranchService:
+    """Unauthenticated service for the first-run setup endpoints."""
+    return BranchService(db)
 
 
-class SetupAdmin(BaseModel):
-    username: str
-    full_name: str
-    email: str | None = None
-    password: str
-
-
-class SetupRequest(BaseModel):
-    company: SetupCompany
-    admin: SetupAdmin
-
+# ── First-run setup (no auth) ───────────────────────────────────────────────
 
 @router.get("/setup-status")
-def setup_status(db: Session = Depends(get_db)):
-    configured = db.query(Company).first() is not None
-    return {"configured": configured}
+def setup_status(svc: BranchService = Depends(get_setup_service)):
+    return svc.setup_status()
 
 
 @router.post("/setup", status_code=status.HTTP_201_CREATED)
-def first_run_setup(body: SetupRequest, db: Session = Depends(get_db)):
-    if db.query(Company).first():
-        raise HTTPException(status_code=409, detail="System already configured. Use the admin account to log in.")
-
-    company = Company(**body.company.model_dump())
-    db.add(company)
-    db.flush()
-
-    branch = Branch(company_id=company.id, name=body.company.name, is_main_branch=True)
-    db.add(branch)
-    db.flush()
-
-    owner_role = db.query(Role).filter_by(name="owner").first()
-    if not owner_role:
-        raise HTTPException(status_code=500, detail="Roles not seeded. Run seed.py first.")
-
-    admin_user = User(
-        company_id=company.id,
-        branch_id=branch.id,
-        username=body.admin.username,
-        full_name=body.admin.full_name,
-        email=body.admin.email,
-        password_hash=hash_password(body.admin.password),
-        role_id=owner_role.id,
-    )
-    db.add(admin_user)
-    db.commit()
-
-    return {"message": "Setup complete. You can now log in.", "company_id": str(company.id)}
+def first_run_setup(body: SetupRequest, svc: BranchService = Depends(get_setup_service)):
+    return svc.first_run_setup(body)
 
 
-class CompanyUpdate(BaseModel):
-    name: str | None = None
-    address: str | None = None
-    tin: str | None = None
-    nfa_license_no: str | None = None
-    da_registration_no: str | None = None
-    phone: str | None = None
-    email: str | None = None
-    is_multi_branch: bool | None = None
-
+# ── Company ─────────────────────────────────────────────────────────────────
 
 @router.get("/company")
-def get_company(current_user=Depends(get_current_user), db: Session = Depends(get_db)):
-    company = db.get(Company, current_user.company_id)
-    if not company:
-        raise HTTPException(status_code=404, detail="Company not found")
-    return {
-        "id": str(company.id),
-        "name": company.name,
-        "address": company.address,
-        "tin": company.tin,
-        "nfa_license_no": company.nfa_license_no,
-        "da_registration_no": company.da_registration_no,
-        "phone": company.phone,
-        "email": company.email,
-        "currency": company.currency,
-        "timezone": company.timezone,
-        "is_multi_branch": company.is_multi_branch,
-    }
+def get_company(svc: BranchService = Depends(get_branch_service)):
+    return svc.get_company()
 
 
-@router.put("/company")
-def update_company(body: CompanyUpdate, current_user=Depends(require_roles("owner", "admin")), db: Session = Depends(get_db)):
-    company = db.get(Company, current_user.company_id)
-    if not company:
-        raise HTTPException(status_code=404, detail="Company not found")
-    for field, val in body.model_dump(exclude_none=True).items():
-        setattr(company, field, val)
-    db.commit()
-    return {"message": "Company updated"}
+@router.put("/company", dependencies=[Depends(require_roles(*WRITE_ROLES))])
+def update_company(body: CompanyUpdate, svc: BranchService = Depends(get_branch_service)):
+    return svc.update_company(body)
 
+
+# ── Branches ────────────────────────────────────────────────────────────────
 
 @router.get("/")
-def list_branches(current_user=Depends(get_current_user), db: Session = Depends(get_db)):
-    # Trashed (soft-deleted) warehouses are hidden everywhere this feeds:
-    # the warehouse picker, inventory views, and the Settings branch list.
-    return db.query(Branch).filter(
-        Branch.company_id == current_user.company_id,
-        Branch.deleted_at.is_(None),
-    ).all()
+def list_branches(svc: BranchService = Depends(get_branch_service)):
+    return svc.list_branches()
 
 
-class BulkDeleteIn(BaseModel):
-    ids: list[uuid.UUID]
+@router.post("/bulk-delete", dependencies=[Depends(require_roles(*WRITE_ROLES))])
+def bulk_delete_branches(body: BulkDeleteIn, svc: BranchService = Depends(get_branch_service)):
+    return svc.bulk_delete(body.ids)
 
 
-@router.post("/bulk-delete")
-def bulk_delete_branches(body: BulkDeleteIn, current_user=Depends(require_roles("owner", "admin")), db: Session = Depends(get_db)):
-    """Soft-delete (trash) multiple warehouses at once.
-
-    Skips the main branch and refuses to trash the last remaining live branch.
-    Each successful trash writes a warehouse.delete activity row.
-    """
-    live = db.query(Branch).filter(
-        Branch.company_id == current_user.company_id,
-        Branch.deleted_at.is_(None),
-    ).all()
-    live_by_id = {b.id: b for b in live}
-    live_count = len(live)
-
-    deleted: list[str] = []
-    skipped: list[dict] = []
-    for bid in body.ids:
-        branch = live_by_id.get(bid)
-        if not branch:
-            skipped.append({"id": str(bid), "reason": "Not found or already trashed."})
-            continue
-        if branch.is_main_branch:
-            skipped.append({"id": str(bid), "reason": "The main warehouse can't be deleted."})
-            continue
-        if live_count - len(deleted) <= 1:
-            skipped.append({"id": str(bid), "reason": "You must keep at least one warehouse."})
-            continue
-        branch.deleted_at = now_utc()
-        branch.deleted_by = current_user.id
-        log_activity(
-            db, company_id=current_user.company_id, user_id=current_user.id,
-            action="warehouse.delete", entity_type="branch",
-            entity_id=branch.id, entity_label=branch.name,
-        )
-        deleted.append(str(bid))
-
-    db.commit()
-    return {"deleted": deleted, "skipped": skipped}
+@router.get("/trash", dependencies=[Depends(require_roles(*WRITE_ROLES))])
+def list_trashed_branches(svc: BranchService = Depends(get_branch_service)):
+    return svc.list_trashed()
 
 
-@router.get("/trash")
-def list_trashed_branches(current_user=Depends(require_roles("owner", "admin")), db: Session = Depends(get_db)):
-    """Warehouses in the 30-day trash. Lazily purges anything past retention
-    first, so expired warehouses disappear (and get a purge log) on view."""
-    purge_expired_branches(db, current_user.company_id)
-
-    rows = db.query(Branch).filter(
-        Branch.company_id == current_user.company_id,
-        Branch.deleted_at.isnot(None),
-    ).order_by(Branch.deleted_at.desc()).all()
-
-    deleter_ids = {b.deleted_by for b in rows if b.deleted_by}
-    names = {}
-    if deleter_ids:
-        for u in db.query(User).filter(User.id.in_(deleter_ids)).all():
-            names[u.id] = u.full_name or u.username
-
-    out = []
-    for b in rows:
-        expires_at = b.deleted_at + timedelta(days=TRASH_RETENTION_DAYS)
-        days_remaining = max(0, (expires_at - now_utc()).days)
-        out.append({
-            "id": str(b.id),
-            "name": b.name,
-            "is_main_branch": b.is_main_branch,
-            "deleted_at": b.deleted_at.isoformat(),
-            "deleted_by_name": names.get(b.deleted_by),
-            "days_remaining": days_remaining,
-        })
-    return out
+@router.post("/{branch_id}/restore", dependencies=[Depends(require_roles(*WRITE_ROLES))])
+def restore_branch(branch_id: uuid.UUID, svc: BranchService = Depends(get_branch_service)):
+    return svc.restore_branch(branch_id)
 
 
-@router.post("/{branch_id}/restore")
-def restore_branch(branch_id: uuid.UUID, current_user=Depends(require_roles("owner", "admin")), db: Session = Depends(get_db)):
-    branch = db.get(Branch, branch_id)
-    if not branch or branch.company_id != current_user.company_id:
-        raise HTTPException(status_code=404, detail="Branch not found")
-    if branch.deleted_at is None:
-        raise HTTPException(status_code=409, detail="This warehouse is not in the trash.")
-    branch.deleted_at = None
-    branch.deleted_by = None
-    log_activity(
-        db, company_id=current_user.company_id, user_id=current_user.id,
-        action="warehouse.restore", entity_type="branch",
-        entity_id=branch.id, entity_label=branch.name,
-    )
-    db.commit()
-    return {"restored": True, "id": str(branch.id)}
+@router.post("/", status_code=status.HTTP_201_CREATED, dependencies=[Depends(require_roles(*WRITE_ROLES))])
+def create_branch(body: BranchCreate, svc: BranchService = Depends(get_branch_service)):
+    return svc.create_branch(body)
 
 
-@router.post("/", status_code=status.HTTP_201_CREATED)
-def create_branch(body: BranchCreate, current_user=Depends(require_roles("owner", "admin")), db: Session = Depends(get_db)):
-    from ..core.security import get_user_features
-    from ..models.subscription import Subscription
-    existing_count = db.query(Branch).filter(Branch.company_id == current_user.company_id).count()
-    features = get_user_features(current_user, db)
-    if existing_count >= 1 and "multi_branch" not in features:
-        raise HTTPException(status_code=402, detail="Multi-branch is not included in your current plan. Please upgrade to add more branches.")
-
-    sub = db.query(Subscription).filter(Subscription.company_id == current_user.company_id).first()
-    if sub and sub.plan and sub.plan.max_branches is not None and existing_count >= sub.plan.max_branches:
-        raise HTTPException(status_code=402, detail=f"Your plan allows up to {sub.plan.max_branches} branches. Please upgrade for more.")
-
-    branch = Branch(company_id=current_user.company_id, **body.model_dump())
-    db.add(branch)
-    db.commit()
-    db.refresh(branch)
-    return branch
-
-
-@router.put("/{branch_id}")
-def update_branch(branch_id: uuid.UUID, body: BranchUpdate, current_user=Depends(require_roles("owner", "admin")), db: Session = Depends(get_db)):
-    branch = db.get(Branch, branch_id)
-    if not branch or branch.company_id != current_user.company_id:
-        raise HTTPException(status_code=404, detail="Branch not found")
-    for field, val in body.model_dump(exclude_none=True).items():
-        setattr(branch, field, val)
-    db.commit()
-    return branch
+@router.put("/{branch_id}", dependencies=[Depends(require_roles(*WRITE_ROLES))])
+def update_branch(branch_id: uuid.UUID, body: BranchUpdate, svc: BranchService = Depends(get_branch_service)):
+    return svc.update_branch(branch_id, body)

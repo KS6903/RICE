@@ -207,6 +207,42 @@ test.describe("Refactored API contract (paddy / inventory / activity)", () => {
     expect(Number(inv.total_amount)).toBe(4500);
   });
 
+  test("GET /api/branches/ returns live branches incl. a main branch", async () => {
+    const res = await api.get("/api/branches/", { headers: auth() });
+    expect(res.status()).toBe(200);
+    const rows = await res.json();
+    expect(Array.isArray(rows)).toBeTruthy();
+    expect(rows.some((b: { is_main_branch: boolean }) => b.is_main_branch)).toBeTruthy();
+  });
+
+  test("GET /api/branches/company returns the company", async () => {
+    const res = await api.get("/api/branches/company", { headers: auth() });
+    expect(res.status()).toBe(200);
+    expect(await res.json()).toHaveProperty("name");
+  });
+
+  test("saved locations: create then list round-trips with serialized shape", async () => {
+    const created = await api.post("/api/locations", {
+      headers: auth(),
+      data: { label: `E2E Place ${Date.now() % 100000}`, lat: 14.6, lon: 121.0 },
+    });
+    expect(created.status()).toBe(201);
+    const loc = await created.json();
+    expect(Object.keys(loc).sort()).toEqual(
+      ["country", "created_at", "id", "is_default", "label", "lat", "lon", "region"].sort(),
+    );
+
+    const list = await api.get("/api/locations", { headers: auth() });
+    expect(list.status()).toBe(200);
+    expect((await list.json()).some((r: { id: string }) => r.id === loc.id)).toBeTruthy();
+  });
+
+  test("GET /api/users/ returns the company's users", async () => {
+    const res = await api.get("/api/users/", { headers: auth() });
+    expect(res.status()).toBe(200);
+    expect(Array.isArray(await res.json())).toBeTruthy();
+  });
+
   test("feature/auth gate: a request without a token is rejected", async () => {
     const res = await api.get("/api/paddy/varieties");
     expect(res.status()).toBe(401);

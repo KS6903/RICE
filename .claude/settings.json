@@ -254,7 +254,13 @@
       "Bash(.venv/Scripts/python.exe -m pytest tests/characterization/test_employees.py -q)",
       "Bash(.venv/Scripts/python.exe -m ruff check --fix tests app/repositories/employees.py app/services/employee_service.py app/api/employees.py app/schemas/employees.py)",
       "Bash(.venv/Scripts/python.exe -m pytest tests/characterization/test_sales.py -q)",
-      "Bash(.venv/Scripts/python.exe -m ruff check --fix tests app/repositories/sales.py app/services/sales_service.py app/api/sales.py app/schemas/sales.py)"
+      "Bash(.venv/Scripts/python.exe -m ruff check --fix tests app/repositories/sales.py app/services/sales_service.py app/api/sales.py app/schemas/sales.py)",
+      "Bash(.venv/Scripts/python.exe -m pytest tests/characterization/test_users.py -q)",
+      "Bash(.venv/Scripts/python.exe -m ruff check --fix tests app/repositories/users.py app/services/user_service.py app/api/users.py app/schemas/users.py app/core/exceptions.py)",
+      "Bash(.venv/Scripts/python.exe -m pytest tests/characterization/test_locations.py -q)",
+      "Bash(.venv/Scripts/python.exe -m ruff check --fix tests app/repositories/locations.py app/services/location_service.py app/services/geocoding.py app/api/locations.py app/schemas/locations.py)",
+      "Bash(.venv/Scripts/python.exe -m pytest tests/characterization/test_branches.py -q)",
+      "Bash(.venv/Scripts/python.exe -m ruff check --fix tests app/repositories/branches.py app/services/branch_service.py app/api/branches.py app/schemas/branches.py)"
     ],
     "additionalDirectories": [
       "d:\\RICE"

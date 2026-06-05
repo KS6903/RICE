@@ -29,6 +29,11 @@ class AppException(Exception):
         super().__init__(message)
 
 
+class BadRequestError(AppException):
+    status_code = 400
+    code = "bad_request"
+
+
 class NotFoundError(AppException):
     status_code = 404
     code = "not_found"

@@ -56,6 +56,10 @@ files = [
     "app/services/costs_service.py",
     "app/services/employee_service.py",
     "app/services/sales_service.py",
+    "app/services/user_service.py",
+    "app/services/location_service.py",
+    "app/services/geocoding.py",
+    "app/services/branch_service.py",
     "app/api/paddy.py",
     "app/api/inventory.py",
     "app/api/activity.py",
@@ -63,6 +67,9 @@ files = [
     "app/api/costs.py",
     "app/api/employees.py",
     "app/api/sales.py",
+    "app/api/users.py",
+    "app/api/locations.py",
+    "app/api/branches.py",
 ]
 check_untyped_defs = true
 warn_redundant_casts = true
