@@ -29,7 +29,10 @@ jobs:
           --health-retries 5
     env:
       # conftest derives "<db> Test" and creates it via the maintenance DB.
-      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/rice
+      # Use 127.0.0.1 (not localhost): on GitHub runners localhost can resolve to
+      # IPv6 ::1 while the postgres service only publishes on IPv4, which would
+      # make conftest's connection refused and pytest exit 4 at collection.
+      DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/rice
       SECRET_KEY: ci-test-secret-key
       REDIS_URL: ""
     defaults:
@@ -44,6 +47,9 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements-dev.txt
+      - name: Verify Postgres is reachable
+        run: |
+          python -c "import psycopg; psycopg.connect('host=127.0.0.1 port=5432 user=postgres password=postgres dbname=postgres').close(); print('postgres reachable')"
       - name: Lint (ruff, scoped)
         run: ruff check tests
       - name: Type-check (mypy, scoped)
