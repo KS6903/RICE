@@ -22,6 +22,15 @@ class SubscriptionPlanRepository(BaseRepository[SubscriptionPlan]):
         )
         return self.db.execute(stmt).scalars().all()
 
+    def list_all(self) -> Sequence[SubscriptionPlan]:
+        """All plans (incl. inactive) — for the platform-admin plan manager."""
+        stmt = select(SubscriptionPlan).order_by(SubscriptionPlan.sort_order)
+        return self.db.execute(stmt).scalars().all()
+
+    def get_by_code(self, code: str) -> SubscriptionPlan | None:
+        stmt = select(SubscriptionPlan).where(SubscriptionPlan.code == code)
+        return self.db.execute(stmt).scalars().first()
+
 
 class SubscriptionRepository(BaseRepository[Subscription]):
     model = Subscription
@@ -30,6 +39,14 @@ class SubscriptionRepository(BaseRepository[Subscription]):
         """One subscription per company — looked up by company, not row id."""
         stmt = select(Subscription).where(Subscription.company_id == company_id)
         return self.db.execute(stmt).scalars().first()
+
+    def company_ids_on_plan(self, plan_id: uuid.UUID) -> list[uuid.UUID]:
+        stmt = select(Subscription.company_id).where(Subscription.plan_id == plan_id)
+        return [row[0] for row in self.db.execute(stmt).all()]
+
+    def exists_for_plan(self, plan_id: uuid.UUID) -> bool:
+        stmt = select(Subscription.id).where(Subscription.plan_id == plan_id).limit(1)
+        return self.db.execute(stmt).first() is not None
 
 
 class UpgradeRequestRepository(BaseRepository[UpgradeRequest]):

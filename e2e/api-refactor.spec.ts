@@ -367,6 +367,27 @@ test.describe("Refactored API contract (paddy / inventory / activity)", () => {
     expect((await res.json()).access_token).toBeTruthy();
   });
 
+  test("admin endpoints reject a non-platform-admin (403)", async () => {
+    // mill1 is a tenant owner, not a platform admin.
+    const res = await api.get("/api/admin/stats", { headers: auth() });
+    expect(res.status()).toBe(403);
+  });
+
+  test("platform admin can read stats / plans / tenants", async () => {
+    const login = await api.post("/api/auth/login", {
+      form: { username: "admin", password: "admin1234" },
+    });
+    expect(login.status(), "seed platform-admin account should exist").toBe(200);
+    const ah = { Authorization: `Bearer ${(await login.json()).access_token}` };
+
+    const stats = await api.get("/api/admin/stats", { headers: ah });
+    expect(stats.status()).toBe(200);
+    expect(await stats.json()).toHaveProperty("total_tenants");
+
+    expect((await api.get("/api/admin/plans", { headers: ah })).status()).toBe(200);
+    expect((await api.get("/api/admin/tenants", { headers: ah })).status()).toBe(200);
+  });
+
   test("feature/auth gate: a request without a token is rejected", async () => {
     const res = await api.get("/api/paddy/varieties");
     expect(res.status()).toBe(401);

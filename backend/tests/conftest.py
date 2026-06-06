@@ -193,6 +193,15 @@ def auth_client(client: TestClient, seed_owner: User) -> TestClient:
 
 
 @pytest.fixture
+def admin_client(make_auth_client) -> TestClient:
+    """TestClient authenticated as a platform admin (is_platform_admin=True).
+
+    Its seeded company also gives the /admin/tenants endpoints a tenant to act on.
+    """
+    return make_auth_client(features=[], username="admin", is_platform_admin=True)
+
+
+@pytest.fixture
 def make_auth_client(client: TestClient, db_session: Session):
     """Factory: a TestClient authed as a fresh user with a chosen plan + role.
 
