@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import api from "../services/api";
+import { millingService } from "../services/MillingService";
+import { MillingMapper } from "../mappers/MillingMapper";
+import { paddyService } from "../services/PaddyService";
 import { Plus } from "lucide-react";
 import { format } from "date-fns";
 import QuickAdd from "../components/QuickAdd";
@@ -16,9 +18,9 @@ export default function MillingPage() {
   const { canEdit } = useAccess();
   const [showForm, setShowForm] = useState(false);
 
-  const { data: batches = [] } = useQuery({ queryKey: ["milling-batches"], queryFn: () => api.get("/milling/batches").then(r => r.data) });
-  const { data: equipment = [] } = useQuery({ queryKey: ["equipment"], queryFn: () => api.get("/milling/equipment").then(r => r.data) });
-  const { data: varieties = [] } = useQuery({ queryKey: ["varieties"], queryFn: () => api.get("/paddy/varieties").then(r => r.data) });
+  const { data: batches = [] } = useQuery({ queryKey: ["milling-batches"], queryFn: () => millingService.listBatches() });
+  const { data: equipment = [] } = useQuery({ queryKey: ["equipment"], queryFn: () => millingService.listEquipment() });
+  const { data: varieties = [] } = useQuery({ queryKey: ["varieties"], queryFn: () => paddyService.listVarieties() });
 
   const [form, setForm] = useState({
     equipment_id: "", start_datetime: format(new Date(), "yyyy-MM-dd'T'HH:mm"),
@@ -28,12 +30,7 @@ export default function MillingPage() {
   });
 
   const createMutation = useMutation({
-    mutationFn: (body: typeof form) => api.post("/milling/batches", {
-      ...body,
-      equipment_id: body.equipment_id || null,
-      inputs: body.inputs.map(i => ({ ...i, input_weight_kg: parseFloat(i.input_weight_kg), moisture_content_pct: i.moisture_content_pct ? parseFloat(i.moisture_content_pct) : null, variety_id: i.variety_id || null, grade_id: i.grade_id || null })),
-      outputs: body.outputs.map(o => ({ ...o, output_weight_kg: parseFloat(o.output_weight_kg), broken_rice_pct: o.broken_rice_pct ? parseFloat(o.broken_rice_pct) : null, variety_id: o.variety_id || null })),
-    }),
+    mutationFn: (body: typeof form) => millingService.createBatch(body),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["milling-batches"] }); setShowForm(false); },
   });
 
@@ -162,17 +159,15 @@ export default function MillingPage() {
           </thead>
           <tbody className="divide-y divide-gray-100">
             {batches.map((b: any) => {
-              const totalInput = b.inputs?.reduce((s: number, i: any) => s + Number(i.input_weight_kg), 0) || 0;
-              const milledOutput = b.outputs?.find((o: any) => o.output_type === "milled_rice");
-              const recovery = milledOutput && totalInput > 0 ? ((Number(milledOutput.output_weight_kg) / totalInput) * 100).toFixed(1) : "—";
+              const { totalInput, milledKg, recovery } = MillingMapper.summarizeBatch(b);
               return (
                 <tr key={b.id} className="hover:bg-gray-50">
                   <td className="px-4 py-3 font-mono text-xs">{b.batch_no}</td>
                   <td className="px-4 py-3">{b.start_datetime ? format(new Date(b.start_datetime), "MMM d, yyyy HH:mm") : "—"}</td>
                   <td className="px-4 py-3"><StatusBadge status={b.status} /></td>
                   <td className="px-4 py-3">{totalInput.toLocaleString()}</td>
-                  <td className="px-4 py-3">{milledOutput ? Number(milledOutput.output_weight_kg).toLocaleString() : "—"}</td>
-                  <td className="px-4 py-3">{recovery !== "—" ? `${recovery}%` : "—"}</td>
+                  <td className="px-4 py-3">{milledKg != null ? milledKg.toLocaleString() : "—"}</td>
+                  <td className="px-4 py-3">{recovery != null ? `${recovery.toFixed(1)}%` : "—"}</td>
                 </tr>
               );
             })}

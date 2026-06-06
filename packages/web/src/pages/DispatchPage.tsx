@@ -4,7 +4,7 @@ import {
   Truck, HardHat, Plus, Pencil, Power, X as XIcon, Check,
   Package, Calendar, AlertCircle, CheckCircle2, UserCircle2, Factory,
 } from "lucide-react";
-import api from "../services/api";
+import { dispatchService } from "../services/DispatchService";
 import ColorSwatch from "../components/dispatch/ColorSwatch";
 import CourierPicker, { CourierParty } from "../components/dispatch/CourierPicker";
 import { useAccess } from "../hooks/useAccess";
@@ -128,19 +128,19 @@ function DeliveryTab() {
 
   const { data: orders = [], isLoading } = useQuery<DispatchOrder[]>({
     queryKey: ["dispatch-orders"],
-    queryFn: () => api.get("/dispatch/orders").then((r) => r.data),
+    queryFn: () => dispatchService.listOrders(),
   });
   const { data: agents = [] } = useQuery<Agent[]>({
     queryKey: ["dispatch-agents-active"],
-    queryFn: () => api.get("/agents").then((r) => r.data),
+    queryFn: () => dispatchService.listAgents(),
   });
   const { data: millers = [] } = useQuery<Miller[]>({
     queryKey: ["dispatch-millers-active"],
-    queryFn: () => api.get("/millers").then((r) => r.data),
+    queryFn: () => dispatchService.listMillers(),
   });
 
   const markDelivered = useMutation({
-    mutationFn: (id: string) => api.patch(`/sales-orders/${id}/mark-delivered`),
+    mutationFn: (id: string) => dispatchService.markDelivered(id),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["dispatch-orders"] }),
   });
 
@@ -284,10 +284,7 @@ function AssignCourierModal({
 
   const assign = useMutation({
     mutationFn: (p: { kind: "agent" | "miller"; id: string } | null) =>
-      api.patch(`/sales-orders/${order.id}/assign-courier`, {
-        agent_id: p?.kind === "agent" ? p.id : null,
-        miller_id: p?.kind === "miller" ? p.id : null,
-      }),
+      dispatchService.assignCourier(order.id, p),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["dispatch-orders"] });
       onClose();
@@ -351,11 +348,11 @@ function FieldOperatorsTab() {
 
   const { data: agents = [] } = useQuery<Agent[]>({
     queryKey: ["dispatch-agents-all"],
-    queryFn: () => api.get("/agents?include_inactive=true").then((r) => r.data),
+    queryFn: () => dispatchService.listAgents(true),
   });
   const { data: millers = [] } = useQuery<Miller[]>({
     queryKey: ["dispatch-millers-all"],
-    queryFn: () => api.get("/millers?include_inactive=true").then((r) => r.data),
+    queryFn: () => dispatchService.listMillers(true),
   });
 
   const rows: OperatorRow[] = useMemo(() => {
@@ -376,7 +373,7 @@ function FieldOperatorsTab() {
 
   const toggleActive = useMutation({
     mutationFn: ({ row, is_active }: { row: OperatorRow; is_active: boolean }) =>
-      api.put(`/${row.kind === "agent" ? "agents" : "millers"}/${row.id}`, { is_active }),
+      dispatchService.setOperatorActive(row.kind, row.id, is_active),
     onSuccess: invalidateAll,
   });
 
@@ -567,7 +564,6 @@ function EditOperatorRow({
 
   const save = useMutation({
     mutationFn: () => {
-      const url = row.kind === "agent" ? `/agents/${row.id}` : `/millers/${row.id}`;
       const common = {
         name: name.trim() || row.name,
         contact_person: contact || null,
@@ -581,7 +577,7 @@ function EditOperatorRow({
             capacity_kg_per_hr: capacity ? parseFloat(capacity) : null,
             milling_fee_per_kg: fee ? parseFloat(fee) : null,
           };
-      return api.put(url, body);
+      return dispatchService.updateOperator(row.kind, row.id, body);
     },
     onSuccess: () => onSaved(),
     onError: (e: any) => setError(e?.response?.data?.detail ?? "Save failed."),
@@ -667,18 +663,14 @@ function NewOperatorForm({
         phone: phone || null,
         address: address || null,
       };
-      if (kind === "agent") {
-        return api.post("/agents", {
-          ...common,
-          agent_type: agentType || null,
-          commission_pct: commission ? parseFloat(commission) : 0,
-        });
-      }
-      return api.post("/millers", {
-        ...common,
-        capacity_kg_per_hr: capacity ? parseFloat(capacity) : null,
-        milling_fee_per_kg: fee ? parseFloat(fee) : null,
-      });
+      const body = kind === "agent"
+        ? { ...common, agent_type: agentType || null, commission_pct: commission ? parseFloat(commission) : 0 }
+        : {
+            ...common,
+            capacity_kg_per_hr: capacity ? parseFloat(capacity) : null,
+            milling_fee_per_kg: fee ? parseFloat(fee) : null,
+          };
+      return dispatchService.createOperator(kind, body);
     },
     onSuccess: () => { onSaved(); },
     onError: (e: any) => setError(e?.response?.data?.detail ?? "Failed to add operator."),
