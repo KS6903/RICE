@@ -65,6 +65,7 @@ files = [
     "app/services/weather.py",
     "app/services/dispatch_service.py",
     "app/services/auth_service.py",
+    "app/services/billing_service.py",
     "app/api/paddy.py",
     "app/api/inventory.py",
     "app/api/activity.py",
@@ -80,6 +81,7 @@ files = [
     "app/api/weather.py",
     "app/api/dispatch.py",
     "app/api/auth.py",
+    "app/api/billing.py",
 ]
 check_untyped_defs = true
 warn_redundant_casts = true

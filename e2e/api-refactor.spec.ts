@@ -327,6 +327,27 @@ test.describe("Refactored API contract (paddy / inventory / activity)", () => {
     }
   });
 
+  test("GET /api/billing/plans returns active plans", async () => {
+    const res = await api.get("/api/billing/plans", { headers: auth() });
+    expect(res.status()).toBe(200);
+    const rows = await res.json();
+    expect(Array.isArray(rows)).toBeTruthy();
+    for (const p of rows) {
+      expect(p).toHaveProperty("code");
+      expect(p).toHaveProperty("features");
+    }
+  });
+
+  test("GET /api/billing/subscription + /upgrade-requests/mine respond", async () => {
+    const sub = await api.get("/api/billing/subscription", { headers: auth() });
+    expect(sub.status()).toBe(200);
+    expect(await sub.json()).toHaveProperty("subscription");
+
+    const mine = await api.get("/api/billing/upgrade-requests/mine", { headers: auth() });
+    expect(mine.status()).toBe(200);
+    expect(await mine.json()).toHaveProperty("request");
+  });
+
   test("GET /api/auth/me returns the profile with features + subscription", async () => {
     const res = await api.get("/api/auth/me", { headers: auth() });
     expect(res.status()).toBe(200);

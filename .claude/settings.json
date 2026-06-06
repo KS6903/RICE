@@ -268,7 +268,11 @@
       "Bash(.venv/Scripts/python.exe -m ruff check --fix tests app/repositories/dispatch.py app/services/dispatch_service.py app/api/dispatch.py app/schemas/dispatch.py)",
       "Bash(gh run *)",
       "Bash(.venv/Scripts/python.exe -m pytest tests/characterization/test_auth.py -q)",
-      "Bash(.venv/Scripts/python.exe -m ruff check --fix tests app/services/auth_service.py app/api/auth.py app/schemas/auth.py app/core/exceptions.py)"
+      "Bash(.venv/Scripts/python.exe -m ruff check --fix tests app/services/auth_service.py app/api/auth.py app/schemas/auth.py app/core/exceptions.py)",
+      "Bash(.venv/Scripts/python.exe -m uvicorn app.main:app --host 0.0.0.0 --port 8000)",
+      "Bash(.venv/Scripts/python.exe -m pytest tests/characterization/test_billing.py -q)",
+      "Bash(.venv/Scripts/python.exe -m ruff check --fix tests app/repositories/billing.py app/services/billing_service.py app/api/billing.py app/schemas/billing.py)",
+      "Bash(.venv/Scripts/python.exe -)"
     ],
     "additionalDirectories": [
       "d:\\RICE"
