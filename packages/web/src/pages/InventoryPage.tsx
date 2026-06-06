@@ -15,26 +15,10 @@ import WarehousePicker from "../components/inventory/WarehousePicker";
 import AddInventoryModal from "../components/inventory/AddInventoryModal";
 import { useFeature } from "../hooks/useFeature";
 import { useAuthStore } from "../stores/authStore";
-
-const BYPRODUCT_NAMES: Record<string, string> = {
-  ipa: "Ipa (Rice Hull)",
-  darak: "Darak (Rice Bran)",
-  binlid: "Binlid (Broken Rice)",
-};
+import { inventoryService } from "../services/InventoryService";
+import { InventoryMapper, BYPRODUCT_NAMES, type UnifiedItem } from "../mappers/InventoryMapper";
 
 type ViewMode = "classic" | "spreadsheet" | "cards" | "bins" | "warehouse" | "new-warehouse";
-
-type UnifiedItem = {
-  id: string;
-  type: "palay" | "milled" | "byproduct";
-  typeLabel: string;
-  variety: string;
-  grade: string;
-  branchId: string | null;
-  branchName: string;
-  quantity_kg: number;
-  color: string;
-};
 
 const TYPE_COLORS: Record<UnifiedItem["type"], { fill: string; ring: string; bar: string; text: string }> = {
   palay:     { fill: "bg-amber-100 dark:bg-amber-950/40",    ring: "ring-amber-300/60",    bar: "bg-amber-500",    text: "text-amber-700 dark:text-amber-300" },
@@ -47,7 +31,6 @@ export default function InventoryPage() {
   const [view, setView] = useState<ViewMode>("classic");
   const [selected, setSelected] = useState<UnifiedItem | null>(null);
   const [showAdd, setShowAdd] = useState(false);
-  const branchQuery = branchFilter ? `?branch_id=${branchFilter}` : "";
 
   // Adding stock is an owner/admin action — mirrors the backend role gate so we
   // don't dangle a button that would just 403. The button sits in the page
@@ -55,40 +38,16 @@ export default function InventoryPage() {
   const role = useAuthStore((s) => s.user?.role);
   const canAddInventory = role === "owner" || role === "admin";
 
-  const { data: branches = [] } = useQuery<any[]>({ queryKey: ["branches"], queryFn: () => api.get("/branches/").then(r => r.data) });
-  const { data: milled = [] } = useQuery<any[]>({ queryKey: ["milled-rice", branchFilter], queryFn: () => api.get(`/inventory/milled-rice${branchQuery}`).then(r => r.data) });
-  const { data: byproducts = [] } = useQuery<any[]>({ queryKey: ["byproducts", branchFilter], queryFn: () => api.get(`/inventory/byproducts${branchQuery}`).then(r => r.data) });
-  const { data: palay = [] } = useQuery<any[]>({ queryKey: ["palay-inventory", branchFilter], queryFn: () => api.get(`/paddy/inventory${branchQuery}`).then(r => r.data) });
-  const { data: summary } = useQuery<any>({ queryKey: ["inventory-summary", branchFilter], queryFn: () => api.get(`/inventory/summary${branchQuery}`).then(r => r.data) });
+  const { data: branches = [] } = useQuery<any[]>({ queryKey: ["branches"], queryFn: () => inventoryService.getBranches() });
+  const { data: milled = [] } = useQuery<any[]>({ queryKey: ["milled-rice", branchFilter], queryFn: () => inventoryService.getMilledRice(branchFilter) });
+  const { data: byproducts = [] } = useQuery<any[]>({ queryKey: ["byproducts", branchFilter], queryFn: () => inventoryService.getByproducts(branchFilter) });
+  const { data: palay = [] } = useQuery<any[]>({ queryKey: ["palay-inventory", branchFilter], queryFn: () => inventoryService.getPalay(branchFilter) });
+  const { data: summary } = useQuery<any>({ queryKey: ["inventory-summary", branchFilter], queryFn: () => inventoryService.getSummary(branchFilter) });
 
-  const items: UnifiedItem[] = useMemo(() => {
-    const out: UnifiedItem[] = [];
-    for (const p of palay) {
-      out.push({
-        id: `palay-${p.id}`, type: "palay", typeLabel: "Palay (Paddy)",
-        variety: p.variety?.code || "—", grade: p.grade?.code || "—",
-        branchId: p.branch_id, branchName: p.branch?.name || "Unassigned",
-        quantity_kg: Number(p.quantity_kg), color: TYPE_COLORS.palay.bar,
-      });
-    }
-    for (const m of milled) {
-      out.push({
-        id: `milled-${m.id}`, type: "milled", typeLabel: "Milled Rice (Bigas)",
-        variety: m.variety?.code || "—", grade: m.grade_name || "—",
-        branchId: m.branch_id, branchName: m.branch?.name || "Unassigned",
-        quantity_kg: Number(m.quantity_kg), color: TYPE_COLORS.milled.bar,
-      });
-    }
-    for (const b of byproducts) {
-      out.push({
-        id: `bp-${b.id}`, type: "byproduct", typeLabel: "By-product",
-        variety: BYPRODUCT_NAMES[b.byproduct_type] || b.byproduct_type, grade: "—",
-        branchId: b.branch_id, branchName: b.branch?.name || "Unassigned",
-        quantity_kg: Number(b.quantity_kg), color: TYPE_COLORS.byproduct.bar,
-      });
-    }
-    return out;
-  }, [palay, milled, byproducts]);
+  const items: UnifiedItem[] = useMemo(
+    () => InventoryMapper.toUnifiedItems(palay, milled, byproducts),
+    [palay, milled, byproducts],
+  );
 
   const totalKg = items.reduce((s, i) => s + i.quantity_kg, 0);
 

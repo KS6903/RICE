@@ -6,7 +6,7 @@ async function login(page: import("@playwright/test").Page) {
   await page.goto("/login");
   await page.getByPlaceholder("your.username").fill(TENANT.username);
   await page.getByPlaceholder("••••••••").fill(TENANT.password);
-  await page.getByRole("button", { name: /sign in/i }).click();
+  await page.getByRole("button", { name: "Sign in", exact: true }).click();
   await expect(page).not.toHaveURL(/\/login/, { timeout: 10_000 });
 }
 

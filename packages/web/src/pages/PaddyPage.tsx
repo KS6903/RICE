@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import api from "../services/api";
+import { paddyService } from "../services/PaddyService";
 import { Plus, Power, History, ChevronDown, ChevronUp } from "lucide-react";
 import { format } from "date-fns";
 import { SUPPLIER_TYPES } from "@rice-mill/shared";
@@ -24,19 +24,19 @@ export default function PaddyPage() {
   const [showSupplierForm, setShowSupplierForm] = useState(false);
   const [supplierForm, setSupplierForm] = useState({ name: "", supplier_type: "farmer", contact_person: "", phone: "", municipality: "", province: "", farmer_id: "", address: "" });
 
-  const { data: purchases = [] } = useQuery({ queryKey: ["palay-purchases"], queryFn: () => api.get("/paddy/purchases").then(r => r.data) });
+  const { data: purchases = [] } = useQuery({ queryKey: ["palay-purchases"], queryFn: () => paddyService.listPurchases() });
   const { data: suppliers = [] } = useQuery({
     queryKey: ["suppliers"],
-    queryFn: () => api.get(`/paddy/suppliers?include_inactive=true`).then(r => r.data),
+    queryFn: () => paddyService.listSuppliers(true),
   });
   const activeSuppliers = suppliers.filter((s: any) => s.is_active);
   const inactiveSuppliers = suppliers.filter((s: any) => !s.is_active);
-  const { data: varieties = [] } = useQuery({ queryKey: ["varieties"], queryFn: () => api.get("/paddy/varieties").then(r => r.data) });
-  const { data: grades = [] } = useQuery({ queryKey: ["grades"], queryFn: () => api.get("/paddy/grades").then(r => r.data) });
-  const { data: inventory = [] } = useQuery({ queryKey: ["palay-inventory"], queryFn: () => api.get("/paddy/inventory").then(r => r.data) });
+  const { data: varieties = [] } = useQuery({ queryKey: ["varieties"], queryFn: () => paddyService.listVarieties() });
+  const { data: grades = [] } = useQuery({ queryKey: ["grades"], queryFn: () => paddyService.listGrades() });
+  const { data: inventory = [] } = useQuery({ queryKey: ["palay-inventory"], queryFn: () => paddyService.listInventory() });
 
   const createSupplier = useMutation({
-    mutationFn: (b: typeof supplierForm) => api.post("/paddy/suppliers", b),
+    mutationFn: (b: typeof supplierForm) => paddyService.createSupplier(b),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["suppliers"] });
       setShowSupplierForm(false);
@@ -45,7 +45,7 @@ export default function PaddyPage() {
   });
 
   const toggleSupplier = useMutation({
-    mutationFn: ({ id, is_active }: { id: string; is_active: boolean }) => api.put(`/paddy/suppliers/${id}`, { is_active }),
+    mutationFn: ({ id, is_active }: { id: string; is_active: boolean }) => paddyService.setSupplierActive(id, is_active),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["suppliers"] }),
   });
 
@@ -56,17 +56,7 @@ export default function PaddyPage() {
   });
 
   const createMutation = useMutation({
-    mutationFn: (body: typeof form) => api.post("/paddy/purchases", {
-      ...body,
-      items: body.items.map(i => ({
-        variety_id: i.variety_id || null,
-        grade_id: i.grade_id || null,
-        gross_weight_kg: parseFloat(i.gross_weight_kg),
-        tare_weight_kg: parseFloat(i.tare_weight_kg) || 0,
-        moisture_content_pct: i.moisture_content_pct ? parseFloat(i.moisture_content_pct) : null,
-        price_per_cavan: parseFloat(i.price_per_cavan),
-      })),
-    }),
+    mutationFn: (body: typeof form) => paddyService.createPurchase(body),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["palay-purchases"] }); qc.invalidateQueries({ queryKey: ["palay-inventory"] }); setShowForm(false); },
   });
 

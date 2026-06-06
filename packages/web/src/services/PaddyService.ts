@@ -1,0 +1,75 @@
+// PaddyService — typed API client for the paddy domain (Phase F).
+// Wraps the shared axios instance; centralizes the paddy endpoints and the
+// purchase-form → API-payload transform (extracted from PaddyPage so it's
+// unit-testable without HTTP).
+import api from "./api";
+
+export type PurchaseItemForm = {
+  variety_id: string;
+  grade_id: string;
+  gross_weight_kg: string;
+  tare_weight_kg: string;
+  moisture_content_pct: string;
+  price_per_cavan: string;
+};
+
+export type PurchaseForm = {
+  supplier_id: string;
+  purchase_date: string;
+  delivery_type: string;
+  remarks: string;
+  items: PurchaseItemForm[];
+};
+
+export class PaddyService {
+  constructor(private http = api) {}
+
+  listPurchases(): Promise<any[]> {
+    return this.http.get("/paddy/purchases").then((r) => r.data);
+  }
+
+  listSuppliers(includeInactive = true): Promise<any[]> {
+    return this.http.get(`/paddy/suppliers?include_inactive=${includeInactive}`).then((r) => r.data);
+  }
+
+  listVarieties(): Promise<any[]> {
+    return this.http.get("/paddy/varieties").then((r) => r.data);
+  }
+
+  listGrades(): Promise<any[]> {
+    return this.http.get("/paddy/grades").then((r) => r.data);
+  }
+
+  listInventory(): Promise<any[]> {
+    return this.http.get("/paddy/inventory").then((r) => r.data);
+  }
+
+  createSupplier(body: Record<string, unknown>): Promise<any> {
+    return this.http.post("/paddy/suppliers", body).then((r) => r.data);
+  }
+
+  setSupplierActive(id: string, isActive: boolean): Promise<any> {
+    return this.http.put(`/paddy/suppliers/${id}`, { is_active: isActive }).then((r) => r.data);
+  }
+
+  /** Convert the string-keyed purchase form into the numeric API payload. Pure. */
+  static toPurchasePayload(form: PurchaseForm) {
+    return {
+      ...form,
+      items: form.items.map((i) => ({
+        variety_id: i.variety_id || null,
+        grade_id: i.grade_id || null,
+        gross_weight_kg: parseFloat(i.gross_weight_kg),
+        tare_weight_kg: parseFloat(i.tare_weight_kg) || 0,
+        moisture_content_pct: i.moisture_content_pct ? parseFloat(i.moisture_content_pct) : null,
+        price_per_cavan: parseFloat(i.price_per_cavan),
+      })),
+    };
+  }
+
+  createPurchase(form: PurchaseForm): Promise<any> {
+    return this.http.post("/paddy/purchases", PaddyService.toPurchasePayload(form)).then((r) => r.data);
+  }
+}
+
+export const paddyService = new PaddyService();

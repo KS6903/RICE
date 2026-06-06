@@ -13,7 +13,7 @@ test.describe("Authentication", () => {
     await page.goto("/login");
     await page.getByPlaceholder("your.username").fill("nobody");
     await page.getByPlaceholder("••••••••").fill("wrongpassword");
-    await page.getByRole("button", { name: /sign in/i }).click();
+    await page.getByRole("button", { name: "Sign in", exact: true }).click();
 
     await expect(page.getByText(/invalid/i)).toBeVisible();
     await expect(page).toHaveURL(/\/login/);
@@ -23,7 +23,7 @@ test.describe("Authentication", () => {
     await page.goto("/login");
     await page.getByPlaceholder("your.username").fill(ADMIN.username);
     await page.getByPlaceholder("••••••••").fill(ADMIN.password);
-    await page.getByRole("button", { name: /sign in/i }).click();
+    await page.getByRole("button", { name: "Sign in", exact: true }).click();
 
     await expect(page).toHaveURL(/\/admin/, { timeout: 10_000 });
   });
@@ -32,7 +32,7 @@ test.describe("Authentication", () => {
     await page.goto("/login");
     await page.getByPlaceholder("your.username").fill(TENANT.username);
     await page.getByPlaceholder("••••••••").fill(TENANT.password);
-    await page.getByRole("button", { name: /sign in/i }).click();
+    await page.getByRole("button", { name: "Sign in", exact: true }).click();
 
     await expect(page).not.toHaveURL(/\/login/, { timeout: 10_000 });
     await expect(page).not.toHaveURL(/\/admin/);
@@ -42,7 +42,7 @@ test.describe("Authentication", () => {
     await page.goto("/login");
     await page.getByPlaceholder("your.username").fill(TENANT.username);
     await page.getByPlaceholder("••••••••").fill(TENANT.password);
-    await page.getByRole("button", { name: /sign in/i }).click();
+    await page.getByRole("button", { name: "Sign in", exact: true }).click();
 
     await expect(page).not.toHaveURL(/\/login/, { timeout: 10_000 });
     const urlAfterLogin = page.url();
