@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import api from "../services/api";
+import { salesService } from "../services/SalesService";
+import { inventoryService } from "../services/InventoryService";
 import { Plus, Power, History, ChevronDown, ChevronUp } from "lucide-react";
 import { format } from "date-fns";
 import { CUSTOMER_TYPES } from "@rice-mill/shared";
@@ -27,22 +28,18 @@ export default function SalesPage() {
     tin: "", credit_limit: "0", payment_terms_days: "0", is_p20_accredited: false,
   });
 
-  const { data: orders = [] } = useQuery({ queryKey: ["sales-orders"], queryFn: () => api.get("/sales/orders").then(r => r.data) });
-  const { data: invoices = [] } = useQuery({ queryKey: ["invoices"], queryFn: () => api.get("/sales/invoices").then(r => r.data) });
+  const { data: orders = [] } = useQuery({ queryKey: ["sales-orders"], queryFn: () => salesService.listOrders() });
+  const { data: invoices = [] } = useQuery({ queryKey: ["invoices"], queryFn: () => salesService.listInvoices() });
   const { data: customers = [] } = useQuery({
     queryKey: ["customers"],
-    queryFn: () => api.get(`/sales/customers?include_inactive=true`).then(r => r.data),
+    queryFn: () => salesService.listCustomers(true),
   });
   const activeCustomers = customers.filter((c: any) => c.is_active);
   const inactiveCustomers = customers.filter((c: any) => !c.is_active);
-  const { data: milled = [] } = useQuery({ queryKey: ["milled-rice"], queryFn: () => api.get("/inventory/milled-rice").then(r => r.data) });
+  const { data: milled = [] } = useQuery({ queryKey: ["milled-rice"], queryFn: () => inventoryService.getMilledRice() });
 
   const createCustomer = useMutation({
-    mutationFn: (b: typeof customerForm) => api.post("/sales/customers", {
-      ...b,
-      credit_limit: parseFloat(b.credit_limit) || 0,
-      payment_terms_days: parseInt(b.payment_terms_days) || 0,
-    }),
+    mutationFn: (b: typeof customerForm) => salesService.createCustomer(b),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["customers"] });
       setShowCustomerForm(false);
@@ -51,7 +48,7 @@ export default function SalesPage() {
   });
 
   const toggleCustomer = useMutation({
-    mutationFn: ({ id, is_active }: { id: string; is_active: boolean }) => api.put(`/sales/customers/${id}`, { is_active }),
+    mutationFn: ({ id, is_active }: { id: string; is_active: boolean }) => salesService.setCustomerActive(id, is_active),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["customers"] }),
   });
 
@@ -62,18 +59,12 @@ export default function SalesPage() {
   });
 
   const createOrder = useMutation({
-    mutationFn: (body: typeof orderForm) => api.post("/sales/orders", {
-      ...body,
-      discount_pct: parseFloat(body.discount_pct) || 0,
-      items: body.items.map(i => ({ ...i, quantity_kg: parseFloat(i.quantity_kg), unit_price_per_kg: parseFloat(i.unit_price_per_kg), variety_id: i.variety_id || null })),
-    }),
+    mutationFn: (body: typeof orderForm) => salesService.createOrder(body),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["sales-orders"] }); setShowOrderForm(false); },
   });
 
   const createInvoice = useMutation({
-    mutationFn: (order_id: string) => api.post("/sales/invoices", {
-      order_id, invoice_date: format(new Date(), "yyyy-MM-dd"),
-    }),
+    mutationFn: (order_id: string) => salesService.createInvoice(order_id),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["invoices"] }); qc.invalidateQueries({ queryKey: ["sales-orders"] }); },
   });
 

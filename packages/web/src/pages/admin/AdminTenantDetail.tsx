@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useParams, Link } from "react-router-dom";
-import api from "../../services/api";
+import { adminService } from "../../services/AdminService";
 import { format } from "date-fns";
 import ActivityLogList from "../../components/activity/ActivityLogList";
 import type { ActivityRow } from "../../components/activity/format";
@@ -51,7 +51,7 @@ function statusBadge(status: string) {
 function TenantActivityLog({ tenantId }: { tenantId: string }) {
   const { data: rows = [], isLoading } = useQuery<ActivityRow[]>({
     queryKey: ["admin-tenant-activity", tenantId],
-    queryFn: () => api.get(`/admin/tenants/${tenantId}/activity`).then((r) => r.data),
+    queryFn: () => adminService.getTenantActivity(tenantId),
     enabled: !!tenantId,
   });
   return <ActivityLogList rows={rows} loading={isLoading} />;
@@ -224,14 +224,14 @@ function SubscriptionManager({ tenantId, tenantName }: { tenantId: string; tenan
   /* Fetch available plans */
   const { data: plans = [] } = useQuery<any[]>({
     queryKey: ["admin-plans"],
-    queryFn: () => api.get("/admin/plans").then((r) => r.data),
+    queryFn: () => adminService.getPlans(),
   });
 
   /* Fetch current subscription */
   const { data: subData } = useQuery({
     queryKey: ["admin-tenant-sub", tenantId],
     queryFn: () =>
-      api.get(`/admin/tenants/${tenantId}/subscription`).then((r) => r.data),
+      adminService.getTenantSubscription(tenantId),
     enabled: !!tenantId,
   });
 
@@ -303,10 +303,7 @@ function SubscriptionManager({ tenantId, tenantName }: { tenantId: string; tenan
   /* Mutation to assign/update subscription. Writes the PUT response directly into the
      query cache so the UI reflects the new plan instantly, not on the next poll. */
   const save = useMutation({
-    mutationFn: async (payload: any) => {
-      const resp = await api.put(`/admin/tenants/${tenantId}/subscription`, payload);
-      return resp.data;
-    },
+    mutationFn: (payload: any) => adminService.assignTenantSubscription(tenantId, payload),
     onSuccess: (response: any) => {
       if (response?.subscription) {
         qc.setQueryData(["admin-tenant-sub", tenantId], {
@@ -637,14 +634,14 @@ export default function AdminTenantDetail() {
   const qc = useQueryClient();
   const { data } = useQuery({
     queryKey: ["admin-tenant", id],
-    queryFn: () => api.get(`/admin/tenants/${id}`).then((r) => r.data),
+    queryFn: () => adminService.getTenant(id!),
     enabled: !!id,
     placeholderData: (prev) => prev,
   });
 
   const toggle = useMutation({
     mutationFn: (is_active: boolean) =>
-      api.put(`/admin/tenants/${id}/active`, { is_active }),
+      adminService.setTenantActive(id!, is_active),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["admin-tenant", id] });
       qc.invalidateQueries({ queryKey: ["admin-tenants"] });

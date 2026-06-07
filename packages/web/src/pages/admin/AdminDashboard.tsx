@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
-import api from "../../services/api";
+import { adminService } from "../../services/AdminService";
 import { Building2, Users, ShoppingCart, Wheat, Factory, TrendingUp, Activity, ArrowUpCircle, CreditCard, Inbox } from "lucide-react";
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
 import { format } from "date-fns";
@@ -29,11 +29,11 @@ function StatCard({ label, value, icon: Icon, color, sublabel }: {
 }
 
 export default function AdminDashboard() {
-  const { data: stats } = useQuery({ queryKey: ["admin-stats"], queryFn: () => api.get("/admin/stats").then((r) => r.data) });
-  const { data: trend = [] } = useQuery({ queryKey: ["admin-signups-trend"], queryFn: () => api.get("/admin/signups-trend?days=30").then((r) => r.data) });
+  const { data: stats } = useQuery({ queryKey: ["admin-stats"], queryFn: () => adminService.getStats() });
+  const { data: trend = [] } = useQuery({ queryKey: ["admin-signups-trend"], queryFn: () => adminService.getSignupsTrend(30) });
   const { data: pending } = useQuery({
     queryKey: ["admin-pending-upgrades"],
-    queryFn: () => api.get("/admin/upgrade-requests/pending-count").then((r) => r.data),
+    queryFn: () => adminService.getPendingCount(),
     refetchInterval: 5 * 1000,
     refetchOnWindowFocus: true,
     refetchIntervalInBackground: true,

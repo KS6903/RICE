@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
-import api from "../../services/api";
+import { adminService } from "../../services/AdminService";
 import { format } from "date-fns";
 import { Search, ExternalLink, Power, History, ChevronDown, ChevronUp, AlertCircle, Wand2, ShieldOff, Crown, Zap, Rocket, Star, Infinity as InfinityIcon } from "lucide-react";
 
@@ -112,22 +112,22 @@ export default function AdminTenants() {
 
   const { data: tenants = [], isLoading } = useQuery({
     queryKey: ["admin-tenants"],
-    queryFn: () => api.get("/admin/tenants").then((r) => r.data),
+    queryFn: () => adminService.getTenants(),
   });
 
   const { data: missing } = useQuery({
     queryKey: ["admin-missing-subs"],
-    queryFn: () => api.get("/admin/subscriptions/missing-count").then((r) => r.data),
+    queryFn: () => adminService.getMissingCount(),
   });
 
   const toggle = useMutation({
     mutationFn: ({ id, is_active }: { id: string; is_active: boolean }) =>
-      api.put(`/admin/tenants/${id}/active`, { is_active }),
+      adminService.setTenantActive(id, is_active),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["admin-tenants"] }),
   });
 
   const backfill = useMutation({
-    mutationFn: () => api.post("/admin/subscriptions/backfill-free"),
+    mutationFn: () => adminService.backfillFree(),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["admin-tenants"] });
       qc.invalidateQueries({ queryKey: ["admin-missing-subs"] });
@@ -135,7 +135,7 @@ export default function AdminTenants() {
   });
 
   const sweep = useMutation({
-    mutationFn: () => api.post("/admin/subscriptions/sweep-expired"),
+    mutationFn: () => adminService.sweepExpired(),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["admin-tenants"] });
     },

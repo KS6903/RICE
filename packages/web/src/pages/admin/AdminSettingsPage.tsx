@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import api from "../../services/api";
+import { adminService } from "../../services/AdminService";
+import { authService } from "../../services/AuthService";
 import { useAuthStore } from "../../stores/authStore";
 import {
   CreditCard, User as UserIcon, KeyRound, Plus, Check, Loader2,
@@ -115,15 +116,13 @@ function PlansTab() {
 
   const { data: plans = [], isLoading } = useQuery<Plan[]>({
     queryKey: ["admin-plans"],
-    queryFn: () => api.get("/admin/plans").then((r) => r.data),
+    queryFn: () => adminService.getPlans(),
   });
 
   const upsert = useMutation({
     mutationFn: (payload: typeof EMPTY_PLAN & { id?: string }) => {
       const { id, ...body } = payload;
-      return id
-        ? api.put(`/admin/plans/${id}`, body).then((r) => r.data)
-        : api.post("/admin/plans", body).then((r) => r.data);
+      return id ? adminService.updatePlan(id, body) : adminService.createPlan(body);
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["admin-plans"] });
@@ -138,7 +137,7 @@ function PlansTab() {
   });
 
   const del = useMutation({
-    mutationFn: (id: string) => api.delete(`/admin/plans/${id}`),
+    mutationFn: (id: string) => adminService.deletePlan(id),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["admin-plans"] });
       qc.invalidateQueries({ queryKey: ["billing-plans"] });
@@ -334,9 +333,8 @@ function ProfileTab() {
 
   const save = useMutation({
     mutationFn: async () => {
-      await api.put("/auth/me", form);
-      const { data: me } = await api.get("/auth/me");
-      return me;
+      await authService.updateProfile(form);
+      return authService.me();
     },
     onSuccess: (me) => {
       setUser(me);
@@ -406,11 +404,7 @@ function PasswordTab() {
   const [err, setErr] = useState("");
 
   const change = useMutation({
-    mutationFn: () =>
-      api.post("/auth/change-password", {
-        current_password: form.current,
-        new_password: form.next,
-      }),
+    mutationFn: () => authService.changePassword(form.current, form.next),
     onSuccess: () => {
       setForm({ current: "", next: "", confirm: "" });
       setSaved(true);

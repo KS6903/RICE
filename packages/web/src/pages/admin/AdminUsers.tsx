@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
-import api from "../../services/api";
+import { adminService } from "../../services/AdminService";
 import { Search } from "lucide-react";
 import { format } from "date-fns";
 
@@ -10,7 +10,7 @@ export default function AdminUsers() {
 
   const { data: users = [], isLoading } = useQuery({
     queryKey: ["admin-users"],
-    queryFn: () => api.get("/admin/users").then((r) => r.data),
+    queryFn: () => adminService.listAllUsers(),
   });
 
   const filtered = users.filter((u: any) => {

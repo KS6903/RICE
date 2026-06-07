@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
-import api from "../../services/api";
+import { adminService } from "../../services/AdminService";
 import { format } from "date-fns";
 import { Check, X, Loader2, MessageCircle, ArrowRight, Inbox, RefreshCw, TrendingUp } from "lucide-react";
 import type { UpgradeRequest } from "@rice-mill/shared";
@@ -111,12 +111,12 @@ export default function AdminUpgradeRequests() {
 
   const { data: requests = [], isLoading } = useQuery<UpgradeRequest[]>({
     queryKey: ["admin-upgrade-requests", filter],
-    queryFn: () => api.get(`/admin/upgrade-requests?status_filter=${filter}`).then((r) => r.data),
+    queryFn: () => adminService.listUpgradeRequests(filter),
   });
 
   const approve = useMutation({
     mutationFn: ({ id, admin_note }: { id: string; admin_note: string | null }) =>
-      api.post(`/admin/upgrade-requests/${id}/approve`, { admin_note }),
+      adminService.approveRequest(id, { admin_note }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["admin-upgrade-requests"] });
       qc.invalidateQueries({ queryKey: ["admin-pending-upgrades"] });
@@ -126,7 +126,7 @@ export default function AdminUpgradeRequests() {
 
   const reject = useMutation({
     mutationFn: ({ id, admin_note }: { id: string; admin_note: string | null }) =>
-      api.post(`/admin/upgrade-requests/${id}/reject`, { admin_note }),
+      adminService.rejectRequest(id, { admin_note }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["admin-upgrade-requests"] });
       qc.invalidateQueries({ queryKey: ["admin-pending-upgrades"] });
