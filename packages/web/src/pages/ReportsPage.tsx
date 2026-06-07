@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import api from "../services/api";
+import { reportsService } from "../services/ReportsService";
 import { format, startOfMonth, endOfMonth } from "date-fns";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
 import { Lock } from "lucide-react";
@@ -16,12 +16,12 @@ export default function ReportsPage() {
 
   const { data: pnl } = useQuery({
     queryKey: ["pnl", dateRange.start, dateRange.end],
-    queryFn: () => api.get(`/reports/pnl?period_start=${dateRange.start}&period_end=${dateRange.end}`).then(r => r.data),
+    queryFn: () => reportsService.getPnl(dateRange.start, dateRange.end),
   });
 
   const { data: arAging } = useQuery({
     queryKey: ["ar-aging"],
-    queryFn: () => api.get("/reports/ar-aging").then(r => r.data),
+    queryFn: () => reportsService.getArAging(),
     enabled: hasAdvanced,
   });
 

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import api from "../services/api";
+import { usersService } from "../services/UsersService";
 import { Plus } from "lucide-react";
 import { ROLES } from "@rice-mill/shared";
 
@@ -8,12 +8,12 @@ export default function UsersPage() {
   const qc = useQueryClient();
   const [showForm, setShowForm] = useState(false);
 
-  const { data: users = [] } = useQuery({ queryKey: ["users"], queryFn: () => api.get("/users/").then(r => r.data) });
+  const { data: users = [] } = useQuery({ queryKey: ["users"], queryFn: () => usersService.list() });
 
   const [form, setForm] = useState({ username: "", full_name: "", email: "", password: "", role_id: "3" });
 
   const createUser = useMutation({
-    mutationFn: (body: typeof form) => api.post("/users/", { ...body, role_id: parseInt(body.role_id) }),
+    mutationFn: (body: typeof form) => usersService.create(body),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["users"] }); setShowForm(false); },
   });
 

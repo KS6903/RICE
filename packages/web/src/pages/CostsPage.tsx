@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import api from "../services/api";
+import { costsService } from "../services/CostsService";
+import { millingService } from "../services/MillingService";
 import { Plus } from "lucide-react";
 import { format } from "date-fns";
 import QuickAdd from "../components/QuickAdd";
@@ -9,9 +10,9 @@ export default function CostsPage() {
   const qc = useQueryClient();
   const [showForm, setShowForm] = useState(false);
 
-  const { data: expenses = [] } = useQuery({ queryKey: ["expenses"], queryFn: () => api.get("/costs/expenses").then(r => r.data) });
-  const { data: categories = [] } = useQuery({ queryKey: ["expense-categories"], queryFn: () => api.get("/costs/categories").then(r => r.data) });
-  const { data: batches = [] } = useQuery({ queryKey: ["milling-batches"], queryFn: () => api.get("/milling/batches").then(r => r.data) });
+  const { data: expenses = [] } = useQuery({ queryKey: ["expenses"], queryFn: () => costsService.listExpenses() });
+  const { data: categories = [] } = useQuery({ queryKey: ["expense-categories"], queryFn: () => costsService.listCategories() });
+  const { data: batches = [] } = useQuery({ queryKey: ["milling-batches"], queryFn: () => millingService.listBatches() });
 
   const [form, setForm] = useState({
     category_id: "", batch_id: "", expense_date: format(new Date(), "yyyy-MM-dd"),
@@ -19,11 +20,7 @@ export default function CostsPage() {
   });
 
   const createExpense = useMutation({
-    mutationFn: (body: typeof form) => api.post("/costs/expenses", {
-      ...body,
-      amount: parseFloat(body.amount),
-      batch_id: body.batch_id || null,
-    }),
+    mutationFn: (body: typeof form) => costsService.createExpense(body),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["expenses"] }); setShowForm(false); },
   });
 

@@ -276,7 +276,11 @@
       "Bash(.venv/Scripts/python.exe -m pytest tests/characterization/test_admin.py -q)",
       "Bash(.venv/Scripts/python.exe -m ruff check --fix tests app/repositories/billing.py app/services/admin_service.py app/api/admin.py app/schemas/admin.py)",
       "Bash(.venv/Scripts/python.exe -m ruff check tests app/services/admin_service.py app/api/admin.py app/repositories/billing.py app/schemas/admin.py)",
-      "Bash(.venv/Scripts/python.exe -m pytest tests/characterization/test_canva.py -q)"
+      "Bash(.venv/Scripts/python.exe -m pytest tests/characterization/test_canva.py -q)",
+      "Bash(git check-ignore *)",
+      "Bash(curl -s -o /dev/null -w \"health:%{http_code} \" http://localhost:8000/api/health)",
+      "Bash(curl -s -X POST http://localhost:5173/api/auth/login -H \"Content-Type: application/x-www-form-urlencoded\" -d \"username=mill1&password=password123\" -o /dev/null -w \"login:%{http_code}\\\\n\")",
+      "Bash(grep -oE 'api\\\\.\\(get|post|put|patch|delete\\)\\\\\\([^\\)]*\\\\\\)' __TRACKED_VAR__.tsx)"
     ],
     "additionalDirectories": [
       "d:\\RICE"

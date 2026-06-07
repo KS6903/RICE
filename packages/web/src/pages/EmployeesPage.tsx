@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import api from "../services/api";
+import { employeesService } from "../services/EmployeesService";
+import { inventoryService } from "../services/InventoryService";
 import { format } from "date-fns";
 import { Plus, Power, History, ChevronDown, ChevronUp, Search, X, Mail, Phone, MapPin, IdCard } from "lucide-react";
 import { useFeature } from "../hooks/useFeature";
@@ -74,9 +75,9 @@ function EmployeesPageInner() {
 
   const { data: employees = [], isLoading } = useQuery({
     queryKey: ["employees", branchFilter],
-    queryFn: () => api.get(`/employees/${branchFilter ? `?branch_id=${branchFilter}` : ""}`).then((r) => r.data),
+    queryFn: () => employeesService.list(branchFilter),
   });
-  const { data: branches = [] } = useQuery({ queryKey: ["branches"], queryFn: () => api.get("/branches/").then((r) => r.data) });
+  const { data: branches = [] } = useQuery({ queryKey: ["branches"], queryFn: () => inventoryService.getBranches() });
 
   const matches = (e: any) => {
     if (!search) return true;
@@ -92,15 +93,7 @@ function EmployeesPageInner() {
   const inactive = employees.filter((e: any) => !e.is_active && matches(e));
 
   const create = useMutation({
-    mutationFn: (b: typeof form) => api.post("/employees/", {
-      ...b,
-      branch_id: b.branch_id || null,
-      date_hired: b.date_hired || null,
-      date_terminated: b.date_terminated || null,
-      birthdate: b.birthdate || null,
-      daily_rate: b.daily_rate ? parseFloat(b.daily_rate) : null,
-      monthly_salary: b.monthly_salary ? parseFloat(b.monthly_salary) : null,
-    }),
+    mutationFn: (b: typeof form) => employeesService.create(b),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["employees"] });
       setShowForm(false);
@@ -109,7 +102,7 @@ function EmployeesPageInner() {
   });
 
   const toggle = useMutation({
-    mutationFn: ({ id, is_active }: { id: string; is_active: boolean }) => api.put(`/employees/${id}`, { is_active }),
+    mutationFn: ({ id, is_active }: { id: string; is_active: boolean }) => employeesService.setActive(id, is_active),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["employees"] }),
   });
 
