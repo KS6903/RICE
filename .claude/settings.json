@@ -275,7 +275,8 @@
       "Bash(.venv/Scripts/python.exe -)",
       "Bash(.venv/Scripts/python.exe -m pytest tests/characterization/test_admin.py -q)",
       "Bash(.venv/Scripts/python.exe -m ruff check --fix tests app/repositories/billing.py app/services/admin_service.py app/api/admin.py app/schemas/admin.py)",
-      "Bash(.venv/Scripts/python.exe -m ruff check tests app/services/admin_service.py app/api/admin.py app/repositories/billing.py app/schemas/admin.py)"
+      "Bash(.venv/Scripts/python.exe -m ruff check tests app/services/admin_service.py app/api/admin.py app/repositories/billing.py app/schemas/admin.py)",
+      "Bash(.venv/Scripts/python.exe -m pytest tests/characterization/test_canva.py -q)"
     ],
     "additionalDirectories": [
       "d:\\RICE"

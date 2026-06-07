@@ -4,6 +4,14 @@ import { useAuthStore } from "../../stores/authStore";
 
 type Status = "offline" | "connecting" | "live";
 
+// Stop retrying after this many consecutive failed connects. Without a cap, a
+// backgrounded tab whose access token has expired would reconnect to
+// /ws/canva forever (403 each time), and that steady never-succeeding churn
+// piles up on the single-worker backend until it wedges. When the token is
+// refreshed (the axios interceptor updates the store on the next API call),
+// this effect re-runs and the counter resets, so an active session recovers.
+const MAX_RECONNECT_ATTEMPTS = 10;
+
 type CanvaEvent =
   | { event: "hello"; payload: { layout_id: string; ok: boolean } }
   | { event: "pallet.moved"; payload: { pallet: any; by_user_id: string } }
@@ -32,6 +40,8 @@ export function useRealtimeCanva(layoutId: string | undefined, cacheKey: string)
   useEffect(() => {
     if (!layoutId || !token) return;
     closedManually.current = false;
+    // Fresh token/layout → fresh budget of reconnect attempts.
+    reconnectAttempt.current = 0;
 
     const connect = () => {
       setStatus("connecting");
@@ -102,6 +112,14 @@ export function useRealtimeCanva(layoutId: string | undefined, cacheKey: string)
         wsRef.current = null;
         setStatus("offline");
         if (closedManually.current) return;
+        // Give up after a bounded number of failures so an expired-token tab
+        // doesn't reconnect forever and hammer the backend. Recovers on the next
+        // token refresh (this effect re-runs with a fresh token and resets).
+        if (reconnectAttempt.current >= MAX_RECONNECT_ATTEMPTS) {
+          // eslint-disable-next-line no-console
+          console.warn("[canva] realtime gave up after repeated failures; will retry on token refresh.");
+          return;
+        }
         // Exponential backoff: 1s, 2s, 4s, 8s, capped at 15s
         const delay = Math.min(15_000, 1000 * Math.pow(2, reconnectAttempt.current));
         reconnectAttempt.current++;
