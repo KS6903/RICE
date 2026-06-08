@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
-import api from "../services/api";
+import { inventoryService } from "../services/InventoryService";
+import { reportsService } from "../services/ReportsService";
 import {
   Package, Wheat, Factory, TrendingUp, AlertCircle, ArrowUpRight, Sparkles,
 } from "lucide-react";
@@ -72,13 +73,12 @@ export default function Dashboard() {
 
   const { data: inventory } = useQuery({
     queryKey: ["inventory-summary"],
-    queryFn: () => api.get("/inventory/summary").then((r) => r.data),
+    queryFn: () => inventoryService.getSummary(),
   });
 
   const { data: pnl } = useQuery({
     queryKey: ["pnl-dashboard"],
-    queryFn: () =>
-      api.get(`/reports/pnl?period_start=${thirtyAgo}&period_end=${today}`).then((r) => r.data),
+    queryFn: () => reportsService.getPnl(thirtyAgo, today),
   });
 
   const pnlChart = pnl

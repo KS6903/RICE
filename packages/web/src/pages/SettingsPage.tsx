@@ -1,6 +1,12 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import api from "../services/api";
+import { billingService } from "../services/BillingService";
+import { branchesService } from "../services/BranchesService";
+import { activityService } from "../services/ActivityService";
+import { authService } from "../services/AuthService";
+import { paddyService } from "../services/PaddyService";
+import { millingService } from "../services/MillingService";
+import { costsService } from "../services/CostsService";
 import { useAuthStore } from "../stores/authStore";
 import {
   Building2, MapPin, User as UserIcon, KeyRound, Plus, Wheat, Factory, Receipt,
@@ -187,7 +193,7 @@ function BillingTab() {
 
   const { data: plans = [] } = useQuery<SubscriptionPlan[]>({
     queryKey: ["billing-plans"],
-    queryFn: () => api.get("/billing/plans").then((r) => r.data),
+    queryFn: () => billingService.getPlans(),
     refetchOnWindowFocus: true,
     refetchOnMount: "always",
     staleTime: 0,
@@ -195,7 +201,7 @@ function BillingTab() {
 
   const { data: requestData } = useQuery<{ request: UpgradeRequest | null }>({
     queryKey: ["billing-my-request"],
-    queryFn: () => api.get("/billing/upgrade-requests/mine").then((r) => r.data),
+    queryFn: () => billingService.getMyRequest(),
     refetchInterval: 10 * 1000,
     refetchOnWindowFocus: true,
   });
@@ -216,7 +222,7 @@ function BillingTab() {
 
   const requestUpgrade = useMutation({
     mutationFn: (plan_id: string) =>
-      api.post("/billing/upgrade-requests", {
+      billingService.createUpgradeRequest({
         plan_id,
         request_type: isOnPaidPlan ? "change" : "upgrade",
       }),
@@ -226,7 +232,7 @@ function BillingTab() {
   });
 
   const cancelRequest = useMutation({
-    mutationFn: (id: string) => api.delete(`/billing/upgrade-requests/${id}`),
+    mutationFn: (id: string) => billingService.cancelUpgradeRequest(id),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["billing-my-request"] });
     },
@@ -622,15 +628,14 @@ function VarietiesTab() {
 
   const { data: varieties = [] } = useQuery({
     queryKey: ["varieties-all"],
-    queryFn: () =>
-      api.get(`/paddy/varieties?include_inactive=true`).then((r) => r.data),
+    queryFn: () => paddyService.listVarieties(true),
   });
   const active = varieties.filter((v: any) => v.is_active);
   const inactive = varieties.filter((v: any) => !v.is_active);
 
   const create = useMutation({
     mutationFn: (b: typeof form) =>
-      api.post("/paddy/varieties", {
+      paddyService.createVariety({
         ...b,
         typical_recovery_pct: b.typical_recovery_pct
           ? parseFloat(b.typical_recovery_pct)
@@ -646,7 +651,7 @@ function VarietiesTab() {
 
   const toggle = useMutation({
     mutationFn: ({ id, is_active }: { id: string; is_active: boolean }) =>
-      api.put(`/paddy/varieties/${id}`, { is_active }),
+      paddyService.updateVariety(id, { is_active }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["varieties-all"] });
       qc.invalidateQueries({ queryKey: ["varieties"] });
@@ -839,15 +844,14 @@ function EquipmentTab() {
 
   const { data: equipment = [] } = useQuery({
     queryKey: ["equipment-all"],
-    queryFn: () =>
-      api.get(`/milling/equipment?include_inactive=true`).then((r) => r.data),
+    queryFn: () => millingService.listEquipment(true),
   });
   const active = equipment.filter((e: any) => e.is_active);
   const inactive = equipment.filter((e: any) => !e.is_active);
 
   const create = useMutation({
     mutationFn: (b: typeof form) =>
-      api.post("/milling/equipment", {
+      millingService.createEquipment({
         ...b,
         capacity_kg_per_hr: b.capacity_kg_per_hr
           ? parseFloat(b.capacity_kg_per_hr)
@@ -863,7 +867,7 @@ function EquipmentTab() {
 
   const toggle = useMutation({
     mutationFn: ({ id, is_active }: { id: string; is_active: boolean }) =>
-      api.put(`/milling/equipment/${id}`, { is_active }),
+      millingService.updateEquipment(id, { is_active }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["equipment-all"] });
       qc.invalidateQueries({ queryKey: ["equipment"] });
@@ -1005,11 +1009,11 @@ function CategoriesTab() {
 
   const { data: categories = [] } = useQuery({
     queryKey: ["expense-categories"],
-    queryFn: () => api.get("/costs/categories").then((r) => r.data),
+    queryFn: () => costsService.listCategories(),
   });
 
   const create = useMutation({
-    mutationFn: (b: typeof form) => api.post("/costs/categories", b),
+    mutationFn: (b: typeof form) => costsService.createCategory(b),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["expense-categories"] });
       setShowForm(false);
@@ -1127,7 +1131,7 @@ function CompanyTab() {
   const qc = useQueryClient();
   const { data, isLoading } = useQuery({
     queryKey: ["company"],
-    queryFn: () => api.get("/branches/company").then((r) => r.data),
+    queryFn: () => branchesService.getCompany(),
   });
   const [form, setForm] = useState<any>({});
   const [saved, setSaved] = useState(false);
@@ -1137,7 +1141,7 @@ function CompanyTab() {
   }, [data]);
 
   const save = useMutation({
-    mutationFn: (body: any) => api.put("/branches/company", body),
+    mutationFn: (body: any) => branchesService.updateCompany(body),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["company"] });
       setSaved(true);
@@ -1217,7 +1221,7 @@ function BranchesTab() {
   const qc = useQueryClient();
   const { data: branches = [] } = useQuery({
     queryKey: ["branches"],
-    queryFn: () => api.get("/branches/").then((r) => r.data),
+    queryFn: () => branchesService.list(),
   });
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ name: "", address: "", is_main_branch: false });
@@ -1227,7 +1231,7 @@ function BranchesTab() {
   const [showTrash, setShowTrash] = useState(false);
 
   const create = useMutation({
-    mutationFn: (body: typeof form) => api.post("/branches/", body),
+    mutationFn: (body: typeof form) => branchesService.create(body),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["branches"] });
       setShowForm(false);
@@ -1237,7 +1241,7 @@ function BranchesTab() {
 
   const update = useMutation({
     mutationFn: ({ id, body }: { id: string; body: Partial<typeof editValues> }) =>
-      api.put(`/branches/${id}`, body).then(r => r.data),
+      branchesService.update(id, body),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["branches"] });
       setEditingId(null);
@@ -1248,7 +1252,7 @@ function BranchesTab() {
   const selectable = (branches as any[]).filter((b) => !b.is_main_branch);
 
   const bulkDelete = useMutation({
-    mutationFn: (ids: string[]) => api.post("/branches/bulk-delete", { ids }).then((r) => r.data),
+    mutationFn: (ids: string[]) => branchesService.bulkDelete(ids),
     onSuccess: (res: any) => {
       qc.invalidateQueries({ queryKey: ["branches"] });
       qc.invalidateQueries({ queryKey: ["branches-trash"] });
@@ -1507,11 +1511,11 @@ function BranchTrashPanel() {
   const qc = useQueryClient();
   const { data: trashed = [], isLoading } = useQuery<any[]>({
     queryKey: ["branches-trash"],
-    queryFn: () => api.get("/branches/trash").then((r) => r.data),
+    queryFn: () => branchesService.listTrash(),
   });
 
   const restore = useMutation({
-    mutationFn: (id: string) => api.post(`/branches/${id}/restore`).then((r) => r.data),
+    mutationFn: (id: string) => branchesService.restore(id),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["branches"] });
       qc.invalidateQueries({ queryKey: ["branches-trash"] });
@@ -1561,7 +1565,7 @@ function BranchTrashPanel() {
 function ActivityTab() {
   const { data: rows = [], isLoading } = useQuery<ActivityRow[]>({
     queryKey: ["activity"],
-    queryFn: () => api.get("/activity/").then((r) => r.data),
+    queryFn: () => activityService.list(),
   });
   return (
     <div className="space-y-4">
@@ -1587,10 +1591,9 @@ function ProfileTab() {
   const [error, setError] = useState("");
 
   const save = useMutation({
-    mutationFn: (body: typeof form) => api.put("/auth/me", body),
+    mutationFn: (body: typeof form) => authService.updateProfile(body),
     onSuccess: async () => {
-      const { data } = await api.get("/auth/me");
-      setUser(data);
+      setUser(await authService.me());
       setSaved(true);
       setError("");
       setTimeout(() => setSaved(false), 2500);
@@ -1673,7 +1676,7 @@ function PasswordTab() {
 
   const change = useMutation({
     mutationFn: (body: { current_password: string; new_password: string }) =>
-      api.post("/auth/change-password", body),
+      authService.changePassword(body.current_password, body.new_password),
     onSuccess: () => {
       setMsg({ type: "ok", text: "Password changed successfully." });
       setForm({ current_password: "", new_password: "", confirm: "" });

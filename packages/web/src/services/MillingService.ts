@@ -31,8 +31,17 @@ export class MillingService {
     return this.http.get("/milling/batches").then((r) => r.data);
   }
 
-  listEquipment(): Promise<any[]> {
-    return this.http.get("/milling/equipment").then((r) => r.data);
+  listEquipment(includeInactive = false): Promise<any[]> {
+    const q = includeInactive ? "?include_inactive=true" : "";
+    return this.http.get(`/milling/equipment${q}`).then((r) => r.data);
+  }
+
+  createEquipment(body: Record<string, unknown>): Promise<any> {
+    return this.http.post("/milling/equipment", body).then((r) => r.data);
+  }
+
+  updateEquipment(id: string, body: Record<string, unknown>): Promise<any> {
+    return this.http.put(`/milling/equipment/${id}`, body).then((r) => r.data);
   }
 
   /** Convert the string-keyed batch form into the numeric API payload. Pure. */

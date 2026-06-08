@@ -21,6 +21,10 @@ export class CostsService {
     return this.http.get("/costs/categories").then((r) => r.data);
   }
 
+  createCategory(body: Record<string, unknown>): Promise<any> {
+    return this.http.post("/costs/categories", body).then((r) => r.data);
+  }
+
   /** Parse the amount and null an empty batch link. Pure. */
   static toExpensePayload(form: ExpenseForm) {
     return { ...form, amount: parseFloat(form.amount), batch_id: form.batch_id || null };

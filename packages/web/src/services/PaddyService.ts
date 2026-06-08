@@ -32,8 +32,17 @@ export class PaddyService {
     return this.http.get(`/paddy/suppliers?include_inactive=${includeInactive}`).then((r) => r.data);
   }
 
-  listVarieties(): Promise<any[]> {
-    return this.http.get("/paddy/varieties").then((r) => r.data);
+  listVarieties(includeInactive = false): Promise<any[]> {
+    const q = includeInactive ? "?include_inactive=true" : "";
+    return this.http.get(`/paddy/varieties${q}`).then((r) => r.data);
+  }
+
+  createVariety(body: Record<string, unknown>): Promise<any> {
+    return this.http.post("/paddy/varieties", body).then((r) => r.data);
+  }
+
+  updateVariety(id: string, body: Record<string, unknown>): Promise<any> {
+    return this.http.put(`/paddy/varieties/${id}`, body).then((r) => r.data);
   }
 
   listGrades(): Promise<any[]> {
