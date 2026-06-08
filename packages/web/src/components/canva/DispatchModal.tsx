@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import api from "../../services/api";
+import { canvaService } from "../../services/CanvaService";
 import { Loader2, X as XIcon, ArrowDownToLine, Search, AlertTriangle } from "lucide-react";
 
 type Variety = { id: string; code: string; name: string };
@@ -30,16 +30,16 @@ export function DispatchModal({
 
   const { data: varieties = [] } = useQuery<Variety[]>({
     queryKey: ["dispatch-varieties"],
-    queryFn: () => api.get("/dispatch/variety-options").then(r => r.data),
+    queryFn: () => canvaService.getVarietyOptions(),
   });
 
   const recommend = useMutation({
     mutationFn: (): Promise<Recommendation> =>
-      api.post("/dispatch/recommend", {
+      canvaService.recommendFifo({
         variety_id: varietyId || null,
         weight_kg: Number(weight) || 0,
         branch_id: branchId,
-      }).then(r => r.data),
+      }),
   });
 
   const result = recommend.data;

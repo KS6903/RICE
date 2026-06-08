@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { ArrowUpCircle, X } from "lucide-react";
-import api from "../../services/api";
+import { adminService } from "../../services/AdminService";
 
 type PendingPayload = {
   pending: number;
@@ -24,7 +24,7 @@ type PendingPayload = {
 export default function UpgradeRequestToast() {
   const { data } = useQuery<PendingPayload>({
     queryKey: ["admin-pending-upgrades"],
-    queryFn: () => api.get("/admin/upgrade-requests/pending-count").then((r) => r.data),
+    queryFn: () => adminService.getPendingCount(),
     refetchInterval: 5 * 1000,
     refetchOnWindowFocus: true,
     refetchIntervalInBackground: true,

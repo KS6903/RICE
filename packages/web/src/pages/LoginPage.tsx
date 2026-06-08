@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import api from "../services/api";
+import { authService } from "../services/AuthService";
 import { useAuthStore } from "../stores/authStore";
 import { useThemeStore } from "../stores/themeStore";
 import {
@@ -23,14 +23,9 @@ export default function LoginPage() {
     setLoading(true);
     setError("");
     try {
-      const form = new FormData();
-      form.append("username", username);
-      form.append("password", password);
-      const { data } = await api.post("/auth/login", form, {
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      });
+      const data = await authService.login(username, password);
       setTokens(data.access_token, data.refresh_token);
-      const { data: me } = await api.get("/auth/me");
+      const me = await authService.me();
       setUser(me);
       navigate(me.is_platform_admin ? "/admin" : "/");
     } catch (err: any) {
@@ -44,11 +39,9 @@ export default function LoginPage() {
     setLoading(true);
     setError("");
     try {
-      const { data } = await api.post("/auth/google", {
-        credential: credentialResponse.credential,
-      });
+      const data = await authService.loginGoogle(credentialResponse.credential);
       setTokens(data.access_token, data.refresh_token);
-      const { data: me } = await api.get("/auth/me");
+      const me = await authService.me();
       setUser(me);
       navigate(me.is_platform_admin ? "/admin" : "/");
     } catch (err: any) {

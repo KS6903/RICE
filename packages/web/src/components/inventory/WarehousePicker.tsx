@@ -3,7 +3,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Building2, ChevronDown, Pencil, Plus, Check, X as XIcon, Star, Globe,
 } from "lucide-react";
-import api from "../../services/api";
+import { branchesService } from "../../services/BranchesService";
 
 export type WarehouseBranch = {
   id: string;
@@ -59,7 +59,7 @@ function WarehousePickerInner({
 
   const renameMutation = useMutation({
     mutationFn: ({ id, name }: { id: string; name: string }) =>
-      api.put(`/branches/${id}`, { name }).then(r => r.data),
+      branchesService.update(id, { name }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["branches"] });
       setRenamingId(null);
@@ -70,7 +70,7 @@ function WarehousePickerInner({
 
   const createMutation = useMutation({
     mutationFn: (name: string) =>
-      api.post("/branches/", { name, is_main_branch: false, is_active: true }).then(r => r.data),
+      branchesService.create({ name, is_main_branch: false, is_active: true }),
     onSuccess: (created: any) => {
       qc.invalidateQueries({ queryKey: ["branches"] });
       setAdding(false);

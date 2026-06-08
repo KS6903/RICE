@@ -4,7 +4,7 @@ import { Stage, Layer, Rect, Text, Line, Group, Label, Tag, Transformer } from "
 import type Konva from "konva";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useSearchParams } from "react-router-dom";
-import api from "../../services/api";
+import { canvaService } from "../../services/CanvaService";
 import { useAuthStore } from "../../stores/authStore";
 import {
   Loader2, AlertCircle, ZoomIn, ZoomOut, Maximize2, X as XIcon,
@@ -192,7 +192,7 @@ export default function WarehouseCanva({
 
   const { data: customers = [] } = useQuery<CanvaCustomer[]>({
     queryKey: ["canva-customers", cacheKey],
-    queryFn: () => api.get(`/canva/customers?branch_id=${branchId}`).then(r => r.data),
+    queryFn: () => canvaService.getCustomers(branchId),
     refetchOnWindowFocus: false,
   });
   const clientColorByName = useMemo(() => {
@@ -201,13 +201,9 @@ export default function WarehouseCanva({
     return m;
   }, [customers]);
 
-  const canvaUrl = layoutId
-    ? `/warehouses/${branchId}/canva?layout_id=${layoutId}`
-    : `/warehouses/${branchId}/canva`;
-
   const { data, isLoading, error } = useQuery<CanvaData>({
     queryKey: ["canva", cacheKey],
-    queryFn: () => api.get(canvaUrl).then(r => r.data),
+    queryFn: () => canvaService.getCanva(branchId, layoutId),
     refetchOnWindowFocus: false,
     enabled: !!branchId,
   });
@@ -337,7 +333,7 @@ export default function WarehouseCanva({
   // call the server, rollback if it rejects.
   const moveMutation = useMutation({
     mutationFn: ({ palletId, x_m, y_m }: { palletId: string; x_m: number; y_m: number }) =>
-      api.patch(`/pallets/${palletId}/move`, { x_m, y_m }).then(r => r.data),
+      canvaService.movePallet(palletId, { x_m, y_m }),
     onMutate: async ({ palletId, x_m, y_m }) => {
       await qc.cancelQueries({ queryKey: ["canva", cacheKey] });
       const previous = qc.getQueryData<CanvaData>(["canva", cacheKey]);
@@ -366,7 +362,7 @@ export default function WarehouseCanva({
 
   const stackMutation = useMutation({
     mutationFn: ({ palletId, parentId }: { palletId: string; parentId: string }) =>
-      api.patch(`/pallets/${palletId}/stack`, { parent_pallet_id: parentId }).then(r => r.data),
+      canvaService.stackPallet(palletId, { parent_pallet_id: parentId }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["canva", cacheKey] });
     },
@@ -379,7 +375,7 @@ export default function WarehouseCanva({
 
   const unstackMutation = useMutation({
     mutationFn: ({ palletId, x_m, y_m }: { palletId: string; x_m?: number; y_m?: number }) =>
-      api.patch(`/pallets/${palletId}/unstack`, { x_m, y_m }).then(r => r.data),
+      canvaService.unstackPallet(palletId, { x_m, y_m }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["canva", cacheKey] });
     },
@@ -394,7 +390,7 @@ export default function WarehouseCanva({
   // server reconciles afterward.
   const palletResizeMutation = useMutation({
     mutationFn: ({ palletId, width_m, depth_m }: { palletId: string; width_m: number; depth_m: number }) =>
-      api.patch(`/pallets/${palletId}/resize`, { width_m, depth_m }).then(r => r.data),
+      canvaService.resizePallet(palletId, { width_m, depth_m }),
     onMutate: async ({ palletId, width_m, depth_m }) => {
       await qc.cancelQueries({ queryKey: ["canva", cacheKey] });
       const previous = qc.getQueryData<CanvaData>(["canva", cacheKey]);
@@ -429,12 +425,8 @@ export default function WarehouseCanva({
   };
 
   const layoutPatchMutation = useMutation({
-    mutationFn: (body: { name?: string; width_m?: number; height_m?: number; grid_size_m?: number }) => {
-      const url = layoutId
-        ? `/warehouses/${branchId}/layout?layout_id=${layoutId}`
-        : `/warehouses/${branchId}/layout`;
-      return api.patch(url, body).then(r => r.data);
-    },
+    mutationFn: (body: { name?: string; width_m?: number; height_m?: number; grid_size_m?: number }) =>
+      canvaService.patchLayout(branchId, body, layoutId),
     onSuccess: (updated: any) => {
       qc.setQueryData<CanvaData>(["canva", cacheKey], (old) => {
         if (!old) return old;
@@ -445,12 +437,7 @@ export default function WarehouseCanva({
   });
 
   const zoneCreateMutation = useMutation({
-    mutationFn: (body: any) => {
-      const url = layoutId
-        ? `/warehouses/${branchId}/zones?layout_id=${layoutId}`
-        : `/warehouses/${branchId}/zones`;
-      return api.post(url, body).then(r => r.data);
-    },
+    mutationFn: (body: any) => canvaService.createZone(branchId, body, layoutId),
     onMutate: async (body: any) => {
       // Optimistic: tack a temp zone on so the user sees their drag immediately
       await qc.cancelQueries({ queryKey: ["canva", cacheKey] });
@@ -488,7 +475,7 @@ export default function WarehouseCanva({
 
   const zoneUpdateMutation = useMutation({
     mutationFn: ({ zoneId, body }: { zoneId: string; body: any }) =>
-      api.patch(`/zones/${zoneId}`, body).then(r => r.data),
+      canvaService.patchZone(zoneId, body),
     onMutate: async ({ zoneId, body }) => {
       await qc.cancelQueries({ queryKey: ["canva", cacheKey] });
       const previous = qc.getQueryData<CanvaData>(["canva", cacheKey]);
@@ -511,7 +498,7 @@ export default function WarehouseCanva({
   });
 
   const zoneDeleteMutation = useMutation({
-    mutationFn: (zoneId: string) => api.delete(`/zones/${zoneId}`).then(r => r.data),
+    mutationFn: (zoneId: string) => canvaService.deleteZone(zoneId),
     onSuccess: (_data, zoneId) => {
       qc.setQueryData<CanvaData>(["canva", cacheKey], (old) => {
         if (!old) return old;
@@ -1732,7 +1719,7 @@ function PalletInspector({
 
   const { data: movements = [] } = useQuery<Movement[]>({
     queryKey: ["pallet-movements", pallet.id],
-    queryFn: () => api.get(`/pallets/${pallet.id}/movements`).then(r => r.data),
+    queryFn: () => canvaService.getPalletMovements(pallet.id),
     enabled: showHistory,
     refetchOnWindowFocus: false,
   });
@@ -1952,7 +1939,7 @@ function AgingReportModal({
 }) {
   const { data, isLoading } = useQuery<AgingReport>({
     queryKey: ["aging-report", branchId],
-    queryFn: () => api.get(`/warehouses/${branchId}/aging-report`).then(r => r.data),
+    queryFn: () => canvaService.getAgingReport(branchId),
   });
 
   return (

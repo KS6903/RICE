@@ -4,7 +4,7 @@ import {
   Boxes, Layers, ChevronDown, Search, Package, AlertTriangle, Warehouse, Building2,
   Weight, Zap, Download, X as XIcon, Loader2, ArrowDownToLine, Calendar, Droplets,
 } from "lucide-react";
-import api from "../../services/api";
+import { canvaService } from "../../services/CanvaService";
 import { useFeature } from "../../hooks/useFeature";
 import { CanvaUpsellCard } from "../../pages/InventoryPage";
 import { useRackView, type Rack, type RackPallet, type RackBatch, type AgingCounts } from "./useRackView";
@@ -485,12 +485,12 @@ function FifoPanel({ branchId, onClose, onApply }: { branchId: string; onClose: 
 
   const { data: varieties = [] } = useQuery<Variety[]>({
     queryKey: ["dispatch-varieties"],
-    queryFn: () => api.get("/dispatch/variety-options").then((r) => r.data),
+    queryFn: () => canvaService.getVarietyOptions(),
   });
 
   const recommend = useMutation({
     mutationFn: (): Promise<Recommendation> =>
-      api.post("/dispatch/recommend", { variety_id: varietyId || null, weight_kg: Number(weight) || 0, branch_id: branchId }).then((r) => r.data),
+      canvaService.recommendFifo({ variety_id: varietyId || null, weight_kg: Number(weight) || 0, branch_id: branchId }),
   });
   const result = recommend.data;
 

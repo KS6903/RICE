@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import api from "../services/api";
+import { locationsService } from "../services/LocationsService";
 
 export type SavedLocation = {
   id: string;
@@ -27,14 +27,14 @@ export function useLocations() {
 
   const list = useQuery<SavedLocation[]>({
     queryKey: ["user-locations"],
-    queryFn: () => api.get("/locations").then((r) => r.data),
+    queryFn: () => locationsService.list(),
     staleTime: 5 * 60 * 1000,
     refetchOnWindowFocus: false,
   });
 
   const create = useMutation({
     mutationFn: (body: Omit<SavedLocation, "id" | "is_default" | "created_at"> & { is_default?: boolean }) =>
-      api.post("/locations", body).then((r) => r.data as SavedLocation),
+      locationsService.create(body) as Promise<SavedLocation>,
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["user-locations"] });
       qc.invalidateQueries({ queryKey: ["weather"] });
@@ -42,7 +42,7 @@ export function useLocations() {
   });
 
   const setDefault = useMutation({
-    mutationFn: (id: string) => api.patch(`/locations/${id}/set-default`).then((r) => r.data),
+    mutationFn: (id: string) => locationsService.setDefault(id),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["user-locations"] });
       qc.invalidateQueries({ queryKey: ["weather"] });
@@ -50,7 +50,7 @@ export function useLocations() {
   });
 
   const remove = useMutation({
-    mutationFn: (id: string) => api.delete(`/locations/${id}`),
+    mutationFn: (id: string) => locationsService.remove(id),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["user-locations"] });
       qc.invalidateQueries({ queryKey: ["weather"] });
@@ -66,7 +66,7 @@ export function useGeocodeSearch(query: string) {
   const q = query.trim();
   return useQuery<GeocodeHit[]>({
     queryKey: ["geocode-search", q],
-    queryFn: () => api.get(`/locations/search?q=${encodeURIComponent(q)}`).then((r) => r.data),
+    queryFn: () => locationsService.search(q),
     enabled: q.length >= 2,
     staleTime: 60 * 1000,
     refetchOnWindowFocus: false,

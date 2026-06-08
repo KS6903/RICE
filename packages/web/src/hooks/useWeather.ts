@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import api from "../services/api";
+import { weatherService } from "../services/WeatherService";
 import type { Coords } from "./useGeolocation";
 
 export type WeatherConditionCode =
@@ -34,10 +34,7 @@ export function useWeather(coords: Coords | null) {
   const lon = coords ? Math.round(coords.lon * 100) / 100 : null;
   return useQuery<WeatherPayload>({
     queryKey: ["weather", lat, lon],
-    queryFn: () => {
-      const url = coords ? `/weather?lat=${coords.lat}&lon=${coords.lon}` : "/weather";
-      return api.get(url).then((r) => r.data);
-    },
+    queryFn: () => weatherService.get(coords),
     staleTime: 10 * 60 * 1000,
     refetchOnWindowFocus: false,
     retry: 1,

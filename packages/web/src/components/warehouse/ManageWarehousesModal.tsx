@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { X as XIcon, Trash2, RotateCcw, History, Star } from "lucide-react";
-import api from "../../services/api";
+import { branchesService } from "../../services/BranchesService";
 
 /* Bulk warehouse (branch) management: multi-select delete into a 30-day trash,
    plus restore. Mirrors the Settings → Branches controls so the Inventory
@@ -13,11 +13,11 @@ export default function ManageWarehousesModal({ onClose }: { onClose: () => void
 
   const { data: branches = [] } = useQuery<any[]>({
     queryKey: ["branches"],
-    queryFn: () => api.get("/branches/").then((r) => r.data),
+    queryFn: () => branchesService.list(),
   });
   const { data: trashed = [], isLoading: trashLoading } = useQuery<any[]>({
     queryKey: ["branches-trash"],
-    queryFn: () => api.get("/branches/trash").then((r) => r.data),
+    queryFn: () => branchesService.listTrash(),
   });
 
   const selectable = branches.filter((b) => !b.is_main_branch);
@@ -29,7 +29,7 @@ export default function ManageWarehousesModal({ onClose }: { onClose: () => void
   };
 
   const bulkDelete = useMutation({
-    mutationFn: (ids: string[]) => api.post("/branches/bulk-delete", { ids }).then((r) => r.data),
+    mutationFn: (ids: string[]) => branchesService.bulkDelete(ids),
     onSuccess: (res: any) => {
       invalidateAll();
       setSelected(new Set());
@@ -39,7 +39,7 @@ export default function ManageWarehousesModal({ onClose }: { onClose: () => void
   });
 
   const restore = useMutation({
-    mutationFn: (id: string) => api.post(`/branches/${id}/restore`).then((r) => r.data),
+    mutationFn: (id: string) => branchesService.restore(id),
     onSuccess: invalidateAll,
   });
 

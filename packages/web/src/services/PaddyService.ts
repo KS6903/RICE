@@ -49,6 +49,10 @@ export class PaddyService {
     return this.http.get("/paddy/grades").then((r) => r.data);
   }
 
+  createGrade(body: Record<string, unknown>): Promise<any> {
+    return this.http.post("/paddy/grades", body).then((r) => r.data);
+  }
+
   listInventory(): Promise<any[]> {
     return this.http.get("/paddy/inventory").then((r) => r.data);
   }

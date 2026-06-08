@@ -1,7 +1,9 @@
 import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Wheat, Package, Boxes, X as XIcon, Plus, Check } from "lucide-react";
-import api from "../../services/api";
+import { paddyService } from "../../services/PaddyService";
+import { branchesService } from "../../services/BranchesService";
+import { inventoryService } from "../../services/InventoryService";
 import { allUnits, saveCustomUnit, type QuantityUnit, slugify } from "./inventoryExtras";
 
 type StockType = "palay" | "milled_rice" | "byproduct";
@@ -129,11 +131,11 @@ export default function AddInventoryModal({
 
   const { data: varieties = [] } = useQuery<any[]>({
     queryKey: ["varieties"],
-    queryFn: () => api.get("/paddy/varieties").then((r) => r.data),
+    queryFn: () => paddyService.listVarieties(),
   });
   const { data: grades = [] } = useQuery<any[]>({
     queryKey: ["grades"],
-    queryFn: () => api.get("/paddy/grades").then((r) => r.data),
+    queryFn: () => paddyService.listGrades(),
   });
 
   const needsVariety = type === "palay" || type === "milled_rice";
@@ -146,7 +148,7 @@ export default function AddInventoryModal({
 
   /* ── inline creators ─────────────────────────────────────────────────────── */
   const createBranch = async (name: string) => {
-    const created = await api.post("/branches/", { name }).then((r) => r.data);
+    const created = await branchesService.create({ name });
     setBranches((prev) => [...prev, created]);
     setBranchId(created.id);
     qc.invalidateQueries({ queryKey: ["branches"] });
@@ -154,12 +156,12 @@ export default function AddInventoryModal({
   const createVariety = async (text: string) => {
     // Accept "CODE — Name" or just a code; backend needs code + name.
     const code = text.split(/[—-]/)[0].trim() || text.trim();
-    const created = await api.post("/paddy/varieties", { code, name: text.trim() }).then((r) => r.data);
+    const created = await paddyService.createVariety({ code, name: text.trim() });
     await qc.invalidateQueries({ queryKey: ["varieties"] });
     setVarietyId(created.id);
   };
   const createGrade = async (text: string) => {
-    const created = await api.post("/paddy/grades", { code: text.trim(), name: text.trim() }).then((r) => r.data);
+    const created = await paddyService.createGrade({ code: text.trim(), name: text.trim() });
     await qc.invalidateQueries({ queryKey: ["grades"] });
     setGradeId(created.id);
   };
@@ -199,7 +201,7 @@ export default function AddInventoryModal({
         body.inventory_type = "byproduct";
         body.byproduct_type = byproductType;
       }
-      return api.post("/inventory/stock", body).then((r) => r.data);
+      return inventoryService.addStock(body);
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["palay-inventory"] });

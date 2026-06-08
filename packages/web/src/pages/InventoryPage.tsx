@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
-import api from "../services/api";
+import { canvaService } from "../services/CanvaService";
 import {
   Package, Wheat, MapPin, List, Table2, LayoutGrid, BarChart3, Warehouse, Boxes,
   Search, ArrowUpDown, Building2, Lock, Sparkles, ArrowRight,
@@ -568,7 +568,7 @@ function WarehouseCanvaWithLayouts({ branches, activeBranchId, setBranchFilter }
 
   const { data: layouts = [], isLoading: layoutsLoading } = useQuery<LayoutSummary[]>({
     queryKey: ["layouts", activeBranchId],
-    queryFn: () => api.get(`/branches/${activeBranchId}/layouts`).then(r => r.data),
+    queryFn: () => canvaService.listLayouts(activeBranchId),
     refetchOnWindowFocus: false,
     enabled: !!activeBranchId,
   });
@@ -577,7 +577,7 @@ function WarehouseCanvaWithLayouts({ branches, activeBranchId, setBranchFilter }
   // and cached forever because the catalogue is static.
   const { data: sizePresets = [] } = useQuery<WarehouseSizePreset[]>({
     queryKey: ["warehouse-size-presets"],
-    queryFn: () => api.get("/warehouse-size-presets").then(r => r.data),
+    queryFn: () => canvaService.getSizePresets(),
     staleTime: Infinity,
   });
 
@@ -603,7 +603,7 @@ function WarehouseCanvaWithLayouts({ branches, activeBranchId, setBranchFilter }
       } else {
         body.size_preset = size_preset;
       }
-      return api.post(`/branches/${activeBranchId}/layouts`, body).then(r => r.data);
+      return canvaService.createLayout(activeBranchId, body);
     },
     onSuccess: (created: LayoutSummary) => {
       qc.invalidateQueries({ queryKey: ["layouts", activeBranchId] });
@@ -626,7 +626,7 @@ function WarehouseCanvaWithLayouts({ branches, activeBranchId, setBranchFilter }
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (layoutId: string) => api.delete(`/layouts/${layoutId}`),
+    mutationFn: (layoutId: string) => canvaService.deleteLayout(layoutId),
     onSuccess: (_data, deletedId) => {
       qc.invalidateQueries({ queryKey: ["layouts", activeBranchId] });
       if (selectedLayoutId === deletedId) setSelectedLayoutId(null);
@@ -637,13 +637,13 @@ function WarehouseCanvaWithLayouts({ branches, activeBranchId, setBranchFilter }
   });
 
   const setDefaultMutation = useMutation({
-    mutationFn: (layoutId: string) => api.patch(`/layouts/${layoutId}/set-default`).then(r => r.data),
+    mutationFn: (layoutId: string) => canvaService.setDefaultLayout(layoutId),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["layouts", activeBranchId] }),
   });
 
   const renameMutation = useMutation({
     mutationFn: ({ layoutId, name }: { layoutId: string; name: string }) =>
-      api.patch(`/warehouses/${activeBranchId}/layout?layout_id=${layoutId}`, { name }).then(r => r.data),
+      canvaService.patchLayout(activeBranchId, { name }, layoutId),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["layouts", activeBranchId] });
       setRenamingId(null);

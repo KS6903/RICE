@@ -280,7 +280,10 @@
       "Bash(git check-ignore *)",
       "Bash(curl -s -o /dev/null -w \"health:%{http_code} \" http://localhost:8000/api/health)",
       "Bash(curl -s -X POST http://localhost:5173/api/auth/login -H \"Content-Type: application/x-www-form-urlencoded\" -d \"username=mill1&password=password123\" -o /dev/null -w \"login:%{http_code}\\\\n\")",
-      "Bash(grep -oE 'api\\\\.\\(get|post|put|patch|delete\\)\\\\\\([^\\)]*\\\\\\)' __TRACKED_VAR__.tsx)"
+      "Bash(grep -oE 'api\\\\.\\(get|post|put|patch|delete\\)\\\\\\([^\\)]*\\\\\\)' __TRACKED_VAR__.tsx)",
+      "Bash(grep -oE 'api\\\\.\\(get|post|put|patch|delete\\)\\\\\\(\"[^\"]*\"|api\\\\.\\(get|post|put|patch|delete\\)\\\\\\(`[^`]*`' packages/web/src/__TRACKED_VAR__.tsx packages/web/src/__TRACKED_VAR__.ts)",
+      "Bash(grep -oE 'api\\\\.[a-z]+\\\\\\(`[^`]*`|api\\\\.[a-z]+\\\\\\(\"[^\"]*\"' packages/web/src/components/canva/useRackView.ts)",
+      "Bash(grep -oE 'api\\\\.\\(get|post|put|patch|delete\\)\\\\\\(`[^`]*`|api\\\\.\\(get|post|put|patch|delete\\)\\\\\\(\"[^\"]*\"' packages/web/src/pages/InventoryPage.tsx)"
     ],
     "additionalDirectories": [
       "d:\\RICE"

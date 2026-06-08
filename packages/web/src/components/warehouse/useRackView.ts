@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import api from "../../services/api";
+import { canvaService } from "../../services/CanvaService";
 
 /** One batch on a pallet — mirrors the backend `_serialize_batch` shape. */
 export type RackBatch = {
@@ -72,12 +72,7 @@ export type RackView = {
 export function useRackView(branchId?: string, layoutId?: string) {
   return useQuery<RackView>({
     queryKey: ["rack-view", branchId, layoutId ?? "default"],
-    queryFn: () =>
-      api
-        .get(`/warehouses/${branchId}/rack-view`, {
-          params: layoutId ? { layout_id: layoutId } : undefined,
-        })
-        .then((r) => r.data),
+    queryFn: () => canvaService.getRackView(branchId!, layoutId),
     enabled: !!branchId,
   });
 }

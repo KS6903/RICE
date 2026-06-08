@@ -28,6 +28,10 @@ export class InventoryService {
   getSummary(branchId?: string): Promise<any> {
     return this.http.get(`/inventory/summary${branchQuery(branchId)}`).then((r) => r.data);
   }
+
+  addStock(body: Record<string, unknown>): Promise<any> {
+    return this.http.post("/inventory/stock", body).then((r) => r.data);
+  }
 }
 
 export const inventoryService = new InventoryService();

@@ -1,7 +1,7 @@
 import { Outlet, NavLink, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { useAuthStore } from "../../stores/authStore";
-import api from "../../services/api";
+import { adminService } from "../../services/AdminService";
 import { LayoutDashboard, Building2, Users, LogOut, ArrowUpCircle, Settings } from "lucide-react";
 import { clsx } from "clsx";
 import BrandLogo from "../BrandLogo";
@@ -21,7 +21,7 @@ export default function AdminShell() {
 
   const { data: pending } = useQuery({
     queryKey: ["admin-pending-upgrades"],
-    queryFn: () => api.get("/admin/upgrade-requests/pending-count").then((r) => r.data),
+    queryFn: () => adminService.getPendingCount(),
     refetchInterval: 5 * 1000,
     refetchOnWindowFocus: true,
     refetchIntervalInBackground: true,

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { X as XIcon, Trash2, RotateCcw, History, Star, AlertTriangle } from "lucide-react";
-import api from "../../services/api";
+import { canvaService } from "../../services/CanvaService";
 
 type LayoutLite = { id: string; name: string; is_default: boolean };
 
@@ -25,7 +25,7 @@ export default function ManageLayoutsModal({
 
   const { data: trashed = [], isLoading: trashLoading } = useQuery<any[]>({
     queryKey: ["layouts-trash", activeBranchId],
-    queryFn: () => api.get(`/branches/${activeBranchId}/layouts/trash`).then((r) => r.data),
+    queryFn: () => canvaService.listLayoutsTrash(activeBranchId),
   });
 
   function invalidate() {
@@ -35,7 +35,7 @@ export default function ManageLayoutsModal({
 
   const bulkDelete = useMutation({
     mutationFn: (ids: string[]) =>
-      api.post("/layouts/bulk-delete", { ids }).then((r) => r.data),
+      canvaService.bulkDeleteLayouts(ids),
     onSuccess: (res: any) => {
       setErrorMsg(null);
       invalidate();
@@ -62,7 +62,7 @@ export default function ManageLayoutsModal({
 
   const restore = useMutation({
     mutationFn: (id: string) =>
-      api.post(`/layouts/${id}/restore`).then((r) => r.data),
+      canvaService.restoreLayout(id),
     onSuccess: () => { setErrorMsg(null); invalidate(); },
     onError: (err: any) => {
       setErrorMsg(err?.response?.data?.detail ?? "Couldn't restore layout.");

@@ -2,7 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useAuthStore } from "./stores/authStore";
-import api from "./services/api";
+import { authService } from "./services/AuthService";
 import AppShell from "./components/layout/AppShell";
 import AdminShell from "./components/layout/AdminShell";
 import LoginPage from "./pages/LoginPage";
@@ -34,7 +34,7 @@ function AuthSessionSync() {
 
   const meQuery = useQuery({
     queryKey: ["auth-me", accessToken],
-    queryFn: () => api.get("/auth/me").then((r) => r.data),
+    queryFn: () => authService.me(),
     enabled: !!accessToken,
     refetchOnWindowFocus: true,
     refetchOnReconnect: true,
