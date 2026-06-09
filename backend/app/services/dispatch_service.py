@@ -50,6 +50,7 @@ class DispatchService(BaseService):
             "is_active": a.is_active,
             "canva_color_hex": a.canva_color_hex,
             "deactivated_at": a.deactivated_at.isoformat() if a.deactivated_at else None,
+            "deactivated_by": a.deactivated_by.full_name if a.deactivated_by else None,
         }
 
     @staticmethod
@@ -65,6 +66,7 @@ class DispatchService(BaseService):
             "is_active": m.is_active,
             "canva_color_hex": m.canva_color_hex,
             "deactivated_at": m.deactivated_at.isoformat() if m.deactivated_at else None,
+            "deactivated_by": m.deactivated_by.full_name if m.deactivated_by else None,
         }
 
     def _serialize_order(self, o: SalesOrder) -> dict:
@@ -115,7 +117,12 @@ class DispatchService(BaseService):
             for f, v in updates.items():
                 setattr(a, f, v)
             if "is_active" in updates:
-                a.deactivated_at = None if updates["is_active"] else datetime.now(timezone.utc)
+                if updates["is_active"]:
+                    a.deactivated_at = None
+                    a.deactivated_by_id = None
+                else:
+                    a.deactivated_at = datetime.now(timezone.utc)
+                    a.deactivated_by_id = self.current_user.id
         self.db.refresh(a)
         return self._serialize_agent(a)
 
@@ -162,7 +169,12 @@ class DispatchService(BaseService):
             for f, v in updates.items():
                 setattr(m, f, v)
             if "is_active" in updates:
-                m.deactivated_at = None if updates["is_active"] else datetime.now(timezone.utc)
+                if updates["is_active"]:
+                    m.deactivated_at = None
+                    m.deactivated_by_id = None
+                else:
+                    m.deactivated_at = datetime.now(timezone.utc)
+                    m.deactivated_by_id = self.current_user.id
         self.db.refresh(m)
         return self._serialize_miller(m)
 

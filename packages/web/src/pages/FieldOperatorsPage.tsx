@@ -19,6 +19,7 @@ type Agent = {
   is_active: boolean;
   canva_color_hex: string | null;
   deactivated_at: string | null;
+  deactivated_by: string | null;
 };
 
 type Miller = {
@@ -32,6 +33,7 @@ type Miller = {
   is_active: boolean;
   canva_color_hex: string | null;
   deactivated_at: string | null;
+  deactivated_by: string | null;
 };
 
 type OperatorKind = "agent" | "miller";
@@ -149,9 +151,8 @@ function FieldOperatorsContent() {
   const toggleActive = useMutation({
     mutationFn: ({ row, is_active }: { row: OperatorRow; is_active: boolean }) =>
       dispatchService.setOperatorActive(row.kind, row.id, is_active),
-    onSuccess: (_, { is_active }) => {
+    onSuccess: () => {
       invalidateAll();
-      setPageTab(is_active ? "active" : "deactivated");
       setEditingId(null);
       setError(null);
     },
@@ -267,32 +268,83 @@ function FieldOperatorsContent() {
                   ))}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                {activeRows.map((row) =>
-                  editingId === row.id ? (
-                    <EditOperatorRow
-                      key={row.id}
-                      row={row}
-                      onCancel={() => { setEditingId(null); setError(null); }}
-                      onSaved={() => { invalidateAll(); setEditingId(null); setError(null); }}
-                      setError={setError}
-                    />
-                  ) : (
-                    <ViewOperatorRow
-                      key={row.id}
-                      row={row}
-                      onEdit={() => { setEditingId(row.id); setError(null); }}
-                      onDeactivate={() => toggleActive.mutate({ row, is_active: false })}
-                      canEdit={canEdit("operators")}
-                    />
-                  )
-                )}
-                {activeRows.length === 0 && (
-                  <tr>
-                    <td colSpan={8} className="px-4 py-8 text-center text-muted font-medium">
-                      No {filter === "all" ? "active operators" : `active ${filter}s`} yet — add one above.
-                    </td>
-                  </tr>
+              <tbody>
+                {filter === "all" ? (() => {
+                  const agentRows = activeRows.filter((r) => r.kind === "agent");
+                  const millerRows = activeRows.filter((r) => r.kind === "miller");
+                  const renderRow = (row: OperatorRow) =>
+                    editingId === row.id ? (
+                      <EditOperatorRow
+                        key={row.id}
+                        row={row}
+                        onCancel={() => { setEditingId(null); setError(null); }}
+                        onSaved={() => { invalidateAll(); setEditingId(null); setError(null); }}
+                        setError={setError}
+                      />
+                    ) : (
+                      <ViewOperatorRow
+                        key={row.id}
+                        row={row}
+                        onEdit={() => { setEditingId(row.id); setError(null); }}
+                        onDeactivate={() => toggleActive.mutate({ row, is_active: false })}
+                        canEdit={canEdit("operators")}
+                      />
+                    );
+                  return (
+                    <>
+                      <tr className="border-b border-slate-200 dark:border-slate-700">
+                        <td colSpan={8} className="px-4 py-1.5 bg-violet-50 dark:bg-violet-950/20">
+                          <span className="text-[11px] font-bold uppercase tracking-widest text-violet-600 dark:text-violet-400">
+                            Agents · {agentRows.length}
+                          </span>
+                        </td>
+                      </tr>
+                      {agentRows.length > 0
+                        ? agentRows.map(renderRow)
+                        : <tr className="border-b border-slate-100 dark:border-slate-800"><td colSpan={8} className="px-4 py-4 text-center text-xs text-muted">No active agents.</td></tr>
+                      }
+                      <tr className="border-y-2 border-slate-200 dark:border-slate-700">
+                        <td colSpan={8} className="px-4 py-1.5 bg-amber-50 dark:bg-amber-950/20">
+                          <span className="text-[11px] font-bold uppercase tracking-widest text-amber-600 dark:text-amber-400">
+                            Millers · {millerRows.length}
+                          </span>
+                        </td>
+                      </tr>
+                      {millerRows.length > 0
+                        ? millerRows.map(renderRow)
+                        : <tr><td colSpan={8} className="px-4 py-4 text-center text-xs text-muted">No active millers.</td></tr>
+                      }
+                    </>
+                  );
+                })() : (
+                  <>
+                    {activeRows.map((row) =>
+                      editingId === row.id ? (
+                        <EditOperatorRow
+                          key={row.id}
+                          row={row}
+                          onCancel={() => { setEditingId(null); setError(null); }}
+                          onSaved={() => { invalidateAll(); setEditingId(null); setError(null); }}
+                          setError={setError}
+                        />
+                      ) : (
+                        <ViewOperatorRow
+                          key={row.id}
+                          row={row}
+                          onEdit={() => { setEditingId(row.id); setError(null); }}
+                          onDeactivate={() => toggleActive.mutate({ row, is_active: false })}
+                          canEdit={canEdit("operators")}
+                        />
+                      )
+                    )}
+                    {activeRows.length === 0 && (
+                      <tr>
+                        <td colSpan={8} className="px-4 py-8 text-center text-muted font-medium">
+                          No active {filter}s yet — add one above.
+                        </td>
+                      </tr>
+                    )}
+                  </>
                 )}
               </tbody>
             </table>
@@ -324,7 +376,7 @@ function FieldOperatorsContent() {
               )}
             </div>
             <p className="text-xs text-muted">
-              {deactivatedRows.length} operator{deactivatedRows.length !== 1 ? "s" : ""} · sorted latest to oldest
+              {deactivatedRows.length} operator{deactivatedRows.length !== 1 ? "s" : ""}
             </p>
           </div>
 
@@ -332,27 +384,68 @@ function FieldOperatorsContent() {
             <table className="w-full text-sm" data-testid="deactivated-operators-table">
               <thead className="bg-slate-50 dark:bg-slate-800/60 border-b border-slate-200 dark:border-slate-700">
                 <tr>
-                  {["Color", "Name", "Type", "Contact", "Phone", "Details", "Deactivated on", ""].map((h) => (
+                  {["Color", "Name", "Type", "Contact", "Phone", "Details", "Deactivated on", "Deactivated by", ""].map((h) => (
                     <th key={h} className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wide text-slate-500">{h}</th>
                   ))}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                {deactivatedRows.map((row) => (
-                  <DeactivatedOperatorRow
-                    key={row.id}
-                    row={row}
-                    onReactivate={() => toggleActive.mutate({ row, is_active: true })}
-                    canEdit={canEdit("operators")}
-                  />
-                ))}
-                {deactivatedRows.length === 0 && (
-                  <tr>
-                    <td colSpan={8} className="px-4 py-8 text-center text-muted font-medium">
-                      {search ? "No deactivated operators match your search." : "No deactivated operators."}
-                    </td>
-                  </tr>
-                )}
+              <tbody>
+                {(() => {
+                  const agentRows = deactivatedRows.filter((r) => r.kind === "agent");
+                  const millerRows = deactivatedRows.filter((r) => r.kind === "miller");
+                  const renderRow = (row: OperatorRow) => (
+                    <DeactivatedOperatorRow
+                      key={row.id}
+                      row={row}
+                      onReactivate={() => toggleActive.mutate({ row, is_active: true })}
+                      canEdit={canEdit("operators")}
+                    />
+                  );
+                  if (deactivatedRows.length === 0) {
+                    return (
+                      <tr>
+                        <td colSpan={9} className="px-4 py-8 text-center text-muted font-medium">
+                          {search ? "No deactivated operators match your search." : "No deactivated operators."}
+                        </td>
+                      </tr>
+                    );
+                  }
+                  return (
+                    <>
+                      {agentRows.length > 0 && (
+                        <>
+                          <tr className="border-b border-slate-200 dark:border-slate-700">
+                            <td colSpan={9} className="px-4 py-1.5 bg-violet-50 dark:bg-violet-950/20">
+                              <span className="text-[11px] font-bold uppercase tracking-widest text-violet-600 dark:text-violet-400">
+                                Agents · {agentRows.length}
+                              </span>
+                            </td>
+                          </tr>
+                          {agentRows.map(renderRow)}
+                        </>
+                      )}
+                      {agentRows.length > 0 && millerRows.length > 0 && (
+                        <tr className="border-y-2 border-slate-200 dark:border-slate-700">
+                          <td colSpan={9} className="px-4 py-1.5 bg-amber-50 dark:bg-amber-950/20">
+                            <span className="text-[11px] font-bold uppercase tracking-widest text-amber-600 dark:text-amber-400">
+                              Millers · {millerRows.length}
+                            </span>
+                          </td>
+                        </tr>
+                      )}
+                      {agentRows.length === 0 && millerRows.length > 0 && (
+                        <tr className="border-b border-slate-200 dark:border-slate-700">
+                          <td colSpan={9} className="px-4 py-1.5 bg-amber-50 dark:bg-amber-950/20">
+                            <span className="text-[11px] font-bold uppercase tracking-widest text-amber-600 dark:text-amber-400">
+                              Millers · {millerRows.length}
+                            </span>
+                          </td>
+                        </tr>
+                      )}
+                      {millerRows.map(renderRow)}
+                    </>
+                  );
+                })()}
               </tbody>
             </table>
           </div>
@@ -440,6 +533,7 @@ function DeactivatedOperatorRow({
       <td className="px-4 py-3 text-secondary">{row.phone || "—"}</td>
       <td className="px-4 py-3 text-secondary tabular-nums">{details}</td>
       <td className="px-4 py-3 text-secondary tabular-nums text-xs">{formatDate(row.deactivated_at)}</td>
+      <td className="px-4 py-3 text-secondary text-xs">{row.deactivated_by ?? "—"}</td>
       <td className="px-4 py-3 text-right">
         {canEdit && (
           <button
