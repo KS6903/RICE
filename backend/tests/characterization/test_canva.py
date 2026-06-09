@@ -59,3 +59,39 @@ def test_canva_requires_canva_inventory_feature(make_auth_client):
     branch_id = "00000000-0000-0000-0000-000000000000"
     res = c.get(f"/api/warehouses/{branch_id}/canva")
     assert res.status_code == 402
+
+
+def test_patch_move_triggers_exactly_one_broadcast(auth_client, seed_owner, db_session, monkeypatch):
+    """A PATCH-move commits, then fires exactly ONE realtime broadcast_sync
+    ('pallet.moved'). Pins the Phase-4 contract that the service owns the single
+    post-commit broadcast — no double-fire, no missing fire."""
+    import uuid
+    from decimal import Decimal
+
+    import app.services.canva_realtime as realtime
+    from app.models.warehouse import Pallet
+
+    boot = auth_client.get(f"/api/warehouses/{seed_owner.branch_id}/canva")
+    assert boot.status_code == 200, boot.text
+    layout_id = uuid.UUID(boot.json()["layout"]["id"])
+
+    pallet = Pallet(
+        company_id=seed_owner.company_id,
+        layout_id=layout_id,
+        pallet_code="PL-MOVE-0001",
+        x_m=Decimal("2.0"), y_m=Decimal("2.0"),
+        width_m=Decimal("1.2"), depth_m=Decimal("0.8"),
+        sack_count=10, weight_kg=Decimal("500"), status="in_storage",
+    )
+    db_session.add(pallet)
+    db_session.flush()
+
+    calls: list[tuple] = []
+    monkeypatch.setattr(realtime.manager, "broadcast_sync", lambda *a, **k: calls.append(a))
+
+    res = auth_client.patch(f"/api/pallets/{pallet.id}/move", json={"x_m": 6.0, "y_m": 6.0})
+    assert res.status_code == 200, res.text
+    assert len(calls) == 1, f"expected exactly one broadcast, got {len(calls)}"
+    # broadcast_sync(layout_id, event, payload) — event is the 2nd positional arg.
+    assert calls[0][1] == "pallet.moved"
+    assert calls[0][0] == pallet.layout_id

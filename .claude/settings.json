@@ -283,7 +283,20 @@
       "Bash(grep -oE 'api\\\\.\\(get|post|put|patch|delete\\)\\\\\\([^\\)]*\\\\\\)' __TRACKED_VAR__.tsx)",
       "Bash(grep -oE 'api\\\\.\\(get|post|put|patch|delete\\)\\\\\\(\"[^\"]*\"|api\\\\.\\(get|post|put|patch|delete\\)\\\\\\(`[^`]*`' packages/web/src/__TRACKED_VAR__.tsx packages/web/src/__TRACKED_VAR__.ts)",
       "Bash(grep -oE 'api\\\\.[a-z]+\\\\\\(`[^`]*`|api\\\\.[a-z]+\\\\\\(\"[^\"]*\"' packages/web/src/components/canva/useRackView.ts)",
-      "Bash(grep -oE 'api\\\\.\\(get|post|put|patch|delete\\)\\\\\\(`[^`]*`|api\\\\.\\(get|post|put|patch|delete\\)\\\\\\(\"[^\"]*\"' packages/web/src/pages/InventoryPage.tsx)"
+      "Bash(grep -oE 'api\\\\.\\(get|post|put|patch|delete\\)\\\\\\(`[^`]*`|api\\\\.\\(get|post|put|patch|delete\\)\\\\\\(\"[^\"]*\"' packages/web/src/pages/InventoryPage.tsx)",
+      "Bash(CANVA_SNAP_OUT=/d/tmp/canva_snap_before.json .venv/Scripts/python.exe -m pytest tests/characterization/test_canva_snapshot_tmp.py -q)",
+      "Bash(echo \"=== exit $? ===\")",
+      "Bash(.venv/Scripts/python.exe -c \"import json; d=json.load\\(open\\('canva_snap_before.json'\\)\\); print\\('keys:', list\\(d\\)\\); print\\('zones:', len\\(d['canva']['zones']\\)\\); print\\('pallets:', len\\(d['canva']['pallets']\\)\\); print\\('summary:', d['canva']['summary']\\); print\\('recommend pallet_ids:', d['recommend']['pallet_ids']\\); print\\('aging zones:', len\\(d['aging_report']['zones']\\)\\); print\\('movements:', len\\(d['movements']\\)\\)\")",
+      "Bash(python -c \"import json; d=json.load\\(open\\('canva_snap_before.json'\\)\\); print\\('keys:', list\\(d\\)\\); print\\('zones:', len\\(d['canva']['zones']\\)\\); print\\('pallets:', len\\(d['canva']['pallets']\\)\\); print\\('summary:', d['canva']['summary']\\)\")",
+      "Bash(.venv/Scripts/python.exe -c \"import app.main; print\\('APP IMPORT OK'\\)\")",
+      "Bash(CANVA_SNAP_OUT=/d/tmp/canva_snap_after.json .venv/Scripts/python.exe -m pytest tests/characterization/test_canva_snapshot_tmp.py -q)",
+      "Bash(.venv/Scripts/python.exe -m pytest tests/characterization/test_canva.py -v)",
+      "Bash(rm -f tests/characterization/__pycache__/test_canva_snapshot_tmp*.pyc)",
+      "Bash(.venv/Scripts/python.exe -m pytest -q)",
+      "PowerShell(Get-CimInstance Win32_Process -Filter \"Name='python.exe'\" | Where-Object { $_.CommandLine -match 'uvicorn' } | Select-Object ProcessId, CommandLine | Format-List)",
+      "PowerShell(Get-CimInstance Win32_Process -Filter \"Name='python.exe'\" | Where-Object { $_.CommandLine -match 'uvicorn' } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force; \"stopped PID $\\($_.ProcessId\\)\" })",
+      "Bash(.venv/Scripts/python.exe -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --no-access-log)",
+      "Bash(.venv/Scripts/python.exe -c \"import ast; ast.parse\\(open\\('seed_demo_pallets.py'\\).read\\(\\)\\); import seed_demo_pallets; print\\('seed_demo_pallets imports OK'\\)\")"
     ],
     "additionalDirectories": [
       "d:\\RICE"

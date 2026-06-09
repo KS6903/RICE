@@ -14,7 +14,12 @@ from app.models.user import User
 from app.models.reference import RiceVariety
 from app.models.warehouse import WarehouseLayout, WarehouseZone, Pallet, RiceBatch
 from app.services.rice_shelf_life import compute_best_before, aging_status
-from app.api.canva import _get_or_bootstrap, _next_pallet_code
+from app.services.canva_bootstrap import (
+    bootstrap_layout,
+    bootstrap_pallets_from_inventory,
+    _next_pallet_code,
+)
+from app.repositories.canva import WarehouseLayoutRepository
 
 VARIETIES = ["Rc222", "Rc216", "Rc218", "SINAG"]
 CLIENT_NAMES = ["Juan Cruz Farms", "Lola Maria Co-op", "Pedro Reyes Hacienda", "Mill stock"]
@@ -33,7 +38,12 @@ def main():
             print("No branch on this company.")
             return
 
-        layout = _get_or_bootstrap(db, branch)
+        layout = WarehouseLayoutRepository(db).get_default_for_branch(branch.id)
+        if not layout:
+            layout = bootstrap_layout(db, branch, is_default=True)
+            bootstrap_pallets_from_inventory(db, layout)
+            db.commit()
+            db.refresh(layout)
         premium = db.query(WarehouseZone).filter(
             WarehouseZone.layout_id == layout.id,
             WarehouseZone.zone_type == "premium_storage",
