@@ -6,10 +6,12 @@ dispatch order list, and the courier-assignment / mark-delivered flow.
 AGENT_KEYS = {
     "id", "name", "agent_type", "contact_person", "phone", "address",
     "commission_pct", "is_active", "canva_color_hex",
+    "deactivated_at", "deactivated_by",
 }
 MILLER_KEYS = {
     "id", "name", "contact_person", "phone", "address",
     "capacity_kg_per_hr", "milling_fee_per_kg", "is_active", "canva_color_hex",
+    "deactivated_at", "deactivated_by",
 }
 ORDER_KEYS = {
     "id", "order_no", "order_date", "delivery_date", "status", "total_amount",

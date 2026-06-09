@@ -19,6 +19,8 @@ out/
 
 # Logs
 *.log
+*.out
+*.err
 npm-debug.log*
 
 # Editor
