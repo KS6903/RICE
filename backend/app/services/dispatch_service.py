@@ -49,6 +49,7 @@ class DispatchService(BaseService):
             "commission_pct": float(a.commission_pct) if a.commission_pct is not None else 0.0,
             "is_active": a.is_active,
             "canva_color_hex": a.canva_color_hex,
+            "deactivated_at": a.deactivated_at.isoformat() if a.deactivated_at else None,
         }
 
     @staticmethod
@@ -63,6 +64,7 @@ class DispatchService(BaseService):
             "milling_fee_per_kg": float(m.milling_fee_per_kg) if m.milling_fee_per_kg is not None else None,
             "is_active": m.is_active,
             "canva_color_hex": m.canva_color_hex,
+            "deactivated_at": m.deactivated_at.isoformat() if m.deactivated_at else None,
         }
 
     def _serialize_order(self, o: SalesOrder) -> dict:
@@ -108,9 +110,12 @@ class DispatchService(BaseService):
         a = self.agents.get_for_company(agent_id, self.current_user.company_id)
         if not a:
             raise NotFoundError("Agent not found")
+        updates = data.model_dump(exclude_none=True)
         with self.transaction():
-            for f, v in data.model_dump(exclude_none=True).items():
+            for f, v in updates.items():
                 setattr(a, f, v)
+            if "is_active" in updates:
+                a.deactivated_at = None if updates["is_active"] else datetime.now(timezone.utc)
         self.db.refresh(a)
         return self._serialize_agent(a)
 
@@ -152,9 +157,12 @@ class DispatchService(BaseService):
         m = self.millers.get_for_company(miller_id, self.current_user.company_id)
         if not m:
             raise NotFoundError("Miller not found")
+        updates = data.model_dump(exclude_none=True)
         with self.transaction():
-            for f, v in data.model_dump(exclude_none=True).items():
+            for f, v in updates.items():
                 setattr(m, f, v)
+            if "is_active" in updates:
+                m.deactivated_at = None if updates["is_active"] else datetime.now(timezone.utc)
         self.db.refresh(m)
         return self._serialize_miller(m)
 

@@ -6,8 +6,9 @@ four party tables uniformly. Per-tenant color uniqueness is enforced by:
   - app-layer cross-table check in services/canva_color.py
 """
 import uuid
+from datetime import datetime
 from decimal import Decimal
-from sqlalchemy import String, Boolean, Text, Numeric, ForeignKey
+from sqlalchemy import String, Boolean, Text, Numeric, ForeignKey, DateTime
 from sqlalchemy.orm import mapped_column, Mapped
 from sqlalchemy.dialects.postgresql import UUID
 from ..core.database import Base
@@ -29,6 +30,7 @@ class Agent(Base, TimestampMixin):
     commission_pct: Mapped[Decimal] = mapped_column(Numeric(5, 2), default=0)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     canva_color_hex: Mapped[str | None] = mapped_column(String(7))
+    deactivated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
 class Miller(Base, TimestampMixin):
@@ -46,3 +48,4 @@ class Miller(Base, TimestampMixin):
     milling_fee_per_kg: Mapped[Decimal | None] = mapped_column(Numeric(10, 4))
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     canva_color_hex: Mapped[str | None] = mapped_column(String(7))
+    deactivated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
