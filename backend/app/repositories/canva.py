@@ -183,6 +183,7 @@ class PalletRepository(BaseRepository[Pallet]):
         return {
             c.stack_parent_id
             for c in self.db.query(Pallet).filter(Pallet.stack_parent_id.isnot(None)).all()
+            if c.stack_parent_id is not None
         }
 
     def eject_from_zone(self, zone_id: uuid.UUID) -> None:
@@ -206,7 +207,7 @@ class PalletRepository(BaseRepository[Pallet]):
             q = q.filter(Pallet.layout_id == layout_id)
         if variety_id is not None:
             q = q.filter(RiceBatch.variety_id == variety_id)
-        return q.order_by(RiceBatch.milling_date.asc(), Pallet.created_at.asc()).all()
+        return q.order_by(RiceBatch.milling_date.asc(), Pallet.created_at.asc()).all()  # type: ignore[return-value]
 
     def next_pallet_code(self, company_id: uuid.UUID, year: int) -> str:
         """Next ``PL-<year>-NNNN`` code for a company (sequential per year)."""
@@ -255,7 +256,7 @@ class RiceBatchRepository(BaseRepository[RiceBatch]):
         )
         if layout_ids:
             q = q.filter(Pallet.layout_id.in_(layout_ids))
-        return q.all()
+        return q.all()  # type: ignore[return-value]
 
     def varieties_in_stock(self, company_id: uuid.UUID) -> list[RiceVariety]:
         return (
