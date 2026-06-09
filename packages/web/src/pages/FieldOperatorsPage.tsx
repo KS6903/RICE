@@ -561,7 +561,7 @@ function EditOperatorRow({
   const [name, setName] = useState(row.name);
   const [contact, setContact] = useState(row.contact_person ?? "");
   const [phone, setPhone] = useState(row.phone ?? "");
-  const [address, setAddress] = useState(row.address ?? "");
+  const address = row.address ?? "";
   const [agentType, setAgentType] = useState(row.kind === "agent" ? row.agent_type ?? "broker" : "broker");
   const [commission, setCommission] = useState(row.kind === "agent" ? String(row.commission_pct ?? "") : "");
   const [capacity, setCapacity] = useState(row.kind === "miller" ? String(row.capacity_kg_per_hr ?? "") : "");

@@ -551,7 +551,7 @@ type WarehouseSizePreset = {
   floor_area_m2: number;
 };
 
-function WarehouseCanvaWithLayouts({ branches, activeBranchId, setBranchFilter }: { branches: any[]; activeBranchId: string; setBranchFilter: (id: string) => void }) {
+function WarehouseCanvaWithLayouts({ branches, activeBranchId, setBranchFilter: _setBranchFilter }: { branches: any[]; activeBranchId: string; setBranchFilter: (id: string) => void }) {
   const qc = useQueryClient();
   const role = useAuthStore((s) => s.user?.role);
   const canManageLayouts = role === "owner" || role === "admin" || role === "mill_operator";

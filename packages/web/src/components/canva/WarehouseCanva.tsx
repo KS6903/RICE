@@ -614,7 +614,7 @@ export default function WarehouseCanva({
       tr.nodes([]);
     }
     tr.getLayer()?.batchDraw();
-  }, [layoutMode, selectedZoneId, data?.zones.length]);
+  }, [layoutMode, selectedZoneId, data, zoneUpdateMutation]);
 
   // ── Pallet resize Transformer ─────────────────────────────────────────────
   // Attach the pallet-only Transformer to the currently selected pallet when
@@ -630,7 +630,7 @@ export default function WarehouseCanva({
       tr.nodes([]);
     }
     tr.getLayer()?.batchDraw();
-  }, [editMode, layoutMode, selectedPalletId, data?.pallets.length]);
+  }, [editMode, layoutMode, selectedPalletId, data]);
 
   const onPalletTransformEnd = useEvent(() => {
     const stage = stageRef.current;
@@ -2341,7 +2341,6 @@ function ZoneEditor({
   }, [zone.id, zone.name, zone.zone_type, zone.color_hex, zone.notes]);
 
   const isStructural = STRUCTURAL_TYPES.has(zoneType);
-  const allTypes = [...STORAGE_ZONE_TYPES, "wall", "door", "walkway", "loading_dock"];
 
   return (
     <div className="w-[320px] shrink-0 rounded-2xl ring-1 ring-slate-200 dark:ring-slate-700 bg-white dark:bg-slate-900 overflow-hidden flex flex-col" style={{ maxHeight: "calc(100vh - 280px)" }}>
