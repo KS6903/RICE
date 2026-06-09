@@ -296,7 +296,8 @@
       "PowerShell(Get-CimInstance Win32_Process -Filter \"Name='python.exe'\" | Where-Object { $_.CommandLine -match 'uvicorn' } | Select-Object ProcessId, CommandLine | Format-List)",
       "PowerShell(Get-CimInstance Win32_Process -Filter \"Name='python.exe'\" | Where-Object { $_.CommandLine -match 'uvicorn' } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force; \"stopped PID $\\($_.ProcessId\\)\" })",
       "Bash(.venv/Scripts/python.exe -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --no-access-log)",
-      "Bash(.venv/Scripts/python.exe -c \"import ast; ast.parse\\(open\\('seed_demo_pallets.py'\\).read\\(\\)\\); import seed_demo_pallets; print\\('seed_demo_pallets imports OK'\\)\")"
+      "Bash(.venv/Scripts/python.exe -c \"import ast; ast.parse\\(open\\('seed_demo_pallets.py'\\).read\\(\\)\\); import seed_demo_pallets; print\\('seed_demo_pallets imports OK'\\)\")",
+      "Bash(python3 -c \"import sys,json; s=json.load\\(sys.stdin\\); [print\\(k,':',v\\) for k,v in s.get\\('scripts',{}\\).items\\(\\)]\")"
     ],
     "additionalDirectories": [
       "d:\\RICE"

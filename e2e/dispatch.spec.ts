@@ -10,14 +10,13 @@ async function login(page: Page) {
   await expect(page).not.toHaveURL(/\/login/, { timeout: 10_000 });
 }
 
-/** Open the Field Operators tab, fill the New form for either kind, and return
- *  the row's reserved color hex once the row appears. */
+/** Navigate to /operators, create an operator, and return its reserved color hex. */
 async function createOperator(
   page: Page,
   kind: "agent" | "miller",
   name: string,
 ): Promise<string> {
-  await page.getByTestId("dispatch-tab-operators").click();
+  await page.goto("/operators");
   await page.getByTestId("add-operator").click();
   await page.getByTestId(`new-operator-kind-${kind}`).click();
   await page.getByTestId("new-operator-name").fill(name);
@@ -29,13 +28,19 @@ async function createOperator(
   return color;
 }
 
-test.describe("Dispatch tab — field operators, color reservation, edit flow", () => {
-  test("Sidebar shows Dispatch nav and Dispatch page renders Delivery + Field Operators tabs", async ({ page }) => {
+test.describe("Dispatch & Field Operators — color reservation, edit flow", () => {
+  test("Dispatch page renders delivery content and Field Operators page renders operator table", async ({ page }) => {
     await login(page);
+
     await page.goto("/dispatch");
     await expect(page.getByRole("heading", { name: /^Dispatch$/i })).toBeVisible({ timeout: 10_000 });
-    await expect(page.getByTestId("dispatch-tab-delivery")).toBeVisible();
-    await expect(page.getByTestId("dispatch-tab-operators")).toBeVisible();
+    const table = page.getByTestId("dispatch-orders-table");
+    const emptyMsg = page.getByText(/no orders awaiting delivery/i);
+    await expect(table.or(emptyMsg)).toBeVisible({ timeout: 10_000 });
+
+    await page.goto("/operators");
+    await expect(page.getByRole("heading", { name: /^Field Operators$/i })).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByTestId("operators-filter-all")).toBeVisible();
     // Old per-type tabs are gone — both kinds live under Field Operators now.
     await expect(page.getByTestId("dispatch-tab-agents")).toHaveCount(0);
     await expect(page.getByTestId("dispatch-tab-millers")).toHaveCount(0);
@@ -43,13 +48,11 @@ test.describe("Dispatch tab — field operators, color reservation, edit flow", 
 
   test("Adding an operator auto-assigns a unique color that persists across reload", async ({ page }) => {
     await login(page);
-    await page.goto("/dispatch");
     const name = `E2E Op ${Date.now()}`;
     const color = await createOperator(page, "agent", name);
     expect(color).toMatch(/^#[0-9a-f]{6}$/);
 
     await page.reload();
-    await page.getByTestId("dispatch-tab-operators").click();
     const row = page.getByRole("row", { name: new RegExp(name, "i") }).first();
     await expect(row).toBeVisible({ timeout: 10_000 });
     const still = await row.getByTestId("color-swatch").first().getAttribute("data-color");
@@ -58,13 +61,12 @@ test.describe("Dispatch tab — field operators, color reservation, edit flow", 
 
   test("Agent and miller in the same tenant get different system-assigned colors (swatch is read-only)", async ({ page }) => {
     await login(page);
-    await page.goto("/dispatch");
     const stamp = Date.now();
     const agentColor = await createOperator(page, "agent", `E2E A ${stamp}`);
     const millerColor = await createOperator(page, "miller", `E2E M ${stamp}`);
     expect(agentColor).not.toBe(millerColor);
 
-    // No editable picker anywhere in the millerrow.
+    // No editable picker anywhere in the miller row.
     const millerRow = page.getByRole("row", { name: new RegExp(`E2E M ${stamp}`, "i") }).first();
     await expect(millerRow.getByTestId("palette-popover")).toHaveCount(0);
     await expect(millerRow.locator('input[type="color"]')).toHaveCount(0);
@@ -101,12 +103,10 @@ test.describe("Dispatch tab — field operators, color reservation, edit flow", 
 
   test("User can edit an agent's contact info inline (but the color stays put)", async ({ page }) => {
     await login(page);
-    await page.goto("/dispatch");
     const stamp = Date.now();
     const name = `E2E Edit ${stamp}`;
     const originalColor = await createOperator(page, "agent", name);
 
-    // Find the row (it now also lives under operators with edit button)
     const row = page.getByRole("row", { name: new RegExp(name, "i") }).first();
     await row.getByRole("button", { name: /^Edit$/ }).click();
 
@@ -115,19 +115,16 @@ test.describe("Dispatch tab — field operators, color reservation, edit flow", 
     await editRow.getByPlaceholder("Contact person").fill("Juan dela Cruz");
     await editRow.getByRole("button", { name: /^Save$/ }).click();
 
-    // Row returns to view-mode with the new values visible
     const refreshedRow = page.getByRole("row", { name: new RegExp(name, "i") }).first();
     await expect(refreshedRow.getByText("Juan dela Cruz")).toBeVisible({ timeout: 6_000 });
     await expect(refreshedRow.getByText("0917-555-1234")).toBeVisible();
 
-    // Color is still the system-assigned one — edit cannot touch it
     const stillColor = await refreshedRow.getByTestId("color-swatch").first().getAttribute("data-color");
     expect(stillColor).toBe(originalColor);
   });
 
   test("Type filter pills narrow the operator list to a single kind", async ({ page }) => {
     await login(page);
-    await page.goto("/dispatch");
     const stamp = Date.now();
     const aName = `E2E FilterA ${stamp}`;
     const mName = `E2E FilterM ${stamp}`;
@@ -150,10 +147,9 @@ test.describe("Dispatch tab — field operators, color reservation, edit flow", 
     await expect(page.getByRole("row", { name: new RegExp(mName, "i") })).toBeVisible();
   });
 
-  test("Order Delivery tab renders the orders table or an empty-state", async ({ page }) => {
+  test("Order Delivery page renders the orders table or an empty-state", async ({ page }) => {
     await login(page);
     await page.goto("/dispatch");
-    await expect(page.getByTestId("dispatch-tab-delivery")).toHaveClass(/bg-grad-brand/);
     const table = page.getByTestId("dispatch-orders-table");
     const emptyMsg = page.getByText(/no orders awaiting delivery/i);
     await expect(table.or(emptyMsg)).toBeVisible({ timeout: 10_000 });

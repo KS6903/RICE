@@ -17,6 +17,7 @@ export type AppSection =
   | "inventory"
   | "sales"
   | "dispatch"
+  | "operators"
   | "expenses"
   | "reports"
   | "employees"
@@ -33,6 +34,7 @@ const ALL_FULL: Record<AppSection, AccessLevel> = {
   inventory: "full",
   sales: "full",
   dispatch: "full",
+  operators: "full",
   expenses: "full",
   reports: "full",
   employees: "full",
@@ -53,6 +55,7 @@ export const ROLE_ACCESS: Record<Role, Record<AppSection, AccessLevel>> = {
     inventory: "view",
     sales: "full",
     dispatch: "view",
+    operators: "view",
     expenses: "full",
     reports: "full",
     employees: "full",
@@ -68,6 +71,7 @@ export const ROLE_ACCESS: Record<Role, Record<AppSection, AccessLevel>> = {
     inventory: "view",
     sales: "full",
     dispatch: "view",
+    operators: "view",
     expenses: "none",
     reports: "none",
     employees: "none",
@@ -83,6 +87,7 @@ export const ROLE_ACCESS: Record<Role, Record<AppSection, AccessLevel>> = {
     inventory: "full",
     sales: "none",
     dispatch: "full",
+    operators: "full",
     expenses: "none",
     reports: "none",
     employees: "none",
@@ -98,6 +103,7 @@ export const ROLE_ACCESS: Record<Role, Record<AppSection, AccessLevel>> = {
     inventory: "view",
     sales: "full",
     dispatch: "none",
+    operators: "none",
     expenses: "none",
     reports: "none",
     employees: "none",

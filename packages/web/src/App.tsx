@@ -13,6 +13,7 @@ import MillingPage from "./pages/MillingPage";
 import InventoryPage from "./pages/InventoryPage";
 import SalesPage from "./pages/SalesPage";
 import DispatchPage from "./pages/DispatchPage";
+import FieldOperatorsPage from "./pages/FieldOperatorsPage";
 import CostsPage from "./pages/CostsPage";
 import ReportsPage from "./pages/ReportsPage";
 import UsersPage from "./pages/UsersPage";
@@ -110,6 +111,7 @@ export default function App() {
           <Route path="inventory" element={<RoleGate section="inventory"><FeatureGate code="inventory" label="Inventory"><InventoryPage /></FeatureGate></RoleGate>} />
           <Route path="sales" element={<RoleGate section="sales"><FeatureGate code="sales" label="Sales"><SalesPage /></FeatureGate></RoleGate>} />
           <Route path="dispatch" element={<RoleGate section="dispatch"><FeatureGate code="sales" label="Dispatch"><DispatchPage /></FeatureGate></RoleGate>} />
+          <Route path="operators" element={<RoleGate section="operators"><FeatureGate code="sales" label="Field Operators"><FieldOperatorsPage /></FeatureGate></RoleGate>} />
           <Route path="costs" element={<RoleGate section="expenses"><FeatureGate code="expenses" label="Expenses"><CostsPage /></FeatureGate></RoleGate>} />
           <Route path="reports" element={<RoleGate section="reports"><FeatureGate code="dashboard" label="Reports"><ReportsPage /></FeatureGate></RoleGate>} />
           <Route path="users" element={<RoleGate section="users"><FeatureGate code="users" label="Users"><UsersPage /></FeatureGate></RoleGate>} />

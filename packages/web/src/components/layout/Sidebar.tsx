@@ -1,7 +1,7 @@
 import { NavLink } from "react-router-dom";
 import {
   LayoutDashboard, Wheat, Factory, Package,
-  ShoppingCart, Receipt, BarChart3, Users, Settings, IdCard, Lock, Sparkles, Truck
+  ShoppingCart, Receipt, BarChart3, Users, Settings, IdCard, Lock, Sparkles, Truck, HardHat
 } from "lucide-react";
 import { clsx } from "clsx";
 import { useFeature } from "../../hooks/useFeature";
@@ -16,6 +16,7 @@ const NAV: { to: string; label: string; icon: React.ElementType; end?: boolean; 
   { to: "/inventory", label: "Inventory", icon: Package, feature: "inventory", section: "inventory" },
   { to: "/sales", label: "Sales", icon: ShoppingCart, feature: "sales", section: "sales" },
   { to: "/dispatch", label: "Dispatch", icon: Truck, feature: "sales", section: "dispatch" },
+  { to: "/operators", label: "Field Operators", icon: HardHat, feature: "sales", section: "operators" },
   { to: "/costs", label: "Expenses", icon: Receipt, feature: "expenses", section: "expenses" },
   { to: "/reports", label: "Reports", icon: BarChart3, feature: "dashboard", section: "reports" },
   { to: "/employees", label: "Employees", icon: IdCard, feature: "employees", section: "employees" },
