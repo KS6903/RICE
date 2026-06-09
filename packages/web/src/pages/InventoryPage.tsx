@@ -616,7 +616,6 @@ function WarehouseCanvaWithLayouts({ branches, activeBranchId, setBranchFilter: 
     onError: (err: any) => {
       // Surface the real cause to the console so devs (and the user) can see
       // exactly what blew up instead of staring at the generic fallback.
-      // eslint-disable-next-line no-console
       console.error("[createLayout] failed", {
         status: err?.response?.status,
         data: err?.response?.data,

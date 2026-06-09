@@ -116,7 +116,6 @@ export function useRealtimeCanva(layoutId: string | undefined, cacheKey: string)
         // doesn't reconnect forever and hammer the backend. Recovers on the next
         // token refresh (this effect re-runs with a fresh token and resets).
         if (reconnectAttempt.current >= MAX_RECONNECT_ATTEMPTS) {
-          // eslint-disable-next-line no-console
           console.warn("[canva] realtime gave up after repeated failures; will retry on token refresh.");
           return;
         }
