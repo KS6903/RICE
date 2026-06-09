@@ -276,3 +276,32 @@
 [2m11:46:04 AM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/App.tsx, /src/index.css[22m
 [2m11:46:09 AM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/components/layout/Sidebar.tsx, /src/index.css[22m
 [2m12:25:58 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/FieldOperatorsPage.tsx, /src/index.css[22m
+[2m12:34:15 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/FieldOperatorsPage.tsx, /src/index.css[22m
+[2m12:36:28 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/FieldOperatorsPage.tsx, /src/index.css[22m
+[2m12:36:36 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/FieldOperatorsPage.tsx, /src/index.css[22m
+[2m12:36:47 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/FieldOperatorsPage.tsx, /src/index.css[22m
+[2m12:36:58 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/FieldOperatorsPage.tsx, /src/index.css[22m
+[2m12:37:07 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/FieldOperatorsPage.tsx, /src/index.css[22m
+[2m12:40:29 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/FieldOperatorsPage.tsx, /src/index.css[22m
+[2m12:42:23 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/FieldOperatorsPage.tsx, /src/index.css[22m
+[2m12:43:57 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/FieldOperatorsPage.tsx, /src/index.css[22m
+[2m12:44:04 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/FieldOperatorsPage.tsx, /src/index.css[22m
+[2m12:44:12 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/FieldOperatorsPage.tsx, /src/index.css[22m
+[2m12:44:23 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/FieldOperatorsPage.tsx, /src/index.css[22m
+[2m12:50:23 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/FieldOperatorsPage.tsx, /src/index.css[22m
+[2m12:50:32 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/FieldOperatorsPage.tsx, /src/index.css[22m
+[2m12:50:42 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/FieldOperatorsPage.tsx, /src/index.css[22m
+[2m12:51:29 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/FieldOperatorsPage.tsx, /src/index.css[22m
+[2m1:10:55 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/SettingsPage.tsx, /src/index.css[22m
+[2m1:11:00 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2msrc/components/warehouse/ManageWarehousesModal.tsx[22m
+[2m1:11:11 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/components/warehouse/ManageLayoutsModal.tsx, /src/index.css[22m
+[2m1:11:17 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/InventoryPage.tsx, /src/index.css[22m
+[2m1:11:27 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/index.css, /src/components/WeatherWidget.tsx, /src/components/LocationPicker.tsx[22m
+[2m1:11:36 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/index.css, /src/components/WeatherWidget.tsx, /src/components/LocationPicker.tsx[22m
+[2m1:11:41 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/components/canva/WarehouseCanva.tsx, /src/index.css[22m
+[2m1:11:55 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/FieldOperatorsPage.tsx, /src/index.css[22m
+[2m1:12:02 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/components/canva/WarehouseCanva.tsx, /src/index.css[22m
+[2m1:12:07 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/components/canva/WarehouseCanva.tsx, /src/index.css[22m
+[2m1:13:00 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/InventoryPage.tsx, /src/index.css[22m
+[2m7:24:20 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/index.css, /src/components/canva/WarehouseCanva.tsx[22m
+[2m7:24:26 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/InventoryPage.tsx, /src/index.css[22m
