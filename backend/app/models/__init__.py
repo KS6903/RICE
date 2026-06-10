@@ -13,6 +13,7 @@ from .sync import SyncLog, SyncConflict
 from .subscription import SubscriptionPlan, Subscription
 from .upgrade_request import UpgradeRequest
 from .warehouse import WarehouseLayout, WarehouseZone, Pallet, RiceBatch, PalletMovement
+from .employee import Employee
 from .activity import ActivityLog
 from .fleet import Driver, Truck, DispatchTrip
 
@@ -31,6 +32,7 @@ __all__ = [
     "SubscriptionPlan", "Subscription",
     "UpgradeRequest",
     "WarehouseLayout", "WarehouseZone", "Pallet", "RiceBatch", "PalletMovement",
+    "Employee",
     "ActivityLog",
     "Driver", "Truck", "DispatchTrip",
 ]
