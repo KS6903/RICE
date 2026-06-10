@@ -2,11 +2,14 @@ import { useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   HardHat, Plus, Pencil, Power, X as XIcon, Check, AlertCircle,
-  UserCircle2, Factory, Search,
+  UserCircle2, Factory, Sprout, Search,
 } from "lucide-react";
+import { SUPPLIER_TYPES } from "@rice-mill/shared";
 import { dispatchService } from "../services/DispatchService";
+import { paddyService } from "../services/PaddyService";
 import ColorSwatch from "../components/dispatch/ColorSwatch";
 import { useAccess } from "../hooks/useAccess";
+import { useFeature } from "../hooks/useFeature";
 
 type Agent = {
   id: string;
@@ -36,10 +39,24 @@ type Miller = {
   deactivated_by: string | null;
 };
 
+type Supplier = {
+  id: string;
+  name: string;
+  supplier_type: string | null;
+  contact_person: string | null;
+  phone: string | null;
+  address: string | null;
+  municipality: string | null;
+  province: string | null;
+  farmer_id: string | null;
+  is_active: boolean;
+  canva_color_hex: string | null;
+};
+
 type OperatorKind = "agent" | "miller";
 type OperatorRow = ({ kind: "agent" } & Agent) | ({ kind: "miller" } & Miller);
-type Filter = "all" | "agent" | "miller";
-type PageTab = "active" | "deactivated";
+type TypeTab = "all" | "agent" | "miller" | "supplier";
+type StatusTab = "active" | "deactivated";
 
 const LABEL = "block text-xs font-bold uppercase tracking-wider text-muted mb-1";
 
@@ -77,6 +94,19 @@ function TypeBadge({ kind }: { kind: OperatorKind }) {
   );
 }
 
+function SupplierTypeBadge({ type }: { type: string | null }) {
+  const meta = SUPPLIER_TYPES.find((t) => t.value === type);
+  return (
+    <span
+      className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200"
+      data-testid="type-badge-supplier"
+    >
+      <Sprout size={10} />
+      {meta?.label ?? "Supplier"}
+    </span>
+  );
+}
+
 export default function FieldOperatorsPage() {
   return (
     <div className="space-y-6">
@@ -87,7 +117,7 @@ export default function FieldOperatorsPage() {
         <div>
           <h2 className="text-2xl font-bold tracking-tight text-primary">Field Operators</h2>
           <p className="text-sm text-secondary">
-            Manage delivery agents and third-party millers — each contact gets a unique color for identification on the canvas.
+            Manage delivery agents, third-party millers, and palay suppliers — each contact gets a unique color for identification on the canvas.
           </p>
         </div>
       </div>
@@ -97,14 +127,10 @@ export default function FieldOperatorsPage() {
 }
 
 function FieldOperatorsContent() {
-  const qc = useQueryClient();
   const { canEdit } = useAccess();
-  const [pageTab, setPageTab] = useState<PageTab>("active");
-  const [filter, setFilter] = useState<Filter>("all");
-  const [showForm, setShowForm] = useState(false);
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [search, setSearch] = useState("");
+  const hasPaddy = useFeature("paddy");
+  const [typeTab, setTypeTab] = useState<TypeTab>("all");
+  const [statusTab, setStatusTab] = useState<StatusTab>("active");
 
   const { data: agents = [] } = useQuery<Agent[]>({
     queryKey: ["dispatch-agents-all"],
@@ -114,72 +140,51 @@ function FieldOperatorsContent() {
     queryKey: ["dispatch-millers-all"],
     queryFn: () => dispatchService.listMillers(true),
   });
-
-  const allRows: OperatorRow[] = useMemo(() => [
-    ...agents.map((a): OperatorRow => ({ kind: "agent", ...a })),
-    ...millers.map((m): OperatorRow => ({ kind: "miller", ...m })),
-  ], [agents, millers]);
-
-  const activeRows: OperatorRow[] = useMemo(() => {
-    const active = allRows.filter((r) => r.is_active);
-    const filtered = filter === "all" ? active : active.filter((r) => r.kind === filter);
-    return filtered.sort((a, b) => a.name.localeCompare(b.name));
-  }, [allRows, filter]);
-
-  const deactivatedRows: OperatorRow[] = useMemo(() => {
-    const inactive = allRows.filter((r) => !r.is_active);
-    const searched = search.trim()
-      ? inactive.filter((r) => r.name.toLowerCase().includes(search.trim().toLowerCase()))
-      : inactive;
-    return searched.sort((a, b) => {
-      const ta = a.deactivated_at ? new Date(a.deactivated_at).getTime() : 0;
-      const tb = b.deactivated_at ? new Date(b.deactivated_at).getTime() : 0;
-      return tb - ta;
-    });
-  }, [allRows, search]);
-
-  const totalActive = allRows.filter((r) => r.is_active).length;
-  const totalDeactivated = allRows.filter((r) => !r.is_active).length;
-
-  const invalidateAll = () => {
-    qc.invalidateQueries({ queryKey: ["dispatch-agents-all"] });
-    qc.invalidateQueries({ queryKey: ["dispatch-agents-active"] });
-    qc.invalidateQueries({ queryKey: ["dispatch-millers-all"] });
-    qc.invalidateQueries({ queryKey: ["dispatch-millers-active"] });
-  };
-
-  const toggleActive = useMutation({
-    mutationFn: ({ row, is_active }: { row: OperatorRow; is_active: boolean }) =>
-      dispatchService.setOperatorActive(row.kind, row.id, is_active),
-    onSuccess: () => {
-      invalidateAll();
-      setEditingId(null);
-      setError(null);
-    },
-    onError: (e: any) => setError(e?.response?.data?.detail ?? "Action failed."),
+  const { data: suppliers = [] } = useQuery<Supplier[]>({
+    queryKey: ["suppliers-all"],
+    queryFn: () => paddyService.listSuppliers(true),
+    enabled: hasPaddy,
   });
 
-  const switchTab = (t: PageTab) => {
-    setPageTab(t);
-    setEditingId(null);
-    setError(null);
-  };
+  // Outer type tabs. "All" spans agents + millers only — suppliers are their own tab.
+  const typeTabs = useMemo(() => {
+    const base = [
+      { key: "all" as TypeTab, label: "All", count: agents.length + millers.length },
+      { key: "agent" as TypeTab, label: "Agents", count: agents.length },
+      { key: "miller" as TypeTab, label: "Millers", count: millers.length },
+    ];
+    if (hasPaddy) base.push({ key: "supplier" as TypeTab, label: "Suppliers", count: suppliers.length });
+    return base;
+  }, [agents, millers, suppliers, hasPaddy]);
+
+  // Active/Deactivated counts for the inner toggle, scoped to the selected type.
+  const statusCounts = useMemo(() => {
+    if (typeTab === "supplier") {
+      return {
+        active: suppliers.filter((s) => s.is_active).length,
+        deactivated: suppliers.filter((s) => !s.is_active).length,
+      };
+    }
+    const pool: { is_active: boolean }[] =
+      typeTab === "agent" ? agents : typeTab === "miller" ? millers : [...agents, ...millers];
+    return {
+      active: pool.filter((x) => x.is_active).length,
+      deactivated: pool.filter((x) => !x.is_active).length,
+    };
+  }, [typeTab, agents, millers, suppliers]);
 
   return (
     <div className="space-y-4">
-      {/* Page-level tab bar */}
+      {/* Outer tab bar — by type */}
       <div className="flex items-center gap-1 p-1 rounded-xl glass overflow-x-auto">
-        {([
-          { key: "active" as PageTab, label: "Active", count: totalActive },
-          { key: "deactivated" as PageTab, label: "Deactivated", count: totalDeactivated },
-        ] as const).map(({ key, label, count }) => {
-          const active = pageTab === key;
+        {typeTabs.map(({ key, label, count }) => {
+          const active = typeTab === key;
           return (
             <button
               key={key}
               type="button"
-              onClick={() => switchTab(key)}
-              data-testid={`operators-page-tab-${key}`}
+              onClick={() => setTypeTab(key)}
+              data-testid={`operators-filter-${key}`}
               className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold whitespace-nowrap transition-all ${
                 active
                   ? "bg-grad-brand text-white shadow-grad-glow"
@@ -195,6 +200,189 @@ function FieldOperatorsContent() {
         })}
       </div>
 
+      {/* Inner toggle — by status */}
+      <div
+        className="inline-flex items-center gap-1 p-1 rounded-lg bg-slate-100 dark:bg-slate-800/60 ring-1 ring-soft"
+        role="tablist"
+      >
+        {([
+          { key: "active" as StatusTab, label: "Active", count: statusCounts.active },
+          { key: "deactivated" as StatusTab, label: "Deactivated", count: statusCounts.deactivated },
+        ] as const).map(({ key, label, count }) => {
+          const isActive = statusTab === key;
+          return (
+            <button
+              key={key}
+              type="button"
+              role="tab"
+              aria-selected={isActive}
+              data-testid={`operators-status-${key}`}
+              onClick={() => setStatusTab(key)}
+              className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${
+                isActive ? "bg-white dark:bg-slate-900 text-primary shadow-sm" : "text-secondary hover:text-primary"
+              }`}
+            >
+              {label}
+              <span className="ml-1.5 text-[10px] font-bold text-muted tabular-nums">{count}</span>
+            </button>
+          );
+        })}
+      </div>
+
+      {typeTab === "supplier" ? (
+        <SuppliersPanel status={statusTab} suppliers={suppliers} canEdit={canEdit("paddy")} />
+      ) : (
+        <OperatorsPanel
+          typeTab={typeTab}
+          status={statusTab}
+          agents={agents}
+          millers={millers}
+          canEdit={canEdit("operators")}
+        />
+      )}
+    </div>
+  );
+}
+
+// ─────────────────────────────── Operators panel ────────────────────────────
+
+function OperatorsPanel({
+  typeTab, status, agents, millers, canEdit,
+}: {
+  typeTab: Exclude<TypeTab, "supplier">;
+  status: StatusTab;
+  agents: Agent[];
+  millers: Miller[];
+  canEdit: boolean;
+}) {
+  const qc = useQueryClient();
+  const [showForm, setShowForm] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [search, setSearch] = useState("");
+
+  const allRows: OperatorRow[] = useMemo(() => [
+    ...agents.map((a): OperatorRow => ({ kind: "agent", ...a })),
+    ...millers.map((m): OperatorRow => ({ kind: "miller", ...m })),
+  ], [agents, millers]);
+
+  const typeFiltered = useMemo(
+    () => (typeTab === "all" ? allRows : allRows.filter((r) => r.kind === typeTab)),
+    [allRows, typeTab],
+  );
+
+  const rows = useMemo(() => {
+    if (status === "active") {
+      return typeFiltered.filter((r) => r.is_active).sort((a, b) => a.name.localeCompare(b.name));
+    }
+    const inactive = typeFiltered.filter((r) => !r.is_active);
+    const searched = search.trim()
+      ? inactive.filter((r) => r.name.toLowerCase().includes(search.trim().toLowerCase()))
+      : inactive;
+    return searched.sort((a, b) => {
+      const ta = a.deactivated_at ? new Date(a.deactivated_at).getTime() : 0;
+      const tb = b.deactivated_at ? new Date(b.deactivated_at).getTime() : 0;
+      return tb - ta;
+    });
+  }, [typeFiltered, status, search]);
+
+  const invalidateAll = () => {
+    qc.invalidateQueries({ queryKey: ["dispatch-agents-all"] });
+    qc.invalidateQueries({ queryKey: ["dispatch-agents-active"] });
+    qc.invalidateQueries({ queryKey: ["dispatch-millers-all"] });
+    qc.invalidateQueries({ queryKey: ["dispatch-millers-active"] });
+  };
+
+  const toggleActive = useMutation({
+    mutationFn: ({ row, is_active }: { row: OperatorRow; is_active: boolean }) =>
+      dispatchService.setOperatorActive(row.kind, row.id, is_active),
+    onSuccess: () => { invalidateAll(); setEditingId(null); setError(null); },
+    onError: (e: any) => setError(e?.response?.data?.detail ?? "Action failed."),
+  });
+
+  const colSpan = status === "active" ? 8 : 9;
+  const headers = status === "active"
+    ? ["Color", "Name", "Type", "Contact", "Phone", "Details", "Status", ""]
+    : ["Color", "Name", "Type", "Contact", "Phone", "Details", "Deactivated on", "Deactivated by", ""];
+
+  const renderRow = (row: OperatorRow) => {
+    if (status === "deactivated") {
+      return (
+        <DeactivatedOperatorRow
+          key={row.id}
+          row={row}
+          onReactivate={() => toggleActive.mutate({ row, is_active: true })}
+          canEdit={canEdit}
+        />
+      );
+    }
+    return editingId === row.id ? (
+      <EditOperatorRow
+        key={row.id}
+        row={row}
+        onCancel={() => { setEditingId(null); setError(null); }}
+        onSaved={() => { invalidateAll(); setEditingId(null); setError(null); }}
+        setError={setError}
+      />
+    ) : (
+      <ViewOperatorRow
+        key={row.id}
+        row={row}
+        onEdit={() => { setEditingId(row.id); setError(null); }}
+        onDeactivate={() => toggleActive.mutate({ row, is_active: false })}
+        canEdit={canEdit}
+      />
+    );
+  };
+
+  const GroupHeader = ({ label, count, tone }: { label: string; count: number; tone: "agent" | "miller" }) => (
+    <tr className="border-y border-slate-200 dark:border-slate-700">
+      <td colSpan={colSpan} className={`px-4 py-1.5 ${tone === "agent" ? "bg-violet-50 dark:bg-violet-950/20" : "bg-amber-50 dark:bg-amber-950/20"}`}>
+        <span className={`text-[11px] font-bold uppercase tracking-widest ${tone === "agent" ? "text-violet-600 dark:text-violet-400" : "text-amber-600 dark:text-amber-400"}`}>
+          {label} · {count}
+        </span>
+      </td>
+    </tr>
+  );
+
+  return (
+    <div className="space-y-4">
+      {/* toolbar */}
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        {status === "deactivated" ? (
+          <div className="relative flex-1 min-w-[200px] max-w-sm">
+            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted pointer-events-none" />
+            <input
+              className="input !pl-8"
+              placeholder="Search by name…"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              data-testid="deactivated-search"
+            />
+            {search && (
+              <button
+                type="button"
+                onClick={() => setSearch("")}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted hover:text-primary"
+              >
+                <XIcon size={13} />
+              </button>
+            )}
+          </div>
+        ) : (
+          <p className="text-xs text-muted">system reserves a unique color per operator</p>
+        )}
+        {status === "active" && canEdit && (
+          <button
+            onClick={() => { setShowForm((s) => !s); setEditingId(null); setError(null); }}
+            className="btn-primary"
+            data-testid="add-operator"
+          >
+            <Plus size={16} /> Add field operator
+          </button>
+        )}
+      </div>
+
       {error && (
         <div className="card !py-3 bg-rose-50 dark:bg-rose-950/30 ring-1 ring-rose-200 dark:ring-rose-800/60 flex items-center gap-2 text-sm">
           <AlertCircle size={14} className="text-rose-600" />
@@ -202,255 +390,63 @@ function FieldOperatorsContent() {
         </div>
       )}
 
-      {/* ── Active tab ── */}
-      {pageTab === "active" && (
-        <div className="space-y-4">
-          <div className="flex items-center justify-between flex-wrap gap-3">
-            <div
-              className="flex items-center gap-1 p-1 rounded-lg bg-slate-100 dark:bg-slate-800/60 ring-1 ring-soft"
-              role="tablist"
-            >
-              {(["all", "agent", "miller"] as const).map((k) => {
-                const count =
-                  k === "all"
-                    ? activeRows.length
-                    : k === "agent"
-                    ? agents.filter((a) => a.is_active).length
-                    : millers.filter((m) => m.is_active).length;
-                const label = k === "all" ? "All" : k === "agent" ? "Agents" : "Millers";
-                const isActive = filter === k;
-                return (
-                  <button
-                    key={k}
-                    type="button"
-                    role="tab"
-                    aria-selected={isActive}
-                    data-testid={`operators-filter-${k}`}
-                    onClick={() => setFilter(k)}
-                    className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${
-                      isActive
-                        ? "bg-white dark:bg-slate-900 text-primary shadow-sm"
-                        : "text-secondary hover:text-primary"
-                    }`}
-                  >
-                    {label}
-                    <span className="ml-1.5 text-[10px] font-bold text-muted tabular-nums">{count}</span>
-                  </button>
-                );
-              })}
-            </div>
-            <p className="text-xs text-muted">system reserves a unique color per operator</p>
-            {canEdit("operators") && (
-              <button
-                onClick={() => { setShowForm((s) => !s); setEditingId(null); setError(null); }}
-                className="btn-primary"
-                data-testid="add-operator"
-              >
-                <Plus size={16} /> Add field operator
-              </button>
-            )}
-          </div>
-
-          {showForm && (
-            <NewOperatorForm
-              onClose={() => setShowForm(false)}
-              onSaved={() => { invalidateAll(); setShowForm(false); setError(null); }}
-              setError={setError}
-            />
-          )}
-
-          <div className="card overflow-hidden p-0">
-            <table className="w-full text-sm" data-testid="operators-table">
-              <thead className="bg-slate-50 dark:bg-slate-800/60 border-b border-slate-200 dark:border-slate-700">
-                <tr>
-                  {["Color", "Name", "Type", "Contact", "Phone", "Details", "Status", ""].map((h) => (
-                    <th key={h} className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wide text-slate-500">{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {filter === "all" ? (() => {
-                  const agentRows = activeRows.filter((r) => r.kind === "agent");
-                  const millerRows = activeRows.filter((r) => r.kind === "miller");
-                  const renderRow = (row: OperatorRow) =>
-                    editingId === row.id ? (
-                      <EditOperatorRow
-                        key={row.id}
-                        row={row}
-                        onCancel={() => { setEditingId(null); setError(null); }}
-                        onSaved={() => { invalidateAll(); setEditingId(null); setError(null); }}
-                        setError={setError}
-                      />
-                    ) : (
-                      <ViewOperatorRow
-                        key={row.id}
-                        row={row}
-                        onEdit={() => { setEditingId(row.id); setError(null); }}
-                        onDeactivate={() => toggleActive.mutate({ row, is_active: false })}
-                        canEdit={canEdit("operators")}
-                      />
-                    );
-                  return (
-                    <>
-                      <tr className="border-b border-slate-200 dark:border-slate-700">
-                        <td colSpan={8} className="px-4 py-1.5 bg-violet-50 dark:bg-violet-950/20">
-                          <span className="text-[11px] font-bold uppercase tracking-widest text-violet-600 dark:text-violet-400">
-                            Agents · {agentRows.length}
-                          </span>
-                        </td>
-                      </tr>
-                      {agentRows.length > 0
-                        ? agentRows.map(renderRow)
-                        : <tr className="border-b border-slate-100 dark:border-slate-800"><td colSpan={8} className="px-4 py-4 text-center text-xs text-muted">No active agents.</td></tr>
-                      }
-                      <tr className="border-y-2 border-slate-200 dark:border-slate-700">
-                        <td colSpan={8} className="px-4 py-1.5 bg-amber-50 dark:bg-amber-950/20">
-                          <span className="text-[11px] font-bold uppercase tracking-widest text-amber-600 dark:text-amber-400">
-                            Millers · {millerRows.length}
-                          </span>
-                        </td>
-                      </tr>
-                      {millerRows.length > 0
-                        ? millerRows.map(renderRow)
-                        : <tr><td colSpan={8} className="px-4 py-4 text-center text-xs text-muted">No active millers.</td></tr>
-                      }
-                    </>
-                  );
-                })() : (
-                  <>
-                    {activeRows.map((row) =>
-                      editingId === row.id ? (
-                        <EditOperatorRow
-                          key={row.id}
-                          row={row}
-                          onCancel={() => { setEditingId(null); setError(null); }}
-                          onSaved={() => { invalidateAll(); setEditingId(null); setError(null); }}
-                          setError={setError}
-                        />
-                      ) : (
-                        <ViewOperatorRow
-                          key={row.id}
-                          row={row}
-                          onEdit={() => { setEditingId(row.id); setError(null); }}
-                          onDeactivate={() => toggleActive.mutate({ row, is_active: false })}
-                          canEdit={canEdit("operators")}
-                        />
-                      )
-                    )}
-                    {activeRows.length === 0 && (
-                      <tr>
-                        <td colSpan={8} className="px-4 py-8 text-center text-muted font-medium">
-                          No active {filter}s yet — add one above.
-                        </td>
-                      </tr>
-                    )}
-                  </>
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
+      {status === "active" && showForm && (
+        <NewOperatorForm
+          onClose={() => setShowForm(false)}
+          onSaved={() => { invalidateAll(); setShowForm(false); setError(null); }}
+          setError={setError}
+        />
       )}
 
-      {/* ── Deactivated tab ── */}
-      {pageTab === "deactivated" && (
-        <div className="space-y-4">
-          <div className="flex items-center gap-3 flex-wrap">
-            <div className="relative flex-1 min-w-[200px] max-w-sm">
-              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted pointer-events-none" />
-              <input
-                className="input !pl-8"
-                placeholder="Search by name…"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                data-testid="deactivated-search"
-              />
-              {search && (
-                <button
-                  type="button"
-                  onClick={() => setSearch("")}
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted hover:text-primary"
-                >
-                  <XIcon size={13} />
-                </button>
-              )}
-            </div>
-            <p className="text-xs text-muted">
-              {deactivatedRows.length} operator{deactivatedRows.length !== 1 ? "s" : ""}
-            </p>
-          </div>
-
-          <div className="card overflow-hidden p-0">
-            <table className="w-full text-sm" data-testid="deactivated-operators-table">
-              <thead className="bg-slate-50 dark:bg-slate-800/60 border-b border-slate-200 dark:border-slate-700">
-                <tr>
-                  {["Color", "Name", "Type", "Contact", "Phone", "Details", "Deactivated on", "Deactivated by", ""].map((h) => (
-                    <th key={h} className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wide text-slate-500">{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
+      <div className="card overflow-hidden p-0">
+        <table className="w-full text-sm" data-testid={status === "active" ? "operators-table" : "deactivated-operators-table"}>
+          <thead className="bg-slate-50 dark:bg-slate-800/60 border-b border-slate-200 dark:border-slate-700">
+            <tr>
+              {headers.map((h, i) => (
+                <th key={i} className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wide text-slate-500">{h}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {rows.length === 0 ? (
+              <tr>
+                <td colSpan={colSpan} className="px-4 py-8 text-center text-muted font-medium">
+                  {status === "active"
+                    ? `No active ${typeTab === "all" ? "operators" : typeTab + "s"} yet${canEdit ? " — add one above." : "."}`
+                    : search
+                    ? "No deactivated operators match your search."
+                    : "No deactivated operators."}
+                </td>
+              </tr>
+            ) : typeTab === "all" ? (
+              <>
                 {(() => {
-                  const agentRows = deactivatedRows.filter((r) => r.kind === "agent");
-                  const millerRows = deactivatedRows.filter((r) => r.kind === "miller");
-                  const renderRow = (row: OperatorRow) => (
-                    <DeactivatedOperatorRow
-                      key={row.id}
-                      row={row}
-                      onReactivate={() => toggleActive.mutate({ row, is_active: true })}
-                      canEdit={canEdit("operators")}
-                    />
-                  );
-                  if (deactivatedRows.length === 0) {
-                    return (
-                      <tr>
-                        <td colSpan={9} className="px-4 py-8 text-center text-muted font-medium">
-                          {search ? "No deactivated operators match your search." : "No deactivated operators."}
-                        </td>
-                      </tr>
-                    );
-                  }
+                  const agentRows = rows.filter((r) => r.kind === "agent");
+                  const millerRows = rows.filter((r) => r.kind === "miller");
                   return (
                     <>
                       {agentRows.length > 0 && (
                         <>
-                          <tr className="border-b border-slate-200 dark:border-slate-700">
-                            <td colSpan={9} className="px-4 py-1.5 bg-violet-50 dark:bg-violet-950/20">
-                              <span className="text-[11px] font-bold uppercase tracking-widest text-violet-600 dark:text-violet-400">
-                                Agents · {agentRows.length}
-                              </span>
-                            </td>
-                          </tr>
+                          <GroupHeader label="Agents" count={agentRows.length} tone="agent" />
                           {agentRows.map(renderRow)}
                         </>
                       )}
-                      {agentRows.length > 0 && millerRows.length > 0 && (
-                        <tr className="border-y-2 border-slate-200 dark:border-slate-700">
-                          <td colSpan={9} className="px-4 py-1.5 bg-amber-50 dark:bg-amber-950/20">
-                            <span className="text-[11px] font-bold uppercase tracking-widest text-amber-600 dark:text-amber-400">
-                              Millers · {millerRows.length}
-                            </span>
-                          </td>
-                        </tr>
+                      {millerRows.length > 0 && (
+                        <>
+                          <GroupHeader label="Millers" count={millerRows.length} tone="miller" />
+                          {millerRows.map(renderRow)}
+                        </>
                       )}
-                      {agentRows.length === 0 && millerRows.length > 0 && (
-                        <tr className="border-b border-slate-200 dark:border-slate-700">
-                          <td colSpan={9} className="px-4 py-1.5 bg-amber-50 dark:bg-amber-950/20">
-                            <span className="text-[11px] font-bold uppercase tracking-widest text-amber-600 dark:text-amber-400">
-                              Millers · {millerRows.length}
-                            </span>
-                          </td>
-                        </tr>
-                      )}
-                      {millerRows.map(renderRow)}
                     </>
                   );
                 })()}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
+              </>
+            ) : (
+              rows.map(renderRow)
+            )}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
@@ -778,6 +774,304 @@ function NewOperatorForm({
           data-testid="save-new-operator"
         >
           {create.isPending ? "Saving…" : "Save operator"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────── Suppliers panel ────────────────────────────
+
+function SuppliersPanel({
+  status, suppliers, canEdit,
+}: {
+  status: StatusTab;
+  suppliers: Supplier[];
+  canEdit: boolean;
+}) {
+  const qc = useQueryClient();
+  const [showForm, setShowForm] = useState(false);
+  const [editing, setEditing] = useState<Supplier | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [search, setSearch] = useState("");
+
+  const rows = useMemo(() => {
+    if (status === "active") {
+      return suppliers.filter((s) => s.is_active).sort((a, b) => a.name.localeCompare(b.name));
+    }
+    const inactive = suppliers.filter((s) => !s.is_active);
+    const searched = search.trim()
+      ? inactive.filter((s) => s.name.toLowerCase().includes(search.trim().toLowerCase()))
+      : inactive;
+    return searched.sort((a, b) => a.name.localeCompare(b.name));
+  }, [suppliers, status, search]);
+
+  const invalidate = () => qc.invalidateQueries({ queryKey: ["suppliers-all"] });
+
+  const toggleActive = useMutation({
+    mutationFn: ({ id, is_active }: { id: string; is_active: boolean }) =>
+      paddyService.setSupplierActive(id, is_active),
+    onSuccess: () => { invalidate(); setError(null); },
+    onError: (e: any) => setError(e?.response?.data?.detail ?? "Action failed."),
+  });
+
+  const colSpan = status === "active" ? 9 : 8;
+  const headers = status === "active"
+    ? ["Color", "Name", "Type", "Municipality", "Province", "Phone", "Farmer ID", "Status", ""]
+    : ["Color", "Name", "Type", "Municipality", "Province", "Phone", "Farmer ID", ""];
+
+  return (
+    <div className="space-y-4">
+      {/* toolbar */}
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        {status === "deactivated" ? (
+          <div className="relative flex-1 min-w-[200px] max-w-sm">
+            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted pointer-events-none" />
+            <input
+              className="input !pl-8"
+              placeholder="Search by name…"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              data-testid="deactivated-supplier-search"
+            />
+            {search && (
+              <button
+                type="button"
+                onClick={() => setSearch("")}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted hover:text-primary"
+              >
+                <XIcon size={13} />
+              </button>
+            )}
+          </div>
+        ) : (
+          <p className="text-xs text-muted">system reserves a unique color per supplier</p>
+        )}
+        {status === "active" && canEdit && (
+          <button
+            onClick={() => { setEditing(null); setShowForm((s) => !s); setError(null); }}
+            className="btn-primary"
+            data-testid="add-supplier"
+          >
+            <Plus size={16} /> Add supplier
+          </button>
+        )}
+      </div>
+
+      {error && (
+        <div className="card !py-3 bg-rose-50 dark:bg-rose-950/30 ring-1 ring-rose-200 dark:ring-rose-800/60 flex items-center gap-2 text-sm">
+          <AlertCircle size={14} className="text-rose-600" />
+          <span className="text-rose-900 dark:text-rose-100">{error}</span>
+        </div>
+      )}
+
+      {(showForm || editing) && (
+        <SupplierForm
+          initial={editing}
+          onClose={() => { setShowForm(false); setEditing(null); }}
+          onSaved={() => { invalidate(); setShowForm(false); setEditing(null); setError(null); }}
+          setError={setError}
+        />
+      )}
+
+      <div className="card overflow-hidden p-0">
+        <table className="w-full text-sm" data-testid={status === "active" ? "suppliers-table" : "deactivated-suppliers-table"}>
+          <thead className="bg-slate-50 dark:bg-slate-800/60 border-b border-slate-200 dark:border-slate-700">
+            <tr>
+              {headers.map((h, i) => (
+                <th key={i} className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wide text-slate-500">{h}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {rows.length === 0 ? (
+              <tr>
+                <td colSpan={colSpan} className="px-4 py-8 text-center text-muted font-medium">
+                  {status === "active"
+                    ? `No active suppliers yet${canEdit ? " — add one above." : "."}`
+                    : search
+                    ? "No deactivated suppliers match your search."
+                    : "No deactivated suppliers."}
+                </td>
+              </tr>
+            ) : (
+              rows.map((s) => (
+                <SupplierRow
+                  key={s.id}
+                  supplier={s}
+                  status={status}
+                  onEdit={() => { setShowForm(false); setEditing(s); setError(null); }}
+                  onToggle={(is_active) => toggleActive.mutate({ id: s.id, is_active })}
+                  canEdit={canEdit}
+                />
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+function SupplierRow({
+  supplier, status, onEdit, onToggle, canEdit,
+}: {
+  supplier: Supplier;
+  status: StatusTab;
+  onEdit: () => void;
+  onToggle: (isActive: boolean) => void;
+  canEdit: boolean;
+}) {
+  const deactivated = status === "deactivated";
+  return (
+    <tr
+      className={`hover:bg-slate-50 dark:hover:bg-slate-800/40 ${deactivated ? "opacity-70 hover:opacity-100 transition-opacity" : ""}`}
+      data-testid={`supplier-row-${supplier.id}`}
+    >
+      <td className="px-4 py-3">
+        <div className="inline-flex items-center gap-1.5">
+          <ColorSwatch color={supplier.canva_color_hex} label={supplier.name} size={16} />
+          {!deactivated && <ColorReadOnlyHint />}
+        </div>
+      </td>
+      <td className="px-4 py-3 font-semibold text-primary">{supplier.name}</td>
+      <td className="px-4 py-3"><SupplierTypeBadge type={supplier.supplier_type} /></td>
+      <td className="px-4 py-3 text-secondary">{supplier.municipality || "—"}</td>
+      <td className="px-4 py-3 text-secondary">{supplier.province || "—"}</td>
+      <td className="px-4 py-3 text-secondary">{supplier.phone || "—"}</td>
+      <td className="px-4 py-3 text-secondary font-mono text-xs">{supplier.farmer_id || "—"}</td>
+      {!deactivated && <td className="px-4 py-3"><span className="badge-green">Active</span></td>}
+      <td className="px-4 py-3 text-right">
+        <div className="flex items-center justify-end gap-1.5">
+          {canEdit && !deactivated && (
+            <>
+              <button
+                type="button"
+                onClick={onEdit}
+                data-testid={`edit-supplier-${supplier.id}`}
+                className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-semibold text-secondary hover:text-primary hover:bg-slate-100 dark:hover:bg-slate-700/40"
+              >
+                <Pencil size={12} /> Edit
+              </button>
+              <button
+                type="button"
+                onClick={() => onToggle(false)}
+                className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-semibold text-rose-600 dark:text-rose-400 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-950/30"
+              >
+                <Power size={12} /> Deactivate
+              </button>
+            </>
+          )}
+          {canEdit && deactivated && (
+            <button
+              type="button"
+              onClick={() => onToggle(true)}
+              data-testid={`reactivate-supplier-${supplier.id}`}
+              className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-semibold text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 hover:bg-emerald-50 dark:hover:bg-emerald-950/30"
+            >
+              <Power size={12} /> Activate
+            </button>
+          )}
+        </div>
+      </td>
+    </tr>
+  );
+}
+
+function SupplierForm({
+  initial, onClose, onSaved, setError,
+}: {
+  initial: Supplier | null;
+  onClose: () => void;
+  onSaved: () => void;
+  setError: (msg: string | null) => void;
+}) {
+  const [name, setName] = useState(initial?.name ?? "");
+  const [supplierType, setSupplierType] = useState(initial?.supplier_type ?? "farmer");
+  const [contact, setContact] = useState(initial?.contact_person ?? "");
+  const [phone, setPhone] = useState(initial?.phone ?? "");
+  const [municipality, setMunicipality] = useState(initial?.municipality ?? "");
+  const [province, setProvince] = useState(initial?.province ?? "");
+  const [farmerId, setFarmerId] = useState(initial?.farmer_id ?? "");
+  const [address, setAddress] = useState(initial?.address ?? "");
+
+  const save = useMutation({
+    mutationFn: () => {
+      const body = {
+        name: name.trim(),
+        supplier_type: supplierType || null,
+        contact_person: contact || null,
+        phone: phone || null,
+        municipality: municipality || null,
+        province: province || null,
+        farmer_id: farmerId || null,
+        address: address || null,
+      };
+      return initial
+        ? paddyService.updateSupplier(initial.id, body)
+        : paddyService.createSupplier(body);
+    },
+    onSuccess: () => onSaved(),
+    onError: (e: any) => setError(e?.response?.data?.detail ?? "Failed to save supplier."),
+  });
+
+  return (
+    <div className="card space-y-4" data-testid="supplier-form">
+      <div className="flex items-center justify-between">
+        <h3 className="text-lg font-bold text-primary">{initial ? "Edit supplier" : "New supplier"}</h3>
+        <button type="button" onClick={onClose} className="btn-ghost !p-1.5" aria-label="Close">
+          <XIcon size={16} />
+        </button>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div>
+          <label className={LABEL}>Name *</label>
+          <input className="input" data-testid="supplier-name" value={name} onChange={(e) => setName(e.target.value)} />
+        </div>
+        <div>
+          <label className={LABEL}>Type</label>
+          <select className="input" value={supplierType} onChange={(e) => setSupplierType(e.target.value)}>
+            {SUPPLIER_TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
+          </select>
+        </div>
+        <div>
+          <label className={LABEL}>Contact person</label>
+          <input className="input" value={contact} onChange={(e) => setContact(e.target.value)} />
+        </div>
+        <div>
+          <label className={LABEL}>Phone</label>
+          <input className="input" value={phone} onChange={(e) => setPhone(e.target.value)} />
+        </div>
+        <div>
+          <label className={LABEL}>Municipality</label>
+          <input className="input" value={municipality} onChange={(e) => setMunicipality(e.target.value)} />
+        </div>
+        <div>
+          <label className={LABEL}>Province</label>
+          <input className="input" value={province} onChange={(e) => setProvince(e.target.value)} />
+        </div>
+        <div>
+          <label className={LABEL}>Farmer ID (RSBSA / PhilSys)</label>
+          <input className="input" value={farmerId} onChange={(e) => setFarmerId(e.target.value)} />
+        </div>
+        <div>
+          <label className={LABEL}>Address</label>
+          <input className="input" value={address} onChange={(e) => setAddress(e.target.value)} />
+        </div>
+      </div>
+
+      <p className="text-xs text-muted">A unique color will be assigned by the system — it can't be picked or changed by anyone.</p>
+
+      <div className="flex gap-2 justify-end">
+        <button onClick={onClose} className="btn-secondary">Cancel</button>
+        <button
+          onClick={() => save.mutate()}
+          disabled={!name.trim() || save.isPending}
+          className="btn-primary"
+          data-testid="save-supplier"
+        >
+          {save.isPending ? "Saving…" : initial ? "Save changes" : "Save supplier"}
         </button>
       </div>
     </div>

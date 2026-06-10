@@ -14,7 +14,6 @@ export type PurchaseItemForm = {
 };
 
 export type PurchaseForm = {
-  supplier_id: string;
   purchase_date: string;
   delivery_type: string;
   remarks: string;
@@ -59,6 +58,10 @@ export class PaddyService {
 
   createSupplier(body: Record<string, unknown>): Promise<any> {
     return this.http.post("/paddy/suppliers", body).then((r) => r.data);
+  }
+
+  updateSupplier(id: string, body: Record<string, unknown>): Promise<any> {
+    return this.http.put(`/paddy/suppliers/${id}`, body).then((r) => r.data);
   }
 
   setSupplierActive(id: string, isActive: boolean): Promise<any> {

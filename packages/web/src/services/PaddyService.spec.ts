@@ -4,14 +4,13 @@ import { PaddyService } from "./PaddyService";
 describe("PaddyService.toPurchasePayload", () => {
   it("parses numeric fields and nulls out empty ids/optionals", () => {
     const form = {
-      supplier_id: "s1", purchase_date: "2026-06-06", delivery_type: "delivered", remarks: "",
+      purchase_date: "2026-06-06", delivery_type: "delivered", remarks: "",
       items: [
         { variety_id: "v1", grade_id: "", gross_weight_kg: "1000", tare_weight_kg: "50", moisture_content_pct: "14", price_per_cavan: "1200" },
         { variety_id: "", grade_id: "", gross_weight_kg: "500", tare_weight_kg: "", moisture_content_pct: "", price_per_cavan: "1000" },
       ],
     };
     const payload = PaddyService.toPurchasePayload(form);
-    expect(payload.supplier_id).toBe("s1");
     expect(payload.items[0]).toEqual({
       variety_id: "v1", grade_id: null, gross_weight_kg: 1000, tare_weight_kg: 50,
       moisture_content_pct: 14, price_per_cavan: 1200,

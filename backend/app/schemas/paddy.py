@@ -76,7 +76,7 @@ class PurchaseItemIn(BaseModel):
 
 
 class PurchaseCreate(BaseModel):
-    supplier_id: uuid.UUID
+    supplier_id: uuid.UUID | None = None
     purchase_date: date
     delivery_type: str | None = None
     remarks: str | None = None
