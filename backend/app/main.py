@@ -3,7 +3,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from .core.config import settings
 from .core.exceptions import register_exception_handlers
-from .api import auth, users, branches, paddy, milling, inventory, sales, costs, reports, sync, admin, employees, billing, canva, dispatch, weather, locations, activity
+from .api import auth, users, branches, paddy, milling, inventory, sales, costs, reports, sync, admin, employees, billing, canva, dispatch, weather, locations, activity, fleet
 from .services.canva_realtime import manager as ws_manager
 
 app = FastAPI(
@@ -44,6 +44,7 @@ app.include_router(dispatch.router, prefix="/api", tags=["Dispatch"])
 app.include_router(weather.router, prefix="/api", tags=["Weather"])
 app.include_router(locations.router, prefix="/api", tags=["Saved Locations"])
 app.include_router(activity.router, prefix="/api/activity", tags=["Activity Log"])
+app.include_router(fleet.router, prefix="/api", tags=["Fleet"])
 
 
 @app.on_event("startup")

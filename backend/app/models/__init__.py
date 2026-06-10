@@ -14,6 +14,7 @@ from .subscription import SubscriptionPlan, Subscription
 from .upgrade_request import UpgradeRequest
 from .warehouse import WarehouseLayout, WarehouseZone, Pallet, RiceBatch, PalletMovement
 from .activity import ActivityLog
+from .fleet import Driver, Truck, DispatchTrip
 
 __all__ = [
     "Company", "Branch", "User", "Role",
@@ -31,4 +32,5 @@ __all__ = [
     "UpgradeRequest",
     "WarehouseLayout", "WarehouseZone", "Pallet", "RiceBatch", "PalletMovement",
     "ActivityLog",
+    "Driver", "Truck", "DispatchTrip",
 ]
