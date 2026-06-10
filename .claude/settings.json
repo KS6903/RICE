@@ -298,7 +298,15 @@
       "Bash(.venv/Scripts/python.exe -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --no-access-log)",
       "Bash(.venv/Scripts/python.exe -c \"import ast; ast.parse\\(open\\('seed_demo_pallets.py'\\).read\\(\\)\\); import seed_demo_pallets; print\\('seed_demo_pallets imports OK'\\)\")",
       "Bash(python3 -c \"import sys,json; s=json.load\\(sys.stdin\\); [print\\(k,':',v\\) for k,v in s.get\\('scripts',{}\\).items\\(\\)]\")",
-      "Bash(python3 -c \"import json,sys; d=json.load\\(sys.stdin\\); print\\(json.dumps\\(d.get\\('scripts',{}\\), indent=2\\)\\)\")"
+      "Bash(python3 -c \"import json,sys; d=json.load\\(sys.stdin\\); print\\(json.dumps\\(d.get\\('scripts',{}\\), indent=2\\)\\)\")",
+      "PowerShell(cd d:\\\\RICE\\\\packages\\\\web; npx eslint src --max-warnings 0 2>&1; echo \"---ESLINT EXIT: $LASTEXITCODE---\")",
+      "PowerShell(cd d:\\\\RICE; npm run format:check 2>&1 | Select-Object -First 5; echo \"---FORMAT EXIT: $LASTEXITCODE---\")",
+      "PowerShell(cd d:\\\\RICE\\\\backend; .venv\\\\Scripts\\\\python.exe -m ruff check tests 2>&1; echo \"EXIT: $LASTEXITCODE\")",
+      "PowerShell(cd d:\\\\RICE\\\\backend; .venv\\\\Scripts\\\\python.exe -m ruff check tests 2>&1; echo \"ruff: $LASTEXITCODE\")",
+      "PowerShell(cd d:\\\\RICE\\\\backend; .venv\\\\Scripts\\\\python.exe -m mypy 2>&1 | Select-Object -Last 3; echo \"mypy: $LASTEXITCODE\")",
+      "PowerShell(cd d:\\\\RICE; npm run typecheck --workspace=packages/web 2>&1 | Select-Object -Last 3; echo \"typecheck: $LASTEXITCODE\")",
+      "PowerShell(cd d:\\\\RICE; npm run test:web 2>&1 | Select-Object -Last 5; echo \"tests: $LASTEXITCODE\")",
+      "PowerShell(cd d:\\\\RICE\\\\packages\\\\web; npx eslint src --max-warnings 0 2>&1; echo \"eslint: $LASTEXITCODE\")"
     ],
     "additionalDirectories": [
       "d:\\RICE"
