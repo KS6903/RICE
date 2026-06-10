@@ -23,6 +23,9 @@ out/
 *.err
 npm-debug.log*
 
+# Claude Code
+.claude/
+
 # Editor
 .vscode/
 .idea/
