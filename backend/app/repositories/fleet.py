@@ -61,10 +61,8 @@ class TripRepository(BaseRepository[DispatchTrip]):
             .first()
         )
 
-    def next_trip_no(self, company_id: uuid.UUID) -> str:
-        count = (
-            self.db.query(DispatchTrip)
-            .filter(DispatchTrip.company_id == company_id)
-            .count()
-        )
+    def next_trip_no(self) -> str:
+        # trip_no is globally unique, so the counter must be global too —
+        # a per-company counter would collide across tenants on DT-00001.
+        count = self.db.query(DispatchTrip).count()
         return f"DT-{count + 1:05d}"

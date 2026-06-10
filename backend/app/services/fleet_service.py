@@ -145,7 +145,7 @@ class FleetService(BaseService):
         trip = DispatchTrip(
             company_id=self.current_user.company_id,
             branch_id=self.current_user.branch_id,
-            trip_no=self.trips.next_trip_no(self.current_user.company_id),
+            trip_no=self.trips.next_trip_no(),
             created_by=self.current_user.id,
             **data.model_dump(),
         )
