@@ -9,7 +9,6 @@ from datetime import datetime, timedelta, timezone
 from app.models.reference import RiceVariety
 from app.services.paddy_service import purge_stale_varieties
 
-
 # ── helpers ───────────────────────────────────────────────────────────────────
 
 def _create_variety(c, code="PURGE1"):
