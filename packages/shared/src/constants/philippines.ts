@@ -48,7 +48,6 @@ export const SUPPLIER_TYPES = [
 export const CUSTOMER_TYPES = [
   { value: "wholesaler", label: "Wholesaler" },
   { value: "retailer", label: "Retailer" },
-  { value: "government", label: "Government (P20 Rice)" },
   { value: "walk_in", label: "Walk-in Customer" },
 ];
 

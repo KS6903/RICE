@@ -98,7 +98,6 @@ class SalesService(BaseService):
                     customer_id=data.customer_id,
                     order_date=data.order_date,
                     delivery_date=data.delivery_date,
-                    is_p20_sale=data.is_p20_sale,
                     discount_pct=data.discount_pct,
                     discount_amount=discount,
                     subtotal=subtotal,

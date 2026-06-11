@@ -39,6 +39,5 @@ class Customer(Base, TimestampMixin):
     tin: Mapped[str | None] = mapped_column(String(20))
     credit_limit: Mapped[Decimal] = mapped_column(Numeric(14, 2), default=0)
     payment_terms_days: Mapped[int] = mapped_column(Integer, default=0)
-    is_p20_accredited: Mapped[bool] = mapped_column(Boolean, default=False)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     canva_color_hex: Mapped[str | None] = mapped_column(String(7))

@@ -25,7 +25,7 @@ export default function SalesPage() {
   const [showCustomerForm, setShowCustomerForm] = useState(false);
   const [customerForm, setCustomerForm] = useState({
     name: "", customer_type: "wholesaler", contact_person: "", phone: "", address: "",
-    tin: "", credit_limit: "0", payment_terms_days: "0", is_p20_accredited: false,
+    tin: "", credit_limit: "0", payment_terms_days: "0",
   });
 
   const { data: orders = [] } = useQuery({ queryKey: ["sales-orders"], queryFn: () => salesService.listOrders() });
@@ -43,7 +43,7 @@ export default function SalesPage() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["customers"] });
       setShowCustomerForm(false);
-      setCustomerForm({ name: "", customer_type: "wholesaler", contact_person: "", phone: "", address: "", tin: "", credit_limit: "0", payment_terms_days: "0", is_p20_accredited: false });
+      setCustomerForm({ name: "", customer_type: "wholesaler", contact_person: "", phone: "", address: "", tin: "", credit_limit: "0", payment_terms_days: "0" });
     },
   });
 
@@ -54,7 +54,7 @@ export default function SalesPage() {
 
   const [orderForm, setOrderForm] = useState({
     customer_id: "", order_date: format(new Date(), "yyyy-MM-dd"),
-    is_p20_sale: false, discount_pct: "0", remarks: "",
+    discount_pct: "0", remarks: "",
     items: [{ item_type: "milled_rice", variety_id: "", grade_name: "regular", quantity_kg: "", unit_price_per_kg: "" }],
   });
 
@@ -126,10 +126,6 @@ export default function SalesPage() {
               <label className="block text-sm font-medium text-gray-700 mb-1">Discount %</label>
               <input type="number" className="input" value={orderForm.discount_pct} onChange={e => setOrderForm(f => ({ ...f, discount_pct: e.target.value }))} />
             </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <input type="checkbox" id="p20" checked={orderForm.is_p20_sale} onChange={e => setOrderForm(f => ({ ...f, is_p20_sale: e.target.checked }))} />
-            <label htmlFor="p20" className="text-sm text-gray-700">P20 Rice Program Sale</label>
           </div>
           <div className="space-y-2">
             <div className="flex items-center justify-between">
@@ -257,10 +253,6 @@ export default function SalesPage() {
                   <label className="block text-sm font-medium text-gray-700 mb-1">Payment terms (days)</label>
                   <input className="input" type="number" value={customerForm.payment_terms_days} onChange={(e) => setCustomerForm((f) => ({ ...f, payment_terms_days: e.target.value }))} />
                 </div>
-                <label className="flex items-center gap-2 text-sm text-gray-700 sm:col-span-2">
-                  <input type="checkbox" checked={customerForm.is_p20_accredited} onChange={(e) => setCustomerForm((f) => ({ ...f, is_p20_accredited: e.target.checked }))} />
-                  P20 Rice Program accredited
-                </label>
               </div>
               <div className="flex gap-2 justify-end">
                 <button onClick={() => setShowCustomerForm(false)} className="btn-secondary">Cancel</button>
@@ -274,7 +266,7 @@ export default function SalesPage() {
           <div className="card overflow-hidden p-0">
             <table className="w-full text-sm">
               <thead className="bg-gray-50 border-b border-gray-200">
-                <tr>{["Name", "Type", "Phone", "Credit Limit", "P20", "Status", ""].map(h => <th key={h} className="px-4 py-3 text-left font-medium text-gray-600">{h}</th>)}</tr>
+                <tr>{["Name", "Type", "Phone", "Credit Limit", "Status", ""].map(h => <th key={h} className="px-4 py-3 text-left font-medium text-gray-600">{h}</th>)}</tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {activeCustomers.map((c: any) => (
@@ -283,7 +275,6 @@ export default function SalesPage() {
                     <td className="px-4 py-3 capitalize">{c.customer_type?.replace("_", " ") || "—"}</td>
                     <td className="px-4 py-3">{c.phone || "—"}</td>
                     <td className="px-4 py-3">₱{Number(c.credit_limit).toLocaleString()}</td>
-                    <td className="px-4 py-3">{c.is_p20_accredited ? <span className="badge-green">Yes</span> : "—"}</td>
                     <td className="px-4 py-3"><span className="badge-green">Active</span></td>
                     <td className="px-4 py-3">
                       <button
@@ -295,7 +286,7 @@ export default function SalesPage() {
                     </td>
                   </tr>
                 ))}
-                {activeCustomers.length === 0 && <tr><td colSpan={7} className="px-4 py-8 text-center text-gray-400">No active customers</td></tr>}
+                {activeCustomers.length === 0 && <tr><td colSpan={6} className="px-4 py-8 text-center text-gray-400">No active customers</td></tr>}
               </tbody>
             </table>
 
@@ -320,7 +311,6 @@ export default function SalesPage() {
                           <td className="px-4 py-3 capitalize">{c.customer_type?.replace("_", " ") || "—"}</td>
                           <td className="px-4 py-3">{c.phone || "—"}</td>
                           <td className="px-4 py-3">₱{Number(c.credit_limit).toLocaleString()}</td>
-                          <td className="px-4 py-3">{c.is_p20_accredited ? <span className="badge-green">Yes</span> : "—"}</td>
                           <td className="px-4 py-3"><span className="badge-red">Inactive</span></td>
                           <td className="px-4 py-3">
                             <button

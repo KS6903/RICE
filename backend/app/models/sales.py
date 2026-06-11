@@ -35,7 +35,6 @@ class SalesOrder(Base, TimestampMixin):
     order_date: Mapped[date] = mapped_column(Date, nullable=False)
     delivery_date: Mapped[date | None] = mapped_column(Date)
     status: Mapped[str] = mapped_column(String(20), default="draft")  # draft, confirmed, delivered, invoiced, paid
-    is_p20_sale: Mapped[bool] = mapped_column(Boolean, default=False)
     discount_pct: Mapped[Decimal] = mapped_column(Numeric(5, 2), default=0)
     discount_amount: Mapped[Decimal] = mapped_column(Numeric(14, 2), default=0)
     subtotal: Mapped[Decimal | None] = mapped_column(Numeric(14, 2))

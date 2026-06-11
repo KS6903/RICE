@@ -1,8 +1,9 @@
+import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { inventoryService } from "../services/InventoryService";
 import { reportsService } from "../services/ReportsService";
 import {
-  Package, Wheat, Factory, TrendingUp, AlertCircle, ArrowUpRight, Sparkles,
+  Package, Wheat, Factory, TrendingUp, AlertCircle, ArrowUpRight, Sparkles, Clock, Calendar,
 } from "lucide-react";
 import WeatherWidget from "../components/WeatherWidget";
 import {
@@ -71,6 +72,12 @@ export default function Dashboard() {
   const theme = useThemeStore((s) => s.theme);
   const isDark = theme === "dark";
 
+  const [currentTime, setCurrentTime] = useState(() => new Date());
+  useEffect(() => {
+    const timer = setInterval(() => setCurrentTime(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+
   const { data: inventory } = useQuery({
     queryKey: ["inventory-summary"],
     queryFn: () => inventoryService.getSummary(),
@@ -103,9 +110,19 @@ export default function Dashboard() {
 
         <div className="relative flex flex-col lg:flex-row lg:items-end lg:justify-between gap-6">
           <div className="text-white max-w-xl">
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/20 ring-1 ring-white/30 text-xs font-bold uppercase tracking-wide backdrop-blur-md">
-              <Sparkles size={12} />
-              Last 30 days
+            <div className="flex flex-wrap items-center gap-3">
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/20 ring-1 ring-white/30 text-xs font-bold uppercase tracking-wide backdrop-blur-md">
+                <Sparkles size={12} />
+                Last 30 days
+              </div>
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/20 ring-1 ring-white/30 text-xs font-bold uppercase tracking-wide backdrop-blur-md">
+                <Calendar size={12} />
+                {format(currentTime, "MMMM d, yyyy")}
+              </div>
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/20 ring-1 ring-white/30 text-xs font-bold uppercase tracking-wide backdrop-blur-md">
+                <Clock size={12} />
+                {format(currentTime, "h:mm a")}
+              </div>
             </div>
             <h1 className="mt-3 text-4xl lg:text-5xl font-extrabold tracking-tight leading-[1.05]">
               {pnl ? `₱${Number(pnl.net_profit).toLocaleString()}` : "—"}

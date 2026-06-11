@@ -77,7 +77,7 @@ export interface Supplier {
 
 export interface Customer {
   id: string;
-  customer_type?: "wholesaler" | "retailer" | "government" | "walk_in";
+  customer_type?: "wholesaler" | "retailer" | "walk_in";
   name: string;
   contact_person?: string;
   phone?: string;
@@ -85,7 +85,6 @@ export interface Customer {
   tin?: string;
   credit_limit: number;
   payment_terms_days: number;
-  is_p20_accredited: boolean;
   is_active: boolean;
 }
 
@@ -158,7 +157,6 @@ export interface SalesOrder {
   order_date: string;
   delivery_date?: string;
   status: "draft" | "confirmed" | "delivered" | "invoiced" | "paid";
-  is_p20_sale: boolean;
   discount_pct: number;
   total_amount: number;
   items: SalesOrderItem[];

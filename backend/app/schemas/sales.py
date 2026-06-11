@@ -15,7 +15,6 @@ class CustomerCreate(BaseModel):
     tin: str | None = None
     credit_limit: Decimal = Decimal("0")
     payment_terms_days: int = 0
-    is_p20_accredited: bool = False
 
 
 class CustomerUpdate(BaseModel):
@@ -27,7 +26,6 @@ class CustomerUpdate(BaseModel):
     tin: str | None = None
     credit_limit: Decimal | None = None
     payment_terms_days: int | None = None
-    is_p20_accredited: bool | None = None
     is_active: bool | None = None
 
 
@@ -44,7 +42,6 @@ class OrderCreate(BaseModel):
     customer_id: uuid.UUID
     order_date: date
     delivery_date: date | None = None
-    is_p20_sale: bool = False
     discount_pct: Decimal = Decimal("0")
     remarks: str | None = None
     items: list[OrderItemIn]

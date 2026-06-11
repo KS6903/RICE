@@ -124,7 +124,6 @@ function createSchema(db: Database.Database) {
       tin TEXT,
       credit_limit REAL DEFAULT 0,
       payment_terms_days INTEGER DEFAULT 0,
-      is_p20_accredited INTEGER DEFAULT 0,
       is_active INTEGER DEFAULT 1,
       created_at TEXT,
       updated_at TEXT
@@ -241,7 +240,6 @@ function createSchema(db: Database.Database) {
       order_date TEXT NOT NULL,
       delivery_date TEXT,
       status TEXT DEFAULT 'draft',
-      is_p20_sale INTEGER DEFAULT 0,
       discount_pct REAL DEFAULT 0,
       discount_amount REAL DEFAULT 0,
       subtotal REAL,
