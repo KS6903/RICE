@@ -6,8 +6,6 @@ have to wait 24 hours or fight asyncio.
 """
 from datetime import datetime, timedelta, timezone
 
-import pytest
-
 from app.models.reference import RiceVariety
 from app.services.paddy_service import purge_stale_varieties
 
