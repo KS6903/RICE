@@ -43,6 +43,16 @@ def compliance_report(
     return svc.compliance_report(report_type, period_start, period_end)
 
 
+@router.get("/revenue-annual")
+def revenue_annual(
+    year: int = Query(default=None),
+    svc: ReportsService = Depends(get_reports_service),
+):
+    if year is None:
+        year = date.today().year
+    return svc.revenue_annual(year)
+
+
 @router.get("/ar-aging", dependencies=[Depends(require_feature("reports_advanced"))])
 def ar_aging(svc: ReportsService = Depends(get_reports_service)):
     return svc.ar_aging()

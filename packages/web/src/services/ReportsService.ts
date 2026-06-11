@@ -17,6 +17,11 @@ export class ReportsService {
   getInventoryValuation(): Promise<any> {
     return this.http.get("/reports/inventory-valuation").then((r) => r.data);
   }
+
+  getRevenueAnnual(year?: number): Promise<{ month: number; month_name: string; revenue: number }[]> {
+    const y = year ?? new Date().getFullYear();
+    return this.http.get(`/reports/revenue-annual?year=${y}`).then((r) => r.data);
+  }
 }
 
 export const reportsService = new ReportsService();

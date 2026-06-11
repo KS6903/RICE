@@ -2,17 +2,27 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { reportsService } from "../services/ReportsService";
 import { format, startOfMonth, endOfMonth } from "date-fns";
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
-import { Lock } from "lucide-react";
+import {
+  BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
+  LineChart, Line, ReferenceLine,
+} from "recharts";
+import { Lock, ChevronLeft, ChevronRight, BarChart3, LineChart as LineChartIcon } from "lucide-react";
 import { useFeature } from "../hooks/useFeature";
+import { useThemeStore } from "../stores/themeStore";
 
 export default function ReportsPage() {
   const [dateRange, setDateRange] = useState({
     start: format(startOfMonth(new Date()), "yyyy-MM-dd"),
     end: format(endOfMonth(new Date()), "yyyy-MM-dd"),
   });
+  const [revenueYear, setRevenueYear] = useState(new Date().getFullYear());
+  const [revenueChart, setRevenueChart] = useState<"bar" | "line">("bar");
 
   const hasAdvanced = useFeature("reports_advanced");
+  const theme = useThemeStore((s) => s.theme);
+  const isDark = theme === "dark";
+  const gridColor = isDark ? "rgba(148,163,184,0.18)" : "rgba(15,23,42,0.1)";
+  const axisColor = isDark ? "#cbd5e1" : "#334155";
 
   const { data: pnl } = useQuery({
     queryKey: ["pnl", dateRange.start, dateRange.end],
@@ -23,6 +33,11 @@ export default function ReportsPage() {
     queryKey: ["ar-aging"],
     queryFn: () => reportsService.getArAging(),
     enabled: hasAdvanced,
+  });
+
+  const { data: revenueAnnual } = useQuery({
+    queryKey: ["revenue-annual", revenueYear],
+    queryFn: () => reportsService.getRevenueAnnual(revenueYear),
   });
 
   const pnlData = pnl ? [
@@ -84,6 +99,162 @@ export default function ReportsPage() {
                 <Bar dataKey="amount" fill="#16a34a" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
+          </>
+        )}
+      </div>
+
+      {/* Annual Revenue */}
+      <div className="card space-y-4">
+        <div className="flex items-center justify-between flex-wrap gap-3">
+          <div>
+            <h3 className="font-semibold text-primary">Annual Revenue</h3>
+            <p className="text-sm text-secondary mt-0.5">Monthly revenue for {revenueYear}</p>
+          </div>
+          <div className="flex items-center gap-3 flex-wrap">
+            {/* Bar / line toggle */}
+            <div className="inline-flex items-center rounded-lg bg-slate-100 dark:bg-slate-800 p-0.5">
+              <button
+                onClick={() => setRevenueChart("bar")}
+                className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold transition-colors ${
+                  revenueChart === "bar"
+                    ? "bg-white dark:bg-slate-700 text-primary shadow-sm"
+                    : "text-secondary hover:text-primary"
+                }`}
+              >
+                <BarChart3 size={14} /> Bar
+              </button>
+              <button
+                onClick={() => setRevenueChart("line")}
+                className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold transition-colors ${
+                  revenueChart === "line"
+                    ? "bg-white dark:bg-slate-700 text-primary shadow-sm"
+                    : "text-secondary hover:text-primary"
+                }`}
+              >
+                <LineChartIcon size={14} /> Line
+              </button>
+            </div>
+            {/* Year picker */}
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setRevenueYear((y) => y - 1)}
+                className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 text-secondary transition-colors"
+              >
+                <ChevronLeft size={16} />
+              </button>
+              <span className="text-sm font-bold text-primary w-12 text-center">{revenueYear}</span>
+              <button
+                onClick={() => setRevenueYear((y) => y + 1)}
+                disabled={revenueYear >= new Date().getFullYear()}
+                className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 text-secondary transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                <ChevronRight size={16} />
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {revenueAnnual && (
+          <>
+            <div className="grid grid-cols-3 sm:grid-cols-6 gap-3">
+              {revenueAnnual.map((m) => (
+                <div key={m.month} className="text-center p-2 rounded-lg bg-slate-50 dark:bg-slate-800/50">
+                  <p className="text-xs text-secondary font-medium">{m.month_name}</p>
+                  <p className="text-sm font-bold text-primary mt-0.5">
+                    {m.revenue > 0 ? `₱${(m.revenue / 1000).toFixed(0)}k` : "—"}
+                  </p>
+                </div>
+              ))}
+            </div>
+            <ResponsiveContainer width="100%" height={260}>
+              {revenueChart === "bar" ? (
+                <BarChart data={revenueAnnual} margin={{ left: -10, right: 8, top: 4 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke={gridColor} />
+                  <XAxis
+                    dataKey="month_name"
+                    tick={{ fontSize: 12, fill: axisColor, fontWeight: 500 }}
+                    axisLine={{ stroke: gridColor }}
+                    tickLine={false}
+                  />
+                  <YAxis
+                    tick={{ fontSize: 12, fill: axisColor, fontWeight: 500 }}
+                    axisLine={{ stroke: gridColor }}
+                    tickLine={false}
+                    tickFormatter={(v) => `₱${(v / 1000).toFixed(0)}k`}
+                  />
+                  <Tooltip
+                    formatter={(v: number) => [`₱${v.toLocaleString()}`, "Revenue"]}
+                    contentStyle={{
+                      backgroundColor: isDark ? "rgba(15,23,42,0.96)" : "rgba(255,255,255,0.98)",
+                      border: `1px solid ${gridColor}`,
+                      borderRadius: 12,
+                      color: isDark ? "#f1f5f9" : "#0f172a",
+                      fontWeight: 500,
+                    }}
+                  />
+                  <ReferenceLine
+                    y={revenueAnnual.reduce((sum, m) => sum + m.revenue, 0) / 12}
+                    stroke="#10b981"
+                    strokeDasharray="4 4"
+                    label={{ value: "Avg", position: "right", fontSize: 11, fill: "#10b981" }}
+                  />
+                  <Bar dataKey="revenue" fill="#10b981" radius={[4, 4, 0, 0]} maxBarSize={48} />
+                </BarChart>
+              ) : (
+                <LineChart data={revenueAnnual} margin={{ left: -10, right: 8, top: 4 }}>
+                  <defs>
+                    <linearGradient id="revLineFill" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#10b981" stopOpacity={0.35} />
+                      <stop offset="100%" stopColor="#10b981" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke={gridColor} />
+                  <XAxis
+                    dataKey="month_name"
+                    tick={{ fontSize: 12, fill: axisColor, fontWeight: 500 }}
+                    axisLine={{ stroke: gridColor }}
+                    tickLine={false}
+                  />
+                  <YAxis
+                    tick={{ fontSize: 12, fill: axisColor, fontWeight: 500 }}
+                    axisLine={{ stroke: gridColor }}
+                    tickLine={false}
+                    tickFormatter={(v) => `₱${(v / 1000).toFixed(0)}k`}
+                  />
+                  <Tooltip
+                    formatter={(v: number) => [`₱${v.toLocaleString()}`, "Revenue"]}
+                    contentStyle={{
+                      backgroundColor: isDark ? "rgba(15,23,42,0.96)" : "rgba(255,255,255,0.98)",
+                      border: `1px solid ${gridColor}`,
+                      borderRadius: 12,
+                      color: isDark ? "#f1f5f9" : "#0f172a",
+                      fontWeight: 500,
+                    }}
+                  />
+                  <ReferenceLine
+                    y={revenueAnnual.reduce((sum, m) => sum + m.revenue, 0) / 12}
+                    stroke="#10b981"
+                    strokeDasharray="4 4"
+                    label={{ value: "Avg", position: "right", fontSize: 11, fill: "#10b981" }}
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="revenue"
+                    stroke="#10b981"
+                    strokeWidth={3}
+                    fill="url(#revLineFill)"
+                    dot={{ r: 3, fill: "#10b981" }}
+                    activeDot={{ r: 6, strokeWidth: 2, stroke: "#fff" }}
+                  />
+                </LineChart>
+              )}
+            </ResponsiveContainer>
+            <p className="text-right text-sm text-secondary">
+              Total:{" "}
+              <span className="font-semibold text-primary">
+                ₱{revenueAnnual.reduce((sum, m) => sum + m.revenue, 0).toLocaleString()}
+              </span>
+            </p>
           </>
         )}
       </div>

@@ -9,7 +9,7 @@ import WeatherWidget from "../components/WeatherWidget";
 import {
   Area, AreaChart, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
 } from "recharts";
-import { format, subDays } from "date-fns";
+import { format, startOfMonth } from "date-fns";
 import { useThemeStore } from "../stores/themeStore";
 
 type Tone = "emerald" | "violet" | "cyan" | "amber";
@@ -68,7 +68,8 @@ function StatCard({
 
 export default function Dashboard() {
   const today = format(new Date(), "yyyy-MM-dd");
-  const thirtyAgo = format(subDays(new Date(), 30), "yyyy-MM-dd");
+  const monthStart = format(startOfMonth(new Date()), "yyyy-MM-dd");
+  const currentMonth = format(new Date(), "yyyy-MM");
   const theme = useThemeStore((s) => s.theme);
   const isDark = theme === "dark";
 
@@ -84,8 +85,9 @@ export default function Dashboard() {
   });
 
   const { data: pnl } = useQuery({
-    queryKey: ["pnl-dashboard"],
-    queryFn: () => reportsService.getPnl(thirtyAgo, today),
+    queryKey: ["pnl-dashboard", currentMonth],
+    queryFn: () => reportsService.getPnl(monthStart, today),
+    refetchInterval: 60 * 60 * 1000,
   });
 
   const pnlChart = pnl
@@ -113,7 +115,7 @@ export default function Dashboard() {
             <div className="flex flex-wrap items-center gap-3">
               <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/20 ring-1 ring-white/30 text-xs font-bold uppercase tracking-wide backdrop-blur-md">
                 <Sparkles size={12} />
-                Last 30 days
+                {format(new Date(), "MMMM yyyy")}
               </div>
               <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/20 ring-1 ring-white/30 text-xs font-bold uppercase tracking-wide backdrop-blur-md">
                 <Calendar size={12} />
@@ -174,7 +176,7 @@ export default function Dashboard() {
           tone="emerald"
         />
         <StatCard
-          label="Net Profit (30d)"
+          label="Net Profit (MTD)"
           value={pnl ? `₱${Number(pnl.net_profit).toLocaleString()}` : "—"}
           icon={TrendingUp}
           tone="cyan"
@@ -193,7 +195,7 @@ export default function Dashboard() {
           <div className="flex items-start justify-between mb-5">
             <div>
               <h3 className="text-lg font-bold text-primary">Financial Summary</h3>
-              <p className="text-sm text-secondary mt-0.5">Last 30 days · breakdown</p>
+              <p className="text-sm text-secondary mt-0.5">{format(new Date(), "MMMM yyyy")} · breakdown</p>
             </div>
             <span className="badge-violet">Live</span>
           </div>

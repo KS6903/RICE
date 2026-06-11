@@ -6,6 +6,7 @@ transactions.
 """
 from __future__ import annotations
 
+import calendar
 from datetime import date
 from typing import Any
 
@@ -98,6 +99,26 @@ class ReportsService(BaseService):
                 sum((i.gross_weight_kg - i.tare_weight_kg) for i in p.items) for p in purchases
             ),
         }
+
+    def revenue_annual(self, year: int) -> list[dict]:
+        """Return monthly revenue totals for the given calendar year."""
+        months = []
+        for month in range(1, 13):
+            _, last_day = calendar.monthrange(year, month)
+            period_start = date(year, month, 1)
+            period_end = date(year, month, last_day)
+            revenue = self.db.query(func.sum(SalesOrder.total_amount)).filter(
+                SalesOrder.company_id == self._company_id,
+                SalesOrder.order_date >= period_start,
+                SalesOrder.order_date <= period_end,
+                SalesOrder.status.in_(["invoiced", "paid"]),
+            ).scalar() or 0
+            months.append({
+                "month": month,
+                "month_name": date(year, month, 1).strftime("%b"),
+                "revenue": float(revenue),
+            })
+        return months
 
     def ar_aging(self) -> dict:
         invoices = self.db.query(Invoice).filter(
