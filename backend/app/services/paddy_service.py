@@ -86,8 +86,13 @@ class PaddyService(BaseService):
                 "Cannot edit shared/system varieties. Create your own copy instead."
             )
         with self.transaction():
-            for field, val in data.model_dump(exclude_none=True).items():
+            payload = data.model_dump(exclude_none=True)
+            for field, val in payload.items():
                 setattr(v, field, val)
+            if payload.get("is_active") is False and v.deactivated_at is None:
+                v.deactivated_at = datetime.now(timezone.utc)
+            elif payload.get("is_active") is True:
+                v.deactivated_at = None
         self.db.refresh(v)
         return v
 

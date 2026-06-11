@@ -1,5 +1,6 @@
 import uuid
-from sqlalchemy import String, Boolean, Numeric, Text, SmallInteger, ForeignKey
+from datetime import datetime
+from sqlalchemy import String, Boolean, Numeric, Text, SmallInteger, ForeignKey, DateTime
 from sqlalchemy.orm import mapped_column, Mapped, relationship
 from sqlalchemy.dialects.postgresql import UUID
 from ..core.database import Base
@@ -16,6 +17,7 @@ class RiceVariety(Base):
     category: Mapped[str | None] = mapped_column(String(20))  # inbred, hybrid, local
     typical_recovery_pct: Mapped[Decimal | None] = mapped_column(Numeric(5, 2))
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    deactivated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
 class QualityGrade(Base):
