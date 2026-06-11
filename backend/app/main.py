@@ -1,6 +1,5 @@
 import asyncio
 import logging
-from datetime import datetime, timedelta, timezone
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -13,31 +12,19 @@ logger = logging.getLogger(__name__)
 
 
 async def _purge_stale_varieties() -> None:
-    """Delete tenant rice varieties deactivated for more than 30 days.
-
-    Runs once at startup then every 24 hours. System varieties (company_id IS
-    NULL) are never deleted — only tenant-owned rows qualify.
-    """
-    from sqlalchemy import delete
+    """Background loop: delete tenant rice varieties deactivated >30 days ago."""
     from .core.database import SessionLocal
-    from .models.reference import RiceVariety
+    from .services.paddy_service import purge_stale_varieties
 
     while True:
         await asyncio.sleep(86400)  # wait 24 h before first run, then repeat
-        cutoff = datetime.now(timezone.utc) - timedelta(days=30)
         try:
             db = SessionLocal()
             try:
-                result = db.execute(
-                    delete(RiceVariety).where(
-                        RiceVariety.is_active.is_(False),
-                        RiceVariety.deactivated_at <= cutoff,
-                        RiceVariety.company_id.is_not(None),
-                    )
-                )
+                count = purge_stale_varieties(db)
                 db.commit()
-                if result.rowcount:  # type: ignore[attr-defined]
-                    logger.info("Purged %d stale rice variety rows (deactivated >30 days)", result.rowcount)  # type: ignore[attr-defined]
+                if count:
+                    logger.info("Purged %d stale rice variety rows (deactivated >30 days)", count)
             finally:
                 db.close()
         except Exception:

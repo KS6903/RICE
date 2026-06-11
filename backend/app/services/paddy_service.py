@@ -13,10 +13,11 @@ update_palay_inventory) are folded in here as private methods.
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from typing import Any, Sequence
 
+from sqlalchemy import delete
 from sqlalchemy.orm import Session
 
 from ..core.exceptions import ConflictError, NotFoundError, PermissionDeniedError, ValidationError
@@ -259,3 +260,23 @@ class PaddyService(BaseService):
                 created_at=datetime.now(timezone.utc),
             )
         )
+
+
+# ── module-level helpers ──────────────────────────────────────────────────────
+
+def purge_stale_varieties(db: Session, *, days: int = 30) -> int:
+    """Delete tenant rice varieties that have been deactivated for *days* days.
+
+    System/shared varieties (company_id IS NULL) are never touched.
+    Does NOT commit — callers own the transaction boundary.
+    Returns the number of rows deleted.
+    """
+    cutoff = datetime.now(timezone.utc) - timedelta(days=days)
+    result = db.execute(
+        delete(RiceVariety).where(
+            RiceVariety.is_active.is_(False),
+            RiceVariety.deactivated_at <= cutoff,
+            RiceVariety.company_id.is_not(None),
+        )
+    )
+    return result.rowcount  # type: ignore[attr-defined]
