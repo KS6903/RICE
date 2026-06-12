@@ -54,6 +54,15 @@ class Settings(BaseSettings):
     # Best-effort: any network failure means "allow", so offline deployments are
     # never blocked. Recommended true where the server has internet access.
     PASSWORD_BREACH_CHECK: bool = False
+    # Password-reset token lifetime (minutes).
+    PASSWORD_RESET_TOKEN_MINUTES: int = 30
+    # Where to send the reset link. With no email provider wired up, the link is
+    # logged server-side; when this is true (dev only) the raw token is also
+    # returned in the API response so the flow is testable end-to-end. The prod
+    # config validator forces this off.
+    EXPOSE_RESET_TOKEN: bool = False
+    # Public base URL the reset link points at (the web app's origin).
+    FRONTEND_BASE_URL: str = "http://localhost:5173"
     # Optional — when present, /api/weather hits Google's Weather API. Otherwise
     # the endpoint falls back to Open-Meteo (no key required), so the widget
     # works out of the box.
@@ -112,6 +121,8 @@ class Settings(BaseSettings):
             problems.append("TRUSTED_HOSTS must be an explicit allowlist, not '*'")
         if not self.COOKIE_SECURE:
             problems.append("COOKIE_SECURE must be true so session cookies require HTTPS")
+        if self.EXPOSE_RESET_TOKEN:
+            problems.append("EXPOSE_RESET_TOKEN must be false (it leaks reset tokens in responses)")
         if problems:
             raise ValueError(
                 "Insecure production configuration (ENV=prod): " + "; ".join(problems)

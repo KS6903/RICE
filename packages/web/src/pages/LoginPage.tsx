@@ -212,13 +212,12 @@ export default function LoginPage() {
             <div>
               <div className="flex items-center justify-between mb-1.5">
                 <label className="form-label" style={{ marginBottom: 0 }}>Password</label>
-                <button
-                  type="button"
+                <Link
+                  to="/forgot-password"
                   className="text-xs font-semibold text-muted hover:text-primary transition-colors"
-                  tabIndex={-1}
                 >
                   Forgot?
-                </button>
+                </Link>
               </div>
               <input
                 type="password"

@@ -39,6 +39,17 @@ export class AuthService {
       .then((r) => r.data);
   }
 
+  // ── Password reset ──────────────────────────────────────────────────────────
+
+  /** Request a reset link. Always resolves the same way (no account enumeration). */
+  forgotPassword(identifier: string): Promise<{ message: string; reset_token?: string }> {
+    return this.http.post("/auth/forgot-password", { identifier }).then((r) => r.data);
+  }
+
+  resetPassword(token: string, newPassword: string): Promise<any> {
+    return this.http.post("/auth/reset-password", { token, new_password: newPassword }).then((r) => r.data);
+  }
+
   // ── MFA (TOTP) ──────────────────────────────────────────────────────────────
 
   /** Second login step when login() returned { mfa_required, challenge_token }. */

@@ -7,6 +7,7 @@ entitlement logic is untouched.
 """
 from __future__ import annotations
 
+import hashlib
 import logging
 import secrets
 import string
@@ -46,6 +47,7 @@ from ..core.security import (
 )
 from ..models.auth_session import AuthSession
 from ..models.base import now_utc
+from ..models.password_reset import PasswordResetToken
 from ..models.company import Branch, Company
 from ..models.subscription import Subscription
 from ..models.user import Role, User
@@ -66,6 +68,10 @@ except ImportError:  # google-auth not installed — Google login disabled
     google_requests = None  # type: ignore[assignment]
 
 logger = logging.getLogger("ricemill.auth")
+
+
+def _sha256(value: str) -> str:
+    return hashlib.sha256(value.encode("utf-8")).hexdigest()
 
 
 class AuthService(BaseService):
@@ -454,6 +460,72 @@ class AuthService(BaseService):
             # MFA — the UI uses this to prompt until they do.
             "mfa_setup_recommended": bool(is_privileged and not user.mfa_enabled),
         }
+
+    # ── password reset ────────────────────────────────────────────────────────
+
+    def request_password_reset(self, identifier: str) -> dict:
+        """Issue a reset token for the account matching ``identifier`` (username
+        or email). Enumeration-safe: the response is identical whether or not an
+        account matched, so it can't be used to probe which emails are registered.
+
+        With no email provider wired up, the reset link is logged server-side;
+        in dev (EXPOSE_RESET_TOKEN) the raw token is also returned for testing.
+        """
+        ident = identifier.strip()
+        user = (
+            self.db.query(User)
+            .filter((User.username == ident) | (User.email == ident))
+            .first()
+        )
+        exposed_token: str | None = None
+        if user is not None:
+            raw = secrets.token_urlsafe(32)
+            with self.transaction():
+                # Invalidate any outstanding tokens for this user first.
+                self.db.query(PasswordResetToken).filter(
+                    PasswordResetToken.user_id == user.id,
+                    PasswordResetToken.used_at.is_(None),
+                ).update({PasswordResetToken.used_at: now_utc()})
+                self.db.add(
+                    PasswordResetToken(
+                        user_id=user.id,
+                        token_hash=_sha256(raw),
+                        expires_at=now_utc() + timedelta(minutes=settings.PASSWORD_RESET_TOKEN_MINUTES),
+                    )
+                )
+                self._log_security_event(user, "auth.password_reset_requested")
+            link = f"{settings.FRONTEND_BASE_URL}/reset-password?token={raw}"
+            logger.info("Password reset link for %s: %s", user.username, link)
+            if settings.EXPOSE_RESET_TOKEN:
+                exposed_token = raw
+        resp = {"message": "If an account matches, a reset link has been sent."}
+        if exposed_token is not None:
+            resp["reset_token"] = exposed_token  # dev only
+        return resp
+
+    def reset_password(self, token: str, new_password: str) -> dict:
+        """Consume a reset token and set a new password. Revokes all sessions."""
+        row = (
+            self.db.query(PasswordResetToken)
+            .filter(PasswordResetToken.token_hash == _sha256(token.strip()))
+            .first()
+        )
+        if row is None or row.used_at is not None or row.expires_at <= now_utc():
+            raise BadRequestError("This reset link is invalid or has expired.")
+        validate_password_strength(new_password)
+        user = self.db.get(User, row.user_id)
+        if user is None:
+            raise BadRequestError("This reset link is invalid or has expired.")
+        with self.transaction():
+            user.password_hash = hash_password(new_password)
+            row.used_at = now_utc()
+            # A reset is a credential change — kill every existing session.
+            self.db.query(AuthSession).filter(
+                AuthSession.user_id == user.id,
+                AuthSession.revoked_at.is_(None),
+            ).update({AuthSession.revoked_at: now_utc()})
+            self._log_security_event(user, "auth.password_reset", "All sessions revoked.")
+        return {"message": "Password has been reset. Please log in."}
 
     def change_password(self, data) -> dict:
         if not verify_password(data.current_password, self.current_user.password_hash):

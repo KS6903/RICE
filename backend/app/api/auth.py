@@ -16,11 +16,13 @@ from ..core.ratelimit import AUTH_RATE_LIMIT, limiter
 from ..core.security import get_current_user
 from ..schemas.auth import (
     ChangePasswordRequest,
+    ForgotPasswordRequest,
     GoogleAuthRequest,
     MfaCodeRequest,
     MfaEnrollResponse,
     MfaVerifyRequest,
     RefreshRequest,
+    ResetPasswordRequest,
     SignupRequest,
     TokenResponse,
     UpdateProfileRequest,
@@ -73,6 +75,28 @@ def login(
     if isinstance(result, TokenResponse):
         set_auth_cookies(response, access_token=result.access_token, refresh_token=result.refresh_token)
     return result
+
+
+@router.post("/forgot-password")
+@limiter.limit(AUTH_RATE_LIMIT)
+def forgot_password(
+    request: Request,
+    body: ForgotPasswordRequest,
+    svc: AuthService = Depends(get_public_auth_service),
+):
+    """Request a password reset. Always responds the same way (no account
+    enumeration); the reset link is delivered out-of-band."""
+    return svc.request_password_reset(body.identifier)
+
+
+@router.post("/reset-password")
+@limiter.limit(AUTH_RATE_LIMIT)
+def reset_password(
+    request: Request,
+    body: ResetPasswordRequest,
+    svc: AuthService = Depends(get_public_auth_service),
+):
+    return svc.reset_password(body.token, body.new_password)
 
 
 @router.post("/refresh", response_model=TokenResponse)

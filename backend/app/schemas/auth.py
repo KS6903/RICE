@@ -34,6 +34,18 @@ class ChangePasswordRequest(BaseModel):
     new_password: str
 
 
+# ── Password reset ───────────────────────────────────────────────────────────
+
+class ForgotPasswordRequest(BaseModel):
+    # Either a username or an email — we never reveal which (if any) matched.
+    identifier: str = Field(min_length=1, max_length=255)
+
+
+class ResetPasswordRequest(BaseModel):
+    token: str = Field(min_length=1, max_length=255)
+    new_password: str
+
+
 # ── MFA (TOTP) ───────────────────────────────────────────────────────────────
 
 class MfaChallengeResponse(BaseModel):
