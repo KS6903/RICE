@@ -3,6 +3,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { authService } from "../services/AuthService";
 import { useAuthStore } from "../stores/authStore";
 import { ShieldCheck, AlertCircle, Check, LogOut } from "lucide-react";
+import BackupCodes from "./BackupCodes";
 
 /** Full-screen mandatory MFA enrollment.
  *
@@ -16,6 +17,7 @@ export default function MfaEnrollmentGate() {
   const logout = useAuthStore((s) => s.logout);
   const [enroll, setEnroll] = useState<{ secret: string; otpauth_uri: string } | null>(null);
   const [code, setCode] = useState("");
+  const [backupCodes, setBackupCodes] = useState<string[] | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -35,14 +37,19 @@ export default function MfaEnrollmentGate() {
     setError("");
     setLoading(true);
     try {
-      await authService.mfaEnrollVerify(code.trim());
-      // Flag clears on the next /me; the app then renders normally.
-      await qc.invalidateQueries({ queryKey: ["auth-me"] });
+      const res = await authService.mfaEnrollVerify(code.trim());
+      // Show the recovery codes before letting the gate lift.
+      setBackupCodes(res.backup_codes);
     } catch (e: any) {
       setError(e.response?.data?.detail || "Invalid code. Check your authenticator app.");
     } finally {
       setLoading(false);
     }
+  };
+
+  const finish = async () => {
+    // Flag clears on the next /me; the app then renders normally.
+    await qc.invalidateQueries({ queryKey: ["auth-me"] });
   };
 
   return (
@@ -58,7 +65,14 @@ export default function MfaEnrollmentGate() {
           </div>
         </div>
 
-        {!enroll ? (
+        {backupCodes ? (
+          <div className="space-y-4">
+            <BackupCodes codes={backupCodes} />
+            <button onClick={finish} className="btn-primary w-full">
+              I&apos;ve saved my codes — continue
+            </button>
+          </div>
+        ) : !enroll ? (
           <button onClick={start} className="btn-primary w-full" disabled={loading}>
             {loading ? "Starting…" : "Set up two-factor authentication"}
           </button>

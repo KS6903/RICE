@@ -18,6 +18,7 @@ import { format } from "date-fns";
 import { useCurrentPlan } from "../hooks/useFeature";
 import type { SubscriptionPlan, UpgradeRequest } from "@rice-mill/shared";
 import ActivityLogList from "../components/activity/ActivityLogList";
+import BackupCodes from "../components/BackupCodes";
 import type { ActivityRow } from "../components/activity/format";
 import { Trash2, RotateCcw } from "lucide-react";
 
@@ -1767,10 +1768,13 @@ function MfaCard() {
   const [enroll, setEnroll] = useState<{ secret: string; otpauth_uri: string } | null>(null);
   const [code, setCode] = useState("");
   const [disabling, setDisabling] = useState(false);
+  const [regenerating, setRegenerating] = useState(false);
+  const [backupCodes, setBackupCodes] = useState<string[] | null>(null);
   const [msg, setMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null);
 
   const mfaEnabled = !!meQ.data?.mfa_enabled;
   const recommended = !!meQ.data?.mfa_setup_recommended;
+  const codesRemaining = meQ.data?.mfa_backup_codes_remaining ?? 0;
 
   const refresh = () => {
     qc.invalidateQueries({ queryKey: ["auth-me-mfa"] });
@@ -1789,10 +1793,23 @@ function MfaCard() {
   const confirmEnroll = async () => {
     setMsg(null);
     try {
-      await authService.mfaEnrollVerify(code.trim());
+      const res = await authService.mfaEnrollVerify(code.trim());
       setEnroll(null);
       setCode("");
-      setMsg({ type: "ok", text: "Two-factor authentication is now enabled." });
+      setBackupCodes(res.backup_codes); // show once
+      refresh();
+    } catch (e: any) {
+      setMsg({ type: "err", text: e.response?.data?.detail || "Invalid code." });
+    }
+  };
+
+  const confirmRegenerate = async () => {
+    setMsg(null);
+    try {
+      const res = await authService.regenerateBackupCodes(code.trim());
+      setRegenerating(false);
+      setCode("");
+      setBackupCodes(res.backup_codes);
       refresh();
     } catch (e: any) {
       setMsg({ type: "err", text: e.response?.data?.detail || "Invalid code." });
@@ -1844,7 +1861,16 @@ function MfaCard() {
         </div>
       )}
 
-      {!mfaEnabled && !enroll && (
+      {backupCodes && (
+        <div className="space-y-4">
+          <BackupCodes codes={backupCodes} />
+          <button onClick={() => setBackupCodes(null)} className="btn-primary w-full">
+            I&apos;ve saved my codes
+          </button>
+        </div>
+      )}
+
+      {!mfaEnabled && !enroll && !backupCodes && (
         <button onClick={start} className="btn-primary w-full">Enable two-factor authentication</button>
       )}
 
@@ -1872,10 +1898,46 @@ function MfaCard() {
         </div>
       )}
 
-      {mfaEnabled && !disabling && (
-        <button onClick={() => { setDisabling(true); setMsg(null); }} className="btn-secondary w-full">
-          Disable two-factor authentication
-        </button>
+      {mfaEnabled && !disabling && !regenerating && !backupCodes && (
+        <div className="space-y-3">
+          <div className="flex items-center justify-between text-sm">
+            <span className="text-secondary">
+              Recovery codes: <span className="font-semibold text-primary">{codesRemaining} left</span>
+              {codesRemaining <= 3 && (
+                <span className="text-amber-600 dark:text-amber-400"> · running low</span>
+              )}
+            </span>
+            <button
+              onClick={() => { setRegenerating(true); setMsg(null); }}
+              className="font-semibold text-grad-brand hover:opacity-80"
+            >
+              Regenerate
+            </button>
+          </div>
+          <button onClick={() => { setDisabling(true); setMsg(null); }} className="btn-secondary w-full">
+            Disable two-factor authentication
+          </button>
+        </div>
+      )}
+
+      {regenerating && (
+        <div className="space-y-4">
+          <p className="text-sm text-secondary">
+            Enter a current authenticator code to issue new recovery codes. This invalidates your old codes.
+          </p>
+          {codeInput}
+          <div className="flex gap-2">
+            <button onClick={confirmRegenerate} className="btn-primary flex-1" disabled={code.length < 6}>
+              Regenerate codes
+            </button>
+            <button
+              onClick={() => { setRegenerating(false); setCode(""); setMsg(null); }}
+              className="btn-secondary flex-1"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
       )}
 
       {disabling && (

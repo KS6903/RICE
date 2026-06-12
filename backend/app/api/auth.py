@@ -18,6 +18,7 @@ from ..schemas.auth import (
     ChangePasswordRequest,
     ForgotPasswordRequest,
     GoogleAuthRequest,
+    MfaBackupCodesResponse,
     MfaCodeRequest,
     MfaEnrollResponse,
     MfaVerifyRequest,
@@ -166,6 +167,13 @@ def mfa_enroll_verify(body: MfaCodeRequest, svc: AuthService = Depends(get_auth_
 @router.post("/mfa/disable")
 def mfa_disable(body: MfaCodeRequest, svc: AuthService = Depends(get_auth_service)):
     return svc.mfa_disable(body.code)
+
+
+@router.post("/mfa/backup-codes/regenerate", response_model=MfaBackupCodesResponse)
+def regenerate_backup_codes(body: MfaCodeRequest, svc: AuthService = Depends(get_auth_service)):
+    """Issue a fresh set of one-time backup codes (invalidates the old set).
+    Requires a current TOTP code."""
+    return svc.regenerate_backup_codes(body.code)
 
 
 # ── Authenticated ────────────────────────────────────────────────────────────

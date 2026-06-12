@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime
 from sqlalchemy import String, Boolean, SmallInteger, ForeignKey, DateTime
 from sqlalchemy.orm import mapped_column, Mapped, relationship
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.dialects.postgresql import UUID, JSONB
 from ..core.database import Base
 from .base import TimestampMixin
 
@@ -34,6 +34,10 @@ class User(Base, TimestampMixin):
     # with mfa_enabled=False is a pending enrollment awaiting code verification.
     mfa_secret: Mapped[str | None] = mapped_column(String(255))
     mfa_enabled: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    # Single-use recovery codes — stored as SHA-256 hashes of the still-unused
+    # codes; a code is removed from the list when consumed. Used when the user
+    # can't reach their authenticator.
+    mfa_backup_codes: Mapped[list | None] = mapped_column(JSONB)
 
     company: Mapped["Company"] = relationship("Company", back_populates="users")
     branch: Mapped["Branch"] = relationship(

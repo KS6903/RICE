@@ -75,6 +75,23 @@ def _sha256(value: str) -> str:
     return hashlib.sha256(value.encode("utf-8")).hexdigest()
 
 
+def _normalize_backup_code(code: str) -> str:
+    """Lowercase and strip formatting so 'A1B2-C3D4' matches 'a1b2c3d4'."""
+    return "".join(ch for ch in code.lower() if ch.isalnum())
+
+
+def _generate_backup_codes(n: int = 10) -> tuple[list[str], list[str]]:
+    """Return (raw codes shown once, SHA-256 hashes to store). Each code is
+    64 bits of entropy, grouped for readability (xxxx-xxxx-xxxx-xxxx)."""
+    raw, hashes = [], []
+    for _ in range(n):
+        h = secrets.token_hex(8)
+        code = f"{h[0:4]}-{h[4:8]}-{h[8:12]}-{h[12:16]}"
+        raw.append(code)
+        hashes.append(_sha256(_normalize_backup_code(code)))
+    return raw, hashes
+
+
 class AuthService(BaseService):
     def __init__(self, db: Session, current_user: Any = None) -> None:
         super().__init__(db, current_user)
@@ -194,8 +211,16 @@ class AuthService(BaseService):
             return False
         return pyotp.TOTP(secret).verify(code.strip(), valid_window=1)
 
+    def _backup_code_matches(self, user: User, code: str) -> bool:
+        return _sha256(_normalize_backup_code(code)) in (user.mfa_backup_codes or [])
+
+    def _consume_backup_code(self, user: User, code: str) -> None:
+        h = _sha256(_normalize_backup_code(code))
+        user.mfa_backup_codes = [c for c in (user.mfa_backup_codes or []) if c != h]
+
     def mfa_verify(self, challenge_token: str, code: str) -> TokenResponse:
-        """Second login step: exchange challenge token + TOTP code for tokens."""
+        """Second login step: exchange the challenge token plus a TOTP code OR a
+        one-time backup code for real tokens."""
         payload = decode_token(challenge_token)
         if payload.get("type") != "mfa":
             raise UnauthorizedError("Invalid MFA challenge")
@@ -204,18 +229,24 @@ class AuthService(BaseService):
             raise UnauthorizedError("Invalid MFA challenge")
         if is_locked_out(user.username):
             raise TooManyRequestsError("Too many failed attempts. Please try again later.")
-        if not self._verify_totp(user, code):
+        via_totp = self._verify_totp(user, code)
+        via_backup = (not via_totp) and self._backup_code_matches(user, code)
+        if not via_totp and not via_backup:
             # Bad codes count toward the same lockout as bad passwords, so a
-            # stolen password can't be parlayed into unlimited TOTP guessing.
+            # stolen password can't be parlayed into unlimited code guessing.
             register_login_failure(user.username)
             with self.transaction():
-                self._log_security_event(user, "auth.mfa_failed", "Invalid TOTP code.")
+                self._log_security_event(user, "auth.mfa_failed", "Invalid code.")
             raise UnauthorizedError("Invalid authentication code")
         clear_login_failures(user.username)
         with self.transaction():
+            if via_backup:
+                self._consume_backup_code(user, code)  # single-use
             user.last_login = datetime.now(timezone.utc)
             tokens = self._issue_tokens(user)
-            self._log_security_event(user, "auth.login", "MFA verified.")
+            self._log_security_event(
+                user, "auth.login", "MFA verified (backup code)." if via_backup else "MFA verified."
+            )
         return tokens
 
     def mfa_enroll(self) -> dict:
@@ -240,10 +271,27 @@ class AuthService(BaseService):
             raise BadRequestError("No enrollment in progress. Start enrollment first.")
         if not self._verify_totp(user, code):
             raise BadRequestError("Invalid authentication code. Check your authenticator app.")
+        raw_codes, hashes = _generate_backup_codes()
         with self.transaction():
             user.mfa_enabled = True
+            user.mfa_backup_codes = hashes
             self._log_security_event(user, "auth.mfa_enabled")
-        return {"message": "MFA enabled"}
+        # Backup codes are shown exactly once here.
+        return {"message": "MFA enabled", "backup_codes": raw_codes}
+
+    def regenerate_backup_codes(self, code: str) -> dict:
+        """Issue a fresh set of backup codes (invalidating the old ones).
+        Requires a current TOTP code to authorize."""
+        user = self.current_user
+        if not user.mfa_enabled:
+            raise BadRequestError("MFA is not enabled.")
+        if not self._verify_totp(user, code):
+            raise BadRequestError("Invalid authentication code.")
+        raw_codes, hashes = _generate_backup_codes()
+        with self.transaction():
+            user.mfa_backup_codes = hashes
+            self._log_security_event(user, "auth.mfa_backup_regenerated")
+        return {"backup_codes": raw_codes}
 
     def mfa_disable(self, code: str) -> dict:
         user = self.current_user
@@ -254,6 +302,7 @@ class AuthService(BaseService):
         with self.transaction():
             user.mfa_enabled = False
             user.mfa_secret = None
+            user.mfa_backup_codes = None
             self._log_security_event(user, "auth.mfa_disabled")
         return {"message": "MFA disabled"}
 
@@ -461,6 +510,7 @@ class AuthService(BaseService):
             "subscription": plan_info,
             "features": features,
             "mfa_enabled": user.mfa_enabled,
+            "mfa_backup_codes_remaining": len(user.mfa_backup_codes or []) if user.mfa_enabled else 0,
             # High-privilege accounts (platform admin / owner) should enroll in
             # MFA — the UI uses this to prompt until they do.
             "mfa_setup_recommended": bool(is_privileged and not user.mfa_enabled),

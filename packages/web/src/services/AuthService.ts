@@ -63,12 +63,18 @@ export class AuthService {
     return this.http.post("/auth/mfa/enroll").then((r) => r.data);
   }
 
-  mfaEnrollVerify(code: string): Promise<any> {
+  /** Confirms enrollment; returns the one-time backup codes to show the user. */
+  mfaEnrollVerify(code: string): Promise<{ message: string; backup_codes: string[] }> {
     return this.http.post("/auth/mfa/enroll/verify", { code }).then((r) => r.data);
   }
 
   mfaDisable(code: string): Promise<any> {
     return this.http.post("/auth/mfa/disable", { code }).then((r) => r.data);
+  }
+
+  /** Issues a fresh set of backup codes (invalidates the old set). Needs a TOTP. */
+  regenerateBackupCodes(code: string): Promise<{ backup_codes: string[] }> {
+    return this.http.post("/auth/mfa/backup-codes/regenerate", { code }).then((r) => r.data);
   }
 }
 

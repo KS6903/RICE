@@ -17,6 +17,7 @@ export default function LoginPage() {
   // for the authenticator code.
   const [mfaChallenge, setMfaChallenge] = useState<string | null>(null);
   const [mfaCode, setMfaCode] = useState("");
+  const [useBackupCode, setUseBackupCode] = useState(false);
   const { setTokens, setUser } = useAuthStore();
   const theme = useThemeStore((s) => s.theme);
   const toggle = useThemeStore((s) => s.toggle);
@@ -157,24 +158,38 @@ export default function LoginPage() {
           </h1>
           <p className="mt-2 text-base text-secondary">
             {mfaChallenge
-              ? "Enter the 6-digit code from your authenticator app."
+              ? useBackupCode
+                ? "Enter one of your saved backup codes."
+                : "Enter the 6-digit code from your authenticator app."
               : "Sign in to continue to your dashboard."}
           </p>
 
           {mfaChallenge ? (
             <form onSubmit={handleMfaVerify} className="mt-8 space-y-5">
               <div>
-                <label className="form-label">Authentication code</label>
-                <input
-                  className="input text-center tracking-[0.5em] text-lg"
-                  value={mfaCode}
-                  onChange={(e) => setMfaCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
-                  inputMode="numeric"
-                  autoComplete="one-time-code"
-                  placeholder="••••••"
-                  autoFocus
-                  required
-                />
+                <label className="form-label">{useBackupCode ? "Backup code" : "Authentication code"}</label>
+                {useBackupCode ? (
+                  <input
+                    className="input text-center font-mono"
+                    value={mfaCode}
+                    onChange={(e) => setMfaCode(e.target.value.slice(0, 30))}
+                    autoComplete="one-time-code"
+                    placeholder="xxxx-xxxx-xxxx-xxxx"
+                    autoFocus
+                    required
+                  />
+                ) : (
+                  <input
+                    className="input text-center tracking-[0.5em] text-lg"
+                    value={mfaCode}
+                    onChange={(e) => setMfaCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                    inputMode="numeric"
+                    autoComplete="one-time-code"
+                    placeholder="••••••"
+                    autoFocus
+                    required
+                  />
+                )}
               </div>
 
               {error && (
@@ -184,14 +199,22 @@ export default function LoginPage() {
                 </div>
               )}
 
-              <button type="submit" className="btn-primary w-full" disabled={loading || mfaCode.length < 6}>
+              <button type="submit" className="btn-primary w-full" disabled={loading || mfaCode.replace(/\s/g, "").length < 6}>
                 {loading ? "Verifying…" : "Verify"}
               </button>
 
               <button
                 type="button"
                 className="w-full text-sm font-semibold text-muted hover:text-primary transition-colors"
-                onClick={() => { setMfaChallenge(null); setMfaCode(""); setError(""); }}
+                onClick={() => { setUseBackupCode((v) => !v); setMfaCode(""); setError(""); }}
+              >
+                {useBackupCode ? "Use authenticator app instead" : "Use a backup code instead"}
+              </button>
+
+              <button
+                type="button"
+                className="w-full text-sm font-semibold text-muted hover:text-primary transition-colors"
+                onClick={() => { setMfaChallenge(null); setMfaCode(""); setUseBackupCode(false); setError(""); }}
               >
                 ← Back to sign in
               </button>

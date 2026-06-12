@@ -56,7 +56,8 @@ class MfaChallengeResponse(BaseModel):
 
 class MfaVerifyRequest(BaseModel):
     challenge_token: str
-    code: str = Field(min_length=6, max_length=8)
+    # A 6-digit TOTP, or a one-time backup/recovery code (longer).
+    code: str = Field(min_length=6, max_length=40)
 
 
 class MfaCodeRequest(BaseModel):
@@ -66,6 +67,12 @@ class MfaCodeRequest(BaseModel):
 class MfaEnrollResponse(BaseModel):
     secret: str
     otpauth_uri: str
+
+
+class MfaBackupCodesResponse(BaseModel):
+    """Returned once on enrollment / regeneration — the raw codes are never
+    shown again (only their hashes are stored)."""
+    backup_codes: list[str]
 
 
 class UpdateProfileRequest(BaseModel):

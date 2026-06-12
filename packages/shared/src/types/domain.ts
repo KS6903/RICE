@@ -13,6 +13,7 @@ export interface User {
   is_platform_admin?: boolean;
   features?: string[];
   mfa_enabled?: boolean;
+  mfa_backup_codes_remaining?: number;
   mfa_setup_recommended?: boolean;
   // When true, the server blocks data endpoints until this user enrolls in MFA.
   mfa_enrollment_required?: boolean;
