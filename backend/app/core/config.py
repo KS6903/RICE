@@ -46,6 +46,13 @@ class Settings(BaseSettings):
     RATE_LIMIT_DEFAULT: str = "1000/minute"
     # Tighter limit on the unauthenticated auth endpoints (login/signup/refresh/…).
     RATE_LIMIT_AUTH: str = "10/minute"
+    # Behind a reverse proxy the socket peer is the proxy, so everyone would
+    # share one rate-limit bucket. Enable this ONLY when you actually run behind
+    # a proxy you control, and set FORWARDED_HOPS to the number of proxies in
+    # front of the app (the client IP is read that many entries from the right of
+    # X-Forwarded-For; entries further left are client-spoofable and ignored).
+    RATE_LIMIT_TRUST_FORWARDED_FOR: bool = False
+    RATE_LIMIT_FORWARDED_HOPS: int = 1
     # Account lockout: after N failed logins for a username, lock it for M seconds.
     # Backed by Redis; a no-op when Redis is unavailable (per-IP limit still holds).
     LOGIN_MAX_FAILURES: int = 5

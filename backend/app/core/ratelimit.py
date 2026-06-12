@@ -21,6 +21,28 @@ from slowapi.util import get_remote_address
 from .cache import cache
 from .config import settings
 
+
+def client_ip(request: Request) -> str:
+    """Rate-limit key: the real client IP.
+
+    Behind a trusted reverse proxy the socket peer is the proxy, so by default
+    everyone would share one bucket. When RATE_LIMIT_TRUST_FORWARDED_FOR is on we
+    read the client IP from X-Forwarded-For, counting RATE_LIMIT_FORWARDED_HOPS
+    entries from the RIGHT (the hops your own proxies appended). Entries further
+    left are client-supplied and spoofable, so they're ignored — an attacker
+    prepending fake IPs can't escape their own bucket. Off by default; only
+    enable when actually behind a proxy you control.
+    """
+    if settings.RATE_LIMIT_TRUST_FORWARDED_FOR:
+        xff = request.headers.get("X-Forwarded-For")
+        if xff:
+            parts = [p.strip() for p in xff.split(",") if p.strip()]
+            hops = max(1, settings.RATE_LIMIT_FORWARDED_HOPS)
+            if len(parts) >= hops:
+                return parts[-hops]
+    return get_remote_address(request)
+
+
 # Empty RATE_LIMIT_DEFAULT disables the global per-IP throttle; the per-route auth
 # limits still apply via their own decorators.
 _default_limits: list[str | Callable[..., str]] = (
@@ -28,7 +50,7 @@ _default_limits: list[str | Callable[..., str]] = (
 )
 
 limiter = Limiter(
-    key_func=get_remote_address,
+    key_func=client_ip,
     default_limits=_default_limits,
     storage_uri=settings.REDIS_URL or "memory://",
     enabled=settings.RATE_LIMIT_ENABLED,
