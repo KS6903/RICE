@@ -1,5 +1,6 @@
 from .company import Company, Branch
 from .user import User, Role
+from .auth_session import AuthSession
 from .reference import RiceVariety, QualityGrade, ByproductType
 from .supplier_customer import Supplier, Customer
 from .dispatch import Agent, Miller
@@ -19,6 +20,7 @@ from .fleet import Driver, Truck, DispatchTrip
 
 __all__ = [
     "Company", "Branch", "User", "Role",
+    "AuthSession",
     "RiceVariety", "QualityGrade", "ByproductType",
     "Supplier", "Customer",
     "Agent", "Miller",

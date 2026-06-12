@@ -47,12 +47,17 @@ def _authenticate_ws(token: str | None, db: Session) -> User | None:
 async def canva_ws(websocket: WebSocket, layout_id: uuid.UUID, token: str | None = None):
     """Live updates for one warehouse layout.
 
-    Auth: ?token=<access JWT>. Subscribers must belong to the same company as
-    the layout — otherwise we close immediately with policy violation.
+    Auth: ?token=<access JWT> (bearer clients), or the httpOnly ``access_token``
+    session cookie (web client — browsers attach cookies on same-site WS
+    handshakes, and SameSite=Strict keeps cross-site pages from opening one).
+    Subscribers must belong to the same company as the layout — otherwise we
+    close immediately with policy violation.
     """
+    from ..core.cookies import ACCESS_COOKIE
+
     db = SessionLocal()
     try:
-        user = _authenticate_ws(token, db)
+        user = _authenticate_ws(token or websocket.cookies.get(ACCESS_COOKIE), db)
         if not user:
             await websocket.close(code=http_status.WS_1008_POLICY_VIOLATION, reason="Invalid token")
             return

@@ -1,5 +1,23 @@
-from pydantic_settings import BaseSettings
+import logging
 from functools import lru_cache
+
+from pydantic import field_validator, model_validator
+from pydantic_settings import BaseSettings
+
+logger = logging.getLogger("ricemill.config")
+
+# Substrings that should never appear in a real secret. Kept narrow on purpose so
+# CI's throwaway key ("ci-test-secret-key") is NOT flagged — only the shipped
+# .env.example placeholder and obvious "fill me in" values are rejected.
+_PLACEHOLDER_SECRET_MARKERS = (
+    "change_me",
+    "changeme",
+    "replace_me",
+    "your_random",
+    "placeholder",
+    "generate_a_long_random",
+)
+_MIN_SECRET_LEN = 32
 
 
 class Settings(BaseSettings):
@@ -11,6 +29,31 @@ class Settings(BaseSettings):
     ALLOWED_ORIGINS: str = "http://localhost:5173,http://localhost:3000"
     APP_NAME: str = "Rice Mill System"
     DEBUG: bool = False
+    # Deployment environment. "prod" turns on fail-closed config checks (see the
+    # model validator below) and enables HSTS. Leave as "dev" locally / in CI.
+    ENV: str = "dev"
+    # Host allowlist for Starlette's TrustedHostMiddleware. "*" (dev default)
+    # accepts any Host header; prod MUST set an explicit comma-separated list.
+    TRUSTED_HOSTS: str = "*"
+    # Cookie security for the httpOnly session cookies. Secure cookies are only
+    # sent over HTTPS, so we disable that flag in dev (http://localhost).
+    COOKIE_SECURE: bool = False
+    COOKIE_DOMAIN: str | None = None
+    # ── Rate limiting (slowapi). Disabled in tests via env (see tests/conftest). ─
+    RATE_LIMIT_ENABLED: bool = True
+    # Global per-IP default applied to every endpoint. Empty string disables the
+    # global throttle (per-route auth limits still apply).
+    RATE_LIMIT_DEFAULT: str = "1000/minute"
+    # Tighter limit on the unauthenticated auth endpoints (login/signup/refresh/…).
+    RATE_LIMIT_AUTH: str = "10/minute"
+    # Account lockout: after N failed logins for a username, lock it for M seconds.
+    # Backed by Redis; a no-op when Redis is unavailable (per-IP limit still holds).
+    LOGIN_MAX_FAILURES: int = 5
+    LOGIN_LOCKOUT_SECONDS: int = 900
+    # Opt-in breached-password check (HIBP k-anonymity) on signup/password change.
+    # Best-effort: any network failure means "allow", so offline deployments are
+    # never blocked. Recommended true where the server has internet access.
+    PASSWORD_BREACH_CHECK: bool = False
     # Optional — when present, /api/weather hits Google's Weather API. Otherwise
     # the endpoint falls back to Open-Meteo (no key required), so the widget
     # works out of the box.
@@ -22,7 +65,58 @@ class Settings(BaseSettings):
 
     @property
     def origins_list(self) -> list[str]:
-        return [o.strip() for o in self.ALLOWED_ORIGINS.split(",")]
+        return [o.strip() for o in self.ALLOWED_ORIGINS.split(",") if o.strip()]
+
+    @property
+    def trusted_hosts_list(self) -> list[str]:
+        return [h.strip() for h in self.TRUSTED_HOSTS.split(",") if h.strip()] or ["*"]
+
+    @property
+    def is_prod(self) -> bool:
+        return self.ENV.strip().lower() == "prod"
+
+    @field_validator("SECRET_KEY")
+    @classmethod
+    def _reject_placeholder_secret(cls, v: str) -> str:
+        """Always reject the shipped placeholder secret; warn on weak dev keys.
+
+        Hard length/strength enforcement is deferred to the prod-only model
+        validator so CI's throwaway key keeps working."""
+        low = v.lower()
+        if any(marker in low for marker in _PLACEHOLDER_SECRET_MARKERS):
+            raise ValueError(
+                "SECRET_KEY is set to a placeholder value. Generate a real one with: "
+                "openssl rand -hex 32"
+            )
+        if len(v) < _MIN_SECRET_LEN:
+            logger.warning(
+                "SECRET_KEY is shorter than %d chars — acceptable for dev only. "
+                "Set a 32+ char random key (openssl rand -hex 32) before deploying.",
+                _MIN_SECRET_LEN,
+            )
+        return v
+
+    @model_validator(mode="after")
+    def _fail_closed_in_prod(self) -> "Settings":
+        """Refuse to boot with an insecure configuration when ENV=prod."""
+        if not self.is_prod:
+            return self
+        problems: list[str] = []
+        if len(self.SECRET_KEY) < _MIN_SECRET_LEN:
+            problems.append(f"SECRET_KEY must be at least {_MIN_SECRET_LEN} characters")
+        if self.DEBUG:
+            problems.append("DEBUG must be false (it exposes API docs and tracebacks)")
+        if any(("localhost" in o or "127.0.0.1" in o) for o in self.origins_list):
+            problems.append("ALLOWED_ORIGINS still contains localhost/127.0.0.1")
+        if "*" in self.trusted_hosts_list:
+            problems.append("TRUSTED_HOSTS must be an explicit allowlist, not '*'")
+        if not self.COOKIE_SECURE:
+            problems.append("COOKIE_SECURE must be true so session cookies require HTTPS")
+        if problems:
+            raise ValueError(
+                "Insecure production configuration (ENV=prod): " + "; ".join(problems)
+            )
+        return self
 
     class Config:
         env_file = ".env"

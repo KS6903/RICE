@@ -1,48 +1,125 @@
+import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Any
-from jose import jwt, JWTError
-from passlib.context import CryptContext
-from fastapi import Depends, HTTPException, status
+import bcrypt as _bcrypt
+import jwt
+from jwt import InvalidTokenError
+from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import Session
 from .config import settings
+from .cookies import ACCESS_COOKIE
+from .csrf import enforce_csrf
 from .database import get_db
 from .cache import cache, TTL_FEATURES
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
+# auto_error=False: a missing Authorization header falls through to the session
+# cookie (web client) inside get_token, instead of an immediate 401.
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login", auto_error=False)
 
 
+def get_token(request: Request, header_token: str | None = Depends(oauth2_scheme)) -> str:
+    """Resolve the access token: Authorization header first, session cookie second.
+
+    The Bearer header serves the Electron desktop app, tests, and API scripts —
+    those clients are CSRF-immune (a cross-site page can't set that header). When
+    auth comes from the httpOnly cookie (the web SPA), mutating requests must
+    pass the CSRF double-submit check.
+    """
+    if header_token:
+        return header_token
+    cookie_token = request.cookies.get(ACCESS_COOKIE)
+    if cookie_token:
+        enforce_csrf(request)
+        return cookie_token
+    raise HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Not authenticated",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+
+
+# Direct bcrypt (passlib was unmaintained). Hashes remain standard $2b$ —
+# everything passlib produced before this swap still verifies unchanged.
 def hash_password(password: str) -> str:
-    return pwd_context.hash(password)
+    return _bcrypt.hashpw(password.encode("utf-8"), _bcrypt.gensalt(rounds=12)).decode("ascii")
 
 
 def verify_password(plain: str, hashed: str) -> bool:
-    return pwd_context.verify(plain, hashed)
+    try:
+        return _bcrypt.checkpw(plain.encode("utf-8"), hashed.encode("ascii"))
+    except ValueError:
+        return False  # malformed stored hash — treat as non-match, never crash auth
 
 
-def create_access_token(data: dict[str, Any]) -> str:
+def create_access_token(data: dict[str, Any], jti: str | None = None) -> str:
+    """Issue an access token. Every token carries a ``jti`` so it can be
+    individually blocklisted on logout/password change (best-effort via Redis)."""
     expire = datetime.now(timezone.utc) + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
-    return jwt.encode({**data, "exp": expire, "type": "access"}, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
+    payload = {**data, "exp": expire, "type": "access", "jti": jti or uuid.uuid4().hex}
+    return jwt.encode(payload, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
 
 
-def create_refresh_token(data: dict[str, Any]) -> str:
+def create_refresh_token(data: dict[str, Any], jti: str) -> str:
+    """Issue a refresh token. ``jti`` is REQUIRED and must be the id of an
+    ``AuthSession`` row — refresh tokens are stateful so they can be rotated and
+    revoked (see services/auth_service.py)."""
     expire = datetime.now(timezone.utc) + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
-    return jwt.encode({**data, "exp": expire, "type": "refresh"}, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
+    payload = {**data, "exp": expire, "type": "refresh", "jti": jti}
+    return jwt.encode(payload, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
 
 
 def decode_token(token: str) -> dict[str, Any]:
     try:
         return jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
-    except JWTError:
+    except InvalidTokenError:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid or expired token")
 
 
-def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
+# ── Access-token blocklist (best-effort) ──────────────────────────────────────
+# Refresh sessions are revoked durably in Postgres (auth_sessions); the blocklist
+# below additionally kills *live access tokens* on logout/password change. It is
+# Redis-backed and best-effort by design: when Redis is down the worst case is an
+# access token staying valid for its remaining lifetime (≤ ACCESS_TOKEN_EXPIRE_MINUTES).
+
+
+def _blocklist_key(jti: str) -> str:
+    return f"token:block:{jti}"
+
+
+def blocklist_access_token(payload: dict[str, Any]) -> None:
+    """Blocklist a decoded access token for its remaining lifetime."""
+    jti = payload.get("jti")
+    if not jti:
+        return
+    ttl = settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60
+    exp = payload.get("exp")
+    if exp:
+        remaining = int(exp - datetime.now(timezone.utc).timestamp())
+        ttl = max(min(remaining, ttl), 1)
+    cache.set_int(_blocklist_key(jti), 1, ttl=ttl)
+
+
+def is_access_token_blocklisted(payload: dict[str, Any]) -> bool:
+    jti = payload.get("jti")
+    return bool(jti) and cache.exists(_blocklist_key(jti))
+
+
+def get_access_token_payload(token: str = Depends(get_token)) -> dict[str, Any]:
+    """Decoded access-token claims (for routes that need jti/sid, e.g. logout)."""
+    payload = decode_token(token)
+    if payload.get("type") != "access":
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token type")
+    return payload
+
+
+def get_current_user(token: str = Depends(get_token), db: Session = Depends(get_db)):
     from ..models.user import User
     payload = decode_token(token)
     if payload.get("type") != "access":
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token type")
+    if is_access_token_blocklisted(payload):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token has been revoked")
     user_id: str = payload.get("sub")
     if not user_id:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")

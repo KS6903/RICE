@@ -10,9 +10,11 @@ from typing import Any, Sequence
 from sqlalchemy.orm import Session
 
 from ..core.exceptions import BadRequestError, FeatureRequiredError, NotFoundError
+from ..core.passwords import validate_password_strength
 from ..core.security import hash_password
+from ..models.company import Branch
 from ..models.subscription import Subscription
-from ..models.user import User
+from ..models.user import Role, User
 from ..repositories.users import UserRepository
 from ..services.base import BaseService
 
@@ -28,6 +30,14 @@ class UserService(BaseService):
     def create_user(self, data) -> User:
         if self.users.get_by_username(data.username):
             raise BadRequestError("Username already exists")
+        # Admin-created users get the same password policy as self-service signup
+        # (previously this path had NO password validation at all).
+        validate_password_strength(data.password)
+        # IDOR / integrity guards: the branch must belong to this company; the
+        # role must exist (roles are a small global table).
+        self.assert_company_fk(Branch, data.branch_id, label="Branch")
+        if data.role_id is not None and self.db.get(Role, data.role_id) is None:
+            raise BadRequestError("Invalid role")
 
         existing_count = self.users.count_for_company(self.current_user.company_id)
         sub = (
@@ -59,6 +69,9 @@ class UserService(BaseService):
         user = self.users.get_for_company(user_id, self.current_user.company_id)
         if not user:
             raise NotFoundError("User not found")
+        self.assert_company_fk(Branch, data.branch_id, label="Branch")
+        if data.role_id is not None and self.db.get(Role, data.role_id) is None:
+            raise BadRequestError("Invalid role")
         with self.transaction():
             for field, val in data.model_dump(exclude_none=True).items():
                 setattr(user, field, val)

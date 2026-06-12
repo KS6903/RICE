@@ -1,0 +1,22 @@
+# Dependabot (security hardening P2.13): automated PRs for vulnerable or stale
+# dependencies across the Python backend, the npm workspaces, and the GitHub
+# Actions used by CI. Security updates are always raised; version updates are
+# batched weekly to keep noise down.
+version: 2
+updates:
+  - package-ecosystem: "pip"
+    directory: "/backend"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"

@@ -38,7 +38,7 @@ export function useRealtimeCanva(layoutId: string | undefined, cacheKey: string)
   const pingTimer = useRef<number | null>(null);
 
   useEffect(() => {
-    if (!layoutId || !token) return;
+    if (!layoutId) return;
     closedManually.current = false;
     // Fresh token/layout → fresh budget of reconnect attempts.
     reconnectAttempt.current = 0;
@@ -48,7 +48,11 @@ export function useRealtimeCanva(layoutId: string | undefined, cacheKey: string)
       const proto = window.location.protocol === "https:" ? "wss" : "ws";
       // Vite proxies websockets too when configured; here we hit the backend directly
       // because the dev proxy in vite.config.ts only forwards /api over HTTP.
-      const url = `${proto}://${window.location.hostname}:8000/ws/canva/${layoutId}?token=${encodeURIComponent(token)}`;
+      // Auth: the in-memory token rides as ?token= when present (Electron /
+      // right after login); otherwise the httpOnly session cookie covers the
+      // handshake (browsers attach same-site cookies to WS upgrades).
+      const qs = token ? `?token=${encodeURIComponent(token)}` : "";
+      const url = `${proto}://${window.location.hostname}:8000/ws/canva/${layoutId}${qs}`;
       const ws = new WebSocket(url);
       wsRef.current = ws;
 

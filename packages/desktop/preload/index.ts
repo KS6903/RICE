@@ -2,7 +2,11 @@ import { contextBridge, ipcRenderer } from "electron";
 
 contextBridge.exposeInMainWorld("electronAPI", {
   db: {
-    query: (sql: string, params?: unknown[]) => ipcRenderer.invoke("db:query", sql, params),
+    // SECURITY: a generic `query(sql, params)` bridge used to live here. It let
+    // the renderer run ARBITRARY SQL against local SQLite, so any XSS in the web
+    // app meant full read/write of the local database. It has been removed. Expose
+    // typed, parameterized channels per operation instead (see palay/milling/
+    // inventory below) — never a pass-through SQL string.
     isSetup: () => ipcRenderer.invoke("db:isSetup"),
   },
   palay: {

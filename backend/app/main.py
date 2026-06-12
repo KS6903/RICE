@@ -3,8 +3,13 @@ import logging
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from slowapi.errors import RateLimitExceeded
+from slowapi.middleware import SlowAPIMiddleware
+from starlette.middleware.trustedhost import TrustedHostMiddleware
 from .core.config import settings
 from .core.exceptions import register_exception_handlers
+from .core.middleware import SecurityHeadersMiddleware
+from .core.ratelimit import limiter, rate_limit_exceeded_handler
 from .api import auth, users, branches, paddy, milling, inventory, sales, costs, reports, sync, admin, employees, billing, canva, dispatch, weather, locations, activity, fleet
 from .services.canva_realtime import manager as ws_manager
 
@@ -37,6 +42,18 @@ app = FastAPI(
     redoc_url="/api/redoc" if settings.DEBUG else None,
 )
 
+# ── Middleware (each add_middleware wraps the previous; the LAST call is the
+# outermost layer that runs first on a request). ──────────────────────────────
+# slowapi's route decorators require the limiter on app.state.
+app.state.limiter = limiter
+# Global per-IP throttle (innermost). No-op when rate limiting is disabled.
+app.add_middleware(SlowAPIMiddleware)
+# Hardening headers on every response.
+app.add_middleware(SecurityHeadersMiddleware)
+# Reject unexpected Host headers (prod sets an explicit allowlist; dev allows "*").
+app.add_middleware(TrustedHostMiddleware, allowed_hosts=settings.trusted_hosts_list)
+# CORS outermost: answers preflight and attaches CORS headers to every response,
+# including ones short-circuited by an inner middleware.
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.origins_list,
@@ -45,9 +62,11 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Map domain exceptions (app.core.exceptions) to HTTP responses. Additive — the
-# many existing `raise HTTPException(...)` sites are unchanged.
+# Map domain exceptions (app.core.exceptions) to HTTP responses, plus the 429
+# from the rate limiter. Additive — existing `raise HTTPException(...)` sites
+# are unchanged.
 register_exception_handlers(app)
+app.add_exception_handler(RateLimitExceeded, rate_limit_exceeded_handler)
 
 app.include_router(auth.router, prefix="/api/auth", tags=["Auth"])
 app.include_router(users.router, prefix="/api/users", tags=["Users"])

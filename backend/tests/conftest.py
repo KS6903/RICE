@@ -49,6 +49,10 @@ _TEST_DATABASE_URL = os.environ.get("TEST_DATABASE_URL") or _derive_test_url(_PR
 # Point the app at the test DB and disable Redis (deterministic, cache-free runs).
 os.environ["DATABASE_URL"] = _TEST_DATABASE_URL
 os.environ["REDIS_URL"] = ""
+# Disable rate limiting so the suite (which reuses one TestClient IP and hits the
+# auth endpoints many times) is deterministic. Rate-limit behaviour is covered by
+# its own dedicated test that re-enables it.
+os.environ["RATE_LIMIT_ENABLED"] = "false"
 
 
 def _ensure_test_database_exists() -> None:

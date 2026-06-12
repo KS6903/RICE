@@ -12,7 +12,7 @@ import {
   Building2, MapPin, User as UserIcon, KeyRound, Plus, Wheat, Factory, Receipt,
   Power, History, ChevronDown, ChevronUp, CreditCard, Check, X as XIcon, Crown,
   Zap, Rocket, Star, Loader2, Clock, AlertCircle, Settings as SettingsIcon,
-  CheckCircle2, XCircle, Pencil,
+  CheckCircle2, XCircle, Pencil, ShieldCheck,
 } from "lucide-react";
 import { format } from "date-fns";
 import { useCurrentPlan } from "../hooks/useFeature";
@@ -1704,6 +1704,7 @@ function PasswordTab() {
   };
 
   return (
+    <div className="space-y-6">
     <div className="card max-w-md space-y-5">
       <div className="flex items-center gap-3">
         <div className="h-11 w-11 rounded-xl bg-grad-brand grid place-items-center shadow-grad-glow">
@@ -1749,6 +1750,164 @@ function PasswordTab() {
       >
         {change.isPending ? "Changing…" : "Change password"}
       </button>
+    </div>
+
+    <MfaCard />
+    </div>
+  );
+}
+
+/** Two-factor authentication management (security hardening P1.9).
+ *  Enroll: fetch secret → user adds it to an authenticator app → verify a code.
+ *  Strongly recommended (and surfaced via mfa_setup_recommended) for owners
+ *  and platform admins. */
+function MfaCard() {
+  const qc = useQueryClient();
+  const meQ = useQuery({ queryKey: ["auth-me-mfa"], queryFn: () => authService.me() });
+  const [enroll, setEnroll] = useState<{ secret: string; otpauth_uri: string } | null>(null);
+  const [code, setCode] = useState("");
+  const [disabling, setDisabling] = useState(false);
+  const [msg, setMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null);
+
+  const mfaEnabled = !!meQ.data?.mfa_enabled;
+  const recommended = !!meQ.data?.mfa_setup_recommended;
+
+  const refresh = () => {
+    qc.invalidateQueries({ queryKey: ["auth-me-mfa"] });
+    qc.invalidateQueries({ queryKey: ["auth-me"] });
+  };
+
+  const start = async () => {
+    setMsg(null);
+    try {
+      setEnroll(await authService.mfaEnroll());
+    } catch (e: any) {
+      setMsg({ type: "err", text: e.response?.data?.detail || "Could not start enrollment." });
+    }
+  };
+
+  const confirmEnroll = async () => {
+    setMsg(null);
+    try {
+      await authService.mfaEnrollVerify(code.trim());
+      setEnroll(null);
+      setCode("");
+      setMsg({ type: "ok", text: "Two-factor authentication is now enabled." });
+      refresh();
+    } catch (e: any) {
+      setMsg({ type: "err", text: e.response?.data?.detail || "Invalid code." });
+    }
+  };
+
+  const confirmDisable = async () => {
+    setMsg(null);
+    try {
+      await authService.mfaDisable(code.trim());
+      setDisabling(false);
+      setCode("");
+      setMsg({ type: "ok", text: "Two-factor authentication disabled." });
+      refresh();
+    } catch (e: any) {
+      setMsg({ type: "err", text: e.response?.data?.detail || "Invalid code." });
+    }
+  };
+
+  const codeInput = (
+    <input
+      className="input text-center tracking-[0.4em]"
+      value={code}
+      onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+      inputMode="numeric"
+      autoComplete="one-time-code"
+      placeholder="••••••"
+    />
+  );
+
+  return (
+    <div className="card max-w-md space-y-5">
+      <div className="flex items-center gap-3">
+        <div className="h-11 w-11 rounded-xl bg-grad-brand grid place-items-center shadow-grad-glow">
+          <ShieldCheck size={18} className="text-white" />
+        </div>
+        <div>
+          <h3 className="text-lg font-bold text-primary">Two-factor authentication</h3>
+          <p className="text-sm text-secondary">
+            {mfaEnabled ? "Enabled — codes required at sign-in." : "Add a 6-digit authenticator code to sign-in."}
+          </p>
+        </div>
+      </div>
+
+      {recommended && !enroll && (
+        <div className="flex items-start gap-2 px-3 py-2.5 rounded-xl bg-amber-500/15 ring-1 ring-inset ring-amber-500/40 text-sm font-medium text-amber-700 dark:text-amber-300">
+          <AlertCircle size={16} className="mt-0.5 shrink-0" />
+          <span>As an owner/admin account, enabling two-factor authentication is strongly recommended.</span>
+        </div>
+      )}
+
+      {!mfaEnabled && !enroll && (
+        <button onClick={start} className="btn-primary w-full">Enable two-factor authentication</button>
+      )}
+
+      {enroll && (
+        <div className="space-y-4">
+          <p className="text-sm text-secondary">
+            Add this key to your authenticator app (Google Authenticator, Authy, 1Password…),
+            then enter the 6-digit code it shows to confirm.
+          </p>
+          <div className="px-3 py-2.5 rounded-xl bg-slate-500/10 ring-1 ring-inset ring-slate-500/30 font-mono text-sm break-all select-all">
+            {enroll.secret}
+          </div>
+          {codeInput}
+          <div className="flex gap-2">
+            <button onClick={confirmEnroll} className="btn-primary flex-1" disabled={code.length < 6}>
+              Confirm &amp; enable
+            </button>
+            <button
+              onClick={() => { setEnroll(null); setCode(""); setMsg(null); }}
+              className="btn-secondary flex-1"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+
+      {mfaEnabled && !disabling && (
+        <button onClick={() => { setDisabling(true); setMsg(null); }} className="btn-secondary w-full">
+          Disable two-factor authentication
+        </button>
+      )}
+
+      {disabling && (
+        <div className="space-y-4">
+          <p className="text-sm text-secondary">Enter a current authenticator code to confirm disabling.</p>
+          {codeInput}
+          <div className="flex gap-2">
+            <button onClick={confirmDisable} className="btn-primary flex-1" disabled={code.length < 6}>
+              Disable
+            </button>
+            <button
+              onClick={() => { setDisabling(false); setCode(""); setMsg(null); }}
+              className="btn-secondary flex-1"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+
+      {msg && (
+        <p
+          className={`text-sm font-semibold inline-flex items-center gap-1.5 ${
+            msg.type === "ok"
+              ? "text-emerald-600 dark:text-emerald-400"
+              : "text-rose-600 dark:text-rose-400"
+          }`}
+        >
+          {msg.type === "ok" ? <Check size={14} /> : <AlertCircle size={14} />}
+          {msg.text}
+        </p>
+      )}
     </div>
   );
 }

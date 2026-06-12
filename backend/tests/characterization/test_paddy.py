@@ -7,8 +7,6 @@ inventory + movements, and the exact serialized shape of GET /paddy/inventory.
 """
 import re
 
-import pytest
-
 from app.models.paddy import PalayInventory, PalayInventoryMovement
 
 
@@ -145,12 +143,14 @@ def test_purchase_is_atomic_on_item_failure(auth_client, db_session):
              "gross_weight_kg": "500", "tare_weight_kg": "0", "price_per_cavan": "1200"},
         ],
     }
-    # The FK violation surfaces as a server error; TestClient re-raises it.
-    with pytest.raises(Exception):
-        auth_client.post("/api/paddy/purchases", json=payload)
+    # The unknown variety is caught by the tenant-FK guard (security hardening)
+    # and returns a clean 404 BEFORE any write — previously this surfaced as a
+    # DB FK violation / server error that the TestClient re-raised.
+    res = auth_client.post("/api/paddy/purchases", json=payload)
+    assert res.status_code == 404
 
     # All-or-nothing: the first item's inventory must NOT have been persisted.
-    db_session.rollback()  # clear the failed savepoint before re-querying
+    db_session.rollback()  # clear any failed savepoint before re-querying
     leftover = (
         db_session.query(PalayInventory)
         .filter(PalayInventory.variety_id == variety["id"])

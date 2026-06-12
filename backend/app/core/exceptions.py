@@ -12,8 +12,12 @@ additive, backward-compatible field for programmatic handling.
 """
 from __future__ import annotations
 
+import logging
+
 from fastapi import Request
 from fastapi.responses import JSONResponse
+
+logger = logging.getLogger("ricemill.errors")
 
 
 class AppException(Exception):
@@ -71,6 +75,13 @@ class FeatureRequiredError(AppException):
     code = "feature_required"
 
 
+class TooManyRequestsError(AppException):
+    """Rate limit or account lockout tripped — HTTP 429."""
+
+    status_code = 429
+    code = "rate_limited"
+
+
 async def app_exception_handler(request: Request, exc: AppException) -> JSONResponse:
     """Render an AppException as ``{"detail", "code"}`` with its status code."""
     return JSONResponse(
@@ -79,7 +90,21 @@ async def app_exception_handler(request: Request, exc: AppException) -> JSONResp
     )
 
 
+async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONResponse:
+    """Catch-all for unexpected errors: log the traceback server-side, return a
+    generic body. Without this, an unhandled exception can leak stack traces /
+    internal paths to the client (especially with debug servers)."""
+    logger.exception(
+        "Unhandled error on %s %s", request.method, request.url.path, exc_info=exc
+    )
+    return JSONResponse(
+        status_code=500,
+        content={"detail": "Internal server error", "code": "internal_error"},
+    )
+
+
 def register_exception_handlers(app) -> None:
     """Wire the AppException handler onto a FastAPI app. Additive: existing
     ``raise HTTPException(...)`` call sites are unaffected."""
     app.add_exception_handler(AppException, app_exception_handler)
+    app.add_exception_handler(Exception, unhandled_exception_handler)

@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 
 from ..core.exceptions import ConflictError, NotFoundError, PermissionDeniedError
 from ..models.costs import Expense, ExpenseCategory
+from ..models.milling import MillingBatch
 from ..repositories.costs import ExpenseCategoryRepository, ExpenseRepository
 from ..services.base import BaseService
 
@@ -57,6 +58,10 @@ class CostsService(BaseService):
         return self.expenses.list_for_company(self.current_user.company_id, skip=skip, limit=limit)
 
     def create_expense(self, data) -> Expense:
+        # IDOR guards: the category must be ours or shared; an attached milling
+        # batch must be ours.
+        self.assert_company_fk(ExpenseCategory, data.category_id, label="Category", allow_shared=True)
+        self.assert_company_fk(MillingBatch, data.batch_id, label="Batch")
         expense = Expense(
             company_id=self.current_user.company_id,
             branch_id=self.current_user.branch_id,

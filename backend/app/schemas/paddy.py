@@ -13,7 +13,7 @@ import uuid
 from datetime import date
 from decimal import Decimal
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 # ── Varieties ────────────────────────────────────────────────────────────────
 
@@ -81,3 +81,12 @@ class PurchaseCreate(BaseModel):
     delivery_type: str | None = None
     remarks: str | None = None
     items: list[PurchaseItemIn]
+
+
+class PurchaseUpdate(BaseModel):
+    """Replaces the old untyped ``body: dict`` on PUT /purchases/{id} — only
+    these fields are updatable; anything else fails validation instead of
+    silently reaching the service layer."""
+    status: str | None = Field(None, max_length=30)
+    remarks: str | None = Field(None, max_length=2000)
+    delivery_type: str | None = Field(None, max_length=30)

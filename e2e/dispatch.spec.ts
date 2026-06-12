@@ -1,6 +1,7 @@
-import { test, expect, Page } from "@playwright/test";
+import { test, expect, Page, APIRequestContext } from "@playwright/test";
 
 const TENANT = { username: "mill1", password: "password123" };
+const BACKEND = "http://localhost:8000";
 
 async function login(page: Page) {
   await page.goto("/login");
@@ -8,6 +9,16 @@ async function login(page: Page) {
   await page.getByPlaceholder("••••••••").fill(TENANT.password);
   await page.getByRole("button", { name: "Sign in", exact: true }).click();
   await expect(page).not.toHaveURL(/\/login/, { timeout: 10_000 });
+}
+
+/** Bearer token via a direct API login. Session tokens live in httpOnly cookies
+ *  now (not localStorage), so direct-API tests fetch their own token here. */
+async function apiToken(request: APIRequestContext): Promise<string> {
+  const res = await request.post(`${BACKEND}/api/auth/login`, {
+    form: { username: TENANT.username, password: TENANT.password },
+  });
+  expect(res.ok(), `api login failed (${res.status()})`).toBeTruthy();
+  return (await res.json()).access_token;
 }
 
 /** Navigate to /operators, create an operator, and return its reserved color hex. */
@@ -73,13 +84,8 @@ test.describe("Dispatch & Field Operators — color reservation, edit flow", () 
     await expect(millerRow.getByText(/^Auto$/)).toBeVisible();
   });
 
-  test("Backend silently drops any client-supplied canva_color_hex on agent create/update", async ({ page, request }) => {
-    await login(page);
-    const token = await page.evaluate(() => {
-      try { return JSON.parse(localStorage.getItem("rice-mill-auth") || "{}").state?.accessToken ?? null; }
-      catch { return null; }
-    });
-    if (!token) throw new Error("No auth token in localStorage");
+  test("Backend silently drops any client-supplied canva_color_hex on agent create/update", async ({ request }) => {
+    const token = await apiToken(request);
 
     const stamp = Date.now();
     const created = await request.post("http://localhost:8000/api/agents", {

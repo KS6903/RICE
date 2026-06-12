@@ -13,10 +13,21 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  // Two-step MFA login: when set, the password step passed and we're waiting
+  // for the authenticator code.
+  const [mfaChallenge, setMfaChallenge] = useState<string | null>(null);
+  const [mfaCode, setMfaCode] = useState("");
   const { setTokens, setUser } = useAuthStore();
   const theme = useThemeStore((s) => s.theme);
   const toggle = useThemeStore((s) => s.toggle);
   const navigate = useNavigate();
+
+  const finishLogin = async (data: any) => {
+    setTokens(data.access_token, data.refresh_token);
+    const me = await authService.me();
+    setUser(me);
+    navigate(me.is_platform_admin ? "/admin" : "/");
+  };
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -24,12 +35,34 @@ export default function LoginPage() {
     setError("");
     try {
       const data = await authService.login(username, password);
-      setTokens(data.access_token, data.refresh_token);
-      const me = await authService.me();
-      setUser(me);
-      navigate(me.is_platform_admin ? "/admin" : "/");
+      if (data.mfa_required) {
+        setMfaChallenge(data.challenge_token);
+        return;
+      }
+      await finishLogin(data);
     } catch (err: any) {
       setError(err.response?.data?.detail || "Invalid username or password.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleMfaVerify = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!mfaChallenge) return;
+    setLoading(true);
+    setError("");
+    try {
+      const data = await authService.mfaVerify(mfaChallenge, mfaCode.trim());
+      await finishLogin(data);
+    } catch (err: any) {
+      const status = err.response?.status;
+      setError(err.response?.data?.detail || "Invalid authentication code.");
+      // An expired/consumed challenge means starting over from the password step.
+      if (status === 401 && err.response?.data?.detail?.includes("challenge")) {
+        setMfaChallenge(null);
+        setMfaCode("");
+      }
     } finally {
       setLoading(false);
     }
@@ -40,10 +73,7 @@ export default function LoginPage() {
     setError("");
     try {
       const data = await authService.loginGoogle(credentialResponse.credential);
-      setTokens(data.access_token, data.refresh_token);
-      const me = await authService.me();
-      setUser(me);
-      navigate(me.is_platform_admin ? "/admin" : "/");
+      await finishLogin(data);
     } catch (err: any) {
       setError(err.response?.data?.detail || "Google login failed.");
     } finally {
@@ -122,11 +152,51 @@ export default function LoginPage() {
             <p className="text-lg font-bold tracking-tight text-primary">Rice Mill System</p>
           </div>
 
-          <h1 className="text-3xl font-bold tracking-tight text-primary">Welcome back</h1>
+          <h1 className="text-3xl font-bold tracking-tight text-primary">
+            {mfaChallenge ? "Two-factor authentication" : "Welcome back"}
+          </h1>
           <p className="mt-2 text-base text-secondary">
-            Sign in to continue to your dashboard.
+            {mfaChallenge
+              ? "Enter the 6-digit code from your authenticator app."
+              : "Sign in to continue to your dashboard."}
           </p>
 
+          {mfaChallenge ? (
+            <form onSubmit={handleMfaVerify} className="mt-8 space-y-5">
+              <div>
+                <label className="form-label">Authentication code</label>
+                <input
+                  className="input text-center tracking-[0.5em] text-lg"
+                  value={mfaCode}
+                  onChange={(e) => setMfaCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
+                  placeholder="••••••"
+                  autoFocus
+                  required
+                />
+              </div>
+
+              {error && (
+                <div className="flex items-start gap-2 px-3 py-2.5 rounded-xl bg-rose-500/15 ring-1 ring-inset ring-rose-500/40 text-sm font-medium text-rose-700 dark:text-rose-300">
+                  <AlertCircle size={16} className="mt-0.5 shrink-0" />
+                  <span>{error}</span>
+                </div>
+              )}
+
+              <button type="submit" className="btn-primary w-full" disabled={loading || mfaCode.length < 6}>
+                {loading ? "Verifying…" : "Verify"}
+              </button>
+
+              <button
+                type="button"
+                className="w-full text-sm font-semibold text-muted hover:text-primary transition-colors"
+                onClick={() => { setMfaChallenge(null); setMfaCode(""); setError(""); }}
+              >
+                ← Back to sign in
+              </button>
+            </form>
+          ) : (
           <form onSubmit={handleLogin} className="mt-8 space-y-5">
             <div>
               <label className="form-label">Username</label>
@@ -190,6 +260,7 @@ export default function LoginPage() {
               />
             </div>
           </form>
+          )}
 
           <p className="mt-8 text-center text-base text-secondary">
             New to Rice Mill System?{" "}

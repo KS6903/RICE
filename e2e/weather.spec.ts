@@ -1,6 +1,7 @@
-import { test, expect, Page } from "@playwright/test";
+import { test, expect, request, Page, APIRequestContext } from "@playwright/test";
 
 const TENANT = { username: "mill1", password: "password123" };
+const BACKEND = "http://localhost:8000";
 
 async function login(page: Page) {
   await page.goto("/login");
@@ -8,6 +9,18 @@ async function login(page: Page) {
   await page.getByPlaceholder("••••••••").fill(TENANT.password);
   await page.getByRole("button", { name: "Sign in", exact: true }).click();
   await expect(page).not.toHaveURL(/\/login/, { timeout: 10_000 });
+}
+
+/** Bearer token via a direct API login. Session tokens are no longer persisted
+ *  to localStorage (they live in httpOnly cookies now), so tests that need to
+ *  call the API directly fetch their own bearer token here instead of scraping
+ *  the auth store. */
+async function apiToken(request: APIRequestContext): Promise<string> {
+  const res = await request.post(`${BACKEND}/api/auth/login`, {
+    form: { username: TENANT.username, password: TENANT.password },
+  });
+  expect(res.ok(), `api login failed (${res.status()})`).toBeTruthy();
+  return (await res.json()).access_token;
 }
 
 /** Open the topbar location picker and add the first search result for `query`.
@@ -27,39 +40,20 @@ async function addFavorite(page: Page, query: string): Promise<string> {
 }
 
 /** Wipe any leftover favorites for the test user so each spec starts clean. */
-async function purgeFavorites(page: Page) {
-  const token = await page.evaluate(() => {
-    try { return JSON.parse(localStorage.getItem("rice-mill-auth") || "{}").state?.accessToken ?? null; }
-    catch { return null; }
-  });
-  if (!token) return;
-  const res = await fetch("http://localhost:8000/api/locations", {
-    headers: { Authorization: `Bearer ${token}` },
-  });
-  if (!res.ok) return;
+async function purgeFavorites(request: APIRequestContext, token: string) {
+  const res = await request.get(`${BACKEND}/api/locations`, { headers: { Authorization: `Bearer ${token}` } });
+  if (!res.ok()) return;
   const list: { id: string }[] = await res.json();
   await Promise.all(
-    list.map((l) => fetch(`http://localhost:8000/api/locations/${l.id}`, {
-      method: "DELETE",
-      headers: { Authorization: `Bearer ${token}` },
-    })),
+    list.map((l) => request.delete(`${BACKEND}/api/locations/${l.id}`, { headers: { Authorization: `Bearer ${token}` } })),
   );
 }
 
 test.describe("Weather + saved locations — header dropdown, search, favorites", () => {
-  test.beforeEach(async ({ page }) => {
+  test.beforeEach(async ({ page, request }) => {
     await login(page);
     // Purge favorites between tests so the IP/GPS fallback shows when expected.
-    await page.evaluate(async () => {
-      const token = (() => { try { return JSON.parse(localStorage.getItem("rice-mill-auth") || "{}").state?.accessToken ?? null; } catch { return null; } })();
-      if (!token) return;
-      const r = await fetch("http://localhost:8000/api/locations", { headers: { Authorization: `Bearer ${token}` } });
-      if (!r.ok) return;
-      const list = await r.json();
-      await Promise.all(list.map((l: any) =>
-        fetch(`http://localhost:8000/api/locations/${l.id}`, { method: "DELETE", headers: { Authorization: `Bearer ${token}` } }),
-      ));
-    });
+    await purgeFavorites(request, await apiToken(request));
   });
 
   test("Topbar picker is present on every tab and renders a temperature", async ({ page }) => {
@@ -74,7 +68,7 @@ test.describe("Weather + saved locations — header dropdown, search, favorites"
     }
   });
 
-  test("Search a city, save it as a favorite, and have its weather follow next login", async ({ page, context }) => {
+  test("Search a city, save it as a favorite, and have its weather follow next login", async ({ page, context, request }) => {
     await page.goto("/");
     const label = await addFavorite(page, "Manila");
     expect(label).toMatch(/manila/i);
@@ -91,10 +85,10 @@ test.describe("Weather + saved locations — header dropdown, search, favorites"
     await expect(page.getByTestId("location-picker-trigger").getByTestId("weather-location"))
       .toContainText(/manila/i, { timeout: 15_000 });
 
-    await purgeFavorites(page);
+    await purgeFavorites(request, await apiToken(request));
   });
 
-  test("Saving multiple favorites and switching default updates the widget", async ({ page }) => {
+  test("Saving multiple favorites and switching default updates the widget", async ({ page, request }) => {
     await page.goto("/");
     await addFavorite(page, "Manila");
     await addFavorite(page, "Cebu");
@@ -115,10 +109,10 @@ test.describe("Weather + saved locations — header dropdown, search, favorites"
     await expect(page.getByTestId("location-picker-trigger").getByTestId("weather-location"))
       .toContainText(/manila/i, { timeout: 10_000 });
 
-    await purgeFavorites(page);
+    await purgeFavorites(request, await apiToken(request));
   });
 
-  test("Deleting a favorite removes it from the dropdown", async ({ page }) => {
+  test("Deleting a favorite removes it from the dropdown", async ({ page, request }) => {
     await page.goto("/");
     await addFavorite(page, "Tokyo");
 
@@ -128,15 +122,11 @@ test.describe("Weather + saved locations — header dropdown, search, favorites"
     await row.locator('[data-testid^="delete-"]').click();
     await expect(popover.locator('[data-testid^="favorite-"]')).toHaveCount(0, { timeout: 5_000 });
 
-    await purgeFavorites(page);
+    await purgeFavorites(request, await apiToken(request));
   });
 
-  test("Search input rejects unsafe characters (XSS/HTML)", async ({ page, request }) => {
-    const token = await page.evaluate(() => {
-      try { return JSON.parse(localStorage.getItem("rice-mill-auth") || "{}").state?.accessToken ?? null; }
-      catch { return null; }
-    });
-    if (!token) throw new Error("No auth token in localStorage");
+  test("Search input rejects unsafe characters (XSS/HTML)", async ({ request }) => {
+    const token = await apiToken(request);
 
     const r = await request.get(
       "http://localhost:8000/api/locations/search?q=" + encodeURIComponent("<script>alert(1)</script>"),
@@ -147,16 +137,11 @@ test.describe("Weather + saved locations — header dropdown, search, favorites"
     expect(body.detail).toMatch(/only contain letters/i);
   });
 
-  test("Backend /api/weather still works when the user has no favorites", async ({ page, request }) => {
-    await page.goto("/");
-    await purgeFavorites(page);
-    const token = await page.evaluate(() => {
-      try { return JSON.parse(localStorage.getItem("rice-mill-auth") || "{}").state?.accessToken ?? null; }
-      catch { return null; }
-    });
-    if (!token) throw new Error("No auth token in localStorage");
+  test("Backend /api/weather still works when the user has no favorites", async ({ request }) => {
+    const token = await apiToken(request);
+    await purgeFavorites(request, token);
 
-    const r = await request.get("http://localhost:8000/api/weather", {
+    const r = await request.get(`${BACKEND}/api/weather`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     expect(r.ok()).toBeTruthy();
@@ -165,10 +150,16 @@ test.describe("Weather + saved locations — header dropdown, search, favorites"
     expect(typeof body.location.lat).toBe("number");
   });
 
-  test("Anonymous request to /api/locations/search is rejected (auth required)", async ({ request }) => {
-    const r = await request.get("http://localhost:8000/api/locations/search?q=Manila");
+  test("Anonymous request to /api/locations/search is rejected (auth required)", async () => {
+    // Fresh, un-logged-in context. This spec's beforeEach mints a bearer token
+    // via an API login on the shared `request` fixture, which leaves a session
+    // cookie behind — a cookie the API would honour, defeating the "anonymous"
+    // premise. A clean context sends no credentials at all.
+    const anon = await request.newContext();
+    const r = await anon.get(`${BACKEND}/api/locations/search?q=Manila`);
     // Either 401 (token missing) or 403 — anything but 200.
     expect(r.ok()).toBeFalsy();
     expect([401, 403]).toContain(r.status());
+    await anon.dispose();
   });
 });

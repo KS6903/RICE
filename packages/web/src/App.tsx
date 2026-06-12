@@ -30,13 +30,17 @@ import RoleGate from "./components/RoleGate";
 
 function AuthSessionSync() {
   const accessToken = useAuthStore((s) => s.accessToken);
+  const user = useAuthStore((s) => s.user);
   const setUser = useAuthStore((s) => s.setUser);
   const logout = useAuthStore((s) => s.logout);
 
   const meQuery = useQuery({
     queryKey: ["auth-me", accessToken],
     queryFn: () => authService.me(),
-    enabled: !!accessToken,
+    // The session lives in httpOnly cookies, so after a reload there is no
+    // in-memory token — the persisted user signals a (probable) live cookie
+    // session, which this query verifies (401 → logout below).
+    enabled: !!accessToken || !!user,
     refetchOnWindowFocus: true,
     refetchOnReconnect: true,
     refetchInterval: 10 * 1000,

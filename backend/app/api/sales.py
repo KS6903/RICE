@@ -17,6 +17,7 @@ from ..schemas.sales import (
     CustomerUpdate,
     InvoiceCreate,
     OrderCreate,
+    OrderUpdate,
     PaymentCreate,
 )
 from ..services.sales_service import SalesService
@@ -80,7 +81,7 @@ def create_order(body: OrderCreate, svc: SalesService = Depends(get_sales_servic
 
 
 @router.put("/orders/{order_id}")
-def update_order(order_id: uuid.UUID, body: dict, svc: SalesService = Depends(get_sales_service)):
+def update_order(order_id: uuid.UUID, body: OrderUpdate, svc: SalesService = Depends(get_sales_service)):
     return svc.update_order(order_id, body)
 
 

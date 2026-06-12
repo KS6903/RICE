@@ -14,6 +14,7 @@ from typing import Any, Sequence
 from sqlalchemy.orm import Session
 
 from ..core.exceptions import NotFoundError
+from ..models.reference import RiceVariety
 from ..models.sales import Invoice, Payment, PriceList, SalesOrder, SalesOrderItem
 from ..models.supplier_customer import Customer
 from ..repositories.sales import (
@@ -86,6 +87,11 @@ class SalesService(BaseService):
         )
 
     def create_order(self, data) -> SalesOrder:
+        # IDOR guards: the customer must be ours; item varieties must be ours or
+        # from the shared system catalog.
+        self.assert_company_fk(Customer, data.customer_id, label="Customer")
+        for i in data.items:
+            self.assert_company_fk(RiceVariety, i.variety_id, label="Variety", allow_shared=True)
         subtotal = sum(i.quantity_kg * i.unit_price_per_kg for i in data.items)
         discount = subtotal * (data.discount_pct / 100)
         total = subtotal - discount
@@ -112,14 +118,15 @@ class SalesService(BaseService):
         self.db.refresh(order)
         return order
 
-    def update_order(self, order_id: uuid.UUID, body: dict) -> SalesOrder:
+    def update_order(self, order_id: uuid.UUID, body) -> SalesOrder:
         order = self.orders.get_for_company(order_id, self.current_user.company_id)
         if not order:
             raise NotFoundError("Order not found")
         with self.transaction():
-            for f in ("status", "delivery_date", "remarks"):
-                if f in body:
-                    setattr(order, f, body[f])
+            # Typed OrderUpdate schema: only validated, allowlisted fields arrive
+            # here; exclude_unset preserves the old "only touch sent fields" semantics.
+            for f, val in body.model_dump(exclude_unset=True).items():
+                setattr(order, f, val)
         self.db.refresh(order)
         return order
 

@@ -145,6 +145,47 @@ class _Cache:
         except Exception as e:  # noqa: BLE001
             self._trip(e)
 
+    def incr(self, key: str, ttl: int) -> int | None:
+        """Atomically increment a counter and (re)set its TTL. None when Redis is down.
+
+        Used for security counters (e.g. login-failure tracking). Returns the new
+        value so callers can compare against a threshold. The expire is refreshed
+        on every call, which is the desired behaviour for a sliding failure window.
+        """
+        client = self._client_or_none()
+        if client is None:
+            return None
+        try:
+            pipe = client.pipeline()
+            pipe.incr(_KEY_PREFIX + key)
+            pipe.expire(_KEY_PREFIX + key, ttl)
+            result = pipe.execute()
+            return int(result[0])
+        except Exception as e:  # noqa: BLE001
+            self._trip(e)
+            return None
+
+    def set_int(self, key: str, value: int, ttl: int) -> None:
+        """Set an integer key with a TTL. No-op when Redis is unavailable."""
+        client = self._client_or_none()
+        if client is None:
+            return
+        try:
+            client.set(_KEY_PREFIX + key, int(value), ex=ttl)
+        except Exception as e:  # noqa: BLE001
+            self._trip(e)
+
+    def exists(self, key: str) -> bool:
+        """True if the key is present. False on miss or when Redis is unavailable."""
+        client = self._client_or_none()
+        if client is None:
+            return False
+        try:
+            return bool(client.exists(_KEY_PREFIX + key))
+        except Exception as e:  # noqa: BLE001
+            self._trip(e)
+            return False
+
     def get_or_set(self, key: str, ttl: int, loader: Callable[[], Any]) -> Any:
         """Read-through cache-aside helper.
 

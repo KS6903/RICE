@@ -17,6 +17,7 @@ from ..core.exceptions import NotFoundError, ValidationError
 from ..models.company import Branch
 from ..models.milling import ByproductInventory, MilledRiceInventory
 from ..models.paddy import PalayInventory
+from ..models.reference import QualityGrade, RiceVariety
 from ..repositories.inventory import (
     ByproductInventoryRepository,
     MilledRiceInventoryRepository,
@@ -136,6 +137,10 @@ class InventoryService(BaseService):
             branch = self.db.get(Branch, data.branch_id)
             if not branch or branch.company_id != self.current_user.company_id:
                 raise NotFoundError("Warehouse not found.")
+        # IDOR guards: varieties/grades must be ours or from the shared catalog
+        # (a foreign id would otherwise leak that tenant's variety name via joins).
+        self.assert_company_fk(RiceVariety, data.variety_id, label="Variety", allow_shared=True)
+        self.assert_company_fk(QualityGrade, data.grade_id, label="Grade", allow_shared=True)
 
         company_id = self.current_user.company_id
         inv: Any = None

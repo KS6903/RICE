@@ -25,6 +25,8 @@ from ..models.milling import (
     MillingEquipment,
 )
 from ..models.paddy import PalayInventoryMovement
+from ..models.reference import QualityGrade, RiceVariety
+from ..models.user import User
 from ..repositories.inventory import (
     ByproductInventoryRepository,
     MilledRiceInventoryRepository,
@@ -93,6 +95,15 @@ class MillingService(BaseService):
         return b
 
     def create_batch(self, data) -> MillingBatch:
+        # IDOR guards: equipment and operator must belong to this company;
+        # varieties/grades must be ours or from the shared system catalog.
+        self.assert_company_fk(MillingEquipment, data.equipment_id, label="Equipment")
+        self.assert_company_fk(User, data.operator_id, label="Operator")
+        for inp in data.inputs:
+            self.assert_company_fk(RiceVariety, inp.variety_id, label="Variety", allow_shared=True)
+            self.assert_company_fk(QualityGrade, inp.grade_id, label="Grade", allow_shared=True)
+        for out in data.outputs:
+            self.assert_company_fk(RiceVariety, out.variety_id, label="Variety", allow_shared=True)
         with self.transaction():
             batch = self.batches.add(
                 MillingBatch(

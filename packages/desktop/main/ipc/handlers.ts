@@ -3,20 +3,10 @@ import Database from "better-sqlite3";
 
 export function registerIpcHandlers(db: Database.Database) {
 
-  // Generic query handler for the renderer
-  ipcMain.handle("db:query", (_event, sql: string, params: unknown[] = []) => {
-    try {
-      const stmt = db.prepare(sql);
-      if (sql.trim().toUpperCase().startsWith("SELECT")) {
-        return { data: stmt.all(...params), error: null };
-      } else {
-        const result = stmt.run(...params);
-        return { data: result, error: null };
-      }
-    } catch (err) {
-      return { data: null, error: (err as Error).message };
-    }
-  });
+  // SECURITY: the generic "db:query" handler (which executed an arbitrary SQL
+  // string sent from the renderer) was removed. Exposing raw SQL to the renderer
+  // turns any XSS into full local-DB compromise. Every renderer DB need must go
+  // through a typed, parameterized handler below — not a SQL pass-through.
 
   // Check if setup is complete (company exists)
   ipcMain.handle("db:isSetup", () => {
@@ -55,7 +45,6 @@ export function registerIpcHandlers(db: Database.Database) {
     };
   });
 
-  ipcMain.handle("sync:setToken", (_event, token: string) => {
-    // Forwarded to SyncEngine via app module; handled at app level
-  });
+  // Note: "sync:setToken" is registered at app level (main/index.ts) where the
+  // SyncEngine lives — it also persists the token via safeStorage there.
 }

@@ -3,11 +3,17 @@
 Centralises the audit-trail insert and the permanent purge of warehouses whose
 30-day trash window has elapsed. Callers commit the surrounding transaction.
 """
+import re
 import uuid
 from datetime import timedelta
 
 from sqlalchemy import text
 from sqlalchemy.orm import Session
+
+# Defense-in-depth for the catalog-driven UPDATE below: even though table names
+# come from information_schema (not user input), only plain snake_case
+# identifiers are ever interpolated into SQL.
+_SAFE_IDENTIFIER = re.compile(r"^[a-z_][a-z0-9_]*$")
 
 from ..models.activity import ActivityLog
 from ..models.base import now_utc
@@ -32,7 +38,7 @@ def _nullable_branch_fk_tables(db: Session) -> list[str]:
             "AND table_schema = current_schema()"
         )
     ).fetchall()
-    return [r[0] for r in rows]
+    return [r[0] for r in rows if _SAFE_IDENTIFIER.match(r[0])]
 
 
 def log_activity(
@@ -79,8 +85,11 @@ def purge_expired_branches(db: Session, company_id: uuid.UUID) -> int:
     tables = _nullable_branch_fk_tables(db)
     for branch in expired:
         for table in tables:
+            # nosec B608 — `table` comes from information_schema and is further
+            # constrained to ^[a-z_][a-z0-9_]*$ in _nullable_branch_fk_tables();
+            # the value is parameterized. Identifiers can't be bound parameters.
             db.execute(
-                text(f'UPDATE "{table}" SET branch_id = NULL WHERE branch_id = :bid'),
+                text(f'UPDATE "{table}" SET branch_id = NULL WHERE branch_id = :bid'),  # nosec B608
                 {"bid": str(branch.id)},
             )
         log_activity(

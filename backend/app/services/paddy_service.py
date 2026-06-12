@@ -165,6 +165,12 @@ class PaddyService(BaseService):
 
     def create_purchase(self, data) -> PalayPurchase:
         """Create a purchase and roll its items into palay stock — atomically."""
+        # IDOR guards: supplier must be ours; varieties/grades must be ours or
+        # from the shared system catalog.
+        self.assert_company_fk(Supplier, data.supplier_id, label="Supplier")
+        for item_data in data.items:
+            self.assert_company_fk(RiceVariety, item_data.variety_id, label="Variety", allow_shared=True)
+            self.assert_company_fk(QualityGrade, item_data.grade_id, label="Grade", allow_shared=True)
         with self.transaction():
             purchase = self.purchases.add(
                 PalayPurchase(
@@ -188,14 +194,15 @@ class PaddyService(BaseService):
         self.db.refresh(purchase)
         return purchase
 
-    def update_purchase(self, purchase_id: uuid.UUID, body: dict) -> PalayPurchase:
+    def update_purchase(self, purchase_id: uuid.UUID, body) -> PalayPurchase:
         p = self.purchases.get_for_company(purchase_id, self.current_user.company_id)
         if not p:
             raise NotFoundError("Purchase not found")
         with self.transaction():
-            for field in ("status", "remarks", "delivery_type"):
-                if field in body:
-                    setattr(p, field, body[field])
+            # Typed PurchaseUpdate schema: only validated, allowlisted fields
+            # arrive here; exclude_unset keeps "only touch sent fields" semantics.
+            for field, val in body.model_dump(exclude_unset=True).items():
+                setattr(p, field, val)
         self.db.refresh(p)
         return p
 

@@ -30,6 +30,10 @@ class User(Base, TimestampMixin):
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     is_platform_admin: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     last_login: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # TOTP MFA. The seed is Fernet-encrypted at rest (core/crypto.py); a secret
+    # with mfa_enabled=False is a pending enrollment awaiting code verification.
+    mfa_secret: Mapped[str | None] = mapped_column(String(255))
+    mfa_enabled: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
 
     company: Mapped["Company"] = relationship("Company", back_populates="users")
     branch: Mapped["Branch"] = relationship(

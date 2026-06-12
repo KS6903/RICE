@@ -77,3 +77,35 @@ jobs:
       - name: Format check (advisory during migration)
         run: npm run format:check
         continue-on-error: true
+
+  # Security scanners (hardening P2.13): dependency CVEs, Python SAST, and
+  # secret scanning are hard gates; npm audit is advisory while the frontend
+  # dependency tree is being tightened.
+  security:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0 # gitleaks scans full history
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+      - name: pip-audit (backend dependency CVEs)
+        run: |
+          python -m pip install --upgrade pip pip-audit
+          pip-audit -r backend/requirements.txt
+      - name: bandit (Python SAST, medium+ severity)
+        run: |
+          pip install bandit
+          bandit -r backend/app -ll -q
+      - name: gitleaks (secret scanning)
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+          cache: npm
+      - name: npm audit (advisory)
+        run: npm audit --omit=dev
+        continue-on-error: true

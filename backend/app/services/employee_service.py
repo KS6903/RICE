@@ -84,6 +84,8 @@ class EmployeeService(BaseService):
     # ── writes ────────────────────────────────────────────────────────────────
 
     def create_employee(self, data) -> dict:
+        # IDOR guard: a client-supplied branch must belong to this company.
+        self.assert_company_fk(Branch, data.branch_id, label="Branch")
         e = Employee(
             company_id=self.current_user.company_id,
             branch_id=data.branch_id or self.current_user.branch_id,
@@ -98,6 +100,7 @@ class EmployeeService(BaseService):
         e = self.employees.get_for_company(employee_id, self.current_user.company_id)
         if not e:
             raise NotFoundError("Employee not found")
+        self.assert_company_fk(Branch, data.branch_id, label="Branch")
         with self.transaction():
             for field, val in data.model_dump(exclude_none=True).items():
                 setattr(e, field, val)

@@ -38,6 +38,27 @@ export class AuthService {
       .post("/auth/change-password", { current_password: currentPassword, new_password: newPassword })
       .then((r) => r.data);
   }
+
+  // ── MFA (TOTP) ──────────────────────────────────────────────────────────────
+
+  /** Second login step when login() returned { mfa_required, challenge_token }. */
+  mfaVerify(challengeToken: string, code: string): Promise<any> {
+    return this.http
+      .post("/auth/mfa/verify", { challenge_token: challengeToken, code })
+      .then((r) => r.data);
+  }
+
+  mfaEnroll(): Promise<{ secret: string; otpauth_uri: string }> {
+    return this.http.post("/auth/mfa/enroll").then((r) => r.data);
+  }
+
+  mfaEnrollVerify(code: string): Promise<any> {
+    return this.http.post("/auth/mfa/enroll/verify", { code }).then((r) => r.data);
+  }
+
+  mfaDisable(code: string): Promise<any> {
+    return this.http.post("/auth/mfa/disable", { code }).then((r) => r.data);
+  }
 }
 
 export const authService = new AuthService();

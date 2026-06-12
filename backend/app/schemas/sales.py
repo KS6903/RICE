@@ -3,7 +3,7 @@ import uuid
 from datetime import date
 from decimal import Decimal
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class CustomerCreate(BaseModel):
@@ -45,6 +45,15 @@ class OrderCreate(BaseModel):
     discount_pct: Decimal = Decimal("0")
     remarks: str | None = None
     items: list[OrderItemIn]
+
+
+class OrderUpdate(BaseModel):
+    """Replaces the old untyped ``body: dict`` on PUT /orders/{id} — only these
+    fields are updatable, anything else in the payload is rejected/ignored by
+    validation instead of silently reaching the service layer."""
+    status: str | None = Field(None, max_length=30)
+    delivery_date: date | None = None
+    remarks: str | None = Field(None, max_length=2000)
 
 
 class InvoiceCreate(BaseModel):

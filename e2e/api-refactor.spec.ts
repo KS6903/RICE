@@ -389,7 +389,13 @@ test.describe("Refactored API contract (paddy / inventory / activity)", () => {
   });
 
   test("feature/auth gate: a request without a token is rejected", async () => {
-    const res = await api.get("/api/paddy/varieties");
+    // Use a FRESH context: the describe's login populated `api`'s cookie jar with
+    // the httpOnly session cookie, and the API now accepts cookie auth in addition
+    // to bearer tokens — so `api` (logged in) would carry one. A clean context
+    // sends no credentials at all, which is the actual "anonymous" case.
+    const anon = await request.newContext({ baseURL: BACKEND });
+    const res = await anon.get("/api/paddy/varieties");
     expect(res.status()).toBe(401);
+    await anon.dispose();
   });
 });

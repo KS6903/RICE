@@ -21,6 +21,7 @@ from ..repositories.paddy import (
 from ..schemas.paddy import (
     GradeCreate,
     PurchaseCreate,
+    PurchaseUpdate,
     SupplierCreate,
     SupplierUpdate,
     VarietyCreate,
@@ -120,7 +121,7 @@ def create_purchase(body: PurchaseCreate, svc: PaddyService = Depends(get_paddy_
 
 
 @router.put("/purchases/{purchase_id}")
-def update_purchase(purchase_id: uuid.UUID, body: dict, svc: PaddyService = Depends(get_paddy_service)):
+def update_purchase(purchase_id: uuid.UUID, body: PurchaseUpdate, svc: PaddyService = Depends(get_paddy_service)):
     return svc.update_purchase(purchase_id, body)
 
 

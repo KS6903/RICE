@@ -1,5 +1,5 @@
-"""Pydantic request/response schemas for the auth domain (Phase 3). Moved verbatim."""
-from pydantic import BaseModel, EmailStr
+"""Pydantic request/response schemas for the auth domain (Phase 3)."""
+from pydantic import BaseModel, EmailStr, Field
 
 
 class TokenResponse(BaseModel):
@@ -9,7 +9,9 @@ class TokenResponse(BaseModel):
 
 
 class RefreshRequest(BaseModel):
-    refresh_token: str
+    # Optional: the web client omits it (its refresh token lives in an httpOnly
+    # cookie); bearer clients (the desktop app) still send it in the body.
+    refresh_token: str | None = None
 
 
 class SignupRequest(BaseModel):
@@ -30,6 +32,28 @@ class GoogleAuthRequest(BaseModel):
 class ChangePasswordRequest(BaseModel):
     current_password: str
     new_password: str
+
+
+# ── MFA (TOTP) ───────────────────────────────────────────────────────────────
+
+class MfaChallengeResponse(BaseModel):
+    """Returned by /login instead of tokens when the account has MFA enabled."""
+    mfa_required: bool = True
+    challenge_token: str
+
+
+class MfaVerifyRequest(BaseModel):
+    challenge_token: str
+    code: str = Field(min_length=6, max_length=8)
+
+
+class MfaCodeRequest(BaseModel):
+    code: str = Field(min_length=6, max_length=8)
+
+
+class MfaEnrollResponse(BaseModel):
+    secret: str
+    otpauth_uri: str
 
 
 class UpdateProfileRequest(BaseModel):
