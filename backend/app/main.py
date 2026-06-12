@@ -10,7 +10,7 @@ from .core.config import settings
 from .core.exceptions import register_exception_handlers
 from .core.middleware import SecurityHeadersMiddleware
 from .core.ratelimit import limiter, rate_limit_exceeded_handler
-from .core.security import enforce_mfa_enrollment
+from .core.security import enforce_email_verified, enforce_mfa_enrollment
 from .api import auth, users, branches, paddy, milling, inventory, sales, costs, reports, sync, admin, employees, billing, canva, dispatch, weather, locations, activity, fleet
 from .services.canva_realtime import manager as ws_manager
 
@@ -69,10 +69,11 @@ app.add_middleware(
 register_exception_handlers(app)
 app.add_exception_handler(RateLimitExceeded, rate_limit_exceeded_handler)
 
-# The /auth router and the WebSocket router are NOT MFA-gated: a privileged user
-# pending enrollment must still reach /auth (me, logout, mfa/enroll). Every other
-# (data) router is gated — the dependency 403s until enrollment completes.
-mfa_gate = [Depends(enforce_mfa_enrollment)]
+# The /auth router and the WebSocket router are NOT gated: a user pending MFA
+# enrollment or email verification must still reach /auth (me, logout, mfa/enroll,
+# verify-email). Every other (data) router is gated — the dependencies 403 until
+# the account is ready (both are no-ops unless their enforcement flag is on).
+mfa_gate = [Depends(enforce_mfa_enrollment), Depends(enforce_email_verified)]
 
 app.include_router(auth.router, prefix="/api/auth", tags=["Auth"])
 app.include_router(users.router, prefix="/api/users", tags=["Users"], dependencies=mfa_gate)

@@ -68,13 +68,17 @@ class Settings(BaseSettings):
     PASSWORD_BREACH_CHECK: bool = False
     # Password-reset token lifetime (minutes).
     PASSWORD_RESET_TOKEN_MINUTES: int = 30
-    # Where to send the reset link. With no email provider wired up, the link is
-    # logged server-side; when this is true (dev only) the raw token is also
-    # returned in the API response so the flow is testable end-to-end. The prod
-    # config validator forces this off.
+    # Where to send emailed links (reset, verification). With no email provider
+    # wired up, the link is logged server-side; when this is true (dev only) the
+    # raw token is also returned in the API response so the flows are testable
+    # end-to-end. The prod config validator forces this off.
     EXPOSE_RESET_TOKEN: bool = False
-    # Public base URL the reset link points at (the web app's origin).
+    # Public base URL emailed links point at (the web app's origin).
     FRONTEND_BASE_URL: str = "http://localhost:5173"
+    # Email verification. The flow always runs on signup; REQUIRE_EMAIL_VERIFICATION
+    # additionally blocks data endpoints until the address is confirmed.
+    REQUIRE_EMAIL_VERIFICATION: bool = False
+    EMAIL_VERIFICATION_TOKEN_HOURS: int = 48
     # Optional — when present, /api/weather hits Google's Weather API. Otherwise
     # the endpoint falls back to Open-Meteo (no key required), so the widget
     # works out of the box.

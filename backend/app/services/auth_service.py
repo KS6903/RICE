@@ -466,10 +466,15 @@ class AuthService(BaseService):
 
     def signup(self, data) -> TokenResponse:
         validate_password_strength(data.password)
-        if self.db.query(User).filter(User.username == data.username).first():
-            raise ConflictError("Username already taken")
-        if self.db.query(User).filter(User.email == data.email).first():
-            raise ConflictError("Email already registered")
+        # One generic message for a username OR email clash, so signup can't be
+        # used to confirm whether a given email/username is already registered.
+        clash = (
+            self.db.query(User)
+            .filter((User.username == data.username) | (User.email == data.email))
+            .first()
+        )
+        if clash:
+            raise ConflictError("An account with those details already exists.")
         owner_role = self.db.query(Role).filter_by(name="owner").first()
         if not owner_role:
             raise AppException("System not initialized. Run seed.py to create roles.")
@@ -494,8 +499,57 @@ class AuthService(BaseService):
             )
             self.db.add(user)
             self.db.flush()
+            self._issue_email_verification(user)
             tokens = self._issue_tokens(user)
         return tokens
+
+    # ── email verification ────────────────────────────────────────────────────
+
+    def _issue_email_verification(self, user: User) -> str | None:
+        """Mint + store (hashed) a verification token and 'send' the link. Returns
+        the raw token only in dev (EXPOSE_RESET_TOKEN) for testing. No commit."""
+        if not user.email:
+            return None
+        raw = secrets.token_urlsafe(32)
+        user.email_verification_hash = _sha256(raw)
+        user.email_verification_expires = now_utc() + timedelta(
+            hours=settings.EMAIL_VERIFICATION_TOKEN_HOURS
+        )
+        link = f"{settings.FRONTEND_BASE_URL}/verify-email?token={raw}"
+        logger.info("Email verification link for %s: %s", user.username, link)
+        return raw if settings.EXPOSE_RESET_TOKEN else None
+
+    def verify_email(self, token: str) -> dict:
+        """Consume a verification token (unauthenticated — the user clicks a link)."""
+        user = (
+            self.db.query(User)
+            .filter(User.email_verification_hash == _sha256(token.strip()))
+            .first()
+        )
+        if (
+            user is None
+            or user.email_verification_expires is None
+            or user.email_verification_expires <= now_utc()
+        ):
+            raise BadRequestError("This verification link is invalid or has expired.")
+        with self.transaction():
+            user.email_verified = True
+            user.email_verification_hash = None
+            user.email_verification_expires = None
+            self._log_security_event(user, "auth.email_verified")
+        return {"message": "Email verified. Thank you."}
+
+    def resend_verification(self) -> dict:
+        """Re-issue a verification link for the signed-in user's email."""
+        user = self.current_user
+        if user.email_verified or not user.email:
+            return {"message": "Email already verified." if user.email_verified else "No email on file."}
+        with self.transaction():
+            raw = self._issue_email_verification(user)
+        resp = {"message": "Verification email sent."}
+        if raw is not None:
+            resp["verification_token"] = raw  # dev only
+        return resp
 
     # ── Google OAuth ──────────────────────────────────────────────────────────
 
@@ -602,6 +656,10 @@ class AuthService(BaseService):
             "is_platform_admin": user.is_platform_admin,
             "subscription": plan_info,
             "features": features,
+            "email_verified": user.email_verified,
+            "email_verification_required": (
+                settings.REQUIRE_EMAIL_VERIFICATION and bool(user.email) and not user.email_verified
+            ),
             "mfa_enabled": user.mfa_enabled,
             "mfa_backup_codes_remaining": len(user.mfa_backup_codes or []) if user.mfa_enabled else 0,
             # High-privilege accounts (platform admin / owner) should enroll in

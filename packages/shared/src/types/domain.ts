@@ -17,6 +17,9 @@ export interface User {
   mfa_setup_recommended?: boolean;
   // When true, the server blocks data endpoints until this user enrolls in MFA.
   mfa_enrollment_required?: boolean;
+  email_verified?: boolean;
+  // When true, the server blocks data endpoints until the email is verified.
+  email_verification_required?: boolean;
   subscription?: {
     code: string;
     name: string;

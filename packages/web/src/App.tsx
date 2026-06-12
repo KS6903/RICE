@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useAuthStore } from "./stores/authStore";
@@ -9,6 +9,7 @@ import LoginPage from "./pages/LoginPage";
 import SignupPage from "./pages/SignupPage";
 import ForgotPasswordPage from "./pages/ForgotPasswordPage";
 import ResetPasswordPage from "./pages/ResetPasswordPage";
+import VerifyEmailPage from "./pages/VerifyEmailPage";
 import Dashboard from "./pages/Dashboard";
 import PaddyPage from "./pages/PaddyPage";
 import MillingPage from "./pages/MillingPage";
@@ -30,6 +31,7 @@ import AdminSettingsPage from "./pages/admin/AdminSettingsPage";
 import FeatureGate from "./components/FeatureGate";
 import RoleGate from "./components/RoleGate";
 import MfaEnrollmentGate from "./components/MfaEnrollmentGate";
+import EmailVerificationGate from "./components/EmailVerificationGate";
 
 function AuthSessionSync() {
   const accessToken = useAuthStore((s) => s.accessToken);
@@ -80,18 +82,23 @@ function AdminRoute({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
-/** When a privileged account must enroll in MFA (enforcement on), the server
- *  blocks every data endpoint — so we replace the whole app with the mandatory
- *  enrollment screen until it's done. */
+/** When the server blocks data endpoints for a not-yet-ready account (MFA
+ *  enrollment or email verification required), we replace the whole app with the
+ *  relevant mandatory screen. The /verify-email link route stays reachable so a
+ *  user can complete verification from the gate. */
 function AppRoutes() {
+  const { pathname } = useLocation();
   const mustEnroll = useAuthStore((s) => !!s.user?.mfa_enrollment_required);
+  const mustVerify = useAuthStore((s) => !!s.user?.email_verification_required);
   if (mustEnroll) return <MfaEnrollmentGate />;
+  if (mustVerify && pathname !== "/verify-email") return <EmailVerificationGate />;
   return (
     <Routes>
         <Route path="/login" element={<LoginPage />} />
         <Route path="/signup" element={<SignupPage />} />
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
         <Route path="/reset-password" element={<ResetPasswordPage />} />
+        <Route path="/verify-email" element={<VerifyEmailPage />} />
 
         <Route
           path="/admin"

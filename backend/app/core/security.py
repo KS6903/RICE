@@ -155,6 +155,22 @@ def enforce_mfa_enrollment(current_user=Depends(get_current_user)):
     return current_user
 
 
+def enforce_email_verified(current_user=Depends(get_current_user)):
+    """Gate dependency: when REQUIRE_EMAIL_VERIFICATION is on, a user with an
+    unconfirmed email is blocked (403) from data endpoints until they verify.
+    /auth stays open so they can verify and resend. Off by default."""
+    if (
+        settings.REQUIRE_EMAIL_VERIFICATION
+        and getattr(current_user, "email", None)
+        and not getattr(current_user, "email_verified", False)
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Please verify your email address to continue.",
+        )
+    return current_user
+
+
 def require_roles(*roles: str):
     def checker(current_user=Depends(get_current_user)):
         if current_user.role and current_user.role.name not in roles:

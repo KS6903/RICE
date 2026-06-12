@@ -50,6 +50,16 @@ export class AuthService {
     return this.http.post("/auth/reset-password", { token, new_password: newPassword }).then((r) => r.data);
   }
 
+  // ── Email verification ──────────────────────────────────────────────────────
+
+  verifyEmail(token: string): Promise<any> {
+    return this.http.post("/auth/verify-email", { token }).then((r) => r.data);
+  }
+
+  resendVerification(): Promise<any> {
+    return this.http.post("/auth/resend-verification").then((r) => r.data);
+  }
+
   // ── MFA (TOTP) ──────────────────────────────────────────────────────────────
 
   /** Second login step when login() returned { mfa_required, challenge_token }. */

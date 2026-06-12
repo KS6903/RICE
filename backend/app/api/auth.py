@@ -29,6 +29,7 @@ from ..schemas.auth import (
     SignupRequest,
     TokenResponse,
     UpdateProfileRequest,
+    VerifyEmailRequest,
 )
 from ..services.auth_service import AuthService
 
@@ -101,6 +102,24 @@ def reset_password(
     svc: AuthService = Depends(get_public_auth_service),
 ):
     return svc.reset_password(body.token, body.new_password)
+
+
+@router.post("/verify-email")
+@limiter.limit(AUTH_RATE_LIMIT)
+def verify_email(
+    request: Request,
+    body: VerifyEmailRequest,
+    svc: AuthService = Depends(get_public_auth_service),
+):
+    """Confirm an email address from the emailed link (unauthenticated)."""
+    return svc.verify_email(body.token)
+
+
+@router.post("/resend-verification")
+@limiter.limit(AUTH_RATE_LIMIT)
+def resend_verification(request: Request, svc: AuthService = Depends(get_auth_service)):
+    """Re-send the verification link for the signed-in user's email."""
+    return svc.resend_verification()
 
 
 @router.post("/refresh", response_model=TokenResponse)

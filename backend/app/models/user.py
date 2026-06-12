@@ -38,6 +38,11 @@ class User(Base, TimestampMixin):
     # codes; a code is removed from the list when consumed. Used when the user
     # can't reach their authenticator.
     mfa_backup_codes: Mapped[list | None] = mapped_column(JSONB)
+    # Email verification. The token is a SHA-256 hash (the raw token is emailed),
+    # cleared once consumed.
+    email_verified: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    email_verification_hash: Mapped[str | None] = mapped_column(String(64))
+    email_verification_expires: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
     company: Mapped["Company"] = relationship("Company", back_populates="users")
     branch: Mapped["Branch"] = relationship(

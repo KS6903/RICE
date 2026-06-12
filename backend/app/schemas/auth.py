@@ -46,6 +46,10 @@ class ResetPasswordRequest(BaseModel):
     new_password: str
 
 
+class VerifyEmailRequest(BaseModel):
+    token: str = Field(min_length=1, max_length=255)
+
+
 # ── MFA (TOTP) ───────────────────────────────────────────────────────────────
 
 class MfaChallengeResponse(BaseModel):
