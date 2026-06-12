@@ -44,6 +44,8 @@ def test_enforcement_off_allows_unenrolled_owner(auth_client):
 
 
 def test_google_login_with_mfa_returns_challenge(client, seed_owner, db_session, monkeypatch):
+    import types
+
     import app.services.auth_service as asvc
 
     # Enable MFA on the seeded owner.
@@ -51,11 +53,22 @@ def test_google_login_with_mfa_returns_challenge(client, seed_owner, db_session,
     seed_owner.mfa_secret = encrypt_str(pyotp.random_base32())
     db_session.flush()
 
+    # Stub the Google SDK on the module itself, so the test is hermetic: it must
+    # pass whether or not google-auth (and its requests transport) is importable.
     monkeypatch.setattr(cfg.settings, "GOOGLE_CLIENT_ID", "test-client", raising=False)
     monkeypatch.setattr(
-        asvc.id_token,
-        "verify_oauth2_token",
-        lambda *a, **k: {"email": seed_owner.email, "name": seed_owner.full_name},
+        asvc,
+        "id_token",
+        types.SimpleNamespace(
+            verify_oauth2_token=lambda *a, **k: {
+                "email": seed_owner.email,
+                "name": seed_owner.full_name,
+            }
+        ),
+        raising=False,
+    )
+    monkeypatch.setattr(
+        asvc, "google_requests", types.SimpleNamespace(Request=lambda: None), raising=False
     )
 
     res = client.post("/api/auth/google", json={"credential": "fake-google-jwt"})

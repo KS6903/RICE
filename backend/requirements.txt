@@ -17,6 +17,9 @@ pydantic-settings==2.6.1
 email-validator==2.3.0
 python-dotenv==1.2.2
 httpx==0.27.2
-google-auth==2.38.0
+# The [requests] extra pulls in the `requests` HTTP lib that
+# google.auth.transport.requests needs (the app otherwise uses httpx). Without it
+# the transport import fails and Google login silently disables itself.
+google-auth[requests]==2.38.0
 redis==5.2.1
 pyotp==2.9.0

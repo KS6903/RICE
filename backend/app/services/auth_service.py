@@ -62,11 +62,15 @@ from ..services.subscription import (
     ensure_subscription,
 )
 
+# Imported independently so a missing transport (e.g. the `requests` extra) can't
+# also null out id_token, and vice versa — both are checked before use below.
 try:
-    from google.auth.transport import requests as google_requests
     from google.oauth2 import id_token
 except ImportError:  # google-auth not installed — Google login disabled
     id_token = None  # type: ignore[assignment]
+try:
+    from google.auth.transport import requests as google_requests
+except ImportError:  # requests transport missing — Google login disabled
     google_requests = None  # type: ignore[assignment]
 
 logger = logging.getLogger("ricemill.auth")
@@ -554,7 +558,7 @@ class AuthService(BaseService):
     # ── Google OAuth ──────────────────────────────────────────────────────────
 
     def google_auth(self, data) -> TokenResponse | MfaChallengeResponse:
-        if id_token is None or not settings.GOOGLE_CLIENT_ID:
+        if id_token is None or google_requests is None or not settings.GOOGLE_CLIENT_ID:
             raise NotConfiguredError("Google authentication is not configured on the server")
         try:
             id_info = id_token.verify_oauth2_token(
