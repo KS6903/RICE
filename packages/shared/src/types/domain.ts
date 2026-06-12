@@ -12,6 +12,10 @@ export interface User {
   branch_id?: string | null;
   is_platform_admin?: boolean;
   features?: string[];
+  mfa_enabled?: boolean;
+  mfa_setup_recommended?: boolean;
+  // When true, the server blocks data endpoints until this user enrolls in MFA.
+  mfa_enrollment_required?: boolean;
   subscription?: {
     code: string;
     name: string;

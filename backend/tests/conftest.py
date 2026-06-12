@@ -53,6 +53,10 @@ os.environ["REDIS_URL"] = ""
 # auth endpoints many times) is deterministic. Rate-limit behaviour is covered by
 # its own dedicated test that re-enables it.
 os.environ["RATE_LIMIT_ENABLED"] = "false"
+# Disable MFA enforcement by default: the seeded owner/admin users aren't enrolled,
+# and enforcement would 403 them out of every data endpoint. The enforcement path
+# has its own dedicated test that re-enables it.
+os.environ["MFA_ENFORCE"] = "false"
 
 
 def _ensure_test_database_exists() -> None:

@@ -120,7 +120,7 @@ def refresh(
     return tokens
 
 
-@router.post("/google", response_model=TokenResponse)
+@router.post("/google", response_model=None)
 @limiter.limit(AUTH_RATE_LIMIT)
 def google_auth(
     request: Request,
@@ -128,9 +128,11 @@ def google_auth(
     body: GoogleAuthRequest,
     svc: AuthService = Depends(get_public_auth_service),
 ):
-    tokens = svc.google_auth(body)
-    set_auth_cookies(response, access_token=tokens.access_token, refresh_token=tokens.refresh_token)
-    return tokens
+    """Like /login: an MFA-enabled account gets a challenge instead of tokens."""
+    result = svc.google_auth(body)
+    if isinstance(result, TokenResponse):
+        set_auth_cookies(response, access_token=result.access_token, refresh_token=result.refresh_token)
+    return result
 
 
 # ── MFA (TOTP) ───────────────────────────────────────────────────────────────

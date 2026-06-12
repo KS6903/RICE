@@ -29,6 +29,7 @@ import AdminUpgradeRequests from "./pages/admin/AdminUpgradeRequests";
 import AdminSettingsPage from "./pages/admin/AdminSettingsPage";
 import FeatureGate from "./components/FeatureGate";
 import RoleGate from "./components/RoleGate";
+import MfaEnrollmentGate from "./components/MfaEnrollmentGate";
 
 function AuthSessionSync() {
   const accessToken = useAuthStore((s) => s.accessToken);
@@ -79,11 +80,14 @@ function AdminRoute({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
-export default function App() {
+/** When a privileged account must enroll in MFA (enforcement on), the server
+ *  blocks every data endpoint — so we replace the whole app with the mandatory
+ *  enrollment screen until it's done. */
+function AppRoutes() {
+  const mustEnroll = useAuthStore((s) => !!s.user?.mfa_enrollment_required);
+  if (mustEnroll) return <MfaEnrollmentGate />;
   return (
-    <BrowserRouter>
-      <AuthSessionSync />
-      <Routes>
+    <Routes>
         <Route path="/login" element={<LoginPage />} />
         <Route path="/signup" element={<SignupPage />} />
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
@@ -126,7 +130,15 @@ export default function App() {
           <Route path="employees" element={<RoleGate section="employees"><FeatureGate code="employees" label="Employees" requires="Pro or Enterprise"><EmployeesPage /></FeatureGate></RoleGate>} />
           <Route path="settings" element={<SettingsPage />} />
         </Route>
-      </Routes>
+    </Routes>
+  );
+}
+
+export default function App() {
+  return (
+    <BrowserRouter>
+      <AuthSessionSync />
+      <AppRoutes />
     </BrowserRouter>
   );
 }

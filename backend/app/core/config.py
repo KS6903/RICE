@@ -50,6 +50,11 @@ class Settings(BaseSettings):
     # Backed by Redis; a no-op when Redis is unavailable (per-IP limit still holds).
     LOGIN_MAX_FAILURES: int = 5
     LOGIN_LOCKOUT_SECONDS: int = 900
+    # MFA enforcement. When on, accounts in MFA_REQUIRED_ROLES (plus all platform
+    # admins) must enroll in TOTP before they can use the app — the API blocks
+    # data endpoints until they do. Disabled in tests via env.
+    MFA_ENFORCE: bool = True
+    MFA_REQUIRED_ROLES: str = "owner"
     # Opt-in breached-password check (HIBP k-anonymity) on signup/password change.
     # Best-effort: any network failure means "allow", so offline deployments are
     # never blocked. Recommended true where the server has internet access.
@@ -83,6 +88,10 @@ class Settings(BaseSettings):
     @property
     def is_prod(self) -> bool:
         return self.ENV.strip().lower() == "prod"
+
+    @property
+    def mfa_required_role_names(self) -> set[str]:
+        return {r.strip() for r in self.MFA_REQUIRED_ROLES.split(",") if r.strip()}
 
     @field_validator("SECRET_KEY")
     @classmethod

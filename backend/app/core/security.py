@@ -129,6 +129,32 @@ def get_current_user(token: str = Depends(get_token), db: Session = Depends(get_
     return user
 
 
+def mfa_required_for(user) -> bool:
+    """True if this account's role obliges it to use MFA (platform admins always)."""
+    if getattr(user, "is_platform_admin", False):
+        return True
+    role = getattr(user, "role", None)
+    return bool(role and role.name in settings.mfa_required_role_names)
+
+
+def mfa_enrollment_pending(user) -> bool:
+    """True when enforcement is on, this account must use MFA, and it hasn't enrolled."""
+    return settings.MFA_ENFORCE and mfa_required_for(user) and not getattr(user, "mfa_enabled", False)
+
+
+def enforce_mfa_enrollment(current_user=Depends(get_current_user)):
+    """Gate dependency for data routers: a privileged account that hasn't enrolled
+    in MFA is blocked (403) from everything except the auth/* endpoints (so it can
+    still call /me, log out, and enroll). The web app reads the same condition from
+    /me (`mfa_enrollment_required`) and shows a mandatory enrollment screen."""
+    if mfa_enrollment_pending(current_user):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Two-factor authentication setup is required for your role before continuing.",
+        )
+    return current_user
+
+
 def require_roles(*roles: str):
     def checker(current_user=Depends(get_current_user)):
         if current_user.role and current_user.role.name not in roles:

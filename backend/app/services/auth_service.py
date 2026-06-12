@@ -43,6 +43,7 @@ from ..core.security import (
     decode_token,
     get_user_features,
     hash_password,
+    mfa_enrollment_pending,
     verify_password,
 )
 from ..models.auth_session import AuthSession
@@ -356,7 +357,7 @@ class AuthService(BaseService):
 
     # ── Google OAuth ──────────────────────────────────────────────────────────
 
-    def google_auth(self, data) -> TokenResponse:
+    def google_auth(self, data) -> TokenResponse | MfaChallengeResponse:
         if id_token is None or not settings.GOOGLE_CLIENT_ID:
             raise NotConfiguredError("Google authentication is not configured on the server")
         try:
@@ -378,6 +379,10 @@ class AuthService(BaseService):
                 raise PermissionDeniedError("Account disabled")
             if user.company_id and user.company is not None and not user.company.is_active:
                 raise PermissionDeniedError("Your company account has been deactivated.")
+            # A verified Google identity proves the first factor only — an
+            # MFA-enabled account must still pass the TOTP challenge.
+            if user.mfa_enabled:
+                return MfaChallengeResponse(challenge_token=self._mfa_challenge_token(user))
             with self.transaction():
                 user.last_login = datetime.now(timezone.utc)
                 tokens = self._issue_tokens(user)
@@ -459,6 +464,10 @@ class AuthService(BaseService):
             # High-privilege accounts (platform admin / owner) should enroll in
             # MFA — the UI uses this to prompt until they do.
             "mfa_setup_recommended": bool(is_privileged and not user.mfa_enabled),
+            # Hard gate: when true, enforcement is on and the API blocks data
+            # endpoints until this user enrolls. The web app shows a mandatory
+            # enrollment screen.
+            "mfa_enrollment_required": mfa_enrollment_pending(user),
         }
 
     # ── password reset ────────────────────────────────────────────────────────
