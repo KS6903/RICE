@@ -3,7 +3,7 @@
 fastapi==0.136.3
 uvicorn[standard]==0.32.1
 sqlalchemy>=2.0.38
-alembic==1.14.0
+alembic==1.18.4
 psycopg[binary]==3.3.3
 # Security hardening P2.13: python-jose (CVE-2024-33663/33664) → PyJWT, and the
 # unmaintained passlib → direct bcrypt. Stored $2b$ hashes verify unchanged.
