@@ -13,25 +13,31 @@
   "dependencies": {
     "@rice-mill/shared": "*",
     "better-sqlite3": "^11.7.0",
-    "axios": "^1.7.9"
+    "axios": "1.16.1"
   },
   "devDependencies": {
     "@types/better-sqlite3": "^7.6.12",
     "@types/node": "^22.10.2",
-    "concurrently": "^9.1.2",
-    "electron": "^33.3.0",
-    "electron-builder": "^25.1.8",
+    "concurrently": "^10.0.3",
+    "electron": "42.4.0",
+    "electron-builder": "^26.15.3",
     "typescript": "^5.7.2",
     "wait-on": "^8.0.1"
   },
   "build": {
     "appId": "com.ricemillsystem.app",
     "productName": "Rice Mill System",
-    "directories": { "output": "dist" },
+    "directories": {
+      "output": "dist"
+    },
     "win": {
       "target": "nsis",
       "icon": "assets/icon.ico"
     },
-    "files": ["main/**/*", "preload/**/*", "../web/dist/**/*"]
+    "files": [
+      "main/**/*",
+      "preload/**/*",
+      "../web/dist/**/*"
+    ]
   }
 }
