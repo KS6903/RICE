@@ -76,6 +76,22 @@ export class AuthService {
   regenerateBackupCodes(code: string): Promise<{ backup_codes: string[] }> {
     return this.http.post("/auth/mfa/backup-codes/regenerate", { code }).then((r) => r.data);
   }
+
+  // ── Active sessions / devices ───────────────────────────────────────────────
+
+  sessions(): Promise<
+    { id: string; client: string; last_active: string; expires_at: string; current: boolean }[]
+  > {
+    return this.http.get("/auth/sessions").then((r) => r.data);
+  }
+
+  revokeSession(id: string): Promise<any> {
+    return this.http.delete(`/auth/sessions/${id}`).then((r) => r.data);
+  }
+
+  revokeOtherSessions(): Promise<{ revoked: number }> {
+    return this.http.post("/auth/sessions/revoke-others").then((r) => r.data);
+  }
 }
 
 export const authService = new AuthService();

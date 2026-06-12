@@ -4,6 +4,8 @@ Unauthenticated endpoints (signup/login/refresh/google) use a service with no
 current_user; the account self-service endpoints (me/change-password/profile)
 inject the authenticated user.
 """
+import uuid
+
 from fastapi import APIRouter, Depends, Request, Response, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
@@ -13,7 +15,7 @@ from ..core.csrf import enforce_csrf
 from ..core.database import get_db
 from ..core.exceptions import UnauthorizedError
 from ..core.ratelimit import AUTH_RATE_LIMIT, limiter
-from ..core.security import get_current_user
+from ..core.security import get_access_token_payload, get_current_user
 from ..schemas.auth import (
     ChangePasswordRequest,
     ForgotPasswordRequest,
@@ -33,15 +35,16 @@ from ..services.auth_service import AuthService
 router = APIRouter()
 
 
-def get_public_auth_service(db: Session = Depends(get_db)) -> AuthService:
-    return AuthService(db)
+def get_public_auth_service(request: Request, db: Session = Depends(get_db)) -> AuthService:
+    return AuthService(db, client=request.headers.get("user-agent"))
 
 
 def get_auth_service(
+    request: Request,
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user),
 ) -> AuthService:
-    return AuthService(db, current_user)
+    return AuthService(db, current_user, client=request.headers.get("user-agent"))
 
 
 # ── Unauthenticated ──────────────────────────────────────────────────────────
@@ -174,6 +177,32 @@ def regenerate_backup_codes(body: MfaCodeRequest, svc: AuthService = Depends(get
     """Issue a fresh set of one-time backup codes (invalidates the old set).
     Requires a current TOTP code."""
     return svc.regenerate_backup_codes(body.code)
+
+
+# ── Active sessions / devices ────────────────────────────────────────────────
+
+@router.get("/sessions")
+def list_sessions(
+    payload: dict = Depends(get_access_token_payload),
+    svc: AuthService = Depends(get_auth_service),
+):
+    """List the user's active login sessions (one per device), flagging the current one."""
+    return svc.list_sessions(payload.get("sid"))
+
+
+@router.delete("/sessions/{session_id}")
+def revoke_session(session_id: uuid.UUID, svc: AuthService = Depends(get_auth_service)):
+    """Revoke a single session/device."""
+    return svc.revoke_session(session_id)
+
+
+@router.post("/sessions/revoke-others")
+def revoke_other_sessions(
+    payload: dict = Depends(get_access_token_payload),
+    svc: AuthService = Depends(get_auth_service),
+):
+    """Sign out every device except the current one."""
+    return svc.revoke_other_sessions(payload.get("sid"))
 
 
 # ── Authenticated ────────────────────────────────────────────────────────────

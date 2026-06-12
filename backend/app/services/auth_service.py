@@ -24,6 +24,7 @@ from ..core.exceptions import (
     BadRequestError,
     ConflictError,
     NotConfiguredError,
+    NotFoundError,
     PermissionDeniedError,
     TooManyRequestsError,
     UnauthorizedError,
@@ -80,6 +81,38 @@ def _normalize_backup_code(code: str) -> str:
     return "".join(ch for ch in code.lower() if ch.isalnum())
 
 
+def _client_label(user_agent: str | None) -> str:
+    """A short, human-recognizable device label from a User-Agent string."""
+    if not user_agent:
+        return "Unknown device"
+    ua = user_agent
+    if "Electron" in ua:
+        return "Desktop app"
+    if "Edg" in ua:
+        browser = "Edge"
+    elif "Firefox" in ua:
+        browser = "Firefox"
+    elif "Chrome" in ua and "Chromium" not in ua:
+        browser = "Chrome"
+    elif "Safari" in ua:
+        browser = "Safari"
+    else:
+        browser = "Browser"
+    if "Windows" in ua:
+        os_name = "Windows"
+    elif "Mac OS" in ua or "Macintosh" in ua:
+        os_name = "macOS"
+    elif "Android" in ua:
+        os_name = "Android"
+    elif "iPhone" in ua or "iPad" in ua:
+        os_name = "iOS"
+    elif "Linux" in ua:
+        os_name = "Linux"
+    else:
+        os_name = ""
+    return f"{browser} · {os_name}" if os_name else browser
+
+
 def _generate_backup_codes(n: int = 10) -> tuple[list[str], list[str]]:
     """Return (raw codes shown once, SHA-256 hashes to store). Each code is
     64 bits of entropy, grouped for readability (xxxx-xxxx-xxxx-xxxx)."""
@@ -93,8 +126,11 @@ def _generate_backup_codes(n: int = 10) -> tuple[list[str], list[str]]:
 
 
 class AuthService(BaseService):
-    def __init__(self, db: Session, current_user: Any = None) -> None:
+    def __init__(self, db: Session, current_user: Any = None, client: str | None = None) -> None:
         super().__init__(db, current_user)
+        # Raw User-Agent of the request that constructed this service; recorded on
+        # any AuthSession it creates so the user can recognize their devices.
+        self._client = client
 
     # ── token / session helpers ───────────────────────────────────────────────
 
@@ -110,6 +146,7 @@ class AuthService(BaseService):
             id=uuid.uuid4(),
             family_id=family_id or uuid.uuid4(),
             user_id=user.id,
+            client=_client_label(self._client),
             expires_at=now_utc() + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS),
         )
         self.db.add(session)
@@ -368,6 +405,62 @@ class AuthService(BaseService):
                 for fid in families:
                     self._revoke_family(fid)
         return {"message": "Logged out successfully"}
+
+    # ── active sessions / devices ─────────────────────────────────────────────
+
+    def list_sessions(self, current_sid: str | None) -> list[dict]:
+        """The user's live login sessions (one per device/family). Rotation keeps
+        exactly one non-revoked row per family, so this lists active devices."""
+        rows = (
+            self.db.query(AuthSession)
+            .filter(
+                AuthSession.user_id == self.current_user.id,
+                AuthSession.revoked_at.is_(None),
+                AuthSession.expires_at > now_utc(),
+            )
+            .order_by(AuthSession.created_at.desc())
+            .all()
+        )
+        return [
+            {
+                "id": str(r.family_id),
+                "client": r.client or "Unknown device",
+                "last_active": r.created_at.isoformat(),
+                "expires_at": r.expires_at.isoformat(),
+                "current": current_sid is not None and str(r.family_id) == current_sid,
+            }
+            for r in rows
+        ]
+
+    def revoke_session(self, family_id: uuid.UUID) -> dict:
+        """Revoke one of the user's own sessions (e.g. a lost device). Another
+        user's session id reads as not-found, never as forbidden."""
+        owned = (
+            self.db.query(AuthSession)
+            .filter(AuthSession.family_id == family_id, AuthSession.user_id == self.current_user.id)
+            .first()
+        )
+        if owned is None:
+            raise NotFoundError("Session not found")
+        with self.transaction():
+            self._revoke_family(family_id)
+            self._log_security_event(self.current_user, "auth.session_revoked")
+        return {"message": "Session revoked"}
+
+    def revoke_other_sessions(self, current_sid: str | None) -> dict:
+        """Sign out every other device, keeping the current session alive."""
+        q = self.db.query(AuthSession).filter(
+            AuthSession.user_id == self.current_user.id,
+            AuthSession.revoked_at.is_(None),
+        )
+        if current_sid:
+            q = q.filter(AuthSession.family_id != uuid.UUID(current_sid))
+        with self.transaction():
+            count = q.update({AuthSession.revoked_at: now_utc()}, synchronize_session=False)
+            self._log_security_event(
+                self.current_user, "auth.sessions_revoked_others", f"{count} session(s)"
+            )
+        return {"message": "Signed out other devices", "revoked": int(count)}
 
     # ── signup ────────────────────────────────────────────────────────────────
 

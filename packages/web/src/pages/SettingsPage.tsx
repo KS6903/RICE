@@ -12,7 +12,7 @@ import {
   Building2, MapPin, User as UserIcon, KeyRound, Plus, Wheat, Factory, Receipt,
   Power, History, ChevronDown, ChevronUp, CreditCard, Check, X as XIcon, Crown,
   Zap, Rocket, Star, Loader2, Clock, AlertCircle, Settings as SettingsIcon,
-  CheckCircle2, XCircle, Pencil, ShieldCheck,
+  CheckCircle2, XCircle, Pencil, ShieldCheck, MonitorSmartphone, LogOut,
 } from "lucide-react";
 import { format } from "date-fns";
 import { useCurrentPlan } from "../hooks/useFeature";
@@ -24,7 +24,7 @@ import { Trash2, RotateCcw } from "lucide-react";
 
 type Tab =
   | "billing" | "company" | "branches" | "varieties"
-  | "equipment" | "categories" | "activity" | "profile" | "password";
+  | "equipment" | "categories" | "activity" | "profile" | "password" | "sessions";
 
 const LABEL = "block text-sm font-semibold text-secondary mb-1.5";
 const TABLE_HEAD =
@@ -51,6 +51,7 @@ export default function SettingsPage() {
     // Personal settings — available to every role.
     { key: "profile", label: "My Profile", icon: UserIcon },
     { key: "password", label: "Password", icon: KeyRound },
+    { key: "sessions", label: "Devices", icon: MonitorSmartphone },
   ];
 
   return (
@@ -108,6 +109,7 @@ export default function SettingsPage() {
           {tab === "activity" && <ActivityTab />}
           {tab === "profile" && <ProfileTab />}
           {tab === "password" && <PasswordTab />}
+          {tab === "sessions" && <SessionsTab />}
         </main>
       </div>
     </div>
@@ -1969,6 +1971,93 @@ function MfaCard() {
           {msg.type === "ok" ? <Check size={14} /> : <AlertCircle size={14} />}
           {msg.text}
         </p>
+      )}
+    </div>
+  );
+}
+
+/** Active sessions / devices (security hardening — phase 5). Lists the user's
+ *  live login sessions and lets them revoke any one or sign out all others. */
+function SessionsTab() {
+  const qc = useQueryClient();
+  const q = useQuery({ queryKey: ["auth-sessions"], queryFn: () => authService.sessions() });
+  const refresh = () => qc.invalidateQueries({ queryKey: ["auth-sessions"] });
+
+  const revokeOne = useMutation({
+    mutationFn: (id: string) => authService.revokeSession(id),
+    onSuccess: refresh,
+  });
+  const revokeOthers = useMutation({
+    mutationFn: () => authService.revokeOtherSessions(),
+    onSuccess: refresh,
+  });
+
+  const sessions = q.data ?? [];
+  const hasOthers = sessions.some((s) => !s.current);
+  const fmt = (iso: string) => {
+    try {
+      return new Date(iso).toLocaleString();
+    } catch {
+      return iso;
+    }
+  };
+
+  return (
+    <div className="card max-w-2xl space-y-5">
+      <div className="flex items-center gap-3">
+        <div className="h-11 w-11 rounded-xl bg-grad-brand grid place-items-center shadow-grad-glow">
+          <MonitorSmartphone size={18} className="text-white" />
+        </div>
+        <div>
+          <h3 className="text-lg font-bold text-primary">Devices &amp; sessions</h3>
+          <p className="text-sm text-secondary">Where you&apos;re signed in. Revoke anything you don&apos;t recognize.</p>
+        </div>
+      </div>
+
+      {q.isLoading ? (
+        <div className="flex items-center gap-2 text-sm text-secondary">
+          <Loader2 size={15} className="animate-spin" /> Loading sessions…
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {sessions.map((s) => (
+            <div
+              key={s.id}
+              className="flex items-center justify-between gap-3 px-4 py-3 rounded-xl ring-1 ring-inset ring-slate-500/20 bg-slate-500/5"
+            >
+              <div className="min-w-0">
+                <p className="font-semibold text-primary flex items-center gap-2">
+                  {s.client}
+                  {s.current && (
+                    <span className="text-xs font-bold px-1.5 py-0.5 rounded-md bg-emerald-500/15 text-emerald-700 dark:text-emerald-300">
+                      This device
+                    </span>
+                  )}
+                </p>
+                <p className="text-xs text-muted">Last active {fmt(s.last_active)}</p>
+              </div>
+              {!s.current && (
+                <button
+                  onClick={() => revokeOne.mutate(s.id)}
+                  disabled={revokeOne.isPending}
+                  className="shrink-0 text-sm font-semibold text-rose-600 dark:text-rose-400 hover:opacity-80"
+                >
+                  Revoke
+                </button>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {hasOthers && (
+        <button
+          onClick={() => revokeOthers.mutate()}
+          disabled={revokeOthers.isPending}
+          className="btn-secondary w-full inline-flex items-center justify-center gap-1.5"
+        >
+          <LogOut size={15} /> {revokeOthers.isPending ? "Signing out…" : "Sign out all other devices"}
+        </button>
       )}
     </div>
   );
