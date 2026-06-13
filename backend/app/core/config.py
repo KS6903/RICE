@@ -26,7 +26,7 @@ class Settings(BaseSettings):
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 15
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
-    ALLOWED_ORIGINS: str = "http://localhost:5173,http://localhost:3000"
+    ALLOWED_ORIGINS: str = "http://localhost:8448,http://localhost:3000"
     APP_NAME: str = "Rice Mill System"
     DEBUG: bool = False
     # Deployment environment. "prod" turns on fail-closed config checks (see the
@@ -74,7 +74,7 @@ class Settings(BaseSettings):
     # end-to-end. The prod config validator forces this off.
     EXPOSE_RESET_TOKEN: bool = False
     # Public base URL emailed links point at (the web app's origin).
-    FRONTEND_BASE_URL: str = "http://localhost:5173"
+    FRONTEND_BASE_URL: str = "http://localhost:8448"
     # Email verification. The flow always runs on signup; REQUIRE_EMAIL_VERIFICATION
     # additionally blocks data endpoints until the address is confirmed.
     REQUIRE_EMAIL_VERIFICATION: bool = False

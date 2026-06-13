@@ -61,7 +61,7 @@ npm install
 
 # Start the web app (development)
 npm run dev:web
-# → Opens at http://localhost:5173
+# → Opens at http://localhost:8448
 ```
 
 ---
@@ -71,7 +71,7 @@ npm run dev:web
 ```bash
 # From the project root (requires web app running first):
 npm run dev:desktop
-# → Opens the Electron window loading localhost:5173
+# → Opens the Electron window loading localhost:8448
 # → Works offline using local SQLite database
 # → Auto-syncs to PostgreSQL when internet is available
 ```
@@ -118,7 +118,7 @@ print('Admin user created: username=admin, password=admin123')
 "
 ```
 
-Then log in at http://localhost:5173 with `admin` / `admin123`.
+Then log in at http://localhost:8448 with `admin` / `admin123`.
 
 ---
 
@@ -126,7 +126,7 @@ Then log in at http://localhost:5173 with `admin` / `admin123`.
 
 - [ ] pgAdmin shows all tables after `alembic upgrade head`
 - [ ] `GET http://localhost:8000/api/health` returns `{"status": "ok"}`
-- [ ] Login page loads at http://localhost:5173
+- [ ] Login page loads at http://localhost:8448
 - [ ] Login works → redirected to Dashboard
 - [ ] Palay page → can create a supplier and record a purchase
 - [ ] Milling page → can create a milling batch

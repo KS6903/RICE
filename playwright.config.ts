@@ -7,7 +7,7 @@ export default defineConfig({
   workers: 1,
   reporter: [["list"], ["html", { open: "never" }]],
   use: {
-    baseURL: "http://localhost:5173",
+    baseURL: "http://localhost:8448",
     trace: "retain-on-failure",
     screenshot: "only-on-failure",
     video: "retain-on-failure",

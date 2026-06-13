@@ -9,7 +9,7 @@ let mainWindow: BrowserWindow | null = null;
 let syncEngine: SyncEngine | null = null;
 
 const isDev = !app.isPackaged;
-const DEV_ORIGIN = "http://localhost:5173";
+const DEV_ORIGIN = "http://localhost:8448";
 
 // ── Sync-token storage (security hardening P1.10) ────────────────────────────
 // The sync token is encrypted with the OS keychain (DPAPI on Windows, Keychain
