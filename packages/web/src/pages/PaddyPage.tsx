@@ -8,7 +8,10 @@ import { useAccess } from "../hooks/useAccess";
 
 function StatusBadge({ status }: { status: string }) {
   const map: Record<string, string> = {
-    draft: "badge-gray", received: "badge-yellow", completed: "badge-green", cancelled: "badge-red",
+    draft: "badge-gray",
+    received: "badge-yellow",
+    completed: "badge-green",
+    cancelled: "badge-red",
   };
   return <span className={map[status] || "badge-gray"}>{status}</span>;
 }
@@ -19,30 +22,72 @@ export default function PaddyPage() {
   const [showForm, setShowForm] = useState(false);
   const [tab, setTab] = useState<"purchases" | "inventory">("purchases");
 
-  const { data: purchases = [] } = useQuery({ queryKey: ["palay-purchases"], queryFn: () => paddyService.listPurchases() });
-  const { data: varieties = [] } = useQuery({ queryKey: ["varieties"], queryFn: () => paddyService.listVarieties() });
-  const { data: grades = [] } = useQuery({ queryKey: ["grades"], queryFn: () => paddyService.listGrades() });
-  const { data: inventory = [] } = useQuery({ queryKey: ["palay-inventory"], queryFn: () => paddyService.listInventory() });
+  const { data: purchases = [] } = useQuery({
+    queryKey: ["palay-purchases"],
+    queryFn: () => paddyService.listPurchases(),
+  });
+  const { data: varieties = [] } = useQuery({
+    queryKey: ["varieties"],
+    queryFn: () => paddyService.listVarieties(),
+  });
+  const { data: grades = [] } = useQuery({
+    queryKey: ["grades"],
+    queryFn: () => paddyService.listGrades(),
+  });
+  const { data: inventory = [] } = useQuery({
+    queryKey: ["palay-inventory"],
+    queryFn: () => paddyService.listInventory(),
+  });
 
   const [form, setForm] = useState({
-    purchase_date: format(new Date(), "yyyy-MM-dd"), delivery_type: "delivered",
+    purchase_date: format(new Date(), "yyyy-MM-dd"),
+    delivery_type: "delivered",
     remarks: "",
-    items: [{ variety_id: "", grade_id: "", gross_weight_kg: "", tare_weight_kg: "0", moisture_content_pct: "", price_per_cavan: "" }],
+    items: [
+      {
+        variety_id: "",
+        grade_id: "",
+        gross_weight_kg: "",
+        tare_weight_kg: "0",
+        moisture_content_pct: "",
+        price_per_cavan: "",
+      },
+    ],
   });
 
   const createMutation = useMutation({
     mutationFn: (body: typeof form) => paddyService.createPurchase(body),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["palay-purchases"] }); qc.invalidateQueries({ queryKey: ["palay-inventory"] }); setShowForm(false); },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["palay-purchases"] });
+      qc.invalidateQueries({ queryKey: ["palay-inventory"] });
+      setShowForm(false);
+    },
   });
 
-  const addItem = () => setForm(f => ({ ...f, items: [...f.items, { variety_id: "", grade_id: "", gross_weight_kg: "", tare_weight_kg: "0", moisture_content_pct: "", price_per_cavan: "" }] }));
+  const addItem = () =>
+    setForm((f) => ({
+      ...f,
+      items: [
+        ...f.items,
+        {
+          variety_id: "",
+          grade_id: "",
+          gross_weight_kg: "",
+          tare_weight_kg: "0",
+          moisture_content_pct: "",
+          price_per_cavan: "",
+        },
+      ],
+    }));
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-xl font-bold text-gray-900">Palay (Paddy)</h2>
-          <p className="text-sm text-gray-500">Procurement and palay inventory</p>
+          <h2 className="text-xl font-bold text-gray-900 dark:text-slate-100">Palay (Paddy)</h2>
+          <p className="text-sm text-gray-500 dark:text-slate-400">
+            Procurement and palay inventory
+          </p>
         </div>
         {canEdit("paddy") && (
           <button onClick={() => setShowForm(!showForm)} className="btn-primary">
@@ -53,15 +98,28 @@ export default function PaddyPage() {
 
       {showForm && (
         <div className="card space-y-4">
-          <h3 className="font-semibold text-gray-900">New Palay Purchase</h3>
+          <h3 className="font-semibold text-gray-900 dark:text-slate-100">New Palay Purchase</h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Purchase Date</label>
-              <input type="date" className="input" value={form.purchase_date} onChange={e => setForm(f => ({ ...f, purchase_date: e.target.value }))} />
+              <label className="block text-sm font-medium text-gray-700 dark:text-slate-200 mb-1">
+                Purchase Date
+              </label>
+              <input
+                type="date"
+                className="input"
+                value={form.purchase_date}
+                onChange={(e) => setForm((f) => ({ ...f, purchase_date: e.target.value }))}
+              />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Delivery Type</label>
-              <select className="input" value={form.delivery_type} onChange={e => setForm(f => ({ ...f, delivery_type: e.target.value }))}>
+              <label className="block text-sm font-medium text-gray-700 dark:text-slate-200 mb-1">
+                Delivery Type
+              </label>
+              <select
+                className="input"
+                value={form.delivery_type}
+                onChange={(e) => setForm((f) => ({ ...f, delivery_type: e.target.value }))}
+              >
                 <option value="delivered">Delivered</option>
                 <option value="farm_gate">Farm Gate</option>
               </select>
@@ -69,7 +127,9 @@ export default function PaddyPage() {
           </div>
           <div className="space-y-3">
             <div className="flex items-center justify-between">
-              <p className="text-sm font-medium text-gray-700">Purchase Items</p>
+              <p className="text-sm font-medium text-gray-700 dark:text-slate-200">
+                Purchase Items
+              </p>
               <div className="flex items-center gap-3">
                 <QuickAdd
                   label="New variety"
@@ -78,73 +138,187 @@ export default function PaddyPage() {
                   fields={[
                     { key: "code", label: "Code", required: true, placeholder: "e.g. RC400" },
                     { key: "name", label: "Name", required: true },
-                    { key: "category", label: "Category", type: "select", options: [
-                      { value: "inbred", label: "Inbred" },
-                      { value: "hybrid", label: "Hybrid" },
-                      { value: "local", label: "Local" },
-                    ], default: "inbred" },
-                    { key: "typical_recovery_pct", label: "Recovery %", type: "number", placeholder: "65" },
+                    {
+                      key: "category",
+                      label: "Category",
+                      type: "select",
+                      options: [
+                        { value: "inbred", label: "Inbred" },
+                        { value: "hybrid", label: "Hybrid" },
+                        { value: "local", label: "Local" },
+                      ],
+                      default: "inbred",
+                    },
+                    {
+                      key: "typical_recovery_pct",
+                      label: "Recovery %",
+                      type: "number",
+                      placeholder: "65",
+                    },
                   ]}
                   transformBody={(b) => ({
                     ...b,
                     code: String(b.code).toUpperCase(),
-                    typical_recovery_pct: b.typical_recovery_pct ? parseFloat(b.typical_recovery_pct) : null,
+                    typical_recovery_pct: b.typical_recovery_pct
+                      ? parseFloat(b.typical_recovery_pct)
+                      : null,
                   })}
                 />
-                <button onClick={addItem} className="text-sm text-brand-600 hover:text-brand-700">+ Add Item</button>
+                <button
+                  onClick={addItem}
+                  className="text-sm text-brand-600 dark:text-brand-400 hover:text-brand-700 dark:hover:text-brand-300"
+                >
+                  + Add Item
+                </button>
               </div>
             </div>
             {form.items.map((item, idx) => (
-              <div key={idx} className="grid grid-cols-2 sm:grid-cols-6 gap-2 p-3 bg-gray-50 rounded-lg">
-                <select className="input col-span-2 sm:col-span-1" value={item.variety_id} onChange={e => { const items = [...form.items]; items[idx].variety_id = e.target.value; setForm(f => ({ ...f, items })); }}>
+              <div
+                key={idx}
+                className="grid grid-cols-2 sm:grid-cols-6 gap-2 p-3 bg-gray-50 dark:bg-slate-900/50 rounded-lg"
+              >
+                <select
+                  className="input col-span-2 sm:col-span-1"
+                  value={item.variety_id}
+                  onChange={(e) => {
+                    const items = [...form.items];
+                    items[idx].variety_id = e.target.value;
+                    setForm((f) => ({ ...f, items }));
+                  }}
+                >
                   <option value="">Variety</option>
-                  {varieties.map((v: any) => <option key={v.id} value={v.id}>{v.code}</option>)}
+                  {varieties.map((v: any) => (
+                    <option key={v.id} value={v.id}>
+                      {v.code}
+                    </option>
+                  ))}
                 </select>
-                <select className="input" value={item.grade_id} onChange={e => { const items = [...form.items]; items[idx].grade_id = e.target.value; setForm(f => ({ ...f, items })); }}>
+                <select
+                  className="input"
+                  value={item.grade_id}
+                  onChange={(e) => {
+                    const items = [...form.items];
+                    items[idx].grade_id = e.target.value;
+                    setForm((f) => ({ ...f, items }));
+                  }}
+                >
                   <option value="">Grade</option>
-                  {grades.map((g: any) => <option key={g.id} value={g.id}>{g.code}</option>)}
+                  {grades.map((g: any) => (
+                    <option key={g.id} value={g.id}>
+                      {g.code}
+                    </option>
+                  ))}
                 </select>
-                <input className="input" placeholder="Gross kg" type="number" value={item.gross_weight_kg} onChange={e => { const items = [...form.items]; items[idx].gross_weight_kg = e.target.value; setForm(f => ({ ...f, items })); }} />
-                <input className="input" placeholder="Tare kg" type="number" value={item.tare_weight_kg} onChange={e => { const items = [...form.items]; items[idx].tare_weight_kg = e.target.value; setForm(f => ({ ...f, items })); }} />
-                <input className="input" placeholder="Moisture %" type="number" value={item.moisture_content_pct} onChange={e => { const items = [...form.items]; items[idx].moisture_content_pct = e.target.value; setForm(f => ({ ...f, items })); }} />
-                <input className="input" placeholder="₱/cavan" type="number" value={item.price_per_cavan} onChange={e => { const items = [...form.items]; items[idx].price_per_cavan = e.target.value; setForm(f => ({ ...f, items })); }} />
+                <input
+                  className="input"
+                  placeholder="Gross kg"
+                  type="number"
+                  value={item.gross_weight_kg}
+                  onChange={(e) => {
+                    const items = [...form.items];
+                    items[idx].gross_weight_kg = e.target.value;
+                    setForm((f) => ({ ...f, items }));
+                  }}
+                />
+                <input
+                  className="input"
+                  placeholder="Tare kg"
+                  type="number"
+                  value={item.tare_weight_kg}
+                  onChange={(e) => {
+                    const items = [...form.items];
+                    items[idx].tare_weight_kg = e.target.value;
+                    setForm((f) => ({ ...f, items }));
+                  }}
+                />
+                <input
+                  className="input"
+                  placeholder="Moisture %"
+                  type="number"
+                  value={item.moisture_content_pct}
+                  onChange={(e) => {
+                    const items = [...form.items];
+                    items[idx].moisture_content_pct = e.target.value;
+                    setForm((f) => ({ ...f, items }));
+                  }}
+                />
+                <input
+                  className="input"
+                  placeholder="₱/cavan"
+                  type="number"
+                  value={item.price_per_cavan}
+                  onChange={(e) => {
+                    const items = [...form.items];
+                    items[idx].price_per_cavan = e.target.value;
+                    setForm((f) => ({ ...f, items }));
+                  }}
+                />
               </div>
             ))}
           </div>
           <div className="flex gap-2 justify-end">
-            <button onClick={() => setShowForm(false)} className="btn-secondary">Cancel</button>
-            <button onClick={() => createMutation.mutate(form)} className="btn-primary" disabled={createMutation.isPending}>
+            <button onClick={() => setShowForm(false)} className="btn-secondary">
+              Cancel
+            </button>
+            <button
+              onClick={() => createMutation.mutate(form)}
+              className="btn-primary"
+              disabled={createMutation.isPending}
+            >
               {createMutation.isPending ? "Saving…" : "Save Purchase"}
             </button>
           </div>
         </div>
       )}
 
-      <div className="flex gap-2 border-b border-gray-200">
-        {(["purchases", "inventory"] as const).map(t => (
-          <button key={t} onClick={() => setTab(t)} className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors capitalize ${tab === t ? "border-brand-600 text-brand-600" : "border-transparent text-gray-500 hover:text-gray-700"}`}>{t}</button>
+      <div className="flex gap-2 border-b border-gray-200 dark:border-slate-700">
+        {(["purchases", "inventory"] as const).map((t) => (
+          <button
+            key={t}
+            onClick={() => setTab(t)}
+            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors capitalize ${tab === t ? "border-brand-600 text-brand-600 dark:text-brand-400" : "border-transparent text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200"}`}
+          >
+            {t}
+          </button>
         ))}
       </div>
 
       {tab === "purchases" && (
         <div className="card overflow-hidden p-0">
           <table className="w-full text-sm">
-            <thead className="bg-gray-50 border-b border-gray-200">
+            <thead className="bg-gray-50 dark:bg-slate-900/50 border-b border-gray-200 dark:border-slate-700">
               <tr>
-                {["Reference", "Date", "Supplier", "Status", "Items"].map(h => <th key={h} className="px-4 py-3 text-left font-medium text-gray-600">{h}</th>)}
+                {["Reference", "Date", "Supplier", "Status", "Items"].map((h) => (
+                  <th
+                    key={h}
+                    className="px-4 py-3 text-left font-medium text-gray-600 dark:text-slate-300"
+                  >
+                    {h}
+                  </th>
+                ))}
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100">
+            <tbody className="divide-y divide-gray-100 dark:divide-slate-700">
               {purchases.map((p: any) => (
-                <tr key={p.id} className="hover:bg-gray-50">
+                <tr key={p.id} className="hover:bg-gray-50 dark:hover:bg-slate-900/50">
                   <td className="px-4 py-3 font-mono text-xs">{p.reference_no}</td>
                   <td className="px-4 py-3">{p.purchase_date}</td>
                   <td className="px-4 py-3">{p.supplier?.name || "—"}</td>
-                  <td className="px-4 py-3"><StatusBadge status={p.status} /></td>
-                  <td className="px-4 py-3 text-gray-500">{p.items?.length || 0} item(s)</td>
+                  <td className="px-4 py-3">
+                    <StatusBadge status={p.status} />
+                  </td>
+                  <td className="px-4 py-3 text-gray-500 dark:text-slate-400">
+                    {p.items?.length || 0} item(s)
+                  </td>
                 </tr>
               ))}
-              {purchases.length === 0 && <tr><td colSpan={5} className="px-4 py-8 text-center text-gray-400">No purchases yet</td></tr>}
+              {purchases.length === 0 && (
+                <tr>
+                  <td colSpan={5} className="px-4 py-8 text-center text-gray-400">
+                    No purchases yet
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>
@@ -153,19 +327,38 @@ export default function PaddyPage() {
       {tab === "inventory" && (
         <div className="card overflow-hidden p-0">
           <table className="w-full text-sm">
-            <thead className="bg-gray-50 border-b border-gray-200">
-              <tr>{["Variety", "Grade", "Stock (kg)", "Cavans"].map(h => <th key={h} className="px-4 py-3 text-left font-medium text-gray-600">{h}</th>)}</tr>
+            <thead className="bg-gray-50 dark:bg-slate-900/50 border-b border-gray-200 dark:border-slate-700">
+              <tr>
+                {["Variety", "Grade", "Stock (kg)", "Cavans"].map((h) => (
+                  <th
+                    key={h}
+                    className="px-4 py-3 text-left font-medium text-gray-600 dark:text-slate-300"
+                  >
+                    {h}
+                  </th>
+                ))}
+              </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100">
+            <tbody className="divide-y divide-gray-100 dark:divide-slate-700">
               {inventory.map((i: any) => (
-                <tr key={i.id} className="hover:bg-gray-50">
+                <tr key={i.id} className="hover:bg-gray-50 dark:hover:bg-slate-900/50">
                   <td className="px-4 py-3">{i.variety?.code || "—"}</td>
                   <td className="px-4 py-3">{i.grade?.code || "—"}</td>
-                  <td className="px-4 py-3 font-medium">{Number(i.quantity_kg).toLocaleString()}</td>
-                  <td className="px-4 py-3 text-gray-500">{(Number(i.quantity_kg) / 50).toFixed(1)} cv</td>
+                  <td className="px-4 py-3 font-medium">
+                    {Number(i.quantity_kg).toLocaleString()}
+                  </td>
+                  <td className="px-4 py-3 text-gray-500 dark:text-slate-400">
+                    {(Number(i.quantity_kg) / 50).toFixed(1)} cv
+                  </td>
                 </tr>
               ))}
-              {inventory.length === 0 && <tr><td colSpan={4} className="px-4 py-8 text-center text-gray-400">No palay in stock</td></tr>}
+              {inventory.length === 0 && (
+                <tr>
+                  <td colSpan={4} className="px-4 py-8 text-center text-gray-400">
+                    No palay in stock
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>

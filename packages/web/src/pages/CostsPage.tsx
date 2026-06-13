@@ -10,18 +10,34 @@ export default function CostsPage() {
   const qc = useQueryClient();
   const [showForm, setShowForm] = useState(false);
 
-  const { data: expenses = [] } = useQuery({ queryKey: ["expenses"], queryFn: () => costsService.listExpenses() });
-  const { data: categories = [] } = useQuery({ queryKey: ["expense-categories"], queryFn: () => costsService.listCategories() });
-  const { data: batches = [] } = useQuery({ queryKey: ["milling-batches"], queryFn: () => millingService.listBatches() });
+  const { data: expenses = [] } = useQuery({
+    queryKey: ["expenses"],
+    queryFn: () => costsService.listExpenses(),
+  });
+  const { data: categories = [] } = useQuery({
+    queryKey: ["expense-categories"],
+    queryFn: () => costsService.listCategories(),
+  });
+  const { data: batches = [] } = useQuery({
+    queryKey: ["milling-batches"],
+    queryFn: () => millingService.listBatches(),
+  });
 
   const [form, setForm] = useState({
-    category_id: "", batch_id: "", expense_date: format(new Date(), "yyyy-MM-dd"),
-    amount: "", description: "", reference_no: "",
+    category_id: "",
+    batch_id: "",
+    expense_date: format(new Date(), "yyyy-MM-dd"),
+    amount: "",
+    description: "",
+    reference_no: "",
   });
 
   const createExpense = useMutation({
     mutationFn: (body: typeof form) => costsService.createExpense(body),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["expenses"] }); setShowForm(false); },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["expenses"] });
+      setShowForm(false);
+    },
   });
 
   const totalProduction = expenses
@@ -35,8 +51,10 @@ export default function CostsPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-xl font-bold text-gray-900">Expenses & Costs</h2>
-          <p className="text-sm text-gray-500">Track fuel, electricity, labor, maintenance, and more</p>
+          <h2 className="text-xl font-bold text-gray-900 dark:text-slate-100">Expenses & Costs</h2>
+          <p className="text-sm text-gray-500 dark:text-slate-400">
+            Track fuel, electricity, labor, maintenance, and more
+          </p>
         </div>
         <button onClick={() => setShowForm(!showForm)} className="btn-primary">
           <Plus size={16} /> Add Expense
@@ -45,69 +63,139 @@ export default function CostsPage() {
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div className="card">
-          <p className="text-sm text-gray-500">Production Costs</p>
-          <p className="text-2xl font-bold text-gray-900 mt-1">₱{totalProduction.toLocaleString()}</p>
+          <p className="text-sm text-gray-500 dark:text-slate-400">Production Costs</p>
+          <p className="text-2xl font-bold text-gray-900 dark:text-slate-100 mt-1">
+            ₱{totalProduction.toLocaleString()}
+          </p>
         </div>
         <div className="card">
-          <p className="text-sm text-gray-500">Overhead</p>
-          <p className="text-2xl font-bold text-gray-900 mt-1">₱{totalOverhead.toLocaleString()}</p>
+          <p className="text-sm text-gray-500 dark:text-slate-400">Overhead</p>
+          <p className="text-2xl font-bold text-gray-900 dark:text-slate-100 mt-1">
+            ₱{totalOverhead.toLocaleString()}
+          </p>
         </div>
         <div className="card">
-          <p className="text-sm text-gray-500">Total Expenses</p>
-          <p className="text-2xl font-bold text-red-600 mt-1">₱{(totalProduction + totalOverhead).toLocaleString()}</p>
+          <p className="text-sm text-gray-500 dark:text-slate-400">Total Expenses</p>
+          <p className="text-2xl font-bold text-red-600 dark:text-red-400 mt-1">
+            ₱{(totalProduction + totalOverhead).toLocaleString()}
+          </p>
         </div>
       </div>
 
       {showForm && (
         <div className="card space-y-4">
-          <h3 className="font-semibold text-gray-900">Add Expense</h3>
+          <h3 className="font-semibold text-gray-900 dark:text-slate-100">Add Expense</h3>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div>
               <div className="flex items-baseline justify-between mb-1">
-                <label className="block text-sm font-medium text-gray-700">Category</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-slate-200">
+                  Category
+                </label>
                 <QuickAdd
                   label="New category"
                   endpoint="/costs/categories"
                   queryKey={["expense-categories"]}
                   fields={[
-                    { key: "name", label: "Name", required: true, full: true, placeholder: "e.g. Sack/Packaging" },
-                    { key: "is_production_cost", label: "Production cost", type: "checkbox", default: true, placeholder: "Production cost (vs. overhead)" },
+                    {
+                      key: "name",
+                      label: "Name",
+                      required: true,
+                      full: true,
+                      placeholder: "e.g. Sack/Packaging",
+                    },
+                    {
+                      key: "is_production_cost",
+                      label: "Production cost",
+                      type: "checkbox",
+                      default: true,
+                      placeholder: "Production cost (vs. overhead)",
+                    },
                   ]}
                   onCreated={(c) => setForm((f) => ({ ...f, category_id: c.id }))}
                 />
               </div>
-              <select className="input" value={form.category_id} onChange={e => setForm(f => ({ ...f, category_id: e.target.value }))}>
+              <select
+                className="input"
+                value={form.category_id}
+                onChange={(e) => setForm((f) => ({ ...f, category_id: e.target.value }))}
+              >
                 <option value="">Select category…</option>
-                {categories.map((c: any) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                {categories.map((c: any) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                  </option>
+                ))}
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Date</label>
-              <input type="date" className="input" value={form.expense_date} onChange={e => setForm(f => ({ ...f, expense_date: e.target.value }))} />
+              <label className="block text-sm font-medium text-gray-700 dark:text-slate-200 mb-1">
+                Date
+              </label>
+              <input
+                type="date"
+                className="input"
+                value={form.expense_date}
+                onChange={(e) => setForm((f) => ({ ...f, expense_date: e.target.value }))}
+              />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Amount (₱)</label>
-              <input type="number" className="input" value={form.amount} onChange={e => setForm(f => ({ ...f, amount: e.target.value }))} />
+              <label className="block text-sm font-medium text-gray-700 dark:text-slate-200 mb-1">
+                Amount (₱)
+              </label>
+              <input
+                type="number"
+                className="input"
+                value={form.amount}
+                onChange={(e) => setForm((f) => ({ ...f, amount: e.target.value }))}
+              />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Milling Batch (optional)</label>
-              <select className="input" value={form.batch_id} onChange={e => setForm(f => ({ ...f, batch_id: e.target.value }))}>
+              <label className="block text-sm font-medium text-gray-700 dark:text-slate-200 mb-1">
+                Milling Batch (optional)
+              </label>
+              <select
+                className="input"
+                value={form.batch_id}
+                onChange={(e) => setForm((f) => ({ ...f, batch_id: e.target.value }))}
+              >
                 <option value="">Not batch-specific</option>
-                {batches.map((b: any) => <option key={b.id} value={b.id}>{b.batch_no}</option>)}
+                {batches.map((b: any) => (
+                  <option key={b.id} value={b.id}>
+                    {b.batch_no}
+                  </option>
+                ))}
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
-              <input className="input" value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} />
+              <label className="block text-sm font-medium text-gray-700 dark:text-slate-200 mb-1">
+                Description
+              </label>
+              <input
+                className="input"
+                value={form.description}
+                onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
+              />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Reference No.</label>
-              <input className="input" value={form.reference_no} onChange={e => setForm(f => ({ ...f, reference_no: e.target.value }))} />
+              <label className="block text-sm font-medium text-gray-700 dark:text-slate-200 mb-1">
+                Reference No.
+              </label>
+              <input
+                className="input"
+                value={form.reference_no}
+                onChange={(e) => setForm((f) => ({ ...f, reference_no: e.target.value }))}
+              />
             </div>
           </div>
           <div className="flex gap-2 justify-end">
-            <button onClick={() => setShowForm(false)} className="btn-secondary">Cancel</button>
-            <button onClick={() => createExpense.mutate(form)} className="btn-primary" disabled={createExpense.isPending}>
+            <button onClick={() => setShowForm(false)} className="btn-secondary">
+              Cancel
+            </button>
+            <button
+              onClick={() => createExpense.mutate(form)}
+              className="btn-primary"
+              disabled={createExpense.isPending}
+            >
               {createExpense.isPending ? "Saving…" : "Save Expense"}
             </button>
           </div>
@@ -116,20 +204,43 @@ export default function CostsPage() {
 
       <div className="card overflow-hidden p-0">
         <table className="w-full text-sm">
-          <thead className="bg-gray-50 border-b border-gray-200">
-            <tr>{["Date", "Category", "Batch", "Amount", "Description"].map(h => <th key={h} className="px-4 py-3 text-left font-medium text-gray-600">{h}</th>)}</tr>
+          <thead className="bg-gray-50 dark:bg-slate-900/50 border-b border-gray-200 dark:border-slate-700">
+            <tr>
+              {["Date", "Category", "Batch", "Amount", "Description"].map((h) => (
+                <th
+                  key={h}
+                  className="px-4 py-3 text-left font-medium text-gray-600 dark:text-slate-300"
+                >
+                  {h}
+                </th>
+              ))}
+            </tr>
           </thead>
-          <tbody className="divide-y divide-gray-100">
+          <tbody className="divide-y divide-gray-100 dark:divide-slate-700">
             {expenses.map((e: any) => (
-              <tr key={e.id} className="hover:bg-gray-50">
+              <tr key={e.id} className="hover:bg-gray-50 dark:hover:bg-slate-900/50">
                 <td className="px-4 py-3">{e.expense_date}</td>
-                <td className="px-4 py-3">{categories.find((c: any) => c.id === e.category_id)?.name || "—"}</td>
-                <td className="px-4 py-3 font-mono text-xs">{batches.find((b: any) => b.id === e.batch_id)?.batch_no || "—"}</td>
-                <td className="px-4 py-3 font-medium text-red-600">₱{Number(e.amount).toLocaleString()}</td>
-                <td className="px-4 py-3 text-gray-500">{e.description || "—"}</td>
+                <td className="px-4 py-3">
+                  {categories.find((c: any) => c.id === e.category_id)?.name || "—"}
+                </td>
+                <td className="px-4 py-3 font-mono text-xs">
+                  {batches.find((b: any) => b.id === e.batch_id)?.batch_no || "—"}
+                </td>
+                <td className="px-4 py-3 font-medium text-red-600 dark:text-red-400">
+                  ₱{Number(e.amount).toLocaleString()}
+                </td>
+                <td className="px-4 py-3 text-gray-500 dark:text-slate-400">
+                  {e.description || "—"}
+                </td>
               </tr>
             ))}
-            {expenses.length === 0 && <tr><td colSpan={5} className="px-4 py-8 text-center text-gray-400">No expenses recorded</td></tr>}
+            {expenses.length === 0 && (
+              <tr>
+                <td colSpan={5} className="px-4 py-8 text-center text-gray-400">
+                  No expenses recorded
+                </td>
+              </tr>
+            )}
           </tbody>
         </table>
       </div>

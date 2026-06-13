@@ -1,8 +1,17 @@
 import { useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
-  HardHat, Plus, Pencil, Power, X as XIcon, Check, AlertCircle,
-  UserCircle2, Factory, Sprout, Search,
+  HardHat,
+  Plus,
+  Pencil,
+  Power,
+  X as XIcon,
+  Check,
+  AlertCircle,
+  UserCircle2,
+  Factory,
+  Sprout,
+  Search,
 } from "lucide-react";
 import { SUPPLIER_TYPES } from "@rice-mill/shared";
 import { dispatchService } from "../services/DispatchService";
@@ -63,7 +72,9 @@ const LABEL = "block text-xs font-bold uppercase tracking-wider text-muted mb-1"
 function formatDate(iso: string | null): string {
   if (!iso) return "—";
   return new Date(iso).toLocaleDateString("en-PH", {
-    year: "numeric", month: "short", day: "numeric",
+    year: "numeric",
+    month: "short",
+    day: "numeric",
   });
 }
 
@@ -80,9 +91,10 @@ function ColorReadOnlyHint() {
 
 function TypeBadge({ kind }: { kind: OperatorKind }) {
   const Icon = kind === "agent" ? UserCircle2 : Factory;
-  const style = kind === "agent"
-    ? "bg-violet-100 text-violet-800 dark:bg-violet-950/40 dark:text-violet-200"
-    : "bg-amber-100 text-amber-800 dark:bg-amber-950/40 dark:text-amber-200";
+  const style =
+    kind === "agent"
+      ? "bg-violet-100 text-violet-800 dark:bg-violet-950/40 dark:text-violet-200"
+      : "bg-amber-100 text-amber-800 dark:bg-amber-950/40 dark:text-amber-200";
   return (
     <span
       className={`inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded ${style}`}
@@ -117,7 +129,8 @@ export default function FieldOperatorsPage() {
         <div>
           <h2 className="text-2xl font-bold tracking-tight text-primary">Field Operators</h2>
           <p className="text-sm text-secondary">
-            Manage delivery agents, third-party millers, and palay suppliers — each contact gets a unique color for identification on the canvas.
+            Manage delivery agents, third-party millers, and palay suppliers — each contact gets a
+            unique color for identification on the canvas.
           </p>
         </div>
       </div>
@@ -153,7 +166,8 @@ function FieldOperatorsContent() {
       { key: "agent" as TypeTab, label: "Agents", count: agents.length },
       { key: "miller" as TypeTab, label: "Millers", count: millers.length },
     ];
-    if (hasPaddy) base.push({ key: "supplier" as TypeTab, label: "Suppliers", count: suppliers.length });
+    if (hasPaddy)
+      base.push({ key: "supplier" as TypeTab, label: "Suppliers", count: suppliers.length });
     return base;
   }, [agents, millers, suppliers, hasPaddy]);
 
@@ -192,7 +206,9 @@ function FieldOperatorsContent() {
               }`}
             >
               {label}
-              <span className={`text-xs font-bold tabular-nums ${active ? "text-white/75" : "text-muted"}`}>
+              <span
+                className={`text-xs font-bold tabular-nums ${active ? "text-white/75" : "text-muted"}`}
+              >
                 {count}
               </span>
             </button>
@@ -205,10 +221,16 @@ function FieldOperatorsContent() {
         className="inline-flex items-center gap-1 p-1 rounded-lg bg-slate-100 dark:bg-slate-800/60 ring-1 ring-soft"
         role="tablist"
       >
-        {([
-          { key: "active" as StatusTab, label: "Active", count: statusCounts.active },
-          { key: "deactivated" as StatusTab, label: "Deactivated", count: statusCounts.deactivated },
-        ] as const).map(({ key, label, count }) => {
+        {(
+          [
+            { key: "active" as StatusTab, label: "Active", count: statusCounts.active },
+            {
+              key: "deactivated" as StatusTab,
+              label: "Deactivated",
+              count: statusCounts.deactivated,
+            },
+          ] as const
+        ).map(({ key, label, count }) => {
           const isActive = statusTab === key;
           return (
             <button
@@ -219,7 +241,9 @@ function FieldOperatorsContent() {
               data-testid={`operators-status-${key}`}
               onClick={() => setStatusTab(key)}
               className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${
-                isActive ? "bg-white dark:bg-slate-900 text-primary shadow-sm" : "text-secondary hover:text-primary"
+                isActive
+                  ? "bg-white dark:bg-slate-900 text-primary shadow-sm"
+                  : "text-secondary hover:text-primary"
               }`}
             >
               {label}
@@ -247,7 +271,11 @@ function FieldOperatorsContent() {
 // ─────────────────────────────── Operators panel ────────────────────────────
 
 function OperatorsPanel({
-  typeTab, status, agents, millers, canEdit,
+  typeTab,
+  status,
+  agents,
+  millers,
+  canEdit,
 }: {
   typeTab: Exclude<TypeTab, "supplier">;
   status: StatusTab;
@@ -261,10 +289,13 @@ function OperatorsPanel({
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
 
-  const allRows: OperatorRow[] = useMemo(() => [
-    ...agents.map((a): OperatorRow => ({ kind: "agent", ...a })),
-    ...millers.map((m): OperatorRow => ({ kind: "miller", ...m })),
-  ], [agents, millers]);
+  const allRows: OperatorRow[] = useMemo(
+    () => [
+      ...agents.map((a): OperatorRow => ({ kind: "agent", ...a })),
+      ...millers.map((m): OperatorRow => ({ kind: "miller", ...m })),
+    ],
+    [agents, millers],
+  );
 
   const typeFiltered = useMemo(
     () => (typeTab === "all" ? allRows : allRows.filter((r) => r.kind === typeTab)),
@@ -296,14 +327,29 @@ function OperatorsPanel({
   const toggleActive = useMutation({
     mutationFn: ({ row, is_active }: { row: OperatorRow; is_active: boolean }) =>
       dispatchService.setOperatorActive(row.kind, row.id, is_active),
-    onSuccess: () => { invalidateAll(); setEditingId(null); setError(null); },
+    onSuccess: () => {
+      invalidateAll();
+      setEditingId(null);
+      setError(null);
+    },
     onError: (e: any) => setError(e?.response?.data?.detail ?? "Action failed."),
   });
 
   const colSpan = status === "active" ? 8 : 9;
-  const headers = status === "active"
-    ? ["Color", "Name", "Type", "Contact", "Phone", "Details", "Status", ""]
-    : ["Color", "Name", "Type", "Contact", "Phone", "Details", "Deactivated on", "Deactivated by", ""];
+  const headers =
+    status === "active"
+      ? ["Color", "Name", "Type", "Contact", "Phone", "Details", "Status", ""]
+      : [
+          "Color",
+          "Name",
+          "Type",
+          "Contact",
+          "Phone",
+          "Details",
+          "Deactivated on",
+          "Deactivated by",
+          "",
+        ];
 
   const renderRow = (row: OperatorRow) => {
     if (status === "deactivated") {
@@ -320,25 +366,48 @@ function OperatorsPanel({
       <EditOperatorRow
         key={row.id}
         row={row}
-        onCancel={() => { setEditingId(null); setError(null); }}
-        onSaved={() => { invalidateAll(); setEditingId(null); setError(null); }}
+        onCancel={() => {
+          setEditingId(null);
+          setError(null);
+        }}
+        onSaved={() => {
+          invalidateAll();
+          setEditingId(null);
+          setError(null);
+        }}
         setError={setError}
       />
     ) : (
       <ViewOperatorRow
         key={row.id}
         row={row}
-        onEdit={() => { setEditingId(row.id); setError(null); }}
+        onEdit={() => {
+          setEditingId(row.id);
+          setError(null);
+        }}
         onDeactivate={() => toggleActive.mutate({ row, is_active: false })}
         canEdit={canEdit}
       />
     );
   };
 
-  const GroupHeader = ({ label, count, tone }: { label: string; count: number; tone: "agent" | "miller" }) => (
+  const GroupHeader = ({
+    label,
+    count,
+    tone,
+  }: {
+    label: string;
+    count: number;
+    tone: "agent" | "miller";
+  }) => (
     <tr className="border-y border-slate-200 dark:border-slate-700">
-      <td colSpan={colSpan} className={`px-4 py-1.5 ${tone === "agent" ? "bg-violet-50 dark:bg-violet-950/20" : "bg-amber-50 dark:bg-amber-950/20"}`}>
-        <span className={`text-[11px] font-bold uppercase tracking-widest ${tone === "agent" ? "text-violet-600 dark:text-violet-400" : "text-amber-600 dark:text-amber-400"}`}>
+      <td
+        colSpan={colSpan}
+        className={`px-4 py-1.5 ${tone === "agent" ? "bg-violet-50 dark:bg-violet-950/20" : "bg-amber-50 dark:bg-amber-950/20"}`}
+      >
+        <span
+          className={`text-[11px] font-bold uppercase tracking-widest ${tone === "agent" ? "text-violet-600 dark:text-violet-400" : "text-amber-600 dark:text-amber-400"}`}
+        >
           {label} · {count}
         </span>
       </td>
@@ -351,7 +420,10 @@ function OperatorsPanel({
       <div className="flex items-center justify-between flex-wrap gap-3">
         {status === "deactivated" ? (
           <div className="relative flex-1 min-w-[200px] max-w-sm">
-            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted pointer-events-none" />
+            <Search
+              size={14}
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-muted pointer-events-none"
+            />
             <input
               className="input !pl-8"
               placeholder="Search by name…"
@@ -374,7 +446,11 @@ function OperatorsPanel({
         )}
         {status === "active" && canEdit && (
           <button
-            onClick={() => { setShowForm((s) => !s); setEditingId(null); setError(null); }}
+            onClick={() => {
+              setShowForm((s) => !s);
+              setEditingId(null);
+              setError(null);
+            }}
             className="btn-primary"
             data-testid="add-operator"
           >
@@ -385,7 +461,7 @@ function OperatorsPanel({
 
       {error && (
         <div className="card !py-3 bg-rose-50 dark:bg-rose-950/30 ring-1 ring-rose-200 dark:ring-rose-800/60 flex items-center gap-2 text-sm">
-          <AlertCircle size={14} className="text-rose-600" />
+          <AlertCircle size={14} className="text-rose-600 dark:text-rose-400" />
           <span className="text-rose-900 dark:text-rose-100">{error}</span>
         </div>
       )}
@@ -393,17 +469,29 @@ function OperatorsPanel({
       {status === "active" && showForm && (
         <NewOperatorForm
           onClose={() => setShowForm(false)}
-          onSaved={() => { invalidateAll(); setShowForm(false); setError(null); }}
+          onSaved={() => {
+            invalidateAll();
+            setShowForm(false);
+            setError(null);
+          }}
           setError={setError}
         />
       )}
 
       <div className="card overflow-hidden p-0">
-        <table className="w-full text-sm" data-testid={status === "active" ? "operators-table" : "deactivated-operators-table"}>
+        <table
+          className="w-full text-sm"
+          data-testid={status === "active" ? "operators-table" : "deactivated-operators-table"}
+        >
           <thead className="bg-slate-50 dark:bg-slate-800/60 border-b border-slate-200 dark:border-slate-700">
             <tr>
               {headers.map((h, i) => (
-                <th key={i} className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wide text-slate-500">{h}</th>
+                <th
+                  key={i}
+                  className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400"
+                >
+                  {h}
+                </th>
               ))}
             </tr>
           </thead>
@@ -414,8 +502,8 @@ function OperatorsPanel({
                   {status === "active"
                     ? `No active ${typeTab === "all" ? "operators" : typeTab + "s"} yet${canEdit ? " — add one above." : "."}`
                     : search
-                    ? "No deactivated operators match your search."
-                    : "No deactivated operators."}
+                      ? "No deactivated operators match your search."
+                      : "No deactivated operators."}
                 </td>
               </tr>
             ) : typeTab === "all" ? (
@@ -452,7 +540,10 @@ function OperatorsPanel({
 }
 
 function ViewOperatorRow({
-  row, onEdit, onDeactivate, canEdit,
+  row,
+  onEdit,
+  onDeactivate,
+  canEdit,
 }: {
   row: OperatorRow;
   onEdit: () => void;
@@ -461,10 +552,17 @@ function ViewOperatorRow({
 }) {
   const details =
     row.kind === "agent"
-      ? row.commission_pct ? `${row.commission_pct}% commission` : "—"
-      : row.capacity_kg_per_hr ? `${row.capacity_kg_per_hr} kg/hr` : "—";
+      ? row.commission_pct
+        ? `${row.commission_pct}% commission`
+        : "—"
+      : row.capacity_kg_per_hr
+        ? `${row.capacity_kg_per_hr} kg/hr`
+        : "—";
   return (
-    <tr className="hover:bg-slate-50 dark:hover:bg-slate-800/40" data-testid={`operator-row-${row.id}`}>
+    <tr
+      className="hover:bg-slate-50 dark:hover:bg-slate-800/40"
+      data-testid={`operator-row-${row.id}`}
+    >
       <td className="px-4 py-3">
         <div className="inline-flex items-center gap-1.5">
           <ColorSwatch color={row.canva_color_hex} label={row.name} size={16} />
@@ -472,11 +570,15 @@ function ViewOperatorRow({
         </div>
       </td>
       <td className="px-4 py-3 font-semibold text-primary">{row.name}</td>
-      <td className="px-4 py-3"><TypeBadge kind={row.kind} /></td>
+      <td className="px-4 py-3">
+        <TypeBadge kind={row.kind} />
+      </td>
       <td className="px-4 py-3 text-secondary">{row.contact_person || "—"}</td>
       <td className="px-4 py-3 text-secondary">{row.phone || "—"}</td>
       <td className="px-4 py-3 text-secondary tabular-nums">{details}</td>
-      <td className="px-4 py-3"><span className="badge-green">Active</span></td>
+      <td className="px-4 py-3">
+        <span className="badge-green">Active</span>
+      </td>
       <td className="px-4 py-3 text-right">
         <div className="flex items-center justify-end gap-1.5">
           {canEdit && (
@@ -505,7 +607,9 @@ function ViewOperatorRow({
 }
 
 function DeactivatedOperatorRow({
-  row, onReactivate, canEdit,
+  row,
+  onReactivate,
+  canEdit,
 }: {
   row: OperatorRow;
   onReactivate: () => void;
@@ -513,22 +617,32 @@ function DeactivatedOperatorRow({
 }) {
   const details =
     row.kind === "agent"
-      ? row.commission_pct ? `${row.commission_pct}% commission` : "—"
-      : row.capacity_kg_per_hr ? `${row.capacity_kg_per_hr} kg/hr` : "—";
+      ? row.commission_pct
+        ? `${row.commission_pct}% commission`
+        : "—"
+      : row.capacity_kg_per_hr
+        ? `${row.capacity_kg_per_hr} kg/hr`
+        : "—";
   return (
-    <tr className="opacity-70 hover:opacity-100 hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-opacity"
-      data-testid={`operator-row-${row.id}`}>
+    <tr
+      className="opacity-70 hover:opacity-100 hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-opacity"
+      data-testid={`operator-row-${row.id}`}
+    >
       <td className="px-4 py-3">
         <div className="inline-flex items-center gap-1.5">
           <ColorSwatch color={row.canva_color_hex} label={row.name} size={16} />
         </div>
       </td>
       <td className="px-4 py-3 font-semibold text-primary">{row.name}</td>
-      <td className="px-4 py-3"><TypeBadge kind={row.kind} /></td>
+      <td className="px-4 py-3">
+        <TypeBadge kind={row.kind} />
+      </td>
       <td className="px-4 py-3 text-secondary">{row.contact_person || "—"}</td>
       <td className="px-4 py-3 text-secondary">{row.phone || "—"}</td>
       <td className="px-4 py-3 text-secondary tabular-nums">{details}</td>
-      <td className="px-4 py-3 text-secondary tabular-nums text-xs">{formatDate(row.deactivated_at)}</td>
+      <td className="px-4 py-3 text-secondary tabular-nums text-xs">
+        {formatDate(row.deactivated_at)}
+      </td>
       <td className="px-4 py-3 text-secondary text-xs">{row.deactivated_by ?? "—"}</td>
       <td className="px-4 py-3 text-right">
         {canEdit && (
@@ -547,7 +661,10 @@ function DeactivatedOperatorRow({
 }
 
 function EditOperatorRow({
-  row, onCancel, onSaved, setError,
+  row,
+  onCancel,
+  onSaved,
+  setError,
 }: {
   row: OperatorRow;
   onCancel: () => void;
@@ -558,9 +675,15 @@ function EditOperatorRow({
   const [contact, setContact] = useState(row.contact_person ?? "");
   const [phone, setPhone] = useState(row.phone ?? "");
   const address = row.address ?? "";
-  const [agentType, setAgentType] = useState(row.kind === "agent" ? row.agent_type ?? "broker" : "broker");
-  const [commission, setCommission] = useState(row.kind === "agent" ? String(row.commission_pct ?? "") : "");
-  const [capacity, setCapacity] = useState(row.kind === "miller" ? String(row.capacity_kg_per_hr ?? "") : "");
+  const [agentType, setAgentType] = useState(
+    row.kind === "agent" ? (row.agent_type ?? "broker") : "broker",
+  );
+  const [commission, setCommission] = useState(
+    row.kind === "agent" ? String(row.commission_pct ?? "") : "",
+  );
+  const [capacity, setCapacity] = useState(
+    row.kind === "miller" ? String(row.capacity_kg_per_hr ?? "") : "",
+  );
   const [fee, setFee] = useState(row.kind === "miller" ? String(row.milling_fee_per_kg ?? "") : "");
 
   const save = useMutation({
@@ -573,7 +696,11 @@ function EditOperatorRow({
       };
       const body =
         row.kind === "agent"
-          ? { ...common, agent_type: agentType || null, commission_pct: commission ? parseFloat(commission) : 0 }
+          ? {
+              ...common,
+              agent_type: agentType || null,
+              commission_pct: commission ? parseFloat(commission) : 0,
+            }
           : {
               ...common,
               capacity_kg_per_hr: capacity ? parseFloat(capacity) : null,
@@ -594,36 +721,77 @@ function EditOperatorRow({
         </div>
       </td>
       <td className="px-3 py-2">
-        <input className="input !py-1 text-sm" value={name} data-testid="edit-name" onChange={(e) => setName(e.target.value)} />
+        <input
+          className="input !py-1 text-sm"
+          value={name}
+          data-testid="edit-name"
+          onChange={(e) => setName(e.target.value)}
+        />
       </td>
-      <td className="px-4 py-3"><TypeBadge kind={row.kind} /></td>
-      <td className="px-3 py-2">
-        <input className="input !py-1 text-sm" value={contact} placeholder="Contact person" onChange={(e) => setContact(e.target.value)} />
+      <td className="px-4 py-3">
+        <TypeBadge kind={row.kind} />
       </td>
       <td className="px-3 py-2">
-        <input className="input !py-1 text-sm" value={phone} placeholder="Phone" onChange={(e) => setPhone(e.target.value)} />
+        <input
+          className="input !py-1 text-sm"
+          value={contact}
+          placeholder="Contact person"
+          onChange={(e) => setContact(e.target.value)}
+        />
+      </td>
+      <td className="px-3 py-2">
+        <input
+          className="input !py-1 text-sm"
+          value={phone}
+          placeholder="Phone"
+          onChange={(e) => setPhone(e.target.value)}
+        />
       </td>
       <td className="px-3 py-2">
         {row.kind === "agent" ? (
           <div className="flex items-center gap-1.5">
-            <select className="input !py-1 text-sm !w-auto" value={agentType} onChange={(e) => setAgentType(e.target.value)}>
+            <select
+              className="input !py-1 text-sm !w-auto"
+              value={agentType}
+              onChange={(e) => setAgentType(e.target.value)}
+            >
               <option value="broker">Broker</option>
               <option value="freelancer">Freelancer</option>
               <option value="logistics_co">Logistics</option>
             </select>
-            <input className="input !py-1 text-sm w-16" type="number" step="0.01" placeholder="%" value={commission}
-              onChange={(e) => setCommission(e.target.value)} />
+            <input
+              className="input !py-1 text-sm w-16"
+              type="number"
+              step="0.01"
+              placeholder="%"
+              value={commission}
+              onChange={(e) => setCommission(e.target.value)}
+            />
           </div>
         ) : (
           <div className="flex items-center gap-1.5">
-            <input className="input !py-1 text-sm w-20" type="number" step="0.01" placeholder="kg/hr" value={capacity}
-              onChange={(e) => setCapacity(e.target.value)} />
-            <input className="input !py-1 text-sm w-20" type="number" step="0.0001" placeholder="₱/kg" value={fee}
-              onChange={(e) => setFee(e.target.value)} />
+            <input
+              className="input !py-1 text-sm w-20"
+              type="number"
+              step="0.01"
+              placeholder="kg/hr"
+              value={capacity}
+              onChange={(e) => setCapacity(e.target.value)}
+            />
+            <input
+              className="input !py-1 text-sm w-20"
+              type="number"
+              step="0.0001"
+              placeholder="₱/kg"
+              value={fee}
+              onChange={(e) => setFee(e.target.value)}
+            />
           </div>
         )}
       </td>
-      <td className="px-4 py-3"><span className="badge-green">Active</span></td>
+      <td className="px-4 py-3">
+        <span className="badge-green">Active</span>
+      </td>
       <td className="px-4 py-3 text-right">
         <div className="flex items-center justify-end gap-1">
           <button
@@ -650,7 +818,9 @@ function EditOperatorRow({
 }
 
 function NewOperatorForm({
-  onClose, onSaved, setError,
+  onClose,
+  onSaved,
+  setError,
 }: {
   onClose: () => void;
   onSaved: () => void;
@@ -676,7 +846,11 @@ function NewOperatorForm({
       };
       const body =
         kind === "agent"
-          ? { ...common, agent_type: agentType || null, commission_pct: commission ? parseFloat(commission) : 0 }
+          ? {
+              ...common,
+              agent_type: agentType || null,
+              commission_pct: commission ? parseFloat(commission) : 0,
+            }
           : {
               ...common,
               capacity_kg_per_hr: capacity ? parseFloat(capacity) : null,
@@ -684,7 +858,9 @@ function NewOperatorForm({
             };
       return dispatchService.createOperator(kind, body);
     },
-    onSuccess: () => { onSaved(); },
+    onSuccess: () => {
+      onSaved();
+    },
     onError: (e: any) => setError(e?.response?.data?.detail ?? "Failed to add operator."),
   });
 
@@ -707,7 +883,9 @@ function NewOperatorForm({
               data-testid={`new-operator-kind-${k}`}
               onClick={() => setKind(k)}
               className={`px-3 py-1.5 rounded-md text-xs font-semibold capitalize transition-all ${
-                kind === k ? "bg-white dark:bg-slate-900 text-primary shadow-sm" : "text-secondary hover:text-primary"
+                kind === k
+                  ? "bg-white dark:bg-slate-900 text-primary shadow-sm"
+                  : "text-secondary hover:text-primary"
               }`}
             >
               {k === "agent" ? "Agent" : "Miller"}
@@ -719,7 +897,12 @@ function NewOperatorForm({
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
           <label className={LABEL}>Name *</label>
-          <input className="input" data-testid="new-operator-name" value={name} onChange={(e) => setName(e.target.value)} />
+          <input
+            className="input"
+            data-testid="new-operator-name"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+          />
         </div>
         <div>
           <label className={LABEL}>Contact person</label>
@@ -738,7 +921,11 @@ function NewOperatorForm({
           <>
             <div>
               <label className={LABEL}>Agent type</label>
-              <select className="input" value={agentType} onChange={(e) => setAgentType(e.target.value)}>
+              <select
+                className="input"
+                value={agentType}
+                onChange={(e) => setAgentType(e.target.value)}
+              >
                 <option value="broker">Broker</option>
                 <option value="freelancer">Freelancer</option>
                 <option value="logistics_co">Logistics company</option>
@@ -746,27 +933,49 @@ function NewOperatorForm({
             </div>
             <div>
               <label className={LABEL}>Commission %</label>
-              <input className="input" type="number" step="0.01" value={commission} onChange={(e) => setCommission(e.target.value)} />
+              <input
+                className="input"
+                type="number"
+                step="0.01"
+                value={commission}
+                onChange={(e) => setCommission(e.target.value)}
+              />
             </div>
           </>
         ) : (
           <>
             <div>
               <label className={LABEL}>Capacity (kg/hr)</label>
-              <input className="input" type="number" step="0.01" value={capacity} onChange={(e) => setCapacity(e.target.value)} />
+              <input
+                className="input"
+                type="number"
+                step="0.01"
+                value={capacity}
+                onChange={(e) => setCapacity(e.target.value)}
+              />
             </div>
             <div>
               <label className={LABEL}>Milling fee per kg (₱)</label>
-              <input className="input" type="number" step="0.0001" value={fee} onChange={(e) => setFee(e.target.value)} />
+              <input
+                className="input"
+                type="number"
+                step="0.0001"
+                value={fee}
+                onChange={(e) => setFee(e.target.value)}
+              />
             </div>
           </>
         )}
       </div>
 
-      <p className="text-xs text-muted">A unique color will be assigned by the system — it can't be picked or changed by anyone.</p>
+      <p className="text-xs text-muted">
+        A unique color will be assigned by the system — it can't be picked or changed by anyone.
+      </p>
 
       <div className="flex gap-2 justify-end">
-        <button onClick={onClose} className="btn-secondary">Cancel</button>
+        <button onClick={onClose} className="btn-secondary">
+          Cancel
+        </button>
         <button
           onClick={() => create.mutate()}
           disabled={!name.trim() || create.isPending}
@@ -783,7 +992,9 @@ function NewOperatorForm({
 // ─────────────────────────────── Suppliers panel ────────────────────────────
 
 function SuppliersPanel({
-  status, suppliers, canEdit,
+  status,
+  suppliers,
+  canEdit,
 }: {
   status: StatusTab;
   suppliers: Supplier[];
@@ -811,14 +1022,18 @@ function SuppliersPanel({
   const toggleActive = useMutation({
     mutationFn: ({ id, is_active }: { id: string; is_active: boolean }) =>
       paddyService.setSupplierActive(id, is_active),
-    onSuccess: () => { invalidate(); setError(null); },
+    onSuccess: () => {
+      invalidate();
+      setError(null);
+    },
     onError: (e: any) => setError(e?.response?.data?.detail ?? "Action failed."),
   });
 
   const colSpan = status === "active" ? 9 : 8;
-  const headers = status === "active"
-    ? ["Color", "Name", "Type", "Municipality", "Province", "Phone", "Farmer ID", "Status", ""]
-    : ["Color", "Name", "Type", "Municipality", "Province", "Phone", "Farmer ID", ""];
+  const headers =
+    status === "active"
+      ? ["Color", "Name", "Type", "Municipality", "Province", "Phone", "Farmer ID", "Status", ""]
+      : ["Color", "Name", "Type", "Municipality", "Province", "Phone", "Farmer ID", ""];
 
   return (
     <div className="space-y-4">
@@ -826,7 +1041,10 @@ function SuppliersPanel({
       <div className="flex items-center justify-between flex-wrap gap-3">
         {status === "deactivated" ? (
           <div className="relative flex-1 min-w-[200px] max-w-sm">
-            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted pointer-events-none" />
+            <Search
+              size={14}
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-muted pointer-events-none"
+            />
             <input
               className="input !pl-8"
               placeholder="Search by name…"
@@ -849,7 +1067,11 @@ function SuppliersPanel({
         )}
         {status === "active" && canEdit && (
           <button
-            onClick={() => { setEditing(null); setShowForm((s) => !s); setError(null); }}
+            onClick={() => {
+              setEditing(null);
+              setShowForm((s) => !s);
+              setError(null);
+            }}
             className="btn-primary"
             data-testid="add-supplier"
           >
@@ -860,7 +1082,7 @@ function SuppliersPanel({
 
       {error && (
         <div className="card !py-3 bg-rose-50 dark:bg-rose-950/30 ring-1 ring-rose-200 dark:ring-rose-800/60 flex items-center gap-2 text-sm">
-          <AlertCircle size={14} className="text-rose-600" />
+          <AlertCircle size={14} className="text-rose-600 dark:text-rose-400" />
           <span className="text-rose-900 dark:text-rose-100">{error}</span>
         </div>
       )}
@@ -868,18 +1090,34 @@ function SuppliersPanel({
       {(showForm || editing) && (
         <SupplierForm
           initial={editing}
-          onClose={() => { setShowForm(false); setEditing(null); }}
-          onSaved={() => { invalidate(); setShowForm(false); setEditing(null); setError(null); }}
+          onClose={() => {
+            setShowForm(false);
+            setEditing(null);
+          }}
+          onSaved={() => {
+            invalidate();
+            setShowForm(false);
+            setEditing(null);
+            setError(null);
+          }}
           setError={setError}
         />
       )}
 
       <div className="card overflow-hidden p-0">
-        <table className="w-full text-sm" data-testid={status === "active" ? "suppliers-table" : "deactivated-suppliers-table"}>
+        <table
+          className="w-full text-sm"
+          data-testid={status === "active" ? "suppliers-table" : "deactivated-suppliers-table"}
+        >
           <thead className="bg-slate-50 dark:bg-slate-800/60 border-b border-slate-200 dark:border-slate-700">
             <tr>
               {headers.map((h, i) => (
-                <th key={i} className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wide text-slate-500">{h}</th>
+                <th
+                  key={i}
+                  className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400"
+                >
+                  {h}
+                </th>
               ))}
             </tr>
           </thead>
@@ -890,8 +1128,8 @@ function SuppliersPanel({
                   {status === "active"
                     ? `No active suppliers yet${canEdit ? " — add one above." : "."}`
                     : search
-                    ? "No deactivated suppliers match your search."
-                    : "No deactivated suppliers."}
+                      ? "No deactivated suppliers match your search."
+                      : "No deactivated suppliers."}
                 </td>
               </tr>
             ) : (
@@ -900,7 +1138,11 @@ function SuppliersPanel({
                   key={s.id}
                   supplier={s}
                   status={status}
-                  onEdit={() => { setShowForm(false); setEditing(s); setError(null); }}
+                  onEdit={() => {
+                    setShowForm(false);
+                    setEditing(s);
+                    setError(null);
+                  }}
                   onToggle={(is_active) => toggleActive.mutate({ id: s.id, is_active })}
                   canEdit={canEdit}
                 />
@@ -914,7 +1156,11 @@ function SuppliersPanel({
 }
 
 function SupplierRow({
-  supplier, status, onEdit, onToggle, canEdit,
+  supplier,
+  status,
+  onEdit,
+  onToggle,
+  canEdit,
 }: {
   supplier: Supplier;
   status: StatusTab;
@@ -935,12 +1181,18 @@ function SupplierRow({
         </div>
       </td>
       <td className="px-4 py-3 font-semibold text-primary">{supplier.name}</td>
-      <td className="px-4 py-3"><SupplierTypeBadge type={supplier.supplier_type} /></td>
+      <td className="px-4 py-3">
+        <SupplierTypeBadge type={supplier.supplier_type} />
+      </td>
       <td className="px-4 py-3 text-secondary">{supplier.municipality || "—"}</td>
       <td className="px-4 py-3 text-secondary">{supplier.province || "—"}</td>
       <td className="px-4 py-3 text-secondary">{supplier.phone || "—"}</td>
       <td className="px-4 py-3 text-secondary font-mono text-xs">{supplier.farmer_id || "—"}</td>
-      {!deactivated && <td className="px-4 py-3"><span className="badge-green">Active</span></td>}
+      {!deactivated && (
+        <td className="px-4 py-3">
+          <span className="badge-green">Active</span>
+        </td>
+      )}
       <td className="px-4 py-3 text-right">
         <div className="flex items-center justify-end gap-1.5">
           {canEdit && !deactivated && (
@@ -979,7 +1231,10 @@ function SupplierRow({
 }
 
 function SupplierForm({
-  initial, onClose, onSaved, setError,
+  initial,
+  onClose,
+  onSaved,
+  setError,
 }: {
   initial: Supplier | null;
   onClose: () => void;
@@ -1018,7 +1273,9 @@ function SupplierForm({
   return (
     <div className="card space-y-4" data-testid="supplier-form">
       <div className="flex items-center justify-between">
-        <h3 className="text-lg font-bold text-primary">{initial ? "Edit supplier" : "New supplier"}</h3>
+        <h3 className="text-lg font-bold text-primary">
+          {initial ? "Edit supplier" : "New supplier"}
+        </h3>
         <button type="button" onClick={onClose} className="btn-ghost !p-1.5" aria-label="Close">
           <XIcon size={16} />
         </button>
@@ -1027,12 +1284,25 @@ function SupplierForm({
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
           <label className={LABEL}>Name *</label>
-          <input className="input" data-testid="supplier-name" value={name} onChange={(e) => setName(e.target.value)} />
+          <input
+            className="input"
+            data-testid="supplier-name"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+          />
         </div>
         <div>
           <label className={LABEL}>Type</label>
-          <select className="input" value={supplierType} onChange={(e) => setSupplierType(e.target.value)}>
-            {SUPPLIER_TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
+          <select
+            className="input"
+            value={supplierType}
+            onChange={(e) => setSupplierType(e.target.value)}
+          >
+            {SUPPLIER_TYPES.map((t) => (
+              <option key={t.value} value={t.value}>
+                {t.label}
+              </option>
+            ))}
           </select>
         </div>
         <div>
@@ -1045,7 +1315,11 @@ function SupplierForm({
         </div>
         <div>
           <label className={LABEL}>Municipality</label>
-          <input className="input" value={municipality} onChange={(e) => setMunicipality(e.target.value)} />
+          <input
+            className="input"
+            value={municipality}
+            onChange={(e) => setMunicipality(e.target.value)}
+          />
         </div>
         <div>
           <label className={LABEL}>Province</label>
@@ -1061,10 +1335,14 @@ function SupplierForm({
         </div>
       </div>
 
-      <p className="text-xs text-muted">A unique color will be assigned by the system — it can't be picked or changed by anyone.</p>
+      <p className="text-xs text-muted">
+        A unique color will be assigned by the system — it can't be picked or changed by anyone.
+      </p>
 
       <div className="flex gap-2 justify-end">
-        <button onClick={onClose} className="btn-secondary">Cancel</button>
+        <button onClick={onClose} className="btn-secondary">
+          Cancel
+        </button>
         <button
           onClick={() => save.mutate()}
           disabled={!name.trim() || save.isPending}

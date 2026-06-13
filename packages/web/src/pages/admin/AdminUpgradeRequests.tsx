@@ -3,7 +3,16 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { adminService } from "../../services/AdminService";
 import { format } from "date-fns";
-import { Check, X, Loader2, MessageCircle, ArrowRight, Inbox, RefreshCw, TrendingUp } from "lucide-react";
+import {
+  Check,
+  X,
+  Loader2,
+  MessageCircle,
+  ArrowRight,
+  Inbox,
+  RefreshCw,
+  TrendingUp,
+} from "lucide-react";
 import type { UpgradeRequest } from "@rice-mill/shared";
 
 type FilterStatus = "pending" | "approved" | "rejected" | "cancelled" | "all";
@@ -18,7 +27,12 @@ function statusBadge(s: string) {
   return map[s] || "badge-gray";
 }
 
-function RequestRow({ r, onApprove, onReject, busy }: {
+function RequestRow({
+  r,
+  onApprove,
+  onReject,
+  busy,
+}: {
   r: UpgradeRequest;
   onApprove: (note: string | null) => void;
   onReject: (note: string | null) => void;
@@ -29,35 +43,57 @@ function RequestRow({ r, onApprove, onReject, busy }: {
   const isPlanChange = r.request_type === "change";
 
   return (
-    <tr className="hover:bg-slate-50 align-top">
+    <tr className="hover:bg-slate-50 dark:hover:bg-slate-800/60 align-top">
       <td className="px-4 py-3">
-        <Link to={`/admin/tenants/${r.company_id}`} className="font-medium text-indigo-700 hover:text-indigo-900">
+        <Link
+          to={`/admin/tenants/${r.company_id}`}
+          className="font-medium text-indigo-700 dark:text-indigo-300 hover:text-indigo-900 dark:hover:text-indigo-200"
+        >
           {r.company_name || r.company_id.slice(0, 8)}
         </Link>
       </td>
       <td className="px-4 py-3">
         <div className="flex items-center gap-1.5">
-          {isPlanChange
-            ? <><RefreshCw size={12} className="text-violet-500 shrink-0" /><span className="text-xs font-semibold text-violet-700 bg-violet-100 px-1.5 py-0.5 rounded">Plan Change</span></>
-            : <><TrendingUp size={12} className="text-indigo-500 shrink-0" /><span className="text-xs font-semibold text-indigo-700 bg-indigo-100 px-1.5 py-0.5 rounded">Upgrade</span></>
-          }
+          {isPlanChange ? (
+            <>
+              <RefreshCw size={12} className="text-violet-500 shrink-0" />
+              <span className="text-xs font-semibold text-violet-700 dark:text-violet-300 bg-violet-100 dark:bg-violet-900/40 px-1.5 py-0.5 rounded">
+                Plan Change
+              </span>
+            </>
+          ) : (
+            <>
+              <TrendingUp size={12} className="text-indigo-500 shrink-0" />
+              <span className="text-xs font-semibold text-indigo-700 dark:text-indigo-300 bg-indigo-100 dark:bg-indigo-900/40 px-1.5 py-0.5 rounded">
+                Upgrade
+              </span>
+            </>
+          )}
         </div>
         {isPlanChange && (
           <p className="text-xs text-slate-400 mt-1">Takes effect at end of billing period</p>
         )}
       </td>
-      <td className="px-4 py-3 text-sm text-slate-600">
+      <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-300">
         <span className="badge-gray">{r.current_plan_name || "—"}</span>{" "}
         <ArrowRight size={12} className="inline mx-1 text-slate-400" />{" "}
-        <span className="font-semibold text-slate-900">{r.requested_plan_name || "—"}</span>
+        <span className="font-semibold text-slate-900 dark:text-slate-100">
+          {r.requested_plan_name || "—"}
+        </span>
       </td>
-      <td className="px-4 py-3 text-xs text-slate-500">
+      <td className="px-4 py-3 text-xs text-slate-500 dark:text-slate-400">
         {r.created_at ? format(new Date(r.created_at), "MMM d, yyyy HH:mm") : "—"}
       </td>
-      <td className="px-4 py-3 text-sm text-slate-600 max-w-[180px]">
-        {r.note ? <span className="italic">"{r.note}"</span> : <span className="text-slate-400">—</span>}
+      <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-300 max-w-[180px]">
+        {r.note ? (
+          <span className="italic">"{r.note}"</span>
+        ) : (
+          <span className="text-slate-400">—</span>
+        )}
       </td>
-      <td className="px-4 py-3"><span className={statusBadge(r.status)}>{r.status}</span></td>
+      <td className="px-4 py-3">
+        <span className={statusBadge(r.status)}>{r.status}</span>
+      </td>
       <td className="px-4 py-3">
         {r.status === "pending" ? (
           <div className="flex flex-col gap-2 min-w-[200px]">
@@ -88,14 +124,14 @@ function RequestRow({ r, onApprove, onReject, busy }: {
               </button>
               <button
                 onClick={() => setNoteOpen(!noteOpen)}
-                className="inline-flex items-center gap-1 text-xs text-slate-500 hover:text-slate-700"
+                className="inline-flex items-center gap-1 text-xs text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
               >
                 <MessageCircle size={12} /> {noteOpen ? "Hide" : "Note"}
               </button>
             </div>
           </div>
         ) : (
-          <div className="text-xs text-slate-500">
+          <div className="text-xs text-slate-500 dark:text-slate-400">
             {r.resolved_at && <div>Resolved {format(new Date(r.resolved_at), "MMM d, yyyy")}</div>}
             {r.admin_note && <div className="italic mt-0.5">"{r.admin_note}"</div>}
           </div>
@@ -138,8 +174,12 @@ export default function AdminUpgradeRequests() {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-2xl font-bold text-slate-900">Subscription Requests</h2>
-        <p className="text-sm text-slate-500">Tenant upgrade requests and plan change queues</p>
+        <h2 className="text-2xl font-bold text-slate-900 dark:text-slate-100">
+          Subscription Requests
+        </h2>
+        <p className="text-sm text-slate-500 dark:text-slate-400">
+          Tenant upgrade requests and plan change queues
+        </p>
       </div>
 
       <div className="flex items-center gap-2">
@@ -150,7 +190,7 @@ export default function AdminUpgradeRequests() {
             className={`px-3 py-1.5 rounded-full text-xs font-medium capitalize transition-colors ${
               filter === s
                 ? "bg-indigo-600 text-white"
-                : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                : "bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-200"
             }`}
           >
             {s}
@@ -158,26 +198,36 @@ export default function AdminUpgradeRequests() {
         ))}
       </div>
 
-      <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+      <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
         <table className="w-full text-sm">
-          <thead className="bg-gradient-to-r from-indigo-50/80 via-violet-50/60 to-slate-50/80 border-b border-slate-200">
+          <thead className="bg-gradient-to-r from-indigo-50/80 via-violet-50/60 to-slate-50/80 border-b border-slate-200 dark:border-slate-700">
             <tr>
               {["Tenant", "Type", "Plan", "Requested", "Note", "Status", "Action"].map((h) => (
-                <th key={h} className="px-4 py-3 text-left font-medium text-slate-600">{h}</th>
+                <th
+                  key={h}
+                  className="px-4 py-3 text-left font-medium text-slate-600 dark:text-slate-300"
+                >
+                  {h}
+                </th>
               ))}
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-100">
+          <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
             {isLoading && (
-              <tr><td colSpan={7} className="px-4 py-8 text-center text-slate-400">
-                <Loader2 size={16} className="inline animate-spin mr-2" />Loading…
-              </td></tr>
+              <tr>
+                <td colSpan={7} className="px-4 py-8 text-center text-slate-400">
+                  <Loader2 size={16} className="inline animate-spin mr-2" />
+                  Loading…
+                </td>
+              </tr>
             )}
             {!isLoading && requests.length === 0 && (
-              <tr><td colSpan={7} className="px-4 py-12 text-center text-slate-400">
-                <Inbox size={28} className="mx-auto mb-2 text-slate-300" />
-                No {filter === "all" ? "" : filter} requests.
-              </td></tr>
+              <tr>
+                <td colSpan={7} className="px-4 py-12 text-center text-slate-400">
+                  <Inbox size={28} className="mx-auto mb-2 text-slate-300" />
+                  No {filter === "all" ? "" : filter} requests.
+                </td>
+              </tr>
             )}
             {requests.map((r) => (
               <RequestRow

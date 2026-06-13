@@ -1,13 +1,33 @@
 import { useEffect, useMemo, useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import {
-  Boxes, Layers, ChevronDown, Search, Package, AlertTriangle, Warehouse, Building2,
-  Weight, Zap, Download, X as XIcon, Loader2, ArrowDownToLine, Calendar, Droplets,
+  Boxes,
+  Layers,
+  ChevronDown,
+  Search,
+  Package,
+  AlertTriangle,
+  Warehouse,
+  Building2,
+  Weight,
+  Zap,
+  Download,
+  X as XIcon,
+  Loader2,
+  ArrowDownToLine,
+  Calendar,
+  Droplets,
 } from "lucide-react";
 import { canvaService } from "../../services/CanvaService";
 import { useFeature } from "../../hooks/useFeature";
 import { CanvaUpsellCard } from "../../pages/InventoryPage";
-import { useRackView, type Rack, type RackPallet, type RackBatch, type AgingCounts } from "./useRackView";
+import {
+  useRackView,
+  type Rack,
+  type RackPallet,
+  type RackBatch,
+  type AgingCounts,
+} from "./useRackView";
 
 /* ─── New Warehouse: a structured rack/grid alternative to the spatial canva.
    Same warehouse data, grouped by zone as scannable "racks" with occupancy bars,
@@ -17,17 +37,21 @@ import { useRackView, type Rack, type RackPallet, type RackBatch, type AgingCoun
 type AgingFilter = "all" | "fresh" | "warning" | "critical" | "expired";
 type SortKey = "oldest" | "newest" | "heaviest" | "fullest";
 
-const AGING_META: Record<RackPallet["aging_status"], { dot: string; badge: string; label: string }> = {
-  fresh:    { dot: "bg-emerald-500", badge: "badge-green",  label: "Fresh" },
-  warning:  { dot: "bg-amber-500",   badge: "badge-yellow", label: "Warning" },
-  critical: { dot: "bg-rose-500",    badge: "badge-red",    label: "Critical" },
-  expired:  { dot: "bg-red-900",     badge: "badge-gray",   label: "Expired" },
+const AGING_META: Record<
+  RackPallet["aging_status"],
+  { dot: string; badge: string; label: string }
+> = {
+  fresh: { dot: "bg-emerald-500", badge: "badge-green", label: "Fresh" },
+  warning: { dot: "bg-amber-500", badge: "badge-yellow", label: "Warning" },
+  critical: { dot: "bg-rose-500", badge: "badge-red", label: "Critical" },
+  expired: { dot: "bg-red-900", badge: "badge-gray", label: "Expired" },
 };
 
 const fmtKg = (n: number) => `${Math.round(n).toLocaleString()} kg`;
 
 export default function NewWarehouseView({
-  branches, branchFilter,
+  branches,
+  branchFilter,
 }: {
   branches: any[];
   branchFilter: string;
@@ -59,7 +83,8 @@ export default function NewWarehouseView({
     if (variety !== "all" && p.variety_code !== variety) return false;
     if (query.trim()) {
       const q = query.trim().toLowerCase();
-      const hay = `${p.pallet_code} ${p.variety_code ?? ""} ${p.variety_name ?? ""} ${p.client_name ?? ""}`.toLowerCase();
+      const hay =
+        `${p.pallet_code} ${p.variety_code ?? ""} ${p.variety_name ?? ""} ${p.client_name ?? ""}`.toLowerCase();
       if (!hay.includes(q)) return false;
     }
     return true;
@@ -79,7 +104,9 @@ export default function NewWarehouseView({
     return (
       <div className="card text-center py-12" data-testid="new-warehouse-no-branch">
         <Building2 size={26} className="mx-auto text-slate-400 mb-3" />
-        <p className="text-sm text-secondary">No warehouse selected. Create a branch first in Settings.</p>
+        <p className="text-sm text-secondary">
+          No warehouse selected. Create a branch first in Settings.
+        </p>
       </div>
     );
   }
@@ -111,7 +138,9 @@ export default function NewWarehouseView({
     .map((r) => ({ ...r, pallets: sortPallets(r.pallets.filter(matchPallet)) }))
     .filter((r) => r.pallets.length > 0 || (r.pallet_count === 0 && noFilters));
   if (sort === "fullest") {
-    racksToShow = [...racksToShow].sort((a, b) => (b.occupancy_pct ?? -1) - (a.occupancy_pct ?? -1) || b.used_kg - a.used_kg);
+    racksToShow = [...racksToShow].sort(
+      (a, b) => (b.occupancy_pct ?? -1) - (a.occupancy_pct ?? -1) || b.used_kg - a.used_kg,
+    );
   }
   const unzonedToShow = sortPallets(data.unzoned.filter(matchPallet));
 
@@ -122,16 +151,37 @@ export default function NewWarehouseView({
   ];
 
   const exportCsv = () => {
-    const header = ["pallet_code", "variety", "days_old", "weight_kg", "sacks", "client", "rack", "aging"];
+    const header = [
+      "pallet_code",
+      "variety",
+      "days_old",
+      "weight_kg",
+      "sacks",
+      "client",
+      "rack",
+      "aging",
+    ];
     const esc = (v: unknown) => {
       const s = String(v ?? "");
       return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
     };
     const rows = visibleFlat.map(({ pallet: p, rackName }) =>
-      [p.pallet_code, p.variety_name ?? p.variety_code ?? "", p.days_old, Math.round(p.weight_kg),
-       p.sack_count, p.client_name ?? "", rackName, p.aging_status].map(esc).join(","),
+      [
+        p.pallet_code,
+        p.variety_name ?? p.variety_code ?? "",
+        p.days_old,
+        Math.round(p.weight_kg),
+        p.sack_count,
+        p.client_name ?? "",
+        rackName,
+        p.aging_status,
+      ]
+        .map(esc)
+        .join(","),
     );
-    const blob = new Blob([[header.join(","), ...rows].join("\n")], { type: "text/csv;charset=utf-8;" });
+    const blob = new Blob([[header.join(","), ...rows].join("\n")], {
+      type: "text/csv;charset=utf-8;",
+    });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
@@ -156,8 +206,13 @@ export default function NewWarehouseView({
               <Boxes size={20} className="text-white" />
             </div>
             <div>
-              <h3 className="text-lg font-bold text-primary leading-tight">{data.layout.branch_name}</h3>
-              <p className="text-xs text-muted">{data.layout.name} · {data.summary.total_pallets} pallets · {fmtKg(data.summary.total_weight_kg)}</p>
+              <h3 className="text-lg font-bold text-primary leading-tight">
+                {data.layout.branch_name}
+              </h3>
+              <p className="text-xs text-muted">
+                {data.layout.name} · {data.summary.total_pallets} pallets ·{" "}
+                {fmtKg(data.summary.total_weight_kg)}
+              </p>
             </div>
           </div>
 
@@ -165,12 +220,19 @@ export default function NewWarehouseView({
             <div className="min-w-[180px]">
               <div className="flex items-center justify-between text-xs mb-1">
                 <span className="text-muted font-semibold uppercase tracking-wide">Occupancy</span>
-                <span className="text-primary font-bold tabular-nums">{data.summary.occupancy_pct ?? 0}%</span>
+                <span className="text-primary font-bold tabular-nums">
+                  {data.summary.occupancy_pct ?? 0}%
+                </span>
               </div>
               <div className="h-2.5 rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden">
-                <div className="h-full bg-grad-brand rounded-full transition-all" style={{ width: `${Math.min(100, data.summary.occupancy_pct ?? 0)}%` }} />
+                <div
+                  className="h-full bg-grad-brand rounded-full transition-all"
+                  style={{ width: `${Math.min(100, data.summary.occupancy_pct ?? 0)}%` }}
+                />
               </div>
-              <p className="text-[10px] text-muted mt-1 tabular-nums">{fmtKg(data.summary.total_weight_kg)} / {fmtKg(data.summary.capacity_kg)}</p>
+              <p className="text-[10px] text-muted mt-1 tabular-nums">
+                {fmtKg(data.summary.total_weight_kg)} / {fmtKg(data.summary.capacity_kg)}
+              </p>
             </div>
           ) : null}
 
@@ -181,7 +243,10 @@ export default function NewWarehouseView({
       {/* Toolbar: search + filters + sort + actions */}
       <div className="flex flex-wrap items-center gap-2">
         <div className="relative flex-1 min-w-[200px]">
-          <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted pointer-events-none" />
+          <Search
+            size={15}
+            className="absolute left-3 top-1/2 -translate-y-1/2 text-muted pointer-events-none"
+          />
           <input
             className="input pl-9 w-full"
             style={{ paddingTop: "0.5rem", paddingBottom: "0.5rem" }}
@@ -191,18 +256,38 @@ export default function NewWarehouseView({
             data-testid="new-warehouse-search"
           />
         </div>
-        <select className="input !py-2 !w-auto" value={variety} onChange={(e) => setVariety(e.target.value)} data-testid="new-warehouse-variety">
+        <select
+          className="input !py-2 !w-auto"
+          value={variety}
+          onChange={(e) => setVariety(e.target.value)}
+          data-testid="new-warehouse-variety"
+        >
           <option value="all">All varieties</option>
-          {varieties.map((v) => <option key={v} value={v}>{v}</option>)}
+          {varieties.map((v) => (
+            <option key={v} value={v}>
+              {v}
+            </option>
+          ))}
         </select>
-        <select className="input !py-2 !w-auto" value={aging} onChange={(e) => setAging(e.target.value as AgingFilter)} data-testid="new-warehouse-aging">
+        <select
+          className="input !py-2 !w-auto"
+          value={aging}
+          onChange={(e) => setAging(e.target.value as AgingFilter)}
+          data-testid="new-warehouse-aging"
+        >
           <option value="all">All ages</option>
           <option value="fresh">Fresh</option>
           <option value="warning">Warning</option>
           <option value="critical">Critical</option>
           <option value="expired">Expired</option>
         </select>
-        <select className="input !py-2 !w-auto" value={sort} onChange={(e) => setSort(e.target.value as SortKey)} data-testid="new-warehouse-sort" title="Sort">
+        <select
+          className="input !py-2 !w-auto"
+          value={sort}
+          onChange={(e) => setSort(e.target.value as SortKey)}
+          data-testid="new-warehouse-sort"
+          title="Sort"
+        >
           <option value="oldest">Oldest first</option>
           <option value="newest">Newest first</option>
           <option value="heaviest">Heaviest first</option>
@@ -230,10 +315,21 @@ export default function NewWarehouseView({
 
       {/* FIFO result banner */}
       {highlighted.size > 0 && (
-        <div className="flex items-center gap-2 rounded-xl bg-amber-500/10 ring-1 ring-amber-500/30 px-4 py-2 text-sm" data-testid="new-warehouse-fifo-banner">
+        <div
+          className="flex items-center gap-2 rounded-xl bg-amber-500/10 ring-1 ring-amber-500/30 px-4 py-2 text-sm"
+          data-testid="new-warehouse-fifo-banner"
+        >
           <Zap size={15} className="text-amber-500" />
-          <span className="text-secondary font-medium">{highlighted.size} pallet{highlighted.size > 1 ? "s" : ""} highlighted for dispatch (oldest first).</span>
-          <button type="button" onClick={() => setHighlighted(new Set())} className="ml-auto text-muted hover:text-primary" title="Clear highlight">
+          <span className="text-secondary font-medium">
+            {highlighted.size} pallet{highlighted.size > 1 ? "s" : ""} highlighted for dispatch
+            (oldest first).
+          </span>
+          <button
+            type="button"
+            onClick={() => setHighlighted(new Set())}
+            className="ml-auto text-muted hover:text-primary"
+            title="Clear highlight"
+          >
             <XIcon size={15} />
           </button>
         </div>
@@ -245,7 +341,9 @@ export default function NewWarehouseView({
           <div className="mx-auto w-14 h-14 rounded-2xl bg-grad-brand flex items-center justify-center shadow-grad-glow mb-4">
             <Warehouse size={26} className="text-white" />
           </div>
-          <h3 className="text-lg font-bold text-primary mb-1.5">No pallets in this warehouse yet</h3>
+          <h3 className="text-lg font-bold text-primary mb-1.5">
+            No pallets in this warehouse yet
+          </h3>
           <p className="text-sm text-secondary max-w-md mx-auto leading-relaxed">
             Stock pallets appear here once milling batches are recorded on the
             <span className="font-semibold"> Milling </span> page.
@@ -254,16 +352,27 @@ export default function NewWarehouseView({
       ) : (
         <div className="space-y-3" data-testid="new-warehouse-racks">
           {racksToShow.map((rack) => (
-            <RackCard key={rack.zone_id} rack={rack} highlighted={highlighted} onSelect={(p) => setSelected({ pallet: p, rackName: rack.name })} />
+            <RackCard
+              key={rack.zone_id}
+              rack={rack}
+              highlighted={highlighted}
+              onSelect={(p) => setSelected({ pallet: p, rackName: rack.name })}
+            />
           ))}
 
           {unzonedToShow.length > 0 && (
             <RackCard
               rack={{
-                zone_id: "__unzoned__", name: "Unassigned", zone_type: "unassigned", color_hex: "#94a3b8",
-                capacity_kg: null, used_kg: unzonedToShow.reduce((s, p) => s + p.weight_kg, 0),
-                occupancy_pct: null, pallet_count: unzonedToShow.length,
-                by_aging: countAging(unzonedToShow), pallets: unzonedToShow,
+                zone_id: "__unzoned__",
+                name: "Unassigned",
+                zone_type: "unassigned",
+                color_hex: "#94a3b8",
+                capacity_kg: null,
+                used_kg: unzonedToShow.reduce((s, p) => s + p.weight_kg, 0),
+                occupancy_pct: null,
+                pallet_count: unzonedToShow.length,
+                by_aging: countAging(unzonedToShow),
+                pallets: unzonedToShow,
               }}
               highlighted={highlighted}
               onSelect={(p) => setSelected({ pallet: p, rackName: "Unassigned" })}
@@ -271,7 +380,10 @@ export default function NewWarehouseView({
           )}
 
           {visibleFlat.length === 0 && (
-            <div className="card text-center py-10 text-sm text-secondary" data-testid="new-warehouse-no-results">
+            <div
+              className="card text-center py-10 text-sm text-secondary"
+              data-testid="new-warehouse-no-results"
+            >
               No pallets match your filters.
             </div>
           )}
@@ -279,10 +391,18 @@ export default function NewWarehouseView({
       )}
 
       {selected && (
-        <PalletDetailPanel pallet={selected.pallet} rackName={selected.rackName} onClose={() => setSelected(null)} />
+        <PalletDetailPanel
+          pallet={selected.pallet}
+          rackName={selected.rackName}
+          onClose={() => setSelected(null)}
+        />
       )}
       {showFifo && activeBranchId && (
-        <FifoPanel branchId={activeBranchId} onClose={() => setShowFifo(false)} onApply={applyFifo} />
+        <FifoPanel
+          branchId={activeBranchId}
+          onClose={() => setShowFifo(false)}
+          onApply={applyFifo}
+        />
       )}
     </div>
   );
@@ -307,14 +427,27 @@ function AgingChips({ counts }: { counts: AgingCounts }) {
   );
 }
 
-function RackCard({ rack, highlighted, onSelect }: { rack: Rack; highlighted: Set<string>; onSelect: (p: RackPallet) => void }) {
+function RackCard({
+  rack,
+  highlighted,
+  onSelect,
+}: {
+  rack: Rack;
+  highlighted: Set<string>;
+  onSelect: (p: RackPallet) => void;
+}) {
   const hasHighlight = rack.pallets.some((p) => highlighted.has(p.id));
   const [open, setOpen] = useState(true);
   // Auto-expand a rack when one of its pallets gets highlighted by FIFO.
-  useEffect(() => { if (hasHighlight) setOpen(true); }, [hasHighlight]);
+  useEffect(() => {
+    if (hasHighlight) setOpen(true);
+  }, [hasHighlight]);
 
   return (
-    <div className={`card !p-0 overflow-hidden ${hasHighlight ? "ring-2 ring-amber-400/60" : ""}`} data-testid={`rack-${rack.zone_id}`}>
+    <div
+      className={`card !p-0 overflow-hidden ${hasHighlight ? "ring-2 ring-amber-400/60" : ""}`}
+      data-testid={`rack-${rack.zone_id}`}
+    >
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
@@ -324,23 +457,34 @@ function RackCard({ rack, highlighted, onSelect }: { rack: Rack; highlighted: Se
         <div className="flex items-center gap-2 min-w-0">
           <Layers size={15} className="text-muted shrink-0" />
           <span className="font-semibold text-primary truncate">{rack.name}</span>
-          <span className="badge-gray capitalize hidden sm:inline-flex">{rack.zone_type.replace(/_/g, " ")}</span>
+          <span className="badge-gray capitalize hidden sm:inline-flex">
+            {rack.zone_type.replace(/_/g, " ")}
+          </span>
         </div>
 
         <div className="ml-auto flex items-center gap-4">
           {rack.capacity_kg ? (
             <div className="hidden md:flex items-center gap-2 w-40">
               <div className="flex-1 h-2 rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden">
-                <div className="h-full bg-grad-brand rounded-full" style={{ width: `${Math.min(100, rack.occupancy_pct ?? 0)}%` }} />
+                <div
+                  className="h-full bg-grad-brand rounded-full"
+                  style={{ width: `${Math.min(100, rack.occupancy_pct ?? 0)}%` }}
+                />
               </div>
-              <span className="text-xs text-muted tabular-nums w-9 text-right">{rack.occupancy_pct ?? 0}%</span>
+              <span className="text-xs text-muted tabular-nums w-9 text-right">
+                {rack.occupancy_pct ?? 0}%
+              </span>
             </div>
           ) : null}
           <span className="flex items-center gap-1.5 text-sm text-secondary tabular-nums">
-            <Package size={14} className="text-muted" />{rack.pallets.length}
+            <Package size={14} className="text-muted" />
+            {rack.pallets.length}
           </span>
           <AgingChips counts={rack.by_aging} />
-          <ChevronDown size={16} className={`text-muted transition-transform ${open ? "rotate-180" : ""}`} />
+          <ChevronDown
+            size={16}
+            className={`text-muted transition-transform ${open ? "rotate-180" : ""}`}
+          />
         </div>
       </button>
 
@@ -359,7 +503,15 @@ function RackCard({ rack, highlighted, onSelect }: { rack: Rack; highlighted: Se
   );
 }
 
-function PalletRow({ p, highlighted, onSelect }: { p: RackPallet; highlighted: boolean; onSelect: (p: RackPallet) => void }) {
+function PalletRow({
+  p,
+  highlighted,
+  onSelect,
+}: {
+  p: RackPallet;
+  highlighted: boolean;
+  onSelect: (p: RackPallet) => void;
+}) {
   const meta = AGING_META[p.aging_status];
   return (
     <button
@@ -369,14 +521,18 @@ function PalletRow({ p, highlighted, onSelect }: { p: RackPallet; highlighted: b
       data-testid={`pallet-${p.id}`}
     >
       <span className={`w-2 h-2 rounded-full shrink-0 ${meta.dot}`} />
-      <span className="font-mono text-sm font-semibold text-primary w-32 shrink-0 truncate">{p.pallet_code}</span>
+      <span className="font-mono text-sm font-semibold text-primary w-32 shrink-0 truncate">
+        {p.pallet_code}
+      </span>
       <div className="flex-1 min-w-0">
         <p className="text-sm text-secondary truncate">
           {p.variety_name ?? p.variety_code ?? "—"}
           {p.client_name ? <span className="text-muted"> · {p.client_name}</span> : null}
         </p>
       </div>
-      <span className="text-xs text-muted tabular-nums w-12 text-right shrink-0">{p.days_old}d</span>
+      <span className="text-xs text-muted tabular-nums w-12 text-right shrink-0">
+        {p.days_old}d
+      </span>
       <span className="hidden sm:flex items-center gap-1 text-xs text-muted tabular-nums w-24 justify-end shrink-0">
         <Weight size={12} /> {fmtKg(p.weight_kg)}
       </span>
@@ -386,9 +542,19 @@ function PalletRow({ p, highlighted, onSelect }: { p: RackPallet; highlighted: b
 }
 
 /* ── Pallet detail slide-in panel ───────────────────────────────────────── */
-function PalletDetailPanel({ pallet, rackName, onClose }: { pallet: RackPallet; rackName: string; onClose: () => void }) {
+function PalletDetailPanel({
+  pallet,
+  rackName,
+  onClose,
+}: {
+  pallet: RackPallet;
+  rackName: string;
+  onClose: () => void;
+}) {
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
@@ -397,7 +563,10 @@ function PalletDetailPanel({ pallet, rackName, onClose }: { pallet: RackPallet; 
   const batches = pallet.batches ?? [];
   return (
     <div className="fixed inset-0 z-50 flex" data-testid="pallet-detail-panel">
-      <div className="flex-1 bg-slate-900/40 backdrop-blur-sm animate-grad-fade-up" onClick={onClose} />
+      <div
+        className="flex-1 bg-slate-900/40 backdrop-blur-sm animate-grad-fade-up"
+        onClick={onClose}
+      />
       <div className="relative ml-auto h-full w-full max-w-md glass-strong shadow-2xl flex flex-col animate-panel-in">
         <div className="flex items-start justify-between gap-3 p-5 border-b border-soft">
           <div className="min-w-0">
@@ -405,10 +574,19 @@ function PalletDetailPanel({ pallet, rackName, onClose }: { pallet: RackPallet; 
               <span className={`w-2.5 h-2.5 rounded-full ${meta.dot}`} />
               <span className={meta.badge}>{meta.label}</span>
             </div>
-            <h3 className="mt-1.5 font-mono text-lg font-bold text-primary truncate">{pallet.pallet_code}</h3>
-            <p className="text-xs text-muted">{rackName} · {pallet.days_old} days old</p>
+            <h3 className="mt-1.5 font-mono text-lg font-bold text-primary truncate">
+              {pallet.pallet_code}
+            </h3>
+            <p className="text-xs text-muted">
+              {rackName} · {pallet.days_old} days old
+            </p>
           </div>
-          <button onClick={onClose} className="shrink-0 text-muted hover:text-primary p-1" title="Close" aria-label="Close">
+          <button
+            onClick={onClose}
+            className="shrink-0 text-muted hover:text-primary p-1"
+            title="Close"
+            aria-label="Close"
+          >
             <XIcon size={18} />
           </button>
         </div>
@@ -426,8 +604,12 @@ function PalletDetailPanel({ pallet, rackName, onClose }: { pallet: RackPallet; 
               Batches ({batches.length})
             </p>
             <div className="space-y-2">
-              {batches.length === 0 && <p className="text-sm text-muted italic">No batch records.</p>}
-              {batches.map((b) => <BatchRow key={b.id} b={b} />)}
+              {batches.length === 0 && (
+                <p className="text-sm text-muted italic">No batch records.</p>
+              )}
+              {batches.map((b) => (
+                <BatchRow key={b.id} b={b} />
+              ))}
             </div>
           </div>
         </div>
@@ -451,16 +633,30 @@ function BatchRow({ b }: { b: RackBatch }) {
     <div className="rounded-xl ring-1 ring-soft p-3">
       <div className="flex items-center justify-between gap-2">
         <span className="text-sm font-semibold text-primary truncate">
-          {b.variety_name ?? b.variety_code ?? "—"}{b.grade_code ? <span className="text-muted font-normal"> · {b.grade_code}</span> : null}
+          {b.variety_name ?? b.variety_code ?? "—"}
+          {b.grade_code ? <span className="text-muted font-normal"> · {b.grade_code}</span> : null}
         </span>
         <span className={meta.badge}>{meta.label}</span>
       </div>
       <div className="mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted">
-        <span className="flex items-center gap-1"><Package size={12} /> {b.sack_count} sacks · {fmtKg(b.weight_kg)}</span>
-        <span className="flex items-center gap-1"><Calendar size={12} /> milled {b.milling_date}</span>
-        {b.moisture_pct != null && <span className="flex items-center gap-1"><Droplets size={12} /> {b.moisture_pct}%</span>}
+        <span className="flex items-center gap-1">
+          <Package size={12} /> {b.sack_count} sacks · {fmtKg(b.weight_kg)}
+        </span>
+        <span className="flex items-center gap-1">
+          <Calendar size={12} /> milled {b.milling_date}
+        </span>
+        {b.moisture_pct != null && (
+          <span className="flex items-center gap-1">
+            <Droplets size={12} /> {b.moisture_pct}%
+          </span>
+        )}
         {b.best_before_date && <span>best before {b.best_before_date}</span>}
-        {b.client_name && <span>{b.client_name}{b.client_type ? ` (${b.client_type})` : ""}</span>}
+        {b.client_name && (
+          <span>
+            {b.client_name}
+            {b.client_type ? ` (${b.client_type})` : ""}
+          </span>
+        )}
       </div>
     </div>
   );
@@ -469,16 +665,37 @@ function BatchRow({ b }: { b: RackBatch }) {
 /* ── FIFO dispatch helper ───────────────────────────────────────────────── */
 type Variety = { id: string; code: string; name: string };
 type Recommendation = {
-  requested_kg: number; total_kg: number; shortfall_kg: number; pallet_ids: string[];
-  pallets: { id: string; pallet_code: string; variety_code: string | null; milling_date: string; days_old: number; weight_kg: number; aging_status: string }[];
+  requested_kg: number;
+  total_kg: number;
+  shortfall_kg: number;
+  pallet_ids: string[];
+  pallets: {
+    id: string;
+    pallet_code: string;
+    variety_code: string | null;
+    milling_date: string;
+    days_old: number;
+    weight_kg: number;
+    aging_status: string;
+  }[];
 };
 
-function FifoPanel({ branchId, onClose, onApply }: { branchId: string; onClose: () => void; onApply: (ids: string[]) => void }) {
+function FifoPanel({
+  branchId,
+  onClose,
+  onApply,
+}: {
+  branchId: string;
+  onClose: () => void;
+  onApply: (ids: string[]) => void;
+}) {
   const [varietyId, setVarietyId] = useState("");
   const [weight, setWeight] = useState("1000");
 
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
@@ -490,33 +707,63 @@ function FifoPanel({ branchId, onClose, onApply }: { branchId: string; onClose: 
 
   const recommend = useMutation({
     mutationFn: (): Promise<Recommendation> =>
-      canvaService.recommendFifo({ variety_id: varietyId || null, weight_kg: Number(weight) || 0, branch_id: branchId }),
+      canvaService.recommendFifo({
+        variety_id: varietyId || null,
+        weight_kg: Number(weight) || 0,
+        branch_id: branchId,
+      }),
   });
   const result = recommend.data;
 
   return (
-    <div className="fixed inset-0 z-50 grid place-items-center bg-slate-900/60 backdrop-blur-sm p-4" data-testid="fifo-panel">
+    <div
+      className="fixed inset-0 z-50 grid place-items-center bg-slate-900/60 backdrop-blur-sm p-4"
+      data-testid="fifo-panel"
+    >
       <div className="glass-strong rounded-2xl shadow-2xl ring-1 ring-soft p-6 w-[520px] max-w-full animate-grad-fade-up">
         <div className="flex items-center justify-between mb-1">
           <div className="flex items-center gap-2">
             <Zap size={18} className="text-amber-500" />
             <h3 className="font-bold text-lg text-primary">Find oldest pallets (FIFO)</h3>
           </div>
-          <button onClick={onClose} className="text-muted hover:text-primary" title="Close"><XIcon size={18} /></button>
+          <button onClick={onClose} className="text-muted hover:text-primary" title="Close">
+            <XIcon size={18} />
+          </button>
         </div>
-        <p className="text-sm text-secondary mb-5">Picks pallets oldest-first by milling date until the requested weight is covered, then highlights them in the list.</p>
+        <p className="text-sm text-secondary mb-5">
+          Picks pallets oldest-first by milling date until the requested weight is covered, then
+          highlights them in the list.
+        </p>
 
         <div className="grid grid-cols-2 gap-3 mb-4">
           <div>
-            <label className="block text-xs font-bold uppercase tracking-wide text-muted mb-1">Variety</label>
-            <select className="input" value={varietyId} onChange={(e) => setVarietyId(e.target.value)}>
+            <label className="block text-xs font-bold uppercase tracking-wide text-muted mb-1">
+              Variety
+            </label>
+            <select
+              className="input"
+              value={varietyId}
+              onChange={(e) => setVarietyId(e.target.value)}
+            >
               <option value="">Any variety</option>
-              {varieties.map((v) => <option key={v.id} value={v.id}>{v.code} — {v.name}</option>)}
+              {varieties.map((v) => (
+                <option key={v.id} value={v.id}>
+                  {v.code} — {v.name}
+                </option>
+              ))}
             </select>
           </div>
           <div>
-            <label className="block text-xs font-bold uppercase tracking-wide text-muted mb-1">Weight needed (kg)</label>
-            <input type="number" min="1" className="input" value={weight} onChange={(e) => setWeight(e.target.value)} />
+            <label className="block text-xs font-bold uppercase tracking-wide text-muted mb-1">
+              Weight needed (kg)
+            </label>
+            <input
+              type="number"
+              min="1"
+              className="input"
+              value={weight}
+              onChange={(e) => setWeight(e.target.value)}
+            />
           </div>
         </div>
 
@@ -525,18 +772,27 @@ function FifoPanel({ branchId, onClose, onApply }: { branchId: string; onClose: 
           disabled={recommend.isPending || !weight}
           className="w-full flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-grad-brand text-white text-sm font-semibold shadow-grad-glow hover:opacity-90 disabled:opacity-50"
         >
-          {recommend.isPending ? <Loader2 size={14} className="animate-spin" /> : <Search size={14} />} Find oldest pallets
+          {recommend.isPending ? (
+            <Loader2 size={14} className="animate-spin" />
+          ) : (
+            <Search size={14} />
+          )}{" "}
+          Find oldest pallets
         </button>
 
         {result && (
           <div className="mt-5 space-y-3">
             <div className="rounded-xl bg-slate-50 dark:bg-slate-800/50 ring-1 ring-soft p-3 text-sm flex items-baseline gap-3 flex-wrap">
               <span className="text-muted">Requested:</span>
-              <span className="font-bold text-primary tabular-nums">{result.requested_kg.toLocaleString()} kg</span>
+              <span className="font-bold text-primary tabular-nums">
+                {result.requested_kg.toLocaleString()} kg
+              </span>
               <span className="text-muted">· Covered:</span>
-              <span className="font-bold text-emerald-600 tabular-nums">{result.total_kg.toLocaleString()} kg</span>
+              <span className="font-bold text-emerald-600 dark:text-emerald-400 tabular-nums">
+                {result.total_kg.toLocaleString()} kg
+              </span>
               {result.shortfall_kg > 0 && (
-                <span className="font-bold text-rose-600 tabular-nums flex items-center gap-1">
+                <span className="font-bold text-rose-600 dark:text-rose-400 tabular-nums flex items-center gap-1">
                   <AlertTriangle size={12} /> short {result.shortfall_kg.toLocaleString()} kg
                 </span>
               )}
@@ -551,16 +807,25 @@ function FifoPanel({ branchId, onClose, onApply }: { branchId: string; onClose: 
                     <span className="w-6 text-xs font-bold text-muted tabular-nums">{i + 1}.</span>
                     <div className="flex-1 min-w-0">
                       <p className="font-bold text-primary">{p.pallet_code}</p>
-                      <p className="text-xs text-muted">{p.variety_code || "—"} · milled {p.milling_date} ({p.days_old}d old)</p>
+                      <p className="text-xs text-muted">
+                        {p.variety_code || "—"} · milled {p.milling_date} ({p.days_old}d old)
+                      </p>
                     </div>
-                    <p className="font-semibold text-primary tabular-nums shrink-0">{p.weight_kg.toLocaleString()} kg</p>
+                    <p className="font-semibold text-primary tabular-nums shrink-0">
+                      {p.weight_kg.toLocaleString()} kg
+                    </p>
                   </div>
                 ))}
               </div>
             )}
 
             <div className="flex gap-2">
-              <button onClick={onClose} className="flex-1 px-4 py-2 rounded-xl ring-1 ring-soft text-sm font-semibold text-secondary hover:bg-slate-50 dark:hover:bg-slate-800/60">Cancel</button>
+              <button
+                onClick={onClose}
+                className="flex-1 px-4 py-2 rounded-xl ring-1 ring-soft text-sm font-semibold text-secondary hover:bg-slate-50 dark:hover:bg-slate-800/60"
+              >
+                Cancel
+              </button>
               <button
                 onClick={() => onApply(result.pallet_ids)}
                 disabled={result.pallets.length === 0}

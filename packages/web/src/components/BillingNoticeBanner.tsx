@@ -68,10 +68,14 @@ function Bar({
 }) {
   const cls =
     tone === "rose"
-      ? "bg-rose-50 border-rose-200 text-rose-900"
-      : "bg-amber-50 border-amber-200 text-amber-900";
-  const iconCls = tone === "rose" ? "text-rose-600" : "text-amber-600";
-  const linkCls = tone === "rose" ? "text-rose-800 hover:text-rose-900" : "text-amber-800 hover:text-amber-900";
+      ? "bg-rose-50 dark:bg-rose-900/30 border-rose-200 dark:border-rose-800 text-rose-900 dark:text-rose-200"
+      : "bg-amber-50 dark:bg-amber-900/30 border-amber-200 dark:border-amber-800 text-amber-900 dark:text-amber-200";
+  const iconCls =
+    tone === "rose" ? "text-rose-600 dark:text-rose-400" : "text-amber-600 dark:text-amber-400";
+  const linkCls =
+    tone === "rose"
+      ? "text-rose-800 dark:text-rose-200 hover:text-rose-900 dark:hover:text-rose-200"
+      : "text-amber-800 dark:text-amber-200 hover:text-amber-900 dark:hover:text-amber-200";
   return (
     <div className={`border-b px-4 py-2 flex items-center gap-3 text-sm ${cls}`}>
       <Icon size={16} className={`${iconCls} shrink-0`} />
@@ -92,13 +96,21 @@ function TransientBanner() {
   const dismiss = useBillingNoticeStore((s) => s.dismiss);
   if (!notice) return null;
   return (
-    <div className="bg-amber-50 border-b border-amber-200 px-4 py-2 flex items-center gap-3 text-sm text-amber-900">
-      <AlertCircle size={16} className="text-amber-600 shrink-0" />
+    <div className="bg-amber-50 dark:bg-amber-900/30 border-b border-amber-200 dark:border-amber-800 px-4 py-2 flex items-center gap-3 text-sm text-amber-900 dark:text-amber-200">
+      <AlertCircle size={16} className="text-amber-600 dark:text-amber-400 shrink-0" />
       <span className="flex-1">{notice.message}</span>
-      <Link to="/settings" onClick={dismiss} className="text-amber-800 underline hover:text-amber-900 font-medium whitespace-nowrap">
+      <Link
+        to="/settings"
+        onClick={dismiss}
+        className="text-amber-800 dark:text-amber-200 underline hover:text-amber-900 dark:hover:text-amber-200 font-medium whitespace-nowrap"
+      >
         View plans
       </Link>
-      <button onClick={dismiss} className="text-amber-700 hover:text-amber-900" aria-label="Dismiss">
+      <button
+        onClick={dismiss}
+        className="text-amber-700 dark:text-amber-300 hover:text-amber-900 dark:hover:text-amber-200"
+        aria-label="Dismiss"
+      >
         <X size={14} />
       </button>
     </div>

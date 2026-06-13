@@ -73,15 +73,15 @@ export default function UpgradeRequestToast() {
 
   return (
     <div className="fixed bottom-6 right-6 z-50 max-w-sm w-full">
-      <div className="bg-white rounded-xl shadow-lg border border-indigo-200 overflow-hidden animate-[slideIn_0.3s_ease-out]">
-        <div className="bg-indigo-50 px-4 py-2 flex items-center gap-2 border-b border-indigo-100">
-          <ArrowUpCircle size={16} className="text-indigo-600" />
-          <span className="text-xs font-semibold uppercase tracking-wide text-indigo-700 flex-1">
+      <div className="bg-white dark:bg-slate-800 rounded-xl shadow-lg border border-indigo-200 dark:border-indigo-800 overflow-hidden animate-[slideIn_0.3s_ease-out]">
+        <div className="bg-indigo-50 dark:bg-indigo-900/30 px-4 py-2 flex items-center gap-2 border-b border-indigo-100 dark:border-indigo-900">
+          <ArrowUpCircle size={16} className="text-indigo-600 dark:text-indigo-400" />
+          <span className="text-xs font-semibold uppercase tracking-wide text-indigo-700 dark:text-indigo-300 flex-1">
             New plan request
           </span>
           <button
             onClick={() => setDismissed(true)}
-            className="text-indigo-500 hover:text-indigo-700"
+            className="text-indigo-500 hover:text-indigo-700 dark:hover:text-indigo-300"
             aria-label="Dismiss"
           >
             <X size={14} />
@@ -90,12 +90,14 @@ export default function UpgradeRequestToast() {
         <Link
           to="/admin/upgrade-requests"
           onClick={() => setDismissed(true)}
-          className="block px-4 py-3 hover:bg-slate-50 transition-colors"
+          className="block px-4 py-3 hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors"
         >
-          <p className="text-sm font-semibold text-slate-900">
+          <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">
             {toast.company_name || "A tenant"} requested {toast.requested_plan_name || "a plan"}
           </p>
-          <p className="text-xs text-indigo-600 mt-1 font-medium">Review now →</p>
+          <p className="text-xs text-indigo-600 dark:text-indigo-400 mt-1 font-medium">
+            Review now →
+          </p>
         </Link>
       </div>
     </div>

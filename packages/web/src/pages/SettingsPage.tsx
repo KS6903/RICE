@@ -9,10 +9,35 @@ import { millingService } from "../services/MillingService";
 import { costsService } from "../services/CostsService";
 import { useAuthStore } from "../stores/authStore";
 import {
-  Building2, MapPin, User as UserIcon, KeyRound, Plus, Wheat, Factory, Receipt,
-  Power, History, ChevronDown, ChevronUp, CreditCard, Check, X as XIcon, Crown,
-  Zap, Rocket, Star, Loader2, Clock, AlertCircle, Settings as SettingsIcon,
-  CheckCircle2, XCircle, Pencil, ShieldCheck, MonitorSmartphone, LogOut,
+  Building2,
+  MapPin,
+  User as UserIcon,
+  KeyRound,
+  Plus,
+  Wheat,
+  Factory,
+  Receipt,
+  Power,
+  History,
+  ChevronDown,
+  ChevronUp,
+  CreditCard,
+  Check,
+  X as XIcon,
+  Crown,
+  Zap,
+  Rocket,
+  Star,
+  Loader2,
+  Clock,
+  AlertCircle,
+  Settings as SettingsIcon,
+  CheckCircle2,
+  XCircle,
+  Pencil,
+  ShieldCheck,
+  MonitorSmartphone,
+  LogOut,
 } from "lucide-react";
 import { format } from "date-fns";
 import { useCurrentPlan } from "../hooks/useFeature";
@@ -23,8 +48,16 @@ import type { ActivityRow } from "../components/activity/format";
 import { Trash2, RotateCcw } from "lucide-react";
 
 type Tab =
-  | "billing" | "company" | "branches" | "varieties"
-  | "equipment" | "categories" | "activity" | "profile" | "password" | "sessions";
+  | "billing"
+  | "company"
+  | "branches"
+  | "varieties"
+  | "equipment"
+  | "categories"
+  | "activity"
+  | "profile"
+  | "password"
+  | "sessions";
 
 const LABEL = "block text-sm font-semibold text-secondary mb-1.5";
 const TABLE_HEAD =
@@ -39,15 +72,17 @@ export default function SettingsPage() {
 
   const tabs: { key: Tab; label: string; icon: React.ElementType }[] = [
     // Company/management settings — owners & admins only.
-    ...(isManager ? [
-      { key: "billing" as Tab, label: "Billing", icon: CreditCard },
-      { key: "company" as Tab, label: "Company", icon: Building2 },
-      { key: "branches" as Tab, label: "Branches", icon: MapPin },
-      { key: "varieties" as Tab, label: "Rice Varieties", icon: Wheat },
-      { key: "equipment" as Tab, label: "Equipment", icon: Factory },
-      { key: "categories" as Tab, label: "Expense Categories", icon: Receipt },
-      { key: "activity" as Tab, label: "Activity Log", icon: History },
-    ] : []),
+    ...(isManager
+      ? [
+          { key: "billing" as Tab, label: "Billing", icon: CreditCard },
+          { key: "company" as Tab, label: "Company", icon: Building2 },
+          { key: "branches" as Tab, label: "Branches", icon: MapPin },
+          { key: "varieties" as Tab, label: "Rice Varieties", icon: Wheat },
+          { key: "equipment" as Tab, label: "Equipment", icon: Factory },
+          { key: "categories" as Tab, label: "Expense Categories", icon: Receipt },
+          { key: "activity" as Tab, label: "Activity Log", icon: History },
+        ]
+      : []),
     // Personal settings — available to every role.
     { key: "profile", label: "My Profile", icon: UserIcon },
     { key: "password", label: "Password", icon: KeyRound },
@@ -142,11 +177,16 @@ function planIcon(code: string, size = 16) {
 }
 
 function getSeenRequests(): string[] {
-  try { return JSON.parse(localStorage.getItem("rice-mill-seen-requests") || "[]"); } catch { return []; }
+  try {
+    return JSON.parse(localStorage.getItem("rice-mill-seen-requests") || "[]");
+  } catch {
+    return [];
+  }
 }
 function markRequestSeen(id: string) {
   const seen = getSeenRequests();
-  if (!seen.includes(id)) localStorage.setItem("rice-mill-seen-requests", JSON.stringify([...seen, id]));
+  if (!seen.includes(id))
+    localStorage.setItem("rice-mill-seen-requests", JSON.stringify([...seen, id]));
 }
 
 function ResolvedNotice({ request, onDone }: { request: UpgradeRequest; onDone: () => void }) {
@@ -157,7 +197,10 @@ function ResolvedNotice({ request, onDone }: { request: UpgradeRequest; onDone: 
     markRequestSeen(request.id);
     const fade = setTimeout(() => setVisible(false), 4000);
     const remove = setTimeout(() => onDone(), 4600);
-    return () => { clearTimeout(fade); clearTimeout(remove); };
+    return () => {
+      clearTimeout(fade);
+      clearTimeout(remove);
+    };
   }, [request.id, onDone]);
 
   return (
@@ -170,10 +213,14 @@ function ResolvedNotice({ request, onDone }: { request: UpgradeRequest; onDone: 
           : "bg-rose-50 border-rose-200 dark:bg-rose-950/40 dark:border-rose-800/60"
       }`}
     >
-      {approved
-        ? <CheckCircle2 size={18} className="text-emerald-600 dark:text-emerald-400 shrink-0" />
-        : <XCircle size={18} className="text-rose-600 dark:text-rose-400 shrink-0" />}
-      <p className={`text-sm font-semibold ${approved ? "text-emerald-900 dark:text-emerald-100" : "text-rose-900 dark:text-rose-100"}`}>
+      {approved ? (
+        <CheckCircle2 size={18} className="text-emerald-600 dark:text-emerald-400 shrink-0" />
+      ) : (
+        <XCircle size={18} className="text-rose-600 dark:text-rose-400 shrink-0" />
+      )}
+      <p
+        className={`text-sm font-semibold ${approved ? "text-emerald-900 dark:text-emerald-100" : "text-rose-900 dark:text-rose-100"}`}
+      >
         {approved
           ? `Your upgrade to ${request.requested_plan_name} has been approved.`
           : `Your upgrade to ${request.requested_plan_name} was not approved.`}
@@ -191,7 +238,8 @@ function BillingTab() {
   const user = useAuthStore((s) => s.user);
   const features = (user?.features as string[] | undefined) || [];
   const canRequest = user?.role === "owner" || user?.role === "admin";
-  const isOnPaidPlan = !!plan && plan.monthly_price > 0 && (plan.status === "active" || plan.status === "trial");
+  const isOnPaidPlan =
+    !!plan && plan.monthly_price > 0 && (plan.status === "active" || plan.status === "trial");
   const [dismissedIds, setDismissedIds] = useState<string[]>(() => getSeenRequests());
 
   const { data: plans = [] } = useQuery<SubscriptionPlan[]>({
@@ -211,9 +259,7 @@ function BillingTab() {
   const myRequest = requestData?.request ?? null;
   const pendingRequest = myRequest && myRequest.status === "pending" ? myRequest : null;
   const resolvedRequest =
-    myRequest && myRequest.status !== "pending" && myRequest.resolved_at
-      ? myRequest
-      : null;
+    myRequest && myRequest.status !== "pending" && myRequest.resolved_at ? myRequest : null;
   const recentResolved =
     resolvedRequest && !dismissedIds.includes(resolvedRequest.id) ? resolvedRequest : null;
 
@@ -276,10 +322,13 @@ function BillingTab() {
         className={`relative overflow-hidden rounded-2xl bg-gradient-to-br ${cardGradient} p-6 sm:p-8 text-white shadow-lg`}
       >
         <div
-          className="absolute -top-16 -right-16 w-64 h-64 bg-white opacity-10 rounded-full blur-3xl pointer-events-none"
+          className="absolute -top-16 -right-16 w-64 h-64 bg-white dark:bg-slate-800 opacity-10 rounded-full blur-3xl pointer-events-none"
           aria-hidden
         />
-        <div className="absolute -bottom-12 -left-12 w-48 h-48 bg-white opacity-5 rounded-full blur-3xl pointer-events-none" aria-hidden />
+        <div
+          className="absolute -bottom-12 -left-12 w-48 h-48 bg-white dark:bg-slate-800 opacity-5 rounded-full blur-3xl pointer-events-none"
+          aria-hidden
+        />
 
         <div className="relative flex items-start justify-between gap-4">
           <div>
@@ -320,26 +369,28 @@ function BillingTab() {
           const expired = daysLeft <= 0;
           const urgent = daysLeft <= 7 && !expired;
           return (
-            <div className={`relative mt-5 flex items-center justify-between gap-4 rounded-xl px-4 py-2.5 text-sm ring-1 ${
-              expired
-                ? "bg-rose-500/30 ring-rose-300/50 text-white"
-                : urgent
-                  ? "bg-amber-400/30 ring-amber-300/50 text-white"
-                  : "bg-white/10 ring-white/20 text-white/90"
-            }`}>
+            <div
+              className={`relative mt-5 flex items-center justify-between gap-4 rounded-xl px-4 py-2.5 text-sm ring-1 ${
+                expired
+                  ? "bg-rose-500/30 ring-rose-300/50 text-white"
+                  : urgent
+                    ? "bg-amber-400/30 ring-amber-300/50 text-white"
+                    : "bg-white/10 ring-white/20 text-white/90"
+              }`}
+            >
               <div className="flex items-center gap-2">
                 <Clock size={14} className="shrink-0" />
                 <span className="font-medium">
                   {expired ? "Subscription expired" : "Expires on "}
-                  <span className="font-bold">
-                    {!expired && format(expDate, "MMMM d, yyyy")}
-                  </span>
+                  <span className="font-bold">{!expired && format(expDate, "MMMM d, yyyy")}</span>
                 </span>
               </div>
               {!expired && (
-                <span className={`shrink-0 text-xs font-bold px-2.5 py-1 rounded-full ${
-                  urgent ? "bg-white/25 text-white" : "bg-white/15 text-white/90"
-                }`}>
+                <span
+                  className={`shrink-0 text-xs font-bold px-2.5 py-1 rounded-full ${
+                    urgent ? "bg-white/25 text-white" : "bg-white/15 text-white/90"
+                  }`}
+                >
                   {daysLeft} day{daysLeft === 1 ? "" : "s"} left
                 </span>
               )}
@@ -359,42 +410,50 @@ function BillingTab() {
         </div>
       </div>
 
-      {pendingRequest && (() => {
-        const isPlanChange = pendingRequest.request_type === "change";
-        return (
-          <div className="rounded-2xl overflow-hidden shadow-md">
-            <div className="bg-gradient-to-r from-indigo-500 to-violet-500 px-4 py-2.5 flex items-center justify-between gap-3">
-              <div className="flex items-center gap-2">
-                <Clock size={15} className="text-white" />
-                <span className="text-white text-xs font-bold uppercase tracking-wider">
-                  {isPlanChange ? "Plan Change Requested" : "Upgrade Requested"}
-                </span>
+      {pendingRequest &&
+        (() => {
+          const isPlanChange = pendingRequest.request_type === "change";
+          return (
+            <div className="rounded-2xl overflow-hidden shadow-md">
+              <div className="bg-gradient-to-r from-indigo-500 to-violet-500 px-4 py-2.5 flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2">
+                  <Clock size={15} className="text-white" />
+                  <span className="text-white text-xs font-bold uppercase tracking-wider">
+                    {isPlanChange ? "Plan Change Requested" : "Upgrade Requested"}
+                  </span>
+                </div>
+                {canRequest && (
+                  <button
+                    onClick={() => cancelRequest.mutate(pendingRequest.id)}
+                    disabled={cancelRequest.isPending}
+                    className="text-white/80 hover:text-white text-xs font-semibold transition-colors disabled:opacity-50"
+                  >
+                    {cancelRequest.isPending ? "Cancelling…" : "Cancel"}
+                  </button>
+                )}
               </div>
-              {canRequest && (
-                <button
-                  onClick={() => cancelRequest.mutate(pendingRequest.id)}
-                  disabled={cancelRequest.isPending}
-                  className="text-white/80 hover:text-white text-xs font-semibold transition-colors disabled:opacity-50"
-                >
-                  {cancelRequest.isPending ? "Cancelling…" : "Cancel"}
-                </button>
-              )}
+              <div className="bg-white dark:bg-slate-900 px-4 py-3.5">
+                <p className="font-bold text-slate-900 dark:text-slate-100">
+                  {isPlanChange ? "Change to " : "Upgrade to "}
+                  <span className="text-indigo-600 dark:text-indigo-400">
+                    {pendingRequest.requested_plan_name}
+                  </span>
+                  {pendingRequest.created_at && (
+                    <span className="font-normal text-slate-400 text-sm">
+                      {" "}
+                      · {format(new Date(pendingRequest.created_at), "MMM d, yyyy")}
+                    </span>
+                  )}
+                </p>
+                <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
+                  {isPlanChange
+                    ? "Awaiting admin approval. If approved, the new plan will take effect at the end of your current billing period."
+                    : "Awaiting platform administrator approval."}
+                </p>
+              </div>
             </div>
-            <div className="bg-white dark:bg-slate-900 px-4 py-3.5">
-              <p className="font-bold text-slate-900 dark:text-slate-100">
-                {isPlanChange ? "Change to " : "Upgrade to "}
-                <span className="text-indigo-600 dark:text-indigo-400">{pendingRequest.requested_plan_name}</span>
-                {pendingRequest.created_at && <span className="font-normal text-slate-400 text-sm"> · {format(new Date(pendingRequest.created_at), "MMM d, yyyy")}</span>}
-              </p>
-              <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
-                {isPlanChange
-                  ? "Awaiting admin approval. If approved, the new plan will take effect at the end of your current billing period."
-                  : "Awaiting platform administrator approval."}
-              </p>
-            </div>
-          </div>
-        );
-      })()}
+          );
+        })()}
 
       {!pendingRequest && recentResolved && (
         <ResolvedNotice request={recentResolved} onDone={dismissResolved} />
@@ -414,50 +473,52 @@ function BillingTab() {
             const isCurrent = p.code === plan.code;
             const isPendingTarget = pendingRequest?.requested_plan_id === p.id;
             const planBorder: Record<string, string> = {
-              free:       "border-sky-300 hover:border-sky-400",
-              basic:      "border-cyan-300 hover:border-cyan-500",
-              pro:        "border-violet-400 hover:border-violet-500",
-              enterprise: "border-amber-300 hover:border-amber-400",
+              free: "border-sky-300 dark:border-sky-700 hover:border-sky-400",
+              basic: "border-cyan-300 hover:border-cyan-500",
+              pro: "border-violet-400 hover:border-violet-500",
+              enterprise: "border-amber-300 dark:border-amber-700 hover:border-amber-400",
             };
             const currentBorder: Record<string, string> = {
-              free:       "border-sky-500 ring-2 ring-sky-400/25",
-              basic:      "border-cyan-500 ring-2 ring-cyan-400/25",
-              pro:        "border-violet-500 ring-2 ring-violet-500/25",
+              free: "border-sky-500 ring-2 ring-sky-400/25",
+              basic: "border-cyan-500 ring-2 ring-cyan-400/25",
+              pro: "border-violet-500 ring-2 ring-violet-500/25",
               enterprise: "border-amber-500 ring-2 ring-amber-400/25",
             };
             const cardBg: Record<string, string> = {
-              free:       "bg-gradient-to-br from-sky-50 to-white dark:from-sky-950/30 dark:to-slate-800/80",
-              basic:      "bg-gradient-to-br from-cyan-50 to-white dark:from-cyan-950/30 dark:to-slate-800/80",
-              pro:        "bg-gradient-to-br from-violet-50 to-white dark:from-violet-950/30 dark:to-slate-800/80",
-              enterprise: "bg-gradient-to-br from-amber-50 to-white dark:from-amber-950/30 dark:to-slate-800/80",
+              free: "bg-gradient-to-br from-sky-50 to-white dark:from-sky-950/30 dark:to-slate-800/80",
+              basic:
+                "bg-gradient-to-br from-cyan-50 to-white dark:from-cyan-950/30 dark:to-slate-800/80",
+              pro: "bg-gradient-to-br from-violet-50 to-white dark:from-violet-950/30 dark:to-slate-800/80",
+              enterprise:
+                "bg-gradient-to-br from-amber-50 to-white dark:from-amber-950/30 dark:to-slate-800/80",
             };
             const ring = isCurrent
               ? (currentBorder[p.code] ?? "border-emerald-500 ring-2 ring-emerald-400/25")
-              : (planBorder[p.code] ?? "border-slate-300 hover:border-slate-400");
+              : (planBorder[p.code] ??
+                "border-slate-300 dark:border-slate-600 hover:border-slate-400");
             const bg = cardBg[p.code] ?? "bg-white dark:bg-slate-800/70";
             const accentText: Record<string, string> = {
-              free:       "text-sky-600 dark:text-sky-400",
-              basic:      "text-cyan-600 dark:text-cyan-400",
-              pro:        "text-violet-600 dark:text-violet-400",
+              free: "text-sky-600 dark:text-sky-400",
+              basic: "text-cyan-600 dark:text-cyan-400",
+              pro: "text-violet-600 dark:text-violet-400",
               enterprise: "text-amber-600 dark:text-amber-400",
             };
             const checkNeon: Record<string, string> = {
-              free:       "text-sky-400 drop-shadow-[0_0_6px_rgba(56,189,248,0.9)]",
-              basic:      "text-cyan-400 drop-shadow-[0_0_6px_rgba(34,211,238,0.9)]",
-              pro:        "text-violet-400 drop-shadow-[0_0_6px_rgba(167,139,250,0.9)]",
+              free: "text-sky-400 drop-shadow-[0_0_6px_rgba(56,189,248,0.9)]",
+              basic: "text-cyan-400 drop-shadow-[0_0_6px_rgba(34,211,238,0.9)]",
+              pro: "text-violet-400 drop-shadow-[0_0_6px_rgba(167,139,250,0.9)]",
               enterprise: "text-amber-400 drop-shadow-[0_0_6px_rgba(251,191,36,0.9)]",
             };
             const accent = accentText[p.code] ?? "text-emerald-600 dark:text-emerald-400";
-            const checkColor = checkNeon[p.code] ?? "text-emerald-400 drop-shadow-[0_0_6px_rgba(52,211,153,0.9)]";
+            const checkColor =
+              checkNeon[p.code] ?? "text-emerald-400 drop-shadow-[0_0_6px_rgba(52,211,153,0.9)]";
             return (
               <div
                 key={p.id}
                 className={`rounded-2xl border-2 p-5 flex flex-col transition-all ${ring} ${bg}`}
               >
                 <div className="flex items-center gap-2 mb-1">
-                  <span className={accent}>
-                    {planIcon(p.code, 18)}
-                  </span>
+                  <span className={accent}>{planIcon(p.code, 18)}</span>
                   <span className="font-bold text-slate-900 dark:text-slate-100">{p.name}</span>
                   {isCurrent && <span className="ml-auto badge-green">Current</span>}
                 </div>
@@ -466,10 +527,14 @@ function BillingTab() {
                     {p.monthly_price === 0 ? "Free" : `₱${p.monthly_price.toLocaleString()}`}
                   </span>
                   {p.monthly_price > 0 && (
-                    <span className="text-sm font-semibold text-slate-600 dark:text-slate-400">/mo</span>
+                    <span className="text-sm font-semibold text-slate-600 dark:text-slate-400">
+                      /mo
+                    </span>
                   )}
                 </div>
-                <p className="text-sm text-slate-800 dark:text-slate-200 mt-1 mb-2">{p.description}</p>
+                <p className="text-sm text-slate-800 dark:text-slate-200 mt-1 mb-2">
+                  {p.description}
+                </p>
                 <div className="text-xs text-slate-700 dark:text-slate-300 font-semibold mb-3">
                   {p.max_users ? `${p.max_users} users` : "Unlimited users"} ·{" "}
                   {p.max_branches ? `${p.max_branches} branches` : "Unlimited branches"}
@@ -484,10 +549,7 @@ function BillingTab() {
                 </ul>
                 <div className="mt-4">
                   {isCurrent ? (
-                    <button
-                      disabled
-                      className="btn-secondary w-full opacity-70 cursor-default"
-                    >
+                    <button disabled className="btn-secondary w-full opacity-70 cursor-default">
                       Your current plan
                     </button>
                   ) : p.code === "free" ? (
@@ -517,7 +579,9 @@ function BillingTab() {
                         }
                       >
                         {requestUpgrade.isPending ? (
-                          <><Loader2 size={14} className="animate-spin" /> Requesting…</>
+                          <>
+                            <Loader2 size={14} className="animate-spin" /> Requesting…
+                          </>
                         ) : isOnPaidPlan ? (
                           "Change Plan"
                         ) : (
@@ -544,29 +608,18 @@ function BillingTab() {
       </div>
 
       <div className="card">
-        <h3 className="text-lg font-bold text-primary mb-4">
-          What's included in {plan.name}
-        </h3>
+        <h3 className="text-lg font-bold text-primary mb-4">What's included in {plan.name}</h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
           {ALL_FEATURE_KEYS.map((key) => {
             const included = features.includes(key);
             return (
               <div key={key} className="flex items-center gap-2 text-sm">
                 {included ? (
-                  <Check
-                    size={15}
-                    className="text-emerald-600 dark:text-emerald-400 shrink-0"
-                  />
+                  <Check size={15} className="text-emerald-600 dark:text-emerald-400 shrink-0" />
                 ) : (
                   <XIcon size={15} className="text-muted shrink-0" />
                 )}
-                <span
-                  className={
-                    included
-                      ? "text-primary font-medium"
-                      : "text-muted line-through"
-                  }
-                >
+                <span className={included ? "text-primary font-medium" : "text-muted line-through"}>
                   {FEATURE_LABELS[key]}
                 </span>
               </div>
@@ -593,10 +646,18 @@ function VarietyRow({ v, user, onToggle }: { v: any; user: any; onToggle: () => 
         {v.typical_recovery_pct ? `${v.typical_recovery_pct}%` : "—"}
       </td>
       <td className="px-4 py-3">
-        {isOwn ? <span className="badge-green">Custom</span> : <span className="badge-gray">System</span>}
+        {isOwn ? (
+          <span className="badge-green">Custom</span>
+        ) : (
+          <span className="badge-gray">System</span>
+        )}
       </td>
       <td className="px-4 py-3">
-        {v.is_active ? <span className="badge-green">Active</span> : <span className="badge-red">Inactive</span>}
+        {v.is_active ? (
+          <span className="badge-green">Active</span>
+        ) : (
+          <span className="badge-red">Inactive</span>
+        )}
       </td>
       <td className="px-4 py-3">
         {isOwn && (
@@ -640,9 +701,7 @@ function VarietiesTab() {
     mutationFn: (b: typeof form) =>
       paddyService.createVariety({
         ...b,
-        typical_recovery_pct: b.typical_recovery_pct
-          ? parseFloat(b.typical_recovery_pct)
-          : null,
+        typical_recovery_pct: b.typical_recovery_pct ? parseFloat(b.typical_recovery_pct) : null,
       }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["varieties-all"] });
@@ -664,8 +723,8 @@ function VarietiesTab() {
   return (
     <div className="space-y-4">
       <p className="text-sm text-secondary">
-        Add custom rice varieties for your company. System varieties (NSIC Rc222 etc.) are
-        shared across all clients but can't be modified.
+        Add custom rice varieties for your company. System varieties (NSIC Rc222 etc.) are shared
+        across all clients but can't be modified.
       </p>
       <div className="flex justify-end">
         <button onClick={() => setShowForm(!showForm)} className="btn-primary">
@@ -683,9 +742,7 @@ function VarietiesTab() {
                 className="input"
                 placeholder="e.g. RC400"
                 value={form.code}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, code: e.target.value.toUpperCase() }))
-                }
+                onChange={(e) => setForm((f) => ({ ...f, code: e.target.value.toUpperCase() }))}
               />
             </div>
             <div>
@@ -716,9 +773,7 @@ function VarietiesTab() {
                 type="number"
                 placeholder="65"
                 value={form.typical_recovery_pct}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, typical_recovery_pct: e.target.value }))
-                }
+                onChange={(e) => setForm((f) => ({ ...f, typical_recovery_pct: e.target.value }))}
               />
             </div>
           </div>
@@ -746,13 +801,11 @@ function VarietiesTab() {
         <table className="w-full text-sm">
           <thead className="bg-gradient-to-r from-emerald-50/80 via-cyan-50/60 to-violet-50/80 dark:from-emerald-900/20 dark:via-cyan-900/10 dark:to-violet-900/20 border-b border-soft">
             <tr>
-              {["Code", "Name", "Category", "Recovery %", "Source", "Status", ""].map(
-                (h) => (
-                  <th key={h} className={TABLE_HEAD}>
-                    {h}
-                  </th>
-                )
-              )}
+              {["Code", "Name", "Category", "Recovery %", "Source", "Status", ""].map((h) => (
+                <th key={h} className={TABLE_HEAD}>
+                  {h}
+                </th>
+              ))}
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-200/60 dark:divide-slate-700/50">
@@ -820,7 +873,11 @@ function EquipmentRow({ e, onToggle }: { e: any; onToggle: () => void }) {
         {e.capacity_kg_per_hr ? `${e.capacity_kg_per_hr} kg/hr` : "—"}
       </td>
       <td className="px-4 py-3">
-        {e.is_active ? <span className="badge-green">Active</span> : <span className="badge-red">Inactive</span>}
+        {e.is_active ? (
+          <span className="badge-green">Active</span>
+        ) : (
+          <span className="badge-red">Inactive</span>
+        )}
       </td>
       <td className="px-4 py-3">
         <button
@@ -856,9 +913,7 @@ function EquipmentTab() {
     mutationFn: (b: typeof form) =>
       millingService.createEquipment({
         ...b,
-        capacity_kg_per_hr: b.capacity_kg_per_hr
-          ? parseFloat(b.capacity_kg_per_hr)
-          : null,
+        capacity_kg_per_hr: b.capacity_kg_per_hr ? parseFloat(b.capacity_kg_per_hr) : null,
       }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["equipment-all"] });
@@ -879,9 +934,7 @@ function EquipmentTab() {
 
   return (
     <div className="space-y-4">
-      <p className="text-sm text-secondary">
-        Add and manage milling equipment for your company.
-      </p>
+      <p className="text-sm text-secondary">Add and manage milling equipment for your company.</p>
       <div className="flex justify-end">
         <button onClick={() => setShowForm(!showForm)} className="btn-primary">
           <Plus size={16} /> Add equipment
@@ -917,9 +970,7 @@ function EquipmentTab() {
                 type="number"
                 placeholder="500"
                 value={form.capacity_kg_per_hr}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, capacity_kg_per_hr: e.target.value }))
-                }
+                onChange={(e) => setForm((f) => ({ ...f, capacity_kg_per_hr: e.target.value }))}
               />
             </div>
           </div>
@@ -1027,8 +1078,8 @@ function CategoriesTab() {
   return (
     <div className="space-y-4">
       <p className="text-sm text-secondary">
-        Categorize your expenses (Fuel, Electricity, Labor, etc.). System defaults are
-        shared across all clients.
+        Categorize your expenses (Fuel, Electricity, Labor, etc.). System defaults are shared across
+        all clients.
       </p>
       <div className="flex justify-end">
         <button onClick={() => setShowForm(!showForm)} className="btn-primary">
@@ -1053,9 +1104,7 @@ function CategoriesTab() {
               type="checkbox"
               className="h-4 w-4 rounded border-soft accent-emerald-500 cursor-pointer"
               checked={form.is_production_cost}
-              onChange={(e) =>
-                setForm((f) => ({ ...f, is_production_cost: e.target.checked }))
-              }
+              onChange={(e) => setForm((f) => ({ ...f, is_production_cost: e.target.checked }))}
             />
             <span>Production cost (vs. overhead)</span>
           </label>
@@ -1177,9 +1226,7 @@ function CompanyTab() {
               type={type || "text"}
               className="input"
               value={form[key] || ""}
-              onChange={(e) =>
-                setForm((f: any) => ({ ...f, [key]: e.target.value }))
-              }
+              onChange={(e) => setForm((f: any) => ({ ...f, [key]: e.target.value }))}
             />
           </div>
         ))}
@@ -1189,9 +1236,7 @@ function CompanyTab() {
               type="checkbox"
               className="h-4 w-4 rounded border-soft accent-emerald-500 cursor-pointer"
               checked={!!form.is_multi_branch}
-              onChange={(e) =>
-                setForm((f: any) => ({ ...f, is_multi_branch: e.target.checked }))
-              }
+              onChange={(e) => setForm((f: any) => ({ ...f, is_multi_branch: e.target.checked }))}
             />
             <span>Enable multi-branch mode</span>
           </label>
@@ -1271,19 +1316,27 @@ function BranchesTab() {
   function toggle(id: string) {
     setSelected((prev) => {
       const next = new Set(prev);
-      if (next.has(id)) { next.delete(id); } else { next.add(id); }
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
       return next;
     });
   }
   function toggleAll() {
     setSelected((prev) =>
-      prev.size === selectable.length ? new Set() : new Set(selectable.map((b: any) => b.id))
+      prev.size === selectable.length ? new Set() : new Set(selectable.map((b: any) => b.id)),
     );
   }
   function confirmBulkDelete() {
     const ids = [...selected];
     if (!ids.length) return;
-    if (confirm(`Move ${ids.length} warehouse${ids.length === 1 ? "" : "s"} to trash? You can restore within 30 days.`)) {
+    if (
+      confirm(
+        `Move ${ids.length} warehouse${ids.length === 1 ? "" : "s"} to trash? You can restore within 30 days.`,
+      )
+    ) {
       bulkDelete.mutate(ids);
     }
   }
@@ -1315,9 +1368,17 @@ function BranchesTab() {
             {selected.size} selected
           </span>
           <div className="flex items-center gap-2">
-            <button onClick={() => setSelected(new Set())} className="btn-secondary !py-1.5 !px-3 text-sm">Clear</button>
-            <button onClick={confirmBulkDelete} disabled={bulkDelete.isPending}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-rose-600 text-white text-sm font-semibold hover:bg-rose-700 disabled:opacity-50">
+            <button
+              onClick={() => setSelected(new Set())}
+              className="btn-secondary !py-1.5 !px-3 text-sm"
+            >
+              Clear
+            </button>
+            <button
+              onClick={confirmBulkDelete}
+              disabled={bulkDelete.isPending}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-rose-600 text-white text-sm font-semibold hover:bg-rose-700 disabled:opacity-50"
+            >
               <Trash2 size={15} /> {bulkDelete.isPending ? "Deleting…" : "Delete selected"}
             </button>
           </div>
@@ -1352,9 +1413,7 @@ function BranchesTab() {
               type="checkbox"
               className="h-4 w-4 rounded border-soft accent-emerald-500 cursor-pointer"
               checked={form.is_main_branch}
-              onChange={(e) =>
-                setForm((f) => ({ ...f, is_main_branch: e.target.checked }))
-              }
+              onChange={(e) => setForm((f) => ({ ...f, is_main_branch: e.target.checked }))}
             />
             <span>Mark as main branch</span>
           </label>
@@ -1389,7 +1448,10 @@ function BranchesTab() {
                   className="h-4 w-4 rounded border-soft accent-rose-500 cursor-pointer disabled:opacity-40"
                   disabled={selectable.length === 0}
                   checked={selectable.length > 0 && selected.size === selectable.length}
-                  ref={(el) => { if (el) el.indeterminate = selected.size > 0 && selected.size < selectable.length; }}
+                  ref={(el) => {
+                    if (el)
+                      el.indeterminate = selected.size > 0 && selected.size < selectable.length;
+                  }}
                   onChange={toggleAll}
                 />
               </th>
@@ -1404,10 +1466,7 @@ function BranchesTab() {
             {branches.map((b: any) => {
               const isEditing = editingId === b.id;
               return (
-                <tr
-                  key={b.id}
-                  className="group hover:bg-slate-50/50 dark:hover:bg-slate-700/15"
-                >
+                <tr key={b.id} className="group hover:bg-slate-50/50 dark:hover:bg-slate-700/15">
                   <td className="px-4 py-3">
                     <input
                       type="checkbox"
@@ -1429,11 +1488,16 @@ function BranchesTab() {
                         onKeyDown={(e) => {
                           if (e.key === "Escape") setEditingId(null);
                           if (e.key === "Enter" && editValues.name.trim()) {
-                            update.mutate({ id: b.id, body: { name: editValues.name.trim(), address: editValues.address } });
+                            update.mutate({
+                              id: b.id,
+                              body: { name: editValues.name.trim(), address: editValues.address },
+                            });
                           }
                         }}
                       />
-                    ) : b.name}
+                    ) : (
+                      b.name
+                    )}
                   </td>
                   <td className="px-4 py-3 text-secondary">
                     {isEditing ? (
@@ -1443,7 +1507,9 @@ function BranchesTab() {
                         value={editValues.address}
                         onChange={(e) => setEditValues((v) => ({ ...v, address: e.target.value }))}
                       />
-                    ) : (b.address || "—")}
+                    ) : (
+                      b.address || "—"
+                    )}
                   </td>
                   <td className="px-4 py-3">
                     {b.is_main_branch ? (
@@ -1466,7 +1532,12 @@ function BranchesTab() {
                           type="button"
                           aria-label="Save"
                           disabled={!editValues.name.trim() || update.isPending}
-                          onClick={() => update.mutate({ id: b.id, body: { name: editValues.name.trim(), address: editValues.address } })}
+                          onClick={() =>
+                            update.mutate({
+                              id: b.id,
+                              body: { name: editValues.name.trim(), address: editValues.address },
+                            })
+                          }
                           className="p-1.5 rounded-md text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 dark:hover:bg-emerald-900/30 disabled:opacity-40"
                         >
                           <Check size={14} />
@@ -1532,7 +1603,9 @@ function BranchTrashPanel() {
         <History size={16} className="text-muted" />
         <h3 className="font-semibold text-primary">Recently deleted warehouses</h3>
       </div>
-      <p className="text-xs text-muted">Deleted warehouses are kept for 30 days, then permanently removed.</p>
+      <p className="text-xs text-muted">
+        Deleted warehouses are kept for 30 days, then permanently removed.
+      </p>
       {isLoading ? (
         <p className="text-sm text-muted py-4 text-center">Loading…</p>
       ) : trashed.length === 0 ? (
@@ -1545,7 +1618,11 @@ function BranchTrashPanel() {
                 <p className="text-sm font-semibold text-primary truncate">{b.name}</p>
                 <p className="text-xs text-muted">
                   {b.deleted_by_name ? `Deleted by ${b.deleted_by_name} · ` : ""}
-                  <span className={b.days_remaining <= 3 ? "text-rose-600 dark:text-rose-400 font-semibold" : ""}>
+                  <span
+                    className={
+                      b.days_remaining <= 3 ? "text-rose-600 dark:text-rose-400 font-semibold" : ""
+                    }
+                  >
                     {b.days_remaining}d left
                   </span>
                 </p>
@@ -1574,7 +1651,9 @@ function ActivityTab() {
     <div className="space-y-4">
       <div>
         <h3 className="text-lg font-bold text-primary">Activity log</h3>
-        <p className="text-sm text-secondary">Who deleted, restored, or purged warehouses — most recent first.</p>
+        <p className="text-sm text-secondary">
+          Who deleted, restored, or purged warehouses — most recent first.
+        </p>
       </div>
       <div className="card">
         <ActivityLogList rows={rows} loading={isLoading} />
@@ -1647,11 +1726,7 @@ function ProfileTab() {
         />
       </div>
       <div className="flex items-center gap-3 pt-2">
-        <button
-          onClick={() => save.mutate(form)}
-          className="btn-primary"
-          disabled={save.isPending}
-        >
+        <button onClick={() => save.mutate(form)} className="btn-primary" disabled={save.isPending}>
           {save.isPending ? "Saving…" : "Save profile"}
         </button>
         {saved && (
@@ -1660,9 +1735,7 @@ function ProfileTab() {
           </span>
         )}
         {error && (
-          <span className="text-sm font-medium text-rose-600 dark:text-rose-400">
-            {error}
-          </span>
+          <span className="text-sm font-medium text-rose-600 dark:text-rose-400">{error}</span>
         )}
       </div>
     </div>
@@ -1708,54 +1781,54 @@ function PasswordTab() {
 
   return (
     <div className="space-y-6">
-    <div className="card max-w-md space-y-5">
-      <div className="flex items-center gap-3">
-        <div className="h-11 w-11 rounded-xl bg-grad-brand grid place-items-center shadow-grad-glow">
-          <KeyRound size={18} className="text-white" />
+      <div className="card max-w-md space-y-5">
+        <div className="flex items-center gap-3">
+          <div className="h-11 w-11 rounded-xl bg-grad-brand grid place-items-center shadow-grad-glow">
+            <KeyRound size={18} className="text-white" />
+          </div>
+          <h3 className="text-lg font-bold text-primary">Change password</h3>
         </div>
-        <h3 className="text-lg font-bold text-primary">Change password</h3>
+
+        {[
+          { label: "Current password", key: "current_password" },
+          { label: "New password", key: "new_password" },
+          { label: "Confirm new password", key: "confirm" },
+        ].map(({ label, key }) => (
+          <div key={key}>
+            <label className={LABEL}>{label}</label>
+            <input
+              type="password"
+              className="input"
+              value={(form as any)[key]}
+              onChange={(e) => setForm((f) => ({ ...f, [key]: e.target.value }))}
+              placeholder="••••••••"
+            />
+          </div>
+        ))}
+
+        {msg && (
+          <p
+            className={`text-sm font-semibold inline-flex items-center gap-1.5 ${
+              msg.type === "ok"
+                ? "text-emerald-600 dark:text-emerald-400"
+                : "text-rose-600 dark:text-rose-400"
+            }`}
+          >
+            {msg.type === "ok" ? <Check size={14} /> : <AlertCircle size={14} />}
+            {msg.text}
+          </p>
+        )}
+
+        <button
+          onClick={submit}
+          className="btn-primary w-full"
+          disabled={change.isPending || !form.current_password || !form.new_password}
+        >
+          {change.isPending ? "Changing…" : "Change password"}
+        </button>
       </div>
 
-      {[
-        { label: "Current password", key: "current_password" },
-        { label: "New password", key: "new_password" },
-        { label: "Confirm new password", key: "confirm" },
-      ].map(({ label, key }) => (
-        <div key={key}>
-          <label className={LABEL}>{label}</label>
-          <input
-            type="password"
-            className="input"
-            value={(form as any)[key]}
-            onChange={(e) => setForm((f) => ({ ...f, [key]: e.target.value }))}
-            placeholder="••••••••"
-          />
-        </div>
-      ))}
-
-      {msg && (
-        <p
-          className={`text-sm font-semibold inline-flex items-center gap-1.5 ${
-            msg.type === "ok"
-              ? "text-emerald-600 dark:text-emerald-400"
-              : "text-rose-600 dark:text-rose-400"
-          }`}
-        >
-          {msg.type === "ok" ? <Check size={14} /> : <AlertCircle size={14} />}
-          {msg.text}
-        </p>
-      )}
-
-      <button
-        onClick={submit}
-        className="btn-primary w-full"
-        disabled={change.isPending || !form.current_password || !form.new_password}
-      >
-        {change.isPending ? "Changing…" : "Change password"}
-      </button>
-    </div>
-
-    <MfaCard />
+      <MfaCard />
     </div>
   );
 }
@@ -1851,7 +1924,9 @@ function MfaCard() {
         <div>
           <h3 className="text-lg font-bold text-primary">Two-factor authentication</h3>
           <p className="text-sm text-secondary">
-            {mfaEnabled ? "Enabled — codes required at sign-in." : "Add a 6-digit authenticator code to sign-in."}
+            {mfaEnabled
+              ? "Enabled — codes required at sign-in."
+              : "Add a 6-digit authenticator code to sign-in."}
           </p>
         </div>
       </div>
@@ -1859,7 +1934,9 @@ function MfaCard() {
       {recommended && !enroll && (
         <div className="flex items-start gap-2 px-3 py-2.5 rounded-xl bg-amber-500/15 ring-1 ring-inset ring-amber-500/40 text-sm font-medium text-amber-700 dark:text-amber-300">
           <AlertCircle size={16} className="mt-0.5 shrink-0" />
-          <span>As an owner/admin account, enabling two-factor authentication is strongly recommended.</span>
+          <span>
+            As an owner/admin account, enabling two-factor authentication is strongly recommended.
+          </span>
         </div>
       )}
 
@@ -1873,25 +1950,35 @@ function MfaCard() {
       )}
 
       {!mfaEnabled && !enroll && !backupCodes && (
-        <button onClick={start} className="btn-primary w-full">Enable two-factor authentication</button>
+        <button onClick={start} className="btn-primary w-full">
+          Enable two-factor authentication
+        </button>
       )}
 
       {enroll && (
         <div className="space-y-4">
           <p className="text-sm text-secondary">
-            Add this key to your authenticator app (Google Authenticator, Authy, 1Password…),
-            then enter the 6-digit code it shows to confirm.
+            Add this key to your authenticator app (Google Authenticator, Authy, 1Password…), then
+            enter the 6-digit code it shows to confirm.
           </p>
           <div className="px-3 py-2.5 rounded-xl bg-slate-500/10 ring-1 ring-inset ring-slate-500/30 font-mono text-sm break-all select-all">
             {enroll.secret}
           </div>
           {codeInput}
           <div className="flex gap-2">
-            <button onClick={confirmEnroll} className="btn-primary flex-1" disabled={code.length < 6}>
+            <button
+              onClick={confirmEnroll}
+              className="btn-primary flex-1"
+              disabled={code.length < 6}
+            >
               Confirm &amp; enable
             </button>
             <button
-              onClick={() => { setEnroll(null); setCode(""); setMsg(null); }}
+              onClick={() => {
+                setEnroll(null);
+                setCode("");
+                setMsg(null);
+              }}
               className="btn-secondary flex-1"
             >
               Cancel
@@ -1904,19 +1991,29 @@ function MfaCard() {
         <div className="space-y-3">
           <div className="flex items-center justify-between text-sm">
             <span className="text-secondary">
-              Recovery codes: <span className="font-semibold text-primary">{codesRemaining} left</span>
+              Recovery codes:{" "}
+              <span className="font-semibold text-primary">{codesRemaining} left</span>
               {codesRemaining <= 3 && (
                 <span className="text-amber-600 dark:text-amber-400"> · running low</span>
               )}
             </span>
             <button
-              onClick={() => { setRegenerating(true); setMsg(null); }}
+              onClick={() => {
+                setRegenerating(true);
+                setMsg(null);
+              }}
               className="font-semibold text-grad-brand hover:opacity-80"
             >
               Regenerate
             </button>
           </div>
-          <button onClick={() => { setDisabling(true); setMsg(null); }} className="btn-secondary w-full">
+          <button
+            onClick={() => {
+              setDisabling(true);
+              setMsg(null);
+            }}
+            className="btn-secondary w-full"
+          >
             Disable two-factor authentication
           </button>
         </div>
@@ -1925,15 +2022,24 @@ function MfaCard() {
       {regenerating && (
         <div className="space-y-4">
           <p className="text-sm text-secondary">
-            Enter a current authenticator code to issue new recovery codes. This invalidates your old codes.
+            Enter a current authenticator code to issue new recovery codes. This invalidates your
+            old codes.
           </p>
           {codeInput}
           <div className="flex gap-2">
-            <button onClick={confirmRegenerate} className="btn-primary flex-1" disabled={code.length < 6}>
+            <button
+              onClick={confirmRegenerate}
+              className="btn-primary flex-1"
+              disabled={code.length < 6}
+            >
               Regenerate codes
             </button>
             <button
-              onClick={() => { setRegenerating(false); setCode(""); setMsg(null); }}
+              onClick={() => {
+                setRegenerating(false);
+                setCode("");
+                setMsg(null);
+              }}
               className="btn-secondary flex-1"
             >
               Cancel
@@ -1944,14 +2050,24 @@ function MfaCard() {
 
       {disabling && (
         <div className="space-y-4">
-          <p className="text-sm text-secondary">Enter a current authenticator code to confirm disabling.</p>
+          <p className="text-sm text-secondary">
+            Enter a current authenticator code to confirm disabling.
+          </p>
           {codeInput}
           <div className="flex gap-2">
-            <button onClick={confirmDisable} className="btn-primary flex-1" disabled={code.length < 6}>
+            <button
+              onClick={confirmDisable}
+              className="btn-primary flex-1"
+              disabled={code.length < 6}
+            >
               Disable
             </button>
             <button
-              onClick={() => { setDisabling(false); setCode(""); setMsg(null); }}
+              onClick={() => {
+                setDisabling(false);
+                setCode("");
+                setMsg(null);
+              }}
               className="btn-secondary flex-1"
             >
               Cancel
@@ -2010,7 +2126,9 @@ function SessionsTab() {
         </div>
         <div>
           <h3 className="text-lg font-bold text-primary">Devices &amp; sessions</h3>
-          <p className="text-sm text-secondary">Where you&apos;re signed in. Revoke anything you don&apos;t recognize.</p>
+          <p className="text-sm text-secondary">
+            Where you&apos;re signed in. Revoke anything you don&apos;t recognize.
+          </p>
         </div>
       </div>
 
@@ -2056,7 +2174,8 @@ function SessionsTab() {
           disabled={revokeOthers.isPending}
           className="btn-secondary w-full inline-flex items-center justify-center gap-1.5"
         >
-          <LogOut size={15} /> {revokeOthers.isPending ? "Signing out…" : "Sign out all other devices"}
+          <LogOut size={15} />{" "}
+          {revokeOthers.isPending ? "Signing out…" : "Sign out all other devices"}
         </button>
       )}
     </div>

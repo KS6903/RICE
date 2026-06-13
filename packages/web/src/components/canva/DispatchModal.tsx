@@ -12,14 +12,21 @@ type Recommendation = {
   variety_id: string | null;
   pallet_ids: string[];
   pallets: {
-    id: string; pallet_code: string; variety_code: string | null;
-    milling_date: string; days_old: number; weight_kg: number;
-    sack_count: number; aging_status: string;
+    id: string;
+    pallet_code: string;
+    variety_code: string | null;
+    milling_date: string;
+    days_old: number;
+    weight_kg: number;
+    sack_count: number;
+    aging_status: string;
   }[];
 };
 
 export function DispatchModal({
-  branchId, onClose, onApply,
+  branchId,
+  onClose,
+  onApply,
 }: {
   branchId: string;
   onClose: () => void;
@@ -62,20 +69,26 @@ export function DispatchModal({
 
         <div className="grid grid-cols-2 gap-3 mb-4">
           <div>
-            <label className="block text-xs font-bold uppercase tracking-wide text-muted mb-1">Variety</label>
+            <label className="block text-xs font-bold uppercase tracking-wide text-muted mb-1">
+              Variety
+            </label>
             <select
               className="input"
               value={varietyId}
               onChange={(e) => setVarietyId(e.target.value)}
             >
               <option value="">Any variety</option>
-              {varieties.map(v => (
-                <option key={v.id} value={v.id}>{v.code} — {v.name}</option>
+              {varieties.map((v) => (
+                <option key={v.id} value={v.id}>
+                  {v.code} — {v.name}
+                </option>
               ))}
             </select>
           </div>
           <div>
-            <label className="block text-xs font-bold uppercase tracking-wide text-muted mb-1">Weight needed (kg)</label>
+            <label className="block text-xs font-bold uppercase tracking-wide text-muted mb-1">
+              Weight needed (kg)
+            </label>
             <input
               type="number"
               min="1"
@@ -91,7 +104,11 @@ export function DispatchModal({
           disabled={recommend.isPending || !weight}
           className="w-full flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-sky-600 text-white text-sm font-semibold hover:bg-sky-700 disabled:opacity-50"
         >
-          {recommend.isPending ? <Loader2 size={14} className="animate-spin" /> : <Search size={14} />}
+          {recommend.isPending ? (
+            <Loader2 size={14} className="animate-spin" />
+          ) : (
+            <Search size={14} />
+          )}
           Find oldest pallets
         </button>
 
@@ -100,14 +117,18 @@ export function DispatchModal({
             <div className="rounded-xl bg-slate-50 dark:bg-slate-800/50 ring-1 ring-slate-200 dark:ring-slate-700 p-3 text-sm">
               <div className="flex items-baseline gap-3 flex-wrap">
                 <span className="text-muted">Requested:</span>
-                <span className="font-bold text-primary tabular-nums">{result.requested_kg.toLocaleString()} kg</span>
+                <span className="font-bold text-primary tabular-nums">
+                  {result.requested_kg.toLocaleString()} kg
+                </span>
                 <span className="text-muted">·</span>
                 <span className="text-muted">Covered:</span>
-                <span className="font-bold text-emerald-600 tabular-nums">{result.total_kg.toLocaleString()} kg</span>
+                <span className="font-bold text-emerald-600 dark:text-emerald-400 tabular-nums">
+                  {result.total_kg.toLocaleString()} kg
+                </span>
                 {result.shortfall_kg > 0 && (
                   <>
                     <span className="text-muted">·</span>
-                    <span className="font-bold text-rose-600 tabular-nums flex items-center gap-1">
+                    <span className="font-bold text-rose-600 dark:text-rose-400 tabular-nums flex items-center gap-1">
                       <AlertTriangle size={12} /> short {result.shortfall_kg.toLocaleString()} kg
                     </span>
                   </>
@@ -124,11 +145,17 @@ export function DispatchModal({
                     <span className="w-6 text-xs font-bold text-muted tabular-nums">{i + 1}.</span>
                     <div className="flex-1 min-w-0">
                       <p className="font-bold text-primary">{p.pallet_code}</p>
-                      <p className="text-xs text-muted">{p.variety_code || "—"} · milled {p.milling_date} ({p.days_old}d old)</p>
+                      <p className="text-xs text-muted">
+                        {p.variety_code || "—"} · milled {p.milling_date} ({p.days_old}d old)
+                      </p>
                     </div>
                     <div className="text-right shrink-0">
-                      <p className="font-semibold text-primary tabular-nums">{p.weight_kg.toLocaleString()} kg</p>
-                      <p className="text-[10px] uppercase font-bold capitalize text-muted">{p.aging_status}</p>
+                      <p className="font-semibold text-primary tabular-nums">
+                        {p.weight_kg.toLocaleString()} kg
+                      </p>
+                      <p className="text-[10px] uppercase font-bold capitalize text-muted">
+                        {p.aging_status}
+                      </p>
                     </div>
                   </div>
                 ))}
@@ -143,7 +170,10 @@ export function DispatchModal({
                 Cancel
               </button>
               <button
-                onClick={() => { onApply(result.pallet_ids); onClose(); }}
+                onClick={() => {
+                  onApply(result.pallet_ids);
+                  onClose();
+                }}
                 disabled={result.pallets.length === 0}
                 className="flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-emerald-600 text-white text-sm font-semibold hover:bg-emerald-700 disabled:opacity-50"
               >

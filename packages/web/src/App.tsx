@@ -5,6 +5,7 @@ import { useAuthStore } from "./stores/authStore";
 import { authService } from "./services/AuthService";
 import AppShell from "./components/layout/AppShell";
 import AdminShell from "./components/layout/AdminShell";
+import HomePage from "./pages/HomePage";
 import LoginPage from "./pages/LoginPage";
 import SignupPage from "./pages/SignupPage";
 import ForgotPasswordPage from "./pages/ForgotPasswordPage";
@@ -66,10 +67,17 @@ function AuthSessionSync() {
   return null;
 }
 
+/** Root of the tenant app. Logged-out visitors get the public homepage
+ *  instead of being bounced to /login: at "/" the landing page renders
+ *  directly; deep links to protected pages redirect to "/" (the homepage). */
 function TenantRoute({ children }: { children: React.ReactNode }) {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated());
   const user = useAuthStore((s) => s.user);
-  if (!isAuthenticated) return <Navigate to="/login" replace />;
+  const { pathname } = useLocation();
+  if (!isAuthenticated) {
+    if (pathname !== "/") return <Navigate to="/" replace />;
+    return <HomePage />;
+  }
   if (user?.is_platform_admin) return <Navigate to="/admin" replace />;
   return <>{children}</>;
 }

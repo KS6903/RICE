@@ -4,16 +4,28 @@ import { adminService } from "../../services/AdminService";
 import { authService } from "../../services/AuthService";
 import { useAuthStore } from "../../stores/authStore";
 import {
-  CreditCard, User as UserIcon, KeyRound, Plus, Check, Loader2,
-  AlertCircle, Settings as SettingsIcon, Pencil, Trash2, X as XIcon,
-  Crown, Zap, Star, Rocket,
+  CreditCard,
+  User as UserIcon,
+  KeyRound,
+  Plus,
+  Check,
+  Loader2,
+  AlertCircle,
+  Settings as SettingsIcon,
+  Pencil,
+  Trash2,
+  X as XIcon,
+  Crown,
+  Zap,
+  Star,
+  Rocket,
 } from "lucide-react";
 
 type Tab = "plans" | "profile" | "password";
 
-const LABEL = "block text-sm font-semibold text-slate-700 mb-1.5";
+const LABEL = "block text-sm font-semibold text-slate-700 dark:text-slate-200 mb-1.5";
 const INPUT =
-  "w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 placeholder-slate-400 shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors";
+  "w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 py-2.5 text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors";
 
 // ── Plans tab ────────────────────────────────────────────────────────────────
 
@@ -48,42 +60,44 @@ function PlanRow({
 }) {
   const Icon = PLAN_ICONS[plan.code] ?? Rocket;
   return (
-    <tr className="hover:bg-slate-50 transition-colors">
-      <td className="px-4 py-3 text-sm font-medium text-slate-900 flex items-center gap-2">
+    <tr className="hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors">
+      <td className="px-4 py-3 text-sm font-medium text-slate-900 dark:text-slate-100 flex items-center gap-2">
         <Icon size={15} className="text-indigo-500 shrink-0" />
         {plan.name}
         {!plan.is_active && (
-          <span className="ml-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-500 uppercase tracking-wide">
+          <span className="ml-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400 uppercase tracking-wide">
             inactive
           </span>
         )}
       </td>
-      <td className="px-4 py-3 text-sm text-slate-600 font-mono">{plan.code}</td>
-      <td className="px-4 py-3 text-sm text-slate-900 font-semibold">
+      <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-300 font-mono">
+        {plan.code}
+      </td>
+      <td className="px-4 py-3 text-sm text-slate-900 dark:text-slate-100 font-semibold">
         ₱{Number(plan.monthly_price).toLocaleString()}
         <span className="text-xs font-normal text-slate-400">/mo</span>
       </td>
-      <td className="px-4 py-3 text-sm text-slate-600">
+      <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-300">
         {plan.max_branches === null ? "Unlimited" : plan.max_branches}
       </td>
-      <td className="px-4 py-3 text-sm text-slate-600">
+      <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-300">
         {plan.max_users === null ? "Unlimited" : plan.max_users}
       </td>
-      <td className="px-4 py-3 text-sm text-slate-500 max-w-[200px] truncate">
+      <td className="px-4 py-3 text-sm text-slate-500 dark:text-slate-400 max-w-[200px] truncate">
         {plan.features.join(", ")}
       </td>
       <td className="px-4 py-3 text-right">
         <div className="flex items-center justify-end gap-1">
           <button
             onClick={() => onEdit(plan)}
-            className="p-1.5 rounded-lg hover:bg-indigo-50 hover:text-indigo-600 text-slate-400 transition-colors"
+            className="p-1.5 rounded-lg hover:bg-indigo-50 dark:hover:bg-indigo-900/30 hover:text-indigo-600 dark:hover:text-indigo-400 text-slate-400 transition-colors"
             title="Edit plan"
           >
             <Pencil size={14} />
           </button>
           <button
             onClick={() => onDelete(plan.id)}
-            className="p-1.5 rounded-lg hover:bg-rose-50 hover:text-rose-600 text-slate-400 transition-colors"
+            className="p-1.5 rounded-lg hover:bg-rose-50 dark:hover:bg-rose-900/30 hover:text-rose-600 dark:hover:text-rose-400 text-slate-400 transition-colors"
             title="Delete plan"
           >
             <Trash2 size={14} />
@@ -180,22 +194,30 @@ function PlansTab() {
     upsert.mutate(payload);
   };
 
-  const TH = "px-4 py-3 text-left text-xs font-bold uppercase tracking-wide text-slate-500 bg-gradient-to-r from-indigo-50/80 via-violet-50/60 to-slate-50/80 border-b border-slate-200";
+  const TH =
+    "px-4 py-3 text-left text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400 bg-gradient-to-r from-indigo-50/80 via-violet-50/60 to-slate-50/80 border-b border-slate-200 dark:border-slate-700";
 
   return (
     <div className="space-y-5">
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="text-lg font-bold text-slate-900">Subscription Plans</h3>
-          <p className="text-sm text-slate-500 mt-0.5">Manage the plans available to your tenants</p>
+          <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100">
+            Subscription Plans
+          </h3>
+          <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
+            Manage the plans available to your tenants
+          </p>
         </div>
         <div className="flex items-center gap-3">
           {saved && (
-            <span className="text-sm font-semibold text-emerald-600 inline-flex items-center gap-1">
+            <span className="text-sm font-semibold text-emerald-600 dark:text-emerald-400 inline-flex items-center gap-1">
               <Check size={14} /> Saved
             </span>
           )}
-          <button onClick={openNew} className="flex items-center gap-2 px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700 transition-colors shadow-sm">
+          <button
+            onClick={openNew}
+            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700 transition-colors shadow-sm"
+          >
             <Plus size={15} />
             New Plan
           </button>
@@ -203,37 +225,89 @@ function PlansTab() {
       </div>
 
       {showForm && (
-        <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5 space-y-4">
+        <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm p-5 space-y-4">
           <div className="flex items-center justify-between">
-            <h4 className="font-bold text-slate-900">{editingId ? "Edit Plan" : "New Plan"}</h4>
-            <button onClick={() => setShowForm(false)} className="text-slate-400 hover:text-slate-600 transition-colors">
+            <h4 className="font-bold text-slate-900 dark:text-slate-100">
+              {editingId ? "Edit Plan" : "New Plan"}
+            </h4>
+            <button
+              onClick={() => setShowForm(false)}
+              className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
+            >
               <XIcon size={18} />
             </button>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className={LABEL}>Plan Code</label>
-              <input className={INPUT} value={form.code} onChange={(e) => setForm((f) => ({ ...f, code: e.target.value }))} placeholder="e.g. pro" />
+              <input
+                className={INPUT}
+                value={form.code}
+                onChange={(e) => setForm((f) => ({ ...f, code: e.target.value }))}
+                placeholder="e.g. pro"
+              />
             </div>
             <div>
               <label className={LABEL}>Display Name</label>
-              <input className={INPUT} value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} placeholder="e.g. Pro Plan" />
+              <input
+                className={INPUT}
+                value={form.name}
+                onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+                placeholder="e.g. Pro Plan"
+              />
             </div>
             <div>
               <label className={LABEL}>Monthly Price (₱)</label>
-              <input type="number" min={0} className={INPUT} value={form.monthly_price} onChange={(e) => setForm((f) => ({ ...f, monthly_price: Number(e.target.value) }))} />
+              <input
+                type="number"
+                min={0}
+                className={INPUT}
+                value={form.monthly_price}
+                onChange={(e) => setForm((f) => ({ ...f, monthly_price: Number(e.target.value) }))}
+              />
             </div>
             <div>
               <label className={LABEL}>Sort Order</label>
-              <input type="number" min={0} className={INPUT} value={form.sort_order} onChange={(e) => setForm((f) => ({ ...f, sort_order: Number(e.target.value) }))} placeholder="Display order" />
+              <input
+                type="number"
+                min={0}
+                className={INPUT}
+                value={form.sort_order}
+                onChange={(e) => setForm((f) => ({ ...f, sort_order: Number(e.target.value) }))}
+                placeholder="Display order"
+              />
             </div>
             <div>
               <label className={LABEL}>Max Branches</label>
-              <input type="number" min={1} className={INPUT} value={form.max_branches ?? ""} onChange={(e) => setForm((f) => ({ ...f, max_branches: e.target.value === "" ? null : Number(e.target.value) }))} placeholder="Blank = unlimited" />
+              <input
+                type="number"
+                min={1}
+                className={INPUT}
+                value={form.max_branches ?? ""}
+                onChange={(e) =>
+                  setForm((f) => ({
+                    ...f,
+                    max_branches: e.target.value === "" ? null : Number(e.target.value),
+                  }))
+                }
+                placeholder="Blank = unlimited"
+              />
             </div>
             <div>
               <label className={LABEL}>Max Users</label>
-              <input type="number" min={1} className={INPUT} value={form.max_users ?? ""} onChange={(e) => setForm((f) => ({ ...f, max_users: e.target.value === "" ? null : Number(e.target.value) }))} placeholder="Blank = unlimited" />
+              <input
+                type="number"
+                min={1}
+                className={INPUT}
+                value={form.max_users ?? ""}
+                onChange={(e) =>
+                  setForm((f) => ({
+                    ...f,
+                    max_users: e.target.value === "" ? null : Number(e.target.value),
+                  }))
+                }
+                placeholder="Blank = unlimited"
+              />
             </div>
           </div>
           <div>
@@ -255,20 +329,26 @@ function PlansTab() {
               id="is_active"
               checked={form.is_active}
               onChange={(e) => setForm((f) => ({ ...f, is_active: e.target.checked }))}
-              className="h-4 w-4 rounded border-slate-300 accent-indigo-600 cursor-pointer"
+              className="h-4 w-4 rounded border-slate-300 dark:border-slate-600 accent-indigo-600 cursor-pointer"
             />
-            <label htmlFor="is_active" className="text-sm font-medium text-slate-700 cursor-pointer select-none">
+            <label
+              htmlFor="is_active"
+              className="text-sm font-medium text-slate-700 dark:text-slate-200 cursor-pointer select-none"
+            >
               Plan is active (visible to tenants)
             </label>
           </div>
           {upsert.isError && (
-            <div className="flex items-start gap-2 px-3 py-2.5 rounded-lg bg-rose-50 ring-1 ring-rose-200 text-sm text-rose-700">
+            <div className="flex items-start gap-2 px-3 py-2.5 rounded-lg bg-rose-50 dark:bg-rose-900/30 ring-1 ring-rose-200 text-sm text-rose-700 dark:text-rose-300">
               <AlertCircle size={15} className="mt-0.5 shrink-0" />
               {(upsert.error as any)?.response?.data?.detail || "Failed to save plan."}
             </div>
           )}
           <div className="flex gap-2 pt-1">
-            <button onClick={() => setShowForm(false)} className="flex-1 px-4 py-2 rounded-lg border border-slate-300 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors">
+            <button
+              onClick={() => setShowForm(false)}
+              className="flex-1 px-4 py-2 rounded-lg border border-slate-300 dark:border-slate-600 text-sm font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors"
+            >
               Cancel
             </button>
             <button
@@ -276,14 +356,18 @@ function PlansTab() {
               disabled={upsert.isPending || !form.code.trim() || !form.name.trim()}
               className="flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700 disabled:opacity-50 transition-colors shadow-sm"
             >
-              {upsert.isPending ? <Loader2 size={15} className="animate-spin" /> : <Check size={15} />}
+              {upsert.isPending ? (
+                <Loader2 size={15} className="animate-spin" />
+              ) : (
+                <Check size={15} />
+              )}
               {editingId ? "Save Changes" : "Create Plan"}
             </button>
           </div>
         </div>
       )}
 
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+      <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden">
         {isLoading ? (
           <div className="flex items-center justify-center h-32 text-slate-400 text-sm gap-2">
             <Loader2 size={16} className="animate-spin" /> Loading plans…
@@ -305,7 +389,7 @@ function PlansTab() {
                 <th className={TH + " text-right"}>Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
               {plans.map((p) => (
                 <PlanRow key={p.id} plan={p} onEdit={openEdit} onDelete={(id) => del.mutate(id)} />
               ))}
@@ -346,18 +430,31 @@ function ProfileTab() {
   return (
     <div className="max-w-lg space-y-5">
       <div>
-        <h3 className="text-lg font-bold text-slate-900">My Profile</h3>
-        <p className="text-sm text-slate-500 mt-0.5">Update your admin display name and email</p>
+        <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100">My Profile</h3>
+        <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
+          Update your admin display name and email
+        </p>
       </div>
 
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5 space-y-4">
+      <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm p-5 space-y-4">
         <div>
           <label className={LABEL}>Full Name</label>
-          <input className={INPUT} value={form.full_name} onChange={(e) => setForm((f) => ({ ...f, full_name: e.target.value }))} placeholder="Your name" />
+          <input
+            className={INPUT}
+            value={form.full_name}
+            onChange={(e) => setForm((f) => ({ ...f, full_name: e.target.value }))}
+            placeholder="Your name"
+          />
         </div>
         <div>
           <label className={LABEL}>Email</label>
-          <input type="email" className={INPUT} value={form.email} onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))} placeholder="admin@example.com" />
+          <input
+            type="email"
+            className={INPUT}
+            value={form.email}
+            onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
+            placeholder="admin@example.com"
+          />
         </div>
         <div>
           <label className={LABEL}>Username</label>
@@ -370,7 +467,7 @@ function ProfileTab() {
         </div>
 
         {save.isError && (
-          <div className="flex items-start gap-2 px-3 py-2.5 rounded-lg bg-rose-50 ring-1 ring-rose-200 text-sm text-rose-700">
+          <div className="flex items-start gap-2 px-3 py-2.5 rounded-lg bg-rose-50 dark:bg-rose-900/30 ring-1 ring-rose-200 text-sm text-rose-700 dark:text-rose-300">
             <AlertCircle size={15} className="mt-0.5 shrink-0" />
             {(save.error as any)?.response?.data?.detail || "Failed to save profile."}
           </div>
@@ -386,7 +483,7 @@ function ProfileTab() {
             Save Profile
           </button>
           {saved && (
-            <span className="text-sm font-semibold text-emerald-600 inline-flex items-center gap-1">
+            <span className="text-sm font-semibold text-emerald-600 dark:text-emerald-400 inline-flex items-center gap-1">
               <Check size={14} /> Saved
             </span>
           )}
@@ -426,27 +523,47 @@ function PasswordTab() {
   return (
     <div className="max-w-lg space-y-5">
       <div>
-        <h3 className="text-lg font-bold text-slate-900">Change Password</h3>
-        <p className="text-sm text-slate-500 mt-0.5">Update your admin account password</p>
+        <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100">Change Password</h3>
+        <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
+          Update your admin account password
+        </p>
       </div>
 
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5 space-y-4">
+      <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm p-5 space-y-4">
         <div>
           <label className={LABEL}>Current Password</label>
-          <input type="password" className={INPUT} value={form.current} onChange={(e) => setForm((f) => ({ ...f, current: e.target.value }))} placeholder="••••••••" />
+          <input
+            type="password"
+            className={INPUT}
+            value={form.current}
+            onChange={(e) => setForm((f) => ({ ...f, current: e.target.value }))}
+            placeholder="••••••••"
+          />
         </div>
         <div>
           <label className={LABEL}>New Password</label>
-          <input type="password" className={INPUT} value={form.next} onChange={(e) => setForm((f) => ({ ...f, next: e.target.value }))} placeholder="••••••••" />
+          <input
+            type="password"
+            className={INPUT}
+            value={form.next}
+            onChange={(e) => setForm((f) => ({ ...f, next: e.target.value }))}
+            placeholder="••••••••"
+          />
         </div>
         <div>
           <label className={LABEL}>Confirm New Password</label>
-          <input type="password" className={INPUT} value={form.confirm} onChange={(e) => setForm((f) => ({ ...f, confirm: e.target.value }))} placeholder="••••••••" />
+          <input
+            type="password"
+            className={INPUT}
+            value={form.confirm}
+            onChange={(e) => setForm((f) => ({ ...f, confirm: e.target.value }))}
+            placeholder="••••••••"
+          />
         </div>
         <p className="text-xs text-slate-400">Minimum 8 characters.</p>
 
         {err && (
-          <div className="flex items-start gap-2 px-3 py-2.5 rounded-lg bg-rose-50 ring-1 ring-rose-200 text-sm text-rose-700">
+          <div className="flex items-start gap-2 px-3 py-2.5 rounded-lg bg-rose-50 dark:bg-rose-900/30 ring-1 ring-rose-200 text-sm text-rose-700 dark:text-rose-300">
             <AlertCircle size={15} className="mt-0.5 shrink-0" />
             {err}
           </div>
@@ -462,7 +579,7 @@ function PasswordTab() {
             Update Password
           </button>
           {saved && (
-            <span className="text-sm font-semibold text-emerald-600 inline-flex items-center gap-1">
+            <span className="text-sm font-semibold text-emerald-600 dark:text-emerald-400 inline-flex items-center gap-1">
               <Check size={14} /> Password updated
             </span>
           )}
@@ -490,8 +607,10 @@ export default function AdminSettingsPage() {
           <SettingsIcon size={20} className="text-white" />
         </div>
         <div>
-          <h2 className="text-2xl font-bold text-slate-900">Admin Settings</h2>
-          <p className="text-sm text-slate-500">Manage subscription plans and your admin account</p>
+          <h2 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Admin Settings</h2>
+          <p className="text-sm text-slate-500 dark:text-slate-400">
+            Manage subscription plans and your admin account
+          </p>
         </div>
       </div>
 
@@ -507,7 +626,7 @@ export default function AdminSettingsPage() {
                   className={`flex items-center gap-3 px-3.5 py-2.5 text-sm font-semibold rounded-lg transition-colors whitespace-nowrap w-full text-left ${
                     active
                       ? "bg-indigo-600 text-white shadow-sm"
-                      : "text-slate-600 hover:bg-slate-200 hover:text-slate-900"
+                      : "text-slate-600 dark:text-slate-300 hover:bg-slate-200 hover:text-slate-900 dark:hover:text-slate-100"
                   }`}
                 >
                   <Icon size={16} className={active ? "text-white" : "text-slate-400"} />

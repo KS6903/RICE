@@ -10,7 +10,12 @@ import UpgradeRequestToast from "../admin/UpgradeRequestToast";
 const NAV = [
   { to: "/admin", label: "Dashboard", icon: LayoutDashboard, end: true },
   { to: "/admin/tenants", label: "Tenants", icon: Building2 },
-  { to: "/admin/upgrade-requests", label: "Upgrade Requests", icon: ArrowUpCircle, withBadge: "upgrades" as const },
+  {
+    to: "/admin/upgrade-requests",
+    label: "Upgrade Requests",
+    icon: ArrowUpCircle,
+    withBadge: "upgrades" as const,
+  },
   { to: "/admin/users", label: "All Users", icon: Users },
   { to: "/admin/settings", label: "Settings", icon: Settings },
 ];
@@ -34,7 +39,7 @@ export default function AdminShell() {
   };
 
   return (
-    <div className="flex h-screen bg-slate-100">
+    <div className="flex h-screen bg-slate-100 dark:bg-slate-700">
       <aside className="w-60 bg-slate-900 text-white flex flex-col shrink-0">
         <div className="px-5 py-5 border-b border-slate-800">
           <div className="flex items-center gap-2">
@@ -52,7 +57,9 @@ export default function AdminShell() {
               className={({ isActive }) =>
                 clsx(
                   "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors",
-                  isActive ? "bg-slate-800 text-white" : "text-slate-300 hover:bg-slate-800/60 hover:text-white"
+                  isActive
+                    ? "bg-slate-800 text-white"
+                    : "text-slate-300 hover:bg-slate-800/60 hover:text-white",
                 )
               }
             >
@@ -72,13 +79,19 @@ export default function AdminShell() {
       </aside>
 
       <div className="flex-1 flex flex-col overflow-hidden">
-        <header className="h-14 bg-white border-b border-slate-200 flex items-center justify-between px-6 shrink-0">
+        <header className="h-14 bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between px-6 shrink-0">
           <div className="flex items-center gap-2">
-            <span className="bg-amber-100 text-amber-800 text-xs font-semibold px-2 py-0.5 rounded-full">KS PRODUCTIONS</span>
+            <span className="bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-200 text-xs font-semibold px-2 py-0.5 rounded-full">
+              KS PRODUCTIONS
+            </span>
           </div>
           <div className="flex items-center gap-4">
-            <span className="text-sm text-slate-600">{user?.full_name}</span>
-            <button onClick={handleLogout} className="text-slate-400 hover:text-slate-600 transition-colors" title="Sign out">
+            <span className="text-sm text-slate-600 dark:text-slate-300">{user?.full_name}</span>
+            <button
+              onClick={handleLogout}
+              className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
+              title="Sign out"
+            >
               <LogOut size={18} />
             </button>
           </div>
