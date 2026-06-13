@@ -1,0 +1,7 @@
+# Compiled Electron main/preload output (emitted next to the .ts sources by
+# `npm run build:main`). The .ts files are the source of truth.
+main/**/*.js
+main/**/*.js.map
+preload/**/*.js
+preload/**/*.js.map
+*.tsbuildinfo
