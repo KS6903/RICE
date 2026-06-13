@@ -37,6 +37,7 @@ from ..core.ratelimit import (
 from ..core.config import settings
 from ..core.crypto import decrypt_str, encrypt_str
 from ..core.passwords import validate_password_strength
+from ..core.tenancy import provision_tenant, schema_name_for, set_search_path
 from ..core.security import (
     blocklist_access_token,
     create_access_token,
@@ -170,6 +171,12 @@ class AuthService(BaseService):
         transaction (or wrap in one for failure paths that raise afterwards)."""
         logger.info("security event %s user=%s", action, user.username)
         if user.company_id:
+            # Auth flows (login/logout/reset) run on a public-scoped session, but
+            # activity_logs is a per-client table — point the session at the user's
+            # schema first. search_path keeps `public` too, so AuthSession and other
+            # control-plane writes in the same transaction still resolve.
+            if user.company is not None:
+                set_search_path(self.db, schema_name_for(user.company))
             log_activity(
                 self.db,
                 company_id=user.company_id,
@@ -194,6 +201,9 @@ class AuthService(BaseService):
         return {
             "sub": str(user.id),
             "company_id": str(user.company_id) if user.company_id else None,
+            # Tenant routing: the client schema this user's requests run against.
+            # None for platform admins (they operate on public + loop schemas).
+            "schema": user.company.schema_name if user.company else None,
             "role": user.role.name if user.role else None,
             "is_platform_admin": user.is_platform_admin,
         }
@@ -503,6 +513,9 @@ class AuthService(BaseService):
             )
             self.db.add(user)
             self.db.flush()
+            # Stand up this client's own schema (tables + reference catalog) within
+            # the same transaction, so signup is all-or-nothing.
+            provision_tenant(company, db=self.db)
             self._issue_email_verification(user)
             tokens = self._issue_tokens(user)
         return tokens
@@ -620,6 +633,8 @@ class AuthService(BaseService):
                 )
                 self.db.add(user)
                 self.db.flush()
+                # New client via Google signup → provision its schema in-transaction.
+                provision_tenant(company, db=self.db)
                 tokens = self._issue_tokens(user)
             return tokens
 

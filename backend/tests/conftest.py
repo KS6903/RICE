@@ -89,6 +89,7 @@ _ensure_test_database_exists()
 import app.models  # noqa: E402,F401  — register every table on Base.metadata
 from app.core.database import Base, engine, get_db  # noqa: E402
 from app.core.security import get_current_user, hash_password  # noqa: E402
+from app.core.tenancy import provision_tenant, public_tables, set_search_path  # noqa: E402
 from app.main import app  # noqa: E402
 from app.models.company import Branch, Company  # noqa: E402
 from app.models.subscription import Subscription, SubscriptionPlan  # noqa: E402
@@ -105,13 +106,31 @@ ALL_FEATURES = [
 ]
 
 
+# Schema-per-client: the public (identity/control-plane) tables live in `public`;
+# each company's domain tables live in its own `client_<hex>` schema, provisioned
+# on the fly by the fixtures below. ``_active_schema`` tells the overridden get_db
+# which client schema the current test session should run against.
+_active_schema: dict[str, str | None] = {"name": None}
+
+
 @pytest.fixture(scope="session", autouse=True)
 def _schema() -> None:
-    """Build the test schema once per session from the ORM models."""
-    Base.metadata.create_all(bind=engine)
+    """Build the shared public schema once per session from the ORM models.
+
+    Per-client schemas (domain tables) are created per-test by provision_tenant and
+    rolled back with the test transaction, so only the public tables persist here.
+
+    We reset the whole ``public`` schema (rather than drop_all) to wipe any
+    pre-change all-in-public layout in one shot — drop_all can't order the
+    branches↔users FK cycle, and CASCADE doesn't care.
+    """
+    from sqlalchemy import text
+
+    with engine.begin() as conn:
+        conn.execute(text("DROP SCHEMA IF EXISTS public CASCADE"))
+        conn.execute(text("CREATE SCHEMA public"))
+    Base.metadata.create_all(bind=engine, tables=public_tables())
     yield
-    # Leave the schema in place between runs (faster reruns; data is rolled back
-    # per-test anyway). Drop explicitly with a fresh DB if a model changes.
 
 
 @pytest.fixture
@@ -120,6 +139,8 @@ def db_session() -> Session:
     connection = engine.connect()
     outer = connection.begin()
     session = Session(bind=connection, join_transaction_mode="create_savepoint")
+    _active_schema["name"] = None
+    set_search_path(session, None)
     try:
         yield session
     finally:
@@ -135,6 +156,8 @@ def client(db_session: Session) -> TestClient:
     Auth is NOT overridden here — use this for real login/token/401 tests.
     """
     def _override_get_db():
+        # Mirror the real get_db: scope the session to the active client schema.
+        set_search_path(db_session, _active_schema["name"])
         yield db_session
 
     app.dependency_overrides[get_db] = _override_get_db
@@ -164,6 +187,13 @@ def seed_owner(db_session: Session) -> User:
     company = Company(name="Test Mill", is_multi_branch=False)
     db_session.add(company)
     db_session.flush()
+    # Stand up this client's schema (domain tables + reference catalog) and make it
+    # the active schema for the test's requests.
+    provision_tenant(company, db=db_session)
+    _active_schema["name"] = company.schema_name
+    # Also scope the shared test session, so tests that touch tenant tables
+    # directly via db_session (not through the API) hit the client schema.
+    set_search_path(db_session, company.schema_name)
 
     branch = Branch(company_id=company.id, name="Main Branch", is_main_branch=True)
     db_session.add(branch)
@@ -239,6 +269,9 @@ def make_auth_client(client: TestClient, db_session: Session):
         company = Company(name=f"Co {suffix}")
         db_session.add_all([plan, company])
         db_session.flush()
+        provision_tenant(company, db=db_session)
+        _active_schema["name"] = company.schema_name
+        set_search_path(db_session, company.schema_name)
         branch = Branch(company_id=company.id, name="Main", is_main_branch=True)
         db_session.add(branch)
         db_session.flush()

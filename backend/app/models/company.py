@@ -7,11 +7,26 @@ from ..core.database import Base
 from .base import TimestampMixin
 
 
+def _default_schema_name() -> str:
+    """A unique, SQL-safe schema name for a new client (tenant)."""
+    return f"client_{uuid.uuid4().hex}"
+
+
 class Company(Base, TimestampMixin):
     __tablename__ = "companies"
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     name: Mapped[str] = mapped_column(String(200), nullable=False)
+    # ── Tenant routing (schema-per-client) ────────────────────────────────────
+    # Each client's domain data lives in its own PostgreSQL schema. The default
+    # auto-populates on insert, so every company-creation path gets one for free.
+    schema_name: Mapped[str] = mapped_column(
+        String(63), unique=True, nullable=False, default=_default_schema_name
+    )
+    # Forward hook (dormant): NULL = this client lives in the shared database.
+    # Set to a Postgres URL to relocate a single client onto its own database /
+    # server — see core.tenancy.engine_for. No application code changes needed.
+    db_url: Mapped[str | None] = mapped_column(Text)
     address: Mapped[str | None] = mapped_column(Text)
     tin: Mapped[str | None] = mapped_column(String(20))
     nfa_license_no: Mapped[str | None] = mapped_column(String(50))

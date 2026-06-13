@@ -9,6 +9,7 @@ from datetime import date, timedelta
 from decimal import Decimal
 from random import choice, uniform, randint
 from app.core.database import SessionLocal
+from app.core.tenancy import set_search_path
 from app.models.company import Branch
 from app.models.user import User
 from app.models.reference import RiceVariety
@@ -33,6 +34,8 @@ def main():
         if not user:
             print("No tenant users found. Run create_admin.py / signup first.")
             return
+        # Domain tables live in this client's schema — point the session at it.
+        set_search_path(db, user.company.schema_name)
         branch = db.query(Branch).filter(Branch.company_id == user.company_id).first()
         if not branch:
             print("No branch on this company.")

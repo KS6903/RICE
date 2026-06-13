@@ -16,6 +16,7 @@ from sqlalchemy.orm import Session
 
 from ..core.exceptions import AppException, BadRequestError, ConflictError, NotFoundError
 from ..core.security import invalidate_company_features
+from ..core.tenancy import tenant_scope
 from ..models.company import Branch, Company
 from ..models.costs import Expense
 from ..models.milling import MillingBatch
@@ -266,9 +267,13 @@ class AdminService(BaseService):
         total_tenants = db.query(func.count(Company.id)).scalar() or 0
         total_branches = db.query(func.count(Branch.id)).scalar() or 0
         total_users = db.query(func.count(User.id)).filter(User.is_platform_admin.is_(False)).scalar() or 0
-        total_purchases = db.query(func.count(PalayPurchase.id)).scalar() or 0
-        total_batches = db.query(func.count(MillingBatch.id)).scalar() or 0
-        total_orders = db.query(func.count(SalesOrder.id)).scalar() or 0
+        # Domain tables now live in each client's schema — sum across all tenants.
+        total_purchases = total_batches = total_orders = 0
+        for company in db.query(Company).all():
+            with tenant_scope(db, company):
+                total_purchases += db.query(func.count(PalayPurchase.id)).scalar() or 0
+                total_batches += db.query(func.count(MillingBatch.id)).scalar() or 0
+                total_orders += db.query(func.count(SalesOrder.id)).scalar() or 0
 
         thirty_days_ago = datetime.now(timezone.utc) - timedelta(days=30)
         new_tenants_30d = db.query(func.count(Company.id)).filter(Company.created_at >= thirty_days_ago).scalar() or 0
@@ -327,9 +332,15 @@ class AdminService(BaseService):
         companies = db.query(Company).order_by(Company.created_at.desc()).all()
         user_counts = {r[0]: r[1] for r in db.query(User.company_id, func.count(User.id)).group_by(User.company_id).all()}
         branch_counts = {r[0]: r[1] for r in db.query(Branch.company_id, func.count(Branch.id)).group_by(Branch.company_id).all()}
-        purchase_counts = {r[0]: r[1] for r in db.query(PalayPurchase.company_id, func.count(PalayPurchase.id)).group_by(PalayPurchase.company_id).all()}
-        order_counts = {r[0]: r[1] for r in db.query(SalesOrder.company_id, func.count(SalesOrder.id)).group_by(SalesOrder.company_id).all()}
         sub_by_company = {s.company_id: s for s in db.query(Subscription).all()}
+        # Per-client domain counts: each tenant's purchases/orders live in its own
+        # schema, so visit each schema rather than one group-by over shared tables.
+        purchase_counts: dict = {}
+        order_counts: dict = {}
+        for c in companies:
+            with tenant_scope(db, c):
+                purchase_counts[c.id] = db.query(func.count(PalayPurchase.id)).scalar() or 0
+                order_counts[c.id] = db.query(func.count(SalesOrder.id)).scalar() or 0
 
         def _sub_block(cid):
             s = sub_by_company.get(cid)
@@ -374,14 +385,16 @@ class AdminService(BaseService):
             raise NotFoundError("Tenant not found")
         users = db.query(User).filter(User.company_id == company.id).all()
         branches = db.query(Branch).filter(Branch.company_id == company.id).all()
-        purchases = db.query(func.count(PalayPurchase.id)).filter(PalayPurchase.company_id == company.id).scalar() or 0
-        batches = db.query(func.count(MillingBatch.id)).filter(MillingBatch.company_id == company.id).scalar() or 0
-        orders = db.query(func.count(SalesOrder.id)).filter(SalesOrder.company_id == company.id).scalar() or 0
-        invoices = db.query(func.count(Invoice.id)).filter(Invoice.company_id == company.id).scalar() or 0
-        expenses_total = db.query(func.coalesce(func.sum(Expense.amount), 0)).filter(Expense.company_id == company.id).scalar() or 0
-        revenue_total = db.query(func.coalesce(func.sum(SalesOrder.total_amount), 0)).filter(
-            SalesOrder.company_id == company.id, SalesOrder.status.in_(["invoiced", "paid"]),
-        ).scalar() or 0
+        # Domain metrics live in the client's own schema.
+        with tenant_scope(db, company):
+            purchases = db.query(func.count(PalayPurchase.id)).scalar() or 0
+            batches = db.query(func.count(MillingBatch.id)).scalar() or 0
+            orders = db.query(func.count(SalesOrder.id)).scalar() or 0
+            invoices = db.query(func.count(Invoice.id)).scalar() or 0
+            expenses_total = db.query(func.coalesce(func.sum(Expense.amount), 0)).scalar() or 0
+            revenue_total = db.query(func.coalesce(func.sum(SalesOrder.total_amount), 0)).filter(
+                SalesOrder.status.in_(["invoiced", "paid"]),
+            ).scalar() or 0
 
         return {
             "company": {
@@ -429,7 +442,9 @@ class AdminService(BaseService):
         company = self.db.get(Company, tenant_id)
         if not company:
             raise NotFoundError("Tenant not found")
-        return ActivityService(self.db).list_recent(tenant_id)
+        # activity_logs is a per-client table — read it from the tenant's schema.
+        with tenant_scope(self.db, company):
+            return ActivityService(self.db).list_recent(tenant_id)
 
     def set_tenant_active(self, tenant_id: uuid.UUID, data) -> dict:
         company = self.db.get(Company, tenant_id)

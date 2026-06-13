@@ -23,6 +23,7 @@ from datetime import date, datetime, timezone
 from decimal import Decimal
 
 from app.core.database import SessionLocal
+from app.core.tenancy import set_search_path
 from app.models.company import Branch
 from app.models.costs import Expense
 from app.models.sales import SalesOrder
@@ -58,6 +59,8 @@ def seed_tenant(db, username: str, idx: int) -> str:
     if not user or not user.company_id:
         return f"{username}: no user/company — skipped"
 
+    # Domain tables live in this client's schema — point the session at it.
+    set_search_path(db, user.company.schema_name)
     cid = user.company_id
     already = db.query(SalesOrder).filter(
         SalesOrder.company_id == cid, SalesOrder.remarks == MARKER,

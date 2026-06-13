@@ -18,21 +18,28 @@ logger = logging.getLogger(__name__)
 
 
 async def _purge_stale_varieties() -> None:
-    """Background loop: delete tenant rice varieties deactivated >30 days ago."""
-    from .core.database import SessionLocal
+    """Background loop: delete tenant rice varieties deactivated >30 days ago.
+
+    Rice varieties now live in each client's schema, so this visits every tenant
+    schema in turn rather than running one query over a shared table.
+    """
+    from .core.tenancy import iter_tenant_sessions
     from .services.paddy_service import purge_stale_varieties
 
     while True:
         await asyncio.sleep(86400)  # wait 24 h before first run, then repeat
         try:
-            db = SessionLocal()
-            try:
-                count = purge_stale_varieties(db)
-                db.commit()
-                if count:
-                    logger.info("Purged %d stale rice variety rows (deactivated >30 days)", count)
-            finally:
-                db.close()
+            total = 0
+            for company, db in iter_tenant_sessions():
+                try:
+                    count = purge_stale_varieties(db)
+                    db.commit()
+                    total += count
+                except Exception:
+                    db.rollback()
+                    logger.exception("Stale variety purge failed for company %s", company.id)
+            if total:
+                logger.info("Purged %d stale rice variety rows across tenants (deactivated >30 days)", total)
         except Exception:
             logger.exception("Error during stale variety purge")
 

@@ -13,6 +13,7 @@ from sqlalchemy.orm import Session
 
 from ..core.database import SessionLocal
 from ..core.security import decode_token, get_user_features
+from ..core.tenancy import schema_name_for, set_search_path
 from ..models.user import User
 from ..models.warehouse import WarehouseLayout
 from ..services.canva_realtime import manager as ws_manager
@@ -61,6 +62,11 @@ async def canva_ws(websocket: WebSocket, layout_id: uuid.UUID, token: str | None
         if not user:
             await websocket.close(code=http_status.WS_1008_POLICY_VIOLATION, reason="Invalid token")
             return
+
+        # WS sessions don't go through get_db, so scope this one to the user's
+        # client schema before touching any per-client table (e.g. the layout).
+        if user.company is not None:
+            set_search_path(db, schema_name_for(user.company))
 
         # Plan gate: only Pro+ tenants get realtime canva
         features = get_user_features(user, db)

@@ -1,6 +1,7 @@
 from sqlalchemy import create_engine, URL
 from sqlalchemy.orm import DeclarativeBase, sessionmaker
 from urllib.parse import urlparse
+from fastapi import Request
 from .config import settings
 
 
@@ -35,9 +36,24 @@ class Base(DeclarativeBase):
     pass
 
 
-def get_db():
+def get_db(request: Request = None):
+    """Per-request session, scoped to the caller's client schema.
+
+    The client is resolved from the access token's ``schema`` claim and applied
+    via ``SET search_path`` before the session is handed out. Unauthenticated
+    routes (login/signup/refresh, health) carry no token, so the session stays on
+    ``public`` only — where identity + the control plane live — which is exactly
+    what auth/get_current_user need before any client is known.
+
+    ``request`` is injected by FastAPI; it's optional so the dependency can also
+    be called/overridden without one (tests, ad-hoc use).
+    """
+    # Imported lazily to avoid a circular import (tenancy imports this module).
+    from .tenancy import apply_request_schema
+
     db = SessionLocal()
     try:
+        apply_request_schema(db, request)
         yield db
     finally:
         db.close()
