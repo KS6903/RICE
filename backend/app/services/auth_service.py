@@ -37,7 +37,12 @@ from ..core.ratelimit import (
 from ..core.config import settings
 from ..core.crypto import decrypt_str, encrypt_str
 from ..core.passwords import validate_password_strength
-from ..core.tenancy import provision_tenant, schema_name_for, set_search_path
+from ..core.tenancy import (
+    provision_tenant,
+    schema_name_for,
+    session_for_company,
+    set_search_path,
+)
 from ..core.security import (
     blocklist_access_token,
     create_access_token,
@@ -139,6 +144,15 @@ class AuthService(BaseService):
 
     # ── token / session helpers ───────────────────────────────────────────────
 
+    def _home_session(self, company) -> Session | None:
+        """A session on the company's OWN database, or None if it lives in the
+        shared DB. Used by the unauthenticated auth flows (login/refresh/logout/
+        mfa) to operate on the authoritative copy when a client has been promoted
+        to its own physical database (Company.db_url)."""
+        if company is not None and getattr(company, "db_url", None):
+            return session_for_company(company)
+        return None
+
     def _issue_tokens(self, user: User, *, family_id: uuid.UUID | None = None) -> TokenResponse:
         """Create an AuthSession row and mint the token pair bound to it.
 
@@ -217,38 +231,62 @@ class AuthService(BaseService):
             raise TooManyRequestsError(
                 "Too many failed login attempts for this account. Please try again later."
             )
-        user = self.db.query(User).filter(User.username == username).first()
-        if not user or not verify_password(password, user.password_hash):
-            register_login_failure(username)
-            if user is not None:
-                with self.transaction():
-                    self._log_security_event(user, "auth.login_failed", "Invalid password.")
-            raise UnauthorizedError("Invalid credentials")
-        if not user.is_active:
-            raise PermissionDeniedError("Account disabled")
-        if user.company_id and user.company is not None and not user.company.is_active:
-            raise PermissionDeniedError(
-                "Your company account has been deactivated. Please contact the platform administrator."
-            )
-        # MFA: the password alone yields only a short-lived challenge token —
-        # real tokens are issued by mfa_verify() after a valid TOTP code.
-        if user.mfa_enabled:
-            return MfaChallengeResponse(challenge_token=self._mfa_challenge_token(user))
-        clear_login_failures(username)
-        with self.transaction():
-            user.last_login = datetime.now(timezone.utc)
-            tokens = self._issue_tokens(user)
-            self._log_security_event(user, "auth.login")
-        return tokens
+        # Directory lookup on the request's (shared control-plane) session to find
+        # which database this account lives in; if it's a promoted client, route the
+        # rest of login to that client's own DB (authoritative user + sessions).
+        directory_user = self.db.query(User).filter(User.username == username).first()
+        home = self._home_session(directory_user.company) if directory_user else None
+        original_db = self.db
+        try:
+            if home is not None:
+                self.db = home
+                user = self.db.query(User).filter(User.username == username).first()
+            else:
+                user = directory_user
+            if not user or not verify_password(password, user.password_hash):
+                register_login_failure(username)
+                if user is not None:
+                    with self.transaction():
+                        self._log_security_event(user, "auth.login_failed", "Invalid password.")
+                raise UnauthorizedError("Invalid credentials")
+            if not user.is_active:
+                raise PermissionDeniedError("Account disabled")
+            if user.company_id and user.company is not None and not user.company.is_active:
+                raise PermissionDeniedError(
+                    "Your company account has been deactivated. Please contact the platform administrator."
+                )
+            # MFA: the password alone yields only a short-lived challenge token —
+            # real tokens are issued by mfa_verify() after a valid TOTP code.
+            if user.mfa_enabled:
+                return MfaChallengeResponse(challenge_token=self._mfa_challenge_token(user))
+            clear_login_failures(username)
+            with self.transaction():
+                user.last_login = datetime.now(timezone.utc)
+                tokens = self._issue_tokens(user)
+                self._log_security_event(user, "auth.login")
+            return tokens
+        finally:
+            if home is not None:
+                self.db = original_db
+                home.close()
 
     # ── MFA (TOTP) ────────────────────────────────────────────────────────────
 
     @staticmethod
     def _mfa_challenge_token(user: User) -> str:
-        """Short-lived single-purpose token proving the password step passed."""
+        """Short-lived single-purpose token proving the password step passed.
+
+        Carries the client (company_id/schema) so mfa_verify can route back to the
+        same database the password step ran against (for promoted clients)."""
         expire = datetime.now(timezone.utc) + timedelta(minutes=5)
         return pyjwt.encode(
-            {"sub": str(user.id), "type": "mfa", "exp": expire},
+            {
+                "sub": str(user.id),
+                "type": "mfa",
+                "company_id": str(user.company_id) if user.company_id else None,
+                "schema": user.company.schema_name if user.company else None,
+                "exp": expire,
+            },
             settings.SECRET_KEY,
             algorithm=settings.ALGORITHM,
         )
@@ -275,30 +313,43 @@ class AuthService(BaseService):
         payload = decode_token(challenge_token)
         if payload.get("type") != "mfa":
             raise UnauthorizedError("Invalid MFA challenge")
-        user = self.db.get(User, payload.get("sub"))
-        if not user or not user.is_active or not user.mfa_enabled:
-            raise UnauthorizedError("Invalid MFA challenge")
-        if is_locked_out(user.username):
-            raise TooManyRequestsError("Too many failed attempts. Please try again later.")
-        via_totp = self._verify_totp(user, code)
-        via_backup = (not via_totp) and self._backup_code_matches(user, code)
-        if not via_totp and not via_backup:
-            # Bad codes count toward the same lockout as bad passwords, so a
-            # stolen password can't be parlayed into unlimited code guessing.
-            register_login_failure(user.username)
+        # Route to the client's home DB (promoted clients) using the company on the
+        # challenge token, so the authoritative user/sessions are used.
+        company_id = payload.get("company_id")
+        company = self.db.get(Company, company_id) if company_id else None
+        home = self._home_session(company)
+        original_db = self.db
+        try:
+            if home is not None:
+                self.db = home
+            user = self.db.get(User, payload.get("sub"))
+            if not user or not user.is_active or not user.mfa_enabled:
+                raise UnauthorizedError("Invalid MFA challenge")
+            if is_locked_out(user.username):
+                raise TooManyRequestsError("Too many failed attempts. Please try again later.")
+            via_totp = self._verify_totp(user, code)
+            via_backup = (not via_totp) and self._backup_code_matches(user, code)
+            if not via_totp and not via_backup:
+                # Bad codes count toward the same lockout as bad passwords, so a
+                # stolen password can't be parlayed into unlimited code guessing.
+                register_login_failure(user.username)
+                with self.transaction():
+                    self._log_security_event(user, "auth.mfa_failed", "Invalid code.")
+                raise UnauthorizedError("Invalid authentication code")
+            clear_login_failures(user.username)
             with self.transaction():
-                self._log_security_event(user, "auth.mfa_failed", "Invalid code.")
-            raise UnauthorizedError("Invalid authentication code")
-        clear_login_failures(user.username)
-        with self.transaction():
-            if via_backup:
-                self._consume_backup_code(user, code)  # single-use
-            user.last_login = datetime.now(timezone.utc)
-            tokens = self._issue_tokens(user)
-            self._log_security_event(
-                user, "auth.login", "MFA verified (backup code)." if via_backup else "MFA verified."
-            )
-        return tokens
+                if via_backup:
+                    self._consume_backup_code(user, code)  # single-use
+                user.last_login = datetime.now(timezone.utc)
+                tokens = self._issue_tokens(user)
+                self._log_security_event(
+                    user, "auth.login", "MFA verified (backup code)." if via_backup else "MFA verified."
+                )
+            return tokens
+        finally:
+            if home is not None:
+                self.db = original_db
+                home.close()
 
     def mfa_enroll(self) -> dict:
         """Begin enrollment: mint a TOTP seed (encrypted at rest), pending until
@@ -367,27 +418,40 @@ class AuthService(BaseService):
         payload = decode_token(refresh_token)
         if payload.get("type") != "refresh":
             raise UnauthorizedError("Invalid refresh token")
-        jti = payload.get("jti")
-        session = self.db.get(AuthSession, jti) if jti else None
-        if session is None:
-            raise UnauthorizedError("Invalid refresh token")
-        if session.revoked_at is not None:
-            # Rotation-reuse detected: someone replayed an old refresh token.
+        # The refresh token carries the client; route to its home DB (promoted
+        # clients) so the AuthSession rotation happens where the sessions live.
+        company_id = payload.get("company_id")
+        company = self.db.get(Company, company_id) if company_id else None
+        home = self._home_session(company)
+        original_db = self.db
+        try:
+            if home is not None:
+                self.db = home
+            jti = payload.get("jti")
+            session = self.db.get(AuthSession, jti) if jti else None
+            if session is None:
+                raise UnauthorizedError("Invalid refresh token")
+            if session.revoked_at is not None:
+                # Rotation-reuse detected: someone replayed an old refresh token.
+                with self.transaction():
+                    self._revoke_family(session.family_id)
+                raise UnauthorizedError("Refresh token reuse detected — please log in again")
+            if session.expires_at <= now_utc():
+                raise UnauthorizedError("Refresh token expired")
+            user = self.db.get(User, session.user_id)
+            if not user or not user.is_active:
+                raise UnauthorizedError("User not found or inactive")
+            if user.company_id and user.company is not None and not user.company.is_active:
+                raise PermissionDeniedError("Your company account has been deactivated.")
             with self.transaction():
-                self._revoke_family(session.family_id)
-            raise UnauthorizedError("Refresh token reuse detected — please log in again")
-        if session.expires_at <= now_utc():
-            raise UnauthorizedError("Refresh token expired")
-        user = self.db.get(User, session.user_id)
-        if not user or not user.is_active:
-            raise UnauthorizedError("User not found or inactive")
-        if user.company_id and user.company is not None and not user.company.is_active:
-            raise PermissionDeniedError("Your company account has been deactivated.")
-        with self.transaction():
-            session.revoked_at = now_utc()
-            tokens = self._issue_tokens(user, family_id=session.family_id)
-            session.replaced_by = uuid.UUID(decode_token(tokens.refresh_token)["jti"])
-        return tokens
+                session.revoked_at = now_utc()
+                tokens = self._issue_tokens(user, family_id=session.family_id)
+                session.replaced_by = uuid.UUID(decode_token(tokens.refresh_token)["jti"])
+            return tokens
+        finally:
+            if home is not None:
+                self.db = original_db
+                home.close()
 
     def logout(self, raw_access: str | None, raw_refresh: str | None) -> dict:
         """Revoke the session families behind the presented tokens and blocklist
@@ -399,6 +463,8 @@ class AuthService(BaseService):
         refresh session. Holding a token is sufficient authorization to revoke it.
         """
         families: set[uuid.UUID] = set()
+        company_id: str | None = None
+        decoded: list[dict] = []
         for raw in (raw_access, raw_refresh):
             if not raw:
                 continue
@@ -406,18 +472,33 @@ class AuthService(BaseService):
                 payload = decode_token(raw)
             except Exception:
                 continue  # expired/garbled — nothing to revoke from this one
+            decoded.append(payload)
+            company_id = company_id or payload.get("company_id")
             if payload.get("type") == "access":
-                blocklist_access_token(payload)
-                if payload.get("sid"):
+                blocklist_access_token(payload)  # Redis, DB-independent
+
+        # Route AuthSession revocation to the client's home DB (promoted clients).
+        company = self.db.get(Company, company_id) if company_id else None
+        home = self._home_session(company)
+        original_db = self.db
+        try:
+            if home is not None:
+                self.db = home
+            for payload in decoded:
+                if payload.get("type") == "access" and payload.get("sid"):
                     families.add(uuid.UUID(payload["sid"]))
-            elif payload.get("type") == "refresh" and payload.get("jti"):
-                session = self.db.get(AuthSession, payload["jti"])
-                if session is not None:
-                    families.add(session.family_id)
-        if families:
-            with self.transaction():
-                for fid in families:
-                    self._revoke_family(fid)
+                elif payload.get("type") == "refresh" and payload.get("jti"):
+                    session = self.db.get(AuthSession, payload["jti"])
+                    if session is not None:
+                        families.add(session.family_id)
+            if families:
+                with self.transaction():
+                    for fid in families:
+                        self._revoke_family(fid)
+        finally:
+            if home is not None:
+                self.db = original_db
+                home.close()
         return {"message": "Logged out successfully"}
 
     # ── active sessions / devices ─────────────────────────────────────────────

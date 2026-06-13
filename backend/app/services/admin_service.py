@@ -16,7 +16,7 @@ from sqlalchemy.orm import Session
 
 from ..core.exceptions import AppException, BadRequestError, ConflictError, NotFoundError
 from ..core.security import invalidate_company_features
-from ..core.tenancy import tenant_scope
+from ..core.tenancy import tenant_session
 from ..models.company import Branch, Company
 from ..models.costs import Expense
 from ..models.milling import MillingBatch
@@ -270,10 +270,10 @@ class AdminService(BaseService):
         # Domain tables now live in each client's schema — sum across all tenants.
         total_purchases = total_batches = total_orders = 0
         for company in db.query(Company).all():
-            with tenant_scope(db, company):
-                total_purchases += db.query(func.count(PalayPurchase.id)).scalar() or 0
-                total_batches += db.query(func.count(MillingBatch.id)).scalar() or 0
-                total_orders += db.query(func.count(SalesOrder.id)).scalar() or 0
+            with tenant_session(db, company) as ts:
+                total_purchases += ts.query(func.count(PalayPurchase.id)).scalar() or 0
+                total_batches += ts.query(func.count(MillingBatch.id)).scalar() or 0
+                total_orders += ts.query(func.count(SalesOrder.id)).scalar() or 0
 
         thirty_days_ago = datetime.now(timezone.utc) - timedelta(days=30)
         new_tenants_30d = db.query(func.count(Company.id)).filter(Company.created_at >= thirty_days_ago).scalar() or 0
@@ -338,9 +338,9 @@ class AdminService(BaseService):
         purchase_counts: dict = {}
         order_counts: dict = {}
         for c in companies:
-            with tenant_scope(db, c):
-                purchase_counts[c.id] = db.query(func.count(PalayPurchase.id)).scalar() or 0
-                order_counts[c.id] = db.query(func.count(SalesOrder.id)).scalar() or 0
+            with tenant_session(db, c) as ts:
+                purchase_counts[c.id] = ts.query(func.count(PalayPurchase.id)).scalar() or 0
+                order_counts[c.id] = ts.query(func.count(SalesOrder.id)).scalar() or 0
 
         def _sub_block(cid):
             s = sub_by_company.get(cid)
@@ -385,14 +385,14 @@ class AdminService(BaseService):
             raise NotFoundError("Tenant not found")
         users = db.query(User).filter(User.company_id == company.id).all()
         branches = db.query(Branch).filter(Branch.company_id == company.id).all()
-        # Domain metrics live in the client's own schema.
-        with tenant_scope(db, company):
-            purchases = db.query(func.count(PalayPurchase.id)).scalar() or 0
-            batches = db.query(func.count(MillingBatch.id)).scalar() or 0
-            orders = db.query(func.count(SalesOrder.id)).scalar() or 0
-            invoices = db.query(func.count(Invoice.id)).scalar() or 0
-            expenses_total = db.query(func.coalesce(func.sum(Expense.amount), 0)).scalar() or 0
-            revenue_total = db.query(func.coalesce(func.sum(SalesOrder.total_amount), 0)).filter(
+        # Domain metrics live in the client's own database/schema.
+        with tenant_session(db, company) as ts:
+            purchases = ts.query(func.count(PalayPurchase.id)).scalar() or 0
+            batches = ts.query(func.count(MillingBatch.id)).scalar() or 0
+            orders = ts.query(func.count(SalesOrder.id)).scalar() or 0
+            invoices = ts.query(func.count(Invoice.id)).scalar() or 0
+            expenses_total = ts.query(func.coalesce(func.sum(Expense.amount), 0)).scalar() or 0
+            revenue_total = ts.query(func.coalesce(func.sum(SalesOrder.total_amount), 0)).filter(
                 SalesOrder.status.in_(["invoiced", "paid"]),
             ).scalar() or 0
 
@@ -442,9 +442,9 @@ class AdminService(BaseService):
         company = self.db.get(Company, tenant_id)
         if not company:
             raise NotFoundError("Tenant not found")
-        # activity_logs is a per-client table — read it from the tenant's schema.
-        with tenant_scope(self.db, company):
-            return ActivityService(self.db).list_recent(tenant_id)
+        # activity_logs is a per-client table — read it from the tenant's own DB.
+        with tenant_session(db, company) as ts:
+            return ActivityService(ts).list_recent(tenant_id)
 
     def set_tenant_active(self, tenant_id: uuid.UUID, data) -> dict:
         company = self.db.get(Company, tenant_id)

@@ -49,11 +49,13 @@ def get_db(request: Request = None):
     be called/overridden without one (tests, ad-hoc use).
     """
     # Imported lazily to avoid a circular import (tenancy imports this module).
-    from .tenancy import apply_request_schema
+    # resolve_request_session picks the engine (shared, or the client's own
+    # database when promoted via Company.db_url) and sets search_path from the
+    # access token, then returns a ready session.
+    from .tenancy import resolve_request_session
 
-    db = SessionLocal()
+    db = resolve_request_session(request)
     try:
-        apply_request_schema(db, request)
         yield db
     finally:
         db.close()
