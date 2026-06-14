@@ -3,19 +3,13 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { adminService } from "../../services/AdminService";
 import { format } from "date-fns";
-import {
-  Check,
-  X,
-  Loader2,
-  MessageCircle,
-  ArrowRight,
-  Inbox,
-  RefreshCw,
-  TrendingUp,
-} from "lucide-react";
+import { Check, X, MessageCircle, ArrowRight, Inbox, RefreshCw, TrendingUp } from "lucide-react";
+import { clsx } from "clsx";
 import type { UpgradeRequest } from "@rice-mill/shared";
 
 type FilterStatus = "pending" | "approved" | "rejected" | "cancelled" | "all";
+
+const COLS = ["Tenant", "Type", "Plan", "Requested", "Note", "Status", "Action"];
 
 function statusBadge(s: string) {
   const map: Record<string, string> = {
@@ -43,58 +37,49 @@ function RequestRow({
   const isPlanChange = r.request_type === "change";
 
   return (
-    <tr className="hover:bg-slate-50 dark:hover:bg-slate-800/60 align-top">
-      <td className="px-4 py-3">
-        <Link
-          to={`/admin/tenants/${r.company_id}`}
-          className="font-medium text-indigo-700 dark:text-indigo-300 hover:text-indigo-900 dark:hover:text-indigo-200"
-        >
+    <tr className="align-top">
+      <td>
+        <Link to={`/admin/tenants/${r.company_id}`} className="link font-medium">
           {r.company_name || r.company_id.slice(0, 8)}
         </Link>
       </td>
-      <td className="px-4 py-3">
-        <div className="flex items-center gap-1.5">
-          {isPlanChange ? (
-            <>
-              <RefreshCw size={12} className="text-violet-500 shrink-0" />
-              <span className="text-xs font-semibold text-violet-700 dark:text-violet-300 bg-violet-100 dark:bg-violet-900/40 px-1.5 py-0.5 rounded">
-                Plan Change
-              </span>
-            </>
-          ) : (
-            <>
-              <TrendingUp size={12} className="text-indigo-500 shrink-0" />
-              <span className="text-xs font-semibold text-indigo-700 dark:text-indigo-300 bg-indigo-100 dark:bg-indigo-900/40 px-1.5 py-0.5 rounded">
-                Upgrade
-              </span>
-            </>
+      <td>
+        <span
+          className={clsx(
+            "inline-flex items-center gap-1.5 text-xs font-semibold px-2 py-0.5 rounded",
+            isPlanChange
+              ? "text-violet-700 dark:text-violet-300 bg-violet-100 dark:bg-violet-900/40"
+              : "text-emerald-700 dark:text-emerald-300 bg-emerald-100 dark:bg-emerald-900/40",
           )}
-        </div>
+        >
+          {isPlanChange ? <RefreshCw size={12} /> : <TrendingUp size={12} />}
+          {isPlanChange ? "Plan change" : "Upgrade"}
+        </span>
         {isPlanChange && (
-          <p className="text-xs text-slate-400 mt-1">Takes effect at end of billing period</p>
+          <p className="text-xs text-muted mt-1">Takes effect at end of billing period</p>
         )}
       </td>
-      <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-300">
-        <span className="badge-gray">{r.current_plan_name || "—"}</span>{" "}
-        <ArrowRight size={12} className="inline mx-1 text-slate-400" />{" "}
-        <span className="font-semibold text-slate-900 dark:text-slate-100">
-          {r.requested_plan_name || "—"}
-        </span>
+      <td>
+        <div className="flex items-center gap-1.5 flex-wrap">
+          <span className="badge-gray">{r.current_plan_name || "—"}</span>
+          <ArrowRight size={12} className="text-muted" />
+          <span className="font-semibold text-primary">{r.requested_plan_name || "—"}</span>
+        </div>
       </td>
-      <td className="px-4 py-3 text-xs text-slate-500 dark:text-slate-400">
+      <td className="text-xs text-muted whitespace-nowrap">
         {r.created_at ? format(new Date(r.created_at), "MMM d, yyyy HH:mm") : "—"}
       </td>
-      <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-300 max-w-[180px]">
+      <td className="max-w-[180px]">
         {r.note ? (
-          <span className="italic">"{r.note}"</span>
+          <span className="italic text-secondary">"{r.note}"</span>
         ) : (
-          <span className="text-slate-400">—</span>
+          <span className="text-muted">—</span>
         )}
       </td>
-      <td className="px-4 py-3">
+      <td>
         <span className={statusBadge(r.status)}>{r.status}</span>
       </td>
-      <td className="px-4 py-3">
+      <td>
         {r.status === "pending" ? (
           <div className="flex flex-col gap-2 min-w-[200px]">
             {noteOpen && (
@@ -110,28 +95,28 @@ function RequestRow({
               <button
                 onClick={() => onApprove(note || null)}
                 disabled={busy}
-                className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-md bg-emerald-600 text-white text-xs font-medium hover:bg-emerald-700 disabled:opacity-60"
+                className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-emerald-600 text-white text-xs font-semibold hover:bg-emerald-700 active:scale-[0.97] transition disabled:opacity-60"
               >
                 <Check size={12} />
-                {isPlanChange ? "Queue Change" : "Approve"}
+                {isPlanChange ? "Queue change" : "Approve"}
               </button>
               <button
                 onClick={() => onReject(note || null)}
                 disabled={busy}
-                className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-md bg-rose-600 text-white text-xs font-medium hover:bg-rose-700 disabled:opacity-60"
+                className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-rose-600 text-white text-xs font-semibold hover:bg-rose-700 active:scale-[0.97] transition disabled:opacity-60"
               >
                 <X size={12} /> Reject
               </button>
               <button
                 onClick={() => setNoteOpen(!noteOpen)}
-                className="inline-flex items-center gap-1 text-xs text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
+                className="inline-flex items-center gap-1 text-xs text-muted hover:text-secondary transition-colors"
               >
                 <MessageCircle size={12} /> {noteOpen ? "Hide" : "Note"}
               </button>
             </div>
           </div>
         ) : (
-          <div className="text-xs text-slate-500 dark:text-slate-400">
+          <div className="text-xs text-muted">
             {r.resolved_at && <div>Resolved {format(new Date(r.resolved_at), "MMM d, yyyy")}</div>}
             {r.admin_note && <div className="italic mt-0.5">"{r.admin_note}"</div>}
           </div>
@@ -174,70 +159,65 @@ export default function AdminUpgradeRequests() {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-2xl font-bold text-slate-900 dark:text-slate-100">
-          Subscription Requests
-        </h2>
-        <p className="text-sm text-slate-500 dark:text-slate-400">
-          Tenant upgrade requests and plan change queues
-        </p>
+        <h2 className="text-2xl font-bold text-primary">Subscription requests</h2>
+        <p className="text-sm text-muted">Tenant upgrade requests and plan change queues</p>
       </div>
 
-      <div className="flex items-center gap-2">
+      <div className="seg">
         {(["pending", "approved", "rejected", "cancelled", "all"] as FilterStatus[]).map((s) => (
           <button
             key={s}
             onClick={() => setFilter(s)}
-            className={`px-3 py-1.5 rounded-full text-xs font-medium capitalize transition-colors ${
-              filter === s
-                ? "bg-indigo-600 text-white"
-                : "bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-200"
-            }`}
+            className={clsx("seg-btn capitalize", filter === s && "is-active")}
           >
             {s}
           </button>
         ))}
       </div>
 
-      <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
-        <table className="w-full text-sm">
-          <thead className="bg-gradient-to-r from-indigo-50/80 via-violet-50/60 to-slate-50/80 border-b border-slate-200 dark:border-slate-700">
+      <div className="panel">
+        <table className="data-table">
+          <thead>
             <tr>
-              {["Tenant", "Type", "Plan", "Requested", "Note", "Status", "Action"].map((h) => (
-                <th
-                  key={h}
-                  className="px-4 py-3 text-left font-medium text-slate-600 dark:text-slate-300"
-                >
-                  {h}
-                </th>
+              {COLS.map((h) => (
+                <th key={h}>{h}</th>
               ))}
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
-            {isLoading && (
-              <tr>
-                <td colSpan={7} className="px-4 py-8 text-center text-slate-400">
-                  <Loader2 size={16} className="inline animate-spin mr-2" />
-                  Loading…
-                </td>
-              </tr>
-            )}
+          <tbody>
+            {isLoading &&
+              Array.from({ length: 4 }).map((_, i) => (
+                <tr key={i}>
+                  {COLS.map((_, j) => (
+                    <td key={j}>
+                      <div className="skeleton h-4" style={{ width: j === 0 ? "60%" : "45%" }} />
+                    </td>
+                  ))}
+                </tr>
+              ))}
             {!isLoading && requests.length === 0 && (
               <tr>
-                <td colSpan={7} className="px-4 py-12 text-center text-slate-400">
-                  <Inbox size={28} className="mx-auto mb-2 text-slate-300" />
-                  No {filter === "all" ? "" : filter} requests.
+                <td colSpan={COLS.length} className="!py-14 text-center">
+                  <Inbox size={28} className="mx-auto mb-2 text-muted opacity-60" />
+                  <p className="text-sm font-medium text-secondary">
+                    No {filter === "all" ? "" : filter} requests.
+                  </p>
+                  <p className="text-xs text-muted mt-0.5">
+                    New requests from tenants will appear here.
+                  </p>
                 </td>
               </tr>
             )}
-            {requests.map((r) => (
-              <RequestRow
-                key={r.id}
-                r={r}
-                busy={busy}
-                onApprove={(admin_note) => approve.mutate({ id: r.id, admin_note })}
-                onReject={(admin_note) => reject.mutate({ id: r.id, admin_note })}
-              />
-            ))}
+            {!isLoading &&
+              requests.map((r) => (
+                <RequestRow
+                  key={r.id}
+                  r={r}
+                  busy={busy}
+                  onApprove={(admin_note) => approve.mutate({ id: r.id, admin_note })}
+                  onReject={(admin_note) => reject.mutate({ id: r.id, admin_note })}
+                />
+              ))}
           </tbody>
         </table>
       </div>

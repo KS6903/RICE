@@ -141,10 +141,10 @@ function SubscriptionIndicator({ sub }: { sub: any | null | undefined }) {
             titleClass: "text-rose-900 dark:text-rose-200",
           }
         : {
-            wrap: "border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60",
-            icon: <AlertCircle size={20} className="text-slate-500 dark:text-slate-400" />,
+            wrap: "border-soft bg-surface-muted",
+            icon: <AlertCircle size={20} className="text-muted" />,
             title: status.replace(/_/g, " "),
-            titleClass: "text-slate-900 dark:text-slate-100",
+            titleClass: "text-primary",
           };
 
   const started = sub.started_at ? new Date(sub.started_at) : null;
@@ -160,14 +160,14 @@ function SubscriptionIndicator({ sub }: { sub: any | null | undefined }) {
           <p className={`text-sm font-semibold ${banner.titleClass}`}>{banner.title}</p>
           <div className="flex items-center gap-2 mt-0.5">
             <PlanIcon code={sub.plan_code} size={14} />
-            <span className="text-lg font-bold text-slate-900 dark:text-slate-100">
+            <span className="text-lg font-bold text-primary">
               {sub.plan_name}
             </span>
-            <span className="text-xs text-slate-500 dark:text-slate-400">
+            <span className="text-xs text-muted">
               {sub.monthly_price === 0 ? "Free" : `₱${sub.monthly_price.toLocaleString()}/mo`}
             </span>
             {sub.max_users && (
-              <span className="text-xs text-slate-400">
+              <span className="text-xs text-muted">
                 · {sub.max_users} users · {sub.max_branches || "∞"} branches
               </span>
             )}
@@ -177,34 +177,34 @@ function SubscriptionIndicator({ sub }: { sub: any | null | undefined }) {
       </div>
 
       {/* Facts grid: Started / Until */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 border-t border-current/10 bg-white/60">
-        <div className="px-4 py-3 sm:border-r border-slate-200 dark:border-slate-700">
-          <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+      <div className="grid grid-cols-1 sm:grid-cols-2 border-t border-current/10 bg-[rgb(var(--surface)/0.5)]">
+        <div className="px-4 py-3 sm:border-r border-soft">
+          <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted">
             <Calendar size={11} /> Started
           </div>
-          <div className="text-sm font-medium text-slate-900 dark:text-slate-100 mt-1">
+          <div className="text-sm font-medium text-primary mt-1">
             {started ? format(started, "MMM d, yyyy") : "—"}
           </div>
           {started && (
-            <div className="text-xs text-slate-500 dark:text-slate-400">
+            <div className="text-xs text-muted">
               {relativeTo(now, started)}
             </div>
           )}
         </div>
         <div className="px-4 py-3">
-          <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+          <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted">
             {expires ? <CalendarOff size={11} /> : <InfinityIcon size={11} />} Until
           </div>
           {expires ? (
             <>
-              <div className="text-sm font-medium text-slate-900 dark:text-slate-100 mt-1">
+              <div className="text-sm font-medium text-primary mt-1">
                 {format(expires, "MMM d, yyyy")}
               </div>
               <div
                 className={`text-xs ${
                   expires < now
                     ? "text-rose-600 dark:text-rose-400 font-medium"
-                    : "text-slate-500 dark:text-slate-400"
+                    : "text-muted"
                 }`}
               >
                 {expires < now ? "expired " : ""}
@@ -213,10 +213,10 @@ function SubscriptionIndicator({ sub }: { sub: any | null | undefined }) {
             </>
           ) : (
             <>
-              <div className="text-sm font-medium text-slate-900 dark:text-slate-100 mt-1">
+              <div className="text-sm font-medium text-primary mt-1">
                 Never — permanent
               </div>
-              <div className="text-xs text-slate-500 dark:text-slate-400">No expiration set</div>
+              <div className="text-xs text-muted">No expiration set</div>
             </>
           )}
         </div>
@@ -392,17 +392,17 @@ function SubscriptionManager({ tenantId, tenantName }: { tenantId: string; tenan
         : "Activate subscription";
 
   return (
-    <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
+    <div className="panel">
       {/* Header */}
-      <div className="px-6 py-4 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between">
+      <div className="px-6 py-4 border-b border-soft flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <CreditCard size={16} className="text-slate-500 dark:text-slate-400" />
-          <h3 className="font-semibold text-slate-900 dark:text-slate-100">Subscription</h3>
+          <CreditCard size={16} className="text-muted" />
+          <h3 className="font-semibold text-primary">Subscription</h3>
         </div>
         {!showForm && currentSub && (
           <button
             onClick={() => setShowForm(true)}
-            className="text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 text-xs font-medium"
+            className="link text-xs"
           >
             Change tier
           </button>
@@ -416,9 +416,9 @@ function SubscriptionManager({ tenantId, tenantName }: { tenantId: string; tenan
 
       {/* Tier picker + options */}
       {(showForm || !currentSub) && (
-        <div className="px-6 pb-6 space-y-5 border-t border-slate-100 dark:border-slate-700 pt-5">
+        <div className="px-6 pb-6 space-y-5 border-t border-soft pt-5">
           <div>
-            <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-2">
+            <label className="block text-xs font-semibold text-muted uppercase tracking-wide mb-2">
               Subscription tier
             </label>
             <select
@@ -432,7 +432,7 @@ function SubscriptionManager({ tenantId, tenantName }: { tenantId: string; tenan
                 </option>
               ))}
             </select>
-            <p className="text-xs text-slate-400 mt-1">
+            <p className="text-xs text-muted mt-1">
               Picking a tier activates it for this tenant.{" "}
               <span className="font-medium">Trial</span> defaults to {DEFAULT_TRIAL_DAYS} days
               (adjust the expiry below to change).
@@ -441,7 +441,7 @@ function SubscriptionManager({ tenantId, tenantName }: { tenantId: string; tenan
 
           {tier === "trial" && (
             <div>
-              <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1">
+              <label className="block text-xs font-semibold text-muted uppercase tracking-wide mb-1">
                 Trial of which plan?
               </label>
               <select
@@ -458,7 +458,7 @@ function SubscriptionManager({ tenantId, tenantName }: { tenantId: string; tenan
                     </option>
                   ))}
               </select>
-              <p className="text-xs text-slate-400 mt-1">
+              <p className="text-xs text-muted mt-1">
                 Tenant gets all of this plan's features for the trial duration.
               </p>
             </div>
@@ -466,10 +466,10 @@ function SubscriptionManager({ tenantId, tenantName }: { tenantId: string; tenan
 
           {/* Selected tier details */}
           {selectedPlan && (
-            <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 p-4 flex flex-wrap items-center gap-x-6 gap-y-2 text-sm">
+            <div className="rounded-xl border border-soft bg-surface-muted p-4 flex flex-wrap items-center gap-x-6 gap-y-2 text-sm">
               <div className="flex items-center gap-2">
                 <PlanIcon code={selectedPlan.code} />
-                <span className="font-bold text-slate-900 dark:text-slate-100">
+                <span className="font-bold text-primary">
                   {selectedPlan.name}
                 </span>
                 {tier === "trial" && (
@@ -478,12 +478,12 @@ function SubscriptionManager({ tenantId, tenantName }: { tenantId: string; tenan
                   </span>
                 )}
               </div>
-              <span className="text-slate-700 dark:text-slate-200">
+              <span className="text-secondary">
                 {selectedPlan.monthly_price === 0
                   ? "Free"
                   : `₱${selectedPlan.monthly_price.toLocaleString()}/mo`}
               </span>
-              <span className="text-slate-600 dark:text-slate-300">
+              <span className="text-secondary">
                 {selectedPlan.max_users ? `${selectedPlan.max_users} users` : "Unlimited users"} ·{" "}
                 {selectedPlan.max_branches
                   ? `${selectedPlan.max_branches} branches`
@@ -494,7 +494,7 @@ function SubscriptionManager({ tenantId, tenantName }: { tenantId: string; tenan
                   {(selectedPlan.features as string[]).map((f) => (
                     <span
                       key={f}
-                      className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 text-[10px] px-1.5 py-0.5 rounded"
+                      className="bg-surface border border-soft text-secondary text-[10px] px-1.5 py-0.5 rounded"
                     >
                       {f.replace(/_/g, " ")}
                     </span>
@@ -506,19 +506,19 @@ function SubscriptionManager({ tenantId, tenantName }: { tenantId: string; tenan
 
           {/* Permanent toggle (active tiers only) */}
           {tier !== "trial" && (
-            <label className="flex items-start gap-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 px-3 py-2.5 cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
+            <label className="flex items-start gap-2 rounded-lg border border-soft bg-surface-muted px-3 py-2.5 cursor-pointer hover:bg-[rgb(var(--ink)/0.04)] transition-colors">
               <input
                 type="checkbox"
                 checked={isPermanent}
                 onChange={(e) => handlePermanentChange(e.target.checked)}
-                className="mt-0.5 h-4 w-4 rounded border-slate-300 dark:border-slate-600 text-indigo-600 dark:text-indigo-400 focus:ring-indigo-500"
+                className="mt-0.5 h-4 w-4 rounded border-line accent-emerald-600 focus:ring-emerald-500"
               />
               <span className="flex-1">
-                <span className="flex items-center gap-1.5 text-sm font-semibold text-slate-900 dark:text-slate-100">
+                <span className="flex items-center gap-1.5 text-sm font-semibold text-primary">
                   <InfinityIcon size={14} />
                   Permanent subscription
                 </span>
-                <span className="text-xs text-slate-500 dark:text-slate-400">
+                <span className="text-xs text-muted">
                   Never expires. Tenant keeps access until you change the tier.
                 </span>
               </span>
@@ -528,7 +528,7 @@ function SubscriptionManager({ tenantId, tenantName }: { tenantId: string; tenan
           {/* Expiry + notes */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1">
+              <label className="block text-xs font-semibold text-muted uppercase tracking-wide mb-1">
                 {tier === "trial"
                   ? "Trial ends at"
                   : isPermanent
@@ -540,17 +540,17 @@ function SubscriptionManager({ tenantId, tenantName }: { tenantId: string; tenan
                 value={expiresAt}
                 onChange={(e) => setExpiresAt(e.target.value)}
                 disabled={tier !== "trial" && isPermanent}
-                className="input disabled:bg-slate-100 dark:disabled:bg-slate-700/50 disabled:text-slate-400 dark:disabled:text-slate-500 disabled:cursor-not-allowed"
+                className="input disabled:bg-surface-muted disabled:text-muted disabled:cursor-not-allowed"
               />
               {tier === "trial" && (
-                <p className="text-xs text-slate-400 mt-1">
+                <p className="text-xs text-muted mt-1">
                   Defaulted to {DEFAULT_TRIAL_DAYS} days from now. Tenant loses access automatically
                   when this passes.
                 </p>
               )}
             </div>
             <div>
-              <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1">
+              <label className="block text-xs font-semibold text-muted uppercase tracking-wide mb-1">
                 Notes (optional)
               </label>
               <input
@@ -664,7 +664,7 @@ export default function AdminTenantDetail() {
     <div className="space-y-6">
       <Link
         to="/admin/tenants"
-        className="inline-flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
+        className="inline-flex items-center gap-2 text-sm text-muted hover:text-primary transition-colors"
       >
         <ArrowLeft size={14} /> Back to tenants
       </Link>
@@ -672,7 +672,7 @@ export default function AdminTenantDetail() {
       <div className="flex items-start justify-between flex-wrap gap-3">
         <div>
           <div className="flex items-center gap-3">
-            <h2 className="text-2xl font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+            <h2 className="text-2xl font-bold text-primary flex items-center gap-2">
               <Building2 size={22} /> {c.name || "Tenant"}
             </h2>
             {c.is_active ? (
@@ -681,7 +681,7 @@ export default function AdminTenantDetail() {
               <span className="badge-red">Inactive</span>
             )}
           </div>
-          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+          <p className="text-sm text-muted mt-1">
             Tenant ID: <span className="font-mono">{c.id || id}</span>
           </p>
         </div>
@@ -711,86 +711,81 @@ export default function AdminTenantDetail() {
           {/* ─── Subscription Management ─── */}
           <SubscriptionManager tenantId={id!} tenantName={c.name} />
 
-          <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 p-6">
-            <h3 className="font-semibold text-slate-900 dark:text-slate-100 mb-4">
+          <div className="card">
+            <h3 className="font-semibold text-primary mb-4">
               Company information
             </h3>
             <dl className="grid grid-cols-2 gap-4 text-sm">
               <div>
-                <dt className="text-slate-500 dark:text-slate-400">Address</dt>
-                <dd className="text-slate-900 dark:text-slate-100">{c.address || "—"}</dd>
+                <dt className="text-muted">Address</dt>
+                <dd className="text-primary">{c.address || "—"}</dd>
               </div>
               <div>
-                <dt className="text-slate-500 dark:text-slate-400">TIN</dt>
-                <dd className="text-slate-900 dark:text-slate-100">{c.tin || "—"}</dd>
+                <dt className="text-muted">TIN</dt>
+                <dd className="text-primary">{c.tin || "—"}</dd>
               </div>
               <div>
-                <dt className="text-slate-500 dark:text-slate-400">Phone</dt>
-                <dd className="text-slate-900 dark:text-slate-100">{c.phone || "—"}</dd>
+                <dt className="text-muted">Phone</dt>
+                <dd className="text-primary">{c.phone || "—"}</dd>
               </div>
               <div>
-                <dt className="text-slate-500 dark:text-slate-400">Email</dt>
-                <dd className="text-slate-900 dark:text-slate-100">{c.email || "—"}</dd>
+                <dt className="text-muted">Email</dt>
+                <dd className="text-primary">{c.email || "—"}</dd>
               </div>
               <div>
-                <dt className="text-slate-500 dark:text-slate-400">NFA License</dt>
-                <dd className="text-slate-900 dark:text-slate-100">{c.nfa_license_no || "—"}</dd>
+                <dt className="text-muted">NFA License</dt>
+                <dd className="text-primary">{c.nfa_license_no || "—"}</dd>
               </div>
               <div>
-                <dt className="text-slate-500 dark:text-slate-400">DA Reg.</dt>
-                <dd className="text-slate-900 dark:text-slate-100">
+                <dt className="text-muted">DA Reg.</dt>
+                <dd className="text-primary">
                   {c.da_registration_no || "—"}
                 </dd>
               </div>
               <div>
-                <dt className="text-slate-500 dark:text-slate-400">Currency</dt>
-                <dd className="text-slate-900 dark:text-slate-100">{c.currency}</dd>
+                <dt className="text-muted">Currency</dt>
+                <dd className="text-primary">{c.currency}</dd>
               </div>
               <div>
-                <dt className="text-slate-500 dark:text-slate-400">Timezone</dt>
-                <dd className="text-slate-900 dark:text-slate-100">{c.timezone}</dd>
+                <dt className="text-muted">Timezone</dt>
+                <dd className="text-primary">{c.timezone}</dd>
               </div>
               <div>
-                <dt className="text-slate-500 dark:text-slate-400">Multi-branch</dt>
-                <dd className="text-slate-900 dark:text-slate-100">
+                <dt className="text-muted">Multi-branch</dt>
+                <dd className="text-primary">
                   {c.is_multi_branch ? "Yes" : "No"}
                 </dd>
               </div>
               <div>
-                <dt className="text-slate-500 dark:text-slate-400">Signed up</dt>
-                <dd className="text-slate-900 dark:text-slate-100">
+                <dt className="text-muted">Signed up</dt>
+                <dd className="text-primary">
                   {c.created_at ? format(new Date(c.created_at), "MMM d, yyyy 'at' HH:mm") : "—"}
                 </dd>
               </div>
             </dl>
           </div>
 
-          <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
-            <div className="px-6 py-4 border-b border-slate-200 dark:border-slate-700 flex items-center gap-2">
-              <UsersIcon size={16} className="text-slate-500 dark:text-slate-400" />
-              <h3 className="font-semibold text-slate-900 dark:text-slate-100">
+          <div className="panel">
+            <div className="px-6 py-4 border-b border-soft flex items-center gap-2">
+              <UsersIcon size={16} className="text-muted" />
+              <h3 className="font-semibold text-primary">
                 Users ({users.length})
               </h3>
             </div>
-            <table className="w-full text-sm">
-              <thead className="bg-gradient-to-r from-indigo-50/80 via-violet-50/60 to-slate-50/80">
+            <table className="data-table">
+              <thead>
                 <tr>
                   {["Username", "Full name", "Email", "Role", "Status", "Last login"].map((h) => (
-                    <th
-                      key={h}
-                      className="px-4 py-3 text-left font-medium text-slate-600 dark:text-slate-300"
-                    >
-                      {h}
-                    </th>
+                    <th key={h}>{h}</th>
                   ))}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
+              <tbody>
                 {users.map((u: any) => (
                   <tr key={u.id}>
                     <td className="px-4 py-3 font-mono text-xs">{u.username}</td>
                     <td className="px-4 py-3">{u.full_name}</td>
-                    <td className="px-4 py-3 text-slate-500 dark:text-slate-400">
+                    <td className="px-4 py-3 text-muted">
                       {u.email || "—"}
                     </td>
                     <td className="px-4 py-3 capitalize">{u.role?.replace("_", " ") || "—"}</td>
@@ -801,14 +796,14 @@ export default function AdminTenantDetail() {
                         <span className="badge-red">Inactive</span>
                       )}
                     </td>
-                    <td className="px-4 py-3 text-slate-500 dark:text-slate-400 text-xs">
+                    <td className="px-4 py-3 text-muted text-xs">
                       {u.last_login ? format(new Date(u.last_login), "MMM d, HH:mm") : "—"}
                     </td>
                   </tr>
                 ))}
                 {users.length === 0 && (
                   <tr>
-                    <td colSpan={6} className="px-4 py-6 text-center text-slate-400">
+                    <td colSpan={6} className="px-4 py-6 text-center text-muted">
                       No users yet.
                     </td>
                   </tr>
@@ -817,27 +812,22 @@ export default function AdminTenantDetail() {
             </table>
           </div>
 
-          <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
-            <div className="px-6 py-4 border-b border-slate-200 dark:border-slate-700 flex items-center gap-2">
-              <MapPin size={16} className="text-slate-500 dark:text-slate-400" />
-              <h3 className="font-semibold text-slate-900 dark:text-slate-100">
+          <div className="panel">
+            <div className="px-6 py-4 border-b border-soft flex items-center gap-2">
+              <MapPin size={16} className="text-muted" />
+              <h3 className="font-semibold text-primary">
                 Branches ({branches.length})
               </h3>
             </div>
-            <table className="w-full text-sm">
-              <thead className="bg-gradient-to-r from-indigo-50/80 via-violet-50/60 to-slate-50/80">
+            <table className="data-table">
+              <thead>
                 <tr>
                   {["Name", "Type", "Status"].map((h) => (
-                    <th
-                      key={h}
-                      className="px-4 py-3 text-left font-medium text-slate-600 dark:text-slate-300"
-                    >
-                      {h}
-                    </th>
+                    <th key={h}>{h}</th>
                   ))}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
+              <tbody>
                 {branches.map((b: any) => (
                   <tr key={b.id}>
                     <td className="px-4 py-3 font-medium">{b.name}</td>
@@ -859,7 +849,7 @@ export default function AdminTenantDetail() {
                 ))}
                 {branches.length === 0 && (
                   <tr>
-                    <td colSpan={3} className="px-4 py-6 text-center text-slate-400">
+                    <td colSpan={3} className="px-4 py-6 text-center text-muted">
                       No branches yet.
                     </td>
                   </tr>
@@ -868,9 +858,9 @@ export default function AdminTenantDetail() {
             </table>
           </div>
 
-          <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 p-5">
-            <h3 className="font-semibold text-slate-900 dark:text-slate-100 mb-1">Activity log</h3>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mb-3">
+          <div className="card">
+            <h3 className="font-semibold text-primary mb-1">Activity log</h3>
+            <p className="text-xs text-muted mb-3">
               Warehouse delete / restore / purge actions, per user.
             </p>
             <TenantActivityLog tenantId={id!} />
@@ -878,39 +868,39 @@ export default function AdminTenantDetail() {
         </div>
 
         <div className="space-y-4">
-          <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 p-5">
-            <h3 className="font-semibold text-slate-900 dark:text-slate-100 mb-4">Activity</h3>
+          <div className="card">
+            <h3 className="font-semibold text-primary mb-4">Activity</h3>
             <dl className="space-y-3 text-sm">
               <div className="flex justify-between">
-                <dt className="text-slate-500 dark:text-slate-400">Purchases</dt>
+                <dt className="text-muted">Purchases</dt>
                 <dd className="font-semibold">{m.purchases_count.toLocaleString()}</dd>
               </div>
               <div className="flex justify-between">
-                <dt className="text-slate-500 dark:text-slate-400">Milling batches</dt>
+                <dt className="text-muted">Milling batches</dt>
                 <dd className="font-semibold">{m.batches_count.toLocaleString()}</dd>
               </div>
               <div className="flex justify-between">
-                <dt className="text-slate-500 dark:text-slate-400">Sales orders</dt>
+                <dt className="text-muted">Sales orders</dt>
                 <dd className="font-semibold">{m.orders_count.toLocaleString()}</dd>
               </div>
               <div className="flex justify-between">
-                <dt className="text-slate-500 dark:text-slate-400">Invoices</dt>
+                <dt className="text-muted">Invoices</dt>
                 <dd className="font-semibold">{m.invoices_count.toLocaleString()}</dd>
               </div>
             </dl>
           </div>
 
-          <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 p-5">
-            <h3 className="font-semibold text-slate-900 dark:text-slate-100 mb-4">Money</h3>
+          <div className="card">
+            <h3 className="font-semibold text-primary mb-4">Money</h3>
             <dl className="space-y-3 text-sm">
               <div className="flex justify-between">
-                <dt className="text-slate-500 dark:text-slate-400">Revenue</dt>
+                <dt className="text-muted">Revenue</dt>
                 <dd className="font-semibold text-emerald-600 dark:text-emerald-400">
                   ₱{m.total_revenue.toLocaleString()}
                 </dd>
               </div>
               <div className="flex justify-between">
-                <dt className="text-slate-500 dark:text-slate-400">Expenses</dt>
+                <dt className="text-muted">Expenses</dt>
                 <dd className="font-semibold text-rose-600 dark:text-rose-400">
                   ₱{m.total_expenses.toLocaleString()}
                 </dd>

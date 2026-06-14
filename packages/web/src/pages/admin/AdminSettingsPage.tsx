@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { adminService } from "../../services/AdminService";
 import { authService } from "../../services/AuthService";
 import { useAuthStore } from "../../stores/authStore";
+import { clsx } from "clsx";
 import {
   CreditCard,
   User as UserIcon,
@@ -23,9 +24,11 @@ import {
 
 type Tab = "plans" | "profile" | "password";
 
-const LABEL = "block text-sm font-semibold text-slate-700 dark:text-slate-200 mb-1.5";
-const INPUT =
-  "w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 py-2.5 text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors";
+const LABEL = "form-label";
+const INPUT = "input";
+
+const ERROR_BOX =
+  "flex items-start gap-2 px-3 py-2.5 rounded-lg bg-rose-50 dark:bg-rose-900/30 ring-1 ring-rose-200 dark:ring-rose-800 text-sm text-rose-700 dark:text-rose-300";
 
 // ── Plans tab ────────────────────────────────────────────────────────────────
 
@@ -60,44 +63,36 @@ function PlanRow({
 }) {
   const Icon = PLAN_ICONS[plan.code] ?? Rocket;
   return (
-    <tr className="hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors">
-      <td className="px-4 py-3 text-sm font-medium text-slate-900 dark:text-slate-100 flex items-center gap-2">
-        <Icon size={15} className="text-indigo-500 shrink-0" />
-        {plan.name}
-        {!plan.is_active && (
-          <span className="ml-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400 uppercase tracking-wide">
-            inactive
-          </span>
-        )}
+    <tr>
+      <td className="font-medium text-primary">
+        <span className="flex items-center gap-2">
+          <Icon size={15} className="text-emerald-500 shrink-0" />
+          {plan.name}
+          {!plan.is_active && (
+            <span className="badge-gray !text-[10px] !py-0.5">inactive</span>
+          )}
+        </span>
       </td>
-      <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-300 font-mono">
-        {plan.code}
-      </td>
-      <td className="px-4 py-3 text-sm text-slate-900 dark:text-slate-100 font-semibold">
+      <td className="font-mono text-xs text-secondary">{plan.code}</td>
+      <td className="font-semibold text-primary tabular-nums">
         ₱{Number(plan.monthly_price).toLocaleString()}
-        <span className="text-xs font-normal text-slate-400">/mo</span>
+        <span className="text-xs font-normal text-muted">/mo</span>
       </td>
-      <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-300">
-        {plan.max_branches === null ? "Unlimited" : plan.max_branches}
-      </td>
-      <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-300">
-        {plan.max_users === null ? "Unlimited" : plan.max_users}
-      </td>
-      <td className="px-4 py-3 text-sm text-slate-500 dark:text-slate-400 max-w-[200px] truncate">
-        {plan.features.join(", ")}
-      </td>
-      <td className="px-4 py-3 text-right">
+      <td className="tabular-nums">{plan.max_branches === null ? "Unlimited" : plan.max_branches}</td>
+      <td className="tabular-nums">{plan.max_users === null ? "Unlimited" : plan.max_users}</td>
+      <td className="max-w-[200px] truncate text-muted">{plan.features.join(", ")}</td>
+      <td className="text-right">
         <div className="flex items-center justify-end gap-1">
           <button
             onClick={() => onEdit(plan)}
-            className="p-1.5 rounded-lg hover:bg-indigo-50 dark:hover:bg-indigo-900/30 hover:text-indigo-600 dark:hover:text-indigo-400 text-slate-400 transition-colors"
+            className="p-1.5 rounded-lg text-muted hover:bg-emerald-500/10 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors"
             title="Edit plan"
           >
             <Pencil size={14} />
           </button>
           <button
             onClick={() => onDelete(plan.id)}
-            className="p-1.5 rounded-lg hover:bg-rose-50 dark:hover:bg-rose-900/30 hover:text-rose-600 dark:hover:text-rose-400 text-slate-400 transition-colors"
+            className="p-1.5 rounded-lg text-muted hover:bg-rose-500/10 hover:text-rose-600 dark:hover:text-rose-400 transition-colors"
             title="Delete plan"
           >
             <Trash2 size={14} />
@@ -119,6 +114,8 @@ const EMPTY_PLAN = {
   is_active: true,
   sort_order: 0,
 };
+
+const PLAN_COLS = ["Name", "Code", "Price", "Max branches", "Max users", "Features", "Actions"];
 
 function PlansTab() {
   const qc = useQueryClient();
@@ -194,19 +191,12 @@ function PlansTab() {
     upsert.mutate(payload);
   };
 
-  const TH =
-    "px-4 py-3 text-left text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400 bg-gradient-to-r from-indigo-50/80 via-violet-50/60 to-slate-50/80 border-b border-slate-200 dark:border-slate-700";
-
   return (
     <div className="space-y-5">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100">
-            Subscription Plans
-          </h3>
-          <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
-            Manage the plans available to your tenants
-          </p>
+          <h3 className="text-lg font-bold text-primary">Subscription plans</h3>
+          <p className="text-sm text-muted mt-0.5">Manage the plans available to your tenants</p>
         </div>
         <div className="flex items-center gap-3">
           {saved && (
@@ -214,32 +204,27 @@ function PlansTab() {
               <Check size={14} /> Saved
             </span>
           )}
-          <button
-            onClick={openNew}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700 transition-colors shadow-sm"
-          >
+          <button onClick={openNew} className="btn-primary !py-2 !text-sm">
             <Plus size={15} />
-            New Plan
+            New plan
           </button>
         </div>
       </div>
 
       {showForm && (
-        <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm p-5 space-y-4">
+        <div className="card space-y-4">
           <div className="flex items-center justify-between">
-            <h4 className="font-bold text-slate-900 dark:text-slate-100">
-              {editingId ? "Edit Plan" : "New Plan"}
-            </h4>
+            <h4 className="font-bold text-primary">{editingId ? "Edit plan" : "New plan"}</h4>
             <button
               onClick={() => setShowForm(false)}
-              className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
+              className="text-muted hover:text-primary transition-colors"
             >
               <XIcon size={18} />
             </button>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className={LABEL}>Plan Code</label>
+              <label className={LABEL}>Plan code</label>
               <input
                 className={INPUT}
                 value={form.code}
@@ -248,7 +233,7 @@ function PlansTab() {
               />
             </div>
             <div>
-              <label className={LABEL}>Display Name</label>
+              <label className={LABEL}>Display name</label>
               <input
                 className={INPUT}
                 value={form.name}
@@ -257,7 +242,7 @@ function PlansTab() {
               />
             </div>
             <div>
-              <label className={LABEL}>Monthly Price (₱)</label>
+              <label className={LABEL}>Monthly price (₱)</label>
               <input
                 type="number"
                 min={0}
@@ -267,7 +252,7 @@ function PlansTab() {
               />
             </div>
             <div>
-              <label className={LABEL}>Sort Order</label>
+              <label className={LABEL}>Sort order</label>
               <input
                 type="number"
                 min={0}
@@ -278,7 +263,7 @@ function PlansTab() {
               />
             </div>
             <div>
-              <label className={LABEL}>Max Branches</label>
+              <label className={LABEL}>Max branches</label>
               <input
                 type="number"
                 min={1}
@@ -294,7 +279,7 @@ function PlansTab() {
               />
             </div>
             <div>
-              <label className={LABEL}>Max Users</label>
+              <label className={LABEL}>Max users</label>
               <input
                 type="number"
                 min={1}
@@ -319,77 +304,74 @@ function PlansTab() {
               onChange={(e) => setFeaturesRaw(e.target.value)}
               placeholder="paddy, milling, inventory, reports, users"
             />
-            <p className="text-xs text-slate-400 mt-1">
+            <p className="text-xs text-muted mt-1">
               Feature codes that tenants on this plan can access.
             </p>
           </div>
-          <div className="flex items-center gap-2">
+          <label className="flex items-center gap-2 cursor-pointer select-none">
             <input
               type="checkbox"
-              id="is_active"
               checked={form.is_active}
               onChange={(e) => setForm((f) => ({ ...f, is_active: e.target.checked }))}
-              className="h-4 w-4 rounded border-slate-300 dark:border-slate-600 accent-indigo-600 cursor-pointer"
+              className="h-4 w-4 rounded border-line accent-emerald-600 cursor-pointer"
             />
-            <label
-              htmlFor="is_active"
-              className="text-sm font-medium text-slate-700 dark:text-slate-200 cursor-pointer select-none"
-            >
+            <span className="text-sm font-medium text-secondary">
               Plan is active (visible to tenants)
-            </label>
-          </div>
+            </span>
+          </label>
           {upsert.isError && (
-            <div className="flex items-start gap-2 px-3 py-2.5 rounded-lg bg-rose-50 dark:bg-rose-900/30 ring-1 ring-rose-200 text-sm text-rose-700 dark:text-rose-300">
+            <div className={ERROR_BOX}>
               <AlertCircle size={15} className="mt-0.5 shrink-0" />
               {(upsert.error as any)?.response?.data?.detail || "Failed to save plan."}
             </div>
           )}
           <div className="flex gap-2 pt-1">
-            <button
-              onClick={() => setShowForm(false)}
-              className="flex-1 px-4 py-2 rounded-lg border border-slate-300 dark:border-slate-600 text-sm font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors"
-            >
+            <button onClick={() => setShowForm(false)} className="btn-secondary flex-1">
               Cancel
             </button>
             <button
               onClick={handleSubmit}
               disabled={upsert.isPending || !form.code.trim() || !form.name.trim()}
-              className="flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700 disabled:opacity-50 transition-colors shadow-sm"
+              className="btn-primary flex-1"
             >
               {upsert.isPending ? (
                 <Loader2 size={15} className="animate-spin" />
               ) : (
                 <Check size={15} />
               )}
-              {editingId ? "Save Changes" : "Create Plan"}
+              {editingId ? "Save changes" : "Create plan"}
             </button>
           </div>
         </div>
       )}
 
-      <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden">
+      <div className="panel">
         {isLoading ? (
-          <div className="flex items-center justify-center h-32 text-slate-400 text-sm gap-2">
-            <Loader2 size={16} className="animate-spin" /> Loading plans…
+          <div className="p-4 space-y-3">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="skeleton h-5 w-full" />
+            ))}
           </div>
         ) : plans.length === 0 ? (
-          <div className="flex items-center justify-center h-32 text-slate-400 text-sm gap-2">
-            <AlertCircle size={16} /> No plans configured yet.
+          <div className="flex flex-col items-center justify-center py-14 text-center">
+            <span className="icon-chip mb-3">
+              <CreditCard size={18} />
+            </span>
+            <p className="text-sm font-medium text-secondary">No plans configured yet</p>
+            <p className="text-xs text-muted mt-0.5">Create your first plan to start onboarding tenants.</p>
           </div>
         ) : (
-          <table className="w-full text-left border-collapse">
+          <table className="data-table">
             <thead>
               <tr>
-                <th className={TH}>Name</th>
-                <th className={TH}>Code</th>
-                <th className={TH}>Price</th>
-                <th className={TH}>Max Branches</th>
-                <th className={TH}>Max Users</th>
-                <th className={TH}>Features</th>
-                <th className={TH + " text-right"}>Actions</th>
+                {PLAN_COLS.map((h) => (
+                  <th key={h} className={h === "Actions" ? "text-right" : ""}>
+                    {h}
+                  </th>
+                ))}
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
+            <tbody>
               {plans.map((p) => (
                 <PlanRow key={p.id} plan={p} onEdit={openEdit} onDelete={(id) => del.mutate(id)} />
               ))}
@@ -430,15 +412,13 @@ function ProfileTab() {
   return (
     <div className="max-w-lg space-y-5">
       <div>
-        <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100">My Profile</h3>
-        <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
-          Update your admin display name and email
-        </p>
+        <h3 className="text-lg font-bold text-primary">My profile</h3>
+        <p className="text-sm text-muted mt-0.5">Update your admin display name and email</p>
       </div>
 
-      <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm p-5 space-y-4">
+      <div className="card space-y-4">
         <div>
-          <label className={LABEL}>Full Name</label>
+          <label className={LABEL}>Full name</label>
           <input
             className={INPUT}
             value={form.full_name}
@@ -459,7 +439,7 @@ function ProfileTab() {
         <div>
           <label className={LABEL}>Username</label>
           <input className={INPUT} value={user?.username ?? ""} disabled readOnly />
-          <p className="text-xs text-slate-400 mt-1">Username cannot be changed.</p>
+          <p className="text-xs text-muted mt-1">Username cannot be changed.</p>
         </div>
         <div>
           <label className={LABEL}>Role</label>
@@ -467,20 +447,16 @@ function ProfileTab() {
         </div>
 
         {save.isError && (
-          <div className="flex items-start gap-2 px-3 py-2.5 rounded-lg bg-rose-50 dark:bg-rose-900/30 ring-1 ring-rose-200 text-sm text-rose-700 dark:text-rose-300">
+          <div className={ERROR_BOX}>
             <AlertCircle size={15} className="mt-0.5 shrink-0" />
             {(save.error as any)?.response?.data?.detail || "Failed to save profile."}
           </div>
         )}
 
         <div className="flex items-center gap-3 pt-1">
-          <button
-            onClick={() => save.mutate()}
-            disabled={save.isPending}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700 disabled:opacity-50 transition-colors shadow-sm"
-          >
+          <button onClick={() => save.mutate()} disabled={save.isPending} className="btn-primary">
             {save.isPending ? <Loader2 size={14} className="animate-spin" /> : null}
-            Save Profile
+            Save profile
           </button>
           {saved && (
             <span className="text-sm font-semibold text-emerald-600 dark:text-emerald-400 inline-flex items-center gap-1">
@@ -523,15 +499,13 @@ function PasswordTab() {
   return (
     <div className="max-w-lg space-y-5">
       <div>
-        <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100">Change Password</h3>
-        <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
-          Update your admin account password
-        </p>
+        <h3 className="text-lg font-bold text-primary">Change password</h3>
+        <p className="text-sm text-muted mt-0.5">Update your admin account password</p>
       </div>
 
-      <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm p-5 space-y-4">
+      <div className="card space-y-4">
         <div>
-          <label className={LABEL}>Current Password</label>
+          <label className={LABEL}>Current password</label>
           <input
             type="password"
             className={INPUT}
@@ -541,7 +515,7 @@ function PasswordTab() {
           />
         </div>
         <div>
-          <label className={LABEL}>New Password</label>
+          <label className={LABEL}>New password</label>
           <input
             type="password"
             className={INPUT}
@@ -551,7 +525,7 @@ function PasswordTab() {
           />
         </div>
         <div>
-          <label className={LABEL}>Confirm New Password</label>
+          <label className={LABEL}>Confirm new password</label>
           <input
             type="password"
             className={INPUT}
@@ -560,10 +534,10 @@ function PasswordTab() {
             placeholder="••••••••"
           />
         </div>
-        <p className="text-xs text-slate-400">Minimum 8 characters.</p>
+        <p className="text-xs text-muted">Minimum 8 characters.</p>
 
         {err && (
-          <div className="flex items-start gap-2 px-3 py-2.5 rounded-lg bg-rose-50 dark:bg-rose-900/30 ring-1 ring-rose-200 text-sm text-rose-700 dark:text-rose-300">
+          <div className={ERROR_BOX}>
             <AlertCircle size={15} className="mt-0.5 shrink-0" />
             {err}
           </div>
@@ -573,10 +547,10 @@ function PasswordTab() {
           <button
             onClick={handleSubmit}
             disabled={change.isPending || !form.current || !form.next || !form.confirm}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700 disabled:opacity-50 transition-colors shadow-sm"
+            className="btn-primary"
           >
             {change.isPending ? <Loader2 size={14} className="animate-spin" /> : null}
-            Update Password
+            Update password
           </button>
           {saved && (
             <span className="text-sm font-semibold text-emerald-600 dark:text-emerald-400 inline-flex items-center gap-1">
@@ -596,21 +570,19 @@ export default function AdminSettingsPage() {
 
   const tabs: { key: Tab; label: string; icon: React.ElementType }[] = [
     { key: "plans", label: "Plans", icon: CreditCard },
-    { key: "profile", label: "My Profile", icon: UserIcon },
+    { key: "profile", label: "My profile", icon: UserIcon },
     { key: "password", label: "Password", icon: KeyRound },
   ];
 
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-3">
-        <div className="p-2.5 rounded-xl bg-indigo-600 shadow-sm">
+        <div className="h-11 w-11 rounded-xl bg-grad-brand grid place-items-center shadow-grad-glow">
           <SettingsIcon size={20} className="text-white" />
         </div>
         <div>
-          <h2 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Admin Settings</h2>
-          <p className="text-sm text-slate-500 dark:text-slate-400">
-            Manage subscription plans and your admin account
-          </p>
+          <h2 className="text-2xl font-bold text-primary">Admin settings</h2>
+          <p className="text-sm text-muted">Manage subscription plans and your admin account</p>
         </div>
       </div>
 
@@ -623,13 +595,17 @@ export default function AdminSettingsPage() {
                 <button
                   key={key}
                   onClick={() => setTab(key)}
-                  className={`flex items-center gap-3 px-3.5 py-2.5 text-sm font-semibold rounded-lg transition-colors whitespace-nowrap w-full text-left ${
-                    active
-                      ? "bg-indigo-600 text-white shadow-sm"
-                      : "text-slate-600 dark:text-slate-300 hover:bg-slate-200 hover:text-slate-900 dark:hover:text-slate-100"
-                  }`}
+                  className={clsx("nav-link w-full", active && "is-active")}
                 >
-                  <Icon size={16} className={active ? "text-white" : "text-slate-400"} />
+                  <Icon
+                    size={16}
+                    className={clsx(
+                      "shrink-0 transition-colors",
+                      active
+                        ? "text-emerald-600 dark:text-emerald-400"
+                        : "text-slate-500 dark:text-slate-400",
+                    )}
+                  />
                   {label}
                 </button>
               );

@@ -72,16 +72,18 @@ export default function UpgradeRequestToast() {
   if (!toast || dismissed) return null;
 
   return (
-    <div className="fixed bottom-6 right-6 z-50 max-w-sm w-full">
-      <div className="bg-white dark:bg-slate-800 rounded-xl shadow-lg border border-indigo-200 dark:border-indigo-800 overflow-hidden animate-[slideIn_0.3s_ease-out]">
-        <div className="bg-indigo-50 dark:bg-indigo-900/30 px-4 py-2 flex items-center gap-2 border-b border-indigo-100 dark:border-indigo-900">
-          <ArrowUpCircle size={16} className="text-indigo-600 dark:text-indigo-400" />
-          <span className="text-xs font-semibold uppercase tracking-wide text-indigo-700 dark:text-indigo-300 flex-1">
+    <div className="fixed bottom-6 right-6 z-50 max-w-sm w-full animate-grad-fade-up">
+      <div className="panel">
+        <div className="flex items-center gap-2 px-4 py-2.5 border-b border-soft">
+          <span className="icon-chip icon-chip-brand !h-7 !w-7 !rounded-lg">
+            <ArrowUpCircle size={15} />
+          </span>
+          <span className="text-xs font-bold uppercase tracking-wide text-secondary flex-1">
             New plan request
           </span>
           <button
             onClick={() => setDismissed(true)}
-            className="text-indigo-500 hover:text-indigo-700 dark:hover:text-indigo-300"
+            className="text-muted hover:text-primary transition-colors"
             aria-label="Dismiss"
           >
             <X size={14} />
@@ -90,14 +92,12 @@ export default function UpgradeRequestToast() {
         <Link
           to="/admin/upgrade-requests"
           onClick={() => setDismissed(true)}
-          className="block px-4 py-3 hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors"
+          className="block px-4 py-3 transition-colors hover:bg-[rgb(var(--ink)/0.04)]"
         >
-          <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+          <p className="text-sm font-semibold text-primary">
             {toast.company_name || "A tenant"} requested {toast.requested_plan_name || "a plan"}
           </p>
-          <p className="text-xs text-indigo-600 dark:text-indigo-400 mt-1 font-medium">
-            Review now →
-          </p>
+          <p className="link text-xs mt-1">Review now →</p>
         </Link>
       </div>
     </div>

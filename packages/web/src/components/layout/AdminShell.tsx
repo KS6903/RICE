@@ -1,10 +1,20 @@
 import { Outlet, NavLink, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { useAuthStore } from "../../stores/authStore";
+import { useThemeStore } from "../../stores/themeStore";
 import { adminService } from "../../services/AdminService";
-import { LayoutDashboard, Building2, Users, LogOut, ArrowUpCircle, Settings } from "lucide-react";
+import {
+  LayoutDashboard,
+  Building2,
+  Users,
+  LogOut,
+  ArrowUpCircle,
+  Settings,
+  ShieldCheck,
+  Sun,
+  Moon,
+} from "lucide-react";
 import { clsx } from "clsx";
-import BrandLogo from "../BrandLogo";
 import UpgradeRequestToast from "../admin/UpgradeRequestToast";
 
 const NAV = [
@@ -19,6 +29,22 @@ const NAV = [
   { to: "/admin/users", label: "All Users", icon: Users },
   { to: "/admin/settings", label: "Settings", icon: Settings },
 ];
+
+function ThemeToggle() {
+  const theme = useThemeStore((s) => s.theme);
+  const toggle = useThemeStore((s) => s.toggle);
+  const isDark = theme === "dark";
+  return (
+    <button
+      onClick={toggle}
+      className="h-9 w-9 grid place-items-center rounded-xl glass text-secondary hover:text-primary transition-colors"
+      title={isDark ? "Switch to light mode" : "Switch to dark mode"}
+      aria-label="Toggle theme"
+    >
+      {isDark ? <Sun size={16} /> : <Moon size={16} />}
+    </button>
+  );
+}
 
 export default function AdminShell() {
   const { user, logout } = useAuthStore();
@@ -38,67 +64,107 @@ export default function AdminShell() {
     navigate("/login");
   };
 
+  const initials = (user?.full_name || user?.username || "?")
+    .split(" ")
+    .map((w) => w[0])
+    .slice(0, 2)
+    .join("")
+    .toUpperCase();
+
   return (
-    <div className="flex h-screen bg-slate-100 dark:bg-slate-700">
-      <aside className="w-60 bg-slate-900 text-white flex flex-col shrink-0">
-        <div className="px-5 py-5 border-b border-slate-800">
-          <div className="flex items-center gap-2">
-            <BrandLogo />
-            <h1 className="text-lg font-bold tracking-tight">KS Productions</h1>
+    <div className="flex h-screen overflow-hidden">
+      <aside className="relative w-60 shrink-0 flex flex-col glass border-r border-soft">
+        <div className="pointer-events-none absolute -top-10 -left-10 h-40 w-40 rounded-full bg-grad-brand opacity-20 blur-3xl" />
+
+        <div className="relative px-5 py-5 border-b border-soft">
+          <div className="flex items-center gap-2.5">
+            <div className="h-10 w-10 rounded-xl bg-grad-brand grid place-items-center shadow-grad-glow">
+              <ShieldCheck size={18} className="text-white" />
+            </div>
+            <div className="min-w-0">
+              <h1 className="text-base font-bold tracking-tight text-primary leading-tight truncate">
+                KS Productions
+              </h1>
+              <p className="text-xs text-muted leading-tight font-medium">Platform console</p>
+            </div>
           </div>
-          <p className="text-xs text-slate-400 mt-0.5">Rice Mill Management System</p>
         </div>
-        <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
+
+        <nav className="relative flex-1 px-3 py-4 space-y-1 overflow-y-auto">
+          <p className="px-3 pb-2 text-[11px] font-bold uppercase tracking-[0.1em] text-muted">
+            Manage
+          </p>
           {NAV.map(({ to, label, icon: Icon, end, withBadge }) => (
             <NavLink
               key={to}
               to={to}
               end={end}
-              className={({ isActive }) =>
-                clsx(
-                  "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors",
-                  isActive
-                    ? "bg-slate-800 text-white"
-                    : "text-slate-300 hover:bg-slate-800/60 hover:text-white",
-                )
-              }
+              className={({ isActive }) => clsx("nav-link", isActive && "is-active")}
             >
-              <Icon size={18} />
-              <span className="flex-1">{label}</span>
-              {withBadge === "upgrades" && pendingCount > 0 && (
-                <span className="bg-amber-500 text-white text-[10px] font-bold rounded-full px-1.5 py-0.5 min-w-[18px] text-center">
-                  {pendingCount}
-                </span>
+              {({ isActive }) => (
+                <>
+                  <Icon
+                    size={18}
+                    className={clsx(
+                      "shrink-0 transition-colors",
+                      isActive
+                        ? "text-emerald-600 dark:text-emerald-400"
+                        : "text-slate-500 dark:text-slate-400",
+                    )}
+                  />
+                  <span className="flex-1">{label}</span>
+                  {withBadge === "upgrades" && pendingCount > 0 && (
+                    <span className="badge-yellow !px-1.5 !py-0.5 text-[10px] font-bold rounded-full min-w-[18px] justify-center">
+                      {pendingCount}
+                    </span>
+                  )}
+                </>
               )}
             </NavLink>
           ))}
         </nav>
-        <div className="px-4 py-3 border-t border-slate-800 text-xs text-slate-400">
-          v1.0.0 — SaaS Owner
+
+        <div className="relative px-5 py-3 border-t border-soft text-xs text-muted font-medium">
+          v1.0.0 · SaaS owner
         </div>
       </aside>
 
-      <div className="flex-1 flex flex-col overflow-hidden">
-        <header className="h-14 bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between px-6 shrink-0">
-          <div className="flex items-center gap-2">
-            <span className="bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-200 text-xs font-semibold px-2 py-0.5 rounded-full">
-              KS PRODUCTIONS
-            </span>
-          </div>
-          <div className="flex items-center gap-4">
-            <span className="text-sm text-slate-600 dark:text-slate-300">{user?.full_name}</span>
+      <div className="flex-1 flex flex-col min-w-0">
+        <header className="h-16 glass-strong border-b border-soft flex items-center justify-between px-6 shrink-0 relative z-10">
+          <span className="inline-flex items-center gap-1.5 badge-violet">
+            <ShieldCheck size={12} />
+            Platform admin
+          </span>
+
+          <div className="flex items-center gap-3">
+            <ThemeToggle />
+
+            <div className="hidden sm:flex items-center gap-2.5 pl-3 border-l border-soft">
+              <div className="h-9 w-9 rounded-full bg-grad-brand grid place-items-center text-white text-xs font-bold shadow-grad-glow">
+                {initials}
+              </div>
+              <div className="hidden lg:block leading-tight">
+                <p className="text-sm font-semibold text-primary truncate max-w-[10rem]">
+                  {user?.full_name}
+                </p>
+                <p className="text-xs text-muted capitalize font-medium">Owner</p>
+              </div>
+            </div>
+
             <button
               onClick={handleLogout}
-              className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
+              className="h-9 w-9 grid place-items-center rounded-xl text-secondary hover:text-rose-500 hover:bg-rose-500/10 transition-colors"
               title="Sign out"
             >
-              <LogOut size={18} />
+              <LogOut size={16} />
             </button>
           </div>
         </header>
 
-        <main className="flex-1 overflow-y-auto px-6 py-6">
-          <Outlet />
+        <main className="flex-1 overflow-y-auto px-6 py-6 lg:px-8 lg:py-8">
+          <div className="mx-auto max-w-7xl animate-grad-fade-up">
+            <Outlet />
+          </div>
         </main>
       </div>
       <UpgradeRequestToast />

@@ -361,14 +361,143 @@ const FEATURES = [
 ];
 
 /* ------------------------------------------------------------------ */
+/* Scroll-reveal primitives — fire once when the element enters view   */
+/* ------------------------------------------------------------------ */
+function useInView<T extends HTMLElement>() {
+  const ref = useRef<T | null>(null);
+  const [inView, setInView] = useState(false);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    if (typeof IntersectionObserver === "undefined") {
+      setInView(true);
+      return;
+    }
+    const obs = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setInView(true);
+          obs.disconnect();
+        }
+      },
+      { threshold: 0.15, rootMargin: "0px 0px -8% 0px" }
+    );
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, []);
+  return { ref, inView };
+}
+
+function Reveal({
+  children, className = "", delay = 0,
+}: {
+  children: React.ReactNode; className?: string; delay?: number;
+}) {
+  const { ref, inView } = useInView<HTMLDivElement>();
+  return (
+    <div
+      ref={ref}
+      className={`hp-reveal ${inView ? "hp-reveal-in" : ""} ${className}`}
+      style={delay ? { transitionDelay: `${delay}ms` } : undefined}
+    >
+      {children}
+    </div>
+  );
+}
+
+function FeatureCard({ f, index }: { f: (typeof FEATURES)[number]; index: number }) {
+  const { ref, inView } = useInView<HTMLDivElement>();
+  return (
+    <div
+      ref={ref}
+      className={`hp-reveal h-full ${inView ? "hp-reveal-in" : ""}`}
+      style={{ transitionDelay: `${(index % 4) * 60}ms` }}
+    >
+      <div className="card hp-card !p-5 h-full">
+        <div className={`h-11 w-11 rounded-xl ${f.iconBg} grid place-items-center shadow-md mb-4`}>
+          <f.icon size={20} className="text-white" />
+        </div>
+        <h3 className="font-bold text-primary">{f.title}</h3>
+        <p className="mt-1.5 text-sm text-secondary">{f.desc}</p>
+      </div>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
 /* Page                                                                */
 /* ------------------------------------------------------------------ */
 export default function HomePage() {
   const theme = useThemeStore((s) => s.theme);
   const toggle = useThemeStore((s) => s.toggle);
 
+  // Always land at the top on load/reload — don't let the browser restore
+  // a previous (scrolled-down) position.
+  useEffect(() => {
+    if ("scrollRestoration" in history) history.scrollRestoration = "manual";
+    window.scrollTo(0, 0);
+  }, []);
+
+  // Block text selection / copy on the public landing page.
+  const blockCopy = (e: React.SyntheticEvent) => e.preventDefault();
+
+  // Nudge inviting visitors to try the other theme. The chip fades out 5s
+  // after appearing; the pulsing ring stays until the visitor clicks it.
+  const isDark = theme === "dark";
+  const [chipMounted, setChipMounted] = useState(false);
+  const [chipIn, setChipIn] = useState(false);
+  const [glow, setGlow] = useState(false);
+  useEffect(() => {
+    const show = setTimeout(() => {
+      setChipMounted(true);
+      setGlow(true);
+    }, 700);
+    return () => clearTimeout(show);
+  }, []);
+  useEffect(() => {
+    if (!chipMounted) return;
+    const enter = requestAnimationFrame(() => setChipIn(true));
+    const exit = setTimeout(() => setChipIn(false), 5000);
+    return () => {
+      cancelAnimationFrame(enter);
+      clearTimeout(exit);
+    };
+  }, [chipMounted]);
+  const handleToggle = () => {
+    toggle();
+    setChipIn(false);
+    setGlow(false);
+  };
+
   return (
-    <div className="min-h-screen flex flex-col">
+    <div
+      className="min-h-screen flex flex-col select-none"
+      onCopy={blockCopy}
+      onCut={blockCopy}
+      onContextMenu={blockCopy}
+      onDragStart={blockCopy}
+    >
+      <style>{`
+        .hp-reveal {
+          opacity: 0;
+          transform: translateY(22px);
+          transition: opacity 640ms cubic-bezier(0.23, 1, 0.32, 1),
+                      transform 640ms cubic-bezier(0.23, 1, 0.32, 1);
+          will-change: opacity, transform;
+        }
+        .hp-reveal-in { opacity: 1; transform: none; }
+        @media (hover: hover) and (pointer: fine) {
+          .hp-card {
+            transition: transform 220ms cubic-bezier(0.23, 1, 0.32, 1),
+                        box-shadow 220ms cubic-bezier(0.23, 1, 0.32, 1);
+          }
+          .hp-card:hover { transform: translateY(-4px); }
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .hp-reveal { opacity: 1; transform: none; transition: opacity 200ms ease; }
+          .hp-card:hover { transform: none; }
+        }
+      `}</style>
       {/* Header */}
       <header className="sticky top-0 z-20 glass-strong border-b border-soft">
         <div className="mx-auto max-w-6xl px-4 sm:px-6 h-16 flex items-center justify-between gap-3">
@@ -376,17 +505,65 @@ export default function HomePage() {
             <div className="h-9 w-9 rounded-xl bg-grad-brand grid place-items-center shadow-grad-glow">
               <Wheat size={18} className="text-white" />
             </div>
-            <span className="text-lg font-bold tracking-tight text-primary">Rice Mill System</span>
+            <span className="text-lg font-bold tracking-tight text-primary">KS PRODUCTION</span>
           </div>
           <div className="flex items-center gap-2">
-            <button
-              onClick={toggle}
-              className="btn-ghost !p-2"
-              aria-label="Toggle theme"
-              title="Toggle theme"
-            >
-              {theme === "dark" ? <Sun size={18} /> : <Moon size={18} />}
-            </button>
+            <div className="relative">
+              <style>{`
+                @keyframes hpToggleGlow {
+                  0%, 100% { box-shadow: 0 0 0 0 rgba(139, 92, 246, 0.5); transform: scale(1); }
+                  50%      { box-shadow: 0 0 0 9px rgba(139, 92, 246, 0); transform: scale(1.08); }
+                }
+                @keyframes hpHintBob {
+                  0%, 100% { transform: translateY(0); }
+                  50%      { transform: translateY(3px); }
+                }
+                .hp-toggle-glow { animation: hpToggleGlow 1.8s ease-in-out infinite; }
+                .hp-hint {
+                  transform-origin: top right;
+                  opacity: 0;
+                  transform: translateY(-7px) scale(0.94);
+                  transition: opacity 300ms cubic-bezier(0.23, 1, 0.32, 1),
+                              transform 300ms cubic-bezier(0.23, 1, 0.32, 1);
+                }
+                .hp-hint-in { opacity: 1; transform: translateY(0) scale(1); }
+                .hp-hint-bob { animation: hpHintBob 2.2s ease-in-out 0.6s infinite; }
+                @media (prefers-reduced-motion: reduce) {
+                  .hp-toggle-glow, .hp-hint-bob { animation: none; }
+                  .hp-hint { transition: opacity 200ms ease; transform: none; }
+                  .hp-hint-in { transform: none; }
+                }
+              `}</style>
+              <button
+                onClick={handleToggle}
+                className={`btn-ghost !p-2 rounded-full ${glow ? "hp-toggle-glow text-violet-500 dark:text-violet-300" : ""}`}
+                aria-label="Toggle theme"
+                title="Toggle theme"
+              >
+                {isDark ? <Sun size={18} /> : <Moon size={18} />}
+              </button>
+              {chipMounted && (
+                <div
+                  className={`hp-hint absolute right-0 top-full mt-2.5 z-30 ${
+                    chipIn ? "hp-hint-in" : "pointer-events-none"
+                  }`}
+                >
+                  <button
+                    type="button"
+                    onClick={handleToggle}
+                    className="hp-hint-bob inline-flex items-center gap-1.5 rounded-lg glass-strong px-3 py-1.5 text-xs font-semibold text-primary shadow-xl whitespace-nowrap hover:scale-[1.03] transition-transform"
+                  >
+                    <span className="absolute -top-1 right-3.5 h-2 w-2 rotate-45 rounded-[2px] glass-strong" />
+                    {isDark ? (
+                      <Sun size={13} className="text-amber-500" />
+                    ) : (
+                      <Moon size={13} className="text-violet-500 dark:text-violet-300" />
+                    )}
+                    Try {isDark ? "light" : "dark"} mode
+                  </button>
+                </div>
+              )}
+            </div>
             <Link to="/login" className="btn-secondary !py-2">Log in</Link>
             <Link to="/signup" className="btn-primary !py-2">
               Get started <ArrowRight size={16} />
@@ -432,7 +609,7 @@ export default function HomePage() {
 
         {/* Features */}
         <section className="mx-auto max-w-6xl px-4 sm:px-6 pb-20">
-          <div className="text-center max-w-2xl mx-auto mb-10">
+          <Reveal className="text-center max-w-2xl mx-auto mb-10">
             <h2 className="text-3xl font-extrabold tracking-tight text-primary">
               Everything your mill needs, in one place
             </h2>
@@ -440,23 +617,17 @@ export default function HomePage() {
               Replace the notebooks and scattered spreadsheets with a single source
               of truth for daily operations.
             </p>
-          </div>
+          </Reveal>
           <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {FEATURES.map((f) => (
-              <div key={f.title} className="card !p-5">
-                <div className={`h-11 w-11 rounded-xl ${f.iconBg} grid place-items-center shadow-md mb-4`}>
-                  <f.icon size={20} className="text-white" />
-                </div>
-                <h3 className="font-bold text-primary">{f.title}</h3>
-                <p className="mt-1.5 text-sm text-secondary">{f.desc}</p>
-              </div>
+            {FEATURES.map((f, i) => (
+              <FeatureCard key={f.title} f={f} index={i} />
             ))}
           </div>
         </section>
 
         {/* CTA band */}
         <section className="mx-auto max-w-6xl px-4 sm:px-6 pb-20">
-          <div className="relative overflow-hidden rounded-3xl p-10 lg:p-14 text-center">
+          <Reveal className="relative overflow-hidden rounded-3xl p-10 lg:p-14 text-center">
             <div className="absolute inset-0 bg-grad-brand-anim opacity-95" />
             <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_rgba(255,255,255,0.2),_transparent_55%)]" />
             <div className="relative text-white">
@@ -474,14 +645,14 @@ export default function HomePage() {
                 Get started for free <ArrowRight size={18} />
               </Link>
             </div>
-          </div>
+          </Reveal>
         </section>
       </main>
 
       {/* Footer */}
       <footer className="border-t border-soft py-6">
         <div className="mx-auto max-w-6xl px-4 sm:px-6 flex flex-col sm:flex-row items-center justify-between gap-3 text-sm text-muted">
-          <span>© {new Date().getFullYear()} Rice Mill System · KS Productions</span>
+          <span>© {new Date().getFullYear()} KS PRODUCTION</span>
           <div className="flex items-center gap-4">
             <Link to="/login" className="hover:text-primary transition-colors">Log in</Link>
             <Link to="/signup" className="hover:text-primary transition-colors">Sign up</Link>
