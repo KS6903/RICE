@@ -66,7 +66,9 @@ _SCHEMA_RE = re.compile(r"^[a-z_][a-z0-9_]*$")
 
 
 def valid_schema_name(name: str | None) -> bool:
-    return bool(name) and len(name) <= 63 and _SCHEMA_RE.fullmatch(name) is not None
+    if not name:
+        return False
+    return len(name) <= 63 and _SCHEMA_RE.fullmatch(name) is not None
 
 
 def schema_name_for(company) -> str:
@@ -161,8 +163,8 @@ def seed_reference_rows(db: Session) -> None:
         if not exists:
             db.add(RiceVariety(code=code, name=name, category=cat, typical_recovery_pct=rec))
     for code, name, mn, mx in _SYSTEM_GRADES:
-        exists = db.query(QualityGrade).filter_by(code=code, company_id=None).first()
-        if not exists:
+        grade: QualityGrade | None = db.query(QualityGrade).filter_by(code=code, company_id=None).first()
+        if not grade:
             db.add(QualityGrade(code=code, name=name, min_moisture_pct=mn, max_moisture_pct=mx))
     db.flush()
 

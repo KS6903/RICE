@@ -443,7 +443,7 @@ class AdminService(BaseService):
         if not company:
             raise NotFoundError("Tenant not found")
         # activity_logs is a per-client table — read it from the tenant's own DB.
-        with tenant_session(db, company) as ts:
+        with tenant_session(self.db, company) as ts:
             return ActivityService(ts).list_recent(tenant_id)
 
     def set_tenant_active(self, tenant_id: uuid.UUID, data) -> dict:
