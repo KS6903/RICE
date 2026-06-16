@@ -3,9 +3,10 @@ import { useQuery } from "@tanstack/react-query";
 import { inventoryService } from "../services/InventoryService";
 import { reportsService } from "../services/ReportsService";
 import {
-  Package, Wheat, Factory, TrendingUp, AlertCircle, ArrowUpRight, Sparkles, Clock, Calendar,
+  Package, Wheat, Factory, TrendingUp, AlertCircle, ArrowUpRight, Clock, Calendar,
 } from "lucide-react";
 import WeatherWidget from "../components/WeatherWidget";
+import WeatherForecast from "../components/WeatherForecast";
 import {
   Area, AreaChart, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
 } from "recharts";
@@ -104,33 +105,30 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-7">
-      {/* Hero ribbon */}
-      <section className="relative overflow-hidden rounded-3xl glass-strong p-6 lg:p-8">
+      {/* Hero ribbon — slim financial banner so the business KPIs and charts
+          below it sit above the fold. */}
+      <section className="relative overflow-hidden rounded-3xl glass-strong p-5 lg:p-6">
         <div className="absolute inset-0 pointer-events-none bg-grad-brand-anim opacity-95" aria-hidden />
         <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(ellipse_at_top_right,_rgba(255,255,255,0.2),_transparent_55%)]" aria-hidden />
         <div className="absolute -bottom-20 -left-10 h-64 w-64 rounded-full bg-white/10 blur-3xl pointer-events-none" aria-hidden />
 
-        <div className="relative flex flex-col lg:flex-row lg:items-end lg:justify-between gap-6">
+        <div className="relative flex flex-col lg:flex-row lg:items-end lg:justify-between gap-4">
           <div className="text-white max-w-xl">
-            <div className="flex flex-wrap items-center gap-3">
-              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/20 ring-1 ring-white/30 text-xs font-bold uppercase tracking-wide backdrop-blur-md">
-                <Sparkles size={12} />
-                {format(new Date(), "MMMM yyyy")}
-              </div>
+            <div className="flex flex-wrap items-center gap-2">
               <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/20 ring-1 ring-white/30 text-xs font-bold uppercase tracking-wide backdrop-blur-md">
                 <Calendar size={12} />
-                {format(currentTime, "MMMM d, yyyy")}
+                {format(currentTime, "EEE, MMM d, yyyy")}
               </div>
               <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/20 ring-1 ring-white/30 text-xs font-bold uppercase tracking-wide backdrop-blur-md">
                 <Clock size={12} />
                 {format(currentTime, "h:mm a")}
               </div>
             </div>
-            <h1 className="mt-3 text-4xl lg:text-5xl font-extrabold tracking-tight leading-[1.05]">
+            <h1 className="mt-2 text-3xl lg:text-4xl font-extrabold tracking-tight leading-[1.05]">
               {pnl ? `₱${Number(pnl.net_profit).toLocaleString()}` : "—"}
             </h1>
-            <p className="mt-2 text-white text-base font-medium">
-              Net profit · across all operations and branches
+            <p className="mt-1 text-white text-sm font-medium">
+              Net profit · {format(new Date(), "MMMM yyyy")} · all branches
             </p>
           </div>
 
@@ -152,14 +150,13 @@ export default function Dashboard() {
         </div>
       </section>
 
-      {/* Current weather at the user's location — same widget that lives in
-          the topbar, just in its expanded variant so the dashboard reads as a
-          single focal panel. */}
+      {/* Current conditions — single at-a-glance weather card up top; the full
+          hourly/7-day forecast lives lower down. */}
       <section data-testid="dashboard-weather">
         <WeatherWidget variant="expanded" />
       </section>
 
-      {/* KPI grid */}
+      {/* KPI grid — operational + financial snapshot, first thing under the hero */}
       <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
           label="Palay Stock"
@@ -306,6 +303,12 @@ export default function Dashboard() {
             </div>
           )}
         </div>
+      </section>
+
+      {/* Detailed forecast — hourly + 7-day, secondary context placed last so
+          the business summary leads. */}
+      <section data-testid="dashboard-forecast">
+        <WeatherForecast />
       </section>
     </div>
   );

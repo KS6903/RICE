@@ -26,6 +26,12 @@ class Settings(BaseSettings):
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 15
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
+    # "Remember this device" for MFA: after a successful TOTP/backup-code verify,
+    # this device skips the MFA step on login until the next weekly reset — the
+    # upcoming Sunday 00:00 in the local timezone below — so every device
+    # re-prompts on Sunday. Set MFA_TRUST_ENABLED=false for MFA on every login.
+    MFA_TRUST_ENABLED: bool = True
+    MFA_TRUST_RESET_UTC_OFFSET_HOURS: int = 8  # Asia/Manila (PH has no DST)
     ALLOWED_ORIGINS: str = "http://localhost:8448,http://localhost:3000"
     APP_NAME: str = "Rice Mill System"
     DEBUG: bool = False

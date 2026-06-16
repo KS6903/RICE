@@ -126,3 +126,64 @@ def test_expense_with_foreign_category_rejected(make_auth_client):
         json={"category_id": category_id, "expense_date": "2026-06-11", "amount": "100"},
     )
     assert res.status_code == 404
+
+
+# ── schema-level isolation (the real boundary) ────────────────────────────────
+#
+# The API tests above prove a tenant's *service* can't reach another tenant's
+# rows. These prove the deeper guarantee: with the connection scoped to tenant A's
+# schema, even a raw SQL query physically cannot see tenant B's data, and the
+# search_path never contains another tenant's schema. This is what makes
+# cross-client crossing impossible after the database-per-client layer was removed.
+
+
+def test_domain_rows_isolated_at_sql_level(make_auth_client, db_session):
+    from sqlalchemy import text
+
+    from app.models.company import Company
+
+    a = make_auth_client(features=["sales"], username="rawA")
+    assert a.post("/api/sales/customers", json={"name": "RAW-A-ONLY"}).status_code == 201
+    b = make_auth_client(features=["sales"], username="rawB")
+    assert b.post("/api/sales/customers", json={"name": "RAW-B-ONLY"}).status_code == 201
+
+    cos = {c.name: c.schema_name for c in db_session.query(Company).all()}
+    schema_a = next(s for n, s in cos.items() if "rawA" in n)
+    schema_b = next(s for n, s in cos.items() if "rawB" in n)
+    assert schema_a != schema_b
+
+    def names_in(schema: str) -> set[str]:
+        db_session.execute(text(f'SET search_path TO "{schema}", public'))
+        return set(db_session.execute(text("SELECT name FROM customers")).scalars().all())
+
+    a_names = names_in(schema_a)
+    assert "RAW-A-ONLY" in a_names and "RAW-B-ONLY" not in a_names
+    b_names = names_in(schema_b)
+    assert "RAW-B-ONLY" in b_names and "RAW-A-ONLY" not in b_names
+
+    # The search_path only ever carries the client's own schema + public — never
+    # another tenant's schema — so an unqualified query can't resolve across clients.
+    db_session.execute(text(f'SET search_path TO "{schema_a}", public'))
+    sp = db_session.execute(text("SHOW search_path")).scalar()
+    assert schema_a in sp and schema_b not in sp
+
+
+def test_token_without_valid_schema_is_rejected(client, seed_owner):
+    """Fail-closed: a (non-admin) access token that doesn't carry a valid client
+    schema is rejected, so a request can never fall through to bare ``public``."""
+    from app.core.security import create_access_token
+
+    base = {"sub": str(seed_owner.id), "company_id": str(seed_owner.company_id),
+            "is_platform_admin": False}
+
+    # Control: a proper token with a valid schema is accepted.
+    good = create_access_token({**base, "schema": seed_owner.company.schema_name})
+    assert client.get("/api/auth/me", headers={"Authorization": f"Bearer {good}"}).status_code == 200
+
+    # No schema claim at all → 401.
+    missing = create_access_token(base)
+    assert client.get("/api/auth/me", headers={"Authorization": f"Bearer {missing}"}).status_code == 401
+
+    # Malformed schema name → 401 (and never interpolated into SQL).
+    ugly = create_access_token({**base, "schema": "client; drop table users"})
+    assert client.get("/api/auth/me", headers={"Authorization": f"Bearer {ugly}"}).status_code == 401

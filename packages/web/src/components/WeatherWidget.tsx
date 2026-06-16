@@ -1,48 +1,10 @@
-import {
-  Sun, Cloud, CloudSun, Cloudy, CloudFog, CloudRain, CloudDrizzle,
-  CloudLightning, CloudSnow, CloudHail, Wind, Loader2, MapPin,
-} from "lucide-react";
+import { Cloud, Loader2, MapPin, Droplets } from "lucide-react";
 import { useActiveLocation } from "../hooks/useActiveLocation";
-import { useWeather, type WeatherConditionCode } from "../hooks/useWeather";
+import { useWeather, useForecast } from "../hooks/useWeather";
+import { WEATHER_ICONS as ICONS, weatherIconClass as iconClass } from "./weatherIcons";
+import DryingAdvisor from "./DryingAdvisor";
 
 type Variant = "compact" | "expanded";
-
-const ICONS: Record<WeatherConditionCode, React.ElementType> = {
-  clear: Sun,
-  mostly_clear: Sun,
-  partly_cloudy: CloudSun,
-  mostly_cloudy: Cloudy,
-  cloudy: Cloud,
-  fog: CloudFog,
-  windy: Wind,
-  wind_rain: Wind,
-  rain_light: CloudDrizzle,
-  rain_chance: CloudDrizzle,
-  rain_scattered: CloudRain,
-  rain: CloudRain,
-  rain_heavy: CloudRain,
-  snow_light: CloudSnow,
-  snow: CloudSnow,
-  snow_heavy: CloudSnow,
-  snow_chance: CloudSnow,
-  sleet: CloudSnow,
-  hail: CloudHail,
-  thunderstorm: CloudLightning,
-  unknown: Cloud,
-};
-
-/** Pick a tint so the icon reads at a glance — warm for clear, blue for rain,
- *  violet for thunder, slate for everything else. */
-function iconClass(code: WeatherConditionCode, isDay: boolean): string {
-  if (code === "clear" || code === "mostly_clear") {
-    return isDay ? "text-amber-500" : "text-indigo-400";
-  }
-  if (code.startsWith("rain") || code.startsWith("wind_rain")) return "text-sky-500";
-  if (code.startsWith("snow") || code === "sleet" || code === "hail") return "text-cyan-400";
-  if (code === "thunderstorm") return "text-violet-500";
-  if (code === "fog") return "text-slate-400";
-  return "text-slate-500 dark:text-slate-300";
-}
 
 export default function WeatherWidget({ variant = "compact" }: { variant?: Variant }) {
   // Source-of-truth resolver: saved default > browser GPS > backend IP fallback.
@@ -51,6 +13,9 @@ export default function WeatherWidget({ variant = "compact" }: { variant?: Varia
   const active = useActiveLocation();
   const coords = active.lat != null && active.lon != null ? { lat: active.lat, lon: active.lon } : null;
   const w = useWeather(coords);
+  // Today's prediction (high/low + rain chance) for the expanded card only — the
+  // compact top-bar pill doesn't show it, so skip the fetch there.
+  const fc = useForecast(coords, { enabled: variant === "expanded" });
 
   // ── Loading state ──
   if (w.isLoading) {
@@ -84,6 +49,7 @@ export default function WeatherWidget({ variant = "compact" }: { variant?: Varia
   const placeLabel = active.source === "saved" && active.label
     ? active.label
     : p.location.label ?? `${p.location.lat.toFixed(2)}, ${p.location.lon.toFixed(2)}`;
+  const today = fc.data?.daily?.[0];
 
   if (variant === "compact") {
     return (
@@ -106,9 +72,33 @@ export default function WeatherWidget({ variant = "compact" }: { variant?: Varia
       className="card relative overflow-hidden flex items-center gap-4"
     >
       <div className="absolute -top-10 -right-10 h-32 w-32 rounded-full bg-sky-300/20 dark:bg-sky-500/10 blur-2xl pointer-events-none" aria-hidden />
-      <div className="shrink-0 h-14 w-14 rounded-2xl ring-1 ring-slate-200 dark:ring-slate-700 grid place-items-center bg-white/60 dark:bg-slate-800/60">
-        <Icon size={28} className={tint} data-testid="weather-icon" />
+      <div className="shrink-0 h-16 w-16 rounded-2xl ring-1 ring-slate-200 dark:ring-slate-700 grid place-items-center bg-white/60 dark:bg-slate-800/60">
+        <Icon size={32} className={tint} data-testid="weather-icon" />
       </div>
+
+      {/* Today's prediction — high/low + rain chance, sitting beside the
+          current reading on the left. */}
+      {today && (
+        <div
+          className="relative shrink-0 self-stretch flex flex-col justify-center pr-4 mr-1 border-r border-soft"
+          data-testid="weather-today"
+        >
+          <p className="text-xs font-bold uppercase tracking-wide text-muted">Today</p>
+          <p className="text-2xl font-extrabold text-primary tabular-nums mt-0.5 leading-none">
+            {today.temp_max_c != null ? `${Math.round(today.temp_max_c)}°` : "—"}
+            <span className="text-muted font-semibold text-lg">
+              {" "}/ {today.temp_min_c != null ? `${Math.round(today.temp_min_c)}°` : "—"}
+            </span>
+          </p>
+          {today.precip_pct != null && today.precip_pct > 0 && (
+            <p className="text-sm font-semibold text-sky-500 inline-flex items-center gap-1 mt-1.5">
+              <Droplets size={14} /> {today.precip_pct}% rain
+            </p>
+          )}
+          <p className="text-xs text-muted truncate max-w-[10rem] mt-1">{today.condition}</p>
+        </div>
+      )}
+
       <div className="min-w-0 flex-1">
         <div className="flex items-baseline gap-2">
           <p className="text-3xl font-extrabold text-primary tabular-nums leading-none" data-testid="weather-temp">
@@ -126,6 +116,9 @@ export default function WeatherWidget({ variant = "compact" }: { variant?: Varia
           {p.wind_kph != null && <span>Wind {Math.round(p.wind_kph)} km/h</span>}
         </div>
       </div>
+
+      {/* Agentic AI palay-drying advisor (placeholder) */}
+      <DryingAdvisor />
     </div>
   );
 }

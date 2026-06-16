@@ -26,6 +26,28 @@ REFRESH_COOKIE = "refresh_token"
 # API traffic — smaller attack surface, and it can't leak via other endpoints.
 REFRESH_COOKIE_PATH = "/api/auth"
 
+# "Remember this device" for MFA. Like the refresh cookie, scoped to the auth
+# router so it only ever rides on login/refresh, not normal API traffic.
+MFA_TRUST_COOKIE = "mfa_trust"
+MFA_TRUST_COOKIE_PATH = "/api/auth"
+
+
+def set_mfa_trust_cookie(response: Response, token: str) -> None:
+    """Mark this browser as MFA-trusted until the next weekly reset (Sunday),
+    matching the trust token's own expiry (httpOnly)."""
+    from .mfa_trust import seconds_until_reset
+
+    response.set_cookie(
+        MFA_TRUST_COOKIE,
+        token,
+        max_age=seconds_until_reset(),
+        path=MFA_TRUST_COOKIE_PATH,
+        httponly=True,
+        secure=settings.COOKIE_SECURE,
+        samesite="strict",
+        domain=settings.COOKIE_DOMAIN,
+    )
+
 
 def set_auth_cookies(response: Response, *, access_token: str, refresh_token: str) -> None:
     refresh_max_age = settings.REFRESH_TOKEN_EXPIRE_DAYS * 86400

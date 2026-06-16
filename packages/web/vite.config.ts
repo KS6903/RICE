@@ -93,6 +93,7 @@ export default defineConfig({
   },
   server: {
     port: 8448,
+    strictPort: true,
     // Dev gets a (looser) CSP too, so HMR works and the e2e suite exercises the
     // policy against real flows (login, canvas WS, Google button, fonts).
     headers: {

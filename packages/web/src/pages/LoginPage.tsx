@@ -4,9 +4,10 @@ import { authService } from "../services/AuthService";
 import { useAuthStore } from "../stores/authStore";
 import { useThemeStore } from "../stores/themeStore";
 import {
-  Sparkles, ShieldCheck, Wifi, Building2, Sun, Moon, AlertCircle,
+  ShieldCheck, Wifi, Building2, Sun, Moon, AlertCircle,
 } from "lucide-react";
 import { GoogleLogin } from "@react-oauth/google";
+import riceLogo from "../assets/Rice_Logo.svg";
 
 export default function LoginPage() {
   const [username, setUsername] = useState("");
@@ -100,9 +101,9 @@ export default function LoginPage() {
         <div className="absolute -top-32 -right-20 h-96 w-96 rounded-full bg-violet-400/30 blur-3xl pointer-events-none" aria-hidden />
 
         <div className="relative flex items-center gap-3 text-white">
-          <div className="h-11 w-11 rounded-xl bg-white/15 backdrop-blur-md grid place-items-center ring-1 ring-white/30">
-            <Sparkles size={22} />
-          </div>
+          <Link to="/" className="h-12 w-12 rounded-xl bg-white/15 backdrop-blur-md grid place-items-center ring-1 ring-white/30">
+            <img src={riceLogo} alt="Rice Mill" className="h-full w-full object-contain brightness-0 invert" />
+          </Link>
           <div>
             <p className="text-lg font-bold tracking-tight">Rice Mill System</p>
             <p className="text-sm text-white/80">Pilipinas · ERP Platform</p>
@@ -147,9 +148,9 @@ export default function LoginPage() {
       <div className="flex items-center justify-center p-6 lg:p-12">
         <div className="w-full max-w-sm animate-grad-fade-up">
           <div className="lg:hidden flex items-center gap-3 mb-8">
-            <div className="h-11 w-11 rounded-xl bg-grad-brand grid place-items-center shadow-grad-glow">
-              <Sparkles size={20} className="text-white" />
-            </div>
+            <Link to="/" className="h-12 w-12 rounded-xl bg-grad-brand grid place-items-center shadow-grad-glow">
+              <img src={riceLogo} alt="Rice Mill" className="h-full w-full object-contain brightness-0 invert" />
+            </Link>
             <p className="text-lg font-bold tracking-tight text-primary">Rice Mill System</p>
           </div>
 

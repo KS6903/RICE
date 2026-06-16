@@ -18,6 +18,10 @@ def _enroll(auth_client) -> tuple[str, list[str]]:
 
 
 def _challenge(client) -> str:
+    # Simulate an untrusted device: a prior successful mfa/verify sets an
+    # "mfa_trust" cookie that would let the next login skip the MFA challenge, so
+    # drop it here to exercise the challenge path on every call.
+    client.cookies.clear()
     res = client.post("/api/auth/login", data={"username": "owner", "password": "Password123"})
     assert res.json().get("mfa_required") is True
     return res.json()["challenge_token"]

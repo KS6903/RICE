@@ -759,6 +759,9 @@ function WarehouseCanvaWithLayouts({
 }) {
   const qc = useQueryClient();
   const role = useAuthStore((s) => s.user?.role);
+  // Managing layouts (add / rename / set-default / delete) is allowed. Only the
+  // floor plan drawing and pallet placement are read-only (AI-managed) — those
+  // live in the canva, gated separately there.
   const canManageLayouts = role === "owner" || role === "admin" || role === "mill_operator";
   const [showManageLayouts, setShowManageLayouts] = useState(false);
   const [selectedLayoutId, setSelectedLayoutId] = useState<string | null>(null);
@@ -986,6 +989,17 @@ function WarehouseCanvaWithLayouts({
                     </div>
                   );
                 })}
+                {/* Adding layouts is allowed; editing one (rename/delete/
+                    floor-plan) is not — the warehouse is otherwise read-only. */}
+                <button
+                  type="button"
+                  data-testid="add-layout-btn"
+                  onClick={() => setShowNewForm(true)}
+                  className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-sm font-medium text-emerald-700 dark:text-emerald-300 hover:bg-emerald-500/10 transition-colors"
+                  title="Add a new warehouse layout"
+                >
+                  <Plus size={13} /> New layout
+                </button>
               </div>
 
               {/* Single action bar — operates on the active layout. Replaces

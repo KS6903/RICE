@@ -31,3 +31,17 @@ def get_weather(
     unless explicit lat/lon are passed). Google Weather when configured, else
     Open-Meteo; cached 10 min per ~1km cell."""
     return svc.get_weather(request, lat, lon)
+
+
+@router.get("/weather/forecast")
+def get_weather_forecast(
+    request: Request,
+    lat: float | None = Query(None, ge=-90.0, le=90.0, description="Optional latitude override"),
+    lon: float | None = Query(None, ge=-180.0, le=180.0, description="Optional longitude override"),
+    _user=Depends(get_current_user),
+    svc: WeatherService = Depends(get_weather_service),
+) -> dict[str, Any]:
+    """Hourly (next 24h) + daily (7-day) forecast for the client's location
+    (IP-resolved unless explicit lat/lon are passed). Open-Meteo; cached 30 min
+    per ~1km cell."""
+    return svc.get_forecast(request, lat, lon)

@@ -10,6 +10,9 @@ addopts = "-q"
 filterwarnings = [
     # passlib probes bcrypt's version in a way that warns on newer bcrypt; harmless.
     "ignore::DeprecationWarning",
+    # starlette.testclient warns when driven by httpx (vs httpx2); framework-level
+    # and not a DeprecationWarning subclass, so it needs its own ignore.
+    "ignore::starlette.exceptions.StarletteDeprecationWarning",
 ]
 
 [tool.ruff]

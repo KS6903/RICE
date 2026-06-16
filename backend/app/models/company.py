@@ -23,10 +23,6 @@ class Company(Base, TimestampMixin):
     schema_name: Mapped[str] = mapped_column(
         String(63), unique=True, nullable=False, default=_default_schema_name
     )
-    # Forward hook (dormant): NULL = this client lives in the shared database.
-    # Set to a Postgres URL to relocate a single client onto its own database /
-    # server — see core.tenancy.engine_for. No application code changes needed.
-    db_url: Mapped[str | None] = mapped_column(Text)
     address: Mapped[str | None] = mapped_column(Text)
     tin: Mapped[str | None] = mapped_column(String(20))
     nfa_license_no: Mapped[str | None] = mapped_column(String(50))

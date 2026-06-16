@@ -115,6 +115,8 @@ def get_access_token_payload(token: str = Depends(get_token)) -> dict[str, Any]:
 
 def get_current_user(token: str = Depends(get_token), db: Session = Depends(get_db)):
     from ..models.user import User
+    from .tenancy import valid_schema_name
+
     payload = decode_token(token)
     if payload.get("type") != "access":
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token type")
@@ -122,6 +124,13 @@ def get_current_user(token: str = Depends(get_token), db: Session = Depends(get_
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token has been revoked")
     user_id: str = payload.get("sub")
     if not user_id:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
+    # Fail-closed tenant isolation: a normal (tenant) user's token MUST carry a
+    # valid client schema — get_db scopes the session's search_path to it, so a
+    # missing/forged schema would otherwise leave the request on bare `public`.
+    # Reject rather than serve. Platform admins legitimately carry no schema
+    # (they operate on `public` and loop client schemas via tenant_session).
+    if not payload.get("is_platform_admin") and not valid_schema_name(payload.get("schema")):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
     user = db.get(User, user_id)
     if not user or not user.is_active:

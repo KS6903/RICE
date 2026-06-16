@@ -5,7 +5,6 @@ import type Konva from "konva";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useSearchParams } from "react-router-dom";
 import { canvaService } from "../../services/CanvaService";
-import { useAuthStore } from "../../stores/authStore";
 import {
   Loader2,
   AlertCircle,
@@ -21,7 +20,6 @@ import {
   Calendar,
   User as UserIcon,
   Pencil,
-  Eye,
   Layers,
   History,
   ArrowUp,
@@ -43,6 +41,7 @@ import {
   Square,
   Locate,
   HelpCircle,
+  Sparkles,
 } from "lucide-react";
 import { useRealtimeCanva } from "./useRealtimeCanva";
 import { DispatchModal } from "./DispatchModal";
@@ -146,7 +145,6 @@ const AGING_LABEL: Record<Batch["status"], string> = {
 };
 
 const PX_PER_METER_DEFAULT = 40;
-const WRITE_ROLES = new Set(["owner", "admin", "mill_operator"]);
 
 const STRUCTURAL_TYPES = new Set(["wall", "door", "walkway", "loading_dock"]);
 
@@ -212,8 +210,9 @@ export default function WarehouseCanva({
   // Cache key: specific layoutId when available, otherwise falls back to branchId
   const cacheKey = layoutId || branchId;
   const qc = useQueryClient();
-  const userRole = useAuthStore((s) => s.user?.role ?? "");
-  const canEdit = WRITE_ROLES.has(userRole);
+  // Warehouse is AI-managed and fully read-only for users — no floor-plan edits,
+  // no new layouts, no manual pallet placement. (AI placement: FIFO, coming soon.)
+  const canEdit = false;
 
   const stageRef = useRef<Konva.Stage>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -238,6 +237,20 @@ export default function WarehouseCanva({
   const [stagePos, setStagePos] = useState({ x: 40, y: 40 });
   const [selectedPalletId, setSelectedPalletId] = useState<string | null>(null);
   const [editMode, setEditMode] = useState(false);
+  // Connection status for the layout badge. Placement is AI-managed (read-only
+  // for users), so the badge reflects plain connectivity — it reads Online
+  // whenever the browser is connected, instead of collaborative-edit sync.
+  const [browserOnline, setBrowserOnline] = useState(() => navigator.onLine);
+  useEffect(() => {
+    const on = () => setBrowserOnline(true);
+    const off = () => setBrowserOnline(false);
+    window.addEventListener("online", on);
+    window.addEventListener("offline", off);
+    return () => {
+      window.removeEventListener("online", on);
+      window.removeEventListener("offline", off);
+    };
+  }, []);
   const [stackPrompt, setStackPrompt] = useState<{ child: Pallet; parent: Pallet } | null>(null);
   const [errorBanner, setErrorBanner] = useState<string | null>(null);
   const [showDispatch, setShowDispatch] = useState(false);
@@ -279,8 +292,10 @@ export default function WarehouseCanva({
     return m;
   }, [data?.pallets]);
 
-  // Realtime sync — applies remote pallet.moved/stacked/unstacked events to the cache
-  const liveStatus = useRealtimeCanva(data?.layout.id, cacheKey);
+  // Realtime cache-sync — keeps applying remote / AI-driven pallet & zone events
+  // to the cache. The header badge itself is driven by plain connectivity
+  // (browserOnline) since pallet placement is now AI-managed (read-only).
+  useRealtimeCanva(data?.layout.id, cacheKey);
 
   // Deep-link sync: read ?pallet=PL-... on load → select the matching pallet
   useEffect(() => {
@@ -873,7 +888,8 @@ export default function WarehouseCanva({
               </span>
             );
           })()}
-          <LiveBadge status={liveStatus} />
+          <LiveBadge status={!browserOnline ? "offline" : data ? "live" : "connecting"} />
+          <AIPlacementBadge />
         </div>
 
         {canEdit && (
@@ -889,26 +905,6 @@ export default function WarehouseCanva({
                 New layout
               </button>
             )}
-            <button
-              onClick={() => {
-                setEditMode((m) => !m);
-                if (!editMode) setLayoutMode(false);
-              }}
-              disabled={layoutMode}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all disabled:opacity-40 disabled:cursor-not-allowed ${
-                editMode
-                  ? "bg-sky-600 text-white shadow-sm hover:bg-sky-700"
-                  : "ring-1 ring-slate-300 dark:ring-slate-600 text-secondary hover:bg-slate-100 dark:hover:bg-slate-700/40"
-              }`}
-              title={
-                editMode
-                  ? "Click to stop moving and just look"
-                  : "Click to start moving pallets around"
-              }
-            >
-              {editMode ? <Pencil size={12} /> : <Eye size={12} />}
-              {editMode ? "Move pallets" : "View only"}
-            </button>
             <button
               onClick={() => {
                 setLayoutMode((m) => !m);
@@ -2101,7 +2097,7 @@ function LiveBadge({ status }: { status: "offline" | "connecting" | "live" }) {
   const cfg = {
     live: {
       Icon: Wifi,
-      label: "Live",
+      label: "Online",
       cls: "text-emerald-600 bg-emerald-50 ring-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:ring-emerald-800/50",
       dot: "bg-emerald-500 animate-pulse",
     },
@@ -2122,11 +2118,27 @@ function LiveBadge({ status }: { status: "offline" | "connecting" | "live" }) {
   return (
     <span
       className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide ring-1 ${cfg.cls}`}
-      title="Realtime sync status"
+      title="Connection status"
     >
       <span className={`inline-block w-1.5 h-1.5 rounded-full ${cfg.dot}`} />
       <Icon size={10} />
       {cfg.label}
+    </span>
+  );
+}
+
+/** PLACEHOLDER — signals that stock placement in the warehouse is handled by an
+ *  agentic AI (FIFO and friends), not manual drag-and-drop. Not wired yet; the
+ *  canva is read-only for users in the meantime. */
+function AIPlacementBadge() {
+  return (
+    <span
+      className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide bg-grad-brand text-white shadow-sm ring-1 ring-white/20"
+      title="Stock placement is managed automatically by AI (FIFO). Coming soon — the layout is read-only for now."
+    >
+      <Sparkles size={10} />
+      AI Placement · FIFO
+      <span className="normal-case bg-white/20 px-1.5 py-px rounded text-[9px] font-bold">Soon</span>
     </span>
   );
 }

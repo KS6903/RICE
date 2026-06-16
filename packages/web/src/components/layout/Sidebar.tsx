@@ -1,8 +1,9 @@
 import { NavLink } from "react-router-dom";
 import {
   LayoutDashboard, Wheat, Factory, Package,
-  ShoppingCart, Receipt, BarChart3, Users, Settings, IdCard, Lock, Sparkles, Truck, HardHat
+  ShoppingCart, Receipt, BarChart3, Users, Settings, IdCard, Lock, Truck, HardHat
 } from "lucide-react";
+import riceLogo from "../../assets/Rice_Logo.svg";
 import { clsx } from "clsx";
 import { useFeature } from "../../hooks/useFeature";
 import { useAccess } from "../../hooks/useAccess";
@@ -78,7 +79,7 @@ export default function Sidebar() {
       <div className="relative px-5 py-5 border-b border-soft">
         <div className="flex items-center gap-2.5">
           <div className="h-10 w-10 rounded-xl bg-grad-brand grid place-items-center shadow-grad-glow">
-            <Sparkles size={18} className="text-white" />
+            <img src={riceLogo} alt="Rice Mill" className="h-full w-full object-contain brightness-0 invert" />
           </div>
           <div className="min-w-0">
             <h1 className="text-base font-bold tracking-tight text-primary leading-tight truncate">

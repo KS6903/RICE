@@ -47,6 +47,7 @@ _BREAKER_COOLDOWN = 30.0
 # Semantic TTLs (seconds). Kept here so cache lifetimes live in one place.
 TTL_FEATURES = 60       # plan entitlements — short; bounded staleness on plan changes
 TTL_WEATHER = 10 * 60   # current weather — matches the upstream's freshness
+TTL_WEATHER_FORECAST = 30 * 60  # hourly/daily forecast — changes slowly, heavier call
 TTL_IP_GEO = 60 * 60    # IP → coordinates — public IPs move rarely
 
 

@@ -1780,8 +1780,8 @@ function PasswordTab() {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="card max-w-md space-y-5">
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+      <div className="card space-y-5">
         <div className="flex items-center gap-3">
           <div className="h-11 w-11 rounded-xl bg-grad-brand grid place-items-center shadow-grad-glow">
             <KeyRound size={18} className="text-white" />
@@ -1916,7 +1916,7 @@ function MfaCard() {
   );
 
   return (
-    <div className="card max-w-md space-y-5">
+    <div className="card space-y-5">
       <div className="flex items-center gap-3">
         <div className="h-11 w-11 rounded-xl bg-grad-brand grid place-items-center shadow-grad-glow">
           <ShieldCheck size={18} className="text-white" />

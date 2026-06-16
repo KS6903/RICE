@@ -10,6 +10,13 @@ export class WeatherService {
     const url = coords ? `/weather?lat=${coords.lat}&lon=${coords.lon}` : "/weather";
     return this.http.get(url).then((r) => r.data);
   }
+
+  getForecast(coords?: { lat: number; lon: number } | null): Promise<any> {
+    const url = coords
+      ? `/weather/forecast?lat=${coords.lat}&lon=${coords.lon}`
+      : "/weather/forecast";
+    return this.http.get(url).then((r) => r.data);
+  }
 }
 
 export const weatherService = new WeatherService();

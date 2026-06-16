@@ -49,9 +49,8 @@ def get_db(request: Request = None):
     be called/overridden without one (tests, ad-hoc use).
     """
     # Imported lazily to avoid a circular import (tenancy imports this module).
-    # resolve_request_session picks the engine (shared, or the client's own
-    # database when promoted via Company.db_url) and sets search_path from the
-    # access token, then returns a ready session.
+    # resolve_request_session opens a shared-engine session and sets its
+    # search_path from the access token's schema claim, then returns it.
     from .tenancy import resolve_request_session
 
     db = resolve_request_session(request)

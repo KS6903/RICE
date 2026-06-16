@@ -53,11 +53,13 @@ limiter = Limiter(
     key_func=client_ip,
     default_limits=_default_limits,
     storage_uri=settings.REDIS_URL or "memory://",
+    # Short socket timeouts so a downed Redis never adds multi-second latency to
+    # auth requests. Without these, the OS TCP timeout (5–10 s) fires before
+    # slowapi's in_memory_fallback kicks in. (redis-py wants floats here; the
+    # limits stub types storage_options as dict[str, str], hence the ignore.)
+    storage_options={"socket_connect_timeout": 0.5, "socket_timeout": 0.5} if settings.REDIS_URL else {},  # type: ignore[dict-item]
     enabled=settings.RATE_LIMIT_ENABLED,
-    # If Redis storage goes down at runtime, keep enforcing limits in-memory
-    # instead of failing the request.
     in_memory_fallback_enabled=True,
-    # Never let a limiter-internal error turn into a 500 for the user.
     swallow_errors=True,
     headers_enabled=True,
 )

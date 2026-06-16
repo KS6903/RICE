@@ -85,9 +85,9 @@ def purge_expired_branches(db: Session, company_id: uuid.UUID) -> int:
     tables = _nullable_branch_fk_tables(db)
     for branch in expired:
         for table in tables:
-            # nosec B608 — `table` comes from information_schema and is further
-            # constrained to ^[a-z_][a-z0-9_]*$ in _nullable_branch_fk_tables();
-            # the value is parameterized. Identifiers can't be bound parameters.
+            # SAFETY (B608, suppressed on the execute below): `table` comes from
+            # information_schema and is further constrained to ^[a-z_][a-z0-9_]*$
+            # in _nullable_branch_fk_tables(). Identifiers can't be bound params.
             db.execute(
                 text(f'UPDATE "{table}" SET branch_id = NULL WHERE branch_id = :bid'),  # nosec B608
                 {"bid": str(branch.id)},

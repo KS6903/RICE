@@ -10,7 +10,14 @@ from fastapi import APIRouter, Depends, Request, Response, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 
-from ..core.cookies import ACCESS_COOKIE, REFRESH_COOKIE, clear_auth_cookies, set_auth_cookies
+from ..core.cookies import (
+    ACCESS_COOKIE,
+    MFA_TRUST_COOKIE,
+    REFRESH_COOKIE,
+    clear_auth_cookies,
+    set_auth_cookies,
+    set_mfa_trust_cookie,
+)
 from ..core.csrf import enforce_csrf
 from ..core.database import get_db
 from ..core.exceptions import UnauthorizedError
@@ -75,8 +82,11 @@ def login(
     httpOnly session cookies (web client — JS never touches the tokens).
 
     Accounts with MFA enabled get ``{"mfa_required": true, "challenge_token"}``
-    instead — the client completes login via POST /auth/mfa/verify."""
-    result = svc.login(form.username, form.password)
+    instead — the client completes login via POST /auth/mfa/verify. A device that
+    already verified MFA carries an ``mfa_trust`` cookie (or X-MFA-Trust header)
+    and skips straight to tokens until the next weekly reset (Sunday)."""
+    trust = request.cookies.get(MFA_TRUST_COOKIE) or request.headers.get("X-MFA-Trust")
+    result = svc.login(form.username, form.password, mfa_trust_token=trust)
     if isinstance(result, TokenResponse):
         set_auth_cookies(response, access_token=result.access_token, refresh_token=result.refresh_token)
     return result
@@ -151,8 +161,10 @@ def google_auth(
     body: GoogleAuthRequest,
     svc: AuthService = Depends(get_public_auth_service),
 ):
-    """Like /login: an MFA-enabled account gets a challenge instead of tokens."""
-    result = svc.google_auth(body)
+    """Like /login: an MFA-enabled account gets a challenge instead of tokens,
+    unless this device is within its MFA trust window."""
+    trust = request.cookies.get(MFA_TRUST_COOKIE) or request.headers.get("X-MFA-Trust")
+    result = svc.google_auth(body, mfa_trust_token=trust)
     if isinstance(result, TokenResponse):
         set_auth_cookies(response, access_token=result.access_token, refresh_token=result.refresh_token)
     return result
@@ -168,9 +180,15 @@ def mfa_verify(
     body: MfaVerifyRequest,
     svc: AuthService = Depends(get_public_auth_service),
 ):
-    """Second login step for MFA accounts: challenge token + TOTP code → tokens."""
-    tokens = svc.mfa_verify(body.challenge_token, body.code)
+    """Second login step for MFA accounts: challenge token + TOTP code → tokens.
+
+    On success this device is remembered: an httpOnly ``mfa_trust`` cookie (and an
+    ``X-MFA-Trust`` response header for bearer clients) lets it skip MFA on login
+    until the next weekly reset (Sunday), so the user isn't prompted every login."""
+    tokens, trust = svc.mfa_verify(body.challenge_token, body.code)
     set_auth_cookies(response, access_token=tokens.access_token, refresh_token=tokens.refresh_token)
+    set_mfa_trust_cookie(response, trust)
+    response.headers["X-MFA-Trust"] = trust
     return tokens
 
 

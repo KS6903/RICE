@@ -10,11 +10,10 @@ that client's schema via ``SET search_path TO "<schema>", public`` — so unqual
 domain tables resolve to the client schema while shared identity/control-plane
 tables fall back to ``public``.
 
-The client→location mapping is **data-driven** (stored on the ``companies`` row):
-today every client is a schema in the shared engine; setting ``Company.db_url``
-later relocates a single client onto its own database/server with *no application
-code change* (see :func:`engine_for`). That is the escalation path for
-noisy-neighbor isolation / per-client portability.
+Every client lives in the **one shared database**, isolated by its own schema —
+there is no per-client physical database. The schema (in ``search_path``) is the
+hard isolation boundary: an unqualified query can only ever resolve to the client
+schema currently on the path, so cross-client reads are impossible by construction.
 
 Design note: ``company_id`` columns are retained on every domain table. Inside a
 single-client schema those filters are harmless constants — keeping them means the
@@ -25,18 +24,16 @@ from __future__ import annotations
 
 import logging
 import re
-import time
 from contextlib import contextmanager
 from typing import Iterator
 
 import jwt
-from sqlalchemy import create_engine, text
-from sqlalchemy.engine import Engine
+from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from .config import settings
 from .cookies import ACCESS_COOKIE
-from .database import Base, SessionLocal, engine
+from .database import Base, SessionLocal
 
 logger = logging.getLogger("ricemill.tenancy")
 
@@ -110,10 +107,9 @@ def set_search_path(db: Session, schema_name: str | None) -> None:
         db.execute(text("SET search_path TO public"))
 
 
-# Cross-tenant code must visit each client on its OWN database (a client may be a
-# schema in the shared DB, or promoted to its own physical DB). Use tenant_session
-# / iter_tenant_sessions below — both are db_url-aware — rather than mutating a
-# shared session's search_path.
+# Cross-tenant code must visit each client by switching to its schema. Use
+# tenant_session / iter_tenant_sessions below rather than ad-hoc search_path
+# mutation, so the path is always restored afterwards.
 
 
 # ── request → schema resolution (lenient, best-effort) ────────────────────────
@@ -215,154 +211,63 @@ def provision_tenant(company, *, db: Session | None = None) -> str:
             session.close()
 
 
-# ── per-client physical database (live routing) ──────────────────────────────
+# ── per-request session + cross-tenant helpers ───────────────────────────────
 #
-# A client can be promoted to its OWN Postgres database (Company.db_url). Such a
-# DB is self-contained — it mirrors the shared layout (public identity + a
-# client_<hex> domain schema) and is the source of truth for that client. The
-# shared control-plane keeps the client's company/users rows as a routing
-# directory. At runtime the ONLY thing that differs for a physical client is
-# which engine a session binds to; the search_path logic is identical.
-
-_tenant_engines: dict[str, Engine] = {}
-
-
-def _normalize_pg_url(url: str) -> str:
-    """Pin the psycopg (v3) driver, matching the shared engine — a plain
-    ``postgresql://`` URL would otherwise default to psycopg2 (not installed)."""
-    if url.startswith("postgresql://"):
-        return url.replace("postgresql://", "postgresql+psycopg://", 1)
-    return url
-
-
-def engine_for_url(url: str | None) -> Engine:
-    """Engine for a given database URL (cached per URL), or the shared engine."""
-    if not url:
-        return engine
-    eng = _tenant_engines.get(url)
-    if eng is None:
-        eng = create_engine(_normalize_pg_url(url), pool_pre_ping=True, pool_size=5, max_overflow=10)
-        _tenant_engines[url] = eng
-    return eng
-
-
-def engine_for(company) -> Engine:
-    """The engine a client's data lives on (shared unless it has its own db_url)."""
-    return engine_for_url(getattr(company, "db_url", None))
-
-
-# Small TTL cache of company_id -> db_url so get_db doesn't hit the control-plane
-# on every request. db_url changes only when a client is promoted/relocated, which
-# calls clear_db_url_cache().
-_DB_URL_TTL = 30.0
-_db_url_cache: dict[str, tuple[str | None, float]] = {}
-
-
-def db_url_for_company(company_id) -> str | None:
-    """Look up a company's home database URL from the control-plane (cached).
-
-    Returns None when the client lives in the shared database. Best-effort: any
-    lookup failure resolves to the shared DB rather than erroring a request.
-    """
-    if not company_id:
-        return None
-    key = str(company_id)
-    now = time.monotonic()
-    hit = _db_url_cache.get(key)
-    if hit is not None and now - hit[1] < _DB_URL_TTL:
-        return hit[0]
-    url: str | None = None
-    try:
-        with engine.connect() as conn:
-            row = conn.execute(
-                text("SELECT db_url FROM companies WHERE id = :cid"), {"cid": key}
-            ).first()
-            url = row[0] if row else None
-    except Exception:
-        url = None
-    _db_url_cache[key] = (url, now)
-    return url
-
-
-def clear_db_url_cache() -> None:
-    """Drop the company_id -> db_url cache (call after promoting/relocating a client)."""
-    _db_url_cache.clear()
-
-
-def _new_session(engine_: Engine) -> Session:
-    """A session matching SessionLocal's config (no autoflush/autocommit) on any engine."""
-    if engine_ is engine:
-        return SessionLocal()
-    return Session(bind=engine_, autoflush=False)
+# Every client lives in the one shared database (one engine). A request runs
+# against its client schema via search_path; cross-tenant code visits each client
+# by switching search_path on a shared session.
 
 
 def session_for_company(company) -> Session:
-    """An open session on a company's home DB, scoped to its schema. Caller closes it."""
-    s = _new_session(engine_for(company))
+    """An open session scoped to a company's schema. Caller closes it."""
+    s = SessionLocal()
     set_search_path(s, schema_name_for(company))
     return s
 
 
-def session_for_url(url: str | None, schema: str | None = None) -> Session:
-    """An open session on a given database URL (None = shared engine), scoped to
-    ``schema``. Used by the auth flows to route to a client's home DB based on the
-    control-plane directory — independent of how the request itself was routed."""
-    s = _new_session(engine_for_url(url))
-    set_search_path(s, schema)
-    return s
-
-
 def resolve_request_session(request) -> Session:
-    """Build the per-request session, routed to the caller's client database.
+    """Build the per-request session, scoped to the caller's client schema.
 
-    Reads the access token's ``company_id`` (to pick the engine) and ``schema``
-    (search_path). No/expired token, or a shared client, yields a shared-engine
-    session on ``public`` — exactly what auth/get_current_user need first.
+    Reads the access token's ``schema`` claim and applies it via search_path. No/
+    expired token yields a session on ``public`` only — exactly what auth /
+    get_current_user need before any client is known. A present-but-invalid schema
+    falls back to ``public`` (and is rejected for domain access by
+    get_current_user's fail-closed guard), so a request can never resolve to
+    another client's schema.
     """
-    company_id = schema = None
+    schema = None
     token = _token_from_request(request) if request is not None else None
     if token:
         try:
             payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
             if payload.get("type") == "access":
-                company_id = payload.get("company_id")
                 schema = payload.get("schema")
         except Exception:
             pass
-    url = db_url_for_company(company_id) if company_id else None
-    s = _new_session(engine_for_url(url))
+    s = SessionLocal()
     set_search_path(s, schema)
     return s
 
 
 @contextmanager
 def tenant_session(db: Session, company) -> Iterator[Session]:
-    """Yield a session scoped to ``company`` for cross-tenant code (platform-admin
-    analytics, etc.), regardless of where the client lives.
+    """Yield ``db`` scoped to ``company`` for cross-tenant code (platform-admin
+    analytics, etc.), then restore the search_path.
 
-    - Shared client: reuses the caller's session ``db`` (just switches search_path,
-      then restores it) — so it sees the same transaction the request is in.
-    - Promoted client: opens a short-lived session on the client's own database and
-      closes it on exit.
+    All clients share one engine, so this just switches search_path on the
+    caller's session — it stays in the same transaction the request is in.
     """
-    if getattr(company, "db_url", None):
-        s = session_for_company(company)
-        try:
-            yield s
-        finally:
-            s.close()
-    else:
-        set_search_path(db, schema_name_for(company))
-        try:
-            yield db
-        finally:
-            set_search_path(db, None)
+    set_search_path(db, schema_name_for(company))
+    try:
+        yield db
+    finally:
+        set_search_path(db, None)
 
 
 def iter_tenant_sessions() -> Iterator[tuple]:
-    """Yield ``(company, session)`` for every client, each on its own home DB +
-    schema. For cross-tenant batch work (cron, reporting). Each session is closed
-    after the caller resumes the generator."""
+    """Yield ``(company, session)`` for every client, each scoped to its schema.
+    For cross-tenant batch work (cron, reporting). Each session is closed after
+    the caller resumes the generator."""
     from ..models.company import Company
 
     catalog = SessionLocal()
