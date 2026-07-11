@@ -5,10 +5,10 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
 from ..core.database import get_db
-from ..core.security import get_current_user, require_feature
+from ..core.security import get_current_user, require_feature, require_section_access
 from ..services.reports_service import ReportsService
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(require_section_access("reports"))])
 
 
 def get_reports_service(

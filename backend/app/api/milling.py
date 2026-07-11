@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, status
 from sqlalchemy.orm import Session
 
 from ..core.database import get_db
-from ..core.security import get_current_user, require_feature
+from ..core.security import get_current_user, require_feature, require_section_access
 from ..repositories.inventory import (
     ByproductInventoryRepository,
     MilledRiceInventoryRepository,
@@ -16,7 +16,10 @@ from ..repositories.paddy import PalayInventoryRepository
 from ..schemas.milling import BatchCreate, BatchOutputIn, EquipmentCreate, EquipmentUpdate
 from ..services.milling_service import MillingService
 
-router = APIRouter(dependencies=[Depends(require_feature("milling"))])
+router = APIRouter(dependencies=[
+    Depends(require_feature("milling")),
+    Depends(require_section_access("milling")),
+])
 
 
 def get_milling_service(
@@ -41,12 +44,19 @@ def list_equipment(include_inactive: bool = False, svc: MillingService = Depends
     return svc.list_equipment(include_inactive=include_inactive)
 
 
-@router.post("/equipment", status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/equipment",
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(require_section_access("milling", write=True))],
+)
 def create_equipment(body: EquipmentCreate, svc: MillingService = Depends(get_milling_service)):
     return svc.create_equipment(body)
 
 
-@router.put("/equipment/{equipment_id}")
+@router.put(
+    "/equipment/{equipment_id}",
+    dependencies=[Depends(require_section_access("milling", write=True))],
+)
 def update_equipment(equipment_id: uuid.UUID, body: EquipmentUpdate, svc: MillingService = Depends(get_milling_service)):
     return svc.update_equipment(equipment_id, body)
 
@@ -63,12 +73,19 @@ def get_batch(batch_id: uuid.UUID, svc: MillingService = Depends(get_milling_ser
     return svc.get_batch(batch_id)
 
 
-@router.post("/batches", status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/batches",
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(require_section_access("milling", write=True))],
+)
 def create_batch(body: BatchCreate, svc: MillingService = Depends(get_milling_service)):
     return svc.create_batch(body)
 
 
-@router.put("/batches/{batch_id}/complete")
+@router.put(
+    "/batches/{batch_id}/complete",
+    dependencies=[Depends(require_section_access("milling", write=True))],
+)
 def complete_batch(
     batch_id: uuid.UUID,
     end_datetime: datetime,

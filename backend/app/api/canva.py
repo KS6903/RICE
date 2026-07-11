@@ -19,7 +19,7 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
 from ..core.database import get_db
-from ..core.security import get_current_user, require_feature, require_roles
+from ..core.security import get_current_user, require_feature, require_roles, require_section_access
 from ..repositories.canva import (
     PalletMovementRepository,
     PalletRepository,
@@ -51,6 +51,7 @@ WRITE_ROLES = ("owner", "admin", "mill_operator")
 router = APIRouter(dependencies=[
     Depends(require_feature("inventory")),
     Depends(require_feature("canva_inventory")),
+    Depends(require_section_access("inventory")),
 ])
 
 

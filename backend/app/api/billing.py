@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, status
 from sqlalchemy.orm import Session
 
 from ..core.database import get_db
-from ..core.security import get_current_user, require_roles
+from ..core.security import get_current_user, require_roles, require_section_access
 from ..repositories.billing import (
     SubscriptionPlanRepository,
     SubscriptionRepository,
@@ -14,9 +14,12 @@ from ..repositories.billing import (
 from ..schemas.billing import UpgradeRequestCreate
 from ..services.billing_service import BillingService
 
-router = APIRouter()
-
 WRITE_ROLES = ("owner", "admin")
+
+router = APIRouter(dependencies=[
+    Depends(require_section_access("settings")),
+    Depends(require_roles(*WRITE_ROLES)),
+])
 
 
 def get_billing_service(

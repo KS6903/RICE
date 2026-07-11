@@ -9,10 +9,10 @@ from typing import Any
 
 from fastapi import APIRouter, Depends, Query, Request
 
-from ..core.security import get_current_user
+from ..core.security import get_current_user, require_section_access
 from ..services.weather import WeatherService
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(require_section_access("dashboard"))])
 
 
 def get_weather_service() -> WeatherService:

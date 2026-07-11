@@ -10,7 +10,7 @@ from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.orm import Session
 
 from ..core.database import get_db
-from ..core.security import get_current_user, require_feature, require_roles
+from ..core.security import get_current_user, require_feature, require_section_access
 from ..repositories.paddy import (
     PalayInventoryRepository,
     PalayPurchaseRepository,
@@ -29,7 +29,10 @@ from ..schemas.paddy import (
 )
 from ..services.paddy_service import PaddyService
 
-router = APIRouter(dependencies=[Depends(require_feature("paddy"))])
+router = APIRouter(dependencies=[
+    Depends(require_feature("paddy")),
+    Depends(require_section_access("paddy")),
+])
 
 
 def get_paddy_service(
@@ -55,12 +58,19 @@ def list_varieties(include_inactive: bool = False, svc: PaddyService = Depends(g
     return svc.list_varieties(include_inactive=include_inactive)
 
 
-@router.post("/varieties", status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/varieties",
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(require_section_access("paddy", write=True))],
+)
 def create_variety(body: VarietyCreate, svc: PaddyService = Depends(get_paddy_service)):
     return svc.create_variety(body)
 
 
-@router.put("/varieties/{variety_id}")
+@router.put(
+    "/varieties/{variety_id}",
+    dependencies=[Depends(require_section_access("paddy", write=True))],
+)
 def update_variety(variety_id: uuid.UUID, body: VarietyUpdate, svc: PaddyService = Depends(get_paddy_service)):
     return svc.update_variety(variety_id, body)
 
@@ -75,7 +85,7 @@ def list_grades(svc: PaddyService = Depends(get_paddy_service)):
 @router.post(
     "/grades",
     status_code=status.HTTP_201_CREATED,
-    dependencies=[Depends(require_roles("owner", "admin"))],
+    dependencies=[Depends(require_section_access("paddy", write=True))],
 )
 def create_grade(body: GradeCreate, svc: PaddyService = Depends(get_paddy_service)):
     return svc.create_grade(body)
@@ -88,12 +98,19 @@ def list_suppliers(include_inactive: bool = False, svc: PaddyService = Depends(g
     return svc.list_suppliers(include_inactive=include_inactive)
 
 
-@router.post("/suppliers", status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/suppliers",
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(require_section_access("paddy", write=True))],
+)
 def create_supplier(body: SupplierCreate, svc: PaddyService = Depends(get_paddy_service)):
     return svc.create_supplier(body)
 
 
-@router.put("/suppliers/{supplier_id}")
+@router.put(
+    "/suppliers/{supplier_id}",
+    dependencies=[Depends(require_section_access("paddy", write=True))],
+)
 def update_supplier(supplier_id: uuid.UUID, body: SupplierUpdate, svc: PaddyService = Depends(get_paddy_service)):
     return svc.update_supplier(supplier_id, body)
 
@@ -115,12 +132,19 @@ def get_purchase(purchase_id: uuid.UUID, svc: PaddyService = Depends(get_paddy_s
     return svc.get_purchase(purchase_id)
 
 
-@router.post("/purchases", status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/purchases",
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(require_section_access("paddy", write=True))],
+)
 def create_purchase(body: PurchaseCreate, svc: PaddyService = Depends(get_paddy_service)):
     return svc.create_purchase(body)
 
 
-@router.put("/purchases/{purchase_id}")
+@router.put(
+    "/purchases/{purchase_id}",
+    dependencies=[Depends(require_section_access("paddy", write=True))],
+)
 def update_purchase(purchase_id: uuid.UUID, body: PurchaseUpdate, svc: PaddyService = Depends(get_paddy_service)):
     return svc.update_purchase(purchase_id, body)
 

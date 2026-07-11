@@ -5,14 +5,15 @@ from fastapi import APIRouter, Depends, status
 from sqlalchemy.orm import Session
 
 from ..core.database import get_db
-from ..core.security import get_current_user, require_feature, require_roles
+from ..core.security import get_current_user, require_feature, require_section_access
 from ..repositories.users import UserRepository
-from ..schemas.users import UserCreate, UserUpdate
+from ..schemas.users import UserCreate, UserResponse, UserUpdate
 from ..services.user_service import UserService
 
-router = APIRouter(dependencies=[Depends(require_feature("users"))])
-
-WRITE_ROLES = ("owner", "admin")
+router = APIRouter(dependencies=[
+    Depends(require_feature("users")),
+    Depends(require_section_access("users")),
+])
 
 
 def get_user_service(
@@ -22,16 +23,25 @@ def get_user_service(
     return UserService(db, current_user, users=UserRepository(db))
 
 
-@router.get("/")
+@router.get("/", response_model=list[UserResponse])
 def list_users(svc: UserService = Depends(get_user_service)):
     return svc.list_users()
 
 
-@router.post("/", status_code=status.HTTP_201_CREATED, dependencies=[Depends(require_roles(*WRITE_ROLES))])
+@router.post(
+    "/",
+    response_model=UserResponse,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(require_section_access("users", write=True))],
+)
 def create_user(body: UserCreate, svc: UserService = Depends(get_user_service)):
     return svc.create_user(body)
 
 
-@router.put("/{user_id}", dependencies=[Depends(require_roles(*WRITE_ROLES))])
+@router.put(
+    "/{user_id}",
+    response_model=UserResponse,
+    dependencies=[Depends(require_section_access("users", write=True))],
+)
 def update_user(user_id: uuid.UUID, body: UserUpdate, svc: UserService = Depends(get_user_service)):
     return svc.update_user(user_id, body)

@@ -5,7 +5,7 @@ Includes the plan user-limit gate (402) enforced on creation.
 from __future__ import annotations
 
 import uuid
-from typing import Any, Sequence
+from typing import Any
 
 from sqlalchemy.orm import Session
 
@@ -16,6 +16,7 @@ from ..models.company import Branch
 from ..models.subscription import Subscription
 from ..models.user import Role, User
 from ..repositories.users import UserRepository
+from ..schemas.users import UserResponse
 from ..services.base import BaseService
 
 
@@ -24,10 +25,14 @@ class UserService(BaseService):
         super().__init__(db, current_user)
         self.users = users
 
-    def list_users(self) -> Sequence[User]:
-        return self.users.list_for_company(self.current_user.company_id)
+    @staticmethod
+    def _safe(user: User) -> UserResponse:
+        return UserResponse.model_validate(user)
 
-    def create_user(self, data) -> User:
+    def list_users(self) -> list[UserResponse]:
+        return [self._safe(user) for user in self.users.list_for_company(self.current_user.company_id)]
+
+    def create_user(self, data) -> UserResponse:
         if self.users.get_by_username(data.username):
             raise BadRequestError("Username already exists")
         # Admin-created users get the same password policy as self-service signup
@@ -63,9 +68,9 @@ class UserService(BaseService):
         with self.transaction():
             self.users.add(user)
         self.db.refresh(user)
-        return user
+        return self._safe(user)
 
-    def update_user(self, user_id: uuid.UUID, data) -> User:
+    def update_user(self, user_id: uuid.UUID, data) -> UserResponse:
         user = self.users.get_for_company(user_id, self.current_user.company_id)
         if not user:
             raise NotFoundError("User not found")
@@ -76,4 +81,4 @@ class UserService(BaseService):
             for field, val in data.model_dump(exclude_none=True).items():
                 setattr(user, field, val)
         self.db.refresh(user)
-        return user
+        return self._safe(user)

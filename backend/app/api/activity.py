@@ -5,10 +5,10 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
 from ..core.database import get_db
-from ..core.security import require_roles
+from ..core.security import require_roles, require_section_access
 from ..services.activity_service import ActivityService
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(require_section_access("settings"))])
 
 
 def get_activity_service(db: Session = Depends(get_db)) -> ActivityService:
