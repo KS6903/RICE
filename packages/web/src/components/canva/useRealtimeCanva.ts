@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
+import { isElectronRuntime } from "../../services/runtime";
 import { useAuthStore } from "../../stores/authStore";
 
 type Status = "offline" | "connecting" | "live";
@@ -29,8 +30,9 @@ type CanvaEvent =
  *  layout is selected, otherwise branchId (the fallback used before a layout is picked). */
 export function useRealtimeCanva(layoutId: string | undefined, cacheKey: string) {
   const qc = useQueryClient();
-  const token = useAuthStore((s) => s.accessToken);
   const userId = useAuthStore((s) => s.user?.id ?? "");
+  // Null in browsers (cookie sessions); the in-memory Bearer token in Electron.
+  const accessToken = useAuthStore((s) => s.accessToken);
   const [status, setStatus] = useState<Status>("offline");
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectAttempt = useRef(0);
@@ -46,14 +48,20 @@ export function useRealtimeCanva(layoutId: string | undefined, cacheKey: string)
     const connect = () => {
       setStatus("connecting");
       const proto = window.location.protocol === "https:" ? "wss" : "ws";
-      // Vite proxies websockets too when configured; here we hit the backend directly
-      // because the dev proxy in vite.config.ts only forwards /api over HTTP.
-      // Auth: the in-memory token rides as ?token= when present (Electron /
-      // right after login); otherwise the httpOnly session cookie covers the
-      // handshake (browsers attach same-site cookies to WS upgrades).
-      const qs = token ? `?token=${encodeURIComponent(token)}` : "";
-      const url = `${proto}://${window.location.hostname}:8000/ws/canva/${layoutId}${qs}`;
-      const ws = new WebSocket(url);
+      // Never put a JWT in the URL: WebSocket URLs are commonly retained in
+      // browser, proxy, and server access logs. Browsers authenticate with the
+      // httpOnly session cookie; the Electron renderer has no cookies and
+      // cannot set WS request headers, so it offers the token as the
+      // ["bearer", <token>] subprotocol pair (see backend api/canva_ws.py).
+      const host = window.location.protocol === "file:"
+        ? "127.0.0.1:8000"
+        : import.meta.env.DEV
+          ? `${window.location.hostname}:8000`
+          : window.location.host;
+      const url = `${proto}://${host}/ws/canva/${encodeURIComponent(layoutId)}`;
+      const ws = isElectronRuntime() && accessToken
+        ? new WebSocket(url, ["bearer", accessToken])
+        : new WebSocket(url);
       wsRef.current = ws;
 
       ws.onopen = () => {
@@ -144,7 +152,7 @@ export function useRealtimeCanva(layoutId: string | undefined, cacheKey: string)
       }
       wsRef.current = null;
     };
-  }, [layoutId, token, cacheKey, userId, qc]);
+  }, [layoutId, cacheKey, userId, accessToken, qc]);
 
   return status;
 }

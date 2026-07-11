@@ -21,8 +21,10 @@ class CanvaConnectionManager:
         self._subs: dict[uuid.UUID, set[WebSocket]] = defaultdict(set)
         self._lock = asyncio.Lock()
 
-    async def connect(self, layout_id: uuid.UUID, ws: WebSocket) -> None:
-        await ws.accept()
+    async def connect(
+        self, layout_id: uuid.UUID, ws: WebSocket, subprotocol: str | None = None
+    ) -> None:
+        await ws.accept(subprotocol=subprotocol)
         async with self._lock:
             self._subs[layout_id].add(ws)
 
