@@ -117,8 +117,8 @@ export default function WeatherWidget({ variant = "compact" }: { variant?: Varia
         </div>
       </div>
 
-      {/* Agentic AI palay-drying advisor (placeholder) */}
-      <DryingAdvisor />
+      {/* Agentic AI palay-drying advisor (Enterprise-only) */}
+      <DryingAdvisor coords={coords} />
     </div>
   );
 }

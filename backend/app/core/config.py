@@ -111,6 +111,19 @@ class Settings(BaseSettings):
     # works out of the box.
     GOOGLE_WEATHER_API_KEY: str | None = None
     GOOGLE_CLIENT_ID: str | None = None
+    # Optional — powers the Enterprise-only palay Drying Advisor (DeepSeek chat
+    # completions, OpenAI-compatible). The advisory endpoint returns "not
+    # configured" (501) when unset; nothing else in the app depends on it.
+    DEEPSEEK_API_KEY: SecretStr | None = None
+    DEEPSEEK_BASE_URL: str = "https://api.deepseek.com"
+    # v4-flash only, and only here — no other feature calls DeepSeek. The old
+    # "deepseek-chat" alias now maps to this same model anyway and is being
+    # retired 2026-07-24, so this pins the real identifier rather than riding
+    # a soon-dead legacy name.
+    DEEPSEEK_MODEL: str = "deepseek-v4-flash"
+    # Advisory calls cost money per request; kept tight since the endpoint is
+    # also cached server-side for hours per location/day (see TTL_DRYING_ADVISORY).
+    RATE_LIMIT_DRYING_ADVISOR: str = "10/hour"
     # SMTP delivery for password-reset and verification links. Production
     # refuses to boot without it so live secrets never need to be logged.
     SMTP_HOST: str | None = None

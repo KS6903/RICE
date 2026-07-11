@@ -16,6 +16,7 @@ from .api import (
     canva,
     costs,
     dispatch,
+    drying_advisor,
     employees,
     fleet,
     inventory,
@@ -125,6 +126,7 @@ app.include_router(canva.router, prefix="/api", tags=["Warehouse Canva"], depend
 app.include_router(canva.ws_router, tags=["Warehouse Canva (Realtime)"])
 app.include_router(dispatch.router, prefix="/api", tags=["Dispatch"], dependencies=mfa_gate)
 app.include_router(weather.router, prefix="/api", tags=["Weather"], dependencies=mfa_gate)
+app.include_router(drying_advisor.router, prefix="/api", tags=["Drying Advisor"], dependencies=mfa_gate)
 app.include_router(locations.router, prefix="/api", tags=["Saved Locations"], dependencies=mfa_gate)
 app.include_router(activity.router, prefix="/api/activity", tags=["Activity Log"], dependencies=mfa_gate)
 app.include_router(fleet.router, prefix="/api", tags=["Fleet"], dependencies=mfa_gate)

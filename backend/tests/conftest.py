@@ -102,7 +102,7 @@ from sqlalchemy.orm import Session  # noqa: E402
 ALL_FEATURES = [
     "paddy", "milling", "inventory", "sales", "expenses",
     "employees", "users", "canva_inventory",
-    "reports_advanced", "compliance_reports",
+    "reports_advanced", "compliance_reports", "drying_advisor",
 ]
 
 
