@@ -20,6 +20,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
   },
   sync: {
     setToken: (token: string) => ipcRenderer.invoke("sync:setToken", token),
+    clearToken: () => ipcRenderer.invoke("sync:clearToken"),
   },
   isElectron: true,
 });

@@ -1,16 +1,100 @@
 import Database from "better-sqlite3";
 import path from "path";
+import fs from "fs";
+import crypto from "crypto";
 import { app } from "electron";
+import { SyncIdentity, SYNC_TABLES } from "../sync/contract";
 
-export function initDatabase(): Database.Database {
-  const dbPath = path.join(app.getPath("userData"), "rice-mill-local.db");
-  const db = new Database(dbPath);
+/**
+ * Owns exactly one identity-partitioned SQLite handle at a time. The renderer
+ * cannot choose the partition: activation only receives an identity obtained
+ * from a server-validated access token in main/index.ts.
+ */
+export class TenantDatabaseManager {
+  private db: Database.Database | null = null;
+  private identity: SyncIdentity | null = null;
 
-  db.pragma("journal_mode = WAL");
-  db.pragma("foreign_keys = ON");
+  activate(identity: SyncIdentity): Database.Database {
+    if (
+      this.db &&
+      this.identity?.companyId === identity.companyId &&
+      this.identity.userId === identity.userId
+    ) {
+      this.identity = { ...identity };
+      return this.db;
+    }
+    this.clear();
 
-  createSchema(db);
-  return db;
+    const partition = crypto
+      .createHash("sha256")
+      .update(`${identity.companyId}:${identity.userId}`, "utf8")
+      .digest("hex")
+      .slice(0, 32);
+    const dbPath = path.join(app.getPath("userData"), `rice-mill-${partition}.db`);
+    const db = new Database(dbPath);
+
+    db.pragma("journal_mode = WAL");
+    db.pragma("foreign_keys = ON");
+    db.pragma("secure_delete = ON");
+    db.pragma("trusted_schema = OFF");
+    db.pragma("busy_timeout = 5000");
+
+    createSchema(db);
+    ensureSyncMarkers(db);
+    removeLegacyPasswordHash(db);
+    try {
+      // Best effort on POSIX. Windows privacy is inherited from Electron's
+      // per-user app-data ACL; see packages/desktop/SECURITY.md.
+      if (process.platform !== "win32") fs.chmodSync(dbPath, 0o600);
+    } catch {
+      // Failure to tighten an already user-owned file is non-fatal; never log a
+      // path containing local account data.
+    }
+
+    this.db = db;
+    this.identity = { ...identity };
+    return db;
+  }
+
+  getDatabase(): Database.Database | null {
+    return this.db;
+  }
+
+  requireDatabase(): Database.Database {
+    if (!this.db || !this.identity) throw new Error("No authenticated desktop data session");
+    return this.db;
+  }
+
+  getIdentity(): SyncIdentity | null {
+    return this.identity ? { ...this.identity } : null;
+  }
+
+  clear(): void {
+    if (this.db) this.db.close();
+    this.db = null;
+    this.identity = null;
+  }
+}
+
+export function initDatabase(): TenantDatabaseManager {
+  return new TenantDatabaseManager();
+}
+
+function ensureSyncMarkers(db: Database.Database): void {
+  for (const table of SYNC_TABLES) {
+    const columns = db.prepare(`PRAGMA table_info(${table})`).all() as Array<{ name: string }>;
+    if (!columns.some((column) => column.name === "_synced")) {
+      // `table` is a compile-time member of SYNC_TABLES, never external input.
+      db.exec(`ALTER TABLE ${table} ADD COLUMN _synced INTEGER NOT NULL DEFAULT 0`);
+    }
+  }
+}
+
+function removeLegacyPasswordHash(db: Database.Database): void {
+  const columns = db.prepare("PRAGMA table_info(users)").all() as Array<{ name: string }>;
+  if (columns.some((column) => column.name === "password_hash")) {
+    db.exec("ALTER TABLE users DROP COLUMN password_hash");
+  }
 }
 
 function createSchema(db: Database.Database) {
@@ -62,7 +146,6 @@ function createSchema(db: Database.Database) {
       branch_id TEXT,
       username TEXT UNIQUE NOT NULL,
       email TEXT,
-      password_hash TEXT NOT NULL,
       full_name TEXT NOT NULL,
       role_id INTEGER,
       is_active INTEGER DEFAULT 1,
@@ -156,7 +239,8 @@ function createSchema(db: Database.Database) {
       tare_weight_kg REAL DEFAULT 0,
       cavan_count REAL,
       moisture_content_pct REAL,
-      price_per_cavan REAL NOT NULL
+      price_per_cavan REAL NOT NULL,
+      _synced INTEGER DEFAULT 0
     );
 
     -- Palay inventory
@@ -167,7 +251,8 @@ function createSchema(db: Database.Database) {
       variety_id TEXT,
       grade_id TEXT,
       quantity_kg REAL DEFAULT 0,
-      updated_at TEXT
+      updated_at TEXT,
+      _synced INTEGER DEFAULT 0
     );
 
     -- Milling batches
@@ -195,7 +280,8 @@ function createSchema(db: Database.Database) {
       variety_id TEXT,
       grade_id TEXT,
       input_weight_kg REAL NOT NULL,
-      moisture_content_pct REAL
+      moisture_content_pct REAL,
+      _synced INTEGER DEFAULT 0
     );
 
     -- Milling batch outputs
@@ -206,7 +292,8 @@ function createSchema(db: Database.Database) {
       variety_id TEXT,
       output_weight_kg REAL NOT NULL,
       broken_rice_pct REAL,
-      milling_recovery_pct REAL
+      milling_recovery_pct REAL,
+      _synced INTEGER DEFAULT 0
     );
 
     -- Milled rice inventory
@@ -217,7 +304,8 @@ function createSchema(db: Database.Database) {
       variety_id TEXT,
       grade_name TEXT,
       quantity_kg REAL DEFAULT 0,
-      updated_at TEXT
+      updated_at TEXT,
+      _synced INTEGER DEFAULT 0
     );
 
     -- Byproduct inventory
@@ -227,7 +315,8 @@ function createSchema(db: Database.Database) {
       branch_id TEXT,
       byproduct_type TEXT NOT NULL,
       quantity_kg REAL DEFAULT 0,
-      updated_at TEXT
+      updated_at TEXT,
+      _synced INTEGER DEFAULT 0
     );
 
     -- Sales orders
@@ -260,7 +349,8 @@ function createSchema(db: Database.Database) {
       grade_name TEXT,
       byproduct_type TEXT,
       quantity_kg REAL NOT NULL,
-      unit_price_per_kg REAL NOT NULL
+      unit_price_per_kg REAL NOT NULL,
+      _synced INTEGER DEFAULT 0
     );
 
     -- Invoices
@@ -328,8 +418,12 @@ function createSchema(db: Database.Database) {
   if (roleCount.c === 0) {
     const insertRole = db.prepare("INSERT OR IGNORE INTO roles (id, name) VALUES (?, ?)");
     [
-      [1, "owner"], [2, "admin"], [3, "mill_operator"],
-      [4, "accountant"], [5, "cashier"], [6, "encoder"],
+      [1, "owner"],
+      [2, "admin"],
+      [3, "mill_operator"],
+      [4, "accountant"],
+      [5, "cashier"],
+      [6, "encoder"],
     ].forEach(([id, name]) => insertRole.run(id, name));
   }
 }
