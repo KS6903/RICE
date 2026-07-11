@@ -28,7 +28,7 @@ export default function DryingAdvisor({ coords }: { coords: Coords | null }) {
 
   return (
     <div
-      className="shrink-0 self-stretch hidden lg:flex flex-col justify-center w-56 pl-4 ml-1 border-l border-soft"
+      className="shrink-0 self-stretch hidden lg:flex flex-col justify-center w-72 pl-4 ml-1 border-l border-soft"
       data-testid="drying-advisor"
     >
       <div className="flex items-center gap-2">
@@ -78,15 +78,15 @@ export default function DryingAdvisor({ coords }: { coords: Coords | null }) {
             const Icon = VERDICT_ICON[q.data.verdict] ?? Sun;
             const tint = VERDICT_TINT[q.data.verdict] ?? "text-slate-500";
             return (
-              <div className="flex items-center gap-1.5">
-                <Icon size={13} className={`${tint} shrink-0`} />
-                <span className="text-xs font-semibold text-primary truncate">{q.data.headline}</span>
+              <div className="flex items-start gap-1.5 min-w-0">
+                <Icon size={13} className={`${tint} shrink-0 mt-0.5`} />
+                <span className="text-xs font-semibold text-primary min-w-0">{q.data.headline}</span>
               </div>
             );
           })()}
-          <p className="mt-1 text-[11px] leading-snug text-secondary line-clamp-2">{q.data.reasoning}</p>
+          <p className="mt-1 text-[11px] leading-snug text-secondary">{q.data.reasoning}</p>
           {q.data.best_window && (
-            <p className="mt-1 text-[10px] text-muted truncate">Best: {q.data.best_window}</p>
+            <p className="mt-1 text-[10px] text-muted">Best: {q.data.best_window}</p>
           )}
         </div>
       )}
