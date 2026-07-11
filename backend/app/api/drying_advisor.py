@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from fastapi import APIRouter, Depends, Query, Request
+from fastapi import APIRouter, Depends, Query, Request, Response
 
 from ..core.config import settings
 from ..core.ratelimit import limiter
@@ -26,6 +26,7 @@ def get_drying_advisor_service() -> DryingAdvisorService:
 @limiter.limit(settings.RATE_LIMIT_DRYING_ADVISOR)
 def get_drying_advisory(
     request: Request,
+    response: Response,
     lat: float | None = Query(None, ge=-90.0, le=90.0, description="Optional latitude override"),
     lon: float | None = Query(None, ge=-180.0, le=180.0, description="Optional longitude override"),
     _user=Depends(get_current_user),

@@ -14,6 +14,7 @@ import pytest
 from pydantic import SecretStr
 
 import app.core.config as cfg
+from app.core.ratelimit import limiter
 from app.services.weather import WeatherService
 
 FAKE_FORECAST = {
@@ -89,6 +90,21 @@ def _mock_deepseek(monkeypatch, *, status_code=200, content=None, calls=None):
         return _FakeResponse(status_code, payload)
 
     monkeypatch.setattr("httpx.Client.post", _post)
+
+
+def test_route_accepts_response_headers_with_rate_limiting_enabled(make_auth_client, deepseek_key, monkeypatch):
+    """The suite runs with RATE_LIMIT_ENABLED=false (conftest), so slowapi's
+    header-injection path — which requires the route to declare a `response:
+    Response` parameter — never actually runs in any other test here. Flip the
+    limiter on for real and confirm the route still returns 200 rather than
+    500ing inside slowapi's `_inject_headers` (regression: this endpoint
+    originally omitted `response: Response`, which only this test catches)."""
+    monkeypatch.setattr(limiter, "enabled", True)
+    _mock_deepseek(monkeypatch)
+    c = make_auth_client(features=["drying_advisor"], username="ratelimited")
+    res = c.get("/api/drying-advisory")
+    assert res.status_code == 200, res.text
+    assert "X-RateLimit-Limit" in res.headers
 
 
 def test_requires_drying_advisor_feature(make_auth_client):
