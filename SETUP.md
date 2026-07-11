@@ -80,45 +80,17 @@ npm run dev:desktop
 
 ## First Login — Create Admin User
 
-After running migrations and seed, create your first admin user:
+After running migrations and seed, create the first platform administrator with
+the interactive helper. It prompts without echoing or storing the password in
+shell history and applies the application's password policy:
 
 ```bash
-# In the backend directory with venv active:
-python -c "
-from app.core.database import SessionLocal
-from app.models.user import User
-from app.models.company import Company, Branch
-from app.core.security import hash_password
-import uuid
-
-db = SessionLocal()
-
-# Create company
-company = Company(name='Your Rice Mill Name', currency='PHP', timezone='Asia/Manila')
-db.add(company)
-db.flush()
-
-# Create branch
-branch = Branch(company_id=company.id, name='Main Branch', is_main_branch=True)
-db.add(branch)
-db.flush()
-
-# Create admin user
-admin = User(
-    company_id=company.id,
-    branch_id=branch.id,
-    username='admin',
-    full_name='Administrator',
-    password_hash=hash_password('admin123'),
-    role_id=1,
-)
-db.add(admin)
-db.commit()
-print('Admin user created: username=admin, password=admin123')
-"
+cd backend
+.venv/Scripts/python create_platform_admin.py
 ```
 
-Then log in at http://localhost:8448 with `admin` / `admin123`.
+Never use a shared/default credential. Store it in your approved password
+manager and enroll MFA immediately after the first login.
 
 ---
 

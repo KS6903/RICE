@@ -5,16 +5,22 @@
 # runs fine without it — when Redis is down, reads fall back to PostgreSQL.
 services:
   redis:
-    image: redis:7-alpine
+    image: redis:7.4-alpine
     container_name: ricemill-redis
     ports:
-      - "6379:6379"
-    # Cache-tuned: cap memory and evict least-recently-used keys when full, so
-    # Redis behaves like a bounded cache rather than growing unbounded.
-    command: ["redis-server", "--maxmemory", "256mb", "--maxmemory-policy", "allkeys-lru", "--save", "", "--appendonly", "no"]
+      # Local development only. Never publish Redis on a public interface.
+      - "127.0.0.1:6379:6379"
+    # Security state must not be evicted or disappear on a routine restart.
+    # Production should use private networking, ACL authentication, and TLS.
+    command: ["redis-server", "--maxmemory", "256mb", "--maxmemory-policy", "noeviction", "--appendonly", "yes"]
+    volumes:
+      - redis-data:/data
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
       timeout: 3s
       retries: 5
     restart: unless-stopped
+
+volumes:
+  redis-data:
