@@ -10,10 +10,22 @@ const VERDICT_ICON: Record<DryingVerdict, React.ElementType> = {
   poor: CloudRain,
 };
 
-const VERDICT_TINT: Record<DryingVerdict, string> = {
-  good: "text-emerald-500",
-  caution: "text-amber-500",
-  poor: "text-rose-500",
+const VERDICT_STYLES: Record<DryingVerdict, { box: string; icon: string; headline: string }> = {
+  good: {
+    box: "ring-emerald-200 dark:ring-emerald-800 bg-emerald-50 dark:bg-emerald-900/20",
+    icon: "text-emerald-500",
+    headline: "text-emerald-900 dark:text-emerald-200",
+  },
+  caution: {
+    box: "ring-amber-200 dark:ring-amber-800 bg-amber-50 dark:bg-amber-900/20",
+    icon: "text-amber-500",
+    headline: "text-amber-900 dark:text-amber-200",
+  },
+  poor: {
+    box: "ring-rose-200 dark:ring-rose-800 bg-rose-50 dark:bg-rose-900/20",
+    icon: "text-rose-500",
+    headline: "text-rose-900 dark:text-rose-200",
+  },
 };
 
 /** Palay Drying Advisor (inline, lives inside the expanded weather card).
@@ -72,24 +84,26 @@ export default function DryingAdvisor({ coords }: { coords: Coords | null }) {
         </p>
       )}
 
-      {allowed && q.data && (
-        <div className="mt-2.5 rounded-xl ring-1 ring-soft bg-slate-500/5 p-2.5" data-testid="drying-advisor-result">
-          {(() => {
-            const Icon = VERDICT_ICON[q.data.verdict] ?? Sun;
-            const tint = VERDICT_TINT[q.data.verdict] ?? "text-slate-500";
-            return (
-              <div className="flex items-start gap-1.5 min-w-0">
-                <Icon size={13} className={`${tint} shrink-0 mt-0.5`} />
-                <span className="text-xs font-semibold text-primary min-w-0">{q.data.headline}</span>
-              </div>
-            );
-          })()}
-          <p className="mt-1 text-[11px] leading-snug text-secondary">{q.data.reasoning}</p>
-          {q.data.best_window && (
-            <p className="mt-1 text-[10px] text-muted">Best: {q.data.best_window}</p>
-          )}
-        </div>
-      )}
+      {allowed && q.data && (() => {
+        const Icon = VERDICT_ICON[q.data.verdict] ?? Sun;
+        const styles = VERDICT_STYLES[q.data.verdict] ?? {
+          box: "ring-soft bg-slate-500/5",
+          icon: "text-slate-500",
+          headline: "text-primary",
+        };
+        return (
+          <div className={`mt-2.5 rounded-xl ring-1 p-2.5 ${styles.box}`} data-testid="drying-advisor-result">
+            <div className="flex items-start gap-1.5 min-w-0">
+              <Icon size={13} className={`${styles.icon} shrink-0 mt-0.5`} />
+              <span className={`text-xs font-semibold min-w-0 ${styles.headline}`}>{q.data.headline}</span>
+            </div>
+            <p className="mt-1 text-[11px] leading-snug text-secondary">{q.data.reasoning}</p>
+            {q.data.best_window && (
+              <p className="mt-1 text-[10px] text-muted">Best: {q.data.best_window}</p>
+            )}
+          </div>
+        );
+      })()}
     </div>
   );
 }
