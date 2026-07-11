@@ -21,6 +21,7 @@ import {
 import { canvaService } from "../../services/CanvaService";
 import { useFeature } from "../../hooks/useFeature";
 import { CanvaUpsellCard } from "../../pages/InventoryPage";
+import { encodeCsvRow } from "../../utils/csv";
 import {
   useRackView,
   type Rack,
@@ -161,12 +162,8 @@ export default function NewWarehouseView({
       "rack",
       "aging",
     ];
-    const esc = (v: unknown) => {
-      const s = String(v ?? "");
-      return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
-    };
     const rows = visibleFlat.map(({ pallet: p, rackName }) =>
-      [
+      encodeCsvRow([
         p.pallet_code,
         p.variety_name ?? p.variety_code ?? "",
         p.days_old,
@@ -175,9 +172,7 @@ export default function NewWarehouseView({
         p.client_name ?? "",
         rackName,
         p.aging_status,
-      ]
-        .map(esc)
-        .join(","),
+      ]),
     );
     const blob = new Blob([[header.join(","), ...rows].join("\n")], {
       type: "text/csv;charset=utf-8;",

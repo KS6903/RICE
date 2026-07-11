@@ -16,6 +16,7 @@ export default function SignupPage() {
   const [step, setStep] = useState<1 | 2>(1);
   const [form, setForm] = useState({
     company_name: "",
+    invite_code: "",
     is_multi_branch: false,
     full_name: "",
     username: "",
@@ -37,13 +38,14 @@ export default function SignupPage() {
     try {
       const data = await authService.signup({
         company_name: form.company_name,
+        ...(form.invite_code.trim() ? { invite_code: form.invite_code.trim() } : {}),
         full_name: form.full_name,
         username: form.username,
         email: form.email,
         password: form.password,
         is_multi_branch: form.is_multi_branch,
       });
-      setTokens(data.access_token, data.refresh_token);
+      setTokens(data?.access_token, data?.refresh_token);
       const me = await authService.me();
       setUser(me);
       navigate("/");
@@ -60,9 +62,10 @@ export default function SignupPage() {
     try {
       const data = await authService.loginGoogle(credentialResponse.credential, {
         company_name: form.company_name,
+        ...(form.invite_code.trim() ? { invite_code: form.invite_code.trim() } : {}),
         is_multi_branch: form.is_multi_branch,
       });
-      setTokens(data.access_token, data.refresh_token);
+      setTokens(data?.access_token, data?.refresh_token);
       const me = await authService.me();
       setUser(me);
       navigate("/");
@@ -175,6 +178,21 @@ export default function SignupPage() {
                   onChange={(e) => update("company_name", e.target.value)}
                   placeholder="ABC Rice Mill Corp."
                 />
+              </div>
+
+              <div>
+                <label className="form-label">Invite code</label>
+                <input
+                  className="input font-mono"
+                  value={form.invite_code}
+                  onChange={(e) => update("invite_code", e.target.value)}
+                  autoComplete="off"
+                  spellCheck={false}
+                  placeholder="Enter the code from your invitation"
+                />
+                <p className="mt-1.5 text-xs text-muted">
+                  Required when public signup is restricted by your deployment.
+                </p>
               </div>
 
               <div>

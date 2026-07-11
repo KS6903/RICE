@@ -1,13 +1,13 @@
 import { useEffect, useRef, useState } from "react";
-import { Link, useSearchParams } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { authService } from "../services/AuthService";
+import { consumeSensitiveUrlToken } from "../services/sensitiveUrl";
 import { Sparkles, CheckCircle2, AlertCircle, Loader2, ArrowLeft } from "lucide-react";
 
-/** Lands from the emailed verification link (/verify-email?token=…) and confirms
+/** Lands from the emailed verification link (/verify-email#token=…) and confirms
  *  the address. Unauthenticated — anyone with the link can complete it. */
 export default function VerifyEmailPage() {
-  const [params] = useSearchParams();
-  const token = params.get("token") || "";
+  const [token] = useState(() => consumeSensitiveUrlToken());
   const [state, setState] = useState<"loading" | "ok" | "error">(token ? "loading" : "error");
   const [error, setError] = useState("This verification link is missing its token.");
   const ran = useRef(false);

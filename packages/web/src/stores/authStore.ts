@@ -1,20 +1,29 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import type { User } from "@rice-mill/shared";
+import {
+  clearSessionQueryCache,
+  securityContextFingerprint,
+} from "../services/sessionCache";
+import { isElectronRuntime, setDesktopSyncToken } from "../services/runtime";
 
 interface AuthState {
   user: User | null;
-  /** In-memory ONLY — never persisted. The browser session lives in httpOnly
-   *  cookies set by the server (JS can't read them, so XSS can't steal them).
-   *  These fields exist for the Electron desktop app's Bearer/sync flow and as
-   *  a fast path right after login. */
+  /**
+   * In-memory only. Browser sessions live in httpOnly cookies; these fields
+   * exist solely for Electron's Bearer/native-sync path.
+   */
   accessToken: string | null;
   refreshToken: string | null;
-  setTokens: (access: string, refresh: string) => void;
+  reauthenticationRequired: boolean;
+  setTokens: (access?: string | null, refresh?: string | null) => void;
   setUser: (user: User) => void;
-  logout: () => void;
+  requireReauthentication: () => void;
+  logout: () => Promise<void>;
   isAuthenticated: () => boolean;
 }
+
+let logoutPromise: Promise<void> | null = null;
 
 export const useAuthStore = create<AuthState>()(
   persist(
@@ -22,28 +31,67 @@ export const useAuthStore = create<AuthState>()(
       user: null,
       accessToken: null,
       refreshToken: null,
-      setTokens: (access, refresh) => set({ accessToken: access, refreshToken: refresh }),
-      setUser: (user) => set({ user }),
-      logout: () => {
-        // Server-side revocation: kills the refresh-session family, blocklists
-        // the access token, and clears the httpOnly cookies. Fire-and-forget —
-        // local state is cleared regardless. Dynamic import avoids a static
-        // api <-> store import cycle.
-        import("../services/api").then(({ default: api }) => api.post("/auth/logout").catch(() => {}));
-        set({ user: null, accessToken: null, refreshToken: null });
+      reauthenticationRequired: false,
+      setTokens: (access, refresh) => {
+        // Never make browser token response bodies JavaScript session state.
+        if (!isElectronRuntime()) {
+          set({ accessToken: null, refreshToken: null });
+          return;
+        }
+
+        const accessToken = access ?? null;
+        const refreshToken = refresh ?? null;
+        set({ accessToken, refreshToken });
+        void setDesktopSyncToken(accessToken ?? "").catch(() => {});
       },
-      // After a reload there is no in-memory token, but a persisted user means a
-      // (probable) live cookie session — /auth/me verifies it and logs out on 401.
+      setUser: (user) => {
+        const previous = get().user;
+        if (securityContextFingerprint(previous) !== securityContextFingerprint(user)) {
+          // Cancel and remove tenant data before the new context is observable.
+          clearSessionQueryCache();
+        }
+        set({ user });
+      },
+      requireReauthentication: () => set({ reauthenticationRequired: true }),
+      logout: () => {
+        if (logoutPromise) return logoutPromise;
+
+        // Capture Electron credentials before state changes. Browser logout
+        // uses the cookie + CSRF snapshot assembled by logoutSession().
+        const credentials = {
+          accessToken: get().accessToken,
+          refreshToken: get().refreshToken,
+        };
+        const serverLogout = import("../services/api").then(({ logoutSession }) =>
+          logoutSession(credentials),
+        );
+
+        clearSessionQueryCache();
+        set({
+          user: null,
+          accessToken: null,
+          refreshToken: null,
+          reauthenticationRequired: false,
+        });
+        const desktopCleanup = setDesktopSyncToken("");
+
+        logoutPromise = Promise.allSettled([serverLogout, desktopCleanup])
+          .then(() => undefined)
+          .finally(() => {
+            logoutPromise = null;
+          });
+        return logoutPromise;
+      },
+      // A persisted profile tells the app to verify the cookie session on load.
       isAuthenticated: () => !!get().accessToken || !!get().user,
     }),
     {
       name: "rice-mill-auth",
-      // SECURITY: persist only the non-sensitive profile. Tokens were previously
-      // persisted to localStorage, which made them readable by any XSS payload.
+      // Profiles may be persisted for cookie-session bootstrapping; tokens may not.
       partialize: (s) => ({ user: s.user }) as AuthState,
       // v1 strips tokens that older clients stored under this key.
       version: 1,
       migrate: (persisted: any) => ({ user: persisted?.user ?? null }),
-    }
-  )
+    },
+  ),
 );

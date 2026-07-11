@@ -33,6 +33,7 @@ import InventoryDetailDrawer from "../components/inventory/InventoryDetailDrawer
 import WarehousePicker from "../components/inventory/WarehousePicker";
 import AddInventoryModal from "../components/inventory/AddInventoryModal";
 import { useFeature } from "../hooks/useFeature";
+import { useAccess } from "../hooks/useAccess";
 import { useAuthStore } from "../stores/authStore";
 import { inventoryService } from "../services/InventoryService";
 import { InventoryMapper, BYPRODUCT_NAMES, type UnifiedItem } from "../mappers/InventoryMapper";
@@ -758,11 +759,11 @@ function WarehouseCanvaWithLayouts({
   setBranchFilter: (id: string) => void;
 }) {
   const qc = useQueryClient();
-  const role = useAuthStore((s) => s.user?.role);
+  const { canEdit } = useAccess();
   // Managing layouts (add / rename / set-default / delete) is allowed. Only the
   // floor plan drawing and pallet placement are read-only (AI-managed) — those
   // live in the canva, gated separately there.
-  const canManageLayouts = role === "owner" || role === "admin" || role === "mill_operator";
+  const canManageLayouts = canEdit("inventory");
   const [showManageLayouts, setShowManageLayouts] = useState(false);
   const [selectedLayoutId, setSelectedLayoutId] = useState<string | null>(null);
   const [showNewForm, setShowNewForm] = useState(false);
@@ -805,6 +806,7 @@ function WarehouseCanvaWithLayouts({
       size_preset: string;
       orientation: "vertical" | "horizontal";
     }) => {
+      if (!canManageLayouts) throw new Error("You have read-only inventory access.");
       if (!activeBranchId) {
         throw new Error("Pick a warehouse first — none is currently selected.");
       }
@@ -844,7 +846,10 @@ function WarehouseCanvaWithLayouts({
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (layoutId: string) => canvaService.deleteLayout(layoutId),
+    mutationFn: (layoutId: string) => {
+      if (!canManageLayouts) throw new Error("You have read-only inventory access.");
+      return canvaService.deleteLayout(layoutId);
+    },
     onSuccess: (_data, deletedId) => {
       qc.invalidateQueries({ queryKey: ["layouts", activeBranchId] });
       if (selectedLayoutId === deletedId) setSelectedLayoutId(null);
@@ -855,13 +860,18 @@ function WarehouseCanvaWithLayouts({
   });
 
   const setDefaultMutation = useMutation({
-    mutationFn: (layoutId: string) => canvaService.setDefaultLayout(layoutId),
+    mutationFn: (layoutId: string) => {
+      if (!canManageLayouts) throw new Error("You have read-only inventory access.");
+      return canvaService.setDefaultLayout(layoutId);
+    },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["layouts", activeBranchId] }),
   });
 
   const renameMutation = useMutation({
-    mutationFn: ({ layoutId, name }: { layoutId: string; name: string }) =>
-      canvaService.patchLayout(activeBranchId, { name }, layoutId),
+    mutationFn: ({ layoutId, name }: { layoutId: string; name: string }) => {
+      if (!canManageLayouts) throw new Error("You have read-only inventory access.");
+      return canvaService.patchLayout(activeBranchId, { name }, layoutId);
+    },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["layouts", activeBranchId] });
       setRenamingId(null);
@@ -908,14 +918,20 @@ function WarehouseCanvaWithLayouts({
             Set up your first warehouse layout — pick a size, name it, and we'll seed a sensible
             default with paddy intake, drying, milling, and storage zones already drawn in.
           </p>
-          <button
-            type="button"
-            data-testid="empty-state-create-layout"
-            onClick={() => setShowNewForm(true)}
-            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-grad-brand text-white text-sm font-semibold shadow-grad-glow hover:opacity-90 transition-opacity"
-          >
-            <Plus size={15} /> Create first layout
-          </button>
+          {canManageLayouts ? (
+            <button
+              type="button"
+              data-testid="empty-state-create-layout"
+              onClick={() => setShowNewForm(true)}
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-grad-brand text-white text-sm font-semibold shadow-grad-glow hover:opacity-90 transition-opacity"
+            >
+              <Plus size={15} /> Create first layout
+            </button>
+          ) : (
+            <p className="text-xs font-semibold text-muted" data-testid="layout-read-only-notice">
+              Your inventory access is read-only. Ask an administrator to create a layout.
+            </p>
+          )}
           <p className="text-[11px] text-muted mt-4">
             Stock pallets appear here once milling batches are recorded on the
             <span className="font-semibold"> Milling </span> page.
@@ -935,7 +951,7 @@ function WarehouseCanvaWithLayouts({
                 )}
                 {layouts.map((layout) => {
                   const isActive = layout.id === activeLayoutId;
-                  const isRenamingHere = renamingId === layout.id && isActive;
+                  const isRenamingHere = canManageLayouts && renamingId === layout.id && isActive;
                   return (
                     <div
                       key={layout.id}
@@ -991,15 +1007,17 @@ function WarehouseCanvaWithLayouts({
                 })}
                 {/* Adding layouts is allowed; editing one (rename/delete/
                     floor-plan) is not — the warehouse is otherwise read-only. */}
-                <button
-                  type="button"
-                  data-testid="add-layout-btn"
-                  onClick={() => setShowNewForm(true)}
-                  className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-sm font-medium text-emerald-700 dark:text-emerald-300 hover:bg-emerald-500/10 transition-colors"
-                  title="Add a new warehouse layout"
-                >
-                  <Plus size={13} /> New layout
-                </button>
+                {canManageLayouts && (
+                  <button
+                    type="button"
+                    data-testid="add-layout-btn"
+                    onClick={() => setShowNewForm(true)}
+                    className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-sm font-medium text-emerald-700 dark:text-emerald-300 hover:bg-emerald-500/10 transition-colors"
+                    title="Add a new warehouse layout"
+                  >
+                    <Plus size={13} /> New layout
+                  </button>
+                )}
               </div>
 
               {/* Single action bar — operates on the active layout. Replaces
@@ -1020,18 +1038,20 @@ function WarehouseCanvaWithLayouts({
                     </span>
                   )}
                   <div className="ml-auto flex items-center gap-1">
-                    <button
-                      type="button"
-                      title="Rename this layout"
-                      onClick={() => {
-                        setRenamingId(activeLayout.id);
-                        setRenameValue(activeLayout.name);
-                      }}
-                      className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-secondary hover:text-primary hover:bg-slate-100 dark:hover:bg-slate-700/40"
-                    >
-                      <Pencil size={12} /> Rename
-                    </button>
-                    {!activeLayout.is_default && (
+                    {canManageLayouts && (
+                      <button
+                        type="button"
+                        title="Rename this layout"
+                        onClick={() => {
+                          setRenamingId(activeLayout.id);
+                          setRenameValue(activeLayout.name);
+                        }}
+                        className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-secondary hover:text-primary hover:bg-slate-100 dark:hover:bg-slate-700/40"
+                      >
+                        <Pencil size={12} /> Rename
+                      </button>
+                    )}
+                    {canManageLayouts && !activeLayout.is_default && (
                       <button
                         type="button"
                         title="Make this the default layout"
@@ -1041,7 +1061,7 @@ function WarehouseCanvaWithLayouts({
                         <Star size={12} /> Set default
                       </button>
                     )}
-                    {layouts.length > 1 && (
+                    {canManageLayouts && layouts.length > 1 && (
                       <button
                         type="button"
                         title="Delete this layout"
@@ -1078,7 +1098,7 @@ function WarehouseCanvaWithLayouts({
         })()
       )}
 
-      {showManageLayouts && (
+      {canManageLayouts && showManageLayouts && (
         <ManageLayoutsModal
           layouts={layouts}
           activeBranchId={activeBranchId}
@@ -1095,12 +1115,12 @@ function WarehouseCanvaWithLayouts({
           key={activeLayoutId}
           branchId={activeBranchId}
           layoutId={activeLayoutId}
-          onNewLayout={() => setShowNewForm(true)}
+          onNewLayout={canManageLayouts ? () => setShowNewForm(true) : undefined}
         />
       )}
 
       {/* Centered "New layout" modal */}
-      {showNewForm && (
+      {canManageLayouts && showNewForm && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center p-4"
           role="dialog"

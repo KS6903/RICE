@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { useQueryClient } from "@tanstack/react-query";
 import { authService } from "../services/AuthService";
 import { useAuthStore } from "../stores/authStore";
 import { ShieldCheck, AlertCircle, Check, LogOut } from "lucide-react";
@@ -13,8 +12,8 @@ import BackupCodes from "./BackupCodes";
  * On success we invalidate the auth-me query; the refetch clears the flag and
  * the app renders normally. */
 export default function MfaEnrollmentGate() {
-  const qc = useQueryClient();
   const logout = useAuthStore((s) => s.logout);
+  const requireReauthentication = useAuthStore((s) => s.requireReauthentication);
   const [enroll, setEnroll] = useState<{ secret: string; otpauth_uri: string } | null>(null);
   const [code, setCode] = useState("");
   const [backupCodes, setBackupCodes] = useState<string[] | null>(null);
@@ -40,6 +39,7 @@ export default function MfaEnrollmentGate() {
       const res = await authService.mfaEnrollVerify(code.trim());
       // Show the recovery codes before letting the gate lift.
       setBackupCodes(res.backup_codes);
+      requireReauthentication();
     } catch (e: any) {
       setError(e.response?.data?.detail || "Invalid code. Check your authenticator app.");
     } finally {
@@ -48,8 +48,7 @@ export default function MfaEnrollmentGate() {
   };
 
   const finish = async () => {
-    // Flag clears on the next /me; the app then renders normally.
-    await qc.invalidateQueries({ queryKey: ["auth-me"] });
+    await logout();
   };
 
   return (
@@ -69,7 +68,7 @@ export default function MfaEnrollmentGate() {
           <div className="space-y-4">
             <BackupCodes codes={backupCodes} />
             <button onClick={finish} className="btn-primary w-full">
-              I&apos;ve saved my codes — continue
+              I&apos;ve saved my codes — sign in again
             </button>
           </div>
         ) : !enroll ? (

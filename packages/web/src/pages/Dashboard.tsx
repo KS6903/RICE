@@ -12,6 +12,7 @@ import {
 } from "recharts";
 import { format, startOfMonth } from "date-fns";
 import { useThemeStore } from "../stores/themeStore";
+import { useAccess } from "../hooks/useAccess";
 
 type Tone = "emerald" | "violet" | "cyan" | "amber";
 
@@ -73,6 +74,7 @@ export default function Dashboard() {
   const currentMonth = format(new Date(), "yyyy-MM");
   const theme = useThemeStore((s) => s.theme);
   const isDark = theme === "dark";
+  const canViewReports = useAccess().canView("reports");
 
   const [currentTime, setCurrentTime] = useState(() => new Date());
   useEffect(() => {
@@ -89,6 +91,7 @@ export default function Dashboard() {
     queryKey: ["pnl-dashboard", currentMonth],
     queryFn: () => reportsService.getPnl(monthStart, today),
     refetchInterval: 60 * 60 * 1000,
+    enabled: canViewReports,
   });
 
   const pnlChart = pnl
@@ -107,6 +110,7 @@ export default function Dashboard() {
     <div className="space-y-7">
       {/* Hero ribbon — slim financial banner so the business KPIs and charts
           below it sit above the fold. */}
+      {canViewReports && (
       <section className="relative overflow-hidden rounded-3xl glass-strong p-5 lg:p-6">
         <div className="absolute inset-0 pointer-events-none bg-grad-brand-anim opacity-95" aria-hidden />
         <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(ellipse_at_top_right,_rgba(255,255,255,0.2),_transparent_55%)]" aria-hidden />
@@ -149,6 +153,7 @@ export default function Dashboard() {
           </div>
         </div>
       </section>
+      )}
 
       {/* Current conditions — single at-a-glance weather card up top; the full
           hourly/7-day forecast lives lower down. */}
@@ -157,7 +162,7 @@ export default function Dashboard() {
       </section>
 
       {/* KPI grid — operational + financial snapshot, first thing under the hero */}
-      <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <section className={`grid grid-cols-1 sm:grid-cols-2 gap-4 ${canViewReports ? "lg:grid-cols-4" : "lg:grid-cols-2"}`}>
         <StatCard
           label="Palay Stock"
           value={inventory ? Math.round(inventory.palay_total_kg).toLocaleString() : "—"}
@@ -172,22 +177,27 @@ export default function Dashboard() {
           icon={Package}
           tone="emerald"
         />
-        <StatCard
-          label="Net Profit (MTD)"
-          value={pnl ? `₱${Number(pnl.net_profit).toLocaleString()}` : "—"}
-          icon={TrendingUp}
-          tone="cyan"
-        />
-        <StatCard
-          label="Gross Margin"
-          value={pnl ? `${pnl.gross_margin_pct}%` : "—"}
-          icon={Factory}
-          tone="violet"
-        />
+        {canViewReports && (
+          <>
+            <StatCard
+              label="Net Profit (MTD)"
+              value={pnl ? `₱${Number(pnl.net_profit).toLocaleString()}` : "—"}
+              icon={TrendingUp}
+              tone="cyan"
+            />
+            <StatCard
+              label="Gross Margin"
+              value={pnl ? `${pnl.gross_margin_pct}%` : "—"}
+              icon={Factory}
+              tone="violet"
+            />
+          </>
+        )}
       </section>
 
       {/* Charts row */}
       <section className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+        {canViewReports && (
         <div className="card lg:col-span-2">
           <div className="flex items-start justify-between mb-5">
             <div>
@@ -248,8 +258,9 @@ export default function Dashboard() {
             </div>
           )}
         </div>
+        )}
 
-        <div className="card">
+        <div className={canViewReports ? "card" : "card lg:col-span-3"}>
           <div className="flex items-start justify-between mb-5">
             <div>
               <h3 className="text-lg font-bold text-primary">By-products</h3>

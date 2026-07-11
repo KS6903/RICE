@@ -1668,17 +1668,39 @@ function ProfileTab() {
   const [form, setForm] = useState({
     full_name: user?.full_name || "",
     email: user?.email || "",
+    current_password: "",
+    mfa_code: "",
   });
-  const [saved, setSaved] = useState(false);
+  const [saved, setSaved] = useState("");
   const [error, setError] = useState("");
+  const emailChanged =
+    form.email.trim().toLowerCase() !== (user?.email ?? "").trim().toLowerCase();
+  const hasEmailProof = !!form.current_password || (!!user?.mfa_enabled && !!form.mfa_code);
 
   const save = useMutation({
-    mutationFn: (body: typeof form) => authService.updateProfile(body),
+    mutationFn: () =>
+      authService.updateProfile({
+        full_name: form.full_name.trim(),
+        ...(emailChanged
+          ? {
+              email: form.email.trim(),
+              ...(form.current_password ? { current_password: form.current_password } : {}),
+              ...(form.mfa_code ? { mfa_code: form.mfa_code.trim() } : {}),
+            }
+          : {}),
+      }),
     onSuccess: async () => {
-      setUser(await authService.me());
-      setSaved(true);
+      const updated = await authService.me();
+      setUser(updated);
+      setForm((current) => ({
+        ...current,
+        email: updated.email ?? current.email,
+        current_password: "",
+        mfa_code: "",
+      }));
+      setSaved(emailChanged ? "Verification sent to your new email." : "Saved");
       setError("");
-      setTimeout(() => setSaved(false), 2500);
+      setTimeout(() => setSaved(""), 3500);
     },
     onError: (e: any) => setError(e.response?.data?.detail || "Failed to update."),
   });
@@ -1723,15 +1745,54 @@ function ProfileTab() {
           className="input"
           value={form.email}
           onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
+          required
         />
       </div>
+      {emailChanged && (
+        <div className="rounded-xl bg-amber-50/70 dark:bg-amber-950/20 ring-1 ring-amber-200 dark:ring-amber-800/50 p-4 space-y-3">
+          <div>
+            <p className="text-sm font-semibold text-primary">Confirm this sensitive change</p>
+            <p className="text-xs text-secondary mt-0.5">
+              Changing your email signs it out of verified status until you confirm the new address.
+            </p>
+          </div>
+          <div>
+            <label className={LABEL}>Current password</label>
+            <input
+              type="password"
+              className="input"
+              value={form.current_password}
+              onChange={(e) => setForm((f) => ({ ...f, current_password: e.target.value }))}
+              autoComplete="current-password"
+              placeholder="Enter your current password"
+            />
+          </div>
+          {user?.mfa_enabled && (
+            <div>
+              <label className={LABEL}>Or authenticator code</label>
+              <input
+                className="input font-mono"
+                value={form.mfa_code}
+                onChange={(e) => setForm((f) => ({ ...f, mfa_code: e.target.value.slice(0, 30) }))}
+                autoComplete="one-time-code"
+                inputMode="numeric"
+                placeholder="6-digit code or backup code"
+              />
+            </div>
+          )}
+        </div>
+      )}
       <div className="flex items-center gap-3 pt-2">
-        <button onClick={() => save.mutate(form)} className="btn-primary" disabled={save.isPending}>
+        <button
+          onClick={() => save.mutate()}
+          className="btn-primary"
+          disabled={save.isPending || !form.full_name.trim() || !form.email.trim() || (emailChanged && !hasEmailProof)}
+        >
           {save.isPending ? "Saving…" : "Save profile"}
         </button>
         {saved && (
           <span className="text-sm font-semibold text-emerald-600 dark:text-emerald-400 inline-flex items-center gap-1">
-            <Check size={14} /> Saved
+            <Check size={14} /> {saved}
           </span>
         )}
         {error && (
@@ -1839,6 +1900,8 @@ function PasswordTab() {
  *  and platform admins. */
 function MfaCard() {
   const qc = useQueryClient();
+  const logout = useAuthStore((s) => s.logout);
+  const requireReauthentication = useAuthStore((s) => s.requireReauthentication);
   const meQ = useQuery({ queryKey: ["auth-me-mfa"], queryFn: () => authService.me() });
   const [enroll, setEnroll] = useState<{ secret: string; otpauth_uri: string } | null>(null);
   const [code, setCode] = useState("");
@@ -1872,7 +1935,9 @@ function MfaCard() {
       setEnroll(null);
       setCode("");
       setBackupCodes(res.backup_codes); // show once
-      refresh();
+      // The server revoked every pre-MFA session. Pause the global /me poll so
+      // the one-time recovery codes remain visible until the user saves them.
+      requireReauthentication();
     } catch (e: any) {
       setMsg({ type: "err", text: e.response?.data?.detail || "Invalid code." });
     }
@@ -1895,10 +1960,7 @@ function MfaCard() {
     setMsg(null);
     try {
       await authService.mfaDisable(code.trim());
-      setDisabling(false);
-      setCode("");
-      setMsg({ type: "ok", text: "Two-factor authentication disabled." });
-      refresh();
+      await logout();
     } catch (e: any) {
       setMsg({ type: "err", text: e.response?.data?.detail || "Invalid code." });
     }
@@ -1943,8 +2005,8 @@ function MfaCard() {
       {backupCodes && (
         <div className="space-y-4">
           <BackupCodes codes={backupCodes} />
-          <button onClick={() => setBackupCodes(null)} className="btn-primary w-full">
-            I&apos;ve saved my codes
+          <button onClick={() => void logout()} className="btn-primary w-full">
+            I&apos;ve saved my codes — sign in again
           </button>
         </div>
       )}

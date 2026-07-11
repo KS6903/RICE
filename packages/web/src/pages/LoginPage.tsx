@@ -43,7 +43,7 @@ export default function LoginPage() {
   const handleToggle = () => { toggle(); setChipIn(false); };
 
   const finishLogin = async (data: any) => {
-    setTokens(data.access_token, data.refresh_token);
+    setTokens(data?.access_token, data?.refresh_token);
     const me = await authService.me();
     setUser(me);
     navigate(me.is_platform_admin ? "/admin" : "/");

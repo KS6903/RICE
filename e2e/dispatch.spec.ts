@@ -16,6 +16,7 @@ async function login(page: Page) {
 async function apiToken(request: APIRequestContext): Promise<string> {
   const res = await request.post(`${BACKEND}/api/auth/login`, {
     form: { username: TENANT.username, password: TENANT.password },
+    headers: { "X-Client-Type": "bearer" },
   });
   expect(res.ok(), `api login failed (${res.status()})`).toBeTruthy();
   return (await res.json()).access_token;

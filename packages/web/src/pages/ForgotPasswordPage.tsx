@@ -20,7 +20,7 @@ export default function ForgotPasswordPage() {
       const res = await authService.forgotPassword(identifier.trim());
       setSent(true);
       if (res.reset_token) {
-        setDevLink(`/reset-password?token=${encodeURIComponent(res.reset_token)}`);
+        setDevLink(`/reset-password#token=${encodeURIComponent(res.reset_token)}`);
       }
     } catch {
       // Enumeration-safe endpoint shouldn't error; show a generic message if it does.

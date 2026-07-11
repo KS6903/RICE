@@ -17,7 +17,10 @@ test.describe("Refactored API contract (paddy / inventory / activity)", () => {
   let token: string;
 
   test.beforeAll(async () => {
-    api = await request.newContext({ baseURL: BACKEND });
+    api = await request.newContext({
+      baseURL: BACKEND,
+      extraHTTPHeaders: { "X-Client-Type": "bearer" },
+    });
     // OAuth2 password flow: form-encoded username/password.
     const res = await api.post("/api/auth/login", {
       form: { username: TENANT.username, password: TENANT.password },

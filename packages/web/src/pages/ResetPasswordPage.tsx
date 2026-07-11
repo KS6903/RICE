@@ -1,11 +1,11 @@
 import { useState } from "react";
-import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { authService } from "../services/AuthService";
+import { consumeSensitiveUrlToken } from "../services/sensitiveUrl";
 import { Sparkles, AlertCircle, CheckCircle2, ArrowLeft } from "lucide-react";
 
 export default function ResetPasswordPage() {
-  const [params] = useSearchParams();
-  const token = params.get("token") || "";
+  const [token] = useState(() => consumeSensitiveUrlToken());
   const navigate = useNavigate();
   const [pw, setPw] = useState("");
   const [confirm, setConfirm] = useState("");

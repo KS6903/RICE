@@ -7,3 +7,13 @@ interface ImportMetaEnv {
 interface ImportMeta {
   readonly env: ImportMetaEnv;
 }
+
+interface Window {
+  electronAPI?: {
+    isElectron: true;
+    sync: {
+      setToken: (token: string) => Promise<void>;
+      clearToken?: () => Promise<void>;
+    };
+  };
+}

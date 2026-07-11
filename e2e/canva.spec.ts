@@ -286,6 +286,7 @@ test.describe("Door (pinto) zone placement", () => {
     // Log in via API to get a token
     const loginRes = await request.post("http://localhost:8000/api/auth/login", {
       form: { username: TENANT.username, password: TENANT.password },
+      headers: { "X-Client-Type": "bearer" },
     });
     const { access_token } = await loginRes.json();
     const headers = { Authorization: `Bearer ${access_token}` };

@@ -3,6 +3,13 @@
 // api.ts's interceptor + the auth store; this is the profile/password surface.
 import api from "./api";
 
+export type UpdateProfileRequest = {
+  full_name?: string;
+  email?: string;
+  current_password?: string;
+  mfa_code?: string;
+};
+
 export class AuthService {
   constructor(private http = api) {}
 
@@ -29,7 +36,7 @@ export class AuthService {
     return this.http.post("/auth/signup", body).then((r) => r.data);
   }
 
-  updateProfile(body: { full_name?: string; email?: string }): Promise<any> {
+  updateProfile(body: UpdateProfileRequest): Promise<any> {
     return this.http.put("/auth/me", body).then((r) => r.data);
   }
 

@@ -35,18 +35,19 @@ import MfaEnrollmentGate from "./components/MfaEnrollmentGate";
 import EmailVerificationGate from "./components/EmailVerificationGate";
 
 function AuthSessionSync() {
-  const accessToken = useAuthStore((s) => s.accessToken);
+  const hasAccessToken = useAuthStore((s) => !!s.accessToken);
   const user = useAuthStore((s) => s.user);
+  const reauthenticationRequired = useAuthStore((s) => s.reauthenticationRequired);
   const setUser = useAuthStore((s) => s.setUser);
   const logout = useAuthStore((s) => s.logout);
 
   const meQuery = useQuery({
-    queryKey: ["auth-me", accessToken],
+    queryKey: ["auth-me"],
     queryFn: () => authService.me(),
     // The session lives in httpOnly cookies, so after a reload there is no
     // in-memory token — the persisted user signals a (probable) live cookie
     // session, which this query verifies (401 → logout below).
-    enabled: !!accessToken || !!user,
+    enabled: !reauthenticationRequired && (hasAccessToken || !!user),
     refetchOnWindowFocus: true,
     refetchOnReconnect: true,
     refetchInterval: 10 * 1000,
@@ -61,7 +62,7 @@ function AuthSessionSync() {
   useEffect(() => {
     if (!meQuery.isError) return;
     const status = (meQuery.error as any)?.response?.status;
-    if (status === 401 || status === 403) logout();
+    if (status === 401 || status === 403) void logout();
   }, [meQuery.isError, meQuery.error, logout]);
 
   return null;
