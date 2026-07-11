@@ -79,13 +79,13 @@ export default function Sidebar() {
       <div className="relative px-5 py-5 border-b border-soft">
         <div className="flex items-center gap-2.5">
           <div className="h-10 w-10 rounded-xl bg-grad-brand grid place-items-center shadow-grad-glow">
-            <img src={riceLogo} alt="Rice Mill" className="h-full w-full object-contain brightness-0 invert" />
+            <img src={riceLogo} alt="Oryza" className="h-full w-full object-contain brightness-0 invert" />
           </div>
           <div className="min-w-0">
             <h1 className="text-base font-bold tracking-tight text-primary leading-tight truncate">
-              Rice Mill
+              Oryza
             </h1>
-            <p className="text-xs text-muted leading-tight font-medium">Pilipinas · ERP</p>
+            <p className="text-xs text-muted leading-tight font-medium">by K Systematics</p>
           </div>
         </div>
       </div>

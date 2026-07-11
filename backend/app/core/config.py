@@ -33,7 +33,7 @@ class Settings(BaseSettings):
     MFA_TRUST_ENABLED: bool = True
     MFA_TRUST_RESET_UTC_OFFSET_HOURS: int = 8  # Asia/Manila (PH has no DST)
     ALLOWED_ORIGINS: str = "http://localhost:8448,http://localhost:3000"
-    APP_NAME: str = "Rice Mill System"
+    APP_NAME: str = "Oryza by K Systematics"
     DEBUG: bool = False
     # Deployment environment. "prod" turns on fail-closed config checks (see the
     # model validator below) and enables HSTS. Leave as "dev" locally / in CI.
@@ -59,10 +59,26 @@ class Settings(BaseSettings):
     # X-Forwarded-For; entries further left are client-spoofable and ignored).
     RATE_LIMIT_TRUST_FORWARDED_FOR: bool = False
     RATE_LIMIT_FORWARDED_HOPS: int = 1
-    # Account lockout: after N failed logins for a username, lock it for M seconds.
-    # Backed by Redis; a no-op when Redis is unavailable (per-IP limit still holds).
-    LOGIN_MAX_FAILURES: int = 5
-    LOGIN_LOCKOUT_SECONDS: int = 900
+    # Account lockout: PROGRESSIVE. Failed logins for a username are counted in a
+    # sliding LOGIN_LOCKOUT_WINDOW_SECONDS window; reaching the (shrinking) attempt
+    # threshold locks the account for a (growing) duration. Each lockout "round"
+    # lowers the threshold (toward LOGIN_MIN_FAILURES) and multiplies the lockout
+    # duration (by LOGIN_LOCKOUT_FACTOR, capped at LOGIN_LOCKOUT_MAX_SECONDS). After
+    # LOGIN_LOCKOUT_MAX_ROUNDS lockouts the account is PERMANENTLY locked and can
+    # only be freed by a password reset. Backed by Redis; a no-op when Redis is
+    # unavailable (the per-IP rate limit still holds as the floor of protection).
+    LOGIN_MAX_FAILURES: int = 5            # attempts allowed in the first round
+    LOGIN_MIN_FAILURES: int = 2            # floor — threshold never drops below this
+    LOGIN_LOCKOUT_WINDOW_SECONDS: int = 900   # window failures are counted within
+    LOGIN_LOCKOUT_BASE_SECONDS: int = 60      # first lockout duration
+    LOGIN_LOCKOUT_FACTOR: int = 5             # each round multiplies the duration
+    LOGIN_LOCKOUT_MAX_SECONDS: int = 86400    # cap on any single lockout (24h)
+    LOGIN_LOCKOUT_MAX_ROUNDS: int = 5         # lockouts before a permanent block
+    # How long the escalation memory (round counter) and the permanent block live in
+    # Redis. The round counter decays so an honest user who later mistypes once isn't
+    # treated as a serial offender; the permanent flag is effectively durable.
+    LOGIN_LOCKOUT_ROUND_TTL_SECONDS: int = 86400        # 1 day
+    LOGIN_LOCKOUT_PERMANENT_TTL_SECONDS: int = 2592000  # 30 days
     # MFA enforcement. When on, accounts in MFA_REQUIRED_ROLES (plus all platform
     # admins) must enroll in TOTP before they can use the app — the API blocks
     # data endpoints until they do. Disabled in tests via env.

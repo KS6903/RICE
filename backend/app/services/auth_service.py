@@ -30,8 +30,9 @@ from ..core.exceptions import (
     UnauthorizedError,
 )
 from ..core.ratelimit import (
+    LockoutState,
     clear_login_failures,
-    is_locked_out,
+    login_lockout,
     register_login_failure,
 )
 from ..core.config import settings
@@ -135,6 +136,35 @@ def _generate_backup_codes(n: int = 10) -> tuple[list[str], list[str]]:
     return raw, hashes
 
 
+def _format_duration(seconds: int) -> str:
+    """A short human phrase for a wait time, e.g. '45 seconds', '5 minutes', '2 hours'."""
+    if seconds < 60:
+        n, unit = max(1, seconds), "second"
+    elif seconds < 3600:
+        n, unit = round(seconds / 60), "minute"
+    else:
+        n, unit = round(seconds / 3600), "hour"
+    return f"{n} {unit}{'s' if n != 1 else ''}"
+
+
+def _lockout_error(state: LockoutState) -> TooManyRequestsError:
+    """Turn a locked LockoutState into the 429 the client should see.
+
+    Permanent locks carry code ``account_locked`` and steer the user to a password
+    reset; timed locks carry ``account_locked_temporary`` and name the wait."""
+    if state.permanent:
+        return TooManyRequestsError(
+            "This account has been locked after too many failed sign-in attempts. "
+            "Reset your password to regain access.",
+            code="account_locked",
+        )
+    return TooManyRequestsError(
+        f"Too many failed sign-in attempts. This account is locked for "
+        f"{_format_duration(state.retry_after)}.",
+        code="account_locked_temporary",
+    )
+
+
 class AuthService(BaseService):
     def __init__(self, db: Session, current_user: Any = None, client: str | None = None) -> None:
         super().__init__(db, current_user)
@@ -218,18 +248,23 @@ class AuthService(BaseService):
     def login(
         self, username: str, password: str, mfa_trust_token: str | None = None
     ) -> TokenResponse | MfaChallengeResponse:
-        # Account lockout (per-username) sits in front of the per-IP rate limit so
-        # a credential-stuffing run spread across many IPs is still bounded.
-        if is_locked_out(username):
-            raise TooManyRequestsError(
-                "Too many failed login attempts for this account. Please try again later."
-            )
+        # Progressive account lockout (per-username) sits in front of the per-IP
+        # rate limit so a credential-stuffing run spread across many IPs is still
+        # bounded. Each lockout round tightens the threshold and lengthens the wait,
+        # ending in a permanent lock that only a password reset clears.
+        lock = login_lockout(username)
+        if lock.locked:
+            raise _lockout_error(lock)
         user = self.db.query(User).filter(User.username == username).first()
         if not user or not verify_password(password, user.password_hash):
-            register_login_failure(username)
+            state = register_login_failure(username)
             if user is not None:
                 with self.transaction():
                     self._log_security_event(user, "auth.login_failed", "Invalid password.")
+            # If that failure tripped the threshold, tell the user they're now
+            # locked (and for how long) rather than a generic "invalid credentials".
+            if state.locked:
+                raise _lockout_error(state)
             raise UnauthorizedError("Invalid credentials")
         if not user.is_active:
             raise PermissionDeniedError("Account disabled")
@@ -336,16 +371,19 @@ class AuthService(BaseService):
         user = self.db.get(User, payload.get("sub"))
         if not user or not user.is_active or not user.mfa_enabled:
             raise UnauthorizedError("Invalid MFA challenge")
-        if is_locked_out(user.username):
-            raise TooManyRequestsError("Too many failed attempts. Please try again later.")
+        lock = login_lockout(user.username)
+        if lock.locked:
+            raise _lockout_error(lock)
         via_totp = self._verify_totp(user, code)
         via_backup = (not via_totp) and self._backup_code_matches(user, code)
         if not via_totp and not via_backup:
-            # Bad codes count toward the same lockout as bad passwords, so a
-            # stolen password can't be parlayed into unlimited code guessing.
-            register_login_failure(user.username)
+            # Bad codes count toward the same progressive lockout as bad passwords,
+            # so a stolen password can't be parlayed into unlimited code guessing.
+            state = register_login_failure(user.username)
             with self.transaction():
                 self._log_security_event(user, "auth.mfa_failed", "Invalid code.")
+            if state.locked:
+                raise _lockout_error(state)
             raise UnauthorizedError("Invalid authentication code")
         clear_login_failures(user.username)
         with self.transaction():
@@ -819,6 +857,9 @@ class AuthService(BaseService):
                 AuthSession.revoked_at.is_(None),
             ).update({AuthSession.revoked_at: now_utc()})
             self._log_security_event(user, "auth.password_reset", "All sessions revoked.")
+        # A successful reset is the way out of a (possibly permanent) lockout —
+        # clear the failure tally, the active lock, and the escalation memory.
+        clear_login_failures(user.username)
         return {"message": "Password has been reset. Please log in."}
 
     def change_password(self, data) -> dict:

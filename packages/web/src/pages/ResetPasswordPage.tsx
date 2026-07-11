@@ -36,7 +36,7 @@ export default function ResetPasswordPage() {
           <div className="h-11 w-11 rounded-xl bg-grad-brand grid place-items-center shadow-grad-glow">
             <Sparkles size={20} className="text-white" />
           </div>
-          <p className="text-lg font-bold tracking-tight text-primary">Rice Mill System</p>
+          <p className="text-lg font-bold tracking-tight text-primary">Oryza by K Systematics</p>
         </div>
 
         {done ? (

@@ -18,11 +18,11 @@ export default function BackupCodes({ codes }: { codes: string[] }) {
   };
 
   const download = () => {
-    const blob = new Blob([`Rice Mill System — backup codes\n\n${text}\n`], { type: "text/plain" });
+    const blob = new Blob([`Oryza by K Systematics — backup codes\n\n${text}\n`], { type: "text/plain" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = "rice-mill-backup-codes.txt";
+    a.download = "oryza-backup-codes.txt";
     a.click();
     URL.revokeObjectURL(url);
   };

@@ -6,6 +6,7 @@ import {
   ShieldCheck, Sun, Moon, ArrowRight, Sparkles, LayoutDashboard, Settings,
   TrendingUp, CircleDollarSign, Boxes,
 } from "lucide-react";
+import riceLogo from "../assets/Rice_Logo.svg";
 
 /* ------------------------------------------------------------------ */
 /* Small count-up hook for the "live" stat numbers in the mock UI      */
@@ -466,7 +467,6 @@ export default function HomePage() {
   const handleToggle = () => {
     toggle();
     setChipIn(false);
-    setGlow(false);
   };
 
   return (
@@ -503,9 +503,9 @@ export default function HomePage() {
         <div className="mx-auto max-w-6xl px-4 sm:px-6 h-16 flex items-center justify-between gap-3">
           <div className="flex items-center gap-2.5">
             <div className="h-9 w-9 rounded-xl bg-grad-brand grid place-items-center shadow-grad-glow">
-              <Wheat size={18} className="text-white" />
+              <img src={riceLogo} alt="Oryza" className="h-full w-full object-contain brightness-0 invert" />
             </div>
-            <span className="text-lg font-bold tracking-tight text-primary">KS PRODUCTION</span>
+            <span className="text-lg font-bold tracking-tight text-primary">Oryza</span>
           </div>
           <div className="flex items-center gap-2">
             <div className="relative">
@@ -652,7 +652,7 @@ export default function HomePage() {
       {/* Footer */}
       <footer className="border-t border-soft py-6">
         <div className="mx-auto max-w-6xl px-4 sm:px-6 flex flex-col sm:flex-row items-center justify-between gap-3 text-sm text-muted">
-          <span>© {new Date().getFullYear()} KS PRODUCTION</span>
+          <span>© {new Date().getFullYear()} Oryza by K Systematics</span>
           <div className="flex items-center gap-4">
             <Link to="/login" className="hover:text-primary transition-colors">Log in</Link>
             <Link to="/signup" className="hover:text-primary transition-colors">Sign up</Link>

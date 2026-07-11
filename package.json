@@ -8,6 +8,8 @@
     "packages/desktop"
   ],
   "scripts": {
+    "dev": "concurrently --names \"backend,frontend\" --prefix-colors \"cyan,green\" \"npm run dev:backend\" \"npm run dev:web\"",
+    "dev:backend": "cd backend && python -m uvicorn app.main:app --host 0.0.0.0 --port 8000",
     "dev:web": "npm run dev --workspace=packages/web",
     "dev:desktop": "npm run dev --workspace=packages/desktop",
     "build:web": "npm run build --workspace=packages/web",
@@ -27,6 +29,7 @@
   },
   "devDependencies": {
     "@playwright/test": "^1.60.0",
+    "concurrently": "^10.0.3",
     "prettier": "^3.4.2"
   }
 }

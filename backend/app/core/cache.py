@@ -176,6 +176,40 @@ class _Cache:
         except Exception as e:  # noqa: BLE001
             self._trip(e)
 
+    def get_int(self, key: str) -> int | None:
+        """Read an integer key, or None on miss / non-integer value / Redis down."""
+        client = self._client_or_none()
+        if client is None:
+            return None
+        try:
+            raw = client.get(_KEY_PREFIX + key)
+        except Exception as e:  # noqa: BLE001
+            self._trip(e)
+            return None
+        if raw is None:
+            return None
+        try:
+            return int(raw)
+        except (ValueError, TypeError):
+            return None
+
+    def ttl(self, key: str) -> int:
+        """Remaining time-to-live for ``key`` in seconds.
+
+        Returns 0 when the key is missing, has no expiry, or Redis is unavailable —
+        so callers can treat any non-positive result uniformly as "not live".
+        """
+        client = self._client_or_none()
+        if client is None:
+            return 0
+        try:
+            remaining = client.ttl(_KEY_PREFIX + key)
+        except Exception as e:  # noqa: BLE001
+            self._trip(e)
+            return 0
+        # redis-py returns -2 (missing) or -1 (no expiry) as sentinels.
+        return remaining if remaining and remaining > 0 else 0
+
     def exists(self, key: str) -> bool:
         """True if the key is present. False on miss or when Redis is unavailable."""
         client = self._client_or_none()

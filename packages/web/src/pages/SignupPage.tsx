@@ -94,7 +94,7 @@ export default function SignupPage() {
             <Sparkles size={22} />
           </div>
           <div>
-            <p className="text-lg font-bold tracking-tight">Rice Mill System</p>
+            <p className="text-lg font-bold tracking-tight">Oryza by K Systematics</p>
             <p className="text-sm text-white/80">Pilipinas · ERP Platform</p>
           </div>
         </div>
@@ -130,7 +130,7 @@ export default function SignupPage() {
         </div>
 
         <p className="relative text-sm text-white/75">
-          © {new Date().getFullYear()} Rice Mill System · KS Productions
+          © {new Date().getFullYear()} Oryza by K Systematics
         </p>
       </div>
 
@@ -140,7 +140,7 @@ export default function SignupPage() {
             <div className="h-11 w-11 rounded-xl bg-grad-brand grid place-items-center shadow-grad-glow">
               <Sparkles size={20} className="text-white" />
             </div>
-            <p className="text-lg font-bold tracking-tight text-primary">Rice Mill System</p>
+            <p className="text-lg font-bold tracking-tight text-primary">Oryza by K Systematics</p>
           </div>
 
           <h1 className="text-3xl font-bold tracking-tight text-primary">
