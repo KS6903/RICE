@@ -8,30 +8,38 @@ class TokenResponse(BaseModel):
     token_type: str = "bearer"
 
 
+class BrowserAuthResponse(BaseModel):
+    """Cookie-auth success response; intentionally contains no bearer secret."""
+
+    authenticated: bool = True
+
+
 class RefreshRequest(BaseModel):
     # Optional: the web client omits it (its refresh token lives in an httpOnly
     # cookie); bearer clients (the desktop app) still send it in the body.
-    refresh_token: str | None = None
+    refresh_token: str | None = Field(default=None, max_length=4096)
 
 
 class SignupRequest(BaseModel):
-    company_name: str
-    full_name: str
-    username: str
+    company_name: str = Field(min_length=1, max_length=200)
+    full_name: str = Field(min_length=1, max_length=150)
+    username: str = Field(min_length=3, max_length=50, pattern=r"^[A-Za-z0-9_.-]+$")
     email: EmailStr
-    password: str
+    password: str = Field(min_length=8, max_length=72)
     is_multi_branch: bool = False
+    invite_code: str | None = Field(default=None, max_length=255)
 
 
 class GoogleAuthRequest(BaseModel):
-    credential: str
-    company_name: str | None = None
+    credential: str = Field(min_length=1, max_length=8192)
+    company_name: str | None = Field(default=None, max_length=200)
     is_multi_branch: bool = False
+    invite_code: str | None = Field(default=None, max_length=255)
 
 
 class ChangePasswordRequest(BaseModel):
-    current_password: str
-    new_password: str
+    current_password: str = Field(min_length=1, max_length=72)
+    new_password: str = Field(min_length=8, max_length=72)
 
 
 # ── Password reset ───────────────────────────────────────────────────────────
@@ -80,5 +88,9 @@ class MfaBackupCodesResponse(BaseModel):
 
 
 class UpdateProfileRequest(BaseModel):
-    full_name: str | None = None
+    full_name: str | None = Field(default=None, min_length=1, max_length=150)
     email: EmailStr | None = None
+    # Required only when changing the email address. MFA-enabled users may
+    # prove possession with a current TOTP instead of their password.
+    current_password: str | None = Field(default=None, max_length=72)
+    mfa_code: str | None = Field(default=None, min_length=6, max_length=8)

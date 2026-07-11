@@ -51,6 +51,8 @@ def test_google_login_with_mfa_returns_challenge(client, seed_owner, db_session,
     # Enable MFA on the seeded owner.
     seed_owner.mfa_enabled = True
     seed_owner.mfa_secret = encrypt_str(pyotp.random_base32())
+    seed_owner.google_sub = "google-owner-sub"
+    seed_owner.google_issuer = "accounts.google.com"
     db_session.flush()
 
     # Stub the Google SDK on the module itself, so the test is hermetic: it must
@@ -63,6 +65,9 @@ def test_google_login_with_mfa_returns_challenge(client, seed_owner, db_session,
             verify_oauth2_token=lambda *a, **k: {
                 "email": seed_owner.email,
                 "name": seed_owner.full_name,
+                "sub": "google-owner-sub",
+                "iss": "accounts.google.com",
+                "email_verified": True,
             }
         ),
         raising=False,

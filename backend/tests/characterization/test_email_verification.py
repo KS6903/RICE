@@ -12,6 +12,8 @@ import app.core.config as cfg
 from app.models.subscription import SubscriptionPlan
 from app.models.user import Role
 
+NATIVE_HEADERS = {"X-Client-Type": "bearer", "User-Agent": "Electron/Test"}
+
 
 @pytest.fixture
 def expose_token(monkeypatch):
@@ -32,6 +34,7 @@ def _prereqs(db):
 def _signup(client, username="newowner", email="newowner@gmail.com"):
     return client.post(
         "/api/auth/signup",
+        headers=NATIVE_HEADERS,
         json={
             "company_name": "NewCo", "full_name": "New Owner",
             "username": username, "email": email, "password": "password123",

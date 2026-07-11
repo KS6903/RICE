@@ -8,6 +8,7 @@ Prompts for username, full name, email, and password interactively.
 import sys
 import getpass
 from app.core.database import SessionLocal
+from app.core.passwords import validate_password_strength
 from app.core.security import hash_password
 from app.models.user import User
 
@@ -30,8 +31,10 @@ def create():
         full_name = input("Full name: ").strip() or "Platform Admin"
         email = input("Email: ").strip() or None
         password = getpass.getpass("Password (hidden): ")
-        if len(password) < 8:
-            print("ERROR: Password must be at least 8 characters.")
+        try:
+            validate_password_strength(password)
+        except Exception as exc:
+            print(f"ERROR: {exc}")
             sys.exit(1)
         confirm = getpass.getpass("Confirm password: ")
         if password != confirm:

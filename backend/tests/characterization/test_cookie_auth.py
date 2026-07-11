@@ -57,7 +57,7 @@ def test_cookie_refresh_requires_csrf(client, seed_owner):
     assert client.post("/api/auth/refresh").status_code == 403  # no CSRF header
     res = client.post("/api/auth/refresh", headers=_csrf_header(client))
     assert res.status_code == 200
-    assert res.json()["access_token"]
+    assert res.json() == {"authenticated": True}
 
 
 def test_cookie_logout_revokes_and_clears(client, seed_owner):

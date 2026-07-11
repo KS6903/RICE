@@ -20,7 +20,7 @@ from .exceptions import BadRequestError
 logger = logging.getLogger("ricemill.passwords")
 
 MIN_LENGTH = 8
-MAX_LENGTH = 72  # bcrypt truncates beyond 72 bytes — refuse rather than truncate
+MAX_LENGTH = 72  # bcrypt's byte limit — Unicode character count is insufficient
 
 
 def _is_breached(password: str) -> bool:
@@ -53,8 +53,8 @@ def validate_password_strength(password: str) -> None:
     """Raise BadRequestError when the password fails policy."""
     if len(password) < MIN_LENGTH:
         raise BadRequestError(f"Password must be at least {MIN_LENGTH} characters")
-    if len(password) > MAX_LENGTH:
-        raise BadRequestError(f"Password must be at most {MAX_LENGTH} characters")
+    if len(password.encode("utf-8")) > MAX_LENGTH:
+        raise BadRequestError(f"Password must be at most {MAX_LENGTH} UTF-8 bytes")
     has_alpha = any(c.isalpha() for c in password)
     has_digit = any(c.isdigit() for c in password)
     if not (has_alpha and has_digit):

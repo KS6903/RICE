@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import hashlib
 import logging
+import re
 import secrets
 import string
 import uuid
@@ -19,6 +20,9 @@ import jwt as pyjwt
 import pyotp
 from sqlalchemy.orm import Session
 
+from ..core.config import settings
+from ..core.crypto import decrypt_str, encrypt_str
+from ..core.email import send_account_email
 from ..core.exceptions import (
     AppException,
     BadRequestError,
@@ -29,20 +33,13 @@ from ..core.exceptions import (
     TooManyRequestsError,
     UnauthorizedError,
 )
+from ..core.mfa_trust import next_reset_at
+from ..core.passwords import validate_password_strength
 from ..core.ratelimit import (
     LockoutState,
     clear_login_failures,
     login_lockout,
     register_login_failure,
-)
-from ..core.config import settings
-from ..core.crypto import decrypt_str, encrypt_str
-from ..core.mfa_trust import next_reset_at
-from ..core.passwords import validate_password_strength
-from ..core.tenancy import (
-    provision_tenant,
-    schema_name_for,
-    set_search_path,
 )
 from ..core.security import (
     blocklist_access_token,
@@ -54,10 +51,15 @@ from ..core.security import (
     mfa_enrollment_pending,
     verify_password,
 )
+from ..core.tenancy import (
+    provision_tenant,
+    schema_name_for,
+    set_search_path,
+)
 from ..models.auth_session import AuthSession
 from ..models.base import now_utc
-from ..models.password_reset import PasswordResetToken
 from ..models.company import Branch, Company
+from ..models.password_reset import PasswordResetToken
 from ..models.subscription import Subscription
 from ..models.user import Role, User
 from ..schemas.auth import MfaChallengeResponse, TokenResponse
@@ -81,6 +83,7 @@ except ImportError:  # requests transport missing — Google login disabled
     google_requests = None  # type: ignore[assignment]
 
 logger = logging.getLogger("ricemill.auth")
+_DUMMY_PASSWORD_HASH = hash_password(secrets.token_urlsafe(32))
 
 
 def _sha256(value: str) -> str:
@@ -172,9 +175,28 @@ class AuthService(BaseService):
         # any AuthSession it creates so the user can recognize their devices.
         self._client = client
 
+    @staticmethod
+    def _validate_signup_invite(invite_code: str | None) -> None:
+        required = settings.SIGNUP_INVITE_CODE
+        if required is None:
+            if settings.is_prod:
+                raise PermissionDeniedError("New account registration is unavailable")
+            return
+        if not invite_code or not secrets.compare_digest(
+            invite_code,
+            required.get_secret_value(),
+        ):
+            raise PermissionDeniedError("A valid registration invite is required")
+
     # ── token / session helpers ───────────────────────────────────────────────
 
-    def _issue_tokens(self, user: User, *, family_id: uuid.UUID | None = None) -> TokenResponse:
+    def _issue_tokens(
+        self,
+        user: User,
+        *,
+        family_id: uuid.UUID | None = None,
+        family_expires_at: datetime | None = None,
+    ) -> TokenResponse:
         """Create an AuthSession row and mint the token pair bound to it.
 
         The refresh token's ``jti`` IS the session row id (stateful, revocable);
@@ -187,7 +209,10 @@ class AuthService(BaseService):
             family_id=family_id or uuid.uuid4(),
             user_id=user.id,
             client=_client_label(self._client),
-            expires_at=now_utc() + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS),
+            # Rotation preserves the original family's absolute expiry rather
+            # than extending a stolen refresh token forever.
+            expires_at=family_expires_at
+            or now_utc() + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS),
         )
         self.db.add(session)
         self.db.flush()
@@ -256,7 +281,11 @@ class AuthService(BaseService):
         if lock.locked:
             raise _lockout_error(lock)
         user = self.db.query(User).filter(User.username == username).first()
-        if not user or not verify_password(password, user.password_hash):
+        password_matches = verify_password(
+            password,
+            user.password_hash if user is not None else _DUMMY_PASSWORD_HASH,
+        )
+        if not user or not password_matches:
             state = register_login_failure(username)
             if user is not None:
                 with self.transaction():
@@ -298,6 +327,10 @@ class AuthService(BaseService):
             {
                 "sub": str(user.id),
                 "type": "mfa",
+                "jti": uuid.uuid4().hex,
+                "iat": datetime.now(timezone.utc),
+                "iss": settings.JWT_ISSUER,
+                "aud": settings.JWT_AUDIENCE,
                 "exp": expire,
             },
             settings.SECRET_KEY,
@@ -319,7 +352,11 @@ class AuthService(BaseService):
             {
                 "sub": str(user.id),
                 "type": "mfa_trust",
+                "jti": uuid.uuid4().hex,
                 "mv": _sha256(user.mfa_secret or "")[:16],
+                "iat": datetime.now(timezone.utc),
+                "iss": settings.JWT_ISSUER,
+                "aud": settings.JWT_AUDIENCE,
                 "exp": expire,
             },
             settings.SECRET_KEY,
@@ -334,7 +371,14 @@ class AuthService(BaseService):
         if not token or not settings.MFA_TRUST_ENABLED:
             return False
         try:
-            payload = pyjwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+            payload = pyjwt.decode(
+                token,
+                settings.SECRET_KEY,
+                algorithms=[settings.ALGORITHM],
+                issuer=settings.JWT_ISSUER,
+                audience=settings.JWT_AUDIENCE,
+                options={"require": ["exp", "iat", "iss", "aud", "type", "jti"]},
+            )
         except Exception:
             return False
         return (
@@ -344,13 +388,27 @@ class AuthService(BaseService):
         )
 
     @staticmethod
-    def _verify_totp(user: User, code: str) -> bool:
+    def _matching_totp_step(user: User, code: str) -> int | None:
+        """Return an unused matching time-step, or None.
+
+        Checking explicit steps lets us persist the accepted counter and reject
+        replay of a code during the same (or an older skew) window.
+        """
         if not user.mfa_secret:
-            return False
+            return None
         secret = decrypt_str(user.mfa_secret)
         if not secret:
-            return False
-        return pyotp.TOTP(secret).verify(code.strip(), valid_window=1)
+            return None
+        totp = pyotp.TOTP(secret)
+        current = int(datetime.now(timezone.utc).timestamp()) // totp.interval
+        last = user.mfa_last_used_step
+        candidate = code.strip()
+        for step in (current - 1, current, current + 1):
+            if last is not None and step <= last:
+                continue
+            if secrets.compare_digest(totp.at(step * totp.interval), candidate):
+                return step
+        return None
 
     def _backup_code_matches(self, user: User, code: str) -> bool:
         return _sha256(_normalize_backup_code(code)) in (user.mfa_backup_codes or [])
@@ -368,15 +426,20 @@ class AuthService(BaseService):
         payload = decode_token(challenge_token)
         if payload.get("type") != "mfa":
             raise UnauthorizedError("Invalid MFA challenge")
-        user = self.db.get(User, payload.get("sub"))
+        user = (
+            self.db.query(User)
+            .filter(User.id == payload.get("sub"))
+            .with_for_update()
+            .first()
+        )
         if not user or not user.is_active or not user.mfa_enabled:
             raise UnauthorizedError("Invalid MFA challenge")
         lock = login_lockout(user.username)
         if lock.locked:
             raise _lockout_error(lock)
-        via_totp = self._verify_totp(user, code)
-        via_backup = (not via_totp) and self._backup_code_matches(user, code)
-        if not via_totp and not via_backup:
+        totp_step = self._matching_totp_step(user, code)
+        via_backup = totp_step is None and self._backup_code_matches(user, code)
+        if totp_step is None and not via_backup:
             # Bad codes count toward the same progressive lockout as bad passwords,
             # so a stolen password can't be parlayed into unlimited code guessing.
             state = register_login_failure(user.username)
@@ -389,6 +452,8 @@ class AuthService(BaseService):
         with self.transaction():
             if via_backup:
                 self._consume_backup_code(user, code)  # single-use
+            else:
+                user.mfa_last_used_step = totp_step
             user.last_login = datetime.now(timezone.utc)
             tokens = self._issue_tokens(user)
             self._log_security_event(
@@ -405,23 +470,37 @@ class AuthService(BaseService):
         secret = pyotp.random_base32()
         with self.transaction():
             user.mfa_secret = encrypt_str(secret)
+            user.mfa_last_used_step = None
         uri = pyotp.totp.TOTP(secret).provisioning_uri(
             name=user.username, issuer_name=settings.APP_NAME
         )
         return {"secret": secret, "otpauth_uri": uri}
 
     def mfa_enroll_verify(self, code: str) -> dict:
-        user = self.current_user
+        user = (
+            self.db.query(User)
+            .filter(User.id == self.current_user.id)
+            .with_for_update()
+            .one()
+        )
         if user.mfa_enabled:
             raise BadRequestError("MFA is already enabled.")
         if not user.mfa_secret:
             raise BadRequestError("No enrollment in progress. Start enrollment first.")
-        if not self._verify_totp(user, code):
+        totp_step = self._matching_totp_step(user, code)
+        if totp_step is None:
             raise BadRequestError("Invalid authentication code. Check your authenticator app.")
         raw_codes, hashes = _generate_backup_codes()
         with self.transaction():
             user.mfa_enabled = True
+            user.mfa_last_used_step = totp_step
             user.mfa_backup_codes = hashes
+            # Tokens issued before MFA enrollment carry no MFA assurance. Kill
+            # every old session so the next login must complete the second factor.
+            self.db.query(AuthSession).filter(
+                AuthSession.user_id == user.id,
+                AuthSession.revoked_at.is_(None),
+            ).update({AuthSession.revoked_at: now_utc()})
             self._log_security_event(user, "auth.mfa_enabled")
         # Backup codes are shown exactly once here.
         return {"message": "MFA enabled", "backup_codes": raw_codes}
@@ -429,27 +508,45 @@ class AuthService(BaseService):
     def regenerate_backup_codes(self, code: str) -> dict:
         """Issue a fresh set of backup codes (invalidating the old ones).
         Requires a current TOTP code to authorize."""
-        user = self.current_user
+        user = (
+            self.db.query(User)
+            .filter(User.id == self.current_user.id)
+            .with_for_update()
+            .one()
+        )
         if not user.mfa_enabled:
             raise BadRequestError("MFA is not enabled.")
-        if not self._verify_totp(user, code):
+        totp_step = self._matching_totp_step(user, code)
+        if totp_step is None:
             raise BadRequestError("Invalid authentication code.")
         raw_codes, hashes = _generate_backup_codes()
         with self.transaction():
             user.mfa_backup_codes = hashes
+            user.mfa_last_used_step = totp_step
             self._log_security_event(user, "auth.mfa_backup_regenerated")
         return {"backup_codes": raw_codes}
 
     def mfa_disable(self, code: str) -> dict:
-        user = self.current_user
+        user = (
+            self.db.query(User)
+            .filter(User.id == self.current_user.id)
+            .with_for_update()
+            .one()
+        )
         if not user.mfa_enabled:
             raise BadRequestError("MFA is not enabled.")
-        if not self._verify_totp(user, code):
+        totp_step = self._matching_totp_step(user, code)
+        if totp_step is None:
             raise BadRequestError("Invalid authentication code.")
         with self.transaction():
             user.mfa_enabled = False
             user.mfa_secret = None
+            user.mfa_last_used_step = None
             user.mfa_backup_codes = None
+            self.db.query(AuthSession).filter(
+                AuthSession.user_id == user.id,
+                AuthSession.revoked_at.is_(None),
+            ).update({AuthSession.revoked_at: now_utc()})
             self._log_security_event(user, "auth.mfa_disabled")
         return {"message": "MFA disabled"}
 
@@ -464,7 +561,14 @@ class AuthService(BaseService):
         if payload.get("type") != "refresh":
             raise UnauthorizedError("Invalid refresh token")
         jti = payload.get("jti")
-        session = self.db.get(AuthSession, jti) if jti else None
+        session = (
+            self.db.query(AuthSession)
+            .filter(AuthSession.id == jti)
+            .with_for_update()
+            .first()
+            if jti
+            else None
+        )
         if session is None:
             raise UnauthorizedError("Invalid refresh token")
         if session.revoked_at is not None:
@@ -477,11 +581,17 @@ class AuthService(BaseService):
         user = self.db.get(User, session.user_id)
         if not user or not user.is_active:
             raise UnauthorizedError("User not found or inactive")
+        if payload.get("sub") != str(user.id) or payload.get("sid") != str(session.family_id):
+            raise UnauthorizedError("Invalid refresh token")
         if user.company_id and user.company is not None and not user.company.is_active:
             raise PermissionDeniedError("Your company account has been deactivated.")
         with self.transaction():
             session.revoked_at = now_utc()
-            tokens = self._issue_tokens(user, family_id=session.family_id)
+            tokens = self._issue_tokens(
+                user,
+                family_id=session.family_id,
+                family_expires_at=session.expires_at,
+            )
             session.replaced_by = uuid.UUID(decode_token(tokens.refresh_token)["jti"])
         return tokens
 
@@ -579,12 +689,14 @@ class AuthService(BaseService):
     # ── signup ────────────────────────────────────────────────────────────────
 
     def signup(self, data) -> TokenResponse:
+        self._validate_signup_invite(data.invite_code)
         validate_password_strength(data.password)
+        normalized_email = str(data.email).strip().lower()
         # One generic message for a username OR email clash, so signup can't be
         # used to confirm whether a given email/username is already registered.
         clash = (
             self.db.query(User)
-            .filter((User.username == data.username) | (User.email == data.email))
+            .filter((User.username == data.username) | (User.email == normalized_email))
             .first()
         )
         if clash:
@@ -606,16 +718,17 @@ class AuthService(BaseService):
                 company_id=company.id,
                 branch_id=branch.id,
                 username=data.username,
-                email=data.email,
+                email=normalized_email,
                 full_name=data.full_name,
                 password_hash=hash_password(data.password),
                 role_id=owner_role.id,
             )
             self.db.add(user)
             self.db.flush()
-            # Stand up this client's own schema (tables + reference catalog) within
-            # the same transaction, so signup is all-or-nothing.
-            provision_tenant(company, db=self.db)
+            # Production provisions the expensive tenant schema only after the
+            # email is proven. Development may opt out for local convenience.
+            if not settings.REQUIRE_EMAIL_VERIFICATION:
+                provision_tenant(company, db=self.db)
             self._issue_email_verification(user)
             tokens = self._issue_tokens(user)
         return tokens
@@ -632,8 +745,14 @@ class AuthService(BaseService):
         user.email_verification_expires = now_utc() + timedelta(
             hours=settings.EMAIL_VERIFICATION_TOKEN_HOURS
         )
-        link = f"{settings.FRONTEND_BASE_URL}/verify-email?token={raw}"
-        logger.info("Email verification link for %s: %s", user.username, link)
+        # URL fragments are not sent in HTTP requests, access logs, or Referer.
+        link = f"{settings.FRONTEND_BASE_URL}/verify-email#token={raw}"
+        send_account_email(
+            to=user.email,
+            subject=f"Verify your {settings.APP_NAME} email",
+            text=f"Verify your email address using this one-time link:\n\n{link}\n",
+        )
+        logger.info("Email verification issued for user=%s (token redacted)", user.username)
         return raw if settings.EXPOSE_RESET_TOKEN else None
 
     def verify_email(self, token: str) -> dict:
@@ -641,6 +760,7 @@ class AuthService(BaseService):
         user = (
             self.db.query(User)
             .filter(User.email_verification_hash == _sha256(token.strip()))
+            .with_for_update()
             .first()
         )
         if (
@@ -653,6 +773,8 @@ class AuthService(BaseService):
             user.email_verified = True
             user.email_verification_hash = None
             user.email_verification_expires = None
+            if user.company is not None:
+                provision_tenant(user.company, db=self.db)
             self._log_security_event(user, "auth.email_verified")
         return {"message": "Email verified. Thank you."}
 
@@ -685,11 +807,26 @@ class AuthService(BaseService):
             logger.warning("Google token verification failed", exc_info=True)
             raise BadRequestError("Invalid Google credential")
 
-        email = id_info.get("email")
-        full_name = id_info.get("name")
-        user = self.db.query(User).filter(User.email == email).first()
+        email = str(id_info.get("email") or "").strip().lower()
+        full_name = str(id_info.get("name") or "").strip()
+        subject = str(id_info.get("sub") or "").strip()
+        issuer = str(id_info.get("iss") or "").strip()
+        if (
+            not email
+            or not full_name
+            or not subject
+            or id_info.get("email_verified") is not True
+            or issuer not in {"accounts.google.com", "https://accounts.google.com"}
+        ):
+            raise BadRequestError("Google account does not provide a verified identity")
+
+        user = self.db.query(User).filter(User.google_sub == subject).first()
 
         if user:
+            if user.google_issuer != issuer or (user.email or "").lower() != email:
+                raise PermissionDeniedError(
+                    "Google identity details changed; sign in with your existing method and relink the account."
+                )
             if not user.is_active:
                 raise PermissionDeniedError("Account disabled")
             if user.company_id and user.company is not None and not user.company.is_active:
@@ -699,11 +836,18 @@ class AuthService(BaseService):
             # device is within its MFA trust window.
             if user.mfa_enabled and not self._mfa_trusted(user, mfa_trust_token):
                 return MfaChallengeResponse(challenge_token=self._mfa_challenge_token(user))
+            clear_login_failures(user.username)
             with self.transaction():
                 user.last_login = datetime.now(timezone.utc)
                 tokens = self._issue_tokens(user)
+                self._log_security_event(user, "auth.google_login")
             return tokens
         else:
+            self._validate_signup_invite(data.invite_code)
+            if self.db.query(User).filter(User.email == email).first():
+                raise ConflictError(
+                    "An account already uses this email. Sign in with its existing method before linking Google."
+                )
             if not data.company_name:
                 raise BadRequestError("Company name is required for new accounts via Google")
             owner_role = self.db.query(Role).filter_by(name="owner").first()
@@ -719,7 +863,7 @@ class AuthService(BaseService):
                 if ensure_subscription(self.db, company.id) is None:
                     raise AppException("System not initialized — Free plan missing.")
                 random_password = "".join(secrets.choice(string.ascii_letters + string.digits) for _ in range(32))
-                base_username = email.split("@")[0]
+                base_username = re.sub(r"[^A-Za-z0-9_.-]", "", email.split("@")[0])[:40] or "user"
                 username = base_username
                 counter = 1
                 while self.db.query(User).filter(User.username == username).first():
@@ -733,6 +877,9 @@ class AuthService(BaseService):
                     full_name=full_name,
                     password_hash=hash_password(random_password),
                     role_id=owner_role.id,
+                    email_verified=True,
+                    google_issuer=issuer,
+                    google_sub=subject,
                 )
                 self.db.add(user)
                 self.db.flush()
@@ -826,8 +973,18 @@ class AuthService(BaseService):
                     )
                 )
                 self._log_security_event(user, "auth.password_reset_requested")
-            link = f"{settings.FRONTEND_BASE_URL}/reset-password?token={raw}"
-            logger.info("Password reset link for %s: %s", user.username, link)
+            link = f"{settings.FRONTEND_BASE_URL}/reset-password#token={raw}"
+            if user.email:
+                send_account_email(
+                    to=user.email,
+                    subject=f"Reset your {settings.APP_NAME} password",
+                    text=(
+                        "A password reset was requested for your account. "
+                        f"Use this one-time link:\n\n{link}\n\n"
+                        "If you did not request this, ignore this email."
+                    ),
+                )
+            logger.info("Password reset issued for user=%s (token redacted)", user.username)
             if settings.EXPOSE_RESET_TOKEN:
                 exposed_token = raw
         resp = {"message": "If an account matches, a reset link has been sent."}
@@ -837,14 +994,15 @@ class AuthService(BaseService):
 
     def reset_password(self, token: str, new_password: str) -> dict:
         """Consume a reset token and set a new password. Revokes all sessions."""
+        validate_password_strength(new_password)
         row = (
             self.db.query(PasswordResetToken)
             .filter(PasswordResetToken.token_hash == _sha256(token.strip()))
+            .with_for_update()
             .first()
         )
         if row is None or row.used_at is not None or row.expires_at <= now_utc():
             raise BadRequestError("This reset link is invalid or has expired.")
-        validate_password_strength(new_password)
         user = self.db.get(User, row.user_id)
         if user is None:
             raise BadRequestError("This reset link is invalid or has expired.")
@@ -880,16 +1038,67 @@ class AuthService(BaseService):
         return {"message": "Password changed successfully"}
 
     def update_profile(self, data) -> dict:
+        email_changed = (
+            data.email is not None
+            and str(data.email).strip().lower()
+            != (self.current_user.email or "").strip().lower()
+        )
+        user = self.current_user
+        accepted_totp_step: int | None = None
+        if email_changed:
+            user = (
+                self.db.query(User)
+                .filter(User.id == self.current_user.id)
+                .with_for_update()
+                .one()
+            )
+            if user.mfa_enabled:
+                accepted_totp_step = (
+                    self._matching_totp_step(user, data.mfa_code)
+                    if data.mfa_code
+                    else None
+                )
+                if accepted_totp_step is None:
+                    raise PermissionDeniedError(
+                        "A current MFA code is required to change your email address."
+                    )
+            elif not data.current_password or not verify_password(
+                data.current_password, user.password_hash
+            ):
+                raise PermissionDeniedError(
+                    "Your current password is required to change your email address."
+                )
+
         with self.transaction():
             if data.full_name is not None:
-                self.current_user.full_name = data.full_name
-            if data.email is not None and data.email != self.current_user.email:
+                user.full_name = data.full_name.strip()
+            if email_changed:
+                normalized_email = str(data.email).strip().lower()
                 clash = (
                     self.db.query(User)
-                    .filter(User.email == data.email, User.id != self.current_user.id)
+                    .filter(User.email == normalized_email, User.id != user.id)
                     .first()
                 )
                 if clash:
                     raise ConflictError("Email already in use")
-                self.current_user.email = data.email
-        return {"message": "Profile updated"}
+                user.email = normalized_email
+                user.email_verified = False
+                user.email_verification_hash = None
+                user.email_verification_expires = None
+                if accepted_totp_step is not None:
+                    user.mfa_last_used_step = accepted_totp_step
+                self._issue_email_verification(user)
+                # Changing the recovery address is a security-boundary change.
+                self.db.query(AuthSession).filter(
+                    AuthSession.user_id == user.id,
+                    AuthSession.revoked_at.is_(None),
+                ).update({AuthSession.revoked_at: now_utc()})
+                self._log_security_event(
+                    user,
+                    "auth.email_changed",
+                    "Email changed; verification required; sessions revoked.",
+                )
+        return {
+            "message": "Profile updated",
+            "email_verification_required": bool(email_changed),
+        }

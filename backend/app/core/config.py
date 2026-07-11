@@ -1,7 +1,8 @@
 import logging
 from functools import lru_cache
+from typing import Literal
 
-from pydantic import field_validator, model_validator
+from pydantic import SecretStr, field_validator, model_validator
 from pydantic_settings import BaseSettings
 
 logger = logging.getLogger("ricemill.config")
@@ -23,7 +24,9 @@ _MIN_SECRET_LEN = 32
 class Settings(BaseSettings):
     DATABASE_URL: str
     SECRET_KEY: str
-    ALGORITHM: str = "HS256"
+    ALGORITHM: Literal["HS256"] = "HS256"
+    JWT_ISSUER: str = "oryza-api"
+    JWT_AUDIENCE: str = "oryza-clients"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 15
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
     # "Remember this device" for MFA: after a successful TOTP/backup-code verify,
@@ -37,7 +40,9 @@ class Settings(BaseSettings):
     DEBUG: bool = False
     # Deployment environment. "prod" turns on fail-closed config checks (see the
     # model validator below) and enables HSTS. Leave as "dev" locally / in CI.
-    ENV: str = "dev"
+    # Closed enum: a typo such as ENV=production must fail validation instead
+    # of silently selecting insecure development behavior.
+    ENV: Literal["dev", "test", "prod"] = "dev"
     # Host allowlist for Starlette's TrustedHostMiddleware. "*" (dev default)
     # accepts any Host header; prod MUST set an explicit comma-separated list.
     TRUSTED_HOSTS: str = "*"
@@ -83,7 +88,7 @@ class Settings(BaseSettings):
     # admins) must enroll in TOTP before they can use the app — the API blocks
     # data endpoints until they do. Disabled in tests via env.
     MFA_ENFORCE: bool = True
-    MFA_REQUIRED_ROLES: str = "owner"
+    MFA_REQUIRED_ROLES: str = "owner,admin"
     # Opt-in breached-password check (HIBP k-anonymity) on signup/password change.
     # Best-effort: any network failure means "allow", so offline deployments are
     # never blocked. Recommended true where the server has internet access.
@@ -106,6 +111,16 @@ class Settings(BaseSettings):
     # works out of the box.
     GOOGLE_WEATHER_API_KEY: str | None = None
     GOOGLE_CLIENT_ID: str | None = None
+    # SMTP delivery for password-reset and verification links. Production
+    # refuses to boot without it so live secrets never need to be logged.
+    SMTP_HOST: str | None = None
+    SMTP_PORT: int = 587
+    SMTP_USERNAME: str | None = None
+    SMTP_PASSWORD: SecretStr | None = None
+    SMTP_FROM_EMAIL: str | None = None
+    SMTP_STARTTLS: bool = True
+    MFA_ENCRYPTION_KEY: SecretStr | None = None
+    SIGNUP_INVITE_CODE: SecretStr | None = None
     # Optional Redis cache. When unset (or unreachable), the app runs without
     # caching and reads straight from PostgreSQL — Redis is never required.
     REDIS_URL: str | None = None
@@ -120,7 +135,7 @@ class Settings(BaseSettings):
 
     @property
     def is_prod(self) -> bool:
-        return self.ENV.strip().lower() == "prod"
+        return self.ENV == "prod"
 
     @property
     def mfa_required_role_names(self) -> set[str]:
@@ -155,16 +170,56 @@ class Settings(BaseSettings):
         problems: list[str] = []
         if len(self.SECRET_KEY) < _MIN_SECRET_LEN:
             problems.append(f"SECRET_KEY must be at least {_MIN_SECRET_LEN} characters")
+        if len(set(self.SECRET_KEY)) < 10:
+            problems.append("SECRET_KEY appears low-entropy; use a cryptographically random value")
         if self.DEBUG:
             problems.append("DEBUG must be false (it exposes API docs and tracebacks)")
         if any(("localhost" in o or "127.0.0.1" in o) for o in self.origins_list):
             problems.append("ALLOWED_ORIGINS still contains localhost/127.0.0.1")
+        if "*" in self.origins_list:
+            problems.append("ALLOWED_ORIGINS must be an explicit HTTPS allowlist, not '*'")
+        if any(not o.startswith("https://") for o in self.origins_list):
+            problems.append("every ALLOWED_ORIGINS entry must use HTTPS")
         if "*" in self.trusted_hosts_list:
             problems.append("TRUSTED_HOSTS must be an explicit allowlist, not '*'")
         if not self.COOKIE_SECURE:
             problems.append("COOKIE_SECURE must be true so session cookies require HTTPS")
         if self.EXPOSE_RESET_TOKEN:
             problems.append("EXPOSE_RESET_TOKEN must be false (it leaks reset tokens in responses)")
+        if not self.RATE_LIMIT_ENABLED:
+            problems.append("RATE_LIMIT_ENABLED must be true")
+        if not self.MFA_ENFORCE:
+            problems.append("MFA_ENFORCE must be true")
+        if not {"owner", "admin"}.issubset(self.mfa_required_role_names):
+            problems.append("MFA_REQUIRED_ROLES must include owner and admin")
+        if not self.SMTP_HOST or not self.SMTP_FROM_EMAIL:
+            problems.append("SMTP_HOST and SMTP_FROM_EMAIL are required for secure token delivery")
+        if (
+            self.MFA_ENCRYPTION_KEY is None
+            or len(self.MFA_ENCRYPTION_KEY.get_secret_value()) < _MIN_SECRET_LEN
+        ):
+            problems.append("MFA_ENCRYPTION_KEY must be a separate 32+ character secret")
+        if (
+            self.SIGNUP_INVITE_CODE is None
+            or len(self.SIGNUP_INVITE_CODE.get_secret_value()) < 16
+        ):
+            problems.append("SIGNUP_INVITE_CODE must be a 16+ character secret")
+        if not self.REQUIRE_EMAIL_VERIFICATION:
+            problems.append("REQUIRE_EMAIL_VERIFICATION must be true")
+        if not self.PASSWORD_BREACH_CHECK:
+            problems.append("PASSWORD_BREACH_CHECK must be true")
+        if not self.FRONTEND_BASE_URL.startswith("https://"):
+            problems.append("FRONTEND_BASE_URL must use HTTPS")
+        if not self.REDIS_URL:
+            problems.append("REDIS_URL is required for shared rate-limit and lockout state")
+        elif not self.REDIS_URL.startswith("rediss://"):
+            problems.append("REDIS_URL must use TLS (rediss://) in production")
+        if (
+            "localhost" not in self.DATABASE_URL
+            and "127.0.0.1" not in self.DATABASE_URL
+            and "sslmode=" not in self.DATABASE_URL
+        ):
+            problems.append("DATABASE_URL must require TLS with sslmode=require or stricter")
         if problems:
             raise ValueError(
                 "Insecure production configuration (ENV=prod): " + "; ".join(problems)

@@ -239,7 +239,13 @@ def resolve_request_session(request) -> Session:
     token = _token_from_request(request) if request is not None else None
     if token:
         try:
-            payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+            payload = jwt.decode(
+                token,
+                settings.SECRET_KEY,
+                algorithms=[settings.ALGORITHM],
+                issuer=settings.JWT_ISSUER,
+                audience=settings.JWT_AUDIENCE,
+            )
             if payload.get("type") == "access":
                 schema = payload.get("schema")
         except Exception:

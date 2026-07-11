@@ -168,12 +168,25 @@ def test_domain_rows_isolated_at_sql_level(make_auth_client, db_session):
     assert schema_a in sp and schema_b not in sp
 
 
-def test_token_without_valid_schema_is_rejected(client, seed_owner):
+def test_token_without_valid_schema_is_rejected(client, seed_owner, db_session):
     """Fail-closed: a (non-admin) access token that doesn't carry a valid client
     schema is rejected, so a request can never fall through to bare ``public``."""
+    import uuid
+    from datetime import datetime, timedelta, timezone
+
     from app.core.security import create_access_token
+    from app.models.auth_session import AuthSession
+
+    family_id = uuid.uuid4()
+    db_session.add(AuthSession(
+        family_id=family_id,
+        user_id=seed_owner.id,
+        expires_at=datetime.now(timezone.utc) + timedelta(hours=1),
+    ))
+    db_session.commit()
 
     base = {"sub": str(seed_owner.id), "company_id": str(seed_owner.company_id),
+            "sid": str(family_id),
             "is_platform_admin": False}
 
     # Control: a proper token with a valid schema is accepted.
@@ -187,3 +200,28 @@ def test_token_without_valid_schema_is_rejected(client, seed_owner):
     # Malformed schema name → 401 (and never interpolated into SQL).
     ugly = create_access_token({**base, "schema": "client; drop table users"})
     assert client.get("/api/auth/me", headers={"Authorization": f"Bearer {ugly}"}).status_code == 401
+
+    # A valid-looking schema still fails unless it is exactly the authenticated
+    # user's company's assigned schema.
+    other_tenant = create_access_token({**base, "schema": f"client_{'0' * 32}"})
+    assert client.get(
+        "/api/auth/me", headers={"Authorization": f"Bearer {other_tenant}"}
+    ).status_code == 401
+
+
+def test_inactive_company_invalidates_existing_access_token(client, seed_owner, db_session):
+    from app.core.security import create_access_token
+
+    token = create_access_token({
+        "sub": str(seed_owner.id),
+        "company_id": str(seed_owner.company_id),
+        "schema": seed_owner.company.schema_name,
+        "role": "owner",
+        "is_platform_admin": False,
+    })
+    seed_owner.company.is_active = False
+    db_session.flush()
+
+    response = client.get("/api/auth/me", headers={"Authorization": f"Bearer {token}"})
+    assert response.status_code == 401
+    assert "Company" in response.json()["detail"]

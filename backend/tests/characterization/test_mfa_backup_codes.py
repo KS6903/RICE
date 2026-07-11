@@ -4,7 +4,13 @@ Backup codes are issued once at enrollment, single-use, accepted in place of a
 TOTP at the login challenge, regenerable (invalidating the old set), and cleared
 when MFA is disabled. Stored only as SHA-256 hashes.
 """
+import time
+
 import pyotp
+
+
+def _next_totp(secret: str) -> str:
+    return pyotp.TOTP(secret).at(time.time() + 30)
 
 
 def _enroll(auth_client) -> tuple[str, list[str]]:
@@ -40,7 +46,7 @@ def test_login_with_backup_code_works_and_is_single_use(client, auth_client, see
     # First use logs in.
     res = client.post("/api/auth/mfa/verify", json={"challenge_token": _challenge(client), "code": code})
     assert res.status_code == 200, res.text
-    assert res.json()["access_token"]
+    assert res.json() == {"authenticated": True}
 
     # Same code can't be reused.
     again = client.post("/api/auth/mfa/verify", json={"challenge_token": _challenge(client), "code": code})
@@ -60,7 +66,7 @@ def test_backup_code_remaining_count_decrements(client, auth_client, seed_owner)
 def test_regenerate_invalidates_old_codes(client, auth_client, seed_owner):
     secret, codes = _enroll(auth_client)
     new = auth_client.post(
-        "/api/auth/mfa/backup-codes/regenerate", json={"code": pyotp.TOTP(secret).now()}
+        "/api/auth/mfa/backup-codes/regenerate", json={"code": _next_totp(secret)}
     )
     assert new.status_code == 200
     new_codes = new.json()["backup_codes"]
@@ -78,7 +84,7 @@ def test_regenerate_requires_valid_totp(auth_client):
 
 def test_disable_clears_backup_codes(client, auth_client, seed_owner):
     secret, codes = _enroll(auth_client)
-    assert auth_client.post("/api/auth/mfa/disable", json={"code": pyotp.TOTP(secret).now()}).status_code == 200
+    assert auth_client.post("/api/auth/mfa/disable", json={"code": _next_totp(secret)}).status_code == 200
     # MFA is off, so login no longer challenges and the old backup code is moot.
     res = client.post("/api/auth/login", data={"username": "owner", "password": "Password123"})
-    assert "access_token" in res.json()
+    assert res.json() == {"authenticated": True}

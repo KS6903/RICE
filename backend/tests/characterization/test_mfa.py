@@ -5,7 +5,15 @@ two-step (password → challenge token → TOTP code → tokens). Bad codes feed
 same lockout counter as bad passwords (no-op here since tests run without Redis,
 but the 401 path is what we pin).
 """
+import time
+
 import pyotp
+
+NATIVE_HEADERS = {"X-Client-Type": "bearer", "User-Agent": "Electron/Test"}
+
+
+def _next_totp(secret: str) -> str:
+    return pyotp.TOTP(secret).at(time.time() + 30)
 
 
 def _login(client, username="owner", password="Password123"):
@@ -57,10 +65,11 @@ def test_login_with_mfa_returns_challenge_then_tokens(client, auth_client, seed_
     assert "access_token" not in body
 
     # Step 2: challenge token + TOTP code → real tokens.
-    code = pyotp.TOTP(secret).now()
+    code = _next_totp(secret)
     res2 = client.post(
         "/api/auth/mfa/verify",
         json={"challenge_token": body["challenge_token"], "code": code},
+        headers=NATIVE_HEADERS,
     )
     assert res2.status_code == 200, res2.text
     assert res2.json()["access_token"]
@@ -80,9 +89,10 @@ def test_mfa_verify_rejects_access_token_as_challenge(client, auth_client, seed_
     """A normal access token must not work as an MFA challenge (type confusion)."""
     secret = _enroll_and_enable(auth_client)
     challenge = _login(client).json()["challenge_token"]
-    code = pyotp.TOTP(secret).now()
+    code = _next_totp(secret)
     tokens = client.post(
-        "/api/auth/mfa/verify", json={"challenge_token": challenge, "code": code}
+        "/api/auth/mfa/verify", json={"challenge_token": challenge, "code": code},
+        headers=NATIVE_HEADERS,
     ).json()
 
     res = client.post(
@@ -95,6 +105,6 @@ def test_mfa_verify_rejects_access_token_as_challenge(client, auth_client, seed_
 def test_mfa_disable_requires_valid_code(auth_client):
     secret = _enroll_and_enable(auth_client)
     assert auth_client.post("/api/auth/mfa/disable", json={"code": "000000"}).status_code == 400
-    ok = auth_client.post("/api/auth/mfa/disable", json={"code": pyotp.TOTP(secret).now()})
+    ok = auth_client.post("/api/auth/mfa/disable", json={"code": _next_totp(secret)})
     assert ok.status_code == 200
     assert auth_client.get("/api/auth/me").json()["mfa_enabled"] is False

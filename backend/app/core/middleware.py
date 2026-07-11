@@ -37,6 +37,7 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         headers = response.headers
         headers.setdefault("X-Content-Type-Options", "nosniff")
         headers.setdefault("X-Frame-Options", "DENY")
+        headers.setdefault("X-Permitted-Cross-Domain-Policies", "none")
         headers.setdefault("Referrer-Policy", "no-referrer")
         headers.setdefault("Cross-Origin-Opener-Policy", "same-origin")
         headers.setdefault(
@@ -45,6 +46,10 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         )
         is_docs = any(request.url.path.startswith(p) for p in _DOCS_PATHS)
         headers.setdefault("Content-Security-Policy", _DOCS_CSP if is_docs else _API_CSP)
+        # API responses contain tenant/account data and must never be retained
+        # by shared proxies or the browser's HTTP cache.
+        if request.url.path.startswith("/api/") and request.url.path != "/api/health":
+            headers.setdefault("Cache-Control", "no-store")
         # HSTS only in prod: it requires HTTPS, and pinning it on http://localhost
         # would wrongly force https for local development.
         if settings.is_prod:

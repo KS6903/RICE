@@ -1,10 +1,8 @@
 """Symmetric encryption for small secrets at rest (security hardening P1.9).
 
 Used for per-user TOTP seeds: a database dump alone must not let an attacker
-mint valid MFA codes. The Fernet key is derived from SECRET_KEY (SHA-256 →
-urlsafe base64), so no extra key material needs managing — rotating SECRET_KEY
-invalidates stored MFA secrets (users re-enroll), which is an acceptable and
-explicit trade-off for this app.
+mint valid MFA codes. Production uses a dedicated encryption key so compromise
+or rotation of the JWT signing key does not also expose/invalidate MFA seeds.
 """
 from __future__ import annotations
 
@@ -17,7 +15,12 @@ from .config import settings
 
 
 def _fernet() -> Fernet:
-    digest = hashlib.sha256(settings.SECRET_KEY.encode("utf-8")).digest()
+    material = (
+        settings.MFA_ENCRYPTION_KEY.get_secret_value()
+        if settings.MFA_ENCRYPTION_KEY
+        else settings.SECRET_KEY  # local-dev/backward-compatible fallback
+    )
+    digest = hashlib.sha256(material.encode("utf-8")).digest()
     return Fernet(base64.urlsafe_b64encode(digest))
 
 

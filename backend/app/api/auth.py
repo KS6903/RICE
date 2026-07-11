@@ -4,12 +4,14 @@ Unauthenticated endpoints (signup/login/refresh/google) use a service with no
 current_user; the account self-service endpoints (me/change-password/profile)
 inject the authenticated user.
 """
+import secrets
 import uuid
 
 from fastapi import APIRouter, Depends, Request, Response, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 
+from ..core.config import settings
 from ..core.cookies import (
     ACCESS_COOKIE,
     MFA_TRUST_COOKIE,
@@ -24,6 +26,7 @@ from ..core.exceptions import UnauthorizedError
 from ..core.ratelimit import AUTH_RATE_LIMIT, limiter
 from ..core.security import get_access_token_payload, get_current_user
 from ..schemas.auth import (
+    BrowserAuthResponse,
     ChangePasswordRequest,
     ForgotPasswordRequest,
     GoogleAuthRequest,
@@ -41,6 +44,36 @@ from ..schemas.auth import (
 from ..services.auth_service import AuthService
 
 router = APIRouter()
+MFA_RATE_LIMIT = "5/minute"
+
+
+def _is_bearer_client(request: Request) -> bool:
+    """Return true only for an explicit non-browser/native token client."""
+    if not secrets.compare_digest(request.headers.get("X-Client-Type", ""), "bearer"):
+        return False
+    origin = request.headers.get("origin")
+    user_agent = request.headers.get("user-agent", "")
+    if "Electron" not in user_agent:
+        return origin is None
+    if origin is None or origin == "null":
+        return True
+    # Electron's development renderer is served by Vite rather than file://.
+    # Limit this exception to the configured local dev origin; production still
+    # requires the packaged opaque origin and cannot be opted into by a website.
+    return settings.ENV == "dev" and origin == settings.FRONTEND_BASE_URL
+
+
+def _complete_auth(request: Request, response: Response, tokens: TokenResponse):
+    """Set browser cookies without reflecting bearer secrets into JavaScript."""
+    response.headers["Cache-Control"] = "no-store"
+    if _is_bearer_client(request):
+        return tokens
+    set_auth_cookies(
+        response,
+        access_token=tokens.access_token,
+        refresh_token=tokens.refresh_token,
+    )
+    return BrowserAuthResponse()
 
 
 def get_public_auth_service(request: Request, db: Session = Depends(get_db)) -> AuthService:
@@ -57,7 +90,7 @@ def get_auth_service(
 
 # ── Unauthenticated ──────────────────────────────────────────────────────────
 
-@router.post("/signup", response_model=TokenResponse, status_code=status.HTTP_201_CREATED)
+@router.post("/signup", response_model=None, status_code=status.HTTP_201_CREATED)
 @limiter.limit(AUTH_RATE_LIMIT)
 def signup(
     request: Request,
@@ -66,8 +99,7 @@ def signup(
     svc: AuthService = Depends(get_public_auth_service),
 ):
     tokens = svc.signup(body)
-    set_auth_cookies(response, access_token=tokens.access_token, refresh_token=tokens.refresh_token)
-    return tokens
+    return _complete_auth(request, response, tokens)
 
 
 @router.post("/login", response_model=None)
@@ -78,17 +110,21 @@ def login(
     form: OAuth2PasswordRequestForm = Depends(),
     svc: AuthService = Depends(get_public_auth_service),
 ):
-    """Returns the token pair in the body (desktop/bearer clients) AND as
-    httpOnly session cookies (web client — JS never touches the tokens).
+    """Authenticate a browser with cookies or an explicit native client with tokens.
 
     Accounts with MFA enabled get ``{"mfa_required": true, "challenge_token"}``
     instead — the client completes login via POST /auth/mfa/verify. A device that
     already verified MFA carries an ``mfa_trust`` cookie (or X-MFA-Trust header)
     and skips straight to tokens until the next weekly reset (Sunday)."""
-    trust = request.cookies.get(MFA_TRUST_COOKIE) or request.headers.get("X-MFA-Trust")
+    trust = (
+        request.headers.get("X-MFA-Trust")
+        if _is_bearer_client(request)
+        else request.cookies.get(MFA_TRUST_COOKIE)
+    )
     result = svc.login(form.username, form.password, mfa_trust_token=trust)
     if isinstance(result, TokenResponse):
-        set_auth_cookies(response, access_token=result.access_token, refresh_token=result.refresh_token)
+        return _complete_auth(request, response, result)
+    response.headers["Cache-Control"] = "no-store"
     return result
 
 
@@ -132,7 +168,7 @@ def resend_verification(request: Request, svc: AuthService = Depends(get_auth_se
     return svc.resend_verification()
 
 
-@router.post("/refresh", response_model=TokenResponse)
+@router.post("/refresh", response_model=None)
 @limiter.limit(AUTH_RATE_LIMIT)
 def refresh(
     request: Request,
@@ -142,15 +178,17 @@ def refresh(
 ):
     """Rotate the refresh token. Bearer clients send it in the body; the web
     client relies on the httpOnly cookie (CSRF-checked, since it's cookie auth)."""
-    token = body.refresh_token if body and body.refresh_token else None
-    if not token:
+    bearer_client = _is_bearer_client(request)
+    token = body.refresh_token if bearer_client and body and body.refresh_token else None
+    if bearer_client and not token:
+        raise UnauthorizedError("Bearer clients must provide a refresh token")
+    if not bearer_client:
         token = request.cookies.get(REFRESH_COOKIE)
         if not token:
             raise UnauthorizedError("Missing refresh token")
         enforce_csrf(request)
     tokens = svc.refresh(token)
-    set_auth_cookies(response, access_token=tokens.access_token, refresh_token=tokens.refresh_token)
-    return tokens
+    return _complete_auth(request, response, tokens)
 
 
 @router.post("/google", response_model=None)
@@ -163,16 +201,21 @@ def google_auth(
 ):
     """Like /login: an MFA-enabled account gets a challenge instead of tokens,
     unless this device is within its MFA trust window."""
-    trust = request.cookies.get(MFA_TRUST_COOKIE) or request.headers.get("X-MFA-Trust")
+    trust = (
+        request.headers.get("X-MFA-Trust")
+        if _is_bearer_client(request)
+        else request.cookies.get(MFA_TRUST_COOKIE)
+    )
     result = svc.google_auth(body, mfa_trust_token=trust)
     if isinstance(result, TokenResponse):
-        set_auth_cookies(response, access_token=result.access_token, refresh_token=result.refresh_token)
+        return _complete_auth(request, response, result)
+    response.headers["Cache-Control"] = "no-store"
     return result
 
 
 # ── MFA (TOTP) ───────────────────────────────────────────────────────────────
 
-@router.post("/mfa/verify", response_model=TokenResponse)
+@router.post("/mfa/verify", response_model=None)
 @limiter.limit(AUTH_RATE_LIMIT)
 def mfa_verify(
     request: Request,
@@ -186,31 +229,51 @@ def mfa_verify(
     ``X-MFA-Trust`` response header for bearer clients) lets it skip MFA on login
     until the next weekly reset (Sunday), so the user isn't prompted every login."""
     tokens, trust = svc.mfa_verify(body.challenge_token, body.code)
+    if _is_bearer_client(request):
+        response.headers["X-MFA-Trust"] = trust
+        response.headers["Cache-Control"] = "no-store"
+        return tokens
     set_auth_cookies(response, access_token=tokens.access_token, refresh_token=tokens.refresh_token)
     set_mfa_trust_cookie(response, trust)
-    response.headers["X-MFA-Trust"] = trust
-    return tokens
+    response.headers["Cache-Control"] = "no-store"
+    return BrowserAuthResponse()
 
 
 @router.post("/mfa/enroll", response_model=MfaEnrollResponse)
-def mfa_enroll(svc: AuthService = Depends(get_auth_service)):
+@limiter.limit(MFA_RATE_LIMIT)
+def mfa_enroll(request: Request, svc: AuthService = Depends(get_auth_service)):
     """Start TOTP enrollment: returns the secret + otpauth:// URI to load into
     an authenticator app. Pending until /mfa/enroll/verify confirms a code."""
     return svc.mfa_enroll()
 
 
 @router.post("/mfa/enroll/verify")
-def mfa_enroll_verify(body: MfaCodeRequest, svc: AuthService = Depends(get_auth_service)):
+@limiter.limit(MFA_RATE_LIMIT)
+def mfa_enroll_verify(
+    request: Request,
+    body: MfaCodeRequest,
+    svc: AuthService = Depends(get_auth_service),
+):
     return svc.mfa_enroll_verify(body.code)
 
 
 @router.post("/mfa/disable")
-def mfa_disable(body: MfaCodeRequest, svc: AuthService = Depends(get_auth_service)):
+@limiter.limit(MFA_RATE_LIMIT)
+def mfa_disable(
+    request: Request,
+    body: MfaCodeRequest,
+    svc: AuthService = Depends(get_auth_service),
+):
     return svc.mfa_disable(body.code)
 
 
 @router.post("/mfa/backup-codes/regenerate", response_model=MfaBackupCodesResponse)
-def regenerate_backup_codes(body: MfaCodeRequest, svc: AuthService = Depends(get_auth_service)):
+@limiter.limit(MFA_RATE_LIMIT)
+def regenerate_backup_codes(
+    request: Request,
+    body: MfaCodeRequest,
+    svc: AuthService = Depends(get_auth_service),
+):
     """Issue a fresh set of one-time backup codes (invalidates the old set).
     Requires a current TOTP code."""
     return svc.regenerate_backup_codes(body.code)
@@ -259,9 +322,10 @@ def logout(
     refresh session rather than 401-ing and leaving it alive.
     """
     authz = request.headers.get("Authorization", "")
-    raw_access = authz[7:].strip() if authz.startswith("Bearer ") else request.cookies.get(ACCESS_COOKIE)
+    has_bearer = authz.startswith("Bearer ") and bool(authz[7:].strip())
+    raw_access = authz[7:].strip() if has_bearer else request.cookies.get(ACCESS_COOKIE)
     raw_refresh = request.cookies.get(REFRESH_COOKIE)
-    if not authz and (raw_access or raw_refresh):
+    if not has_bearer and (raw_access or raw_refresh):
         # Cookie-only logout is a cookie-authenticated mutation → CSRF-check it.
         enforce_csrf(request)
     result = svc.logout(raw_access, raw_refresh)

@@ -1,10 +1,16 @@
 import uuid
 from datetime import datetime
-from sqlalchemy import String, Boolean, SmallInteger, ForeignKey, DateTime
-from sqlalchemy.orm import mapped_column, Mapped, relationship
-from sqlalchemy.dialects.postgresql import UUID, JSONB
+from typing import TYPE_CHECKING
+
+from sqlalchemy import BigInteger, Boolean, DateTime, ForeignKey, SmallInteger, String
+from sqlalchemy.dialects.postgresql import JSONB, UUID
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+
 from ..core.database import Base
 from .base import TimestampMixin
+
+if TYPE_CHECKING:
+    from .company import Branch, Company
 
 
 class Role(Base):
@@ -34,6 +40,9 @@ class User(Base, TimestampMixin):
     # with mfa_enabled=False is a pending enrollment awaiting code verification.
     mfa_secret: Mapped[str | None] = mapped_column(String(255))
     mfa_enabled: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    # Highest accepted TOTP time-step. Rejecting the same/lower step makes a
+    # six-digit code single-use even within pyotp's clock-skew window.
+    mfa_last_used_step: Mapped[int | None] = mapped_column(BigInteger)
     # Single-use recovery codes — stored as SHA-256 hashes of the still-unused
     # codes; a code is removed from the list when consumed. Used when the user
     # can't reach their authenticator.
@@ -43,6 +52,10 @@ class User(Base, TimestampMixin):
     email_verified: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     email_verification_hash: Mapped[str | None] = mapped_column(String(64))
     email_verification_expires: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # External identities are bound to the provider's stable subject, never
+    # auto-linked by a mutable email address alone.
+    google_issuer: Mapped[str | None] = mapped_column(String(255))
+    google_sub: Mapped[str | None] = mapped_column(String(255), unique=True, index=True)
 
     company: Mapped["Company"] = relationship("Company", back_populates="users")
     branch: Mapped["Branch"] = relationship(

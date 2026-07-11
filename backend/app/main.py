@@ -6,12 +6,33 @@ from fastapi.middleware.cors import CORSMiddleware
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
 from starlette.middleware.trustedhost import TrustedHostMiddleware
+
+from .api import (
+    activity,
+    admin,
+    auth,
+    billing,
+    branches,
+    canva,
+    costs,
+    dispatch,
+    employees,
+    fleet,
+    inventory,
+    locations,
+    milling,
+    paddy,
+    reports,
+    sales,
+    sync,
+    users,
+    weather,
+)
 from .core.config import settings
 from .core.exceptions import register_exception_handlers
 from .core.middleware import SecurityHeadersMiddleware
 from .core.ratelimit import limiter, rate_limit_exceeded_handler
 from .core.security import enforce_email_verified, enforce_mfa_enrollment
-from .api import auth, users, branches, paddy, milling, inventory, sales, costs, reports, sync, admin, employees, billing, canva, dispatch, weather, locations, activity, fleet
 from .services.canva_realtime import manager as ws_manager
 
 logger = logging.getLogger(__name__)
@@ -66,8 +87,13 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.origins_list,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allow_headers=[
+        "Authorization",
+        "Content-Type",
+        "X-CSRF-Token",
+        "X-Client-Type",
+    ],
 )
 
 # Map domain exceptions (app.core.exceptions) to HTTP responses, plus the 429

@@ -1,17 +1,64 @@
 import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Any
+
 import bcrypt as _bcrypt
 import jwt
-from jwt import InvalidTokenError
 from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordBearer
+from jwt import InvalidTokenError
 from sqlalchemy.orm import Session
+
+from .cache import TTL_FEATURES, cache
 from .config import settings
 from .cookies import ACCESS_COOKIE
 from .csrf import enforce_csrf
 from .database import get_db
-from .cache import cache, TTL_FEATURES
+
+# Server-side mirror of ``packages/shared/src/constants/access.ts``.  The UI
+# matrix is an ergonomics layer; this policy is the actual authorization
+# boundary.  Keep it explicit and fail-closed so a newly introduced/typoed role
+# never inherits access accidentally.
+SECTION_ACCESS: dict[str, dict[str, str]] = {
+    "owner": {
+        "dashboard": "full", "paddy": "full", "milling": "full",
+        "inventory": "full", "sales": "full", "dispatch": "full",
+        "operators": "full", "expenses": "full", "reports": "full",
+        "employees": "full", "users": "full", "settings": "full",
+    },
+    "admin": {
+        "dashboard": "full", "paddy": "full", "milling": "full",
+        "inventory": "full", "sales": "full", "dispatch": "full",
+        "operators": "full", "expenses": "full", "reports": "full",
+        "employees": "full", "users": "full", "settings": "full",
+    },
+    "accountant": {
+        "dashboard": "full", "paddy": "view", "milling": "view",
+        "inventory": "view", "sales": "full", "dispatch": "view",
+        "operators": "view", "expenses": "full", "reports": "full",
+        "employees": "full", "users": "none", "settings": "full",
+    },
+    "cashier": {
+        "dashboard": "full", "paddy": "none", "milling": "none",
+        "inventory": "view", "sales": "full", "dispatch": "view",
+        "operators": "view", "expenses": "none", "reports": "none",
+        "employees": "none", "users": "none", "settings": "full",
+    },
+    "mill_operator": {
+        "dashboard": "full", "paddy": "full", "milling": "full",
+        "inventory": "full", "sales": "none", "dispatch": "full",
+        "operators": "full", "expenses": "none", "reports": "none",
+        "employees": "none", "users": "none", "settings": "full",
+    },
+    "encoder": {
+        "dashboard": "full", "paddy": "full", "milling": "view",
+        "inventory": "view", "sales": "full", "dispatch": "none",
+        "operators": "none", "expenses": "none", "reports": "none",
+        "employees": "none", "users": "none", "settings": "full",
+    },
+}
+
+APP_SECTIONS = frozenset(next(iter(SECTION_ACCESS.values())))
 
 # auto_error=False: a missing Authorization header falls through to the session
 # cookie (web client) inside get_token, instead of an immediate 401.
@@ -56,7 +103,15 @@ def create_access_token(data: dict[str, Any], jti: str | None = None) -> str:
     """Issue an access token. Every token carries a ``jti`` so it can be
     individually blocklisted on logout/password change (best-effort via Redis)."""
     expire = datetime.now(timezone.utc) + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
-    payload = {**data, "exp": expire, "type": "access", "jti": jti or uuid.uuid4().hex}
+    payload = {
+        **data,
+        "iat": datetime.now(timezone.utc),
+        "iss": settings.JWT_ISSUER,
+        "aud": settings.JWT_AUDIENCE,
+        "exp": expire,
+        "type": "access",
+        "jti": jti or uuid.uuid4().hex,
+    }
     return jwt.encode(payload, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
 
 
@@ -65,13 +120,28 @@ def create_refresh_token(data: dict[str, Any], jti: str) -> str:
     ``AuthSession`` row — refresh tokens are stateful so they can be rotated and
     revoked (see services/auth_service.py)."""
     expire = datetime.now(timezone.utc) + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
-    payload = {**data, "exp": expire, "type": "refresh", "jti": jti}
+    payload = {
+        **data,
+        "iat": datetime.now(timezone.utc),
+        "iss": settings.JWT_ISSUER,
+        "aud": settings.JWT_AUDIENCE,
+        "exp": expire,
+        "type": "refresh",
+        "jti": jti,
+    }
     return jwt.encode(payload, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
 
 
 def decode_token(token: str) -> dict[str, Any]:
     try:
-        return jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+        return jwt.decode(
+            token,
+            settings.SECRET_KEY,
+            algorithms=[settings.ALGORITHM],
+            issuer=settings.JWT_ISSUER,
+            audience=settings.JWT_AUDIENCE,
+            options={"require": ["exp", "iat", "iss", "aud", "type", "jti"]},
+        )
     except InvalidTokenError:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid or expired token")
 
@@ -113,7 +183,9 @@ def get_access_token_payload(token: str = Depends(get_token)) -> dict[str, Any]:
     return payload
 
 
-def get_current_user(token: str = Depends(get_token), db: Session = Depends(get_db)):
+def authenticate_access_token(token: str, db: Session):
+    """Validate an access token, its user/tenant binding, and durable session."""
+    from ..models.auth_session import AuthSession
     from ..models.user import User
     from .tenancy import valid_schema_name
 
@@ -135,6 +207,40 @@ def get_current_user(token: str = Depends(get_token), db: Session = Depends(get_
     user = db.get(User, user_id)
     if not user or not user.is_active:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found or inactive")
+    if not user.is_platform_admin:
+        # A syntactically valid schema claim is not sufficient: it must be the
+        # schema currently assigned to this active user's active company.  This
+        # closes the gap where a forged token could point the DB search_path at a
+        # different, but validly named, tenant schema.
+        company = user.company
+        if not company or not company.is_active:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Company not found or inactive")
+        if payload.get("company_id") != str(company.id):
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
+        if payload.get("schema") != company.schema_name:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
+    sid = payload.get("sid")
+    try:
+        family_id = uuid.UUID(str(sid))
+    except (TypeError, ValueError):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
+    live_session = (
+        db.query(AuthSession.id)
+        .filter(
+            AuthSession.family_id == family_id,
+            AuthSession.user_id == user.id,
+            AuthSession.revoked_at.is_(None),
+            AuthSession.expires_at > datetime.now(timezone.utc),
+        )
+        .first()
+    )
+    if live_session is None:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Session has been revoked")
+    return user, payload
+
+
+def get_current_user(token: str = Depends(get_token), db: Session = Depends(get_db)):
+    user, _payload = authenticate_access_token(token, db)
     return user
 
 
@@ -181,10 +287,41 @@ def enforce_email_verified(current_user=Depends(get_current_user)):
 
 
 def require_roles(*roles: str):
+    allowed = frozenset(roles)
+
     def checker(current_user=Depends(get_current_user)):
-        if current_user.role and current_user.role.name not in roles:
+        if getattr(current_user, "is_platform_admin", False):
+            return current_user
+        role = getattr(current_user, "role", None)
+        role_name = getattr(role, "name", None)
+        if role_name not in allowed:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Insufficient permissions")
         return current_user
+    return checker
+
+
+def require_section_access(section: str, *, write: bool = False):
+    """Require the role-matrix access level for one tenant application section.
+
+    Reads accept either ``view`` or ``full``.  Mutations require ``full``.
+    Missing and unknown roles are denied.  Platform administrators retain their
+    cross-tenant control-plane bypass and are still constrained by service-level
+    tenant scoping where applicable.
+    """
+    if section not in APP_SECTIONS:
+        raise ValueError(f"Unknown application section: {section}")
+
+    def checker(current_user=Depends(get_current_user)):
+        if getattr(current_user, "is_platform_admin", False):
+            return current_user
+        role = getattr(current_user, "role", None)
+        role_name = getattr(role, "name", None)
+        level = SECTION_ACCESS.get(role_name, {}).get(section, "none")
+        allowed = level == "full" if write else level in {"view", "full"}
+        if not allowed:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Insufficient permissions")
+        return current_user
+
     return checker
 
 
@@ -211,7 +348,7 @@ def invalidate_company_features(company_id) -> None:
 
 def _compute_user_features(user, db: Session) -> list[str]:
     from ..models.subscription import Subscription
-    from ..services.subscription import effective_status, ACTIVE_STATUSES
+    from ..services.subscription import ACTIVE_STATUSES, effective_status
     sub = db.query(Subscription).filter(Subscription.company_id == user.company_id).first()
     if not sub or not sub.plan:
         return []

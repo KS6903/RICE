@@ -87,3 +87,8 @@ def clear_auth_cookies(response: Response) -> None:
     response.delete_cookie(ACCESS_COOKIE, path="/", domain=settings.COOKIE_DOMAIN)
     response.delete_cookie(REFRESH_COOKIE, path=REFRESH_COOKIE_PATH, domain=settings.COOKIE_DOMAIN)
     response.delete_cookie(CSRF_COOKIE, path="/", domain=settings.COOKIE_DOMAIN)
+    response.delete_cookie(
+        MFA_TRUST_COOKIE,
+        path=MFA_TRUST_COOKIE_PATH,
+        domain=settings.COOKIE_DOMAIN,
+    )

@@ -6,12 +6,14 @@ current session is flagged and protected by revoke-others. Sessions are
 per-user — one user can't see or revoke another's.
 """
 
+NATIVE_HEADER = {"X-Client-Type": "bearer"}
+
 
 def _login(client, ua="Mozilla/5.0 (Windows NT 10.0) Chrome/120 Safari/537"):
     res = client.post(
         "/api/auth/login",
         data={"username": "owner", "password": "Password123"},
-        headers={"User-Agent": ua},
+        headers={**NATIVE_HEADER, "User-Agent": f"Electron/Test {ua}"},
     )
     assert res.status_code == 200, res.text
     return res.json()
@@ -29,7 +31,7 @@ def test_list_shows_current_session_with_device_label(client, seed_owner):
     sessions = res.json()
     assert len(sessions) == 1
     assert sessions[0]["current"] is True
-    assert sessions[0]["client"] == "Chrome · Windows"
+    assert sessions[0]["client"] == "Desktop app"
 
 
 def test_multiple_logins_listed_then_revoke_one(client, seed_owner):
@@ -47,7 +49,7 @@ def test_multiple_logins_listed_then_revoke_one(client, seed_owner):
     # Revoke the other (device A).
     assert client.delete(f"/api/auth/sessions/{other_id}", headers=_auth(b)).status_code == 200
     # A's refresh token no longer works…
-    assert client.post("/api/auth/refresh", json={"refresh_token": a["refresh_token"]}).status_code == 401
+    assert client.post("/api/auth/refresh", json={"refresh_token": a["refresh_token"]}, headers={**NATIVE_HEADER, "User-Agent": "Electron/Test"}).status_code == 401
     # …and only B remains listed.
     remaining = client.get("/api/auth/sessions", headers=_auth(b)).json()
     assert len(remaining) == 1 and remaining[0]["current"] is True
@@ -65,8 +67,8 @@ def test_revoke_others_keeps_current(client, seed_owner):
 
     # Current (B) still works; A is gone.
     assert client.get("/api/auth/sessions", headers=_auth(b)).status_code == 200
-    assert client.post("/api/auth/refresh", json={"refresh_token": a["refresh_token"]}).status_code == 401
-    assert client.post("/api/auth/refresh", json={"refresh_token": b["refresh_token"]}).status_code == 200
+    assert client.post("/api/auth/refresh", json={"refresh_token": a["refresh_token"]}, headers={**NATIVE_HEADER, "User-Agent": "Electron/Test"}).status_code == 401
+    assert client.post("/api/auth/refresh", json={"refresh_token": b["refresh_token"]}, headers={**NATIVE_HEADER, "User-Agent": "Electron/Test"}).status_code == 200
 
 
 def test_cannot_revoke_another_users_session(client, seed_owner, db_session):
@@ -91,7 +93,8 @@ def test_cannot_revoke_another_users_session(client, seed_owner, db_session):
     victim_sid = jwt.decode(victim["access_token"], options={"verify_signature": False})["sid"]
 
     atk = client.post(
-        "/api/auth/login", data={"username": "attacker", "password": "Password123"}
+        "/api/auth/login", data={"username": "attacker", "password": "Password123"},
+        headers={**NATIVE_HEADER, "User-Agent": "Electron/Test"},
     ).json()
     client.cookies.clear()
 
@@ -99,4 +102,4 @@ def test_cannot_revoke_another_users_session(client, seed_owner, db_session):
     # never forbidden — doesn't confirm the id exists).
     assert client.delete(f"/api/auth/sessions/{victim_sid}", headers=_auth(atk)).status_code == 404
     # The victim's session is untouched.
-    assert client.post("/api/auth/refresh", json={"refresh_token": victim["refresh_token"]}).status_code == 200
+    assert client.post("/api/auth/refresh", json={"refresh_token": victim["refresh_token"]}, headers={**NATIVE_HEADER, "User-Agent": "Electron/Test"}).status_code == 200

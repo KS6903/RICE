@@ -10,6 +10,8 @@ import pytest
 
 from app.core.config import get_settings
 
+NATIVE_HEADERS = {"X-Client-Type": "bearer", "User-Agent": "Electron/Test"}
+
 
 @pytest.fixture(autouse=True)
 def _expose_reset_token(monkeypatch):
@@ -39,7 +41,7 @@ def test_forgot_password_is_enumeration_safe(client, seed_owner):
 
 def test_reset_password_changes_password_and_revokes_sessions(client, seed_owner):
     # Establish a live session first.
-    login = client.post("/api/auth/login", data={"username": "owner", "password": "Password123"})
+    login = client.post("/api/auth/login", data={"username": "owner", "password": "Password123"}, headers=NATIVE_HEADERS)
     refresh_token = login.json()["refresh_token"]
     client.cookies.clear()
 
@@ -52,7 +54,7 @@ def test_reset_password_changes_password_and_revokes_sessions(client, seed_owner
     assert client.post("/api/auth/login", data={"username": "owner", "password": "brandNew99"}).status_code == 200
 
     # The pre-reset refresh session was revoked.
-    assert client.post("/api/auth/refresh", json={"refresh_token": refresh_token}).status_code == 401
+    assert client.post("/api/auth/refresh", json={"refresh_token": refresh_token}, headers=NATIVE_HEADERS).status_code == 401
 
 
 def test_reset_token_is_single_use(client, seed_owner):
