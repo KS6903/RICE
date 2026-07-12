@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { CloudDrizzle, CloudRain, Lock, Sparkles, Sun } from "lucide-react";
 import { useFeature } from "../hooks/useFeature";
@@ -44,6 +44,9 @@ const FALLBACK_STYLE = {
 
 const POPOVER_WIDTH = 320;
 const VIEWPORT_MARGIN = 12;
+// A short delay before showing (not on hiding) avoids a flash when the
+// cursor merely passes over the box on its way to the stat cards below.
+const SHOW_DELAY_MS = 120;
 
 type PopoverPos = { top: number; left: number };
 
@@ -65,10 +68,17 @@ export default function DryingAdvisor({ coords }: { coords: Coords | null }) {
   const allowed = useFeature("drying_advisor");
   const q = useDryingAdvisory(coords, { enabled: allowed });
   const triggerRef = useRef<HTMLDivElement>(null);
+  const showTimeout = useRef<number | null>(null);
   const [hovered, setHovered] = useState(false);
   const [pos, setPos] = useState<PopoverPos | null>(null);
 
-  const openPopover = () => {
+  useEffect(() => {
+    return () => {
+      if (showTimeout.current) window.clearTimeout(showTimeout.current);
+    };
+  }, []);
+
+  const scheduleShow = () => {
     const rect = triggerRef.current?.getBoundingClientRect();
     if (!rect) return;
     const left = Math.min(
@@ -76,7 +86,15 @@ export default function DryingAdvisor({ coords }: { coords: Coords | null }) {
       window.innerWidth - POPOVER_WIDTH - VIEWPORT_MARGIN
     );
     setPos({ top: rect.bottom + 8, left });
-    setHovered(true);
+    showTimeout.current = window.setTimeout(() => setHovered(true), SHOW_DELAY_MS);
+  };
+
+  const cancelShow = () => {
+    if (showTimeout.current) {
+      window.clearTimeout(showTimeout.current);
+      showTimeout.current = null;
+    }
+    setHovered(false);
   };
 
   return (
@@ -133,8 +151,8 @@ export default function DryingAdvisor({ coords }: { coords: Coords | null }) {
           <>
             <div
               ref={triggerRef}
-              onMouseEnter={openPopover}
-              onMouseLeave={() => setHovered(false)}
+              onMouseEnter={scheduleShow}
+              onMouseLeave={cancelShow}
               className={`mt-2.5 rounded-xl ring-1 p-2.5 cursor-help transition-colors ${styles.box}`}
               data-testid="drying-advisor-result"
             >
@@ -152,8 +170,10 @@ export default function DryingAdvisor({ coords }: { coords: Coords | null }) {
               createPortal(
                 <div
                   role="tooltip"
-                  className={`fixed z-[100] rounded-xl ring-1 shadow-xl p-3 transition-all duration-150 ease-out ${styles.popoverBox} ${
-                    hovered ? "opacity-100 scale-100" : "opacity-0 scale-95 pointer-events-none"
+                  className={`fixed z-[100] rounded-xl ring-1 shadow-xl p-3 origin-top transition-[opacity,transform] ease-[cubic-bezier(0.23,1,0.32,1)] motion-reduce:transition-opacity ${styles.popoverBox} ${
+                    hovered
+                      ? "duration-180 opacity-100 scale-100 translate-y-0"
+                      : "duration-120 opacity-0 scale-95 -translate-y-1 pointer-events-none motion-reduce:scale-100 motion-reduce:translate-y-0"
                   }`}
                   style={{ top: pos.top, left: pos.left, width: POPOVER_WIDTH }}
                   data-testid="drying-advisor-popover"
