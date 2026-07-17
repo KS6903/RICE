@@ -2,9 +2,11 @@
 
 Idempotent. Run once: `python migrate_user_locations.py`
 """
-from app.core.database import engine
+import os
+
 from sqlalchemy import text
 
+os.environ["PROCESS_ROLE"] = "provisioner"
 
 CREATE = """
 CREATE TABLE IF NOT EXISTS user_locations (
@@ -29,7 +31,9 @@ ON user_locations(user_id) WHERE is_default
 
 
 def main():
-    with engine.connect() as conn:
+    from app.core.database import provisioner_engine
+
+    with provisioner_engine.connect() as conn:
         conn.execute(text(CREATE))
         conn.execute(text(INDEX_DEFAULT))
         conn.commit()

@@ -1,14 +1,16 @@
 name: CI
 
-# Lightweight CI added in Phase 0 of the OOP-standardization refactor.
-# Backend: characterization + unit tests against a real Postgres, plus scoped
-# ruff/mypy. Frontend: Vitest + typecheck (eslint/prettier are advisory while we
-# migrate legacy code per "lint on touch").
-
 on:
   push:
     branches: [main]
   pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   backend:
@@ -39,14 +41,14 @@ jobs:
       run:
         working-directory: backend
     steps:
-      - uses: actions/checkout@v6
-      - uses: actions/setup-python@v6
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
         with:
           python-version: "3.11"
       - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements-dev.txt
+        run: python -m pip install --require-hashes -r requirements-dev.lock
       - name: Verify Postgres is reachable
         run: |
           python -c "import psycopg; psycopg.connect('host=127.0.0.1 port=5432 user=postgres password=postgres dbname=postgres').close(); print('postgres reachable')"
@@ -60,8 +62,10 @@ jobs:
   frontend:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
-      - uses: actions/setup-node@v6
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         with:
           node-version: "24"
           cache: npm
@@ -78,37 +82,55 @@ jobs:
         run: npm run format:check
         continue-on-error: true
 
-  # Security scanners (hardening P2.13): dependency CVEs, Python SAST, and
-  # secret scanning are hard gates; npm audit is advisory while the frontend
-  # dependency tree is being tightened.
   security:
     runs-on: ubuntu-latest
     permissions:
       contents: read
       pull-requests: read
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
         with:
-          fetch-depth: 0 # gitleaks scans full history
-      - uses: actions/setup-python@v6
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
         with:
           python-version: "3.11"
+          cache: pip
+          cache-dependency-path: backend/requirements-dev.lock
+      - name: Install locked security tools
+        run: python -m pip install --require-hashes -r backend/requirements-dev.lock
       - name: pip-audit (backend dependency CVEs)
-        run: |
-          python -m pip install --upgrade pip pip-audit
-          pip-audit -r backend/requirements.txt
+        run: pip-audit -r backend/requirements.lock --disable-pip --require-hashes
       - name: bandit (Python SAST, medium+ severity)
-        run: |
-          pip install bandit
-          bandit -r backend/app -ll -q
+        run: bandit -r backend/app -ll -q
       - name: gitleaks (secret scanning)
-        uses: gitleaks/gitleaks-action@v2
+        uses: gitleaks/gitleaks-action@dcedce43c6f43de0b836d1fe38946645c9c638dc # v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         with:
           node-version: "24"
           cache: npm
-      - name: npm audit (advisory)
+      - name: npm audit
         run: npm audit --omit=dev
-        continue-on-error: true
+
+  codeql:
+    name: CodeQL (${{ matrix.language }})
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+      pull-requests: read
+    strategy:
+      fail-fast: false
+      matrix:
+        language: [python, javascript-typescript]
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        with:
+          persist-credentials: false
+      - uses: github/codeql-action/init@641a925cfafe92d0fdf8b239ba4053e3f8d99d6d # v3
+        with:
+          languages: ${{ matrix.language }}
+          build-mode: none
+      - uses: github/codeql-action/analyze@641a925cfafe92d0fdf8b239ba4053e3f8d99d6d # v3

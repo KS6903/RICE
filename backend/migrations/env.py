@@ -1,17 +1,19 @@
+import os
+import sys
 from logging.config import fileConfig
-from sqlalchemy import create_engine, URL, pool
-from alembic import context
 from urllib.parse import urlparse
-import sys, os
+
+from alembic import context
+from sqlalchemy import URL, create_engine, pool
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
-
-from app.core.config import settings
-from app.core.database import Base
+os.environ["PROCESS_ROLE"] = "provisioner"
 
 # Import every model so the full metadata is registered on Base.metadata.
-import app.models  # noqa: F401
-from app.core.tenancy import PUBLIC_TABLE_NAMES
+import app.models  # noqa: E402,F401
+from app.core.config import settings  # noqa: E402
+from app.core.database import Base  # noqa: E402
+from app.core.tenancy import PUBLIC_TABLE_NAMES  # noqa: E402
 
 config = context.config
 
@@ -32,8 +34,15 @@ def _include_object(obj, name, type_, reflected, compare_to):
         return name in PUBLIC_TABLE_NAMES
     return True
 
+
 def _build_url():
-    raw = settings.DATABASE_URL
+    # Production migrations are DDL and must use the short-lived provisioner
+    # credential, never the long-running API's DML-only runtime credential.
+    raw = (
+        settings.PROVISIONER_DATABASE_URL.get_secret_value()
+        if settings.PROVISIONER_DATABASE_URL is not None
+        else settings.DATABASE_URL
+    )
     parsed = urlparse(raw)
     dbname = parsed.path.lstrip("/")
     if " " in dbname:

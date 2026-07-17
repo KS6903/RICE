@@ -32,6 +32,22 @@ export class AuthService {
     return this.http.post("/auth/google", { credential, ...extra }).then((r) => r.data);
   }
 
+  linkGoogle(
+    credential: string,
+    proof: { current_password?: string; mfa_code?: string },
+  ): Promise<{ message: string }> {
+    return this.http
+      .post("/auth/google/link", { credential, ...proof })
+      .then((r) => r.data);
+  }
+
+  unlinkGoogle(proof: {
+    current_password?: string;
+    mfa_code?: string;
+  }): Promise<{ message: string }> {
+    return this.http.post("/auth/google/unlink", proof).then((r) => r.data);
+  }
+
   signup(body: Record<string, unknown>): Promise<any> {
     return this.http.post("/auth/signup", body).then((r) => r.data);
   }

@@ -1,10 +1,19 @@
 import { defineConfig } from "@playwright/test";
 
+const e2eDatabaseUrl = process.env.E2E_DATABASE_URL;
+if (!e2eDatabaseUrl) {
+  throw new Error(
+    "E2E_DATABASE_URL is required and its database name must contain 'e2e'. " +
+      "The API suite intentionally refuses to use the normal application database.",
+  );
+}
+const python = process.platform === "win32" ? ".venv\\Scripts\\python.exe" : ".venv/bin/python";
+
 /**
  * API-level e2e config for the OOP refactor. Runs only the `api-*.spec.ts`
- * suites and auto-starts a CLEAN backend on :8001 (so we never depend on, or
- * disturb, a dev server already running on :8000). Each refactored phase is
- * validated end-to-end by running:  npm run test:e2e:api
+ * suites and auto-starts a clean backend on :8001. The launcher drops and
+ * recreates only an explicitly named E2E database, migrates it, and seeds the
+ * fixed accounts used by the contract suite.
  */
 export default defineConfig({
   testDir: "./e2e",
@@ -13,14 +22,15 @@ export default defineConfig({
   retries: 0,
   workers: 1,
   reporter: [["list"]],
+  globalTeardown: "./e2e/api-global-teardown.ts",
   use: {
     baseURL: "http://localhost:8001",
   },
   webServer: {
-    command: ".venv\\Scripts\\python.exe -m uvicorn app.main:app --port 8001 --no-access-log",
+    command: `${python} start_disposable_e2e.py`,
     cwd: "backend",
     url: "http://localhost:8001/api/health",
-    reuseExistingServer: true,
-    timeout: 60_000,
+    reuseExistingServer: false,
+    timeout: 120_000,
   },
 });

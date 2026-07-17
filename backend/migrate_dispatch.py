@@ -9,9 +9,11 @@ Changes:
 
 Idempotent — safe to re-run. Apply with: `python migrate_dispatch.py`
 """
-from app.core.database import engine
+import os
+
 from sqlalchemy import text
 
+os.environ["PROCESS_ROLE"] = "provisioner"
 
 CREATE_AGENTS = """
 CREATE TABLE IF NOT EXISTS agents (
@@ -70,7 +72,9 @@ PARTIAL_UNIQUE_INDEXES = [
 
 
 def main():
-    with engine.connect() as conn:
+    from app.core.database import provisioner_engine
+
+    with provisioner_engine.connect() as conn:
         conn.execute(text(CREATE_AGENTS))
         conn.execute(text(CREATE_MILLERS))
         for stmt in ALTER_SALES_ORDERS:

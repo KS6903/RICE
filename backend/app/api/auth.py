@@ -30,6 +30,8 @@ from ..schemas.auth import (
     ChangePasswordRequest,
     ForgotPasswordRequest,
     GoogleAuthRequest,
+    GoogleLinkRequest,
+    GoogleUnlinkRequest,
     MfaBackupCodesResponse,
     MfaCodeRequest,
     MfaEnrollResponse,
@@ -187,6 +189,7 @@ def refresh(
         if not token:
             raise UnauthorizedError("Missing refresh token")
         enforce_csrf(request)
+    assert token is not None
     tokens = svc.refresh(token)
     return _complete_auth(request, response, tokens)
 
@@ -211,6 +214,27 @@ def google_auth(
         return _complete_auth(request, response, result)
     response.headers["Cache-Control"] = "no-store"
     return result
+
+
+@router.post("/google/link")
+@limiter.limit(MFA_RATE_LIMIT)
+def link_google_identity(
+    request: Request,
+    body: GoogleLinkRequest,
+    svc: AuthService = Depends(get_auth_service),
+):
+    """Link Google only after an authenticated user re-proves account control."""
+    return svc.link_google_identity(body)
+
+
+@router.post("/google/unlink")
+@limiter.limit(MFA_RATE_LIMIT)
+def unlink_google_identity(
+    request: Request,
+    body: GoogleUnlinkRequest,
+    svc: AuthService = Depends(get_auth_service),
+):
+    return svc.unlink_google_identity(body)
 
 
 # ── MFA (TOTP) ───────────────────────────────────────────────────────────────

@@ -239,8 +239,18 @@ def authenticate_access_token(token: str, db: Session):
     return user, payload
 
 
-def get_current_user(token: str = Depends(get_token), db: Session = Depends(get_db)):
+def get_current_user(
+    request: Request,
+    token: str = Depends(get_token),
+    db: Session = Depends(get_db),
+):
     user, _payload = authenticate_access_token(token, db)
+    request.state.auth_context = {
+        "user_id": user.id,
+        "company_id": user.company_id,
+        "username": user.username,
+        "schema": user.company.schema_name if user.company is not None else None,
+    }
     return user
 
 
@@ -282,6 +292,17 @@ def enforce_email_verified(current_user=Depends(get_current_user)):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Please verify your email address to continue.",
+        )
+    return current_user
+
+
+def enforce_tenant_provisioned(current_user=Depends(get_current_user)):
+    """Keep data routes closed until the isolated DDL worker finishes setup."""
+    company = getattr(current_user, "company", None)
+    if company is not None and company.provisioned_at is None:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Account setup is in progress. Please try again shortly.",
         )
     return current_user
 

@@ -8,9 +8,11 @@ the gap. Idempotent: safe to re-run.
 
 Run once: `python migrate_canva_rename.py`
 """
-from app.core.database import engine
+import os
+
 from sqlalchemy import text
 
+os.environ["PROCESS_ROLE"] = "provisioner"
 
 COLUMN_RENAMES = [
     "ALTER TABLE customers RENAME COLUMN canvas_color_hex TO canva_color_hex",
@@ -66,7 +68,9 @@ def _column_exists(conn, table: str, column: str) -> bool:
 
 
 def main():
-    with engine.connect() as conn:
+    from app.core.database import provisioner_engine
+
+    with provisioner_engine.connect() as conn:
         # Column renames — only fire when the OLD column still exists.
         for stmt in COLUMN_RENAMES:
             parts = stmt.split()

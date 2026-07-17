@@ -14,7 +14,10 @@ out/
 # Environment
 .env
 .env.local
+.env.*
 .env.*.local
+.env.production.secrets
+backend/.env.production.secrets
 !.env.example
 
 # Logs

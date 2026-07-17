@@ -30,6 +30,7 @@ from ..core.exceptions import (
     NotConfiguredError,
     NotFoundError,
     PermissionDeniedError,
+    ServiceUnavailableError,
     TooManyRequestsError,
     UnauthorizedError,
 )
@@ -300,6 +301,12 @@ class AuthService(BaseService):
         if user.company_id and user.company is not None and not user.company.is_active:
             raise PermissionDeniedError(
                 "Your company account has been deactivated. Please contact the platform administrator."
+            )
+        if settings.is_prod and user.company is not None and user.company.provisioned_at is None:
+            with self.transaction():
+                self._request_tenant_provisioning(user.company)
+            raise ServiceUnavailableError(
+                "Account setup is in progress. Please try again shortly."
             )
         # MFA: the password alone yields only a short-lived challenge token —
         # real tokens are issued by mfa_verify() after a valid TOTP code. A
@@ -688,6 +695,12 @@ class AuthService(BaseService):
 
     # ── signup ────────────────────────────────────────────────────────────────
 
+    @staticmethod
+    def _request_tenant_provisioning(company: Company) -> None:
+        if company.provisioned_at is None:
+            company.provisioning_requested_at = now_utc()
+            company.provisioning_error = None
+
     def signup(self, data) -> TokenResponse:
         self._validate_signup_invite(data.invite_code)
         validate_password_strength(data.password)
@@ -773,10 +786,16 @@ class AuthService(BaseService):
             user.email_verified = True
             user.email_verification_hash = None
             user.email_verification_expires = None
-            if user.company is not None:
-                provision_tenant(user.company, db=self.db)
+            if user.company is not None and user.company.provisioned_at is None:
+                if settings.is_prod:
+                    self._request_tenant_provisioning(user.company)
+                else:
+                    provision_tenant(user.company, db=self.db)
             self._log_security_event(user, "auth.email_verified")
-        return {"message": "Email verified. Thank you."}
+        message = "Email verified. Thank you."
+        if user.company is not None and user.company.provisioned_at is None:
+            message = "Email verified. Account setup is now in progress."
+        return {"message": message}
 
     def resend_verification(self) -> dict:
         """Re-issue a verification link for the signed-in user's email."""
@@ -792,18 +811,15 @@ class AuthService(BaseService):
 
     # ── Google OAuth ──────────────────────────────────────────────────────────
 
-    def google_auth(
-        self, data, mfa_trust_token: str | None = None
-    ) -> TokenResponse | MfaChallengeResponse:
+    @staticmethod
+    def _verified_google_identity(credential: str) -> tuple[str, str, str, str]:
         if id_token is None or google_requests is None or not settings.GOOGLE_CLIENT_ID:
             raise NotConfiguredError("Google authentication is not configured on the server")
         try:
             id_info = id_token.verify_oauth2_token(
-                data.credential, google_requests.Request(), settings.GOOGLE_CLIENT_ID
+                credential, google_requests.Request(), settings.GOOGLE_CLIENT_ID
             )
         except Exception:
-            # Log the real reason server-side; never echo library internals to
-            # the client (they can reveal clock skew, audience config, etc.).
             logger.warning("Google token verification failed", exc_info=True)
             raise BadRequestError("Invalid Google credential")
 
@@ -819,6 +835,79 @@ class AuthService(BaseService):
             or issuer not in {"accounts.google.com", "https://accounts.google.com"}
         ):
             raise BadRequestError("Google account does not provide a verified identity")
+        return email, full_name, subject, issuer
+
+    def _authorize_sensitive_identity_change(self, user: User, data) -> int | None:
+        """Require a fresh password or unused TOTP before changing login methods."""
+        if user.mfa_enabled:
+            step = self._matching_totp_step(user, data.mfa_code) if data.mfa_code else None
+            if step is None:
+                raise PermissionDeniedError("A current MFA code is required.")
+            return step
+        if not data.current_password or not verify_password(
+            data.current_password, user.password_hash
+        ):
+            raise PermissionDeniedError("Your current password is required.")
+        return None
+
+    def link_google_identity(self, data) -> dict:
+        email, _name, subject, issuer = self._verified_google_identity(data.credential)
+        user = (
+            self.db.query(User)
+            .filter(User.id == self.current_user.id)
+            .with_for_update()
+            .one()
+        )
+        step = self._authorize_sensitive_identity_change(user, data)
+        if not user.email_verified or (user.email or "").strip().lower() != email:
+            raise PermissionDeniedError(
+                "Google must use the same verified email as this account."
+            )
+        owner = self.db.query(User).filter(User.google_sub == subject, User.id != user.id).first()
+        if owner is not None:
+            raise ConflictError("That Google identity is already linked to another account.")
+        with self.transaction():
+            user.google_issuer = issuer
+            user.google_sub = subject
+            if step is not None:
+                user.mfa_last_used_step = step
+            self.db.query(AuthSession).filter(
+                AuthSession.user_id == user.id,
+                AuthSession.revoked_at.is_(None),
+            ).update({AuthSession.revoked_at: now_utc()})
+            self._log_security_event(
+                user, "auth.google_linked", "All sessions revoked after login-method change."
+            )
+        return {"message": "Google account linked. Please sign in again."}
+
+    def unlink_google_identity(self, data) -> dict:
+        user = (
+            self.db.query(User)
+            .filter(User.id == self.current_user.id)
+            .with_for_update()
+            .one()
+        )
+        if not user.google_sub:
+            return {"message": "No Google account is linked."}
+        step = self._authorize_sensitive_identity_change(user, data)
+        with self.transaction():
+            user.google_issuer = None
+            user.google_sub = None
+            if step is not None:
+                user.mfa_last_used_step = step
+            self.db.query(AuthSession).filter(
+                AuthSession.user_id == user.id,
+                AuthSession.revoked_at.is_(None),
+            ).update({AuthSession.revoked_at: now_utc()})
+            self._log_security_event(
+                user, "auth.google_unlinked", "All sessions revoked after login-method change."
+            )
+        return {"message": "Google account unlinked. Please sign in again."}
+
+    def google_auth(
+        self, data, mfa_trust_token: str | None = None
+    ) -> TokenResponse | MfaChallengeResponse:
+        email, full_name, subject, issuer = self._verified_google_identity(data.credential)
 
         user = self.db.query(User).filter(User.google_sub == subject).first()
 
@@ -831,6 +920,14 @@ class AuthService(BaseService):
                 raise PermissionDeniedError("Account disabled")
             if user.company_id and user.company is not None and not user.company.is_active:
                 raise PermissionDeniedError("Your company account has been deactivated.")
+            if user.company is not None and user.company.provisioned_at is None:
+                if settings.is_prod:
+                    with self.transaction():
+                        self._request_tenant_provisioning(user.company)
+                    raise ServiceUnavailableError(
+                        "Account setup is in progress. Please try again shortly."
+                    )
+                provision_tenant(user.company, db=self.db)
             # A verified Google identity proves the first factor only — an
             # MFA-enabled account must still pass the TOTP challenge, unless this
             # device is within its MFA trust window.
@@ -883,9 +980,19 @@ class AuthService(BaseService):
                 )
                 self.db.add(user)
                 self.db.flush()
-                # New client via Google signup → provision its schema in-transaction.
-                provision_tenant(company, db=self.db)
-                tokens = self._issue_tokens(user)
+                # Production queues DDL for the isolated provisioner. Local/test
+                # environments can provision in-transaction with their dev role.
+                if settings.is_prod:
+                    self._request_tenant_provisioning(company)
+                    tokens = None
+                else:
+                    provision_tenant(company, db=self.db)
+                    tokens = self._issue_tokens(user)
+            if tokens is None:
+                raise ServiceUnavailableError(
+                    "Account created. Setup is in progress; please try again shortly."
+                )
+            assert tokens is not None
             return tokens
 
     # ── account self-service ──────────────────────────────────────────────────
@@ -925,11 +1032,20 @@ class AuthService(BaseService):
             "is_platform_admin": user.is_platform_admin,
             "subscription": plan_info,
             "features": features,
+            "tenant_provisioned": bool(
+                user.company is None or user.company.provisioned_at is not None
+            ),
+            "tenant_provisioning_pending": bool(
+                user.company is not None
+                and user.company.provisioned_at is None
+                and user.company.provisioning_requested_at is not None
+            ),
             "email_verified": user.email_verified,
             "email_verification_required": (
                 settings.REQUIRE_EMAIL_VERIFICATION and bool(user.email) and not user.email_verified
             ),
             "mfa_enabled": user.mfa_enabled,
+            "google_linked": bool(user.google_sub),
             "mfa_backup_codes_remaining": len(user.mfa_backup_codes or []) if user.mfa_enabled else 0,
             # High-privilege accounts (platform admin / owner) should enroll in
             # MFA — the UI uses this to prompt until they do.

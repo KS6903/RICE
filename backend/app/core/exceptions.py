@@ -82,6 +82,13 @@ class TooManyRequestsError(AppException):
     code = "rate_limited"
 
 
+class ServiceUnavailableError(AppException):
+    """A safe retry is required while an isolated backend operation finishes."""
+
+    status_code = 503
+    code = "service_unavailable"
+
+
 async def app_exception_handler(request: Request, exc: AppException) -> JSONResponse:
     """Render an AppException as ``{"detail", "code"}`` with its status code."""
     return JSONResponse(

@@ -1,4 +1,5 @@
 import logging
+import re
 from functools import lru_cache
 from typing import Literal
 
@@ -23,6 +24,11 @@ _MIN_SECRET_LEN = 32
 
 class Settings(BaseSettings):
     DATABASE_URL: str
+    # Tenant schemas are created through a separate migration/provisioning
+    # credential. The API's DATABASE_URL must be a DML-only role in production.
+    PROVISIONER_DATABASE_URL: SecretStr | None = None
+    RUNTIME_DATABASE_ROLE: str = "ricemill_app"
+    PROCESS_ROLE: Literal["api", "provisioner"] = "api"
     SECRET_KEY: str
     ALGORITHM: Literal["HS256"] = "HS256"
     JWT_ISSUER: str = "oryza-api"
@@ -233,6 +239,26 @@ class Settings(BaseSettings):
             and "sslmode=" not in self.DATABASE_URL
         ):
             problems.append("DATABASE_URL must require TLS with sslmode=require or stricter")
+        if self.PROCESS_ROLE == "api" and self.PROVISIONER_DATABASE_URL is not None:
+            problems.append(
+                "PROVISIONER_DATABASE_URL must not be exposed to the long-running API process"
+            )
+        if self.PROCESS_ROLE == "provisioner" and self.PROVISIONER_DATABASE_URL is None:
+            problems.append("PROVISIONER_DATABASE_URL is required by the provisioning process")
+        if self.PROVISIONER_DATABASE_URL is not None:
+            provisioner_url = self.PROVISIONER_DATABASE_URL.get_secret_value()
+            if provisioner_url == self.DATABASE_URL:
+                problems.append("DATABASE_URL and PROVISIONER_DATABASE_URL must use different roles")
+            if (
+                "localhost" not in provisioner_url
+                and "127.0.0.1" not in provisioner_url
+                and "sslmode=" not in provisioner_url
+            ):
+                problems.append("PROVISIONER_DATABASE_URL must require TLS")
+        if not re.fullmatch(r"[a-z_][a-z0-9_]{0,62}", self.RUNTIME_DATABASE_ROLE):
+            problems.append("RUNTIME_DATABASE_ROLE must be a safe PostgreSQL role name")
+        if self.RUNTIME_DATABASE_ROLE in {"postgres", "rds_superuser"}:
+            problems.append("RUNTIME_DATABASE_ROLE must not be an administrative role")
         if problems:
             raise ValueError(
                 "Insecure production configuration (ENV=prod): " + "; ".join(problems)

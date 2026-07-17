@@ -7,8 +7,6 @@ Create Date: 2026-07-11
 from __future__ import annotations
 
 from alembic import op
-import sqlalchemy as sa
-
 
 revision = "003_auth_identity_hardening"
 down_revision = "002_drop_company_db_url"
@@ -17,14 +15,24 @@ depends_on = None
 
 
 def upgrade() -> None:
-    op.add_column("users", sa.Column("mfa_last_used_step", sa.BigInteger(), nullable=True))
-    op.add_column("users", sa.Column("google_issuer", sa.String(length=255), nullable=True))
-    op.add_column("users", sa.Column("google_sub", sa.String(length=255), nullable=True))
-    op.create_index("ix_users_google_sub", "users", ["google_sub"], unique=True)
+    # 001 creates from current metadata on fresh databases; guards keep this
+    # historical upgrade compatible with both fresh installs and older schemas.
+    op.execute(
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS mfa_last_used_step BIGINT NULL"
+    )
+    op.execute(
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS google_issuer VARCHAR(255) NULL"
+    )
+    op.execute(
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS google_sub VARCHAR(255) NULL"
+    )
+    op.execute(
+        "CREATE UNIQUE INDEX IF NOT EXISTS ix_users_google_sub ON users (google_sub)"
+    )
 
 
 def downgrade() -> None:
-    op.drop_index("ix_users_google_sub", table_name="users")
-    op.drop_column("users", "google_sub")
-    op.drop_column("users", "google_issuer")
-    op.drop_column("users", "mfa_last_used_step")
+    op.execute("DROP INDEX IF EXISTS ix_users_google_sub")
+    op.execute("ALTER TABLE users DROP COLUMN IF EXISTS google_sub")
+    op.execute("ALTER TABLE users DROP COLUMN IF EXISTS google_issuer")
+    op.execute("ALTER TABLE users DROP COLUMN IF EXISTS mfa_last_used_step")

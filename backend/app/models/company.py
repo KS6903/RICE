@@ -34,6 +34,9 @@ class Company(Base, TimestampMixin):
     timezone: Mapped[str] = mapped_column(String(50), default="Asia/Manila")
     is_multi_branch: Mapped[bool] = mapped_column(Boolean, default=False)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    provisioning_requested_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    provisioned_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    provisioning_error: Mapped[str | None] = mapped_column(String(120))
 
     branches: Mapped[list["Branch"]] = relationship("Branch", back_populates="company")
     users: Mapped[list["User"]] = relationship("User", back_populates="company")

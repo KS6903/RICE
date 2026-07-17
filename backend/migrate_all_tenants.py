@@ -17,10 +17,20 @@ Usage:
 """
 from __future__ import annotations
 
+import os
+
 from sqlalchemy import text
 
-from app.core.database import Base, SessionLocal
-from app.core.tenancy import schema_name_for, set_search_path, tenant_tables
+os.environ["PROCESS_ROLE"] = "provisioner"
+
+from app.core.config import settings
+from app.core.database import Base, ProvisionerSessionLocal
+from app.core.tenancy import (
+    grant_runtime_schema_access,
+    schema_name_for,
+    set_search_path,
+    tenant_tables,
+)
 from app.models.company import Company
 
 # One-off ALTERs to apply inside each client schema (e.g. "ALTER TABLE sales_orders
@@ -29,7 +39,7 @@ _extra_ddl: list[str] = []
 
 
 def migrate_all() -> None:
-    db = SessionLocal()
+    db = ProvisionerSessionLocal()
     try:
         companies = db.query(Company).all()
     finally:
@@ -38,12 +48,14 @@ def migrate_all() -> None:
     print(f"Syncing {len(companies)} client schema(s)…")
     for company in companies:
         schema = schema_name_for(company)
-        session = SessionLocal()
+        session = ProvisionerSessionLocal()
         try:
             set_search_path(session, schema)
             Base.metadata.create_all(bind=session.connection(), tables=tenant_tables())
             for stmt in _extra_ddl:
                 session.execute(text(stmt))
+            if settings.PROVISIONER_DATABASE_URL is not None:
+                grant_runtime_schema_access(session, schema)
             session.commit()
             print(f"  ✓ {schema} ({company.name})")
         except Exception as exc:  # noqa: BLE001

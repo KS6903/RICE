@@ -6,8 +6,9 @@ import { test, expect, request, type APIRequestContext } from "@playwright/test"
  * the seeded tenant, so they verify the layered refactor (schemas → repositories
  * → services → thin controllers) preserves the live HTTP contract end-to-end.
  *
- * Requires the backend running (uvicorn on :8000) and the seed tenant. Override
- * the base URL with E2E_API_BASE if the backend runs elsewhere.
+ * The Playwright config starts a reset, migrated, seeded disposable database.
+ * Override the base URL with E2E_API_BASE only when running that isolated stack
+ * separately.
  */
 const BACKEND = process.env.E2E_API_BASE || "http://localhost:8001";
 const TENANT = { username: "mill1", password: "password123" };
@@ -263,13 +264,13 @@ test.describe("Refactored API contract (paddy / inventory / activity)", () => {
     const push = await api.post("/api/sync/push", {
       headers: auth(),
       data: {
-        client_id: "e2e",
+        client_id: "e2e-client",
         records: [
           {
-            table_name: "paddy",
+            table_name: "palay_inventory",
             record_id: recordId,
             operation: "INSERT",
-            payload: { x: 1 },
+            payload: { quantity_kg: 1 },
             updated_at: "2026-06-05T00:00:00Z",
           },
         ],

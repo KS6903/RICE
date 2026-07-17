@@ -11,16 +11,21 @@
 -- Then point DATABASE_URL at ricemill_app:
 --   DATABASE_URL=postgresql://ricemill_app:<password>@host:5432/Rice Mill System
 --
--- Alembic migrations keep running under the owning role (or postgres), NOT
--- ricemill_app — run `alembic upgrade head` with the admin URL at deploy time.
+-- Alembic and provision_pending_tenants.py run in a separate process with the
+-- owning/provisioner role. Never expose that credential to the API container.
 
 \set ON_ERROR_STOP on
 
--- 1. Dedicated login role for the API process.
-CREATE ROLE ricemill_app LOGIN PASSWORD :'app_password';
+-- 1. Dedicated login role for the API process (idempotent; also rotates its password).
+SELECT format('CREATE ROLE ricemill_app LOGIN PASSWORD %L', :'app_password')
+WHERE NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'ricemill_app') \gexec
+ALTER ROLE ricemill_app LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION
+  PASSWORD :'app_password';
 
 -- 2. Connect + schema usage only (no CREATE on the schema).
 GRANT CONNECT ON DATABASE :"DBNAME" TO ricemill_app;
+REVOKE CREATE ON DATABASE :"DBNAME" FROM ricemill_app;
+REVOKE CREATE ON SCHEMA public FROM PUBLIC;
 GRANT USAGE ON SCHEMA public TO ricemill_app;
 REVOKE CREATE ON SCHEMA public FROM ricemill_app;
 
@@ -33,6 +38,42 @@ ALTER DEFAULT PRIVILEGES IN SCHEMA public
   GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO ricemill_app;
 ALTER DEFAULT PRIVILEGES IN SCHEMA public
   GRANT USAGE, SELECT ON SEQUENCES TO ricemill_app;
+
+-- 5. Existing tenant schemas. New schemas receive the equivalent grants from
+-- core/tenancy.py while connected with PROVISIONER_DATABASE_URL.
+DO $grants$
+DECLARE
+  tenant_schema text;
+BEGIN
+  FOR tenant_schema IN
+    SELECT schema_name
+    FROM information_schema.schemata
+    WHERE schema_name ~ '^client_[a-f0-9]{32}$'
+  LOOP
+    EXECUTE format('GRANT USAGE ON SCHEMA %I TO ricemill_app', tenant_schema);
+    EXECUTE format(
+      'GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA %I TO ricemill_app',
+      tenant_schema
+    );
+    EXECUTE format(
+      'GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA %I TO ricemill_app',
+      tenant_schema
+    );
+    EXECUTE format(
+      'ALTER DEFAULT PRIVILEGES IN SCHEMA %I GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO ricemill_app',
+      tenant_schema
+    );
+    EXECUTE format(
+      'ALTER DEFAULT PRIVILEGES IN SCHEMA %I GRANT USAGE, SELECT ON SEQUENCES TO ricemill_app',
+      tenant_schema
+    );
+    EXECUTE format('REVOKE CREATE ON SCHEMA %I FROM ricemill_app', tenant_schema);
+  END LOOP;
+END
+$grants$;
+
+-- The migration/provisioning role owns schemas and tables. Configure its URL
+-- only in the deployment job; the long-running API process never receives it.
 
 -- Optional next layer (not enabled here): PostgreSQL row-level security keyed
 -- on company_id would enforce tenant isolation in the database itself, behind

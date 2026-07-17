@@ -31,9 +31,13 @@ from .api import (
 )
 from .core.config import settings
 from .core.exceptions import register_exception_handlers
-from .core.middleware import SecurityHeadersMiddleware
+from .core.middleware import MutationAuditMiddleware, SecurityHeadersMiddleware
 from .core.ratelimit import limiter, rate_limit_exceeded_handler
-from .core.security import enforce_email_verified, enforce_mfa_enrollment
+from .core.security import (
+    enforce_email_verified,
+    enforce_mfa_enrollment,
+    enforce_tenant_provisioned,
+)
 from .services.canva_realtime import manager as ws_manager
 
 logger = logging.getLogger(__name__)
@@ -80,6 +84,8 @@ app.state.limiter = limiter
 app.add_middleware(SlowAPIMiddleware)
 # Hardening headers on every response.
 app.add_middleware(SecurityHeadersMiddleware)
+# Structured + durable audit coverage for every mutating API request.
+app.add_middleware(MutationAuditMiddleware)
 # Reject unexpected Host headers (prod sets an explicit allowlist; dev allows "*").
 app.add_middleware(TrustedHostMiddleware, allowed_hosts=settings.trusted_hosts_list)
 # CORS outermost: answers preflight and attaches CORS headers to every response,
@@ -107,7 +113,11 @@ app.add_exception_handler(RateLimitExceeded, rate_limit_exceeded_handler)
 # enrollment or email verification must still reach /auth (me, logout, mfa/enroll,
 # verify-email). Every other (data) router is gated — the dependencies 403 until
 # the account is ready (both are no-ops unless their enforcement flag is on).
-mfa_gate = [Depends(enforce_mfa_enrollment), Depends(enforce_email_verified)]
+mfa_gate = [
+    Depends(enforce_mfa_enrollment),
+    Depends(enforce_email_verified),
+    Depends(enforce_tenant_provisioned),
+]
 
 app.include_router(auth.router, prefix="/api/auth", tags=["Auth"])
 app.include_router(users.router, prefix="/api/users", tags=["Users"], dependencies=mfa_gate)
@@ -145,6 +155,47 @@ async def _probe_cache() -> None:
     """Surface Redis connectivity at boot (best-effort — never blocks startup)."""
     from .core.cache import cache
     cache.available()
+
+
+@app.on_event("startup")
+async def _verify_runtime_database_role() -> None:
+    """Fail production startup if the API accidentally runs with DDL power."""
+    if not settings.is_prod:
+        return
+    from sqlalchemy import text
+
+    from .core.database import engine
+
+    with engine.connect() as connection:
+        row = connection.execute(
+            text(
+                "SELECT current_user, r.rolsuper, r.rolcreatedb, r.rolcreaterole, "
+                "r.rolreplication, r.rolbypassrls, "
+                "has_database_privilege(current_user, current_database(), 'CREATE'), "
+                "has_schema_privilege(current_user, 'public', 'CREATE'), "
+                "EXISTS (SELECT 1 FROM pg_namespace n "
+                "WHERE n.nspname ~ '^client_[a-f0-9]{32}$' "
+                "AND has_schema_privilege(current_user, n.oid, 'CREATE')), "
+                "EXISTS (SELECT 1 FROM pg_namespace n "
+                "WHERE (n.nspname = 'public' OR n.nspname ~ '^client_[a-f0-9]{32}$') "
+                "AND n.nspowner = r.oid), "
+                "EXISTS (SELECT 1 FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace "
+                "WHERE (n.nspname = 'public' OR n.nspname ~ '^client_[a-f0-9]{32}$') "
+                "AND c.relowner = r.oid) "
+                "FROM pg_roles r WHERE r.rolname = current_user"
+            )
+        ).one()
+    role_name = row[0]
+    if role_name != settings.RUNTIME_DATABASE_ROLE:
+        raise RuntimeError(
+            "DATABASE_URL authenticates as an unexpected role; "
+            "use the configured DML-only runtime role"
+        )
+    if any(row[1:]):
+        raise RuntimeError(
+            "The API database role has administrative, ownership, or CREATE privileges; "
+            "run tenant DDL only through PROVISIONER_DATABASE_URL"
+        )
 
 
 @app.get("/api/health")

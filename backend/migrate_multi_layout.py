@@ -7,12 +7,16 @@ Changes:
 
 Run once: python migrate_multi_layout.py
 """
-from app.core.database import engine
+import os
+
 from sqlalchemy import text
 
+os.environ["PROCESS_ROLE"] = "provisioner"
 
 def main():
-    with engine.connect() as conn:
+    from app.core.database import provisioner_engine
+
+    with provisioner_engine.connect() as conn:
         conn.execute(text(
             "ALTER TABLE warehouse_layouts "
             "DROP CONSTRAINT IF EXISTS warehouse_layouts_branch_id_key"

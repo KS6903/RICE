@@ -7,9 +7,12 @@ because those objects contain the Bearer credential and may contain business dat
 
 SQLite data is partitioned into a separate, non-guessable database file for each
 company-and-user identity. Switching accounts closes the previous handle before the
-new partition is opened. The old unpartitioned `rice-mill-local.db` is never opened
-by hardened builds; retain it only long enough to perform a controlled, identity-aware
-migration, then remove it according to the operator's data-retention policy.
+new partition is opened. The old unpartitioned `rice-mill-local.db` is migrated only
+after a server-validated identity is active. Migration requires the file to contain
+exactly that company and authenticated user, checkpoints its WAL, verifies the copy,
+and renames the original to `rice-mill-legacy-<partition>.bak`. Mixed-company or
+mismatched files fail closed and require a reviewed manual export. Delete the backup
+only after the new partition has synced and the retention policy permits destruction.
 
 ## Encryption limitation
 

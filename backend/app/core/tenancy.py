@@ -31,9 +31,10 @@ import jwt
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
+from ..models.base import now_utc
 from .config import settings
 from .cookies import ACCESS_COOKIE
-from .database import Base, SessionLocal
+from .database import Base, ProvisionerSessionLocal, SessionLocal
 
 logger = logging.getLogger("ricemill.tenancy")
 
@@ -165,6 +166,35 @@ def seed_reference_rows(db: Session) -> None:
     db.flush()
 
 
+def grant_runtime_schema_access(session: Session, schema: str) -> None:
+    """Grant the DML-only API role access to a provisioned tenant schema."""
+    role = settings.RUNTIME_DATABASE_ROLE
+    if not _SCHEMA_RE.fullmatch(role):
+        raise ValueError("Unsafe runtime database role")
+    session.execute(text(f'GRANT USAGE ON SCHEMA "{schema}" TO "{role}"'))
+    session.execute(
+        text(
+            f'GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA "{schema}" '
+            f'TO "{role}"'
+        )
+    )
+    session.execute(
+        text(f'GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA "{schema}" TO "{role}"')
+    )
+    session.execute(
+        text(
+            f'ALTER DEFAULT PRIVILEGES IN SCHEMA "{schema}" '
+            f'GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO "{role}"'
+        )
+    )
+    session.execute(
+        text(
+            f'ALTER DEFAULT PRIVILEGES IN SCHEMA "{schema}" '
+            f'GRANT USAGE, SELECT ON SEQUENCES TO "{role}"'
+        )
+    )
+
+
 def provision_tenant(company, *, db: Session | None = None) -> str:
     """Create a client's schema, build its domain tables, and seed reference rows.
 
@@ -180,7 +210,7 @@ def provision_tenant(company, *, db: Session | None = None) -> str:
         raise ValueError(f"Refusing to provision unsafe schema name {schema!r}")
 
     own = db is None
-    session = db or SessionLocal()
+    session = db or ProvisionerSessionLocal()
     try:
         # 1. Create the schema. Must be visible to the connection that create_all
         #    runs on, so flush/commit the DDL first.
@@ -195,6 +225,20 @@ def provision_tenant(company, *, db: Session | None = None) -> str:
 
         # 3. Seed that client's system reference catalog.
         seed_reference_rows(session)
+
+        # The DDL credential owns the schema; the API role receives only the
+        # data privileges it needs. In dev/test the roles may be the same or the
+        # dedicated role may not exist, so split-role grants are production-only.
+        if settings.PROVISIONER_DATABASE_URL is not None:
+            grant_runtime_schema_access(session, schema)
+
+        if own:
+            session.execute(
+                text("UPDATE public.companies SET provisioned_at = now() WHERE id = :company_id"),
+                {"company_id": company.id},
+            )
+        else:
+            company.provisioned_at = now_utc()
 
         if own:
             session.commit()

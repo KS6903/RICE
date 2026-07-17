@@ -31,6 +31,9 @@ export class TenantDatabaseManager {
       .digest("hex")
       .slice(0, 32);
     const dbPath = path.join(app.getPath("userData"), `rice-mill-${partition}.db`);
+    assertSafeDatabaseFile(dbPath);
+    migrateLegacyDatabase(identity, dbPath, partition);
+    assertSafeDatabaseFile(dbPath);
     const db = new Database(dbPath);
 
     db.pragma("journal_mode = WAL");
@@ -78,6 +81,82 @@ export class TenantDatabaseManager {
 
 export function initDatabase(): TenantDatabaseManager {
   return new TenantDatabaseManager();
+}
+
+function assertSafeDatabaseFile(filePath: string): void {
+  if (!fs.existsSync(filePath)) return;
+  const stat = fs.lstatSync(filePath);
+  if (!stat.isFile() || stat.isSymbolicLink()) {
+    throw new Error("Refusing unsafe desktop database path");
+  }
+}
+
+/**
+ * One-time, identity-checked migration from the pre-partition desktop database.
+ * The original is retained as a named backup until the operator completes the
+ * retention checklist in SECURITY.md.
+ */
+function migrateLegacyDatabase(
+  identity: SyncIdentity,
+  targetPath: string,
+  partition: string,
+): void {
+  if (fs.existsSync(targetPath)) return;
+  const userData = app.getPath("userData");
+  const legacyPath = path.join(userData, "rice-mill-local.db");
+  const backupPath = path.join(userData, `rice-mill-legacy-${partition}.bak`);
+  if (!fs.existsSync(legacyPath)) return;
+  try {
+    if (fs.existsSync(backupPath)) throw new Error("legacy backup already exists");
+    const stat = fs.lstatSync(legacyPath);
+    if (!stat.isFile() || stat.isSymbolicLink()) throw new Error("unsafe legacy file");
+    const legacy = new Database(legacyPath);
+    try {
+      const tables = legacy
+        .prepare("SELECT name FROM sqlite_master WHERE type = 'table'")
+        .all() as Array<{ name: string }>;
+      const names = new Set(tables.map((row) => row.name));
+      if (!names.has("companies") || !names.has("users")) throw new Error("missing identity tables");
+      const company = legacy
+        .prepare("SELECT id FROM companies WHERE id = ? LIMIT 1")
+        .get(identity.companyId);
+      const foreignCompany = legacy
+        .prepare("SELECT id FROM companies WHERE id <> ? LIMIT 1")
+        .get(identity.companyId);
+      const user = legacy
+        .prepare("SELECT id FROM users WHERE id = ? AND company_id = ? LIMIT 1")
+        .get(identity.userId, identity.companyId);
+      if (!company || foreignCompany || !user) throw new Error("identity mismatch");
+      legacy.pragma("wal_checkpoint(TRUNCATE)");
+    } finally {
+      legacy.close();
+    }
+
+    const temporary = `${targetPath}.migrating`;
+    fs.copyFileSync(legacyPath, temporary, fs.constants.COPYFILE_EXCL);
+    try {
+      const candidate = new Database(temporary, { readonly: true, fileMustExist: true });
+      try {
+        const integrity = candidate.pragma("quick_check", { simple: true });
+        if (integrity !== "ok") throw new Error("integrity check failed");
+      } finally {
+        candidate.close();
+      }
+      fs.renameSync(temporary, targetPath);
+      fs.renameSync(legacyPath, backupPath);
+      // A successful TRUNCATE checkpoint makes these journal sidecars
+      // disposable; do not leave filenames that reveal the retired database.
+      fs.rmSync(`${legacyPath}-wal`, { force: true });
+      fs.rmSync(`${legacyPath}-shm`, { force: true });
+    } catch (error) {
+      fs.rmSync(temporary, { force: true });
+      throw error;
+    }
+  } catch {
+    // Never guess which tenant owns legacy data and never include user paths or
+    // record identifiers in logs. A reviewed manual export remains possible.
+    console.error("[database] legacy data was not migrated because identity validation failed");
+  }
 }
 
 function ensureSyncMarkers(db: Database.Database): void {

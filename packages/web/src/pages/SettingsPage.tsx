@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { GoogleLogin } from "@react-oauth/google";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { billingService } from "../services/BillingService";
 import { branchesService } from "../services/BranchesService";
@@ -1890,6 +1891,93 @@ function PasswordTab() {
       </div>
 
       <MfaCard />
+      <GoogleIdentityCard />
+    </div>
+  );
+}
+
+function GoogleIdentityCard() {
+  const logout = useAuthStore((s) => s.logout);
+  const user = useAuthStore((s) => s.user);
+  const meQ = useQuery({ queryKey: ["auth-me-google"], queryFn: () => authService.me() });
+  const [proof, setProof] = useState("");
+  const [pending, setPending] = useState(false);
+  const [error, setError] = useState("");
+  const linked = !!meQ.data?.google_linked;
+  const usesMfa = !!user?.mfa_enabled;
+
+  const proofBody = () =>
+    usesMfa ? { mfa_code: proof.trim() } : { current_password: proof };
+
+  const link = async (credential?: string) => {
+    if (!credential) return;
+    setPending(true);
+    setError("");
+    try {
+      await authService.linkGoogle(credential, proofBody());
+      await logout();
+    } catch (e: any) {
+      setError(e.response?.data?.detail || "Could not link this Google account.");
+      setPending(false);
+    }
+  };
+
+  const unlink = async () => {
+    setPending(true);
+    setError("");
+    try {
+      await authService.unlinkGoogle(proofBody());
+      await logout();
+    } catch (e: any) {
+      setError(e.response?.data?.detail || "Could not unlink this Google account.");
+      setPending(false);
+    }
+  };
+
+  return (
+    <div className="card space-y-5">
+      <div>
+        <h3 className="text-lg font-bold text-primary">Google sign-in</h3>
+        <p className="text-sm text-secondary mt-1">
+          {linked
+            ? "A verified Google identity is linked to this account."
+            : "Link Google only after confirming your existing account."}
+        </p>
+      </div>
+      <div>
+        <label className={LABEL}>{usesMfa ? "Current authenticator code" : "Current password"}</label>
+        <input
+          type={usesMfa ? "text" : "password"}
+          className="input"
+          value={proof}
+          onChange={(e) =>
+            setProof(usesMfa ? e.target.value.replace(/\D/g, "").slice(0, 6) : e.target.value)
+          }
+          autoComplete={usesMfa ? "one-time-code" : "current-password"}
+        />
+      </div>
+      {error && <p className="text-sm font-medium text-rose-600 dark:text-rose-400">{error}</p>}
+      {linked ? (
+        <button
+          className="btn-secondary w-full"
+          onClick={unlink}
+          disabled={pending || !proof.trim()}
+        >
+          {pending ? "Unlinkingâ€¦" : "Unlink Google"}
+        </button>
+      ) : proof.trim() ? (
+        <div className={pending ? "pointer-events-none opacity-60" : ""}>
+          <GoogleLogin
+            onSuccess={(response) => void link(response.credential)}
+            onError={() => setError("Google verification was cancelled or failed.")}
+          />
+        </div>
+      ) : (
+        <p className="text-xs text-muted">Enter your proof above to enable the Google link button.</p>
+      )}
+      <p className="text-xs text-muted">
+        Linking or unlinking revokes every active session and requires a fresh sign-in.
+      </p>
     </div>
   );
 }
