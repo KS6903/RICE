@@ -1,10 +1,10 @@
 import { useState, useEffect } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate, Link, useSearchParams } from "react-router-dom";
 import { authService } from "../services/AuthService";
 import { useAuthStore } from "../stores/authStore";
 import { useThemeStore } from "../stores/themeStore";
 import {
-  ShieldCheck, Wifi, Building2, Sun, Moon, AlertCircle,
+  ShieldCheck, Wifi, Building2, Sun, Moon, AlertCircle, Clock,
 } from "lucide-react";
 import { GoogleLogin } from "@react-oauth/google";
 import riceLogo from "../assets/Rice_Logo.svg";
@@ -26,6 +26,9 @@ export default function LoginPage() {
   const theme = useThemeStore((s) => s.theme);
   const toggle = useThemeStore((s) => s.toggle);
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  // Set by useIdleLogout when it signs the user out for inactivity.
+  const idleSignedOut = searchParams.get("reason") === "idle";
   const isDark = theme === "dark";
   const [chipMounted, setChipMounted] = useState(false);
   const [chipIn, setChipIn] = useState(false);
@@ -229,6 +232,13 @@ export default function LoginPage() {
                 : "Enter the 6-digit code from your authenticator app."
               : "Sign in to continue to your dashboard."}
           </p>
+
+          {idleSignedOut && !mfaChallenge && (
+            <div className="mt-6 flex items-start gap-2 px-3 py-2.5 rounded-xl bg-sky-500/15 ring-1 ring-inset ring-sky-500/40 text-sm font-medium text-sky-700 dark:text-sky-300">
+              <Clock size={16} className="mt-0.5 shrink-0" />
+              <span>You were signed out due to inactivity. Please sign in again.</span>
+            </div>
+          )}
 
           {mfaChallenge ? (
             <form onSubmit={handleMfaVerify} className="mt-8 space-y-5">

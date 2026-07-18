@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-route
 import { useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useAuthStore } from "./stores/authStore";
+import { useIdleLogout } from "./hooks/useIdleLogout";
 import { authService } from "./services/AuthService";
 import AppShell from "./components/layout/AppShell";
 import AdminShell from "./components/layout/AdminShell";
@@ -65,6 +66,13 @@ function AuthSessionSync() {
     if (status === 401 || status === 403) void logout();
   }, [meQuery.isError, meQuery.error, logout]);
 
+  return null;
+}
+
+/** Signs the user out and returns them to /login after a window of inactivity
+ *  (see useIdleLogout). Rendered inside the Router so it can navigate. */
+function IdleLogout() {
+  useIdleLogout();
   return null;
 }
 
@@ -154,6 +162,7 @@ export default function App() {
   return (
     <BrowserRouter>
       <AuthSessionSync />
+      <IdleLogout />
       <AppRoutes />
     </BrowserRouter>
   );
