@@ -8,7 +8,7 @@ psycopg[binary]==3.3.3
 # Security hardening P2.13: python-jose (CVE-2024-33663/33664) → PyJWT, and the
 # unmaintained passlib → direct bcrypt. Stored $2b$ hashes verify unchanged.
 PyJWT==2.13.0
-cryptography==49.0.0  # JWT alg backends + Fernet (core/crypto.py for MFA seeds)
+cryptography==50.0.0  # JWT alg backends + Fernet (core/crypto.py for MFA seeds); PYSEC-2026-3552 fix
 bcrypt==4.2.1
 python-multipart==0.0.32
 slowapi==0.1.9
