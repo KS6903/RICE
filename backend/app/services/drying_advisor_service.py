@@ -42,6 +42,9 @@ data.
 Sun-drying palay needs sustained direct sun and low rain risk for several \
 consecutive hours; a single passing shower can ruin a batch spread out to dry.
 
+Write plainly for a mill operator. Never use em dashes or en dashes in any \
+field; use commas, colons or separate sentences instead.
+
 Respond with ONLY a single JSON object (no markdown, no code fences, no \
 commentary outside the JSON) with exactly these keys:
 {
@@ -51,8 +54,15 @@ commentary outside the JSON) with exactly these keys:
   "best_window": "<=60 chars naming the best day(s)/hours to dry, or null if none of the next few days qualify"
 }"""
 
-_MAX_TOKENS = 300
-_TIMEOUT_SECONDS = 15.0
+# deepseek-flash is a reasoning model: it spends completion tokens on an internal
+# chain of thought before emitting any `content`. The budget therefore has to
+# cover the reasoning as well as the ~350-character JSON answer — at 300 the
+# reasoning consumed the entire allowance and `content` came back empty. Observed
+# reasoning usage runs 230-550 tokens, so this leaves substantial headroom.
+_MAX_TOKENS = 2000
+# Reasoning also makes the call slower (4-6s observed). The advisory is cached
+# for hours, so a generous ceiling costs little and avoids spurious failures.
+_TIMEOUT_SECONDS = 30.0
 
 
 class DryingAdvisorService:
@@ -149,7 +159,17 @@ class DryingAdvisorService:
             raise HTTPException(status_code=502, detail="Drying advisory is temporarily unavailable")
 
         try:
-            content = r.json()["choices"][0]["message"]["content"]
+            choice = r.json()["choices"][0]
+            content = choice["message"]["content"]
+            # A reasoning model that runs out of budget mid-thought returns an
+            # empty content with finish_reason="length". Name that case instead
+            # of letting it surface as a generic parse failure.
+            if not content and choice.get("finish_reason") == "length":
+                logger.warning(
+                    "DeepSeek truncated before answering (max_tokens=%d exhausted by reasoning)",
+                    _MAX_TOKENS,
+                )
+                raise HTTPException(status_code=502, detail="Drying advisory is temporarily unavailable")
             parsed = json.loads(content)
             if not isinstance(parsed, dict):
                 raise ValueError("model response is not a JSON object")

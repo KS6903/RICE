@@ -78,11 +78,14 @@ def fake_cache(monkeypatch):
     return store
 
 
-def _mock_deepseek(monkeypatch, *, status_code=200, content=None, calls=None):
+def _mock_deepseek(monkeypatch, *, status_code=200, content=None, calls=None, finish_reason=None):
     """Patch httpx.Client.post. ``calls`` (a list) records each invocation."""
     if content is None:
         content = _deepseek_content()
-    payload = {"choices": [{"message": {"content": content}}]}
+    choice: dict = {"message": {"content": content}}
+    if finish_reason is not None:
+        choice["finish_reason"] = finish_reason
+    payload = {"choices": [choice]}
 
     def _post(self, url, headers=None, json=None, **kwargs):
         if calls is not None:
@@ -158,6 +161,18 @@ def test_upstream_non_2xx_returns_502(make_auth_client, deepseek_key, monkeypatc
 def test_malformed_json_content_returns_502(make_auth_client, deepseek_key, monkeypatch):
     _mock_deepseek(monkeypatch, content="not valid json")
     c = make_auth_client(features=["drying_advisor"], username="malformed")
+    res = c.get("/api/drying-advisory")
+    assert res.status_code == 502
+
+
+def test_reasoning_truncation_returns_502(make_auth_client, deepseek_key, monkeypatch):
+    """deepseek-flash is a reasoning model: it spends completion tokens thinking
+    before emitting any content, and when the budget runs out mid-thought it
+    returns an empty content with finish_reason="length". That is exactly what a
+    too-small max_tokens produced in production — the advisory never worked at
+    all — so pin the shape rather than only the parse failure it surfaced as."""
+    _mock_deepseek(monkeypatch, content="", finish_reason="length")
+    c = make_auth_client(features=["drying_advisor"], username="truncated")
     res = c.get("/api/drying-advisory")
     assert res.status_code == 502
 

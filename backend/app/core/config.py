@@ -126,7 +126,7 @@ class Settings(BaseSettings):
     # "deepseek-chat" alias now maps to this same model anyway and is being
     # retired 2026-07-24, so this pins the real identifier rather than riding
     # a soon-dead legacy name.
-    DEEPSEEK_MODEL: str = "deepseek-v4-flash"
+    DEEPSEEK_MODEL: str = "deepseek-flash"
     # Advisory calls cost money per request; kept tight since the endpoint is
     # also cached server-side for hours per location/day (see TTL_DRYING_ADVISORY).
     RATE_LIMIT_DRYING_ADVISOR: str = "10/hour"
