@@ -4,9 +4,10 @@ import { authService } from "../services/AuthService";
 import { useAuthStore } from "../stores/authStore";
 import { useThemeStore } from "../stores/themeStore";
 import {
-  Sparkles, Building2, Building, Sun, Moon, AlertCircle, ArrowRight, ArrowLeft, Check,
+  Building2, Building, Sun, Moon, AlertCircle, ArrowRight, ArrowLeft, Check,
 } from "lucide-react";
 import { GoogleLogin } from "@react-oauth/google";
+import riceLogo from "../assets/Rice_Logo.svg";
 
 export default function SignupPage() {
   const navigate = useNavigate();
@@ -93,13 +94,15 @@ export default function SignupPage() {
         <div className="absolute -bottom-32 -right-32 h-96 w-96 rounded-full bg-violet-400/30 blur-3xl pointer-events-none" aria-hidden />
 
         <div className="relative flex items-center gap-3 text-white">
-          <div className="h-11 w-11 rounded-xl bg-white/15 backdrop-blur-md grid place-items-center ring-1 ring-white/30">
-            <Sparkles size={22} />
-          </div>
-          <div>
-            <p className="text-lg font-bold tracking-tight">Oryza by K Systematics</p>
-            <p className="text-sm text-white/80">Pilipinas · ERP Platform</p>
-          </div>
+          <Link to="/" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
+            <div className="h-11 w-11 rounded-xl bg-white/15 backdrop-blur-md grid place-items-center ring-1 ring-white/30">
+              <img src={riceLogo} alt="Oryza" className="h-full w-full object-contain brightness-0 invert" />
+            </div>
+            <div>
+              <p className="text-lg font-bold tracking-tight">Oryza by K Systematics</p>
+              <p className="text-sm text-white/80">Pilipinas · ERP Platform</p>
+            </div>
+          </Link>
         </div>
 
         <div className="relative text-white max-w-md">
@@ -118,7 +121,7 @@ export default function SignupPage() {
           <ul className="mt-10 space-y-3 text-base text-white font-medium">
             {[
               "Unlimited transactions on the free tier",
-              "Offline-first — works at the mill site",
+              "Offline-first, works at the mill site",
               "NFA & DA reports built in",
               "Cloud sync across all your devices",
             ].map((line) => (
@@ -139,12 +142,12 @@ export default function SignupPage() {
 
       <div className="flex items-center justify-center p-6 lg:p-12">
         <div className="w-full max-w-lg animate-grad-fade-up">
-          <div className="lg:hidden flex items-center gap-3 mb-8">
+          <Link to="/" className="lg:hidden flex items-center gap-3 mb-8 hover:opacity-80 transition-opacity">
             <div className="h-11 w-11 rounded-xl bg-grad-brand grid place-items-center shadow-grad-glow">
-              <Sparkles size={20} className="text-white" />
+              <img src={riceLogo} alt="Oryza" className="h-full w-full object-contain brightness-0 invert" />
             </div>
             <p className="text-lg font-bold tracking-tight text-primary">Oryza by K Systematics</p>
-          </div>
+          </Link>
 
           <h1 className="text-3xl font-bold tracking-tight text-primary">
             Create your account

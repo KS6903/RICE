@@ -77,9 +77,9 @@ const MOCK_NAV = [
 ];
 
 const MOCK_ACTIVITY = [
-  { icon: Wheat, text: "Paddy intake — 2,400 kg from Brgy. San Isidro", badge: "Procurement", badgeClass: "badge-green" },
-  { icon: Factory, text: "Milling run #128 finished — 65.2% recovery", badge: "Milling", badgeClass: "badge-violet" },
-  { icon: ShoppingCart, text: "Sale — 50 sacks premium rice to J. Santos", badge: "Sales", badgeClass: "badge-cyan" },
+  { icon: Wheat, text: "Paddy intake: 2,400 kg from Brgy. San Isidro", badge: "Procurement", badgeClass: "badge-green" },
+  { icon: Factory, text: "Milling run #128 finished, 65.2% recovery", badge: "Milling", badgeClass: "badge-violet" },
+  { icon: ShoppingCart, text: "Sale: 50 sacks premium rice to J. Santos", badge: "Sales", badgeClass: "badge-cyan" },
   { icon: Truck, text: "Dispatch DR-0341 out for delivery", badge: "Dispatch", badgeClass: "badge-yellow" },
 ];
 
@@ -261,7 +261,7 @@ function MockDashboard() {
                 style={{ animationDelay: "500ms" }}
               >
                 <p className="text-[10px] font-bold uppercase tracking-wide text-muted mb-1.5">
-                  Revenue — last 7 days
+                  Revenue, last 7 days
                 </p>
                 <svg viewBox="0 0 220 70" className="w-full h-12" preserveAspectRatio="none">
                   <defs>
@@ -351,12 +351,12 @@ function MockDashboard() {
 /* Feature grid                                                        */
 /* ------------------------------------------------------------------ */
 const FEATURES = [
-  { icon: Wheat, title: "Paddy procurement", desc: "Record paddy intake from farmers and traders with weights, moisture, and pricing — every kilo accounted for.", iconBg: "bg-gradient-to-br from-emerald-400 to-emerald-600" },
+  { icon: Wheat, title: "Paddy procurement", desc: "Record paddy intake from farmers and traders with weights, moisture, and pricing, every kilo accounted for.", iconBg: "bg-gradient-to-br from-emerald-400 to-emerald-600" },
   { icon: Factory, title: "Milling runs", desc: "Track each milling batch from paddy to rice, with recovery rates and by-products computed automatically.", iconBg: "bg-gradient-to-br from-violet-400 to-violet-600" },
   { icon: Package, title: "Inventory", desc: "Live stock levels for paddy, milled rice, and by-products. Know exactly what's in the warehouse at all times.", iconBg: "bg-gradient-to-br from-cyan-400 to-cyan-600" },
   { icon: ShoppingCart, title: "Sales & dispatch", desc: "Issue sales, generate delivery records, and follow every dispatch from the mill gate to the customer.", iconBg: "bg-gradient-to-br from-amber-400 to-amber-600" },
   { icon: Wallet, title: "Expenses & P&L", desc: "Log operating costs and see revenue, cost of goods, and net profit roll up into a clear monthly P&L.", iconBg: "bg-gradient-to-br from-rose-400 to-rose-600" },
-  { icon: BarChart3, title: "Reports", desc: "Production, sales, and financial reports ready when you need them — no spreadsheets required.", iconBg: "bg-gradient-to-br from-sky-400 to-sky-600" },
+  { icon: BarChart3, title: "Reports", desc: "Production, sales, and financial reports ready when you need them, no spreadsheets required.", iconBg: "bg-gradient-to-br from-sky-400 to-sky-600" },
   { icon: Users, title: "Team & roles", desc: "Give your accountant, cashier, encoder, and operators their own logins with just the access they need.", iconBg: "bg-gradient-to-br from-indigo-400 to-indigo-600" },
   { icon: ShieldCheck, title: "Secure by default", desc: "Sign in with Google, optional two-factor authentication, and your mill's data kept fully separate.", iconBg: "bg-gradient-to-br from-teal-400 to-teal-600" },
 ];
@@ -587,7 +587,7 @@ export default function HomePage() {
               </h1>
               <p className="mt-5 text-lg text-secondary max-w-lg">
                 One simple system for procurement, milling, inventory, sales, and
-                reports — so you always know what's in the warehouse and what's on
+                reports, so you always know what's in the warehouse and what's on
                 the books.
               </p>
               <div className="mt-8 flex flex-wrap items-center gap-3">
