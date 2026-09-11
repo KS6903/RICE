@@ -81,3 +81,8 @@ backend/migrations/versions/*.pyc
 # Playwright test artifacts
 test-results/
 playwright-report/
+
+# Cloudflare / Wrangler local state
+.wrangler/
+.dev.vars
+.dev.vars.*

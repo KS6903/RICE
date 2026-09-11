@@ -1,0 +1,73 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "oryza",
+  "main": "worker/index.ts",
+  "compatibility_date": "2026-09-01",
+  "compatibility_flags": ["nodejs_compat"],
+
+  // The built SPA. run_worker_first keeps /api/* and /ws/* out of the asset
+  // handler; everything else falls back to index.html for client-side routing.
+  "assets": {
+    "directory": "packages/web/dist",
+    "binding": "ASSETS",
+    "not_found_handling": "single-page-application",
+    "run_worker_first": ["/api/*", "/ws/*"]
+  },
+
+  "containers": [
+    {
+      "class_name": "ApiContainer",
+      "image": "./backend/Dockerfile",
+      "instance_type": "standard-1",
+      // Keep in step with the API_INSTANCES var the Worker balances across.
+      "max_instances": 3
+    },
+    {
+      "class_name": "ProvisionerContainer",
+      "image": "./backend/Dockerfile",
+      "instance_type": "basic",
+      "max_instances": 1
+    }
+  ],
+
+  "durable_objects": {
+    "bindings": [
+      { "name": "API_CONTAINER", "class_name": "ApiContainer" },
+      { "name": "PROVISIONER_CONTAINER", "class_name": "ProvisionerContainer" }
+    ]
+  },
+
+  "migrations": [
+    {
+      "tag": "v1",
+      "new_sqlite_classes": ["ApiContainer", "ProvisionerContainer"]
+    }
+  ],
+
+  // Drains any tenant left queued by a failed inline provision.
+  "triggers": {
+    "crons": ["*/15 * * * *"]
+  },
+
+  "observability": {
+    "enabled": true
+  },
+
+  // Non-secret configuration. Replace example.com with the real domain before
+  // deploying. Secrets are set with `wrangler secret put` — never listed here.
+  "vars": {
+    // How many API instances the Worker load-balances stateless /api/* across.
+    // Must not exceed the ApiContainer max_instances above.
+    "API_INSTANCES": "3",
+    "RUNTIME_DATABASE_ROLE": "ricemill_app",
+    "ALLOWED_ORIGINS": "https://app.example.com",
+    "TRUSTED_HOSTS": "app.example.com",
+    "FRONTEND_BASE_URL": "https://app.example.com",
+    "COOKIE_DOMAIN": "example.com",
+    "MFA_REQUIRED_ROLES": "owner,admin",
+    "SMTP_HOST": "smtp.example.com",
+    "SMTP_PORT": "587",
+    "SMTP_FROM_EMAIL": "no-reply@example.com",
+    "SMTP_USERNAME": "no-reply@example.com"
+  }
+}

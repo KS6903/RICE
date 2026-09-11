@@ -21,15 +21,21 @@
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:report": "playwright show-report",
     "format": "prettier --write \"packages/*/src/**/*.{ts,tsx}\"",
-    "format:check": "prettier --check \"packages/*/src/**/*.{ts,tsx}\""
+    "format:check": "prettier --check \"packages/*/src/**/*.{ts,tsx}\"",
+    "cf:typecheck": "tsc -p tsconfig.worker.json --noEmit",
+    "cf:dev": "wrangler dev",
+    "cf:deploy": "npm run build:web && wrangler deploy"
   },
   "engines": {
     "node": ">=20.0.0",
     "npm": ">=10.0.0"
   },
   "devDependencies": {
+    "@cloudflare/containers": "^0.3.7",
+    "@cloudflare/workers-types": "^5.20260910.1",
     "@playwright/test": "^1.60.0",
     "concurrently": "^10.0.3",
-    "prettier": "^3.4.2"
+    "prettier": "^3.4.2",
+    "wrangler": "^4.130.0"
   }
 }
