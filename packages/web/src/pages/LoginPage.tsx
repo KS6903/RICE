@@ -4,7 +4,7 @@ import { authService } from "../services/AuthService";
 import { useAuthStore } from "../stores/authStore";
 import { useThemeStore } from "../stores/themeStore";
 import {
-  ShieldCheck, Wifi, Building2, Sun, Moon, AlertCircle, Clock,
+  ShieldCheck, Wifi, Building2, Sun, Moon, AlertCircle, Clock, ArrowLeft,
 } from "lucide-react";
 import { GoogleLogin } from "@react-oauth/google";
 import riceLogo from "../assets/Rice_Logo.svg";
@@ -44,6 +44,12 @@ export default function LoginPage() {
     return () => { cancelAnimationFrame(enter); clearTimeout(exit); };
   }, [chipMounted]);
   const handleToggle = () => { toggle(); setChipIn(false); };
+  // Prefer real history so the user lands where they came from; fall back to the
+  // marketing home when login was opened directly (deep link, new tab).
+  const handleBack = () => {
+    if (window.history.length > 1) navigate(-1);
+    else navigate("/");
+  };
 
   const finishLogin = async (data: any) => {
     setTokens(data?.access_token, data?.refresh_token);
@@ -109,8 +115,7 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen w-full grid lg:grid-cols-2 relative overflow-hidden">
-      <div className="absolute top-5 right-5 z-20">
-        <style>{`
+      <style>{`
           @keyframes lpToggleGlow {
             0%, 100% { box-shadow: 0 0 0 0 rgba(139, 92, 246, 0.5); transform: scale(1); }
             50%      { box-shadow: 0 0 0 9px rgba(139, 92, 246, 0); transform: scale(1.08); }
@@ -129,12 +134,44 @@ export default function LoginPage() {
           }
           .lp-hint-in { opacity: 1; transform: translateY(0) scale(1); }
           .lp-hint-bob { animation: lpHintBob 2.2s ease-in-out 0.6s infinite; }
+          @keyframes lpBackIn {
+            from { opacity: 0; transform: translateX(-14px); }
+            to   { opacity: 1; transform: translateX(0); }
+          }
+          .lp-back {
+            animation: lpBackIn 480ms cubic-bezier(0.23, 1, 0.32, 1) 120ms both;
+            transition: transform 260ms cubic-bezier(0.23, 1, 0.32, 1),
+                        box-shadow 260ms ease,
+                        color 200ms ease;
+          }
+          .lp-back:hover  { transform: translateX(-2px); box-shadow: 0 10px 26px -12px rgba(15, 23, 42, 0.35); }
+          .lp-back:active { transform: translateX(-2px) scale(0.94); }
+          .lp-back-arrow  { transition: transform 300ms cubic-bezier(0.34, 1.56, 0.64, 1); }
+          .lp-back:hover .lp-back-arrow,
+          .lp-back:focus-visible .lp-back-arrow { transform: translateX(-3px); }
+          .lp-back-label {
+            max-width: 0;
+            margin-left: 0;
+            opacity: 0;
+            overflow: hidden;
+            white-space: nowrap;
+            transition: max-width 340ms cubic-bezier(0.23, 1, 0.32, 1),
+                        margin-left 340ms cubic-bezier(0.23, 1, 0.32, 1),
+                        opacity 200ms ease;
+          }
+          .lp-back:hover .lp-back-label,
+          .lp-back:focus-visible .lp-back-label { max-width: 5rem; margin-left: 0.375rem; opacity: 1; }
           @media (prefers-reduced-motion: reduce) {
-            .lp-toggle-glow, .lp-hint-bob { animation: none; }
+            .lp-toggle-glow, .lp-hint-bob, .lp-back { animation: none; }
             .lp-hint { transition: opacity 200ms ease; transform: none; }
             .lp-hint-in { transform: none; }
+            .lp-back, .lp-back-arrow, .lp-back-label { transition: opacity 200ms ease; }
+            .lp-back:hover, .lp-back:active { transform: none; }
+            .lp-back:hover .lp-back-arrow { transform: none; }
           }
         `}</style>
+
+      <div className="absolute top-5 right-5 z-20">
         <div className="relative">
           <button
             onClick={handleToggle}
@@ -171,10 +208,7 @@ export default function LoginPage() {
             <div className="h-12 w-12 rounded-xl bg-white/15 backdrop-blur-md grid place-items-center ring-1 ring-white/30">
               <img src={riceLogo} alt="Oryza" className="h-full w-full object-contain brightness-0 invert" />
             </div>
-            <div>
-              <p className="text-lg font-bold tracking-tight">Oryza</p>
-              <p className="text-sm text-white/80">ERP Platform · K Systematics</p>
-            </div>
+            <p className="text-lg font-bold tracking-tight">Oryza</p>
           </Link>
         </div>
 
@@ -213,7 +247,20 @@ export default function LoginPage() {
       </div>
 
       {/* RIGHT — form */}
-      <div className="flex items-center justify-center p-6 lg:p-12">
+      <div className="relative flex items-center justify-center p-6 lg:p-12">
+        {/* Back — anchored to the form (white) side, clear of the theme toggle */}
+        <button
+          type="button"
+          onClick={handleBack}
+          className="lp-back group absolute top-5 left-5 z-20 inline-flex h-10 items-center rounded-xl glass px-3 text-sm font-semibold text-secondary hover:text-primary"
+          aria-label="Go back"
+        >
+          <span className="lp-back-arrow grid place-items-center">
+            <ArrowLeft size={18} />
+          </span>
+          <span className="lp-back-label">Back</span>
+        </button>
+
         <div className="w-full max-w-sm animate-grad-fade-up">
           <div className="lg:hidden flex items-center gap-3 mb-8">
             <Link to="/" className="h-12 w-12 rounded-xl bg-grad-brand grid place-items-center shadow-grad-glow">

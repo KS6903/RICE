@@ -98,10 +98,7 @@ export default function SignupPage() {
             <div className="h-11 w-11 rounded-xl bg-white/15 backdrop-blur-md grid place-items-center ring-1 ring-white/30">
               <img src={riceLogo} alt="Oryza" className="h-full w-full object-contain brightness-0 invert" />
             </div>
-            <div>
-              <p className="text-lg font-bold tracking-tight">Oryza by K Systematics</p>
-              <p className="text-sm text-white/80">Pilipinas · ERP Platform</p>
-            </div>
+            <p className="text-lg font-bold tracking-tight">Oryza</p>
           </Link>
         </div>
 
@@ -146,7 +143,7 @@ export default function SignupPage() {
             <div className="h-11 w-11 rounded-xl bg-grad-brand grid place-items-center shadow-grad-glow">
               <img src={riceLogo} alt="Oryza" className="h-full w-full object-contain brightness-0 invert" />
             </div>
-            <p className="text-lg font-bold tracking-tight text-primary">Oryza by K Systematics</p>
+            <p className="text-lg font-bold tracking-tight text-primary">Oryza</p>
           </Link>
 
           <h1 className="text-3xl font-bold tracking-tight text-primary">

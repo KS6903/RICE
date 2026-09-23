@@ -83,7 +83,7 @@ export default function AdminShell() {
             </div>
             <div className="min-w-0">
               <h1 className="text-base font-bold tracking-tight text-primary leading-tight truncate">
-                K Systematics
+                Oryza
               </h1>
               <p className="text-xs text-muted leading-tight font-medium">Platform console</p>
             </div>

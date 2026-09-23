@@ -85,7 +85,6 @@ export default function Sidebar() {
             <h1 className="text-base font-bold tracking-tight text-primary leading-tight truncate">
               Oryza
             </h1>
-            <p className="text-xs text-muted leading-tight font-medium">by K Systematics</p>
           </div>
         </div>
       </div>
