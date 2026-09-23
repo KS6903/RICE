@@ -10,7 +10,8 @@ export interface Env {
   ALLOWED_ORIGINS: string;
   TRUSTED_HOSTS: string;
   FRONTEND_BASE_URL: string;
-  COOKIE_DOMAIN: string;
+  /** Empty on a *.workers.dev host — see baseEnv. */
+  COOKIE_DOMAIN?: string;
   MFA_REQUIRED_ROLES: string;
   SMTP_HOST: string;
   SMTP_PORT: string;
@@ -47,7 +48,6 @@ function baseEnv(env: Env): Record<string, string> {
     TRUSTED_HOSTS: env.TRUSTED_HOSTS,
     FRONTEND_BASE_URL: env.FRONTEND_BASE_URL,
     COOKIE_SECURE: "true",
-    COOKIE_DOMAIN: env.COOKIE_DOMAIN,
     EXPOSE_RESET_TOKEN: "false",
     RATE_LIMIT_ENABLED: "true",
     MFA_ENFORCE: "true",
@@ -61,6 +61,12 @@ function baseEnv(env: Env): Record<string, string> {
     SMTP_USERNAME: env.SMTP_USERNAME,
     SMTP_PASSWORD: env.SMTP_PASSWORD,
   };
+  // Only set COOKIE_DOMAIN when there is a real parent domain to scope to. On a
+  // *.workers.dev host there is none: workers.dev is on the Public Suffix List,
+  // so a Domain attribute naming it is rejected and the session cookie is simply
+  // dropped — login would appear to succeed and then not stick. Omitting the
+  // variable leaves it None, which yields a correct host-only cookie.
+  if (env.COOKIE_DOMAIN) vars.COOKIE_DOMAIN = env.COOKIE_DOMAIN;
   for (const key of ["GOOGLE_CLIENT_ID", "GOOGLE_WEATHER_API_KEY", "DEEPSEEK_API_KEY"] as const) {
     const value = env[key];
     if (value) vars[key] = value;
@@ -143,14 +149,22 @@ export default {
     if (sticky) {
       // Pass the ORIGINAL request: reconstructing it drops the internal WebSocket
       // handle that carries the upgrade, and the socket would fail to connect.
+      // That means a caller-supplied X-Forwarded-For rides through untouched, so
+      // the WS path must not be IP-rate-limited on the container side.
       return env.API_CONTAINER.getByName(sticky).fetch(request);
     }
 
     // Preserve the caller's IP for slowapi's limiter and the progressive
     // account lockout, both of which key off the right-most X-Forwarded-For entry.
+    // The container trusts that entry, so the header must come from us and never
+    // from the caller — otherwise a client could mint a fresh rate-limit bucket
+    // per request just by varying it. Cloudflare always sets CF-Connecting-IP in
+    // production; if it is ever absent, strip the header rather than forward a
+    // spoofable one.
     const clientIp = request.headers.get("CF-Connecting-IP");
     const proxied = new Request(request);
     if (clientIp) proxied.headers.set("X-Forwarded-For", clientIp);
+    else proxied.headers.delete("X-Forwarded-For");
 
     // Stateless /api/* — auth is JWT and all state lives in Postgres/Redis, so
     // any instance can serve any request.

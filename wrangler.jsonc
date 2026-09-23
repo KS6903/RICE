@@ -60,10 +60,15 @@
     // Must not exceed the ApiContainer max_instances above.
     "API_INSTANCES": "3",
     "RUNTIME_DATABASE_ROLE": "ricemill_app",
+    // TODO(deploy): replace with the real host once one exists. On workers.dev
+    // these are "oryza.<subdomain>.workers.dev".
     "ALLOWED_ORIGINS": "https://app.example.com",
     "TRUSTED_HOSTS": "app.example.com",
     "FRONTEND_BASE_URL": "https://app.example.com",
-    "COOKIE_DOMAIN": "example.com",
+    // Empty on a *.workers.dev host: workers.dev is on the Public Suffix List, so
+    // a Domain attribute naming it is rejected and the session cookie is dropped.
+    // Set this only for a real domain you own (e.g. "oryza.ph").
+    "COOKIE_DOMAIN": "",
     "MFA_REQUIRED_ROLES": "owner,admin",
     "SMTP_HOST": "smtp.example.com",
     "SMTP_PORT": "587",

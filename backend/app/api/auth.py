@@ -134,6 +134,7 @@ def login(
 @limiter.limit(AUTH_RATE_LIMIT)
 def forgot_password(
     request: Request,
+    response: Response,
     body: ForgotPasswordRequest,
     svc: AuthService = Depends(get_public_auth_service),
 ):
@@ -146,6 +147,7 @@ def forgot_password(
 @limiter.limit(AUTH_RATE_LIMIT)
 def reset_password(
     request: Request,
+    response: Response,
     body: ResetPasswordRequest,
     svc: AuthService = Depends(get_public_auth_service),
 ):
@@ -156,6 +158,7 @@ def reset_password(
 @limiter.limit(AUTH_RATE_LIMIT)
 def verify_email(
     request: Request,
+    response: Response,
     body: VerifyEmailRequest,
     svc: AuthService = Depends(get_public_auth_service),
 ):
@@ -165,7 +168,11 @@ def verify_email(
 
 @router.post("/resend-verification")
 @limiter.limit(AUTH_RATE_LIMIT)
-def resend_verification(request: Request, svc: AuthService = Depends(get_auth_service)):
+def resend_verification(
+    request: Request,
+    response: Response,
+    svc: AuthService = Depends(get_auth_service),
+):
     """Re-send the verification link for the signed-in user's email."""
     return svc.resend_verification()
 
@@ -220,6 +227,7 @@ def google_auth(
 @limiter.limit(MFA_RATE_LIMIT)
 def link_google_identity(
     request: Request,
+    response: Response,
     body: GoogleLinkRequest,
     svc: AuthService = Depends(get_auth_service),
 ):
@@ -231,6 +239,7 @@ def link_google_identity(
 @limiter.limit(MFA_RATE_LIMIT)
 def unlink_google_identity(
     request: Request,
+    response: Response,
     body: GoogleUnlinkRequest,
     svc: AuthService = Depends(get_auth_service),
 ):
@@ -265,7 +274,11 @@ def mfa_verify(
 
 @router.post("/mfa/enroll", response_model=MfaEnrollResponse)
 @limiter.limit(MFA_RATE_LIMIT)
-def mfa_enroll(request: Request, svc: AuthService = Depends(get_auth_service)):
+def mfa_enroll(
+    request: Request,
+    response: Response,
+    svc: AuthService = Depends(get_auth_service),
+):
     """Start TOTP enrollment: returns the secret + otpauth:// URI to load into
     an authenticator app. Pending until /mfa/enroll/verify confirms a code."""
     return svc.mfa_enroll()
@@ -275,6 +288,7 @@ def mfa_enroll(request: Request, svc: AuthService = Depends(get_auth_service)):
 @limiter.limit(MFA_RATE_LIMIT)
 def mfa_enroll_verify(
     request: Request,
+    response: Response,
     body: MfaCodeRequest,
     svc: AuthService = Depends(get_auth_service),
 ):
@@ -285,6 +299,7 @@ def mfa_enroll_verify(
 @limiter.limit(MFA_RATE_LIMIT)
 def mfa_disable(
     request: Request,
+    response: Response,
     body: MfaCodeRequest,
     svc: AuthService = Depends(get_auth_service),
 ):
@@ -295,6 +310,7 @@ def mfa_disable(
 @limiter.limit(MFA_RATE_LIMIT)
 def regenerate_backup_codes(
     request: Request,
+    response: Response,
     body: MfaCodeRequest,
     svc: AuthService = Depends(get_auth_service),
 ):
