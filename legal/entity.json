@@ -1,0 +1,33 @@
+{
+  "_comment": "Single source of truth for every legal document. Fill each TODO in once; all documents render from these values. backend/app/core/legal.py refuses to serve a document while a TODO remains, and check_production_config.py fails the prod gate.",
+
+  "product_name": "Oryza",
+  "provider_name": "K Systematics",
+  "provider_legal_name": "TODO: registered business/corporate name exactly as on the SEC or DTI certificate",
+  "provider_registration": "TODO: SEC/DTI registration number",
+  "provider_address": "TODO: registered principal office address",
+  "provider_country": "Republic of the Philippines",
+
+  "contact_email": "TODO: support@yourdomain.com",
+  "legal_email": "TODO: legal@yourdomain.com",
+  "dpo_name": "TODO: full name of your Data Protection Officer",
+  "dpo_email": "TODO: dpo@yourdomain.com",
+  "dpo_phone": "TODO: DPO contact number",
+  "npc_registration": "TODO: NPC registration number, or the string 'not yet required' — see legal/EXPOSURE_REVIEW.md",
+
+  "db_host_provider": "TODO: managed Postgres provider, e.g. Neon / Supabase / AWS RDS",
+  "db_host_region": "TODO: region, e.g. Singapore (ap-southeast-1)",
+  "redis_provider": "TODO: managed Redis provider, e.g. Upstash",
+  "redis_region": "TODO: region",
+  "smtp_provider": "TODO: email provider, e.g. Resend / Postmark / Amazon SES",
+  "smtp_region": "TODO: region",
+
+  "venue_city": "TODO: city whose courts have exclusive venue, e.g. Makati City",
+  "governing_law": "Republic of the Philippines",
+
+  "liability_floor_php": "50000",
+  "claim_window_months": "12",
+  "data_export_window_days": "30",
+  "data_deletion_days": "90",
+  "terms_change_notice_days": "30"
+}

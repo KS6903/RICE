@@ -1,0 +1,8 @@
+# The published agreements under legal/ are the text customers accept, and
+# backend/app/core/legal.py hashes them as the evidence of what was on screen.
+# Reading them is line-ending safe on its own (render() decodes in
+# universal-newline mode, and a test pins that down), so this is hygiene rather
+# than a correctness fix: it keeps the files byte-identical between a Windows
+# checkout and the Linux container, so diffs on a legal document show the clause
+# that changed instead of every line, and core.autocrlf stops rewriting them.
+legal/** text eol=lf
