@@ -23,6 +23,8 @@
     "format": "prettier --write \"packages/*/src/**/*.{ts,tsx}\"",
     "format:check": "prettier --check \"packages/*/src/**/*.{ts,tsx}\"",
     "cf:typecheck": "tsc -p tsconfig.worker.json --noEmit",
+    "ci:local": "node scripts/ci_local.mjs",
+    "prepare": "node -e \"try{require('child_process').execSync('git config core.hooksPath .githooks',{stdio:'ignore'})}catch{}\"",
     "cf:dev": "wrangler dev",
     "cf:deploy": "npm run build:web && wrangler deploy"
   },
