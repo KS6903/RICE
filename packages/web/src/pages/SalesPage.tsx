@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { salesService } from "../services/SalesService";
+import LegalNotice from "../components/LegalNotice";
 import { inventoryService } from "../services/InventoryService";
 import { Plus, Power, History, ChevronDown, ChevronUp } from "lucide-react";
 import { format } from "date-fns";
@@ -367,7 +368,6 @@ export default function SalesPage() {
           </table>
         </div>
       )}
-
       {tab === "invoices" && (
         <div className="card overflow-hidden p-0">
           <table className="w-full text-sm">
@@ -409,6 +409,7 @@ export default function SalesPage() {
           </table>
         </div>
       )}
+      {tab === "invoices" && <LegalNotice kind="invoice" className="px-1" />}
 
       {tab === "customers" && (
         <>

@@ -165,6 +165,12 @@ export default function DryingAdvisor({ coords }: { coords: Coords | null }) {
                 <p className="mt-1 text-[10px] text-muted truncate">Best: {data.best_window}</p>
               )}
             </div>
+            {/* Always on screen with the verdict, never behind the hover. A
+                disclaimer that only appears on hover is not a disclaimer, and
+                this advisory drives decisions about stock worth real money. */}
+            <p className="mt-1.5 text-[10px] leading-snug text-muted" data-testid="drying-advisor-disclaimer">
+              Estimate from forecast data, not a guarantee. Check conditions yourself before drying.
+            </p>
 
             {pos &&
               createPortal(
@@ -186,6 +192,15 @@ export default function DryingAdvisor({ coords }: { coords: Coords | null }) {
                   {data.best_window && (
                     <p className="mt-1.5 text-[11px] font-semibold text-muted">Best window: {data.best_window}</p>
                   )}
+                  <p className="mt-2.5 pt-2 border-t border-soft text-[10px] leading-snug text-muted">
+                    Automatically generated from third-party weather forecasts. It can be wrong,
+                    stale or unavailable, and it is not agronomic advice. Always check actual
+                    conditions before laying out or moving palay. See the{" "}
+                    <a href="/legal/terms" target="_blank" rel="noopener noreferrer" className="link">
+                      Terms of Service
+                    </a>
+                    .
+                  </p>
                 </div>,
                 document.body
               )}

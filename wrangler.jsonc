@@ -18,6 +18,9 @@
     {
       "class_name": "ApiContainer",
       "image": "./backend/Dockerfile",
+      // Repo root, not backend/, so the image can carry legal/ as well. The
+      // root .dockerignore keeps the context small.
+      "image_build_context": "./",
       "instance_type": "standard-1",
       // Keep in step with the API_INSTANCES var the Worker balances across.
       "max_instances": 3
@@ -25,6 +28,7 @@
     {
       "class_name": "ProvisionerContainer",
       "image": "./backend/Dockerfile",
+      "image_build_context": "./",
       "instance_type": "basic",
       "max_instances": 1
     }

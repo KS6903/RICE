@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { useFeature } from "../hooks/useFeature";
 import UpgradeRequired from "../components/UpgradeRequired";
+import LegalNotice from "../components/LegalNotice";
 
 const EMPLOYMENT_TYPES = [
   { value: "regular", label: "Regular" },
@@ -459,6 +460,7 @@ function EmployeesPageInner() {
             <p className="text-sm font-medium text-gray-700 dark:text-slate-200 mb-2">
               Government IDs
             </p>
+            <LegalNotice kind="employeeData" className="mb-3" />
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               <div>
                 <label className="block text-xs text-gray-600 dark:text-slate-300 mb-1">SSS</label>

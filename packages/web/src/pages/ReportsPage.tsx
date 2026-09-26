@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { reportsService } from "../services/ReportsService";
+import LegalNotice from "../components/LegalNotice";
 import { format, startOfMonth, endOfMonth } from "date-fns";
 import {
   BarChart,
@@ -345,6 +346,8 @@ export default function ReportsPage() {
           <p className="text-sm text-gray-400 text-center py-8">No outstanding receivables</p>
         )}
       </div>
+
+      <LegalNotice kind="report" className="pt-1" />
     </div>
   );
 }

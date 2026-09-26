@@ -55,6 +55,10 @@ the phases below.
 **On each desktop**
 - [ ] BitLocker on every device holding offline SQLite; escrow recovery keys (Phase 7).
 
+**On the legal and privacy side** (see [legal/EXPOSURE_REVIEW.md](legal/EXPOSURE_REVIEW.md))
+- [ ] Fill in `legal/entity.json`, have counsel review the agreements, appoint a Data
+      Protection Officer, and decide on NPC registration (Phase 11).
+
 **Team-coordinated / destructive**
 - [ ] Rewrite git history only if a secret/log was ever committed; independent pen test
       (Phase 10).
@@ -178,6 +182,41 @@ Start from the templates — they already list every required key:
       history, force-push with team coordination, invalidate old clones, and rotate affected credentials.
       `.gitignore` prevents recurrence but does not erase history — this is destructive; do it deliberately.
 - [ ] Arrange an independent penetration test before launch and after major auth / tenant-isolation changes.
+
+## Phase 11 — Legal and privacy  ·  Runs `[WORKSTATION]` -> `[COUNSEL]`  ·  Supervision **A**
+
+The published agreements live in [legal/](legal/) and are served by the API at `/api/legal/*`.
+Full context, including what is still open, is in
+[legal/EXPOSURE_REVIEW.md](legal/EXPOSURE_REVIEW.md).
+
+- [ ] Fill in every `TODO:` in [legal/entity.json](legal/entity.json) — registered entity name,
+      SEC/DTI number, address, contact and DPO details, venue city, and the hosting/email
+      providers named in the sub-processor register. Each fact is entered once and every
+      document renders from it.
+- [ ] Verify (expect no output):
+  ```powershell
+  cd backend
+  .\.venv\Scripts\python.exe -c "import app.core.legal as L; [print(p) for p in L.unresolved_placeholders()]"
+  ```
+  The `ENV=prod` config validator runs this too, so **the API refuses to boot while any
+  placeholder remains**. Treat a failure here as a release blocker, not a warning.
+- [ ] Have a Philippine lawyer review the Terms of Service, Privacy Policy, Data Processing
+      Addendum and Acceptable Use Policy, and apply their edits to the markdown. These are
+      engineer-written drafts, not legal advice.
+- [ ] Appoint a Data Protection Officer and decide whether NPC registration is required
+      (generally yes at 1,000+ individuals whose sensitive personal information you process;
+      count across all tenants, since we are the Processor for all of them).
+- [ ] Arrange professional indemnity / technology errors and omissions insurance. The liability
+      cap limits an award; insurance covers the cost of defending the claim.
+- [ ] Give tenants the employee privacy notice template
+      ([legal/templates/employee-privacy-notice.md](legal/templates/employee-privacy-notice.md))
+      and confirm they issue it. Their workers' SSS, PhilHealth, Pag-IBIG and TIN numbers are
+      sensitive personal information, and that notice is what puts the duty on the mill, which
+      is the actual Controller.
+- [ ] Tell the `mill1`-`mill8` testers they are on a beta covered by section 4 and the capped
+      liability in section 12.3 of the Terms.
+- [ ] Write the incident response runbook for the clocks now committed to: 24 hours to notify an
+      affected tenant, 72 hours to notify the NPC and data subjects.
 
 ---
 

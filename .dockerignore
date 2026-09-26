@@ -1,0 +1,61 @@
+# Build context for backend/Dockerfile.
+#
+# The context is the repository root (wrangler.jsonc -> image_build_context) so
+# the image can carry legal/ alongside backend/. That makes this file the thing
+# keeping the context small: without it Docker would ship node_modules, the
+# virtualenv, build output and test artefacts on every deploy.
+#
+# Keep the two backend blocks below in step with backend/.dockerignore, which
+# still applies to any build run with backend/ as the context.
+
+# ── Everything outside what the image needs ──────────────────────────────────
+node_modules/
+**/node_modules/
+packages/
+worker/
+e2e/
+playwright-report/
+test-results/
+.wrangler/
+.git/
+.github/
+.vscode/
+.agents/
+.codex/
+.claude/
+dist/
+**/dist/
+
+# ── Backend: excluded from the image ─────────────────────────────────────────
+backend/.venv/
+backend/tests/
+backend/deploy/
+backend/scripts/
+backend/seed*.py
+backend/migrate_canva_rename.py
+backend/migrate_dispatch.py
+backend/migrate_multi_layout.py
+backend/migrate_user_locations.py
+backend/apply_013.py
+backend/cleanup_zones.py
+backend/drop_test_db.py
+backend/list_users.py
+backend/start_disposable_e2e.py
+backend/requirements-dev.lock
+backend/requirements-dev.txt
+
+# ── Never in an image, wherever they live ────────────────────────────────────
+**/__pycache__/
+*.pyc
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+**/.pytest_cache/
+**/.mypy_cache/
+**/.ruff_cache/
+*.log
+web.err
+web.out
+**/.env
+**/.env.*
+!**/.env.example
