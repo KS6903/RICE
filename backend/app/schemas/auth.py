@@ -28,6 +28,11 @@ class SignupRequest(BaseModel):
     password: str = Field(min_length=8, max_length=72)
     is_multi_branch: bool = False
     invite_code: str | None = Field(default=None, max_length=255)
+    # Click-through consent. The server re-checks this rather than trusting the
+    # UI to have shown the checkbox, so an account cannot exist without a
+    # matching row in legal_acceptances.
+    accepted_terms: bool = False
+    agreement_version: str | None = Field(default=None, max_length=32)
 
 
 class GoogleAuthRequest(BaseModel):
@@ -35,6 +40,10 @@ class GoogleAuthRequest(BaseModel):
     company_name: str | None = Field(default=None, max_length=200)
     is_multi_branch: bool = False
     invite_code: str | None = Field(default=None, max_length=255)
+    # Only consulted when this call creates a new company; an existing Google
+    # user signing in is gated by /legal/acceptance instead.
+    accepted_terms: bool = False
+    agreement_version: str | None = Field(default=None, max_length=32)
 
 
 class GoogleLinkRequest(BaseModel):

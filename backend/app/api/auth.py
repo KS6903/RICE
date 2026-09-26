@@ -100,7 +100,7 @@ def signup(
     body: SignupRequest,
     svc: AuthService = Depends(get_public_auth_service),
 ):
-    tokens = svc.signup(body)
+    tokens = svc.signup(body, request=request)
     return _complete_auth(request, response, tokens)
 
 
@@ -216,7 +216,7 @@ def google_auth(
         if _is_bearer_client(request)
         else request.cookies.get(MFA_TRUST_COOKIE)
     )
-    result = svc.google_auth(body, mfa_trust_token=trust)
+    result = svc.google_auth(body, mfa_trust_token=trust, request=request)
     if isinstance(result, TokenResponse):
         return _complete_auth(request, response, result)
     response.headers["Cache-Control"] = "no-store"

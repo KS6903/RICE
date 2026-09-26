@@ -20,6 +20,7 @@ import jwt as pyjwt
 import pyotp
 from sqlalchemy.orm import Session
 
+from ..core import legal as legal_docs
 from ..core.config import settings
 from ..core.crypto import decrypt_str, encrypt_str
 from ..core.email import send_account_email
@@ -66,6 +67,7 @@ from ..models.user import Role, User
 from ..schemas.auth import MfaChallengeResponse, TokenResponse
 from ..services.activity import log_activity
 from ..services.base import BaseService
+from ..services.legal_service import LegalService
 from ..services.subscription import (
     auto_downgrade_to_free_if_expired,
     effective_status,
@@ -701,8 +703,29 @@ class AuthService(BaseService):
             company.provisioning_requested_at = now_utc()
             company.provisioning_error = None
 
-    def signup(self, data) -> TokenResponse:
+    @staticmethod
+    def _require_agreement_acceptance(data) -> None:
+        """Refuse to create an account without recorded consent.
+
+        Checked server-side because a click-through only binds if we can show
+        what was on screen and that it had to be ticked; a client-only check
+        would let a scripted signup produce an account with no acceptance row.
+        The version is compared too, so a stale tab cannot accept superseded
+        terms.
+        """
+        if not getattr(data, "accepted_terms", False):
+            raise BadRequestError(
+                "You must accept the Terms of Service and Privacy Policy to create an account."
+            )
+        sent = getattr(data, "agreement_version", None)
+        if sent and sent != legal_docs.AGREEMENT_VERSION:
+            raise ConflictError(
+                "The terms were updated while you were signing up. Reload the page and review them again."
+            )
+
+    def signup(self, data, request=None) -> TokenResponse:
         self._validate_signup_invite(data.invite_code)
+        self._require_agreement_acceptance(data)
         validate_password_strength(data.password)
         normalized_email = str(data.email).strip().lower()
         # One generic message for a username OR email clash, so signup can't be
@@ -742,6 +765,12 @@ class AuthService(BaseService):
             # email is proven. Development may opt out for local convenience.
             if not settings.REQUIRE_EMAIL_VERIFICATION:
                 provision_tenant(company, db=self.db)
+            LegalService(self.db).record_acceptance(
+                user_id=user.id,
+                company_id=company.id,
+                request=request,
+                method="signup",
+            )
             self._issue_email_verification(user)
             tokens = self._issue_tokens(user)
         return tokens
@@ -905,7 +934,7 @@ class AuthService(BaseService):
         return {"message": "Google account unlinked. Please sign in again."}
 
     def google_auth(
-        self, data, mfa_trust_token: str | None = None
+        self, data, mfa_trust_token: str | None = None, request=None
     ) -> TokenResponse | MfaChallengeResponse:
         email, full_name, subject, issuer = self._verified_google_identity(data.credential)
 
@@ -947,6 +976,7 @@ class AuthService(BaseService):
                 )
             if not data.company_name:
                 raise BadRequestError("Company name is required for new accounts via Google")
+            self._require_agreement_acceptance(data)
             owner_role = self.db.query(Role).filter_by(name="owner").first()
             if not owner_role:
                 raise AppException("System not initialized.")
@@ -980,6 +1010,12 @@ class AuthService(BaseService):
                 )
                 self.db.add(user)
                 self.db.flush()
+                LegalService(self.db).record_acceptance(
+                    user_id=user.id,
+                    company_id=company.id,
+                    request=request,
+                    method="signup_google",
+                )
                 # Production queues DDL for the isolated provisioner. Local/test
                 # environments can provision in-transaction with their dev role.
                 if settings.is_prod:
@@ -1054,6 +1090,17 @@ class AuthService(BaseService):
             # endpoints until this user enrolls. The web app shows a mandatory
             # enrollment screen.
             "mfa_enrollment_required": mfa_enrollment_pending(user),
+            # Soft gate: the web app shows a mandatory re-acceptance screen when
+            # the published agreement bundle is newer than what this user
+            # accepted (or when there is no acceptance at all).
+            # The platform owner is the other party to these agreements, not a
+            # customer bound by them, so the admin console is never gated.
+            "legal_acceptance_required": (
+                False
+                if user.is_platform_admin
+                else LegalService(self.db).acceptance_required(user.id)
+            ),
+            "agreement_version": legal_docs.AGREEMENT_VERSION,
         }
 
     # ── password reset ────────────────────────────────────────────────────────

@@ -38,6 +38,7 @@ def _signup(client, username="newowner", email="newowner@gmail.com"):
         json={
             "company_name": "NewCo", "full_name": "New Owner",
             "username": username, "email": email, "password": "password123",
+            "accepted_terms": True,
         },
     )
 

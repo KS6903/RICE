@@ -45,6 +45,7 @@ def test_signup_creates_tenant_and_returns_tokens(client, db_session):
     res = client.post("/api/auth/signup", headers=NATIVE_HEADERS, json={
         "company_name": "NewCo", "full_name": "New Owner", "username": "newowner",
         "email": "newowner@gmail.com", "password": "password123",
+        "accepted_terms": True,
     })
     assert res.status_code == 201, res.text
     assert res.json()["access_token"]
