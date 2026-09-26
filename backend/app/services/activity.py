@@ -89,6 +89,7 @@ def purge_expired_branches(db: Session, company_id: uuid.UUID) -> int:
             # information_schema and is further constrained to ^[a-z_][a-z0-9_]*$
             # in _nullable_branch_fk_tables(). Identifiers can't be bound params.
             db.execute(
+                # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
                 text(f'UPDATE "{table}" SET branch_id = NULL WHERE branch_id = :bid'),  # nosec B608
                 {"bid": str(branch.id)},
             )
