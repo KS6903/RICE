@@ -259,6 +259,18 @@ class Settings(BaseSettings):
             problems.append("RUNTIME_DATABASE_ROLE must be a safe PostgreSQL role name")
         if self.RUNTIME_DATABASE_ROLE in {"postgres", "rds_superuser"}:
             problems.append("RUNTIME_DATABASE_ROLE must not be an administrative role")
+        # Published agreements with unfilled placeholders are worse than none:
+        # a Terms of Service naming no legal entity and no venue invites the
+        # argument that no contract was formed at all. Imported lazily so a
+        # missing legal/ directory cannot break non-prod boot.
+        try:
+            from .legal import unresolved_placeholders
+
+            problems.extend(
+                f"legal document placeholder unfilled: {p}" for p in unresolved_placeholders()
+            )
+        except Exception as exc:  # pragma: no cover - defensive
+            problems.append(f"legal documents could not be validated: {exc}")
         if problems:
             raise ValueError(
                 "Insecure production configuration (ENV=prod): " + "; ".join(problems)

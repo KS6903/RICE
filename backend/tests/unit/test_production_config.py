@@ -4,7 +4,20 @@ from __future__ import annotations
 import pytest
 from pydantic import ValidationError
 
+from app.core import legal
 from app.core.config import Settings
+
+
+@pytest.fixture(autouse=True)
+def _legal_docs_filled_in(monkeypatch):
+    """Treat the published agreements as complete for this module.
+
+    The prod validator also refuses to boot while legal/entity.json still holds
+    TODO placeholders. That check has its own test below; these tests are about
+    credential separation, so they should not start failing the day a legal
+    document gains a new token.
+    """
+    monkeypatch.setattr(legal, "unresolved_placeholders", lambda: [])
 
 
 def _valid_prod(**overrides):
@@ -62,3 +75,29 @@ def test_worker_requires_separate_provisioner_credential():
         ),
     )
     assert settings.PROVISIONER_DATABASE_URL is not None
+
+
+def test_prod_refuses_to_boot_on_unfilled_legal_placeholders(monkeypatch):
+    """A Terms of Service naming no legal entity is worse than none at all.
+
+    It invites the argument that no agreement was formed, so an unfilled
+    placeholder is treated as a release blocker rather than a cosmetic gap.
+    """
+    monkeypatch.setattr(
+        legal,
+        "unresolved_placeholders",
+        lambda: ["terms-of-service.md: entity.json 'venue_city' is still a TODO placeholder"],
+    )
+    with pytest.raises(ValidationError, match="legal document placeholder unfilled"):
+        _valid_prod()
+
+
+def test_prod_refuses_to_boot_when_legal_documents_cannot_be_read(monkeypatch):
+    """Missing documents must fail loudly, not be silently skipped."""
+
+    def boom():
+        raise FileNotFoundError("legal/ not deployed")
+
+    monkeypatch.setattr(legal, "unresolved_placeholders", boom)
+    with pytest.raises(ValidationError, match="legal documents could not be validated"):
+        _valid_prod()
