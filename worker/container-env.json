@@ -1,0 +1,52 @@
+{
+  "$comment": "Environment the Worker hands each container process. Read by worker/index.ts AND by backend/deploy_readiness.py (the pre-deploy gate), so the configuration that gate validates is exactly the one the containers boot with. 'vars' come from wrangler.jsonc vars, 'secrets' from `wrangler secret put`, and 'optional' keys are only forwarded when set.",
+  "shared": {
+    "constants": {
+      "ENV": "prod",
+      "DEBUG": "false",
+      "COOKIE_SECURE": "true",
+      "EXPOSE_RESET_TOKEN": "false",
+      "RATE_LIMIT_ENABLED": "true",
+      "MFA_ENFORCE": "true",
+      "REQUIRE_EMAIL_VERIFICATION": "true",
+      "PASSWORD_BREACH_CHECK": "true",
+      "SMTP_STARTTLS": "true"
+    },
+    "vars": [
+      "RUNTIME_DATABASE_ROLE",
+      "ALLOWED_ORIGINS",
+      "TRUSTED_HOSTS",
+      "FRONTEND_BASE_URL",
+      "MFA_REQUIRED_ROLES",
+      "SMTP_HOST",
+      "SMTP_PORT",
+      "SMTP_FROM_EMAIL",
+      "SMTP_USERNAME"
+    ],
+    "secrets": [
+      "DATABASE_URL",
+      "SECRET_KEY",
+      "MFA_ENCRYPTION_KEY",
+      "SIGNUP_INVITE_CODE",
+      "REDIS_URL",
+      "SMTP_PASSWORD"
+    ],
+    "optional": ["COOKIE_DOMAIN", "GOOGLE_CLIENT_ID", "GOOGLE_WEATHER_API_KEY", "DEEPSEEK_API_KEY"]
+  },
+  "roles": {
+    "api": {
+      "constants": {
+        "PROCESS_ROLE": "api",
+        "RATE_LIMIT_TRUST_FORWARDED_FOR": "true",
+        "RATE_LIMIT_FORWARDED_HOPS": "1"
+      },
+      "secrets": []
+    },
+    "provisioner": {
+      "constants": {
+        "PROCESS_ROLE": "provisioner"
+      },
+      "secrets": ["PROVISIONER_DATABASE_URL"]
+    }
+  }
+}

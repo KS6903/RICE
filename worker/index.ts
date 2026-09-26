@@ -1,4 +1,5 @@
 import { Container, getRandom } from "@cloudflare/containers";
+import containerEnv from "./container-env.json";
 
 export interface Env {
   ASSETS: Fetcher;
@@ -32,43 +33,30 @@ export interface Env {
   DEEPSEEK_API_KEY?: string;
 }
 
-/** Config shared by both process roles. Anything role-specific is added by the
- *  caller — notably PROVISIONER_DATABASE_URL, which the API refuses to boot with. */
-function baseEnv(env: Env): Record<string, string> {
-  const vars: Record<string, string> = {
-    ENV: "prod",
-    DEBUG: "false",
-    RUNTIME_DATABASE_ROLE: env.RUNTIME_DATABASE_ROLE,
-    DATABASE_URL: env.DATABASE_URL,
-    SECRET_KEY: env.SECRET_KEY,
-    MFA_ENCRYPTION_KEY: env.MFA_ENCRYPTION_KEY,
-    SIGNUP_INVITE_CODE: env.SIGNUP_INVITE_CODE,
-    REDIS_URL: env.REDIS_URL,
-    ALLOWED_ORIGINS: env.ALLOWED_ORIGINS,
-    TRUSTED_HOSTS: env.TRUSTED_HOSTS,
-    FRONTEND_BASE_URL: env.FRONTEND_BASE_URL,
-    COOKIE_SECURE: "true",
-    EXPOSE_RESET_TOKEN: "false",
-    RATE_LIMIT_ENABLED: "true",
-    MFA_ENFORCE: "true",
-    MFA_REQUIRED_ROLES: env.MFA_REQUIRED_ROLES,
-    REQUIRE_EMAIL_VERIFICATION: "true",
-    PASSWORD_BREACH_CHECK: "true",
-    SMTP_HOST: env.SMTP_HOST,
-    SMTP_PORT: env.SMTP_PORT,
-    SMTP_STARTTLS: "true",
-    SMTP_FROM_EMAIL: env.SMTP_FROM_EMAIL,
-    SMTP_USERNAME: env.SMTP_USERNAME,
-    SMTP_PASSWORD: env.SMTP_PASSWORD,
-  };
-  // Only set COOKIE_DOMAIN when there is a real parent domain to scope to. On a
-  // *.workers.dev host there is none: workers.dev is on the Public Suffix List,
-  // so a Domain attribute naming it is rejected and the session cookie is simply
-  // dropped — login would appear to succeed and then not stick. Omitting the
-  // variable leaves it None, which yields a correct host-only cookie.
-  if (env.COOKIE_DOMAIN) vars.COOKIE_DOMAIN = env.COOKIE_DOMAIN;
-  for (const key of ["GOOGLE_CLIENT_ID", "GOOGLE_WEATHER_API_KEY", "DEEPSEEK_API_KEY"] as const) {
-    const value = env[key];
+type ContainerRole = keyof typeof containerEnv.roles;
+
+/** The env a container process boots with. The constants, which vars and
+ *  secrets get forwarded, and the per-role additions all live in
+ *  container-env.json, which the pre-deploy gate (backend/deploy_readiness.py)
+ *  reads too, so what it validates is exactly what the containers receive.
+ *  Only the provisioner role forwards PROVISIONER_DATABASE_URL; the API
+ *  refuses to boot with it. */
+function containerEnvFor(env: Env, role: ContainerRole): Record<string, string> {
+  const source = env as unknown as Record<string, string | undefined>;
+  const { shared } = containerEnv;
+  const roleEnv = containerEnv.roles[role];
+  const vars: Record<string, string> = { ...shared.constants, ...roleEnv.constants };
+  for (const key of [...shared.vars, ...shared.secrets, ...roleEnv.secrets]) {
+    const value = source[key];
+    if (value !== undefined) vars[key] = value;
+  }
+  // Optional keys are forwarded only when set. COOKIE_DOMAIN matters most: on a
+  // *.workers.dev host there is no parent domain to scope to. workers.dev is on
+  // the Public Suffix List, so a Domain attribute naming it is rejected and the
+  // session cookie is simply dropped — login would appear to succeed and then
+  // not stick. Omitting the variable leaves it None: a correct host-only cookie.
+  for (const key of shared.optional) {
+    const value = source[key];
     if (value) vars[key] = value;
   }
   return vars;
@@ -85,15 +73,11 @@ export class ApiContainer extends Container<Env> {
   override async fetch(request: Request): Promise<Response> {
     await this.startAndWaitForPorts({
       startOptions: {
-        envVars: {
-          ...baseEnv(this.env),
-          PROCESS_ROLE: "api",
-          // The Worker is the only peer the container sees, so the real client
-          // IP is forwarded as a single hop (RATE_LIMIT_FORWARDED_HOPS=1).
-          // Without this every caller shares one rate-limit and lockout bucket.
-          RATE_LIMIT_TRUST_FORWARDED_FOR: "true",
-          RATE_LIMIT_FORWARDED_HOPS: "1",
-        },
+        // Includes RATE_LIMIT_TRUST_FORWARDED_FOR=true with one hop: the Worker
+        // is the only peer the container sees, so the real client IP arrives as
+        // a single X-Forwarded-For entry. Without it every caller would share
+        // one rate-limit and lockout bucket.
+        envVars: containerEnvFor(this.env, "api"),
       },
     });
     return super.fetch(request);
@@ -108,11 +92,7 @@ export class ProvisionerContainer extends Container<Env> {
 
   async drain(): Promise<void> {
     await this.start({
-      envVars: {
-        ...baseEnv(this.env),
-        PROCESS_ROLE: "provisioner",
-        PROVISIONER_DATABASE_URL: this.env.PROVISIONER_DATABASE_URL,
-      },
+      envVars: containerEnvFor(this.env, "provisioner"),
     });
   }
 }
