@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { authService } from "../services/AuthService";
 import { useAuthStore } from "../stores/authStore";
@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import { GoogleLogin } from "@react-oauth/google";
 import riceLogo from "../assets/Rice_Logo.svg";
+import { legalService } from "../services/LegalService";
 
 export default function SignupPage() {
   const navigate = useNavigate();
@@ -27,6 +28,27 @@ export default function SignupPage() {
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
+  // The version on screen travels with the acceptance. If the terms change
+  // while this tab is open the server rejects the stale version rather than
+  // silently binding the user to text they never saw.
+  const [agreementVersion, setAgreementVersion] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    legalService
+      .index()
+      .then((i) => {
+        if (!cancelled) setAgreementVersion(i.agreement_version);
+      })
+      .catch(() => {
+        /* The server re-checks acceptance either way; a failed lookup just
+           means we send no version and it validates the flag alone. */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const update = (k: keyof typeof form, v: string | boolean) =>
     setForm((f) => ({ ...f, [k]: v }));
@@ -35,6 +57,8 @@ export default function SignupPage() {
     setError("");
     if (form.password !== form.confirm) return setError("Passwords do not match.");
     if (form.password.length < 8) return setError("Password must be at least 8 characters.");
+    if (!acceptedTerms)
+      return setError("Please accept the Terms of Service and Privacy Policy to continue.");
     setLoading(true);
     try {
       const data = await authService.signup({
@@ -45,6 +69,8 @@ export default function SignupPage() {
         email: form.email,
         password: form.password,
         is_multi_branch: form.is_multi_branch,
+        accepted_terms: acceptedTerms,
+        ...(agreementVersion ? { agreement_version: agreementVersion } : {}),
       });
       setTokens(data?.access_token, data?.refresh_token);
       const me = await authService.me();
@@ -58,6 +84,10 @@ export default function SignupPage() {
   };
 
   const handleGoogleSuccess = async (credentialResponse: any) => {
+    if (!acceptedTerms) {
+      setError("Please accept the Terms of Service and Privacy Policy to continue.");
+      return;
+    }
     setLoading(true);
     setError("");
     try {
@@ -65,6 +95,8 @@ export default function SignupPage() {
         company_name: form.company_name,
         ...(form.invite_code.trim() ? { invite_code: form.invite_code.trim() } : {}),
         is_multi_branch: form.is_multi_branch,
+        accepted_terms: acceptedTerms,
+        ...(agreementVersion ? { agreement_version: agreementVersion } : {}),
       });
       setTokens(data?.access_token, data?.refresh_token);
       const me = await authService.me();
@@ -311,6 +343,35 @@ export default function SignupPage() {
                 </div>
               )}
 
+              <label className="flex items-start gap-3 pt-1 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={acceptedTerms}
+                  onChange={(e) => setAcceptedTerms(e.target.checked)}
+                  className="mt-0.5 h-5 w-5 shrink-0 rounded accent-emerald-500"
+                  data-testid="signup-accept-terms"
+                />
+                <span className="text-sm text-secondary leading-snug">
+                  I have read and accept the{" "}
+                  <Link to="/legal/terms" target="_blank" rel="noopener noreferrer" className="link">
+                    Terms of Service
+                  </Link>
+                  ,{" "}
+                  <Link to="/legal/privacy" target="_blank" rel="noopener noreferrer" className="link">
+                    Privacy Policy
+                  </Link>
+                  ,{" "}
+                  <Link to="/legal/dpa" target="_blank" rel="noopener noreferrer" className="link">
+                    Data Processing Addendum
+                  </Link>{" "}
+                  and{" "}
+                  <Link to="/legal/aup" target="_blank" rel="noopener noreferrer" className="link">
+                    Acceptable Use Policy
+                  </Link>
+                  , and I am authorised to accept them for my company.
+                </span>
+              </label>
+
               <div className="flex gap-2 pt-2">
                 <button
                   onClick={() => setStep(1)}
@@ -324,6 +385,7 @@ export default function SignupPage() {
                   className="btn-primary flex-1"
                   disabled={
                     loading ||
+                    !acceptedTerms ||
                     !form.full_name ||
                     !form.username ||
                     !form.email ||

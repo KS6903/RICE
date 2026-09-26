@@ -20,6 +20,11 @@ export interface User {
   email_verified?: boolean;
   // When true, the server blocks data endpoints until the email is verified.
   email_verification_required?: boolean;
+  // When true, this user has not accepted the current agreement bundle (or has
+  // accepted an older version) and the web app shows a blocking consent screen.
+  legal_acceptance_required?: boolean;
+  // Version of the agreement bundle currently published.
+  agreement_version?: string;
   subscription?: {
     code: string;
     name: string;

@@ -442,6 +442,13 @@ export default function LoginPage() {
               Create an account →
             </Link>
           </p>
+
+          <nav className="mt-6 flex flex-wrap justify-center gap-x-4 gap-y-1 text-xs text-muted">
+            <Link to="/legal/terms" className="link">Terms</Link>
+            <Link to="/legal/privacy" className="link">Privacy</Link>
+            <Link to="/legal/dpa" className="link">Data processing</Link>
+            <Link to="/legal/subprocessors" className="link">Sub-processors</Link>
+          </nav>
         </div>
       </div>
     </div>
