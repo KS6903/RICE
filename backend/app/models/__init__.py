@@ -17,6 +17,7 @@ from .upgrade_request import UpgradeRequest
 from .warehouse import WarehouseLayout, WarehouseZone, Pallet, RiceBatch, PalletMovement
 from .employee import Employee
 from .activity import ActivityLog
+from .legal import LegalAcceptance
 from .fleet import Driver, Truck, DispatchTrip
 
 __all__ = [
@@ -37,5 +38,6 @@ __all__ = [
     "WarehouseLayout", "WarehouseZone", "Pallet", "RiceBatch", "PalletMovement",
     "Employee",
     "ActivityLog",
+    "LegalAcceptance",
     "Driver", "Truck", "DispatchTrip",
 ]
