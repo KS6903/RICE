@@ -1,0 +1,23 @@
+# gitleaks configuration for CI and scripts/ci_local.mjs.
+#
+# Extends the default ruleset. The only exception below is historical: a debug
+# log (backend/backend.err) was committed between 2026-05-31 and 2026-07-12 and
+# carries dev-only JWTs signed with a local development key. The file has been
+# untracked and gitignored (*.err) since 316786e. Removing it from history is
+# PRODUCTION_LAUNCH_CHECKLIST.md Phase 10, a destructive, team-coordinated step,
+# so until then the allowlist is scoped to that one path in exactly the three
+# commits that contain the tokens. A leak anywhere else, including a new copy of
+# that file in a new commit, still fails the scan.
+
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Historical dev-only JWTs in backend/backend.err (see PRODUCTION_LAUNCH_CHECKLIST.md Phase 10)"
+condition = "AND"
+paths = ['''^backend/backend\.err$''']
+commits = [
+  "1a6400a036935c7fd41f9fd1dbb8990d177a1670",
+  "75cc88287d8f47707c2ed73f6d674eb7e89c8e84",
+  "96e3264dfbb9c30ec4377344dedf8782ba078942",
+]

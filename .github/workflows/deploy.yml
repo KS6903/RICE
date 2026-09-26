@@ -1,7 +1,14 @@
 name: Deploy (Cloudflare)
 
-# Manual only, on purpose: nothing reaches production on a push. The verify job
-# re-runs the CI checks and the deploy job refuses to start unless they pass.
+# Manual only, on purpose: nothing reaches production on a push. Three gates must
+# pass before the deploy job may start:
+#   1. main-only  - deploys run from main, never from a feature branch;
+#   2. verify     - checks.yml, the very same workflow CI runs;
+#   3. readiness  - rebuilds each container's production environment from
+#                   wrangler.jsonc and worker/container-env.json and runs the
+#                   boot-time validator, so a config the API would refuse to
+#                   start with (template values, unfilled legal placeholders)
+#                   blocks here instead of crash-looping after rollout.
 on:
   workflow_dispatch:
     inputs:
@@ -18,26 +25,27 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  verify:
+  main-only:
+    name: Deploys run from main only
     runs-on: ubuntu-latest
-    services:
-      postgres:
-        image: postgres:16
-        env:
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: postgres
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd "pg_isready -U postgres"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-    env:
-      DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/rice
-      SECRET_KEY: ci-test-secret-key
-      REDIS_URL: ""
+    steps:
+      - name: Refuse any other branch
+        if: github.ref != 'refs/heads/main'
+        run: |
+          echo "::error::Deploys run from main only; this run is on ${GITHUB_REF}."
+          exit 1
+      - name: On main
+        if: github.ref == 'refs/heads/main'
+        run: echo "Deploying ${GITHUB_SHA} from main."
+
+  verify:
+    needs: main-only
+    uses: ./.github/workflows/checks.yml
+
+  readiness:
+    name: Production readiness
+    needs: main-only
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
         with:
@@ -45,30 +53,15 @@ jobs:
       - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
         with:
           python-version: "3.11"
-      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
-        with:
-          node-version: "24"
-          cache: npm
+          cache: pip
+          cache-dependency-path: backend/requirements.lock
       - name: Install backend dependencies
-        run: python -m pip install --require-hashes -r requirements-dev.lock
-        working-directory: backend
-      - name: Backend tests
-        run: pytest
-        working-directory: backend
-      - name: Backend type-check
-        run: mypy
-        working-directory: backend
-      - name: Install frontend dependencies
-        run: npm ci
-      - name: Frontend type-check
-        run: npm run typecheck --workspace=packages/web
-      - name: Worker type-check
-        run: npm run cf:typecheck
-      - name: Frontend tests
-        run: npm run test:web
+        run: python -m pip install --require-hashes -r backend/requirements.lock
+      - name: Would the containers boot with this configuration?
+        run: python backend/deploy_readiness.py
 
   deploy:
-    needs: verify
+    needs: [verify, readiness]
     runs-on: ubuntu-latest
     environment: production
     steps:

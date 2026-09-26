@@ -1,0 +1,21 @@
+# Semgrep replaces its built-in ignore list with this file, so start from
+# .gitignore (dependencies, build output, logs, local state) and add only what
+# is deliberately out of scope for SAST.
+:include .gitignore
+
+# Test code: fixtures and fake credentials by design. The application code they
+# exercise is scanned.
+backend/tests/
+e2e/
+
+# Vendored agent/editor tooling (Impeccable skill scripts, Codex agents) - not
+# part of the product.
+.claude/
+.codex/
+.agents/
+
+# Published legal agreements (markdown, no code).
+legal/
+
+# Static assets shipped as-is.
+packages/web/public/
