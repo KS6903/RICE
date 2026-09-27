@@ -1,7 +1,16 @@
-# Dependabot (security hardening P2.13): automated PRs for vulnerable or stale
-# dependencies across the Python backend, the npm workspaces, and the GitHub
-# Actions used by CI. Security updates are always raised; version updates are
-# batched weekly to keep noise down.
+# Dependabot: automated update PRs for the Python backend, the npm workspaces,
+# the GitHub Actions and the API image's base.
+#
+# - Minor and patch updates arrive grouped, one PR per ecosystem per week, and
+#   ci.yml's automerge job merges them once every check has passed.
+# - Majors arrive as one PR per package and are never merged automatically:
+#   each is a deliberate migration (see OUTSTANDING.md).
+# - pip: requirements.in / requirements-dev.in are the inputs; the hash-pinned
+#   requirements*.txt are pip-compile output that Dependabot regenerates, under
+#   the Python in backend/.python-version. CI fails a PR whose lock and input
+#   disagree (backend/scripts/check_lockfiles.py).
+# - Security updates also need "Dependabot security updates" switched on in the
+#   repository settings (Settings -> Code security); this file cannot do that.
 version: 2
 updates:
   - package-ecosystem: "pip"
@@ -9,14 +18,33 @@ updates:
     schedule:
       interval: "weekly"
     open-pull-requests-limit: 5
+    groups:
+      python-minor-and-patch:
+        update-types: ["minor", "patch"]
 
   - package-ecosystem: "npm"
     directory: "/"
     schedule:
       interval: "weekly"
     open-pull-requests-limit: 5
+    groups:
+      npm-minor-and-patch:
+        update-types: ["minor", "patch"]
 
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
       interval: "weekly"
+    groups:
+      actions-minor-and-patch:
+        update-types: ["minor", "patch"]
+
+  - package-ecosystem: "docker"
+    directory: "/backend"
+    schedule:
+      interval: "weekly"
+    ignore:
+      # Stay on the Python 3.11 line the locks are compiled for. A newer Python
+      # is a deliberate change (relock, retest), not a routine update.
+      - dependency-name: "python"
+        update-types: ["version-update:semver-major", "version-update:semver-minor"]

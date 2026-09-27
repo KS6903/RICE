@@ -70,6 +70,19 @@ notes which of its phases it maps to.
 
 ---
 
+## Dependency majors: deliberate migrations  ·  repo  ·  not auto-merged
+
+Dependabot groups minor and patch updates, and CI merges them once green. Majors
+arrive one PR each and wait for a person. These were open as stale PRs (#1–#15)
+when the pipeline was rebuilt; each needs its own branch and review:
+
+- [ ] Tailwind CSS 3 → 4. New engine and config format; check every surface in
+      light and dark mode.
+- [ ] ESLint 9 → 10 and TypeScript 5.9 → 6. The TS 6 PR failed the frontend build.
+- [ ] pytest 8 → 9. The PR failed the backend suite.
+- [ ] redis-py 5 → 8. Rate limiting and lockout depend on it; test against Upstash.
+- [ ] actions/checkout, setup-node, setup-python v6 → v7. Keep SHA pinning.
+
 ## Done this session (reference)
 
 - [x] Pushed security-hardening commit `629c367`.
