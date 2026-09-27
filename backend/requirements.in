@@ -1,0 +1,36 @@
+# Runtime dependencies: the input to pip-compile. Edit this file, then regenerate
+# the hash-pinned lock, requirements.txt, under Python 3.11 (.python-version):
+#   pip-compile --generate-hashes --strip-extras --output-file=requirements.txt requirements.in
+# CI fails when a pin here and the lock disagree (scripts/check_lockfiles.py).
+#
+# Pins refreshed by the security hardening pass (pip-audit clean as of 2026-06):
+# fastapi/starlette, python-multipart, python-dotenv bumped past known CVEs.
+fastapi==0.136.3
+uvicorn[standard]==0.32.1
+sqlalchemy==2.0.51
+alembic==1.14.0
+psycopg[binary]==3.3.3
+# Security hardening P2.13: python-jose (CVE-2024-33663/33664) → PyJWT, and the
+# unmaintained passlib → direct bcrypt. Stored $2b$ hashes verify unchanged.
+PyJWT==2.13.0
+cryptography==50.0.0  # JWT alg backends + Fernet (core/crypto.py for MFA seeds); PYSEC-2026-3552 fix
+bcrypt==4.2.1
+python-multipart==0.0.32
+slowapi==0.1.9
+pydantic==2.13.3
+pydantic-settings==2.6.1
+email-validator==2.3.0
+python-dotenv==1.2.2
+httpx==0.27.2
+# The [requests] extra pulls in the `requests` HTTP lib that
+# google.auth.transport.requests needs (the app otherwise uses httpx). Without it
+# the transport import fails and Google login silently disables itself.
+google-auth[requests]==2.38.0
+redis==5.2.1
+pyotp==2.9.0
+
+# Windows-only transitive dependencies (psycopg -> tzdata, click -> colorama),
+# pinned explicitly so a lock compiled on Linux (Dependabot, CI) still lists them.
+# Without them, --require-hashes installs fail on Windows development machines.
+tzdata==2026.3
+colorama==0.4.6

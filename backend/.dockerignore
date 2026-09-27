@@ -22,5 +22,5 @@ cleanup_zones.py
 drop_test_db.py
 list_users.py
 start_disposable_e2e.py
-requirements-dev.lock
+requirements-dev.in
 requirements-dev.txt

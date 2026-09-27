@@ -1,0 +1,15 @@
+# Dev/test-only dependencies: the input to pip-compile, on top of the runtime set.
+# Regenerate the hash-pinned lock under Python 3.11 (.python-version):
+#   pip-compile --allow-unsafe --generate-hashes --strip-extras --output-file=requirements-dev.txt requirements-dev.in
+# Install with:
+#   .venv/Scripts/python -m pip install --require-hashes -r requirements-dev.txt
+-r requirements.in
+
+pytest==8.3.4
+pytest-asyncio==0.24.0
+coverage==7.6.9
+ruff==0.8.4
+mypy==1.13.0
+bandit==1.9.4
+pip-audit==2.10.1
+pip-tools==7.5.3
