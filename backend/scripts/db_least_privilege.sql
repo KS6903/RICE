@@ -39,6 +39,19 @@ ALTER DEFAULT PRIVILEGES IN SCHEMA public
 ALTER DEFAULT PRIVILEGES IN SCHEMA public
   GRANT USAGE, SELECT ON SEQUENCES TO ricemill_app;
 
+-- 4b. The legal acceptance ledger is append-only: consent evidence is added,
+-- never rewritten or deleted. Step 3 just granted UPDATE/DELETE on every public
+-- table, so take those two back here, where re-running this script (to rotate
+-- the password, say) can't silently hand them back. Before the first migration
+-- the table doesn't exist yet; migration 007 revokes them once it does.
+DO $ledger$
+BEGIN
+  IF to_regclass('public.legal_acceptances') IS NOT NULL THEN
+    REVOKE UPDATE, DELETE ON TABLE public.legal_acceptances FROM ricemill_app;
+  END IF;
+END
+$ledger$;
+
 -- 5. Existing tenant schemas. New schemas receive the equivalent grants from
 -- core/tenancy.py while connected with PROVISIONER_DATABASE_URL.
 DO $grants$

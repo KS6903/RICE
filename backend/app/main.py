@@ -191,6 +191,16 @@ async def _verify_runtime_database_role() -> None:
                 "FROM pg_roles r WHERE r.rolname = current_user"
             )
         ).one()
+        # The consent ledger is the evidence of who agreed to which terms: the API
+        # may add rows but never rewrite or delete them (migration 007 and
+        # scripts/db_least_privilege.sql revoke both).
+        ledger_writable = connection.execute(
+            text(
+                "SELECT COALESCE(bool_or(has_table_privilege(current_user, c.oid, 'UPDATE') "
+                "OR has_table_privilege(current_user, c.oid, 'DELETE')), false) "
+                "FROM pg_class c WHERE c.oid = to_regclass('public.legal_acceptances')"
+            )
+        ).scalar_one()
     role_name = row[0]
     if role_name != settings.RUNTIME_DATABASE_ROLE:
         raise RuntimeError(
@@ -200,6 +210,11 @@ async def _verify_runtime_database_role() -> None:
         raise RuntimeError(
             "The API database role has administrative, ownership, or CREATE privileges; "
             "run tenant DDL only through PROVISIONER_DATABASE_URL"
+        )
+    if ledger_writable:
+        raise RuntimeError(
+            "The API database role can UPDATE or DELETE legal_acceptances; the consent ledger "
+            "must be append-only (run alembic upgrade head, then scripts/db_least_privilege.sql)"
         )
 
 
