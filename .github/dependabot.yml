@@ -2,7 +2,8 @@
 # the GitHub Actions and the API image's base.
 #
 # - Minor and patch updates arrive grouped, one PR per ecosystem per week, and
-#   ci.yml's automerge job merges them once every check has passed.
+#   ci.yml's automerge job merges them once every check has passed, then
+#   re-runs CI on main. Formatter and linter upgrades get groups of their own.
 # - Majors arrive as one PR per package and are never merged automatically:
 #   each is a deliberate migration (see OUTSTANDING.md).
 # - pip: requirements.in / requirements-dev.in are the inputs; the hash-pinned
@@ -19,6 +20,13 @@ updates:
       interval: "weekly"
     open-pull-requests-limit: 5
     groups:
+      # Formatters and linters get their own group: a new version can reformat
+      # or flag existing code, so its PR may need a follow-up commit, and on its
+      # own it never holds back the library updates below. A dependency joins
+      # the first group that matches it.
+      python-tooling:
+        patterns: ["ruff", "mypy"]
+        update-types: ["minor", "patch"]
       python-minor-and-patch:
         update-types: ["minor", "patch"]
 
@@ -28,6 +36,10 @@ updates:
       interval: "weekly"
     open-pull-requests-limit: 5
     groups:
+      # See python-tooling above.
+      npm-tooling:
+        patterns: ["prettier", "eslint", "eslint-*", "@eslint/*", "typescript", "typescript-eslint"]
+        update-types: ["minor", "patch"]
       npm-minor-and-patch:
         update-types: ["minor", "patch"]
 

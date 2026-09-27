@@ -4,6 +4,8 @@ on:
   push:
     branches: [main]
   pull_request:
+  # The automerge job below dispatches this to re-test main after a merge.
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -29,11 +31,12 @@ jobs:
     permissions:
       contents: write
       pull-requests: write
+      actions: write # to dispatch the re-test of main
     steps:
       - name: Read the update type
         id: meta
         uses: dependabot/fetch-metadata@25dd0e34f4fe68f24cc83900b1fe3fe149efef98 # v3.1.0
-      - name: Merge minor and patch updates tested against the current main
+      - name: Merge minor and patch updates, then re-test main
         # update-type is the highest semver change in the PR, so a grouped PR
         # that also carries a major never qualifies.
         if: >-
@@ -44,15 +47,11 @@ jobs:
           REPO: ${{ github.repository }}
           PR_URL: ${{ github.event.pull_request.html_url }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-          TESTED_MERGE: ${{ github.sha }}
         run: |
-          # The checks ran on a merge of this PR into main as main was then. A
-          # merge made with this token does not trigger CI on main, so merge only
-          # if main hasn't moved since: then what lands is exactly what passed.
-          tested_base="$(gh api "repos/${REPO}/commits/${TESTED_MERGE}" --jq '.parents[0].sha')"
-          main_tip="$(gh api "repos/${REPO}/commits/main" --jq '.sha')"
-          if [ "$tested_base" != "$main_tip" ]; then
-            echo "::notice::main moved since this run (${tested_base:0:12} -> ${main_tip:0:12}); not merging. The PR needs a rebase and a fresh run."
-            exit 0
-          fi
+          # --match-head-commit merges only the exact commit that passed. main may
+          # have moved since these checks ran, and a merge made with this token
+          # triggers no CI on main, so dispatch a run of this workflow on main: the
+          # one kind of run this token may start. A bad combination then shows up
+          # as a red main instead of slipping by; deploys re-run every check anyway.
           gh pr merge --squash --match-head-commit "$HEAD_SHA" "$PR_URL"
+          gh workflow run ci.yml --repo "$REPO" --ref main
