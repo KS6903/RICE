@@ -149,7 +149,8 @@ if (untracked) {
 step("backend: lockfiles match their inputs", () =>
   run(python, [path.join("scripts", "check_lockfiles.py")], { cwd: backend }),
 );
-step("backend: ruff (scoped)", py("ruff", ["check", "tests"]));
+step("backend: ruff", py("ruff", ["check", "."]));
+step("backend: ruff format", py("ruff", ["format", "--check", "."]));
 step("backend: mypy (scoped)", py("mypy", []));
 step("backend: single Alembic head", () => {
   const heads = capture(python, ["-m", "alembic", "heads"], { cwd: backend });
@@ -187,7 +188,7 @@ else {
 step("desktop: type-check", () =>
   run("npx", ["tsc", "-p", "packages/desktop/tsconfig.json", "--noEmit"], { shell: isWindows }),
 );
-step("format check (advisory until the format migration)", npm("format:check"), { advisory: true });
+step("format check (Prettier)", npm("format:check"));
 
 // ── Security (checks.yml: security, semgrep) ─────────────────────────────────
 

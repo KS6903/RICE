@@ -56,8 +56,10 @@ jobs:
         # Installs read only the hash-pinned .txt locks, so a pin bumped in a
         # .in file without a relock would otherwise ship untested.
         run: python scripts/check_lockfiles.py
-      - name: Lint (ruff, scoped)
-        run: ruff check tests
+      - name: Lint (ruff, whole backend; migrations excluded by config)
+        run: ruff check .
+      - name: Format check (ruff format)
+        run: ruff format --check .
       - name: Type-check (mypy, scoped)
         run: mypy
       - name: Single Alembic head
@@ -96,9 +98,8 @@ jobs:
           WRANGLER_SEND_METRICS: "false"
       - name: Type-check the desktop app
         run: npx tsc -p packages/desktop/tsconfig.json --noEmit
-      - name: Format check (advisory until the format migration lands)
+      - name: Format check (Prettier)
         run: npm run format:check
-        continue-on-error: true
 
   security:
     runs-on: ubuntu-latest
