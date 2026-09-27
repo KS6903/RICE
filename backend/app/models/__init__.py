@@ -6,6 +6,7 @@ from .costs import Expense, ExpenseCategory
 from .dispatch import Agent, Miller
 from .employee import Employee
 from .fleet import DispatchTrip, Driver, Truck
+from .job_run import JobRun
 from .legal import LegalAcceptance
 from .milling import (
     ByproductInventory,
@@ -28,6 +29,7 @@ from .user_location import UserLocation
 from .warehouse import Pallet, PalletMovement, RiceBatch, WarehouseLayout, WarehouseZone
 
 __all__ = [
+    "JobRun",
     "Company",
     "Branch",
     "User",

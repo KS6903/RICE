@@ -49,6 +49,8 @@ follow_imports = "silent"
 # Expand this list as new OOP layers land (app/repositories, app/services/base.py, ...).
 files = [
     "app/core",
+    "app/jobs",
+    "app/models/job_run.py",
     "app/repositories",
     "app/schemas",
     "app/services/base.py",

@@ -11,6 +11,7 @@ secret-generation and monitoring phases there still apply.
 | React SPA (`packages/web`) | Workers static assets, served by the Worker |
 | FastAPI API | `ApiContainer` — Cloudflare Container, `PROCESS_ROLE=api` |
 | Tenant provisioner | `ProvisionerContainer` — woken every 15 min by a Cron Trigger |
+| Scheduled jobs (`backend/app/jobs`) | `JobsContainer` — woken by the same Cron Trigger |
 | PostgreSQL | PlanetScale Postgres, provisioned and billed through Cloudflare |
 | Redis | Upstash (`rediss://`) — see "Why Redis is off-platform" |
 
@@ -42,12 +43,17 @@ fast with a 503 and `Retry-After` rather than risk a duplicate.
 To scale, raise `API_INSTANCES` and `ApiContainer.max_instances` together — the Worker
 never balances across more instances than the container is allowed to run.
 
-### Why there are two containers
+### Why there are three containers
 
 `app/core/config.py` refuses to boot the API when `PROVISIONER_DATABASE_URL` is in scope,
 and requires it when `PROCESS_ROLE=provisioner`. The DDL credential is deliberately kept
-out of the long-running API process, so the two roles cannot share a container. They share
-one image and differ only by entrypoint and env.
+out of the long-running API process, so the two roles cannot share a container.
+
+The jobs runner (`PROCESS_ROLE=jobs`) has its own container too. It needs only the
+DML-only runtime credential, and the validator refuses it the DDL one. A one-shot
+container started by the cron means there's no internal HTTP endpoint to protect, and no API
+instance kept awake by the 15-minute tick. All three share one image and differ only by
+entrypoint and env. Each run is claimed in `job_runs` first, so no job runs twice.
 
 ### Why Redis is off-platform
 
@@ -143,5 +149,7 @@ npm run cf:typecheck
   Containers has no autoscaler, so raising capacity is a config change and a redeploy.
 - **Ephemeral disk.** Containers keep no local state between restarts; everything durable
   lives in Postgres or Redis.
-- **Cron cadence.** The provisioner sweep runs every 15 minutes. Signup and Google auth
-  still provision inline, so this is only the retry path for failures.
+- **Cron cadence.** The provisioner and the jobs runner start every 15 minutes. In
+  production, signup, email verification and Google sign-in only *queue* a new tenant, so
+  a new customer can wait up to 15 minutes plus a cold start for their schema. Scheduled
+  jobs run on the first tick after they fall due, in each tenant's timezone.

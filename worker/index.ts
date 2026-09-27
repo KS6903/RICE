@@ -5,6 +5,7 @@ export interface Env {
   ASSETS: Fetcher;
   API_CONTAINER: DurableObjectNamespace<ApiContainer>;
   PROVISIONER_CONTAINER: DurableObjectNamespace<ProvisionerContainer>;
+  JOBS_CONTAINER: DurableObjectNamespace<JobsContainer>;
 
   // Non-secret config (wrangler.jsonc "vars")
   API_INSTANCES: string;
@@ -97,6 +98,24 @@ export class ProvisionerContainer extends Container<Env> {
   }
 }
 
+/** Scheduled work (backend/app/jobs): subscription expiry, stale-data purges,
+ *  and later the tenant automations. One-shot: runs whatever is due, then
+ *  exits. It runs with the DML-only runtime credential; the config validator
+ *  refuses it the provisioner's DDL secret. Its own container, rather than an
+ *  HTTP call into the API, means no internal endpoint to protect, and no
+ *  API instance kept awake by a 15-minute tick. */
+export class JobsContainer extends Container<Env> {
+  sleepAfter = "5m";
+  enableInternet = true;
+  entrypoint = ["python", "-m", "app.jobs"];
+
+  async run(): Promise<void> {
+    await this.start({
+      envVars: containerEnvFor(this.env, "jobs"),
+    });
+  }
+}
+
 function isBackendPath(pathname: string): boolean {
   return pathname.startsWith("/api/") || pathname.startsWith("/ws/");
 }
@@ -173,9 +192,22 @@ export default {
     );
   },
 
-  async scheduled(_event: ScheduledController, env: Env): Promise<void> {
-    // Safety net only — signup and Google auth provision inline. This catches
-    // tenants whose provisioning failed and were left queued.
-    await env.PROVISIONER_CONTAINER.getByName("provisioner").drain();
+  async scheduled(_event: ScheduledController, env: Env, ctx: ExecutionContext): Promise<void> {
+    // Every 15 minutes, start both one-shot containers:
+    //  - the provisioner drains queued tenant schemas. In production, signup,
+    //    email verification and Google sign-in only queue a tenant, so this is
+    //    how every new tenant gets its schema.
+    //  - the jobs runner runs whatever scheduled work is due.
+    // allSettled: one failing to start must not stop the other.
+    const started = Promise.allSettled([
+      env.PROVISIONER_CONTAINER.getByName("provisioner").drain(),
+      env.JOBS_CONTAINER.getByName("jobs").run(),
+    ]).then((results) => {
+      for (const result of results) {
+        if (result.status === "rejected")
+          console.error("scheduled container failed to start", result.reason);
+      }
+    });
+    ctx.waitUntil(started);
   },
 };
