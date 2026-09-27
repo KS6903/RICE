@@ -102,6 +102,7 @@ def set_search_path(db: Session, schema_name: str | None) -> None:
     never leaks a previous request's schema.
     """
     if valid_schema_name(schema_name):
+        # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
         db.execute(text(f'SET search_path TO "{schema_name}", public'))
     else:
         if schema_name:
@@ -172,28 +173,21 @@ def grant_runtime_schema_access(session: Session, schema: str) -> None:
     role = settings.RUNTIME_DATABASE_ROLE
     if not _SCHEMA_RE.fullmatch(role):
         raise ValueError("Unsafe runtime database role")
-    session.execute(text(f'GRANT USAGE ON SCHEMA "{schema}" TO "{role}"'))
-    session.execute(
-        text(
-            f'GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA "{schema}" '
-            f'TO "{role}"'
-        )
+    # Callers pass company.schema_name straight through (migrate_all_tenants.py
+    # does no check of its own), so validate here before it reaches SQL.
+    if not valid_schema_name(schema):
+        raise ValueError(f"Refusing to grant on unsafe schema name {schema!r}")
+    # Identifiers can't be bound parameters; both were validated just above.
+    statements = (
+        f'GRANT USAGE ON SCHEMA "{schema}" TO "{role}"',
+        f'GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA "{schema}" TO "{role}"',
+        f'GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA "{schema}" TO "{role}"',
+        f'ALTER DEFAULT PRIVILEGES IN SCHEMA "{schema}" GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO "{role}"',
+        f'ALTER DEFAULT PRIVILEGES IN SCHEMA "{schema}" GRANT USAGE, SELECT ON SEQUENCES TO "{role}"',
     )
-    session.execute(
-        text(f'GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA "{schema}" TO "{role}"')
-    )
-    session.execute(
-        text(
-            f'ALTER DEFAULT PRIVILEGES IN SCHEMA "{schema}" '
-            f'GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO "{role}"'
-        )
-    )
-    session.execute(
-        text(
-            f'ALTER DEFAULT PRIVILEGES IN SCHEMA "{schema}" '
-            f'GRANT USAGE, SELECT ON SEQUENCES TO "{role}"'
-        )
-    )
+    for statement in statements:
+        # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
+        session.execute(text(statement))
 
 
 def provision_tenant(company, *, db: Session | None = None) -> str:
@@ -215,6 +209,7 @@ def provision_tenant(company, *, db: Session | None = None) -> str:
     try:
         # 1. Create the schema. Must be visible to the connection that create_all
         #    runs on, so flush/commit the DDL first.
+        # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
         session.execute(text(f'CREATE SCHEMA IF NOT EXISTS "{schema}"'))
         session.flush()
 

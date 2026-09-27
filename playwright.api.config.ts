@@ -7,7 +7,11 @@ if (!e2eDatabaseUrl) {
       "The API suite intentionally refuses to use the normal application database.",
   );
 }
-const python = process.platform === "win32" ? ".venv\\Scripts\\python.exe" : ".venv/bin/python";
+// CI installs the backend into the runner's own interpreter and sets
+// E2E_PYTHON=python; locally the backend venv is used.
+const python =
+  process.env.E2E_PYTHON ??
+  (process.platform === "win32" ? ".venv\\Scripts\\python.exe" : ".venv/bin/python");
 
 /**
  * API-level e2e config for the OOP refactor. Runs only the `api-*.spec.ts`
@@ -23,13 +27,15 @@ export default defineConfig({
   workers: 1,
   reporter: [["list"]],
   globalTeardown: "./e2e/api-global-teardown.ts",
+  // 127.0.0.1, not localhost: the launcher binds IPv4 only, and localhost can
+  // resolve to ::1 first (notably on GitHub runners).
   use: {
-    baseURL: "http://localhost:8001",
+    baseURL: "http://127.0.0.1:8001",
   },
   webServer: {
     command: `${python} start_disposable_e2e.py`,
     cwd: "backend",
-    url: "http://localhost:8001/api/health",
+    url: "http://127.0.0.1:8001/api/health",
     reuseExistingServer: false,
     timeout: 120_000,
   },

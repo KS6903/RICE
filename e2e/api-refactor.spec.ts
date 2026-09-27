@@ -10,7 +10,7 @@ import { test, expect, request, type APIRequestContext } from "@playwright/test"
  * Override the base URL with E2E_API_BASE only when running that isolated stack
  * separately.
  */
-const BACKEND = process.env.E2E_API_BASE || "http://localhost:8001";
+const BACKEND = process.env.E2E_API_BASE || "http://127.0.0.1:8001";
 const TENANT = { username: "mill1", password: "password123" };
 
 test.describe("Refactored API contract (paddy / inventory / activity)", () => {

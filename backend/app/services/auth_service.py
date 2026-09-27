@@ -1147,6 +1147,8 @@ class AuthService(BaseService):
                         "If you did not request this, ignore this email."
                     ),
                 )
+            # Logs the username only; the raw token never reaches the message.
+            # nosemgrep: python.lang.security.audit.logging.logger-credential-leak.python-logger-credential-disclosure
             logger.info("Password reset issued for user=%s (token redacted)", user.username)
             if settings.EXPOSE_RESET_TOKEN:
                 exposed_token = raw

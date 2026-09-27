@@ -27,6 +27,7 @@ def _is_breached(password: str) -> bool:
     """k-anonymity range query against HIBP. False on any failure (best-effort)."""
     # SHA-1 is what the HIBP range protocol is built on — it is a lookup key
     # here, not a password hash (storage uses bcrypt).
+    # nosemgrep: python.lang.security.insecure-hash-algorithms.insecure-hash-algorithm-sha1
     digest = hashlib.sha1(password.encode("utf-8"), usedforsecurity=False).hexdigest().upper()
     prefix, suffix = digest[:5], digest[5:]
     try:
