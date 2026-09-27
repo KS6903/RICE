@@ -36,6 +36,14 @@ BEGIN
   IF unsafe THEN
     RAISE EXCEPTION 'Runtime role has forbidden admin, ownership, or CREATE privileges';
   END IF;
+
+  -- The consent ledger must be append-only for the API.
+  IF to_regclass('public.legal_acceptances') IS NOT NULL AND (
+    has_table_privilege(current_user, 'public.legal_acceptances', 'UPDATE')
+    OR has_table_privilege(current_user, 'public.legal_acceptances', 'DELETE')
+  ) THEN
+    RAISE EXCEPTION 'Runtime role can UPDATE or DELETE legal_acceptances; the ledger must be append-only';
+  END IF;
 END
 $verify$;
 
