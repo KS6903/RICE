@@ -17,3 +17,42 @@ jobs:
   # the deploy gate and CI cannot drift apart.
   checks:
     uses: ./.github/workflows/checks.yml
+
+  # Dependabot's minor/patch PRs merge themselves once every check passes.
+  # GitHub's native auto-merge needs branch protection, which this repo's plan
+  # doesn't offer, so this job merges directly. It lives here and not in
+  # checks.yml because deploy.yml calls checks.yml with read-only permissions.
+  automerge:
+    needs: checks
+    if: github.event_name == 'pull_request' && github.actor == 'dependabot[bot]'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Read the update type
+        id: meta
+        uses: dependabot/fetch-metadata@25dd0e34f4fe68f24cc83900b1fe3fe149efef98 # v3.1.0
+      - name: Merge minor and patch updates tested against the current main
+        # update-type is the highest semver change in the PR, so a grouped PR
+        # that also carries a major never qualifies.
+        if: >-
+          steps.meta.outputs.update-type == 'version-update:semver-patch' ||
+          steps.meta.outputs.update-type == 'version-update:semver-minor'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          TESTED_MERGE: ${{ github.sha }}
+        run: |
+          # The checks ran on a merge of this PR into main as main was then. A
+          # merge made with this token does not trigger CI on main, so merge only
+          # if main hasn't moved since: then what lands is exactly what passed.
+          tested_base="$(gh api "repos/${REPO}/commits/${TESTED_MERGE}" --jq '.parents[0].sha')"
+          main_tip="$(gh api "repos/${REPO}/commits/main" --jq '.sha')"
+          if [ "$tested_base" != "$main_tip" ]; then
+            echo "::notice::main moved since this run (${tested_base:0:12} -> ${main_tip:0:12}); not merging. The PR needs a rebase and a fresh run."
+            exit 0
+          fi
+          gh pr merge --squash --match-head-commit "$HEAD_SHA" "$PR_URL"

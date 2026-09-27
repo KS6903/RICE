@@ -126,6 +126,9 @@ if (untracked) {
 
 // ── Backend (checks.yml: backend) ────────────────────────────────────────────
 
+step("backend: lockfiles match their inputs", () =>
+  run(python, [path.join("scripts", "check_lockfiles.py")], { cwd: backend }),
+);
 step("backend: ruff (scoped)", py("ruff", ["check", "tests"]));
 step("backend: mypy (scoped)", py("mypy", []));
 step("backend: single Alembic head", () => {
@@ -164,7 +167,7 @@ step("format check (advisory until the format migration)", npm("format:check"), 
 
 // ── Security (checks.yml: security, semgrep) ─────────────────────────────────
 
-step("security: pip-audit", py("pip_audit", ["-r", "backend/requirements.lock", "--disable-pip", "--require-hashes"], root));
+step("security: pip-audit", py("pip_audit", ["-r", "backend/requirements.txt", "--disable-pip", "--require-hashes"], root));
 step("security: bandit", py("bandit", ["-r", "backend/app", "-ll", "-q"], root));
 step("security: gitleaks (full history)", () => {
   const bin = process.env.GITLEAKS_BIN || "gitleaks";

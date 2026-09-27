@@ -65,7 +65,7 @@ dump, SQLite file, log, or recovery artifact.
 7. Install from immutable dependency inputs and run the release checks:
 
    ```powershell
-   python -m pip install --require-hashes -r backend/requirements-dev.lock
+   python -m pip install --require-hashes -r backend/requirements-dev.txt
    npm ci
    ```
 

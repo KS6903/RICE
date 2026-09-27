@@ -6,7 +6,9 @@
 # and the tenant-DDL provisioner (PROCESS_ROLE=provisioner). They run as separate
 # containers because app/core/config.py refuses to boot the API when the
 # provisioner credential is in scope — the entrypoint is overridden per class.
-FROM python:3.11-slim
+# Pinned by digest like the GitHub Actions, so every build starts from the same
+# bytes. Dependabot's docker entry proposes 3.11.x patch and digest refreshes.
+FROM python:3.11.16-slim@sha256:e41613d42d4891e4930f79523f93f81bbc7632584ec65e36ab055f41a800b41e
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
@@ -16,8 +18,8 @@ WORKDIR /app
 
 # psycopg[binary], bcrypt and cryptography all ship manylinux wheels, so no
 # compiler toolchain is needed. --require-hashes keeps the supply chain pinned.
-COPY backend/requirements.lock ./
-RUN python -m pip install --no-cache-dir --require-hashes -r requirements.lock
+COPY backend/requirements.txt ./
+RUN python -m pip install --no-cache-dir --require-hashes -r requirements.txt
 
 COPY backend/app ./app
 COPY backend/migrations ./migrations

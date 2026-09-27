@@ -31,8 +31,10 @@ python -m venv .venv
 # macOS/Linux:
 source .venv/bin/activate
 
-# 3. Install dependencies
-pip install -r requirements.txt
+# 3. Install dependencies (hash-pinned lock: the runtime set plus test/lint tools)
+pip install --require-hashes -r requirements-dev.txt
+# To change a dependency, edit requirements.in / requirements-dev.in and relock
+# under Python 3.11; the header of each .in file has the pip-compile command.
 
 # 4. Configure environment
 copy .env.example .env

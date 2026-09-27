@@ -41,7 +41,7 @@ backend/cleanup_zones.py
 backend/drop_test_db.py
 backend/list_users.py
 backend/start_disposable_e2e.py
-backend/requirements-dev.lock
+backend/requirements-dev.in
 backend/requirements-dev.txt
 
 # ── Never in an image, wherever they live ────────────────────────────────────
