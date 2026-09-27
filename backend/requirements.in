@@ -6,7 +6,17 @@
 # Pins refreshed by the security hardening pass (pip-audit clean as of 2026-06):
 # fastapi/starlette, python-multipart, python-dotenv bumped past known CVEs.
 fastapi==0.141.1
-uvicorn[standard]==0.53.0
+# uvicorn's [standard] extras, listed one by one instead of via the extra:
+# the extra adds uvloop on Linux only, and pip-compile drops platform
+# markers, so a lock compiled on Linux (Dependabot, CI) listed uvloop and the
+# install failed on Windows, where uvloop can't build. Production has never
+# had uvloop (the lock was compiled on Windows), so leaving it out keeps the
+# runtime exactly as it was: asyncio's own event loop.
+uvicorn==0.53.0
+httptools==0.8.0
+websockets==16.1
+watchfiles==1.2.0
+pyyaml==6.0.3
 sqlalchemy==2.0.54
 alembic==1.20.0
 psycopg[binary]==3.3.6
