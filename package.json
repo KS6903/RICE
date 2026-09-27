@@ -24,7 +24,7 @@
     "format:check": "prettier --check \"packages/*/src/**/*.{ts,tsx}\" \"packages/desktop/{main,preload}/**/*.ts\" \"packages/web/*.config.ts\" \"worker/**/*.ts\" \"e2e/**/*.ts\" \"*.config.ts\" \"scripts/**/*.mjs\"",
     "cf:typecheck": "tsc -p tsconfig.worker.json --noEmit",
     "ci:local": "node scripts/ci_local.mjs",
-    "prepare": "node -e \"try{require('child_process').execSync('git config core.hooksPath .githooks',{stdio:'ignore'})}catch{}\"",
+    "prepare": "node scripts/setup-git.mjs",
     "cf:dev": "wrangler dev",
     "cf:deploy": "npm run build:web && wrangler deploy"
   },

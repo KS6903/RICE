@@ -1,0 +1,9 @@
+# Commits that only reformatted code, so `git blame` skips them. GitHub's blame
+# view reads this file on its own; locally, `npm install` points
+# blame.ignoreRevsFile here (scripts/setup-git.mjs).
+#
+# If one of these commits is rebased or squashed, its SHA changes and the entry
+# must be updated to the new one.
+
+# style: apply ruff format and Prettier, and normalize line endings to LF
+64d643033033e8844c777eb1bc3cb54ff9a2e54a
