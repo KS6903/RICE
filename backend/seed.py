@@ -9,13 +9,18 @@ global byproduct catalog.
 
 Usage: cd backend && .venv/Scripts/python seed.py
 """
+
 from app.core.database import SessionLocal
 from app.models.reference import ByproductType
 from app.models.user import Role
 
 ROLES = [
-    (1, "owner"), (2, "admin"), (3, "mill_operator"),
-    (4, "accountant"), (5, "cashier"), (6, "encoder"),
+    (1, "owner"),
+    (2, "admin"),
+    (3, "mill_operator"),
+    (4, "accountant"),
+    (5, "cashier"),
+    (6, "encoder"),
 ]
 
 BYPRODUCTS = [(1, "ipa", "Ipa (Rice Hull)"), (2, "darak", "Darak (Rice Bran)"), (3, "binlid", "Binlid (Broken Rice)")]

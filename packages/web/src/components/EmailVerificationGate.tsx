@@ -42,7 +42,9 @@ export default function EmailVerificationGate() {
           <div>
             <h1 className="text-lg font-bold text-primary">Verify your email</h1>
             <p className="text-sm text-secondary">
-              We sent a link to {email ? <span className="font-semibold">{email}</span> : "your email"}. Click it to continue.
+              We sent a link to{" "}
+              {email ? <span className="font-semibold">{email}</span> : "your email"}. Click it to
+              continue.
             </p>
           </div>
         </div>
@@ -55,13 +57,20 @@ export default function EmailVerificationGate() {
                 : "bg-rose-500/15 ring-rose-500/40 text-rose-700 dark:text-rose-300"
             }`}
           >
-            {msg.type === "ok" ? <Check size={16} className="mt-0.5 shrink-0" /> : <AlertCircle size={16} className="mt-0.5 shrink-0" />}
+            {msg.type === "ok" ? (
+              <Check size={16} className="mt-0.5 shrink-0" />
+            ) : (
+              <AlertCircle size={16} className="mt-0.5 shrink-0" />
+            )}
             <span>{msg.text}</span>
           </div>
         )}
 
         <div className="flex gap-2">
-          <button onClick={refresh} className="btn-primary flex-1 inline-flex items-center justify-center gap-1.5">
+          <button
+            onClick={refresh}
+            className="btn-primary flex-1 inline-flex items-center justify-center gap-1.5"
+          >
             <RefreshCw size={15} /> I&apos;ve verified
           </button>
           <button onClick={resend} disabled={busy} className="btn-secondary flex-1">

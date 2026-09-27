@@ -5,6 +5,7 @@ verbatim: HTTPS-only, hardcoded upstream host, strict query validation, per-user
 in-process rate limiting, and defensive re-shaping of upstream fields (no HTML
 ever proxied). The rate-limit bucket is class-level so it's shared process-wide.
 """
+
 from __future__ import annotations
 
 import re
@@ -69,13 +70,15 @@ class GeocodingClient:
             region = self._clean(row.get("admin1"))
             parts = [p for p in (name, region, country) if p]
             label = ", ".join(parts) if parts else "Unknown place"
-            out.append({
-                "label": label[:120],
-                "lat": float(lat),
-                "lon": float(lon),
-                "country": country,
-                "region": region,
-            })
+            out.append(
+                {
+                    "label": label[:120],
+                    "lat": float(lat),
+                    "lon": float(lon),
+                    "country": country,
+                    "region": region,
+                }
+            )
         return out
 
     # ── internals (verbatim security logic) ───────────────────────────────────

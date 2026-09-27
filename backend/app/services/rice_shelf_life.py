@@ -4,6 +4,7 @@ Why these thresholds: rice spoils faster at higher moisture. Published Philippin
 post-harvest guidelines (PhilMech / IRRI) say ≤14% moisture is safe for
 long-term storage, 15-16% is short-term only, and >16% needs immediate use.
 """
+
 from datetime import date, timedelta
 from decimal import Decimal
 
@@ -12,12 +13,12 @@ MOISTURE_SHELF_LIFE_DAYS: list[tuple[float, int]] = [
     (12.0, 365),  # ≤12%  → 12 months
     (13.0, 270),  # 12-13% → 9 months
     (14.0, 180),  # 13-14% → 6 months
-    (15.0,  90),  # 14-15% → 3 months
-    (16.0,  45),  # 15-16% → 1.5 months
-    (99.0,  14),  # >16%  → 2 weeks (high spoilage risk)
+    (15.0, 90),  # 14-15% → 3 months
+    (16.0, 45),  # 15-16% → 1.5 months
+    (99.0, 14),  # >16%  → 2 weeks (high spoilage risk)
 ]
 
-WARNING_AT_PCT = 0.75   # orange when 75% of shelf-life elapsed
+WARNING_AT_PCT = 0.75  # orange when 75% of shelf-life elapsed
 CRITICAL_AT_PCT = 0.90  # red when 90%+ elapsed
 
 

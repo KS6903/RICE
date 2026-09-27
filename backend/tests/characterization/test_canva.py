@@ -7,8 +7,14 @@ their own pins as that work proceeds.
 """
 
 LAYOUT_KEYS = {
-    "id", "name", "branch_id", "branch_name", "width_m", "height_m",
-    "grid_size_m", "version",
+    "id",
+    "name",
+    "branch_id",
+    "branch_name",
+    "width_m",
+    "height_m",
+    "grid_size_m",
+    "version",
 }
 SUMMARY_KEYS = {"total_pallets", "total_weight_kg", "by_aging"}
 
@@ -79,9 +85,13 @@ def test_patch_move_triggers_exactly_one_broadcast(auth_client, seed_owner, db_s
         company_id=seed_owner.company_id,
         layout_id=layout_id,
         pallet_code="PL-MOVE-0001",
-        x_m=Decimal("2.0"), y_m=Decimal("2.0"),
-        width_m=Decimal("1.2"), depth_m=Decimal("0.8"),
-        sack_count=10, weight_kg=Decimal("500"), status="in_storage",
+        x_m=Decimal("2.0"),
+        y_m=Decimal("2.0"),
+        width_m=Decimal("1.2"),
+        depth_m=Decimal("0.8"),
+        sack_count=10,
+        weight_kg=Decimal("500"),
+        status="in_storage",
     )
     db_session.add(pallet)
     db_session.flush()

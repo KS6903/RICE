@@ -1,4 +1,5 @@
 """Branches/company HTTP controllers — thin routing over BranchService (Phase 3)."""
+
 import uuid
 
 from fastapi import APIRouter, Depends, status
@@ -34,6 +35,7 @@ def get_setup_service(db: Session = Depends(get_db)) -> BranchService:
 
 # ── First-run setup (no auth) ───────────────────────────────────────────────
 
+
 @router.get("/setup-status")
 def setup_status(svc: BranchService = Depends(get_setup_service)):
     return svc.setup_status()
@@ -46,6 +48,7 @@ def first_run_setup(body: SetupRequest, svc: BranchService = Depends(get_setup_s
 
 # ── Company ─────────────────────────────────────────────────────────────────
 
+
 @router.get("/company", dependencies=[Depends(require_section_access("settings"))])
 def get_company(svc: BranchService = Depends(get_branch_service)):
     return svc.get_company()
@@ -57,6 +60,7 @@ def update_company(body: CompanyUpdate, svc: BranchService = Depends(get_branch_
 
 
 # ── Branches ────────────────────────────────────────────────────────────────
+
 
 @router.get("/", dependencies=[Depends(require_section_access("settings"))])
 def list_branches(svc: BranchService = Depends(get_branch_service)):

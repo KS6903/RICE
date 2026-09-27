@@ -5,6 +5,7 @@ Adds hardening headers to every response. The web UI is served separately
 here targets the JSON API and the optional Swagger/ReDoc docs — it does not
 constrain the React app.
 """
+
 from __future__ import annotations
 
 import logging
@@ -59,9 +60,7 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         # HSTS only in prod: it requires HTTPS, and pinning it on http://localhost
         # would wrongly force https for local development.
         if settings.is_prod:
-            headers.setdefault(
-                "Strict-Transport-Security", "max-age=63072000; includeSubDomains"
-            )
+            headers.setdefault("Strict-Transport-Security", "max-age=63072000; includeSubDomains")
         return response
 
 
@@ -111,7 +110,5 @@ class MutationAuditMiddleware(BaseHTTPMiddleware):
                     )
                     db.commit()
             except Exception:
-                audit_logger.exception(
-                    "durable mutation audit failed request_id=%s", request_id
-                )
+                audit_logger.exception("durable mutation audit failed request_id=%s", request_id)
         return response

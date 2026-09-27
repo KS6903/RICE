@@ -19,9 +19,18 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 function cspDirectives(dev: boolean, forHeader: boolean): Record<string, string[]> {
   const d: Record<string, string[]> = {
     "default-src": ["'self'"],
-    "script-src": ["'self'", "https://accounts.google.com", ...(dev ? ["'unsafe-inline'", "'unsafe-eval'"] : [])],
+    "script-src": [
+      "'self'",
+      "https://accounts.google.com",
+      ...(dev ? ["'unsafe-inline'", "'unsafe-eval'"] : []),
+    ],
     "script-src-attr": ["'none'"],
-    "style-src": ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com", "https://accounts.google.com"],
+    "style-src": [
+      "'self'",
+      "'unsafe-inline'",
+      "https://fonts.googleapis.com",
+      "https://accounts.google.com",
+    ],
     "font-src": ["'self'", "data:", "https://fonts.gstatic.com"],
     "img-src": ["'self'", "data:", "https://accounts.google.com", "https://*.gstatic.com"],
     "connect-src": [

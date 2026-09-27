@@ -11,7 +11,8 @@ export default function WeatherWidget({ variant = "compact" }: { variant?: Varia
   // The user's manually-saved location wins so what they pinned follows them
   // across every device they log in from.
   const active = useActiveLocation();
-  const coords = active.lat != null && active.lon != null ? { lat: active.lat, lon: active.lon } : null;
+  const coords =
+    active.lat != null && active.lon != null ? { lat: active.lat, lon: active.lon } : null;
   const w = useWeather(coords);
   // Today's prediction (high/low + rain chance) for the expanded card only — the
   // compact top-bar pill doesn't show it, so skip the fetch there.
@@ -21,7 +22,10 @@ export default function WeatherWidget({ variant = "compact" }: { variant?: Varia
   if (w.isLoading) {
     return (
       <Shell variant={variant} testid="weather-widget">
-        <Loader2 size={variant === "compact" ? 14 : 22} className="animate-spin text-muted shrink-0" />
+        <Loader2
+          size={variant === "compact" ? 14 : 22}
+          className="animate-spin text-muted shrink-0"
+        />
         <span className="text-xs text-muted">Loading weather…</span>
       </Shell>
     );
@@ -46,9 +50,10 @@ export default function WeatherWidget({ variant = "compact" }: { variant?: Varia
   // The saved-favorite's label wins over whatever the backend echoed (saved
   // labels are user-chosen — "Manila, Philippines" — vs the IP guess which
   // could land on a different town).
-  const placeLabel = active.source === "saved" && active.label
-    ? active.label
-    : p.location.label ?? `${p.location.lat.toFixed(2)}, ${p.location.lon.toFixed(2)}`;
+  const placeLabel =
+    active.source === "saved" && active.label
+      ? active.label
+      : (p.location.label ?? `${p.location.lat.toFixed(2)}, ${p.location.lon.toFixed(2)}`);
   const today = fc.data?.daily?.[0];
 
   if (variant === "compact") {
@@ -59,8 +64,18 @@ export default function WeatherWidget({ variant = "compact" }: { variant?: Varia
         title={`${p.condition} · ${placeLabel} · feels like ${p.feels_like_c != null ? Math.round(p.feels_like_c) + "°C" : "—"} · ${p.provider}`}
       >
         <Icon size={16} className={`${tint} shrink-0`} data-testid="weather-icon" />
-        <span className="text-sm font-semibold text-primary tabular-nums" data-testid="weather-temp">{tempLabel}C</span>
-        <span className="hidden md:inline text-xs text-secondary truncate max-w-[8rem]" data-testid="weather-location">{placeLabel}</span>
+        <span
+          className="text-sm font-semibold text-primary tabular-nums"
+          data-testid="weather-temp"
+        >
+          {tempLabel}C
+        </span>
+        <span
+          className="hidden md:inline text-xs text-secondary truncate max-w-[8rem]"
+          data-testid="weather-location"
+        >
+          {placeLabel}
+        </span>
       </Shell>
     );
   }
@@ -71,7 +86,10 @@ export default function WeatherWidget({ variant = "compact" }: { variant?: Varia
       data-testid="weather-widget"
       className="card relative overflow-hidden flex items-center gap-4"
     >
-      <div className="absolute -top-10 -right-10 h-32 w-32 rounded-full bg-sky-300/20 dark:bg-sky-500/10 blur-2xl pointer-events-none" aria-hidden />
+      <div
+        className="absolute -top-10 -right-10 h-32 w-32 rounded-full bg-sky-300/20 dark:bg-sky-500/10 blur-2xl pointer-events-none"
+        aria-hidden
+      />
       <div className="shrink-0 h-16 w-16 rounded-2xl ring-1 ring-slate-200 dark:ring-slate-700 grid place-items-center bg-white/60 dark:bg-slate-800/60">
         <Icon size={32} className={tint} data-testid="weather-icon" />
       </div>
@@ -87,7 +105,8 @@ export default function WeatherWidget({ variant = "compact" }: { variant?: Varia
           <p className="text-2xl font-extrabold text-primary tabular-nums mt-0.5 leading-none">
             {today.temp_max_c != null ? `${Math.round(today.temp_max_c)}°` : "—"}
             <span className="text-muted font-semibold text-lg">
-              {" "}/ {today.temp_min_c != null ? `${Math.round(today.temp_min_c)}°` : "—"}
+              {" "}
+              / {today.temp_min_c != null ? `${Math.round(today.temp_min_c)}°` : "—"}
             </span>
           </p>
           {today.precip_pct != null && today.precip_pct > 0 && (
@@ -101,12 +120,24 @@ export default function WeatherWidget({ variant = "compact" }: { variant?: Varia
 
       <div className="min-w-0 flex-1">
         <div className="flex items-baseline gap-2">
-          <p className="text-3xl font-extrabold text-primary tabular-nums leading-none" data-testid="weather-temp">
-            {tempLabel}<span className="text-base font-semibold text-secondary ml-0.5">C</span>
+          <p
+            className="text-3xl font-extrabold text-primary tabular-nums leading-none"
+            data-testid="weather-temp"
+          >
+            {tempLabel}
+            <span className="text-base font-semibold text-secondary ml-0.5">C</span>
           </p>
-          <p className="text-sm font-semibold text-secondary truncate" data-testid="weather-condition">{p.condition}</p>
+          <p
+            className="text-sm font-semibold text-secondary truncate"
+            data-testid="weather-condition"
+          >
+            {p.condition}
+          </p>
         </div>
-        <p className="text-xs text-muted mt-1 inline-flex items-center gap-1" data-testid="weather-location">
+        <p
+          className="text-xs text-muted mt-1 inline-flex items-center gap-1"
+          data-testid="weather-location"
+        >
           <MapPin size={11} />
           {placeLabel} · {p.provider}
         </p>
@@ -126,7 +157,10 @@ export default function WeatherWidget({ variant = "compact" }: { variant?: Varia
 /** Compact shell — the topbar pill chrome. Same class set used by every state
  *  branch so loading/error/data don't shift the layout. */
 function Shell({
-  variant, testid, title, children,
+  variant,
+  testid,
+  title,
+  children,
 }: {
   variant: Variant;
   testid: string;
@@ -134,7 +168,11 @@ function Shell({
   children: React.ReactNode;
 }) {
   if (variant === "expanded") {
-    return <div data-testid={testid} className="card flex items-center gap-3">{children}</div>;
+    return (
+      <div data-testid={testid} className="card flex items-center gap-3">
+        {children}
+      </div>
+    );
   }
   return (
     <div

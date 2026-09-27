@@ -14,7 +14,9 @@ class Employee(Base, TimestampMixin):
     __tablename__ = "employees"
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    company_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("companies.id", ondelete="CASCADE"), index=True)
+    company_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("companies.id", ondelete="CASCADE"), index=True
+    )
     branch_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("branches.id"))
     user_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"))
 
@@ -23,9 +25,9 @@ class Employee(Base, TimestampMixin):
     middle_name: Mapped[str | None] = mapped_column(String(100))
     last_name: Mapped[str] = mapped_column(String(100), nullable=False)
 
-    position: Mapped[str | None] = mapped_column(String(100))               # Mill Operator, Driver, Cashier, Laborer
-    department: Mapped[str | None] = mapped_column(String(100))             # Operations, Office, Drying, Logistics
-    employment_type: Mapped[str | None] = mapped_column(String(30))         # regular, contractual, casual, probationary
+    position: Mapped[str | None] = mapped_column(String(100))  # Mill Operator, Driver, Cashier, Laborer
+    department: Mapped[str | None] = mapped_column(String(100))  # Operations, Office, Drying, Logistics
+    employment_type: Mapped[str | None] = mapped_column(String(30))  # regular, contractual, casual, probationary
     date_hired: Mapped[date | None] = mapped_column(Date)
     date_terminated: Mapped[date | None] = mapped_column(Date)
     daily_rate: Mapped[Decimal | None] = mapped_column(Numeric(10, 2))
@@ -35,8 +37,8 @@ class Employee(Base, TimestampMixin):
     email: Mapped[str | None] = mapped_column(String(100))
     address: Mapped[str | None] = mapped_column(Text)
     birthdate: Mapped[date | None] = mapped_column(Date)
-    gender: Mapped[str | None] = mapped_column(String(10))                  # male, female, other
-    civil_status: Mapped[str | None] = mapped_column(String(20))            # single, married, widowed, separated
+    gender: Mapped[str | None] = mapped_column(String(10))  # male, female, other
+    civil_status: Mapped[str | None] = mapped_column(String(20))  # single, married, widowed, separated
 
     sss_no: Mapped[str | None] = mapped_column(String(30))
     philhealth_no: Mapped[str | None] = mapped_column(String(30))

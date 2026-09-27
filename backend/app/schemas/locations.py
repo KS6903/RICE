@@ -1,5 +1,6 @@
 """Pydantic request schema for saved locations (Phase 3). Moved verbatim,
 including the HTML-stripping validator."""
+
 import re
 
 from pydantic import BaseModel, Field, field_validator

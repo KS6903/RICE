@@ -10,6 +10,7 @@ This is the reference template every other domain copies. It:
 The old module-level helpers (services/paddy.py: generate_reference_no,
 update_palay_inventory) are folded in here as private methods.
 """
+
 from __future__ import annotations
 
 import uuid
@@ -63,15 +64,11 @@ class PaddyService(BaseService):
     # ── varieties ─────────────────────────────────────────────────────────────
 
     def list_varieties(self, *, include_inactive: bool = False) -> Sequence[RiceVariety]:
-        return self.varieties.list_company_or_shared(
-            self.current_user.company_id, include_inactive=include_inactive
-        )
+        return self.varieties.list_company_or_shared(self.current_user.company_id, include_inactive=include_inactive)
 
     def create_variety(self, data) -> RiceVariety:
         if self.varieties.get_by_code(self.current_user.company_id, data.code):
-            raise ConflictError(
-                f"Variety code '{data.code}' already exists in your company", code="variety_exists"
-            )
+            raise ConflictError(f"Variety code '{data.code}' already exists in your company", code="variety_exists")
         variety = RiceVariety(company_id=self.current_user.company_id, **data.model_dump())
         with self.transaction():
             self.varieties.add(variety)
@@ -83,9 +80,7 @@ class PaddyService(BaseService):
         if not v:
             raise NotFoundError("Variety not found")
         if v.company_id != self.current_user.company_id:
-            raise PermissionDeniedError(
-                "Cannot edit shared/system varieties. Create your own copy instead."
-            )
+            raise PermissionDeniedError("Cannot edit shared/system varieties. Create your own copy instead.")
         with self.transaction():
             payload = data.model_dump(exclude_none=True)
             for field, val in payload.items():
@@ -121,9 +116,7 @@ class PaddyService(BaseService):
     # ── suppliers ─────────────────────────────────────────────────────────────
 
     def list_suppliers(self, *, include_inactive: bool = False) -> Sequence[Supplier]:
-        return self.suppliers.list_for_company(
-            self.current_user.company_id, include_inactive=include_inactive
-        )
+        return self.suppliers.list_for_company(self.current_user.company_id, include_inactive=include_inactive)
 
     def create_supplier(self, data) -> Supplier:
         # System-generated canva color from the shared per-tenant pool — never
@@ -153,9 +146,7 @@ class PaddyService(BaseService):
     # ── purchases ─────────────────────────────────────────────────────────────
 
     def list_purchases(self, *, skip: int = 0, limit: int = 50, status: str | None = None) -> Sequence[PalayPurchase]:
-        return self.purchases.list_for_company(
-            self.current_user.company_id, status=status, skip=skip, limit=limit
-        )
+        return self.purchases.list_for_company(self.current_user.company_id, status=status, skip=skip, limit=limit)
 
     def get_purchase(self, purchase_id: uuid.UUID) -> PalayPurchase:
         p = self.purchases.get_for_company(purchase_id, self.current_user.company_id)
@@ -211,19 +202,16 @@ class PaddyService(BaseService):
     def get_palay_inventory(self, *, branch_id: uuid.UUID | None = None) -> list[dict]:
         """Serialized live palay stock. Shape preserved verbatim from the old route."""
         rows = self.inventory.list_with_stock(self.current_user.company_id, branch_id=branch_id)
-        branch_rows = (
-            self.db.query(Branch).filter(Branch.company_id == self.current_user.company_id).all()
-        )
-        bmap = {
-            str(b.id): {"id": str(b.id), "name": b.name, "is_main_branch": b.is_main_branch}
-            for b in branch_rows
-        }
+        branch_rows = self.db.query(Branch).filter(Branch.company_id == self.current_user.company_id).all()
+        bmap = {str(b.id): {"id": str(b.id), "name": b.name, "is_main_branch": b.is_main_branch} for b in branch_rows}
         return [
             {
                 "id": str(r.id),
                 "branch_id": str(r.branch_id) if r.branch_id else None,
                 "branch": bmap.get(str(r.branch_id)) if r.branch_id else None,
-                "variety": {"id": str(r.variety.id), "code": r.variety.code, "name": r.variety.name} if r.variety else None,
+                "variety": {"id": str(r.variety.id), "code": r.variety.code, "name": r.variety.name}
+                if r.variety
+                else None,
                 "grade": {"id": str(r.grade.id), "code": r.grade.code} if r.grade else None,
                 "quantity_kg": float(r.quantity_kg),
             }
@@ -270,6 +258,7 @@ class PaddyService(BaseService):
 
 
 # ── module-level helpers ──────────────────────────────────────────────────────
+
 
 def purge_stale_varieties(db: Session, *, days: int = 30) -> int:
     """Delete tenant rice varieties that have been deactivated for *days* days.

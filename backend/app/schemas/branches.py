@@ -1,4 +1,5 @@
 """Pydantic request schemas for the branches/company domain (Phase 3). Moved verbatim."""
+
 import uuid
 
 from pydantic import BaseModel

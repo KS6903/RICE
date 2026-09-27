@@ -20,6 +20,7 @@ single-client schema those filters are harmless constants — keeping them means
 existing repository/service logic (and ~440 ``company_id`` references) works
 unchanged. The *schema* is the real isolation boundary.
 """
+
 from __future__ import annotations
 
 import logging
@@ -53,7 +54,7 @@ PUBLIC_TABLE_NAMES: frozenset[str] = frozenset(
         "subscriptions",
         "subscription_upgrade_requests",
         "byproduct_types",  # global byproduct catalog (no company_id)
-        "user_locations",   # per-user UI state (FK -> users only)
+        "user_locations",  # per-user UI state (FK -> users only)
         "legal_acceptances",  # consent evidence: must outlive a tenant schema
     }
 )

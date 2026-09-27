@@ -18,7 +18,9 @@ export default function BackupCodes({ codes }: { codes: string[] }) {
   };
 
   const download = () => {
-    const blob = new Blob([`Oryza by K Systematics — backup codes\n\n${text}\n`], { type: "text/plain" });
+    const blob = new Blob([`Oryza by K Systematics — backup codes\n\n${text}\n`], {
+      type: "text/plain",
+    });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
@@ -31,18 +33,29 @@ export default function BackupCodes({ codes }: { codes: string[] }) {
     <div className="space-y-3">
       <div className="flex items-start gap-2 px-3 py-2.5 rounded-xl bg-amber-500/15 ring-1 ring-inset ring-amber-500/40 text-sm font-medium text-amber-700 dark:text-amber-300">
         <KeyRound size={16} className="mt-0.5 shrink-0" />
-        <span>Save these recovery codes somewhere safe. Each works once if you lose your authenticator — they won&apos;t be shown again.</span>
+        <span>
+          Save these recovery codes somewhere safe. Each works once if you lose your authenticator —
+          they won&apos;t be shown again.
+        </span>
       </div>
       <div className="grid grid-cols-2 gap-1.5 px-3 py-3 rounded-xl bg-slate-500/10 ring-1 ring-inset ring-slate-500/30 font-mono text-sm">
         {codes.map((c) => (
-          <span key={c} className="select-all">{c}</span>
+          <span key={c} className="select-all">
+            {c}
+          </span>
         ))}
       </div>
       <div className="flex gap-2">
-        <button onClick={copy} className="btn-secondary flex-1 inline-flex items-center justify-center gap-1.5">
+        <button
+          onClick={copy}
+          className="btn-secondary flex-1 inline-flex items-center justify-center gap-1.5"
+        >
           {copied ? <Check size={14} /> : <Copy size={14} />} {copied ? "Copied" : "Copy"}
         </button>
-        <button onClick={download} className="btn-secondary flex-1 inline-flex items-center justify-center gap-1.5">
+        <button
+          onClick={download}
+          className="btn-secondary flex-1 inline-flex items-center justify-center gap-1.5"
+        >
           <Download size={14} /> Download
         </button>
       </div>

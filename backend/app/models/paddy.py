@@ -30,7 +30,9 @@ class PalayPurchase(Base, TimestampMixin):
     remarks: Mapped[str | None] = mapped_column(Text)
     created_by: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"))
 
-    items: Mapped[list["PalayPurchaseItem"]] = relationship("PalayPurchaseItem", back_populates="purchase", cascade="all, delete-orphan")
+    items: Mapped[list["PalayPurchaseItem"]] = relationship(
+        "PalayPurchaseItem", back_populates="purchase", cascade="all, delete-orphan"
+    )
     supplier: Mapped["Supplier"] = relationship("Supplier")
     creator: Mapped["User"] = relationship("User", foreign_keys=[created_by])
 
@@ -39,7 +41,9 @@ class PalayPurchaseItem(Base):
     __tablename__ = "palay_purchase_items"
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    purchase_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("palay_purchases.id", ondelete="CASCADE"))
+    purchase_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("palay_purchases.id", ondelete="CASCADE")
+    )
     variety_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("rice_varieties.id"))
     grade_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("quality_grades.id"))
     gross_weight_kg: Mapped[Decimal] = mapped_column(Numeric(10, 3), nullable=False)
@@ -65,7 +69,9 @@ class DryingRecord(Base):
     __tablename__ = "drying_records"
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    purchase_item_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("palay_purchase_items.id"))
+    purchase_item_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("palay_purchase_items.id")
+    )
     start_datetime: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     end_datetime: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     initial_moisture_pct: Mapped[Decimal | None] = mapped_column(Numeric(5, 2))

@@ -8,6 +8,7 @@ type (now the AppException hierarchy) change. Every ``ws_manager.broadcast_sync`
 call site is kept exactly — same event name and payload — and still fires once,
 after the commit + refresh.
 """
+
 from __future__ import annotations
 
 import uuid
@@ -140,21 +141,25 @@ class PalletService(BaseService):
             if pallet.stack_parent_id:
                 pallet.stack_parent_id = None
                 pallet.z_layer = 0
-            self.movements.add(PalletMovement(
-                pallet_id=pallet.id,
-                user_id=self.current_user.id,
-                movement_type="move",
-                from_x_m=Decimal(str(round(from_x, 2))),
-                from_y_m=Decimal(str(round(from_y, 2))),
-                to_x_m=pallet.x_m,
-                to_y_m=pallet.y_m,
-                from_zone_id=from_zone_id,
-                to_zone_id=pallet.zone_id,
-            ))
+            self.movements.add(
+                PalletMovement(
+                    pallet_id=pallet.id,
+                    user_id=self.current_user.id,
+                    movement_type="move",
+                    from_x_m=Decimal(str(round(from_x, 2))),
+                    from_y_m=Decimal(str(round(from_y, 2))),
+                    to_x_m=pallet.x_m,
+                    to_y_m=pallet.y_m,
+                    from_zone_id=from_zone_id,
+                    to_zone_id=pallet.zone_id,
+                )
+            )
 
         self.db.refresh(pallet)
         payload = serialize_pallet(pallet, date.today())
-        ws_manager.broadcast_sync(pallet.layout_id, "pallet.moved", {"pallet": payload, "by_user_id": str(self.current_user.id)})
+        ws_manager.broadcast_sync(
+            pallet.layout_id, "pallet.moved", {"pallet": payload, "by_user_id": str(self.current_user.id)}
+        )
         return payload
 
     def resize(self, pallet_id: uuid.UUID, body) -> dict:
@@ -186,7 +191,9 @@ class PalletService(BaseService):
 
         self.db.refresh(pallet)
         payload = serialize_pallet(pallet, date.today())
-        ws_manager.broadcast_sync(pallet.layout_id, "pallet.moved", {"pallet": payload, "by_user_id": str(self.current_user.id)})
+        ws_manager.broadcast_sync(
+            pallet.layout_id, "pallet.moved", {"pallet": payload, "by_user_id": str(self.current_user.id)}
+        )
         return payload
 
     def stack(self, pallet_id: uuid.UUID, body) -> dict:
@@ -217,22 +224,28 @@ class PalletService(BaseService):
             pallet.x_m = parent.x_m
             pallet.y_m = parent.y_m
             pallet.zone_id = parent.zone_id
-            self.movements.add(PalletMovement(
-                pallet_id=pallet.id,
-                user_id=self.current_user.id,
-                movement_type="stack",
-                from_x_m=Decimal(str(round(from_x, 2))),
-                from_y_m=Decimal(str(round(from_y, 2))),
-                to_x_m=pallet.x_m,
-                to_y_m=pallet.y_m,
-                from_zone_id=from_zone_id,
-                to_zone_id=pallet.zone_id,
-                notes=f"Stacked on {parent.pallet_code}",
-            ))
+            self.movements.add(
+                PalletMovement(
+                    pallet_id=pallet.id,
+                    user_id=self.current_user.id,
+                    movement_type="stack",
+                    from_x_m=Decimal(str(round(from_x, 2))),
+                    from_y_m=Decimal(str(round(from_y, 2))),
+                    to_x_m=pallet.x_m,
+                    to_y_m=pallet.y_m,
+                    from_zone_id=from_zone_id,
+                    to_zone_id=pallet.zone_id,
+                    notes=f"Stacked on {parent.pallet_code}",
+                )
+            )
 
         self.db.refresh(pallet)
         payload = serialize_pallet(pallet, date.today())
-        ws_manager.broadcast_sync(pallet.layout_id, "pallet.stacked", {"pallet": payload, "parent_id": str(parent.id), "by_user_id": str(self.current_user.id)})
+        ws_manager.broadcast_sync(
+            pallet.layout_id,
+            "pallet.stacked",
+            {"pallet": payload, "parent_id": str(parent.id), "by_user_id": str(self.current_user.id)},
+        )
         return payload
 
     def unstack(self, pallet_id: uuid.UUID, body) -> dict:
@@ -264,20 +277,24 @@ class PalletService(BaseService):
             pallet.zone_id = new_zone.id if new_zone else None
             pallet.stack_parent_id = None
             pallet.z_layer = 0
-            self.movements.add(PalletMovement(
-                pallet_id=pallet.id,
-                user_id=self.current_user.id,
-                movement_type="unstack",
-                from_x_m=Decimal(str(round(from_x, 2))),
-                from_y_m=Decimal(str(round(from_y, 2))),
-                to_x_m=pallet.x_m,
-                to_y_m=pallet.y_m,
-                to_zone_id=pallet.zone_id,
-            ))
+            self.movements.add(
+                PalletMovement(
+                    pallet_id=pallet.id,
+                    user_id=self.current_user.id,
+                    movement_type="unstack",
+                    from_x_m=Decimal(str(round(from_x, 2))),
+                    from_y_m=Decimal(str(round(from_y, 2))),
+                    to_x_m=pallet.x_m,
+                    to_y_m=pallet.y_m,
+                    to_zone_id=pallet.zone_id,
+                )
+            )
 
         self.db.refresh(pallet)
         payload = serialize_pallet(pallet, date.today())
-        ws_manager.broadcast_sync(pallet.layout_id, "pallet.unstacked", {"pallet": payload, "by_user_id": str(self.current_user.id)})
+        ws_manager.broadcast_sync(
+            pallet.layout_id, "pallet.unstacked", {"pallet": payload, "by_user_id": str(self.current_user.id)}
+        )
         return payload
 
     def list_movements(self, pallet_id: uuid.UUID) -> list[dict]:

@@ -70,6 +70,7 @@ async def _purge_stale_varieties() -> None:
         except Exception:
             logger.exception("Error during stale variety purge")
 
+
 app = FastAPI(
     title=settings.APP_NAME,
     version="1.0.0",
@@ -158,6 +159,7 @@ async def _capture_loop_for_canva_broadcasts() -> None:
 async def _probe_cache() -> None:
     """Surface Redis connectivity at boot (best-effort — never blocks startup)."""
     from .core.cache import cache
+
     cache.available()
 
 
@@ -192,8 +194,7 @@ async def _verify_runtime_database_role() -> None:
     role_name = row[0]
     if role_name != settings.RUNTIME_DATABASE_ROLE:
         raise RuntimeError(
-            "DATABASE_URL authenticates as an unexpected role; "
-            "use the configured DML-only runtime role"
+            "DATABASE_URL authenticates as an unexpected role; " "use the configured DML-only runtime role"
         )
     if any(row[1:]):
         raise RuntimeError(
@@ -205,6 +206,7 @@ async def _verify_runtime_database_role() -> None:
 @app.get("/api/health")
 def health_check():
     from .core.cache import cache
+
     return {
         "status": "ok",
         "app": settings.APP_NAME,

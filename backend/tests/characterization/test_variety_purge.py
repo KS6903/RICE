@@ -4,12 +4,14 @@ The background task in main.py delegates to purge_stale_varieties(db). These
 tests call that function directly with the isolated test session so we don't
 have to wait 24 hours or fight asyncio.
 """
+
 from datetime import datetime, timedelta, timezone
 
 from app.models.reference import RiceVariety
 from app.services.paddy_service import purge_stale_varieties
 
 # ── helpers ───────────────────────────────────────────────────────────────────
+
 
 def _create_variety(c, code="PURGE1"):
     res = c.post("/api/paddy/varieties", json={"code": code, "name": f"Variety {code}"})
@@ -31,6 +33,7 @@ def _backdate(db_session, variety_id: str, days: int):
 
 
 # ── tests ─────────────────────────────────────────────────────────────────────
+
 
 def test_purge_deletes_variety_deactivated_over_30_days(auth_client, db_session):
     v = _create_variety(auth_client, "OLD1")

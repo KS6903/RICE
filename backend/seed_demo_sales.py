@@ -16,6 +16,7 @@ Usage:
     python seed_demo_sales.py                # mill1..mill8
     python seed_demo_sales.py mill1 mill2    # specific tenants
 """
+
 from __future__ import annotations
 
 import sys
@@ -62,9 +63,14 @@ def seed_tenant(db, username: str, idx: int) -> str:
     # Domain tables live in this client's schema — point the session at it.
     set_search_path(db, user.company.schema_name)
     cid = user.company_id
-    already = db.query(SalesOrder).filter(
-        SalesOrder.company_id == cid, SalesOrder.remarks == MARKER,
-    ).count()
+    already = (
+        db.query(SalesOrder)
+        .filter(
+            SalesOrder.company_id == cid,
+            SalesOrder.remarks == MARKER,
+        )
+        .count()
+    )
     if already:
         return f"{username}: already seeded ({already} orders) — skipped"
 
@@ -91,19 +97,21 @@ def seed_tenant(db, username: str, idx: int) -> str:
             if d > today:
                 continue
             amount = Decimal(str(round(month_rev * frac, 2)))
-            db.add(SalesOrder(
-                company_id=cid,
-                branch_id=branch_id,
-                order_no=f"SO-{d:%Y%m%d}-{idx}{orders:03d}",
-                customer_id=customer_id,
-                order_date=d,
-                delivery_date=d,
-                status="paid",
-                subtotal=amount,
-                total_amount=amount,
-                remarks=MARKER,
-                created_by=user.id,
-            ))
+            db.add(
+                SalesOrder(
+                    company_id=cid,
+                    branch_id=branch_id,
+                    order_no=f"SO-{d:%Y%m%d}-{idx}{orders:03d}",
+                    customer_id=customer_id,
+                    order_date=d,
+                    delivery_date=d,
+                    status="paid",
+                    subtotal=amount,
+                    total_amount=amount,
+                    remarks=MARKER,
+                    created_by=user.id,
+                )
+            )
             orders += 1
             total_rev += amount
 
@@ -115,23 +123,27 @@ def seed_tenant(db, username: str, idx: int) -> str:
                 continue
             amount = Decimal(str(round(month_exp * frac, 2)))
             now = datetime.now(timezone.utc)
-            db.add(Expense(
-                company_id=cid,
-                branch_id=branch_id,
-                expense_date=d,
-                amount=amount,
-                description=f"{MARKER}: operating expense",
-                created_by=user.id,
-                created_at=now,
-                updated_at=now,
-            ))
+            db.add(
+                Expense(
+                    company_id=cid,
+                    branch_id=branch_id,
+                    expense_date=d,
+                    amount=amount,
+                    description=f"{MARKER}: operating expense",
+                    created_by=user.id,
+                    created_at=now,
+                    updated_at=now,
+                )
+            )
             expenses += 1
             total_exp += amount
 
     db.commit()
     net = total_rev - total_exp
-    return (f"{username}: {orders} orders PHP {total_rev:,.0f} revenue, "
-            f"{expenses} expenses PHP {total_exp:,.0f} -> net PHP {net:,.0f}")
+    return (
+        f"{username}: {orders} orders PHP {total_rev:,.0f} revenue, "
+        f"{expenses} expenses PHP {total_exp:,.0f} -> net PHP {net:,.0f}"
+    )
 
 
 def main() -> None:

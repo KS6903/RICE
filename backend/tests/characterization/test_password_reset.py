@@ -19,6 +19,7 @@ def _expose_reset_token(monkeypatch):
     monkeypatch.setenv("EXPOSE_RESET_TOKEN", "true")
     get_settings.cache_clear()
     import app.core.config as cfg
+
     monkeypatch.setattr(cfg.settings, "EXPOSE_RESET_TOKEN", True, raising=False)
     yield
     get_settings.cache_clear()
@@ -41,7 +42,9 @@ def test_forgot_password_is_enumeration_safe(client, seed_owner):
 
 def test_reset_password_changes_password_and_revokes_sessions(client, seed_owner):
     # Establish a live session first.
-    login = client.post("/api/auth/login", data={"username": "owner", "password": "Password123"}, headers=NATIVE_HEADERS)
+    login = client.post(
+        "/api/auth/login", data={"username": "owner", "password": "Password123"}, headers=NATIVE_HEADERS
+    )
     refresh_token = login.json()["refresh_token"]
     client.cookies.clear()
 
@@ -54,7 +57,10 @@ def test_reset_password_changes_password_and_revokes_sessions(client, seed_owner
     assert client.post("/api/auth/login", data={"username": "owner", "password": "brandNew99"}).status_code == 200
 
     # The pre-reset refresh session was revoked.
-    assert client.post("/api/auth/refresh", json={"refresh_token": refresh_token}, headers=NATIVE_HEADERS).status_code == 401
+    assert (
+        client.post("/api/auth/refresh", json={"refresh_token": refresh_token}, headers=NATIVE_HEADERS).status_code
+        == 401
+    )
 
 
 def test_reset_token_is_single_use(client, seed_owner):
@@ -70,8 +76,12 @@ def test_requesting_a_new_token_invalidates_the_previous_one(client, seed_owner)
     second = _request_reset(client, "owner").json()["reset_token"]
     assert first != second
     # The superseded token can no longer be used.
-    assert client.post("/api/auth/reset-password", json={"token": first, "new_password": "newPass123"}).status_code == 400
-    assert client.post("/api/auth/reset-password", json={"token": second, "new_password": "newPass123"}).status_code == 200
+    assert (
+        client.post("/api/auth/reset-password", json={"token": first, "new_password": "newPass123"}).status_code == 400
+    )
+    assert (
+        client.post("/api/auth/reset-password", json={"token": second, "new_password": "newPass123"}).status_code == 200
+    )
 
 
 def test_reset_rejects_unknown_token(client, seed_owner):

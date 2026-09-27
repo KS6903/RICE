@@ -1,4 +1,5 @@
 """Repositories for the fleet domain."""
+
 import uuid
 from typing import Sequence
 
@@ -16,11 +17,7 @@ class DriverRepository(BaseRepository[Driver]):
         return q.order_by(Driver.name).all()
 
     def get_for_company(self, id: uuid.UUID, company_id: uuid.UUID, *, include_deleted: bool = False) -> Driver | None:  # type: ignore[override]
-        return (
-            self.db.query(Driver)
-            .filter(Driver.id == id, Driver.company_id == company_id)
-            .first()
-        )
+        return self.db.query(Driver).filter(Driver.id == id, Driver.company_id == company_id).first()
 
 
 class TruckRepository(BaseRepository[Truck]):
@@ -33,11 +30,7 @@ class TruckRepository(BaseRepository[Truck]):
         return q.order_by(Truck.plate_number).all()
 
     def get_for_company(self, id: uuid.UUID, company_id: uuid.UUID, *, include_deleted: bool = False) -> Truck | None:  # type: ignore[override]
-        return (
-            self.db.query(Truck)
-            .filter(Truck.id == id, Truck.company_id == company_id)
-            .first()
-        )
+        return self.db.query(Truck).filter(Truck.id == id, Truck.company_id == company_id).first()
 
 
 class TripRepository(BaseRepository[DispatchTrip]):
@@ -52,12 +45,10 @@ class TripRepository(BaseRepository[DispatchTrip]):
             .all()
         )
 
-    def get_for_company(self, id: uuid.UUID, company_id: uuid.UUID, *, include_deleted: bool = False) -> DispatchTrip | None:  # type: ignore[override]
-        return (
-            self.db.query(DispatchTrip)
-            .filter(DispatchTrip.id == id, DispatchTrip.company_id == company_id)
-            .first()
-        )
+    def get_for_company(
+        self, id: uuid.UUID, company_id: uuid.UUID, *, include_deleted: bool = False
+    ) -> DispatchTrip | None:  # type: ignore[override]
+        return self.db.query(DispatchTrip).filter(DispatchTrip.id == id, DispatchTrip.company_id == company_id).first()
 
     def next_trip_no(self) -> str:
         # trip_no is globally unique, so the counter must be global too —

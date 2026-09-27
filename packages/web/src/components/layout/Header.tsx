@@ -1,7 +1,16 @@
 import { useAuthStore } from "../../stores/authStore";
 import {
-  LogOut, Wifi, WifiOff, Crown, Zap, Rocket, Star, AlertCircle,
-  Sun, Moon, Search,
+  LogOut,
+  Wifi,
+  WifiOff,
+  Crown,
+  Zap,
+  Rocket,
+  Star,
+  AlertCircle,
+  Sun,
+  Moon,
+  Search,
 } from "lucide-react";
 import { useNavigate, Link } from "react-router-dom";
 import { useState, useEffect } from "react";
@@ -87,7 +96,10 @@ export default function Header() {
     const off = () => setIsOnline(false);
     window.addEventListener("online", on);
     window.addEventListener("offline", off);
-    return () => { window.removeEventListener("online", on); window.removeEventListener("offline", off); };
+    return () => {
+      window.removeEventListener("online", on);
+      window.removeEventListener("offline", off);
+    };
   }, []);
 
   const handleLogout = async () => {
@@ -116,7 +128,10 @@ export default function Header() {
             className="input pl-9 pr-14"
             style={{ paddingTop: "0.5rem", paddingBottom: "0.5rem" }}
           />
-          <kbd className="absolute right-2 top-1/2 -translate-y-1/2 hidden sm:inline-flex items-center px-1.5 py-0.5 rounded-md bg-slate-200/70 dark:bg-slate-700/70 text-[11px] font-semibold text-secondary pointer-events-none" aria-hidden>
+          <kbd
+            className="absolute right-2 top-1/2 -translate-y-1/2 hidden sm:inline-flex items-center px-1.5 py-0.5 rounded-md bg-slate-200/70 dark:bg-slate-700/70 text-[11px] font-semibold text-secondary pointer-events-none"
+            aria-hidden
+          >
             ⌘K
           </kbd>
         </div>

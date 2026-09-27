@@ -23,11 +23,7 @@ async function apiToken(request: APIRequestContext): Promise<string> {
 }
 
 /** Navigate to /operators, create an operator, and return its reserved color hex. */
-async function createOperator(
-  page: Page,
-  kind: "agent" | "miller",
-  name: string,
-): Promise<string> {
+async function createOperator(page: Page, kind: "agent" | "miller", name: string): Promise<string> {
   await page.goto("/operators");
   await page.getByTestId("add-operator").click();
   await page.getByTestId(`new-operator-kind-${kind}`).click();
@@ -41,24 +37,32 @@ async function createOperator(
 }
 
 test.describe("Dispatch & Field Operators — color reservation, edit flow", () => {
-  test("Dispatch page renders delivery content and Field Operators page renders operator table", async ({ page }) => {
+  test("Dispatch page renders delivery content and Field Operators page renders operator table", async ({
+    page,
+  }) => {
     await login(page);
 
     await page.goto("/dispatch");
-    await expect(page.getByRole("heading", { name: /^Dispatch$/i })).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByRole("heading", { name: /^Dispatch$/i })).toBeVisible({
+      timeout: 10_000,
+    });
     const table = page.getByTestId("dispatch-orders-table");
     const emptyMsg = page.getByText(/no orders awaiting delivery/i);
     await expect(table.or(emptyMsg)).toBeVisible({ timeout: 10_000 });
 
     await page.goto("/operators");
-    await expect(page.getByRole("heading", { name: /^Field Operators$/i })).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByRole("heading", { name: /^Field Operators$/i })).toBeVisible({
+      timeout: 10_000,
+    });
     await expect(page.getByTestId("operators-filter-all")).toBeVisible();
     // Old per-type tabs are gone — both kinds live under Field Operators now.
     await expect(page.getByTestId("dispatch-tab-agents")).toHaveCount(0);
     await expect(page.getByTestId("dispatch-tab-millers")).toHaveCount(0);
   });
 
-  test("Adding an operator auto-assigns a unique color that persists across reload", async ({ page }) => {
+  test("Adding an operator auto-assigns a unique color that persists across reload", async ({
+    page,
+  }) => {
     await login(page);
     const name = `E2E Op ${Date.now()}`;
     const color = await createOperator(page, "agent", name);
@@ -71,7 +75,9 @@ test.describe("Dispatch & Field Operators — color reservation, edit flow", () 
     expect(still).toBe(color);
   });
 
-  test("Agent and miller in the same tenant get different system-assigned colors (swatch is read-only)", async ({ page }) => {
+  test("Agent and miller in the same tenant get different system-assigned colors (swatch is read-only)", async ({
+    page,
+  }) => {
     await login(page);
     const stamp = Date.now();
     const agentColor = await createOperator(page, "agent", `E2E A ${stamp}`);
@@ -85,7 +91,9 @@ test.describe("Dispatch & Field Operators — color reservation, edit flow", () 
     await expect(millerRow.getByText(/^Auto$/)).toBeVisible();
   });
 
-  test("Backend silently drops any client-supplied canva_color_hex on agent create/update", async ({ request }) => {
+  test("Backend silently drops any client-supplied canva_color_hex on agent create/update", async ({
+    request,
+  }) => {
     const token = await apiToken(request);
 
     const stamp = Date.now();
@@ -108,7 +116,9 @@ test.describe("Dispatch & Field Operators — color reservation, edit flow", () 
     expect(after.contact_person).toBe("Edited");
   });
 
-  test("User can edit an agent's contact info inline (but the color stays put)", async ({ page }) => {
+  test("User can edit an agent's contact info inline (but the color stays put)", async ({
+    page,
+  }) => {
     await login(page);
     const stamp = Date.now();
     const name = `E2E Edit ${stamp}`;
@@ -126,7 +136,10 @@ test.describe("Dispatch & Field Operators — color reservation, edit flow", () 
     await expect(refreshedRow.getByText("Juan dela Cruz")).toBeVisible({ timeout: 6_000 });
     await expect(refreshedRow.getByText("0917-555-1234")).toBeVisible();
 
-    const stillColor = await refreshedRow.getByTestId("color-swatch").first().getAttribute("data-color");
+    const stillColor = await refreshedRow
+      .getByTestId("color-swatch")
+      .first()
+      .getAttribute("data-color");
     expect(stillColor).toBe(originalColor);
   });
 

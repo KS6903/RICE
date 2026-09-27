@@ -2,6 +2,7 @@
 
 Includes the plan user-limit gate (402) enforced on creation.
 """
+
 from __future__ import annotations
 
 import uuid
@@ -45,11 +46,7 @@ class UserService(BaseService):
             raise BadRequestError("Invalid role")
 
         existing_count = self.users.count_for_company(self.current_user.company_id)
-        sub = (
-            self.db.query(Subscription)
-            .filter(Subscription.company_id == self.current_user.company_id)
-            .first()
-        )
+        sub = self.db.query(Subscription).filter(Subscription.company_id == self.current_user.company_id).first()
         if sub and sub.plan and sub.plan.max_users is not None and existing_count >= sub.plan.max_users:
             raise FeatureRequiredError(
                 f"Your plan allows up to {sub.plan.max_users} users. Please upgrade to add more.",

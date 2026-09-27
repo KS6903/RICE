@@ -5,6 +5,7 @@ stock add, including the upsert-onto-matching-row behavior) move here off the
 route handlers. Serialized shapes are preserved verbatim. The service owns the
 transaction; repositories flush only.
 """
+
 from __future__ import annotations
 
 import uuid
@@ -45,10 +46,7 @@ class InventoryService(BaseService):
 
     def _branch_map(self) -> dict:
         rows = self.db.query(Branch).filter(Branch.company_id == self.current_user.company_id).all()
-        return {
-            str(b.id): {"id": str(b.id), "name": b.name, "is_main_branch": b.is_main_branch}
-            for b in rows
-        }
+        return {str(b.id): {"id": str(b.id), "name": b.name, "is_main_branch": b.is_main_branch} for b in rows}
 
     def get_milled_rice(self, *, branch_id: uuid.UUID | None = None) -> list[dict]:
         rows = self.milled.list_with_stock(self.current_user.company_id, branch_id=branch_id)
@@ -59,7 +57,9 @@ class InventoryService(BaseService):
                 "branch_id": str(r.branch_id) if r.branch_id else None,
                 "branch": branches.get(str(r.branch_id)) if r.branch_id else None,
                 "variety_id": str(r.variety_id) if r.variety_id else None,
-                "variety": {"id": str(r.variety.id), "code": r.variety.code, "name": r.variety.name} if r.variety else None,
+                "variety": {"id": str(r.variety.id), "code": r.variety.code, "name": r.variety.name}
+                if r.variety
+                else None,
                 "grade_name": r.grade_name,
                 "quantity_kg": float(r.quantity_kg),
             }
@@ -152,8 +152,11 @@ class InventoryService(BaseService):
                 inv = self.palay.find_bucket(company_id, data.branch_id, data.variety_id, data.grade_id)
                 if not inv:
                     inv = PalayInventory(
-                        company_id=company_id, branch_id=data.branch_id,
-                        variety_id=data.variety_id, grade_id=data.grade_id, quantity_kg=Decimal("0"),
+                        company_id=company_id,
+                        branch_id=data.branch_id,
+                        variety_id=data.variety_id,
+                        grade_id=data.grade_id,
+                        quantity_kg=Decimal("0"),
                     )
                     self.db.add(inv)
                 inv.quantity_kg = inv.quantity_kg + data.quantity_kg
@@ -164,8 +167,11 @@ class InventoryService(BaseService):
                 inv = self.milled.find_bucket(company_id, data.branch_id, data.variety_id, data.grade_name)
                 if not inv:
                     inv = MilledRiceInventory(
-                        company_id=company_id, branch_id=data.branch_id,
-                        variety_id=data.variety_id, grade_name=data.grade_name, quantity_kg=Decimal("0"),
+                        company_id=company_id,
+                        branch_id=data.branch_id,
+                        variety_id=data.variety_id,
+                        grade_name=data.grade_name,
+                        quantity_kg=Decimal("0"),
                     )
                     self.db.add(inv)
                 inv.quantity_kg = inv.quantity_kg + data.quantity_kg
@@ -180,8 +186,10 @@ class InventoryService(BaseService):
                 inv = self.byproducts.find_bucket(company_id, data.branch_id, btype)
                 if not inv:
                     inv = ByproductInventory(
-                        company_id=company_id, branch_id=data.branch_id,
-                        byproduct_type=btype, quantity_kg=Decimal("0"),
+                        company_id=company_id,
+                        branch_id=data.branch_id,
+                        byproduct_type=btype,
+                        quantity_kg=Decimal("0"),
                     )
                     self.db.add(inv)
                 inv.quantity_kg = inv.quantity_kg + data.quantity_kg

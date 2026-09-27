@@ -18,11 +18,14 @@ def test_create_category_duplicate_409(auth_client):
 
 def test_create_expense_then_listed(auth_client):
     cat = auth_client.post("/api/costs/categories", json={"name": "Repairs"}).json()
-    created = auth_client.post("/api/costs/expenses", json={
-        "category_id": cat["id"],
-        "expense_date": "2026-06-05",
-        "amount": "1500.50",
-    })
+    created = auth_client.post(
+        "/api/costs/expenses",
+        json={
+            "category_id": cat["id"],
+            "expense_date": "2026-06-05",
+            "amount": "1500.50",
+        },
+    )
     assert created.status_code == 201, created.text
     expense_id = created.json()["id"]
 

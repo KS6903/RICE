@@ -15,12 +15,7 @@ export default {
           "Segoe UI",
           "sans-serif",
         ],
-        display: [
-          "Inter",
-          "ui-sans-serif",
-          "system-ui",
-          "sans-serif",
-        ],
+        display: ["Inter", "ui-sans-serif", "system-ui", "sans-serif"],
       },
       colors: {
         // Primary brand — modern emerald (refreshed from old green).
@@ -79,18 +74,15 @@ export default {
           "radial-gradient(at 15% 20%, rgba(16,185,129,0.18) 0px, transparent 50%), radial-gradient(at 85% 15%, rgba(139,92,246,0.16) 0px, transparent 50%), radial-gradient(at 50% 90%, rgba(6,182,212,0.14) 0px, transparent 50%)",
         "mesh-dark":
           "radial-gradient(at 15% 20%, rgba(16,185,129,0.22) 0px, transparent 50%), radial-gradient(at 85% 15%, rgba(139,92,246,0.22) 0px, transparent 50%), radial-gradient(at 50% 90%, rgba(6,182,212,0.16) 0px, transparent 50%)",
-        "brand-gradient":
-          "linear-gradient(135deg, #10b981 0%, #06b6d4 55%, #8b5cf6 100%)",
+        "brand-gradient": "linear-gradient(135deg, #10b981 0%, #06b6d4 55%, #8b5cf6 100%)",
         "brand-gradient-soft":
           "linear-gradient(135deg, rgba(16,185,129,0.85) 0%, rgba(6,182,212,0.85) 55%, rgba(139,92,246,0.85) 100%)",
       },
       boxShadow: {
         glow: "0 0 0 1px rgba(16,185,129,0.25), 0 8px 32px -8px rgba(16,185,129,0.45)",
-        "glow-accent":
-          "0 0 0 1px rgba(139,92,246,0.25), 0 8px 32px -8px rgba(139,92,246,0.45)",
+        "glow-accent": "0 0 0 1px rgba(139,92,246,0.25), 0 8px 32px -8px rgba(139,92,246,0.45)",
         glass: "0 8px 32px -8px rgba(15, 23, 42, 0.18), inset 0 1px 0 0 rgba(255,255,255,0.6)",
-        "glass-dark":
-          "0 8px 32px -8px rgba(0, 0, 0, 0.5), inset 0 1px 0 0 rgba(255,255,255,0.06)",
+        "glass-dark": "0 8px 32px -8px rgba(0, 0, 0, 0.5), inset 0 1px 0 0 rgba(255,255,255,0.06)",
       },
       keyframes: {
         "gradient-shift": {

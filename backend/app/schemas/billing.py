@@ -1,4 +1,5 @@
 """Pydantic request schema for tenant billing (Phase 3). Moved verbatim."""
+
 import uuid
 
 from pydantic import BaseModel

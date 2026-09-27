@@ -3,6 +3,7 @@
 Note: canva_color_hex is intentionally omitted from create/update schemas — the
 color is system-assigned, so any client-supplied value is silently dropped.
 """
+
 import uuid
 from decimal import Decimal
 

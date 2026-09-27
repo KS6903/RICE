@@ -5,6 +5,7 @@ schema/repository/service refactor. We pin: status codes, conflict handling, the
 reference-number format, the multi-item purchase transaction's effect on
 inventory + movements, and the exact serialized shape of GET /paddy/inventory.
 """
+
 import re
 
 from app.models.paddy import PalayInventory, PalayInventoryMovement
@@ -23,6 +24,7 @@ def _make_supplier(c, name="Juan Farmer"):
 
 
 # ── varieties ────────────────────────────────────────────────────────────────
+
 
 def test_create_variety_201(auth_client):
     res = _make_variety(auth_client)
@@ -53,6 +55,7 @@ def test_list_varieties_excludes_inactive_by_default(auth_client):
 
 # ── grades ───────────────────────────────────────────────────────────────────
 
+
 def test_create_grade_201(auth_client):
     res = _make_grade(auth_client)
     assert res.status_code == 201, res.text
@@ -71,6 +74,7 @@ def test_create_grade_duplicate_409(auth_client):
 
 # ── suppliers ────────────────────────────────────────────────────────────────
 
+
 def test_create_supplier_201_assigns_canva_color(auth_client):
     res = _make_supplier(auth_client)
     assert res.status_code == 201, res.text
@@ -82,6 +86,7 @@ def test_create_supplier_201_assigns_canva_color(auth_client):
 
 # ── purchases (the transactional core) ───────────────────────────────────────
 
+
 def test_create_purchase_multi_item_updates_inventory(auth_client, db_session):
     variety = _make_variety(auth_client).json()
     grade = _make_grade(auth_client).json()
@@ -92,10 +97,20 @@ def test_create_purchase_multi_item_updates_inventory(auth_client, db_session):
         "purchase_date": "2026-06-05",
         "items": [
             # net = gross - tare
-            {"variety_id": variety["id"], "grade_id": grade["id"],
-             "gross_weight_kg": "1000", "tare_weight_kg": "50", "price_per_cavan": "1200"},
-            {"variety_id": variety["id"], "grade_id": grade["id"],
-             "gross_weight_kg": "500", "tare_weight_kg": "0", "price_per_cavan": "1200"},
+            {
+                "variety_id": variety["id"],
+                "grade_id": grade["id"],
+                "gross_weight_kg": "1000",
+                "tare_weight_kg": "50",
+                "price_per_cavan": "1200",
+            },
+            {
+                "variety_id": variety["id"],
+                "grade_id": grade["id"],
+                "gross_weight_kg": "500",
+                "tare_weight_kg": "0",
+                "price_per_cavan": "1200",
+            },
         ],
     }
     res = auth_client.post("/api/paddy/purchases", json=payload)
@@ -108,18 +123,12 @@ def test_create_purchase_multi_item_updates_inventory(auth_client, db_session):
 
     # Both items land on ONE inventory bucket (same variety+grade+branch):
     # net = (1000-50) + (500-0) = 1450
-    inv_rows = (
-        db_session.query(PalayInventory)
-        .filter(PalayInventory.variety_id == variety["id"])
-        .all()
-    )
+    inv_rows = db_session.query(PalayInventory).filter(PalayInventory.variety_id == variety["id"]).all()
     assert len(inv_rows) == 1
     assert float(inv_rows[0].quantity_kg) == 1450.0
 
     movements = (
-        db_session.query(PalayInventoryMovement)
-        .filter(PalayInventoryMovement.inventory_id == inv_rows[0].id)
-        .all()
+        db_session.query(PalayInventoryMovement).filter(PalayInventoryMovement.inventory_id == inv_rows[0].id).all()
     )
     assert len(movements) == 2
     assert all(m.movement_type == "in" and m.source_type == "purchase" for m in movements)
@@ -137,10 +146,20 @@ def test_purchase_is_atomic_on_item_failure(auth_client, db_session):
         "supplier_id": supplier["id"],
         "purchase_date": "2026-06-05",
         "items": [
-            {"variety_id": variety["id"], "grade_id": grade["id"],
-             "gross_weight_kg": "1000", "tare_weight_kg": "0", "price_per_cavan": "1200"},
-            {"variety_id": bad_variety, "grade_id": grade["id"],
-             "gross_weight_kg": "500", "tare_weight_kg": "0", "price_per_cavan": "1200"},
+            {
+                "variety_id": variety["id"],
+                "grade_id": grade["id"],
+                "gross_weight_kg": "1000",
+                "tare_weight_kg": "0",
+                "price_per_cavan": "1200",
+            },
+            {
+                "variety_id": bad_variety,
+                "grade_id": grade["id"],
+                "gross_weight_kg": "500",
+                "tare_weight_kg": "0",
+                "price_per_cavan": "1200",
+            },
         ],
     }
     # The unknown variety is caught by the tenant-FK guard (security hardening)
@@ -151,11 +170,7 @@ def test_purchase_is_atomic_on_item_failure(auth_client, db_session):
 
     # All-or-nothing: the first item's inventory must NOT have been persisted.
     db_session.rollback()  # clear any failed savepoint before re-querying
-    leftover = (
-        db_session.query(PalayInventory)
-        .filter(PalayInventory.variety_id == variety["id"])
-        .all()
-    )
+    leftover = db_session.query(PalayInventory).filter(PalayInventory.variety_id == variety["id"]).all()
     assert leftover == []
 
 
@@ -164,12 +179,22 @@ def test_get_paddy_inventory_serialized_shape(auth_client):
     variety = _make_variety(auth_client).json()
     grade = _make_grade(auth_client).json()
     supplier = _make_supplier(auth_client).json()
-    auth_client.post("/api/paddy/purchases", json={
-        "supplier_id": supplier["id"],
-        "purchase_date": "2026-06-05",
-        "items": [{"variety_id": variety["id"], "grade_id": grade["id"],
-                   "gross_weight_kg": "200", "tare_weight_kg": "0", "price_per_cavan": "1000"}],
-    })
+    auth_client.post(
+        "/api/paddy/purchases",
+        json={
+            "supplier_id": supplier["id"],
+            "purchase_date": "2026-06-05",
+            "items": [
+                {
+                    "variety_id": variety["id"],
+                    "grade_id": grade["id"],
+                    "gross_weight_kg": "200",
+                    "tare_weight_kg": "0",
+                    "price_per_cavan": "1000",
+                }
+            ],
+        },
+    )
 
     rows = auth_client.get("/api/paddy/inventory").json()
     assert len(rows) == 1

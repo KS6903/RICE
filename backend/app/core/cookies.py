@@ -13,6 +13,7 @@ Layout:
 ``COOKIE_SECURE`` comes from settings: false on http://localhost, enforced true
 in prod by the config fail-closed validator.
 """
+
 from __future__ import annotations
 
 from fastapi import Response

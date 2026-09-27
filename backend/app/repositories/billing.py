@@ -1,4 +1,5 @@
 """Repositories for tenant billing (Phase 3)."""
+
 from __future__ import annotations
 
 import uuid
@@ -16,9 +17,7 @@ class SubscriptionPlanRepository(BaseRepository[SubscriptionPlan]):
 
     def list_active(self) -> Sequence[SubscriptionPlan]:
         stmt = (
-            select(SubscriptionPlan)
-            .where(SubscriptionPlan.is_active.is_(True))
-            .order_by(SubscriptionPlan.sort_order)
+            select(SubscriptionPlan).where(SubscriptionPlan.is_active.is_(True)).order_by(SubscriptionPlan.sort_order)
         )
         return self.db.execute(stmt).scalars().all()
 
@@ -53,9 +52,7 @@ class UpgradeRequestRepository(BaseRepository[UpgradeRequest]):
     model = UpgradeRequest
 
     def pending_for_company(self, company_id: uuid.UUID) -> UpgradeRequest | None:
-        stmt = select(UpgradeRequest).where(
-            UpgradeRequest.company_id == company_id, UpgradeRequest.status == "pending"
-        )
+        stmt = select(UpgradeRequest).where(UpgradeRequest.company_id == company_id, UpgradeRequest.status == "pending")
         return self.db.execute(stmt).scalars().first()
 
     def latest_for_company(self, company_id: uuid.UUID) -> UpgradeRequest | None:

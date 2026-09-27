@@ -20,7 +20,11 @@ function readCached(): Coords | null {
 }
 
 function persist(coords: Coords): void {
-  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(coords)); } catch { /* storage unavailable */ }
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(coords));
+  } catch {
+    /* storage unavailable */
+  }
 }
 
 /** Try to resolve the browser's precise location silently.
@@ -53,14 +57,20 @@ export function useGeolocation(): Coords | null {
       (err) => {
         if (cancelled) return;
         if (err.code === err.PERMISSION_DENIED) {
-          try { localStorage.setItem(DENIED_KEY, "1"); } catch { /* storage unavailable */ }
+          try {
+            localStorage.setItem(DENIED_KEY, "1");
+          } catch {
+            /* storage unavailable */
+          }
         }
         // Leave `coords` at whatever we had (cached or null) — the widget
         // will fall back to IP-based lookup when it sees null.
       },
       { enableHighAccuracy: false, timeout: 6000, maximumAge: 10 * 60 * 1000 },
     );
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   return coords;

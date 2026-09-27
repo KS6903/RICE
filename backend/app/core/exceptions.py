@@ -10,6 +10,7 @@ Response envelope: ``{"detail": <message>, "code": <machine code>}``. The
 interceptor (and the 402 billing banner) keep working unchanged; ``code`` is an
 additive, backward-compatible field for programmatic handling.
 """
+
 from __future__ import annotations
 
 import logging
@@ -101,9 +102,7 @@ async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONR
     """Catch-all for unexpected errors: log the traceback server-side, return a
     generic body. Without this, an unhandled exception can leak stack traces /
     internal paths to the client (especially with debug servers)."""
-    logger.exception(
-        "Unhandled error on %s %s", request.method, request.url.path, exc_info=exc
-    )
+    logger.exception("Unhandled error on %s %s", request.method, request.url.path, exc_info=exc)
     return JSONResponse(
         status_code=500,
         content={"detail": "Internal server error", "code": "internal_error"},

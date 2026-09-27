@@ -60,7 +60,9 @@ export default function MfaEnrollmentGate() {
           </div>
           <div>
             <h1 className="text-lg font-bold text-primary">Two-factor authentication required</h1>
-            <p className="text-sm text-secondary">Your role requires 2FA before you can continue.</p>
+            <p className="text-sm text-secondary">
+              Your role requires 2FA before you can continue.
+            </p>
           </div>
         </div>
 
@@ -78,8 +80,8 @@ export default function MfaEnrollmentGate() {
         ) : (
           <div className="space-y-4">
             <p className="text-sm text-secondary">
-              Add this key to your authenticator app (Google Authenticator, Authy, 1Password…),
-              then enter the 6-digit code it shows.
+              Add this key to your authenticator app (Google Authenticator, Authy, 1Password…), then
+              enter the 6-digit code it shows.
             </p>
             <div className="px-3 py-2.5 rounded-xl bg-slate-500/10 ring-1 ring-inset ring-slate-500/30 font-mono text-sm break-all select-all">
               {enroll.secret}
@@ -93,7 +95,11 @@ export default function MfaEnrollmentGate() {
               placeholder="••••••"
               autoFocus
             />
-            <button onClick={confirm} className="btn-primary w-full" disabled={loading || code.length < 6}>
+            <button
+              onClick={confirm}
+              className="btn-primary w-full"
+              disabled={loading || code.length < 6}
+            >
               {loading ? "Verifying…" : "Confirm & enable"}
             </button>
           </div>

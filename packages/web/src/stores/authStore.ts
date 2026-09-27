@@ -1,10 +1,7 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import type { User } from "@rice-mill/shared";
-import {
-  clearSessionQueryCache,
-  securityContextFingerprint,
-} from "../services/sessionCache";
+import { clearSessionQueryCache, securityContextFingerprint } from "../services/sessionCache";
 import { isElectronRuntime, setDesktopSyncToken } from "../services/runtime";
 
 interface AuthState {

@@ -1,4 +1,5 @@
 """Pydantic schemas for the fleet domain (trucks, drivers, dispatch trips)."""
+
 import uuid
 from datetime import date
 from decimal import Decimal
@@ -6,6 +7,7 @@ from decimal import Decimal
 from pydantic import BaseModel
 
 # ── Drivers ──────────────────────────────────────────────────────────────────
+
 
 class DriverCreate(BaseModel):
     name: str
@@ -26,6 +28,7 @@ class DriverUpdate(BaseModel):
 
 # ── Trucks ───────────────────────────────────────────────────────────────────
 
+
 class TruckCreate(BaseModel):
     plate_number: str
     truck_type: str | None = None
@@ -44,6 +47,7 @@ class TruckUpdate(BaseModel):
 
 
 # ── Dispatch trips ────────────────────────────────────────────────────────────
+
 
 class TripCreate(BaseModel):
     truck_id: uuid.UUID

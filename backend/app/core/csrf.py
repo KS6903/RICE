@@ -11,6 +11,7 @@ Authorization header — so enforcement lives exactly on the cookie-auth path (s
 Session cookies are additionally ``SameSite=Strict``, so the double-submit check
 here is a second, independent layer.
 """
+
 from __future__ import annotations
 
 import secrets

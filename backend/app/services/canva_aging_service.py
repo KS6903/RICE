@@ -10,6 +10,7 @@ Two read aggregations over one branch's warehouse:
 
 Logic preserved verbatim from ``api/canva.py``.
 """
+
 from __future__ import annotations
 
 import uuid
@@ -127,22 +128,22 @@ class AgingReportService(BaseService):
             totals[worst] += 1
 
             for b in p.batches:
-                oldest.append({
-                    "pallet_id": str(p.id),
-                    "pallet_code": p.pallet_code,
-                    "variety_code": b.variety.code if b.variety else None,
-                    "milling_date": b.milling_date.isoformat(),
-                    "days_old": (today - b.milling_date).days,
-                    "best_before_date": b.best_before_date.isoformat() if b.best_before_date else None,
-                    "weight_kg": float(b.weight_kg),
-                    "status": b.status,
-                })
+                oldest.append(
+                    {
+                        "pallet_id": str(p.id),
+                        "pallet_code": p.pallet_code,
+                        "variety_code": b.variety.code if b.variety else None,
+                        "milling_date": b.milling_date.isoformat(),
+                        "days_old": (today - b.milling_date).days,
+                        "best_before_date": b.best_before_date.isoformat() if b.best_before_date else None,
+                        "weight_kg": float(b.weight_kg),
+                        "status": b.status,
+                    }
+                )
 
         for bucket in per_zone.values():
             if bucket["max_weight_kg"]:
-                bucket["utilization_pct"] = round(
-                    100.0 * bucket["weight_kg"] / bucket["max_weight_kg"], 1
-                )
+                bucket["utilization_pct"] = round(100.0 * bucket["weight_kg"] / bucket["max_weight_kg"], 1)
 
         oldest.sort(key=lambda b: b["milling_date"])
         return {
@@ -203,18 +204,20 @@ class AgingReportService(BaseService):
             for r in rows:
                 by_aging[r["aging_status"]] += 1
                 totals_aging[r["aging_status"]] += 1
-            racks.append({
-                "zone_id": str(z.id),
-                "name": z.name,
-                "zone_type": z.zone_type,
-                "color_hex": z.color_hex,
-                "capacity_kg": cap,
-                "used_kg": used_kg,
-                "occupancy_pct": round(100.0 * used_kg / cap, 1) if cap else None,
-                "pallet_count": len(rows),
-                "by_aging": by_aging,
-                "pallets": rows,
-            })
+            racks.append(
+                {
+                    "zone_id": str(z.id),
+                    "name": z.name,
+                    "zone_type": z.zone_type,
+                    "color_hex": z.color_hex,
+                    "capacity_kg": cap,
+                    "used_kg": used_kg,
+                    "occupancy_pct": round(100.0 * used_kg / cap, 1) if cap else None,
+                    "pallet_count": len(rows),
+                    "by_aging": by_aging,
+                    "pallets": rows,
+                }
+            )
 
         # Pallets with no zone assignment
         unzoned_rows = [serialize_rack_pallet(p, today) for p in by_zone.get(None, [])]

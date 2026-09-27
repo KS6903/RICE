@@ -78,17 +78,17 @@ class Settings(BaseSettings):
     # LOGIN_LOCKOUT_MAX_ROUNDS lockouts the account is PERMANENTLY locked and can
     # only be freed by a password reset. Backed by Redis; a no-op when Redis is
     # unavailable (the per-IP rate limit still holds as the floor of protection).
-    LOGIN_MAX_FAILURES: int = 5            # attempts allowed in the first round
-    LOGIN_MIN_FAILURES: int = 2            # floor — threshold never drops below this
-    LOGIN_LOCKOUT_WINDOW_SECONDS: int = 900   # window failures are counted within
-    LOGIN_LOCKOUT_BASE_SECONDS: int = 60      # first lockout duration
-    LOGIN_LOCKOUT_FACTOR: int = 5             # each round multiplies the duration
-    LOGIN_LOCKOUT_MAX_SECONDS: int = 86400    # cap on any single lockout (24h)
-    LOGIN_LOCKOUT_MAX_ROUNDS: int = 5         # lockouts before a permanent block
+    LOGIN_MAX_FAILURES: int = 5  # attempts allowed in the first round
+    LOGIN_MIN_FAILURES: int = 2  # floor — threshold never drops below this
+    LOGIN_LOCKOUT_WINDOW_SECONDS: int = 900  # window failures are counted within
+    LOGIN_LOCKOUT_BASE_SECONDS: int = 60  # first lockout duration
+    LOGIN_LOCKOUT_FACTOR: int = 5  # each round multiplies the duration
+    LOGIN_LOCKOUT_MAX_SECONDS: int = 86400  # cap on any single lockout (24h)
+    LOGIN_LOCKOUT_MAX_ROUNDS: int = 5  # lockouts before a permanent block
     # How long the escalation memory (round counter) and the permanent block live in
     # Redis. The round counter decays so an honest user who later mistypes once isn't
     # treated as a serial offender; the permanent flag is effectively durable.
-    LOGIN_LOCKOUT_ROUND_TTL_SECONDS: int = 86400        # 1 day
+    LOGIN_LOCKOUT_ROUND_TTL_SECONDS: int = 86400  # 1 day
     LOGIN_LOCKOUT_PERMANENT_TTL_SECONDS: int = 2592000  # 30 days
     # MFA enforcement. When on, accounts in MFA_REQUIRED_ROLES (plus all platform
     # admins) must enroll in TOTP before they can use the app — the API blocks
@@ -170,8 +170,7 @@ class Settings(BaseSettings):
         low = v.lower()
         if any(marker in low for marker in _PLACEHOLDER_SECRET_MARKERS):
             raise ValueError(
-                "SECRET_KEY is set to a placeholder value. Generate a real one with: "
-                "openssl rand -hex 32"
+                "SECRET_KEY is set to a placeholder value. Generate a real one with: " "openssl rand -hex 32"
             )
         if len(v) < _MIN_SECRET_LEN:
             logger.warning(
@@ -213,15 +212,9 @@ class Settings(BaseSettings):
             problems.append("MFA_REQUIRED_ROLES must include owner and admin")
         if not self.SMTP_HOST or not self.SMTP_FROM_EMAIL:
             problems.append("SMTP_HOST and SMTP_FROM_EMAIL are required for secure token delivery")
-        if (
-            self.MFA_ENCRYPTION_KEY is None
-            or len(self.MFA_ENCRYPTION_KEY.get_secret_value()) < _MIN_SECRET_LEN
-        ):
+        if self.MFA_ENCRYPTION_KEY is None or len(self.MFA_ENCRYPTION_KEY.get_secret_value()) < _MIN_SECRET_LEN:
             problems.append("MFA_ENCRYPTION_KEY must be a separate 32+ character secret")
-        if (
-            self.SIGNUP_INVITE_CODE is None
-            or len(self.SIGNUP_INVITE_CODE.get_secret_value()) < 16
-        ):
+        if self.SIGNUP_INVITE_CODE is None or len(self.SIGNUP_INVITE_CODE.get_secret_value()) < 16:
             problems.append("SIGNUP_INVITE_CODE must be a 16+ character secret")
         if not self.REQUIRE_EMAIL_VERIFICATION:
             problems.append("REQUIRE_EMAIL_VERIFICATION must be true")
@@ -240,9 +233,7 @@ class Settings(BaseSettings):
         ):
             problems.append("DATABASE_URL must require TLS with sslmode=require or stricter")
         if self.PROCESS_ROLE == "api" and self.PROVISIONER_DATABASE_URL is not None:
-            problems.append(
-                "PROVISIONER_DATABASE_URL must not be exposed to the long-running API process"
-            )
+            problems.append("PROVISIONER_DATABASE_URL must not be exposed to the long-running API process")
         if self.PROCESS_ROLE == "provisioner" and self.PROVISIONER_DATABASE_URL is None:
             problems.append("PROVISIONER_DATABASE_URL is required by the provisioning process")
         if self.PROVISIONER_DATABASE_URL is not None:
@@ -266,15 +257,11 @@ class Settings(BaseSettings):
         try:
             from .legal import unresolved_placeholders
 
-            problems.extend(
-                f"legal document placeholder unfilled: {p}" for p in unresolved_placeholders()
-            )
+            problems.extend(f"legal document placeholder unfilled: {p}" for p in unresolved_placeholders())
         except Exception as exc:  # pragma: no cover - defensive
             problems.append(f"legal documents could not be validated: {exc}")
         if problems:
-            raise ValueError(
-                "Insecure production configuration (ENV=prod): " + "; ".join(problems)
-            )
+            raise ValueError("Insecure production configuration (ENV=prod): " + "; ".join(problems))
         return self
 
     class Config:

@@ -1,4 +1,5 @@
 """Repositories for the milling domain (Phase 3c)."""
+
 from __future__ import annotations
 
 import uuid

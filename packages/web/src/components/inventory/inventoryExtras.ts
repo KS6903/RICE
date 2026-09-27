@@ -13,10 +13,10 @@ export type QuantityUnit = {
 // Conversions to kilograms. Cavan (50 kg) is the canonical Philippine rice
 // sack used across the app; the others are common warehouse units.
 export const BUILTIN_UNITS: QuantityUnit[] = [
-  { code: "kg",    label: "Kilogram (kg)",   kgPerUnit: 1,    builtin: true },
-  { code: "cavan", label: "Cavan (50 kg)",   kgPerUnit: 50,   builtin: true },
-  { code: "sack",  label: "Sack (25 kg)",    kgPerUnit: 25,   builtin: true },
-  { code: "ton",   label: "Metric ton (t)",  kgPerUnit: 1000, builtin: true },
+  { code: "kg", label: "Kilogram (kg)", kgPerUnit: 1, builtin: true },
+  { code: "cavan", label: "Cavan (50 kg)", kgPerUnit: 50, builtin: true },
+  { code: "sack", label: "Sack (25 kg)", kgPerUnit: 25, builtin: true },
+  { code: "ton", label: "Metric ton (t)", kgPerUnit: 1000, builtin: true },
 ];
 
 const UNITS_KEY = "rice-mill-custom-units";
@@ -47,5 +47,9 @@ export function saveCustomUnit(label: string, kgPerUnit: number): QuantityUnit {
 }
 
 export function slugify(s: string): string {
-  return s.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+  return s
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
 }

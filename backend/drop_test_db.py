@@ -13,9 +13,12 @@ test_db = f"{db} Test"
 print(f"Dropping test DB: {test_db!r}")
 
 conn = psycopg.connect(
-    host=parsed.hostname, port=parsed.port or 5432,
-    user=parsed.username, password=parsed.password,
-    dbname="postgres", autocommit=True,
+    host=parsed.hostname,
+    port=parsed.port or 5432,
+    user=parsed.username,
+    password=parsed.password,
+    dbname="postgres",
+    autocommit=True,
 )
 conn.execute(f'DROP DATABASE IF EXISTS "{test_db}"')
 conn.close()

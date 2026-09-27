@@ -6,14 +6,15 @@
   (or milling if they were already in milling).
 - Re-runs zone-containing logic to set the correct zone_id on every pallet.
 """
+
 from decimal import Decimal
 
 from app.core.database import SessionLocal
 from app.models.warehouse import Pallet, WarehouseLayout, WarehouseZone
 
 # Same as DEFAULT_ZONES in canva.py
-MILLING       = ("milling",         "Milling Floor",    1.0,  1.0, 13.0, 18.0, "#94a3b8")
-PREMIUM       = ("premium_storage", "Premium Storage", 15.0,  1.0, 14.0, 18.0, "#10b981")
+MILLING = ("milling", "Milling Floor", 1.0, 1.0, 13.0, 18.0, "#94a3b8")
+PREMIUM = ("premium_storage", "Premium Storage", 15.0, 1.0, 14.0, 18.0, "#10b981")
 KEEP_TYPES = {"milling", "premium_storage"}
 
 
@@ -53,14 +54,22 @@ def main():
             premium = next((z for z in keep if z.zone_type == "premium_storage"), None)
 
             if milling is None:
-                milling = WarehouseZone(layout_id=layout.id, zone_type="milling",
-                                        name="Milling Floor", x_m=0, y_m=0, width_m=1, height_m=1)
+                milling = WarehouseZone(
+                    layout_id=layout.id, zone_type="milling", name="Milling Floor", x_m=0, y_m=0, width_m=1, height_m=1
+                )
                 db.add(milling)
             _set_zone(milling, MILLING)
 
             if premium is None:
-                premium = WarehouseZone(layout_id=layout.id, zone_type="premium_storage",
-                                        name="Premium Storage", x_m=0, y_m=0, width_m=1, height_m=1)
+                premium = WarehouseZone(
+                    layout_id=layout.id,
+                    zone_type="premium_storage",
+                    name="Premium Storage",
+                    x_m=0,
+                    y_m=0,
+                    width_m=1,
+                    height_m=1,
+                )
                 db.add(premium)
             _set_zone(premium, PREMIUM)
 

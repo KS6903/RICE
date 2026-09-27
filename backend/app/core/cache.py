@@ -20,6 +20,7 @@ Usage:
     # or read-through in one call:
     features = cache.get_or_set("features:123", 60, lambda: load_from_db())
 """
+
 from __future__ import annotations
 
 import json
@@ -45,10 +46,10 @@ _KEY_PREFIX = "ricemill:"
 _BREAKER_COOLDOWN = 30.0
 
 # Semantic TTLs (seconds). Kept here so cache lifetimes live in one place.
-TTL_FEATURES = 60       # plan entitlements — short; bounded staleness on plan changes
-TTL_WEATHER = 10 * 60   # current weather — matches the upstream's freshness
+TTL_FEATURES = 60  # plan entitlements — short; bounded staleness on plan changes
+TTL_WEATHER = 10 * 60  # current weather — matches the upstream's freshness
 TTL_WEATHER_FORECAST = 30 * 60  # hourly/daily forecast — changes slowly, heavier call
-TTL_IP_GEO = 60 * 60    # IP → coordinates — public IPs move rarely
+TTL_IP_GEO = 60 * 60  # IP → coordinates — public IPs move rarely
 TTL_DRYING_ADVISORY = 3 * 60 * 60  # LLM advisory — expensive; refreshed a few times/day
 
 

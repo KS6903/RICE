@@ -152,7 +152,8 @@ export default {
     // Only replay reads. A mutation that throws may still have been applied on
     // the far side, and re-sending it would risk double-writing a sale or a
     // purchase — so those fail fast and let the caller decide.
-    const replayable = request.method === "GET" || request.method === "HEAD" || request.method === "OPTIONS";
+    const replayable =
+      request.method === "GET" || request.method === "HEAD" || request.method === "OPTIONS";
     const attempts = replayable ? Math.min(instances, 2) : 1;
 
     let lastError: unknown;

@@ -1,4 +1,5 @@
 """Drying Advisor HTTP controller — Enterprise-only palay sun-drying advisory."""
+
 from __future__ import annotations
 
 from typing import Any

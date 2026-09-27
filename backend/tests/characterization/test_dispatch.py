@@ -3,19 +3,44 @@
 Agents/millers CRUD with system-assigned canva colors, the palette helper, the
 dispatch order list, and the courier-assignment / mark-delivered flow.
 """
+
 AGENT_KEYS = {
-    "id", "name", "agent_type", "contact_person", "phone", "address",
-    "commission_pct", "is_active", "canva_color_hex",
-    "deactivated_at", "deactivated_by",
+    "id",
+    "name",
+    "agent_type",
+    "contact_person",
+    "phone",
+    "address",
+    "commission_pct",
+    "is_active",
+    "canva_color_hex",
+    "deactivated_at",
+    "deactivated_by",
 }
 MILLER_KEYS = {
-    "id", "name", "contact_person", "phone", "address",
-    "capacity_kg_per_hr", "milling_fee_per_kg", "is_active", "canva_color_hex",
-    "deactivated_at", "deactivated_by",
+    "id",
+    "name",
+    "contact_person",
+    "phone",
+    "address",
+    "capacity_kg_per_hr",
+    "milling_fee_per_kg",
+    "is_active",
+    "canva_color_hex",
+    "deactivated_at",
+    "deactivated_by",
 }
 ORDER_KEYS = {
-    "id", "order_no", "order_date", "delivery_date", "status", "total_amount",
-    "delivered_at", "customer", "assigned_agent", "assigned_miller",
+    "id",
+    "order_no",
+    "order_date",
+    "delivery_date",
+    "status",
+    "total_amount",
+    "delivered_at",
+    "customer",
+    "assigned_agent",
+    "assigned_miller",
 }
 
 
@@ -59,19 +84,21 @@ def test_palette_shape(auth_client):
 
 def test_dispatch_orders_courier_and_delivery(auth_client):
     customer = auth_client.post("/api/sales/customers", json={"name": "Disp Co"}).json()
-    order = auth_client.post("/api/sales/orders", json={
-        "customer_id": customer["id"], "order_date": "2026-06-05",
-        "items": [{"item_type": "milled_rice", "quantity_kg": "10", "unit_price_per_kg": "40"}],
-    }).json()
+    order = auth_client.post(
+        "/api/sales/orders",
+        json={
+            "customer_id": customer["id"],
+            "order_date": "2026-06-05",
+            "items": [{"item_type": "milled_rice", "quantity_kg": "10", "unit_price_per_kg": "40"}],
+        },
+    ).json()
 
     orders = auth_client.get("/api/dispatch/orders").json()
     mine = next(o for o in orders if o["id"] == order["id"])
     assert set(mine.keys()) == ORDER_KEYS
 
     agent = auth_client.post("/api/agents", json={"name": "Courier A"}).json()
-    assigned = auth_client.patch(
-        f"/api/sales-orders/{order['id']}/assign-courier", json={"agent_id": agent["id"]}
-    )
+    assigned = auth_client.patch(f"/api/sales-orders/{order['id']}/assign-courier", json={"agent_id": agent["id"]})
     assert assigned.status_code == 200
     assert assigned.json()["assigned_agent"]["id"] == agent["id"]
     assert assigned.json()["assigned_miller"] is None

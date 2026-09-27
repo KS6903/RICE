@@ -26,7 +26,9 @@ describe("Markdown", () => {
     // broken into separate paragraphs on screen.
     draw("To the fullest extent Philippine law permits, the Service is\nprovided as is.\n");
     expect(
-      screen.getByText("To the fullest extent Philippine law permits, the Service is provided as is."),
+      screen.getByText(
+        "To the fullest extent Philippine law permits, the Service is provided as is.",
+      ),
     ).toBeInTheDocument();
   });
 

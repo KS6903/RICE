@@ -1,4 +1,5 @@
 """Spatial warehouse canva models — Phase 1 of the visual inventory system."""
+
 import uuid
 from datetime import date, datetime
 from decimal import Decimal
@@ -17,11 +18,16 @@ if TYPE_CHECKING:
 
 class WarehouseLayout(Base, TimestampMixin):
     """Spatial layout for a branch warehouse. A branch can have multiple layouts."""
+
     __tablename__ = "warehouse_layouts"
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    branch_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("branches.id", ondelete="CASCADE"), nullable=False)
-    company_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("companies.id", ondelete="CASCADE"), nullable=False)
+    branch_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("branches.id", ondelete="CASCADE"), nullable=False
+    )
+    company_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("companies.id", ondelete="CASCADE"), nullable=False
+    )
     name: Mapped[str] = mapped_column(String(150), nullable=False)
     is_default: Mapped[bool] = mapped_column(default=True, nullable=False)
     width_m: Mapped[Decimal] = mapped_column(Numeric(8, 2), default=30, nullable=False)
@@ -30,18 +36,25 @@ class WarehouseLayout(Base, TimestampMixin):
     background_url: Mapped[str | None] = mapped_column(Text)
     version: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
-    deleted_by: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"))
+    deleted_by: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL")
+    )
 
-    zones: Mapped[list["WarehouseZone"]] = relationship("WarehouseZone", back_populates="layout", cascade="all, delete-orphan")
+    zones: Mapped[list["WarehouseZone"]] = relationship(
+        "WarehouseZone", back_populates="layout", cascade="all, delete-orphan"
+    )
     pallets: Mapped[list["Pallet"]] = relationship("Pallet", back_populates="layout", cascade="all, delete-orphan")
 
 
 class WarehouseZone(Base):
     """Functional area inside a layout (intake, storage, dock, office)."""
+
     __tablename__ = "warehouse_zones"
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    layout_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("warehouse_layouts.id", ondelete="CASCADE"), nullable=False)
+    layout_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("warehouse_layouts.id", ondelete="CASCADE"), nullable=False
+    )
     zone_type: Mapped[str] = mapped_column(String(40), nullable=False)
     name: Mapped[str] = mapped_column(String(150), nullable=False)
     x_m: Mapped[Decimal] = mapped_column(Numeric(8, 2), nullable=False)
@@ -61,12 +74,19 @@ class WarehouseZone(Base):
 
 class Pallet(Base, TimestampMixin):
     """Physical pallet on the warehouse floor — what gets dragged on the canva."""
+
     __tablename__ = "pallets"
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    company_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("companies.id", ondelete="CASCADE"), nullable=False)
-    layout_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("warehouse_layouts.id", ondelete="CASCADE"), nullable=False)
-    zone_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("warehouse_zones.id", ondelete="SET NULL"))
+    company_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("companies.id", ondelete="CASCADE"), nullable=False
+    )
+    layout_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("warehouse_layouts.id", ondelete="CASCADE"), nullable=False
+    )
+    zone_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("warehouse_zones.id", ondelete="SET NULL")
+    )
     pallet_code: Mapped[str] = mapped_column(String(40), unique=True, nullable=False)
     x_m: Mapped[Decimal] = mapped_column(Numeric(8, 2), nullable=False)
     y_m: Mapped[Decimal] = mapped_column(Numeric(8, 2), nullable=False)
@@ -83,18 +103,27 @@ class Pallet(Base, TimestampMixin):
 
     layout: Mapped["WarehouseLayout"] = relationship("WarehouseLayout", back_populates="pallets")
     zone: Mapped["WarehouseZone | None"] = relationship("WarehouseZone")
-    batches: Mapped[list["RiceBatch"]] = relationship("RiceBatch", back_populates="pallet", cascade="all, delete-orphan")
-    movements: Mapped[list["PalletMovement"]] = relationship("PalletMovement", back_populates="pallet", cascade="all, delete-orphan")
+    batches: Mapped[list["RiceBatch"]] = relationship(
+        "RiceBatch", back_populates="pallet", cascade="all, delete-orphan"
+    )
+    movements: Mapped[list["PalletMovement"]] = relationship(
+        "PalletMovement", back_populates="pallet", cascade="all, delete-orphan"
+    )
     stack_parent: Mapped["Pallet | None"] = relationship("Pallet", remote_side=[id], foreign_keys=[stack_parent_id])
 
 
 class RiceBatch(Base):
     """The actual rice inside a pallet. A pallet can hold multiple batches."""
+
     __tablename__ = "rice_batches"
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    company_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("companies.id", ondelete="CASCADE"), nullable=False)
-    pallet_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("pallets.id", ondelete="CASCADE"), nullable=False)
+    company_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("companies.id", ondelete="CASCADE"), nullable=False
+    )
+    pallet_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("pallets.id", ondelete="CASCADE"), nullable=False
+    )
     milling_batch_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("milling_batches.id"))
     variety_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("rice_varieties.id"))
     grade_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("quality_grades.id"))
@@ -117,10 +146,13 @@ class RiceBatch(Base):
 
 class PalletMovement(Base):
     """Audit log: every drag, stack, dispatch."""
+
     __tablename__ = "pallet_movements"
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    pallet_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("pallets.id", ondelete="CASCADE"), nullable=False)
+    pallet_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("pallets.id", ondelete="CASCADE"), nullable=False
+    )
     user_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"))
     movement_type: Mapped[str] = mapped_column(String(20), nullable=False)
     from_zone_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True))

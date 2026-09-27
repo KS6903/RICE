@@ -1,4 +1,5 @@
 """Activity-log HTTP controller — thin routing over ActivityService (Phase 3b)."""
+
 import uuid
 
 from fastapi import APIRouter, Depends, Query

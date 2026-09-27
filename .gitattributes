@@ -1,3 +1,8 @@
+# Every text file is stored and checked out with LF, on Windows too. Prettier
+# and ruff expect LF and CI checks out LF, so a CRLF working copy made local
+# format checks disagree with CI. Git detects binary files by itself.
+* text=auto eol=lf
+
 # The published agreements under legal/ are the text customers accept, and
 # backend/app/core/legal.py hashes them as the evidence of what was on screen.
 # Reading them is line-ending safe on its own (render() decodes in

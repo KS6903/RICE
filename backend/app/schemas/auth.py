@@ -1,4 +1,5 @@
 """Pydantic request/response schemas for the auth domain (Phase 3)."""
+
 from pydantic import BaseModel, EmailStr, Field
 
 
@@ -64,6 +65,7 @@ class ChangePasswordRequest(BaseModel):
 
 # ── Password reset ───────────────────────────────────────────────────────────
 
+
 class ForgotPasswordRequest(BaseModel):
     # Either a username or an email — we never reveal which (if any) matched.
     identifier: str = Field(min_length=1, max_length=255)
@@ -80,8 +82,10 @@ class VerifyEmailRequest(BaseModel):
 
 # ── MFA (TOTP) ───────────────────────────────────────────────────────────────
 
+
 class MfaChallengeResponse(BaseModel):
     """Returned by /login instead of tokens when the account has MFA enabled."""
+
     mfa_required: bool = True
     challenge_token: str
 
@@ -104,6 +108,7 @@ class MfaEnrollResponse(BaseModel):
 class MfaBackupCodesResponse(BaseModel):
     """Returned once on enrollment / regeneration — the raw codes are never
     shown again (only their hashes are stored)."""
+
     backup_codes: list[str]
 
 

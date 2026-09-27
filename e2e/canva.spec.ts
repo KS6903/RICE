@@ -71,11 +71,15 @@ test.describe("Warehouse canva", () => {
     await expect(page.getByRole("heading", { name: /find oldest pallets/i })).toBeVisible();
 
     // Wait for varieties to load asynchronously (> 1 option means "Any variety" + real data)
-    await page.waitForFunction(() => {
-      const selects = document.querySelectorAll("select");
-      const last = selects[selects.length - 1];
-      return last && last.options.length > 1;
-    }, undefined, { timeout: 5_000 });
+    await page.waitForFunction(
+      () => {
+        const selects = document.querySelectorAll("select");
+        const last = selects[selects.length - 1];
+        return last && last.options.length > 1;
+      },
+      undefined,
+      { timeout: 5_000 },
+    );
 
     // The variety dropdown should include at least one of the seeded codes
     const options = await page.getByRole("combobox").last().locator("option").allInnerTexts();
@@ -118,7 +122,9 @@ test.describe("Warehouse canva", () => {
 
     await page.getByRole("button", { name: /All customers|selected/ }).click();
     // Seeded clients from seed_demo_pallets.py
-    await expect(page.getByRole("button", { name: /Juan Cruz Farms/ })).toBeVisible({ timeout: 5_000 });
+    await expect(page.getByRole("button", { name: /Juan Cruz Farms/ })).toBeVisible({
+      timeout: 5_000,
+    });
     await expect(page.getByRole("button", { name: /Mill stock/ })).toBeVisible();
 
     await page.getByRole("button", { name: /Juan Cruz Farms/ }).click();
@@ -148,7 +154,9 @@ test.describe("Warehouse canva", () => {
     await page.goto("/inventory");
     await page.getByRole("button", { name: /^Warehouse$/ }).click();
     // The layout tab bar card should be visible
-    await expect(page.getByRole("button", { name: /New layout/i })).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByRole("button", { name: /New layout/i })).toBeVisible({
+      timeout: 10_000,
+    });
     // The warehouse header always shows the active layout's dimensions chip
     // regardless of which layout is currently active.
     await expect(page.getByTestId("warehouse-header").getByText(/\d+m × \d+m/)).toBeVisible();
@@ -158,7 +166,9 @@ test.describe("Warehouse canva", () => {
     await login(page);
     await page.goto("/inventory");
     await page.getByRole("button", { name: /^Warehouse$/ }).click();
-    await expect(page.getByRole("button", { name: /New layout/i })).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByRole("button", { name: /New layout/i })).toBeVisible({
+      timeout: 10_000,
+    });
 
     // Create a new layout via the popover form
     await page.getByRole("button", { name: /New layout/i }).click();
@@ -176,7 +186,10 @@ test.describe("Warehouse canva", () => {
 
     // Delete action lives in the single action bar now (per active layout).
     // The new layout was auto-selected on create, so the action bar acts on it.
-    await page.getByTestId("layout-action-bar").getByRole("button", { name: /^Delete$/ }).click();
+    await page
+      .getByTestId("layout-action-bar")
+      .getByRole("button", { name: /^Delete$/ })
+      .click();
 
     // Tab should be gone from both tab bar and canva toolbar
     await expect(page.getByText(layoutName).first()).not.toBeVisible({ timeout: 8_000 });
@@ -186,7 +199,9 @@ test.describe("Warehouse canva", () => {
     await login(page);
     await page.goto("/inventory");
     await page.getByRole("button", { name: /^Warehouse$/ }).click();
-    await expect(page.getByRole("button", { name: /New layout/i })).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByRole("button", { name: /New layout/i })).toBeVisible({
+      timeout: 10_000,
+    });
     // The dimension badge (e.g. "30m × 20m") should appear at the right edge of the tab bar
     await expect(page.getByText(/\d+m × \d+m/).first()).toBeVisible({ timeout: 5_000 });
   });
@@ -273,7 +288,9 @@ test.describe("Door (pinto) zone placement", () => {
     await canva.click({ position: { x: box!.width * 0.5, y: 15 }, force: true });
 
     // ZoneEditor should open automatically for the newly placed zone
-    await expect(page.getByText(/Structural element — cannot hold pallets/i)).toBeVisible({ timeout: 6_000 });
+    await expect(page.getByText(/Structural element — cannot hold pallets/i)).toBeVisible({
+      timeout: 6_000,
+    });
 
     // The zone type select should show "door" (or "Door" label)
     const typeSelect = page.locator("select").filter({ hasText: /door/i });
@@ -282,7 +299,10 @@ test.describe("Door (pinto) zone placement", () => {
     expect(pageErrors).toEqual([]);
   });
 
-  test("Door zone created via API at negative coordinates is not auto-corrected", async ({ page, request }) => {
+  test("Door zone created via API at negative coordinates is not auto-corrected", async ({
+    page,
+    request,
+  }) => {
     // Log in via API to get a token
     const loginRes = await request.post("http://localhost:8000/api/auth/login", {
       form: { username: TENANT.username, password: TENANT.password },
@@ -297,7 +317,9 @@ test.describe("Door (pinto) zone placement", () => {
     const branchId = branches[0].id;
 
     // Get the layout
-    const layoutsRes = await request.get(`http://localhost:8000/api/branches/${branchId}/layouts`, { headers });
+    const layoutsRes = await request.get(`http://localhost:8000/api/branches/${branchId}/layouts`, {
+      headers,
+    });
     const layouts = await layoutsRes.json();
     const layoutId = layouts.find((l: any) => l.is_default)?.id ?? layouts[0]?.id;
 
@@ -306,7 +328,14 @@ test.describe("Door (pinto) zone placement", () => {
       `http://localhost:8000/api/warehouses/${branchId}/zones?layout_id=${layoutId}`,
       {
         headers: { ...headers, "Content-Type": "application/json" },
-        data: { zone_type: "door", name: "E2E Outside Door", x_m: -1.0, y_m: -1.0, width_m: 1.0, height_m: 2.0 },
+        data: {
+          zone_type: "door",
+          name: "E2E Outside Door",
+          x_m: -1.0,
+          y_m: -1.0,
+          width_m: 1.0,
+          height_m: 2.0,
+        },
       },
     );
     expect(createRes.ok()).toBeTruthy();
@@ -353,10 +382,15 @@ test.describe("Door (pinto) zone placement", () => {
     await expect(page.getByText(/Tool armed: Door/i)).toBeVisible();
     // Click near the bottom of the canva — past the last zone row (y > 19 m).
     // force:true bypasses the "intercepted" check for <canva> elements.
-    await canva.click({ position: { x: (box?.width ?? 900) * 0.5, y: (box?.height ?? 600) - 15 }, force: true });
+    await canva.click({
+      position: { x: (box?.width ?? 900) * 0.5, y: (box?.height ?? 600) - 15 },
+      force: true,
+    });
 
     // Wait for ZoneEditor to appear
-    await expect(page.getByText(/Structural element — cannot hold pallets/i)).toBeVisible({ timeout: 6_000 });
+    await expect(page.getByText(/Structural element — cannot hold pallets/i)).toBeVisible({
+      timeout: 6_000,
+    });
 
     // Scope to the editor's scrollable body — the .overflow-y-auto div that also
     // contains the structural badge. The first input inside it is the Name field.

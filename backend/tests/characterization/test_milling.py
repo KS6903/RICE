@@ -3,6 +3,7 @@
 Pins equipment CRUD and the batch-create flow that deducts palay stock and
 rolls milled-rice/by-product output into inventory, plus the batch-number format.
 """
+
 import re
 
 
@@ -30,19 +31,31 @@ def test_list_equipment_excludes_inactive(auth_client):
 def test_create_batch_deducts_palay_and_adds_milled_rice(auth_client, seed_owner):
     variety = _variety(auth_client)
     # Seed 1000kg palay on the owner's branch (so the batch input can deduct it).
-    auth_client.post("/api/inventory/stock", json={
-        "inventory_type": "palay",
-        "quantity_kg": "1000",
-        "branch_id": str(seed_owner.branch_id),
-        "variety_id": variety["id"],
-    })
+    auth_client.post(
+        "/api/inventory/stock",
+        json={
+            "inventory_type": "palay",
+            "quantity_kg": "1000",
+            "branch_id": str(seed_owner.branch_id),
+            "variety_id": variety["id"],
+        },
+    )
 
-    res = auth_client.post("/api/milling/batches", json={
-        "start_datetime": "2026-06-05T08:00:00Z",
-        "inputs": [{"variety_id": variety["id"], "input_weight_kg": "500"}],
-        "outputs": [{"output_type": "milled_rice", "variety_id": variety["id"],
-                     "output_weight_kg": "300", "grade_name": "regular"}],
-    })
+    res = auth_client.post(
+        "/api/milling/batches",
+        json={
+            "start_datetime": "2026-06-05T08:00:00Z",
+            "inputs": [{"variety_id": variety["id"], "input_weight_kg": "500"}],
+            "outputs": [
+                {
+                    "output_type": "milled_rice",
+                    "variety_id": variety["id"],
+                    "output_weight_kg": "300",
+                    "grade_name": "regular",
+                }
+            ],
+        },
+    )
     assert res.status_code == 201, res.text
     batch = res.json()
     assert re.match(r"^MB-\d{8}-\d{4}$", batch["batch_no"]), batch["batch_no"]

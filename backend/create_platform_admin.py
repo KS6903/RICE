@@ -5,6 +5,7 @@ Usage:
 
 Prompts for username, full name, email, and password interactively.
 """
+
 import getpass
 import sys
 

@@ -5,6 +5,7 @@ two-step (password → challenge token → TOTP code → tokens). Bad codes feed
 same lockout counter as bad passwords (no-op here since tests run without Redis,
 but the 401 path is what we pin).
 """
+
 import time
 
 import pyotp
@@ -91,7 +92,8 @@ def test_mfa_verify_rejects_access_token_as_challenge(client, auth_client, seed_
     challenge = _login(client).json()["challenge_token"]
     code = _next_totp(secret)
     tokens = client.post(
-        "/api/auth/mfa/verify", json={"challenge_token": challenge, "code": code},
+        "/api/auth/mfa/verify",
+        json={"challenge_token": challenge, "code": code},
         headers=NATIVE_HEADERS,
     ).json()
 

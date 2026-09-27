@@ -1,4 +1,5 @@
 """Unit tests: DryingAdvisory strictly validates whatever the model returns."""
+
 import pytest
 from pydantic import ValidationError
 

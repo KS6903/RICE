@@ -6,6 +6,7 @@ deliberately enlist in each caller's transaction, used across domains
 (branches, etc.). This service owns the read path consumed by the tenant
 activity endpoint and the platform-admin tenant-detail view.
 """
+
 from __future__ import annotations
 
 import uuid

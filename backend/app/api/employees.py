@@ -1,4 +1,5 @@
 """Employees domain HTTP controllers — thin routing over EmployeeService (Phase 3e)."""
+
 import uuid
 
 from fastapi import APIRouter, Depends, Query, status
@@ -11,10 +12,12 @@ from ..schemas.employees import EmployeeIn, EmployeeUpdate
 from ..services.employee_service import EmployeeService
 
 # Gate the entire employees module behind the 'employees' feature
-router = APIRouter(dependencies=[
-    Depends(require_feature("employees")),
-    Depends(require_section_access("employees")),
-])
+router = APIRouter(
+    dependencies=[
+        Depends(require_feature("employees")),
+        Depends(require_section_access("employees")),
+    ]
+)
 
 
 def get_employee_service(

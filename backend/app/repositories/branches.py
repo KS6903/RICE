@@ -1,4 +1,5 @@
 """Repository for the branches domain (Phase 3)."""
+
 from __future__ import annotations
 
 import uuid
@@ -14,9 +15,7 @@ class BranchRepository(BaseRepository[Branch]):
     model = Branch
 
     def list_live_for_company(self, company_id: uuid.UUID) -> Sequence[Branch]:
-        stmt = select(Branch).where(
-            Branch.company_id == company_id, Branch.deleted_at.is_(None)
-        )
+        stmt = select(Branch).where(Branch.company_id == company_id, Branch.deleted_at.is_(None))
         return self.db.execute(stmt).scalars().all()
 
     def list_trashed_for_company(self, company_id: uuid.UUID) -> Sequence[Branch]:

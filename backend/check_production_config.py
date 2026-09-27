@@ -1,4 +1,5 @@
 """Validate a candidate production env file without printing secret values."""
+
 from __future__ import annotations
 
 import argparse
@@ -18,11 +19,7 @@ def main() -> int:
         return 2
     # Validate the candidate file itself. Ambient shell variables must not
     # silently replace values and make a broken deployment file look valid.
-    values = {
-        key: value
-        for key, value in dotenv_values(args.env_file).items()
-        if value is not None
-    }
+    values = {key: value for key, value in dotenv_values(args.env_file).items() if value is not None}
     preserved = {
         key: os.environ[key]
         for key in (

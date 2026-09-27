@@ -3,15 +3,23 @@
 Plan CRUD, platform stats/tenants/users shapes, and the upgrade-request inbox +
 approve flow. All endpoints require is_platform_admin.
 """
+
 import uuid
 
 from app.models.subscription import SubscriptionPlan
 from app.models.upgrade_request import UpgradeRequest
 
 STATS_KEYS = {
-    "total_tenants", "total_branches", "total_users", "total_purchases",
-    "total_batches", "total_orders", "new_tenants_30d", "active_users_7d",
-    "subscribed_users", "unsubscribed_users",
+    "total_tenants",
+    "total_branches",
+    "total_users",
+    "total_purchases",
+    "total_batches",
+    "total_orders",
+    "new_tenants_30d",
+    "active_users_7d",
+    "subscribed_users",
+    "unsubscribed_users",
 }
 
 
@@ -60,7 +68,10 @@ def test_upgrade_request_inbox_and_approve(admin_client, db_session):
     db_session.add(pro)
     db_session.flush()
     req = UpgradeRequest(
-        company_id=tid, requested_plan_id=pro.id, status="pending", request_type="upgrade",
+        company_id=tid,
+        requested_plan_id=pro.id,
+        status="pending",
+        request_type="upgrade",
     )
     db_session.add(req)
     db_session.flush()
@@ -76,7 +87,5 @@ def test_upgrade_request_inbox_and_approve(admin_client, db_session):
 
 
 def test_reject_unknown_request_404(admin_client):
-    res = admin_client.post(
-        "/api/admin/upgrade-requests/00000000-0000-0000-0000-000000000000/reject", json={}
-    )
+    res = admin_client.post("/api/admin/upgrade-requests/00000000-0000-0000-0000-000000000000/reject", json={})
     assert res.status_code == 404

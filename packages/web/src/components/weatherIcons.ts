@@ -2,8 +2,17 @@
 // WeatherWidget and the WeatherForecast (hourly/daily) panel so the visual
 // language stays identical across the dashboard.
 import {
-  Sun, Cloud, CloudSun, Cloudy, CloudFog, CloudRain, CloudDrizzle,
-  CloudLightning, CloudSnow, CloudHail, Wind,
+  Sun,
+  Cloud,
+  CloudSun,
+  Cloudy,
+  CloudFog,
+  CloudRain,
+  CloudDrizzle,
+  CloudLightning,
+  CloudSnow,
+  CloudHail,
+  Wind,
 } from "lucide-react";
 import type { WeatherConditionCode } from "../hooks/useWeather";
 

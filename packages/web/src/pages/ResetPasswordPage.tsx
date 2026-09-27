@@ -50,15 +50,22 @@ export default function ResetPasswordPage() {
               <AlertCircle size={16} className="mt-0.5 shrink-0" />
               <span>This reset link is missing its token. Request a new one.</span>
             </div>
-            <Link to="/forgot-password" className="inline-flex items-center gap-1.5 text-sm font-semibold text-grad-brand hover:opacity-80">
+            <Link
+              to="/forgot-password"
+              className="inline-flex items-center gap-1.5 text-sm font-semibold text-grad-brand hover:opacity-80"
+            >
               Request a new reset link
             </Link>
           </div>
         ) : (
           <form onSubmit={submit} className="space-y-5">
             <div>
-              <h1 className="text-2xl font-bold tracking-tight text-primary">Choose a new password</h1>
-              <p className="mt-2 text-sm text-secondary">At least 8 characters, with letters and numbers.</p>
+              <h1 className="text-2xl font-bold tracking-tight text-primary">
+                Choose a new password
+              </h1>
+              <p className="mt-2 text-sm text-secondary">
+                At least 8 characters, with letters and numbers.
+              </p>
             </div>
             <div>
               <label className="form-label">New password</label>
@@ -91,10 +98,17 @@ export default function ResetPasswordPage() {
                 <span>{error}</span>
               </div>
             )}
-            <button type="submit" className="btn-primary w-full" disabled={loading || !pw || !confirm}>
+            <button
+              type="submit"
+              className="btn-primary w-full"
+              disabled={loading || !pw || !confirm}
+            >
               {loading ? "Resetting…" : "Reset password"}
             </button>
-            <Link to="/login" className="inline-flex items-center gap-1.5 text-sm font-semibold text-muted hover:text-primary">
+            <Link
+              to="/login"
+              className="inline-flex items-center gap-1.5 text-sm font-semibold text-muted hover:text-primary"
+            >
               <ArrowLeft size={14} /> Back to sign in
             </Link>
           </form>

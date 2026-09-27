@@ -1,4 +1,5 @@
 """Pydantic request schemas for the sales domain (Phase 3). Moved verbatim."""
+
 import uuid
 from datetime import date
 from decimal import Decimal
@@ -51,6 +52,7 @@ class OrderUpdate(BaseModel):
     """Replaces the old untyped ``body: dict`` on PUT /orders/{id} — only these
     fields are updatable, anything else in the payload is rejected/ignored by
     validation instead of silently reaching the service layer."""
+
     status: str | None = Field(None, max_length=30)
     delivery_date: date | None = None
     remarks: str | None = Field(None, max_length=2000)

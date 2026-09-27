@@ -1,7 +1,18 @@
 import { NavLink } from "react-router-dom";
 import {
-  LayoutDashboard, Wheat, Factory, Package,
-  ShoppingCart, Receipt, BarChart3, Users, Settings, IdCard, Lock, Truck, HardHat
+  LayoutDashboard,
+  Wheat,
+  Factory,
+  Package,
+  ShoppingCart,
+  Receipt,
+  BarChart3,
+  Users,
+  Settings,
+  IdCard,
+  Lock,
+  Truck,
+  HardHat,
 } from "lucide-react";
 import riceLogo from "../../assets/Rice_Logo.svg";
 import { clsx } from "clsx";
@@ -10,21 +21,69 @@ import { useAccess } from "../../hooks/useAccess";
 import { useSubLock } from "../SubscriptionGuard";
 import type { AppSection } from "@rice-mill/shared";
 
-const NAV: { to: string; label: string; icon: React.ElementType; end?: boolean; feature: string | null; section: AppSection }[] = [
-  { to: "/", label: "Dashboard", icon: LayoutDashboard, end: true, feature: "dashboard", section: "dashboard" },
+const NAV: {
+  to: string;
+  label: string;
+  icon: React.ElementType;
+  end?: boolean;
+  feature: string | null;
+  section: AppSection;
+}[] = [
+  {
+    to: "/",
+    label: "Dashboard",
+    icon: LayoutDashboard,
+    end: true,
+    feature: "dashboard",
+    section: "dashboard",
+  },
   { to: "/paddy", label: "Paddy / Palay", icon: Wheat, feature: "paddy", section: "paddy" },
   { to: "/milling", label: "Milling", icon: Factory, feature: "milling", section: "milling" },
-  { to: "/inventory", label: "Inventory", icon: Package, feature: "inventory", section: "inventory" },
+  {
+    to: "/inventory",
+    label: "Inventory",
+    icon: Package,
+    feature: "inventory",
+    section: "inventory",
+  },
   { to: "/sales", label: "Sales", icon: ShoppingCart, feature: "sales", section: "sales" },
   { to: "/dispatch", label: "Dispatch", icon: Truck, feature: "sales", section: "dispatch" },
-  { to: "/operators", label: "Field Operators", icon: HardHat, feature: "sales", section: "operators" },
+  {
+    to: "/operators",
+    label: "Field Operators",
+    icon: HardHat,
+    feature: "sales",
+    section: "operators",
+  },
   { to: "/costs", label: "Expenses", icon: Receipt, feature: "expenses", section: "expenses" },
   { to: "/reports", label: "Reports", icon: BarChart3, feature: "dashboard", section: "reports" },
-  { to: "/employees", label: "Employees", icon: IdCard, feature: "employees", section: "employees" },
+  {
+    to: "/employees",
+    label: "Employees",
+    icon: IdCard,
+    feature: "employees",
+    section: "employees",
+  },
   { to: "/users", label: "Users", icon: Users, feature: "users", section: "users" },
 ];
 
-function NavItem({ to, label, icon: Icon, end, feature, locked, readOnly }: { to: string; label: string; icon: React.ElementType; end?: boolean; feature: string | null; locked?: boolean; readOnly?: boolean }) {
+function NavItem({
+  to,
+  label,
+  icon: Icon,
+  end,
+  feature,
+  locked,
+  readOnly,
+}: {
+  to: string;
+  label: string;
+  icon: React.ElementType;
+  end?: boolean;
+  feature: string | null;
+  locked?: boolean;
+  readOnly?: boolean;
+}) {
   const has = useFeature(feature || "dashboard");
   const allowed = has && !locked;
   const target = allowed ? to : "/settings";
@@ -38,7 +97,9 @@ function NavItem({ to, label, icon: Icon, end, feature, locked, readOnly }: { to
       }
       title={
         allowed
-          ? readOnly ? "View only — your role can't make changes here" : undefined
+          ? readOnly
+            ? "View only — your role can't make changes here"
+            : undefined
           : locked
             ? "Subscription required — click to view billing"
             : "Upgrade required — click to view billing"
@@ -50,7 +111,9 @@ function NavItem({ to, label, icon: Icon, end, feature, locked, readOnly }: { to
             size={18}
             className={clsx(
               "shrink-0 transition-colors",
-              allowed && isActive ? "text-emerald-600 dark:text-emerald-400" : "text-slate-500 dark:text-slate-400"
+              allowed && isActive
+                ? "text-emerald-600 dark:text-emerald-400"
+                : "text-slate-500 dark:text-slate-400",
             )}
           />
           <span className="flex-1">{label}</span>
@@ -79,7 +142,11 @@ export default function Sidebar() {
       <div className="relative px-5 py-5 border-b border-soft">
         <div className="flex items-center gap-2.5">
           <div className="h-10 w-10 rounded-xl bg-grad-brand grid place-items-center shadow-grad-glow">
-            <img src={riceLogo} alt="Oryza" className="h-full w-full object-contain brightness-0 invert" />
+            <img
+              src={riceLogo}
+              alt="Oryza"
+              className="h-full w-full object-contain brightness-0 invert"
+            />
           </div>
           <div className="min-w-0">
             <h1 className="text-base font-bold tracking-tight text-primary leading-tight truncate">
@@ -93,7 +160,9 @@ export default function Sidebar() {
         <p className="px-3 pb-2 text-[11px] font-bold uppercase tracking-[0.1em] text-muted">
           Operations
         </p>
-        {visibleNav.map((item) => <NavItem key={item.to} {...item} locked={locked} readOnly={isReadOnly(item.section)} />)}
+        {visibleNav.map((item) => (
+          <NavItem key={item.to} {...item} locked={locked} readOnly={isReadOnly(item.section)} />
+        ))}
       </nav>
 
       <div className="relative px-3 py-3 border-t border-soft">

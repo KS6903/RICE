@@ -7,7 +7,13 @@ import AccessDenied from "./AccessDenied";
  * Pairs with FeatureGate (subscription): wrap RoleGate outside FeatureGate so a
  * role with no access never even reaches the upgrade prompt.
  */
-export default function RoleGate({ section, children }: { section: AppSection; children: React.ReactNode }) {
+export default function RoleGate({
+  section,
+  children,
+}: {
+  section: AppSection;
+  children: React.ReactNode;
+}) {
   const { canView } = useAccess();
   if (!canView(section)) return <AccessDenied section={section} />;
   return <>{children}</>;

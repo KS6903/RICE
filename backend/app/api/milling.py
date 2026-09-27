@@ -1,4 +1,5 @@
 """Milling domain HTTP controllers — thin routing over MillingService (Phase 3c)."""
+
 import uuid
 from datetime import datetime
 
@@ -16,10 +17,12 @@ from ..repositories.paddy import PalayInventoryRepository
 from ..schemas.milling import BatchCreate, BatchOutputIn, EquipmentCreate, EquipmentUpdate
 from ..services.milling_service import MillingService
 
-router = APIRouter(dependencies=[
-    Depends(require_feature("milling")),
-    Depends(require_section_access("milling")),
-])
+router = APIRouter(
+    dependencies=[
+        Depends(require_feature("milling")),
+        Depends(require_section_access("milling")),
+    ]
+)
 
 
 def get_milling_service(
@@ -39,6 +42,7 @@ def get_milling_service(
 
 # ── Equipment ─────────────────────────────────────────────────────────────────
 
+
 @router.get("/equipment")
 def list_equipment(include_inactive: bool = False, svc: MillingService = Depends(get_milling_service)):
     return svc.list_equipment(include_inactive=include_inactive)
@@ -57,11 +61,14 @@ def create_equipment(body: EquipmentCreate, svc: MillingService = Depends(get_mi
     "/equipment/{equipment_id}",
     dependencies=[Depends(require_section_access("milling", write=True))],
 )
-def update_equipment(equipment_id: uuid.UUID, body: EquipmentUpdate, svc: MillingService = Depends(get_milling_service)):
+def update_equipment(
+    equipment_id: uuid.UUID, body: EquipmentUpdate, svc: MillingService = Depends(get_milling_service)
+):
     return svc.update_equipment(equipment_id, body)
 
 
 # ── Batches ───────────────────────────────────────────────────────────────────
+
 
 @router.get("/batches")
 def list_batches(skip: int = 0, limit: int = 50, svc: MillingService = Depends(get_milling_service)):

@@ -5,6 +5,7 @@ next **Sunday 00:00** in the configured local timezone, so every device
 re-prompts for MFA on Sunday. (Philippines has no DST, so a fixed UTC offset is
 exact year-round; configurable via settings for other deployments.)
 """
+
 from __future__ import annotations
 
 from datetime import datetime, time, timedelta, timezone

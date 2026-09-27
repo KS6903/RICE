@@ -20,6 +20,7 @@ Public surface:
   - `assert_color_available(db, company_id, color, *, exclude_table, exclude_id)`
     — raises HTTP 409 if another row in the tenant already claims `color`.
 """
+
 from __future__ import annotations
 
 import hashlib

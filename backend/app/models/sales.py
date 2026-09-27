@@ -57,7 +57,9 @@ class SalesOrder(Base, TimestampMixin):
     customer: Mapped["Customer"] = relationship("Customer")
     assigned_agent: Mapped["Agent | None"] = relationship("Agent", foreign_keys=[assigned_agent_id])
     assigned_miller: Mapped["Miller | None"] = relationship("Miller", foreign_keys=[assigned_miller_id])
-    items: Mapped[list["SalesOrderItem"]] = relationship("SalesOrderItem", back_populates="order", cascade="all, delete-orphan")
+    items: Mapped[list["SalesOrderItem"]] = relationship(
+        "SalesOrderItem", back_populates="order", cascade="all, delete-orphan"
+    )
     invoices: Mapped[list["Invoice"]] = relationship("Invoice", back_populates="order")
 
 

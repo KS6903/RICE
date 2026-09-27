@@ -3,6 +3,7 @@
 Raw reset and verification tokens must leave the application only through the
 recipient's mailbox. They are never written to application logs.
 """
+
 from __future__ import annotations
 
 import smtplib

@@ -1,4 +1,5 @@
 """Generate production secrets without echoing them to terminal or logs."""
+
 from __future__ import annotations
 
 import argparse

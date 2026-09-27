@@ -9,6 +9,7 @@ Changes:
 
 Idempotent — safe to re-run. Apply with: `python migrate_dispatch.py`
 """
+
 import os
 
 from sqlalchemy import text

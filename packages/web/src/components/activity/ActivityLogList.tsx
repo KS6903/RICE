@@ -45,11 +45,16 @@ export default function ActivityLogList({
     <ul className="divide-y divide-slate-100 dark:divide-slate-800">
       {rows.map((row) => (
         <li key={row.id} className="flex items-start gap-3 py-2.5">
-          <span className={`mt-1.5 shrink-0 w-2 h-2 rounded-full ${DOT[activityTone(row.action)]}`} aria-hidden />
+          <span
+            className={`mt-1.5 shrink-0 w-2 h-2 rounded-full ${DOT[activityTone(row.action)]}`}
+            aria-hidden
+          />
           <div className="min-w-0 flex-1">
             <p className="text-sm text-primary">
               <span className="font-semibold">{activityActor(row)}</span>{" "}
-              <span className="text-secondary">{formatActivity(row).replace(/^[A-Z]/, (c) => c.toLowerCase())}</span>
+              <span className="text-secondary">
+                {formatActivity(row).replace(/^[A-Z]/, (c) => c.toLowerCase())}
+              </span>
             </p>
             {row.detail && <p className="text-xs text-muted mt-0.5">{row.detail}</p>}
           </div>

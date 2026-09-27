@@ -2138,7 +2138,9 @@ function AIPlacementBadge() {
     >
       <Sparkles size={10} />
       AI Placement · FIFO
-      <span className="normal-case bg-white/20 px-1.5 py-px rounded text-[9px] font-bold">Soon</span>
+      <span className="normal-case bg-white/20 px-1.5 py-px rounded text-[9px] font-bold">
+        Soon
+      </span>
     </span>
   );
 }

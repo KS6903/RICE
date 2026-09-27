@@ -6,6 +6,7 @@ endpoints are blocked until the address is confirmed. Signup uses one generic
 conflict message so it can't be used to probe which emails/usernames exist.
 Enforcement + token exposure are off by default; these tests opt in.
 """
+
 import pytest
 
 import app.core.config as cfg
@@ -36,8 +37,11 @@ def _signup(client, username="newowner", email="newowner@gmail.com"):
         "/api/auth/signup",
         headers=NATIVE_HEADERS,
         json={
-            "company_name": "NewCo", "full_name": "New Owner",
-            "username": username, "email": email, "password": "password123",
+            "company_name": "NewCo",
+            "full_name": "New Owner",
+            "username": username,
+            "email": email,
+            "password": "password123",
             "accepted_terms": True,
         },
     )
@@ -52,8 +56,8 @@ def test_signup_is_enumeration_safe(client, db_session):
     assert _signup(client, "alice", "alice@x.com").status_code == 201
     client.cookies.clear()
 
-    dup_email = _signup(client, "bob", "alice@x.com")   # email clash
-    dup_user = _signup(client, "alice", "bob@x.com")    # username clash
+    dup_email = _signup(client, "bob", "alice@x.com")  # email clash
+    dup_user = _signup(client, "alice", "bob@x.com")  # username clash
     assert dup_email.status_code == 409 and dup_user.status_code == 409
     # Identical generic message — doesn't reveal which field (or that the email exists).
     assert dup_email.json()["detail"] == dup_user.json()["detail"]

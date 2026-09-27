@@ -12,7 +12,10 @@ const VERDICT_ICON: Record<DryingVerdict, React.ElementType> = {
   poor: CloudRain,
 };
 
-const VERDICT_STYLES: Record<DryingVerdict, { box: string; popoverBox: string; icon: string; headline: string }> = {
+const VERDICT_STYLES: Record<
+  DryingVerdict,
+  { box: string; popoverBox: string; icon: string; headline: string }
+> = {
   good: {
     box: "ring-emerald-200 dark:ring-emerald-800 bg-emerald-50 dark:bg-emerald-900/20",
     // Opaque (no /alpha): the popover floats via a portal over arbitrary page
@@ -83,7 +86,7 @@ export default function DryingAdvisor({ coords }: { coords: Coords | null }) {
     if (!rect) return;
     const left = Math.min(
       Math.max(rect.left, VIEWPORT_MARGIN),
-      window.innerWidth - POPOVER_WIDTH - VIEWPORT_MARGIN
+      window.innerWidth - POPOVER_WIDTH - VIEWPORT_MARGIN,
     );
     setPos({ top: rect.bottom + 8, left });
     showTimeout.current = window.setTimeout(() => setHovered(true), SHOW_DELAY_MS);
@@ -121,13 +124,17 @@ export default function DryingAdvisor({ coords }: { coords: Coords | null }) {
         >
           <Lock size={13} className="text-amber-500 shrink-0 mt-0.5" />
           <p className="text-[11px] leading-snug text-amber-900 dark:text-amber-200">
-            Available on <span className="font-semibold">Enterprise</span>. Ask your admin to upgrade.
+            Available on <span className="font-semibold">Enterprise</span>. Ask your admin to
+            upgrade.
           </p>
         </div>
       )}
 
       {allowed && q.isLoading && (
-        <div className="mt-2.5 rounded-xl ring-1 ring-soft bg-slate-500/5 p-2.5 space-y-1.5" data-testid="drying-advisor-loading">
+        <div
+          className="mt-2.5 rounded-xl ring-1 ring-soft bg-slate-500/5 p-2.5 space-y-1.5"
+          data-testid="drying-advisor-loading"
+        >
           <div className="flex items-center gap-1.5">
             <Sun size={13} className="text-amber-400 shrink-0" />
             <span className="h-2.5 w-20 rounded bg-slate-300/60 dark:bg-slate-600/50 animate-pulse" />
@@ -143,70 +150,91 @@ export default function DryingAdvisor({ coords }: { coords: Coords | null }) {
         </p>
       )}
 
-      {allowed && q.data && (() => {
-        const data = q.data;
-        const Icon = VERDICT_ICON[data.verdict] ?? Sun;
-        const styles = VERDICT_STYLES[data.verdict] ?? FALLBACK_STYLE;
-        return (
-          <>
-            <div
-              ref={triggerRef}
-              onMouseEnter={scheduleShow}
-              onMouseLeave={cancelShow}
-              className={`mt-2.5 rounded-xl ring-1 p-2.5 cursor-help transition-colors ${styles.box}`}
-              data-testid="drying-advisor-result"
-            >
-              <div className="flex items-start gap-1.5 min-w-0">
-                <Icon size={13} className={`${styles.icon} shrink-0 mt-0.5`} />
-                <span className={`text-xs font-semibold min-w-0 truncate ${styles.headline}`}>{data.headline}</span>
+      {allowed &&
+        q.data &&
+        (() => {
+          const data = q.data;
+          const Icon = VERDICT_ICON[data.verdict] ?? Sun;
+          const styles = VERDICT_STYLES[data.verdict] ?? FALLBACK_STYLE;
+          return (
+            <>
+              <div
+                ref={triggerRef}
+                onMouseEnter={scheduleShow}
+                onMouseLeave={cancelShow}
+                className={`mt-2.5 rounded-xl ring-1 p-2.5 cursor-help transition-colors ${styles.box}`}
+                data-testid="drying-advisor-result"
+              >
+                <div className="flex items-start gap-1.5 min-w-0">
+                  <Icon size={13} className={`${styles.icon} shrink-0 mt-0.5`} />
+                  <span className={`text-xs font-semibold min-w-0 truncate ${styles.headline}`}>
+                    {data.headline}
+                  </span>
+                </div>
+                <p className="mt-1 text-[11px] leading-snug text-secondary line-clamp-2">
+                  {data.reasoning}
+                </p>
+                {data.best_window && (
+                  <p className="mt-1 text-[10px] text-muted truncate">Best: {data.best_window}</p>
+                )}
               </div>
-              <p className="mt-1 text-[11px] leading-snug text-secondary line-clamp-2">{data.reasoning}</p>
-              {data.best_window && (
-                <p className="mt-1 text-[10px] text-muted truncate">Best: {data.best_window}</p>
-              )}
-            </div>
-            {/* Always on screen with the verdict, never behind the hover. A
+              {/* Always on screen with the verdict, never behind the hover. A
                 disclaimer that only appears on hover is not a disclaimer, and
                 this advisory drives decisions about stock worth real money. */}
-            <p className="mt-1.5 text-[10px] leading-snug text-muted" data-testid="drying-advisor-disclaimer">
-              Estimate from forecast data, not a guarantee. Check conditions yourself before drying.
-            </p>
+              <p
+                className="mt-1.5 text-[10px] leading-snug text-muted"
+                data-testid="drying-advisor-disclaimer"
+              >
+                Estimate from forecast data, not a guarantee. Check conditions yourself before
+                drying.
+              </p>
 
-            {pos &&
-              createPortal(
-                <div
-                  role="tooltip"
-                  className={`fixed z-[100] rounded-xl ring-1 shadow-xl p-3 origin-top transition-[opacity,transform] ease-[cubic-bezier(0.23,1,0.32,1)] motion-reduce:transition-opacity ${styles.popoverBox} ${
-                    hovered
-                      ? "duration-180 opacity-100 scale-100 translate-y-0"
-                      : "duration-120 opacity-0 scale-95 -translate-y-1 pointer-events-none motion-reduce:scale-100 motion-reduce:translate-y-0"
-                  }`}
-                  style={{ top: pos.top, left: pos.left, width: POPOVER_WIDTH }}
-                  data-testid="drying-advisor-popover"
-                >
-                  <div className="flex items-start gap-2 min-w-0">
-                    <Icon size={16} className={`${styles.icon} shrink-0 mt-0.5`} />
-                    <span className={`text-sm font-semibold min-w-0 ${styles.headline}`}>{data.headline}</span>
-                  </div>
-                  <p className="mt-1.5 text-xs leading-relaxed text-secondary">{data.reasoning}</p>
-                  {data.best_window && (
-                    <p className="mt-1.5 text-[11px] font-semibold text-muted">Best window: {data.best_window}</p>
-                  )}
-                  <p className="mt-2.5 pt-2 border-t border-soft text-[10px] leading-snug text-muted">
-                    Automatically generated from third-party weather forecasts. It can be wrong,
-                    stale or unavailable, and it is not agronomic advice. Always check actual
-                    conditions before laying out or moving palay. See the{" "}
-                    <a href="/legal/terms" target="_blank" rel="noopener noreferrer" className="link">
-                      Terms of Service
-                    </a>
-                    .
-                  </p>
-                </div>,
-                document.body
-              )}
-          </>
-        );
-      })()}
+              {pos &&
+                createPortal(
+                  <div
+                    role="tooltip"
+                    className={`fixed z-[100] rounded-xl ring-1 shadow-xl p-3 origin-top transition-[opacity,transform] ease-[cubic-bezier(0.23,1,0.32,1)] motion-reduce:transition-opacity ${styles.popoverBox} ${
+                      hovered
+                        ? "duration-180 opacity-100 scale-100 translate-y-0"
+                        : "duration-120 opacity-0 scale-95 -translate-y-1 pointer-events-none motion-reduce:scale-100 motion-reduce:translate-y-0"
+                    }`}
+                    style={{ top: pos.top, left: pos.left, width: POPOVER_WIDTH }}
+                    data-testid="drying-advisor-popover"
+                  >
+                    <div className="flex items-start gap-2 min-w-0">
+                      <Icon size={16} className={`${styles.icon} shrink-0 mt-0.5`} />
+                      <span className={`text-sm font-semibold min-w-0 ${styles.headline}`}>
+                        {data.headline}
+                      </span>
+                    </div>
+                    <p className="mt-1.5 text-xs leading-relaxed text-secondary">
+                      {data.reasoning}
+                    </p>
+                    {data.best_window && (
+                      <p className="mt-1.5 text-[11px] font-semibold text-muted">
+                        Best window: {data.best_window}
+                      </p>
+                    )}
+                    <p className="mt-2.5 pt-2 border-t border-soft text-[10px] leading-snug text-muted">
+                      Automatically generated from third-party weather forecasts. It can be wrong,
+                      stale or unavailable, and it is not agronomic advice. Always check actual
+                      conditions before laying out or moving palay. See the{" "}
+                      <a
+                        href="/legal/terms"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="link"
+                      >
+                        Terms of Service
+                      </a>
+                      .
+                    </p>
+                  </div>,
+                  document.body,
+                )}
+            </>
+          );
+        })()}
     </div>
   );
 }

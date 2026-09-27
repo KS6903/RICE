@@ -5,6 +5,7 @@ upgrade-request inbox. Reuses the shared subscription helpers and the billing
 repositories; analytics queries (stats/tenants/users) live here, like reports.
 Feature-cache invalidation is preserved on every entitlement-changing path.
 """
+
 from __future__ import annotations
 
 import uuid
@@ -121,10 +122,15 @@ class AdminService(BaseService):
         if self.plans.get_by_code(data.code):
             raise ConflictError(f"A plan with code '{data.code}' already exists")
         plan = SubscriptionPlan(
-            code=data.code, name=data.name, description=data.description,
-            monthly_price=data.monthly_price, max_users=data.max_users,
-            max_branches=data.max_branches, features=data.features,
-            is_active=data.is_active, sort_order=data.sort_order,
+            code=data.code,
+            name=data.name,
+            description=data.description,
+            monthly_price=data.monthly_price,
+            max_users=data.max_users,
+            max_branches=data.max_branches,
+            features=data.features,
+            is_active=data.is_active,
+            sort_order=data.sort_order,
         )
         with self.transaction():
             self.plans.add(plan)
@@ -159,8 +165,7 @@ class AdminService(BaseService):
             raise NotFoundError("Plan not found")
         if self.subscriptions.exists_for_plan(plan.id):
             raise ConflictError(
-                "Cannot delete: this plan is currently assigned to one or more tenants. "
-                "Deactivate it instead."
+                "Cannot delete: this plan is currently assigned to one or more tenants. " "Deactivate it instead."
             )
         with self.transaction():
             self.db.delete(plan)
@@ -192,8 +197,12 @@ class AdminService(BaseService):
         with self.transaction():
             if normalized_status == "active":
                 sub = activate_subscription(
-                    self.db, company_id=company.id, plan_id=plan.id,
-                    admin_id=admin_id, expires_at=data.expires_at, notes=data.notes,
+                    self.db,
+                    company_id=company.id,
+                    plan_id=plan.id,
+                    admin_id=admin_id,
+                    expires_at=data.expires_at,
+                    notes=data.notes,
                 )
             else:
                 existing = self.subscriptions.get_by_company(tenant_id)
@@ -208,9 +217,13 @@ class AdminService(BaseService):
                     sub = existing
                 else:
                     sub = Subscription(
-                        company_id=company.id, plan_id=plan.id, status=normalized_status,
-                        expires_at=data.expires_at, trial_ends_at=data.trial_ends_at,
-                        notes=data.notes, updated_by=admin_id,
+                        company_id=company.id,
+                        plan_id=plan.id,
+                        status=normalized_status,
+                        expires_at=data.expires_at,
+                        trial_ends_at=data.trial_ends_at,
+                        notes=data.notes,
+                        updated_by=admin_id,
                     )
                     self.db.add(sub)
             resolve_pending_upgrade_requests(self.db, company.id, plan.id, admin_id=admin_id)
@@ -242,16 +255,18 @@ class AdminService(BaseService):
                 if not chosen_plan:
                     raise AppException("No default plan found (missing 'free' plan)")
 
-        keep_expiry = (
-            not data.clear_expiry and existing is not None and existing.expires_at is not None
-        )
+        keep_expiry = not data.clear_expiry and existing is not None and existing.expires_at is not None
         expires_at = existing.expires_at if (keep_expiry and existing is not None) else None
 
         admin_id = self.current_user.id
         with self.transaction():
             sub = activate_subscription(
-                self.db, company_id=company.id, plan_id=chosen_plan.id,
-                admin_id=admin_id, expires_at=expires_at, notes=data.notes,
+                self.db,
+                company_id=company.id,
+                plan_id=chosen_plan.id,
+                admin_id=admin_id,
+                expires_at=expires_at,
+                notes=data.notes,
             )
             resolve_pending_upgrade_requests(self.db, company.id, chosen_plan.id, admin_id=admin_id)
         self.db.refresh(sub)
@@ -279,9 +294,15 @@ class AdminService(BaseService):
         new_tenants_30d = db.query(func.count(Company.id)).filter(Company.created_at >= thirty_days_ago).scalar() or 0
 
         seven_days_ago = datetime.now(timezone.utc) - timedelta(days=7)
-        active_users_7d = db.query(func.count(User.id)).filter(
-            User.is_platform_admin.is_(False), User.last_login >= seven_days_ago,
-        ).scalar() or 0
+        active_users_7d = (
+            db.query(func.count(User.id))
+            .filter(
+                User.is_platform_admin.is_(False),
+                User.last_login >= seven_days_ago,
+            )
+            .scalar()
+            or 0
+        )
 
         now = datetime.now(timezone.utc)
         paid_company_ids = {
@@ -292,13 +313,24 @@ class AdminService(BaseService):
             and s.plan is not None
             and s.plan.code != "free"
         }
-        subscribed_users = db.query(func.count(User.id)).filter(
-            User.is_platform_admin.is_(False), User.company_id.in_(paid_company_ids),
-        ).scalar() or 0
-        unsubscribed_users = db.query(func.count(User.id)).filter(
-            User.is_platform_admin.is_(False),
-            User.company_id.not_in(paid_company_ids) if paid_company_ids else true(),
-        ).scalar() or 0
+        subscribed_users = (
+            db.query(func.count(User.id))
+            .filter(
+                User.is_platform_admin.is_(False),
+                User.company_id.in_(paid_company_ids),
+            )
+            .scalar()
+            or 0
+        )
+        unsubscribed_users = (
+            db.query(func.count(User.id))
+            .filter(
+                User.is_platform_admin.is_(False),
+                User.company_id.not_in(paid_company_ids) if paid_company_ids else true(),
+            )
+            .scalar()
+            or 0
+        )
 
         return {
             "total_tenants": total_tenants,
@@ -330,8 +362,12 @@ class AdminService(BaseService):
     def list_tenants(self) -> list[dict]:
         db = self.db
         companies = db.query(Company).order_by(Company.created_at.desc()).all()
-        user_counts = {r[0]: r[1] for r in db.query(User.company_id, func.count(User.id)).group_by(User.company_id).all()}
-        branch_counts = {r[0]: r[1] for r in db.query(Branch.company_id, func.count(Branch.id)).group_by(Branch.company_id).all()}
+        user_counts = {
+            r[0]: r[1] for r in db.query(User.company_id, func.count(User.id)).group_by(User.company_id).all()
+        }
+        branch_counts = {
+            r[0]: r[1] for r in db.query(Branch.company_id, func.count(Branch.id)).group_by(Branch.company_id).all()
+        }
         sub_by_company = {s.company_id: s for s in db.query(Subscription).all()}
         # Per-client domain counts: each tenant's purchases/orders live in its own
         # schema, so visit each schema rather than one group-by over shared tables.
@@ -346,8 +382,12 @@ class AdminService(BaseService):
             s = sub_by_company.get(cid)
             if not s or not s.plan:
                 return {
-                    "plan_code": None, "plan_name": None, "subscription_status": None,
-                    "started_at": None, "expires_at": None, "has_subscription": False,
+                    "plan_code": None,
+                    "plan_name": None,
+                    "subscription_status": None,
+                    "started_at": None,
+                    "expires_at": None,
+                    "has_subscription": False,
                 }
             return {
                 "plan_code": s.plan.code,
@@ -392,9 +432,14 @@ class AdminService(BaseService):
             orders = ts.query(func.count(SalesOrder.id)).scalar() or 0
             invoices = ts.query(func.count(Invoice.id)).scalar() or 0
             expenses_total = ts.query(func.coalesce(func.sum(Expense.amount), 0)).scalar() or 0
-            revenue_total = ts.query(func.coalesce(func.sum(SalesOrder.total_amount), 0)).filter(
-                SalesOrder.status.in_(["invoiced", "paid"]),
-            ).scalar() or 0
+            revenue_total = (
+                ts.query(func.coalesce(func.sum(SalesOrder.total_amount), 0))
+                .filter(
+                    SalesOrder.status.in_(["invoiced", "paid"]),
+                )
+                .scalar()
+                or 0
+            )
 
         return {
             "company": {

@@ -1,4 +1,5 @@
 """The pre-deploy readiness gate must pass a real config and name every blocker."""
+
 from __future__ import annotations
 
 import json
@@ -39,7 +40,7 @@ def _wrangler(tmp_path: Path, overrides=None, *, max_instances=3, drop=()) -> Pa
     path = tmp_path / "wrangler.jsonc"
     path.write_text(
         "{\n"
-        '  // TODO(deploy): comments never count as template values.\n'
+        "  // TODO(deploy): comments never count as template values.\n"
         '  "name": "oryza",\n'
         '  "containers": [\n'
         f'    {{ "class_name": "ApiContainer", "max_instances": {max_instances} }}, /* inline */\n'
@@ -114,9 +115,7 @@ def test_a_problem_in_one_role_names_that_role(tmp_path, monkeypatch):
         return secrets
 
     monkeypatch.setattr(gate, "_dummy_secrets", provisioner_without_tls)
-    assert _check(_wrangler(tmp_path)) == [
-        "provisioner container: PROVISIONER_DATABASE_URL must require TLS"
-    ]
+    assert _check(_wrangler(tmp_path)) == ["provisioner container: PROVISIONER_DATABASE_URL must require TLS"]
 
 
 def test_ambient_environment_cannot_mask_a_missing_value(tmp_path, monkeypatch):

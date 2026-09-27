@@ -3,6 +3,7 @@
 Run this as a separate process whose secret scope includes
 PROVISIONER_DATABASE_URL. The API process explicitly rejects that credential.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -49,9 +50,7 @@ def provision_next() -> bool:
             with ProvisionerSessionLocal() as db:
                 company = db.get(Company, company_id)
                 if company is not None and company.provisioned_at is None:
-                    company.provisioning_error = (
-                        "Provisioning failed; inspect the isolated worker logs."
-                    )
+                    company.provisioning_error = "Provisioning failed; inspect the isolated worker logs."
                     db.commit()
         return True
 

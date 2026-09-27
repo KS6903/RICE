@@ -54,7 +54,10 @@ export default function VerifyEmailPage() {
           </div>
         )}
 
-        <Link to="/login" className="inline-flex items-center gap-1.5 text-sm font-semibold text-muted hover:text-primary">
+        <Link
+          to="/login"
+          className="inline-flex items-center gap-1.5 text-sm font-semibold text-muted hover:text-primary"
+        >
           <ArrowLeft size={14} /> Back to sign in
         </Link>
       </div>

@@ -4,6 +4,7 @@ CRUD with the "first location becomes default", dedupe-on-label, and
 "promote a sibling when the default is deleted" rules preserved verbatim.
 Geocoding search is delegated to GeocodingClient.
 """
+
 from __future__ import annotations
 
 import uuid

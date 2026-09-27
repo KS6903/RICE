@@ -1,4 +1,5 @@
 """FleetService — trucks, drivers, and dispatch trips."""
+
 from __future__ import annotations
 
 import uuid
@@ -48,7 +49,9 @@ class FleetService(BaseService):
             "id": str(t.id),
             "plate_number": t.plate_number,
             "truck_type": t.truck_type,
-            "fuel_consumption_l_per_100km": float(t.fuel_consumption_l_per_100km) if t.fuel_consumption_l_per_100km is not None else None,
+            "fuel_consumption_l_per_100km": float(t.fuel_consumption_l_per_100km)
+            if t.fuel_consumption_l_per_100km is not None
+            else None,
             "default_driver_id": str(t.default_driver_id) if t.default_driver_id else None,
             "default_driver_name": t.default_driver.name if t.default_driver else None,
             "notes": t.notes,

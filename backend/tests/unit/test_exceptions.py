@@ -1,4 +1,5 @@
 """Unit tests for the AppException hierarchy + global handler (Phase 1.1)."""
+
 import json
 
 import pytest

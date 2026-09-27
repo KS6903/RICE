@@ -11,6 +11,7 @@ Transaction rule (important): repositories ``add``/``flush`` only — they NEVER
 commit. The owning *service* commits or rolls back. This makes multi-step writes
 atomic and gives one clear place that owns the transaction boundary.
 """
+
 from __future__ import annotations
 
 import uuid

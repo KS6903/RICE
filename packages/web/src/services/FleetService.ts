@@ -40,22 +40,22 @@ export type DispatchTrip = {
 };
 
 export const TRUCK_TYPES = [
-  { value: "forward",   label: "Forward"    },
-  { value: "canter",    label: "Canter"     },
-  { value: "closed_van",label: "Closed Van" },
-  { value: "drop_side", label: "Drop Side"  },
-  { value: "boom_truck",label: "Boom Truck" },
-  { value: "reefer",    label: "Reefer"     },
-  { value: "tanker",    label: "Tanker"     },
-  { value: "pickup",    label: "Pickup"     },
-  { value: "other",     label: "Other"      },
+  { value: "forward", label: "Forward" },
+  { value: "canter", label: "Canter" },
+  { value: "closed_van", label: "Closed Van" },
+  { value: "drop_side", label: "Drop Side" },
+  { value: "boom_truck", label: "Boom Truck" },
+  { value: "reefer", label: "Reefer" },
+  { value: "tanker", label: "Tanker" },
+  { value: "pickup", label: "Pickup" },
+  { value: "other", label: "Other" },
 ];
 
 export const TRIP_STATUSES = [
-  { value: "planned",    label: "Planned"    },
+  { value: "planned", label: "Planned" },
   { value: "in_transit", label: "In Transit" },
-  { value: "completed",  label: "Completed"  },
-  { value: "cancelled",  label: "Cancelled"  },
+  { value: "completed", label: "Completed" },
+  { value: "cancelled", label: "Cancelled" },
 ];
 
 export class FleetService {

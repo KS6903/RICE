@@ -1,4 +1,5 @@
 """Users domain HTTP controllers — thin routing over UserService (Phase 3)."""
+
 import uuid
 
 from fastapi import APIRouter, Depends, status
@@ -10,10 +11,12 @@ from ..repositories.users import UserRepository
 from ..schemas.users import UserCreate, UserResponse, UserUpdate
 from ..services.user_service import UserService
 
-router = APIRouter(dependencies=[
-    Depends(require_feature("users")),
-    Depends(require_section_access("users")),
-])
+router = APIRouter(
+    dependencies=[
+        Depends(require_feature("users")),
+        Depends(require_section_access("users")),
+    ]
+)
 
 
 def get_user_service(

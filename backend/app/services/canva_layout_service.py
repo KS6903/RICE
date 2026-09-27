@@ -7,6 +7,7 @@ restore / bulk-delete / lazy purge), the warehouse size presets, and the
 client-colour aggregation. Logic is preserved from ``api/canva.py``; commits move
 into ``BaseService.transaction()`` and the broadcast call sites are kept verbatim.
 """
+
 from __future__ import annotations
 
 import uuid
@@ -131,10 +132,10 @@ class CanvaLayoutService(BaseService):
                 "total_pallets": len(pallets),
                 "total_weight_kg": sum(float(p.weight_kg) for p in pallets),
                 "by_aging": {
-                    "fresh":    sum(1 for p in pallets if any(b.status == "fresh"    for b in p.batches)),
-                    "warning":  sum(1 for p in pallets if any(b.status == "warning"  for b in p.batches)),
+                    "fresh": sum(1 for p in pallets if any(b.status == "fresh" for b in p.batches)),
+                    "warning": sum(1 for p in pallets if any(b.status == "warning" for b in p.batches)),
                     "critical": sum(1 for p in pallets if any(b.status == "critical" for b in p.batches)),
-                    "expired":  sum(1 for p in pallets if any(b.status == "expired"  for b in p.batches)),
+                    "expired": sum(1 for p in pallets if any(b.status == "expired" for b in p.batches)),
                 },
             },
         }
@@ -178,7 +179,9 @@ class CanvaLayoutService(BaseService):
 
         self.db.refresh(layout)
         payload = self._layout_payload(layout, branch)
-        ws_manager.broadcast_sync(layout.id, "layout.updated", {"layout": payload, "by_user_id": str(self.current_user.id)})
+        ws_manager.broadcast_sync(
+            layout.id, "layout.updated", {"layout": payload, "by_user_id": str(self.current_user.id)}
+        )
         return payload
 
     # ── zone CRUD ─────────────────────────────────────────────────────────────
@@ -282,7 +285,9 @@ class CanvaLayoutService(BaseService):
         zid = zone.id
         with self.transaction():
             self.zones.delete(zone)
-        ws_manager.broadcast_sync(layout_id, "zone.deleted", {"zone_id": str(zid), "by_user_id": str(self.current_user.id)})
+        ws_manager.broadcast_sync(
+            layout_id, "zone.deleted", {"zone_id": str(zid), "by_user_id": str(self.current_user.id)}
+        )
         return {"message": "Zone deleted"}
 
     # ── multi-layout management ───────────────────────────────────────────────
@@ -316,16 +321,18 @@ class CanvaLayoutService(BaseService):
         for layout in rows:
             expires_at = layout.deleted_at + timedelta(days=_LAYOUT_TRASH_DAYS)
             days_remaining = max(0, (expires_at - datetime.now(timezone.utc)).days)
-            out.append({
-                "id": str(layout.id),
-                "name": layout.name,
-                "is_default": layout.is_default,
-                "width_m": float(layout.width_m),
-                "height_m": float(layout.height_m),
-                "deleted_at": layout.deleted_at.isoformat(),
-                "deleted_by_name": names.get(layout.deleted_by),
-                "days_remaining": days_remaining,
-            })
+            out.append(
+                {
+                    "id": str(layout.id),
+                    "name": layout.name,
+                    "is_default": layout.is_default,
+                    "width_m": float(layout.width_m),
+                    "height_m": float(layout.height_m),
+                    "deleted_at": layout.deleted_at.isoformat(),
+                    "deleted_by_name": names.get(layout.deleted_by),
+                    "days_remaining": days_remaining,
+                }
+            )
         return out
 
     def restore_layout(self, layout_id: uuid.UUID) -> dict:
@@ -365,7 +372,9 @@ class CanvaLayoutService(BaseService):
                 f"unknown size_preset '{body.size_preset}'. Use one of: {', '.join(WAREHOUSE_SIZE_PRESETS)}"
             )
         width_m = body.width_m if body.width_m is not None else (preset or {}).get("width_m", DEFAULT_LAYOUT_WIDTH_M)
-        height_m = body.height_m if body.height_m is not None else (preset or {}).get("height_m", DEFAULT_LAYOUT_HEIGHT_M)
+        height_m = (
+            body.height_m if body.height_m is not None else (preset or {}).get("height_m", DEFAULT_LAYOUT_HEIGHT_M)
+        )
 
         if width_m < 5 or width_m > 200:
             raise BadRequestError("width_m must be 5–200")
@@ -389,14 +398,18 @@ class CanvaLayoutService(BaseService):
             if body.seed_default_zones:
                 # Zones are computed proportionally so they fit ANY chosen footprint.
                 for ztype, zname, x, y, w, h, color in compute_default_zones(width_m, height_m):
-                    self.db.add(WarehouseZone(
-                        layout_id=layout.id,
-                        zone_type=ztype,
-                        name=zname,
-                        x_m=Decimal(str(x)), y_m=Decimal(str(y)),
-                        width_m=Decimal(str(w)), height_m=Decimal(str(h)),
-                        color_hex=color,
-                    ))
+                    self.db.add(
+                        WarehouseZone(
+                            layout_id=layout.id,
+                            zone_type=ztype,
+                            name=zname,
+                            x_m=Decimal(str(x)),
+                            y_m=Decimal(str(y)),
+                            width_m=Decimal(str(w)),
+                            height_m=Decimal(str(h)),
+                            color_hex=color,
+                        )
+                    )
         self.db.refresh(layout)
         return serialize_layout_summary(layout)
 
@@ -512,10 +525,16 @@ class CanvaLayoutService(BaseService):
             agg[key]["weight_kg"] += float(batch.weight_kg)
 
         # Resolve colors from all four party tables (shared tenant-wide pool).
-        cust_colors = dict(self.db.query(Customer.id, Customer.canva_color_hex).filter(Customer.company_id == company_id).all())
-        sup_colors = dict(self.db.query(Supplier.id, Supplier.canva_color_hex).filter(Supplier.company_id == company_id).all())
+        cust_colors = dict(
+            self.db.query(Customer.id, Customer.canva_color_hex).filter(Customer.company_id == company_id).all()
+        )
+        sup_colors = dict(
+            self.db.query(Supplier.id, Supplier.canva_color_hex).filter(Supplier.company_id == company_id).all()
+        )
         agent_colors = dict(self.db.query(Agent.id, Agent.canva_color_hex).filter(Agent.company_id == company_id).all())
-        miller_colors = dict(self.db.query(Miller.id, Miller.canva_color_hex).filter(Miller.company_id == company_id).all())
+        miller_colors = dict(
+            self.db.query(Miller.id, Miller.canva_color_hex).filter(Miller.company_id == company_id).all()
+        )
 
         # Sorted iteration so fallback color assignment is deterministic per request.
         sorted_keys = sorted(agg.keys(), key=lambda k: (k[2] or "").lower())

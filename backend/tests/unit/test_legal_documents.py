@@ -4,6 +4,7 @@ These are the checks that keep the published agreements usable as evidence: the
 files exist, they render, nothing is left unfilled, and the hash that an
 acceptance stores actually tracks the text.
 """
+
 from __future__ import annotations
 
 import pytest
@@ -60,9 +61,7 @@ def test_content_hash_ignores_line_endings(tmp_path, monkeypatch):
     (crlf / "templates").mkdir(parents=True)
     for doc in legal.DOCUMENTS:
         text = (src / doc.filename).read_text(encoding="utf-8")
-        (crlf / doc.filename).write_text(
-            text.replace("\r\n", "\n").replace("\n", "\r\n"), encoding="utf-8", newline=""
-        )
+        (crlf / doc.filename).write_text(text.replace("\r\n", "\n").replace("\n", "\r\n"), encoding="utf-8", newline="")
     (crlf / "entity.json").write_bytes((src / "entity.json").read_bytes())
 
     before = {doc.key: legal.content_hash(doc.key) for doc in legal.DOCUMENTS}
@@ -98,6 +97,7 @@ def test_key_clauses_survive_edits():
     these assertions fails, confirm the protection still exists somewhere
     before changing the test.
     """
+
     # Documents are hard-wrapped, so a clause can straddle a newline.
     def flat(key: str) -> str:
         return " ".join(legal.render(key).split())

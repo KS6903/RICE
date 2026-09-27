@@ -27,11 +27,7 @@ export function consumeSensitiveUrlToken(name = "token"): string {
     url.hash = remaining ? `#${remaining}` : "";
   }
 
-  window.history.replaceState(
-    window.history.state,
-    "",
-    `${url.pathname}${url.search}${url.hash}`,
-  );
+  window.history.replaceState(window.history.state, "", `${url.pathname}${url.search}${url.hash}`);
 
   // React StrictMode may evaluate a state initializer twice. Keep the value for
   // that synchronous replay only, never in browser storage or history state.

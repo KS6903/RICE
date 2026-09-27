@@ -68,9 +68,7 @@ function PlanRow({
         <span className="flex items-center gap-2">
           <Icon size={15} className="text-emerald-500 shrink-0" />
           {plan.name}
-          {!plan.is_active && (
-            <span className="badge-gray !text-[10px] !py-0.5">inactive</span>
-          )}
+          {!plan.is_active && <span className="badge-gray !text-[10px] !py-0.5">inactive</span>}
         </span>
       </td>
       <td className="font-mono text-xs text-secondary">{plan.code}</td>
@@ -78,7 +76,9 @@ function PlanRow({
         ₱{Number(plan.monthly_price).toLocaleString()}
         <span className="text-xs font-normal text-muted">/mo</span>
       </td>
-      <td className="tabular-nums">{plan.max_branches === null ? "Unlimited" : plan.max_branches}</td>
+      <td className="tabular-nums">
+        {plan.max_branches === null ? "Unlimited" : plan.max_branches}
+      </td>
       <td className="tabular-nums">{plan.max_users === null ? "Unlimited" : plan.max_users}</td>
       <td className="max-w-[200px] truncate text-muted">{plan.features.join(", ")}</td>
       <td className="text-right">
@@ -358,7 +358,9 @@ function PlansTab() {
               <CreditCard size={18} />
             </span>
             <p className="text-sm font-medium text-secondary">No plans configured yet</p>
-            <p className="text-xs text-muted mt-0.5">Create your first plan to start onboarding tenants.</p>
+            <p className="text-xs text-muted mt-0.5">
+              Create your first plan to start onboarding tenants.
+            </p>
           </div>
         ) : (
           <table className="data-table">

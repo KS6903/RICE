@@ -2,6 +2,7 @@
 
 Idempotent. Run once: `python migrate_user_locations.py`
 """
+
 import os
 
 from sqlalchemy import text

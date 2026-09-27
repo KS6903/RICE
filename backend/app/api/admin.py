@@ -2,6 +2,7 @@
 
 Every endpoint requires is_platform_admin (enforced by the DI factory).
 """
+
 import uuid
 
 from fastapi import APIRouter, Depends, status
@@ -41,6 +42,7 @@ def get_admin_service(
 
 # ── Plans ─────────────────────────────────────────────────────────────────────
 
+
 @router.get("/plans")
 def list_plans(svc: AdminService = Depends(get_admin_service)):
     return svc.list_plans()
@@ -63,22 +65,28 @@ def delete_plan(plan_id: uuid.UUID, svc: AdminService = Depends(get_admin_servic
 
 # ── Tenant subscriptions ──────────────────────────────────────────────────────
 
+
 @router.get("/tenants/{tenant_id}/subscription")
 def get_tenant_subscription(tenant_id: uuid.UUID, svc: AdminService = Depends(get_admin_service)):
     return svc.get_tenant_subscription(tenant_id)
 
 
 @router.put("/tenants/{tenant_id}/subscription")
-def assign_tenant_subscription(tenant_id: uuid.UUID, body: SubscriptionAssign, svc: AdminService = Depends(get_admin_service)):
+def assign_tenant_subscription(
+    tenant_id: uuid.UUID, body: SubscriptionAssign, svc: AdminService = Depends(get_admin_service)
+):
     return svc.assign_tenant_subscription(tenant_id, body)
 
 
 @router.post("/tenants/{tenant_id}/subscription/activate")
-def activate_tenant_subscription(tenant_id: uuid.UUID, body: SubscriptionActivate, svc: AdminService = Depends(get_admin_service)):
+def activate_tenant_subscription(
+    tenant_id: uuid.UUID, body: SubscriptionActivate, svc: AdminService = Depends(get_admin_service)
+):
     return svc.activate_tenant_subscription(tenant_id, body)
 
 
 # ── Platform analytics ────────────────────────────────────────────────────────
+
 
 @router.get("/stats")
 def platform_stats(svc: AdminService = Depends(get_admin_service)):
@@ -117,6 +125,7 @@ def list_all_users(svc: AdminService = Depends(get_admin_service)):
 
 # ── Subscription maintenance ──────────────────────────────────────────────────
 
+
 @router.post("/subscriptions/sweep-expired")
 def sweep_expired_subscriptions(svc: AdminService = Depends(get_admin_service)):
     return svc.sweep_expired_subscriptions()
@@ -134,6 +143,7 @@ def missing_subscription_count(svc: AdminService = Depends(get_admin_service)):
 
 # ── Upgrade-request inbox ─────────────────────────────────────────────────────
 
+
 @router.get("/upgrade-requests")
 def list_upgrade_requests(status_filter: str | None = "pending", svc: AdminService = Depends(get_admin_service)):
     return svc.list_upgrade_requests(status_filter)
@@ -145,10 +155,14 @@ def pending_upgrade_request_count(svc: AdminService = Depends(get_admin_service)
 
 
 @router.post("/upgrade-requests/{request_id}/approve")
-def approve_upgrade_request(request_id: uuid.UUID, body: UpgradeRequestResolution, svc: AdminService = Depends(get_admin_service)):
+def approve_upgrade_request(
+    request_id: uuid.UUID, body: UpgradeRequestResolution, svc: AdminService = Depends(get_admin_service)
+):
     return svc.approve_upgrade_request(request_id, body)
 
 
 @router.post("/upgrade-requests/{request_id}/reject")
-def reject_upgrade_request(request_id: uuid.UUID, body: UpgradeRequestResolution, svc: AdminService = Depends(get_admin_service)):
+def reject_upgrade_request(
+    request_id: uuid.UUID, body: UpgradeRequestResolution, svc: AdminService = Depends(get_admin_service)
+):
     return svc.reject_upgrade_request(request_id, body)

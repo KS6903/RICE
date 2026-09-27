@@ -4,6 +4,7 @@ Handlers do three things only: declare the HTTP shape, enforce auth/feature/role
 gates via FastAPI dependencies, and delegate to PaddyService. All business logic,
 DB access, and transaction handling live in the service/repository layers.
 """
+
 import uuid
 
 from fastapi import APIRouter, Depends, Query, status
@@ -29,10 +30,12 @@ from ..schemas.paddy import (
 )
 from ..services.paddy_service import PaddyService
 
-router = APIRouter(dependencies=[
-    Depends(require_feature("paddy")),
-    Depends(require_section_access("paddy")),
-])
+router = APIRouter(
+    dependencies=[
+        Depends(require_feature("paddy")),
+        Depends(require_section_access("paddy")),
+    ]
+)
 
 
 def get_paddy_service(
@@ -52,6 +55,7 @@ def get_paddy_service(
 
 
 # ── Varieties ──────────────────────────────────────────────────────────────────
+
 
 @router.get("/varieties")
 def list_varieties(include_inactive: bool = False, svc: PaddyService = Depends(get_paddy_service)):
@@ -77,6 +81,7 @@ def update_variety(variety_id: uuid.UUID, body: VarietyUpdate, svc: PaddyService
 
 # ── Grades ────────────────────────────────────────────────────────────────────
 
+
 @router.get("/grades")
 def list_grades(svc: PaddyService = Depends(get_paddy_service)):
     return svc.list_grades()
@@ -92,6 +97,7 @@ def create_grade(body: GradeCreate, svc: PaddyService = Depends(get_paddy_servic
 
 
 # ── Suppliers ─────────────────────────────────────────────────────────────────
+
 
 @router.get("/suppliers")
 def list_suppliers(include_inactive: bool = False, svc: PaddyService = Depends(get_paddy_service)):
@@ -116,6 +122,7 @@ def update_supplier(supplier_id: uuid.UUID, body: SupplierUpdate, svc: PaddyServ
 
 
 # ── Purchases ─────────────────────────────────────────────────────────────────
+
 
 @router.get("/purchases")
 def list_purchases(
@@ -150,6 +157,7 @@ def update_purchase(purchase_id: uuid.UUID, body: PurchaseUpdate, svc: PaddyServ
 
 
 # ── Inventory ─────────────────────────────────────────────────────────────────
+
 
 @router.get("/inventory")
 def get_palay_inventory(

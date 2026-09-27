@@ -23,7 +23,9 @@ export class EmployeesService {
   }
 
   create(form: Record<string, any>): Promise<any> {
-    return this.http.post("/employees/", EmployeesService.toCreatePayload(form)).then((r) => r.data);
+    return this.http
+      .post("/employees/", EmployeesService.toCreatePayload(form))
+      .then((r) => r.data);
   }
 
   setActive(id: string, isActive: boolean): Promise<any> {

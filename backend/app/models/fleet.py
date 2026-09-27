@@ -1,4 +1,5 @@
 """Fleet models — trucks, drivers, and dispatch trips."""
+
 import uuid
 from datetime import date
 from decimal import Decimal

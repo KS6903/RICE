@@ -4,6 +4,7 @@ Backup codes are issued once at enrollment, single-use, accepted in place of a
 TOTP at the login challenge, regenerable (invalidating the old set), and cleared
 when MFA is disabled. Stored only as SHA-256 hashes.
 """
+
 import time
 
 import pyotp
@@ -65,16 +66,22 @@ def test_backup_code_remaining_count_decrements(client, auth_client, seed_owner)
 
 def test_regenerate_invalidates_old_codes(client, auth_client, seed_owner):
     secret, codes = _enroll(auth_client)
-    new = auth_client.post(
-        "/api/auth/mfa/backup-codes/regenerate", json={"code": _next_totp(secret)}
-    )
+    new = auth_client.post("/api/auth/mfa/backup-codes/regenerate", json={"code": _next_totp(secret)})
     assert new.status_code == 200
     new_codes = new.json()["backup_codes"]
     assert set(new_codes).isdisjoint(codes)
 
     # Old code rejected; new code accepted.
-    assert client.post("/api/auth/mfa/verify", json={"challenge_token": _challenge(client), "code": codes[0]}).status_code == 401
-    assert client.post("/api/auth/mfa/verify", json={"challenge_token": _challenge(client), "code": new_codes[0]}).status_code == 200
+    assert (
+        client.post("/api/auth/mfa/verify", json={"challenge_token": _challenge(client), "code": codes[0]}).status_code
+        == 401
+    )
+    assert (
+        client.post(
+            "/api/auth/mfa/verify", json={"challenge_token": _challenge(client), "code": new_codes[0]}
+        ).status_code
+        == 200
+    )
 
 
 def test_regenerate_requires_valid_totp(auth_client):

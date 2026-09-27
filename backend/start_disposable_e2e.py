@@ -3,6 +3,7 @@
 The target database name must contain ``e2e``. This guard prevents Playwright
 from ever starting against the normal development or production database.
 """
+
 from __future__ import annotations
 
 import os
@@ -49,9 +50,7 @@ def _validated_target() -> tuple[str, str]:
         or db_name.lower() in {"postgres", "template0", "template1"}
         or re.fullmatch(r"[A-Za-z0-9 _-]+", db_name) is None
     ):
-        raise SystemExit(
-            "Refusing database reset: use a PostgreSQL database whose safe name contains 'e2e'"
-        )
+        raise SystemExit("Refusing database reset: use a PostgreSQL database whose safe name contains 'e2e'")
     maintenance_url = urlunparse(parsed._replace(path="/postgres"))
     return url, maintenance_url
 
@@ -60,8 +59,7 @@ def _reset_database(url: str, maintenance_url: str) -> None:
     db_name = urlparse(url).path.lstrip("/")
     with psycopg.connect(maintenance_url, autocommit=True) as connection:
         connection.execute(
-            "SELECT pg_terminate_backend(pid) FROM pg_stat_activity "
-            "WHERE datname = %s AND pid <> pg_backend_pid()",
+            "SELECT pg_terminate_backend(pid) FROM pg_stat_activity " "WHERE datname = %s AND pid <> pg_backend_pid()",
             (db_name,),
         )
         connection.execute(sql.SQL("DROP DATABASE IF EXISTS {}").format(sql.Identifier(db_name)))

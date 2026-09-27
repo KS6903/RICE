@@ -5,6 +5,7 @@ Includes first-run setup, company read/update, branch CRUD with the multi-branch
 (log_activity, purge_expired_branches) stay as functions in services/activity.py
 and are enlisted in this service's transactions.
 """
+
 from __future__ import annotations
 
 import uuid
@@ -151,9 +152,13 @@ class BranchService(BaseService):
                 branch.deleted_at = now_utc()
                 branch.deleted_by = self.current_user.id
                 log_activity(
-                    self.db, company_id=company_id, user_id=self.current_user.id,
-                    action="warehouse.delete", entity_type="branch",
-                    entity_id=branch.id, entity_label=branch.name,
+                    self.db,
+                    company_id=company_id,
+                    user_id=self.current_user.id,
+                    action="warehouse.delete",
+                    entity_type="branch",
+                    entity_id=branch.id,
+                    entity_label=branch.name,
                 )
                 deleted.append(str(bid))
         return {"deleted": deleted, "skipped": skipped}
@@ -177,14 +182,16 @@ class BranchService(BaseService):
                 continue
             expires_at = deleted_at + timedelta(days=TRASH_RETENTION_DAYS)
             days_remaining = max(0, (expires_at - now_utc()).days)
-            out.append({
-                "id": str(b.id),
-                "name": b.name,
-                "is_main_branch": b.is_main_branch,
-                "deleted_at": deleted_at.isoformat(),
-                "deleted_by_name": names.get(b.deleted_by) if b.deleted_by else None,
-                "days_remaining": days_remaining,
-            })
+            out.append(
+                {
+                    "id": str(b.id),
+                    "name": b.name,
+                    "is_main_branch": b.is_main_branch,
+                    "deleted_at": deleted_at.isoformat(),
+                    "deleted_by_name": names.get(b.deleted_by) if b.deleted_by else None,
+                    "days_remaining": days_remaining,
+                }
+            )
         return out
 
     def restore_branch(self, branch_id: uuid.UUID) -> dict:
@@ -197,8 +204,12 @@ class BranchService(BaseService):
             branch.deleted_at = None
             branch.deleted_by = None
             log_activity(
-                self.db, company_id=self.current_user.company_id, user_id=self.current_user.id,
-                action="warehouse.restore", entity_type="branch",
-                entity_id=branch.id, entity_label=branch.name,
+                self.db,
+                company_id=self.current_user.company_id,
+                user_id=self.current_user.id,
+                action="warehouse.restore",
+                entity_type="branch",
+                entity_id=branch.id,
+                entity_label=branch.name,
             )
         return {"restored": True, "id": str(branch.id)}

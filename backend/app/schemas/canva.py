@@ -10,6 +10,7 @@ validate either an ORM row or the serializer's dict. They document the wire shap
 per the project's zero-drift convention (see ``schemas/paddy.py``) the handlers
 still return the serializer dicts directly, so there is no response-shape drift.
 """
+
 from __future__ import annotations
 
 import uuid
@@ -87,7 +88,7 @@ class LayoutBulkDelete(BaseModel):
 class DispatchRecommendRequest(BaseModel):
     variety_id: uuid.UUID | None = None
     variety_code: str | None = None  # convenience: lets callers use "Rc222"
-    weight_kg: float                  # how many kg needed
+    weight_kg: float  # how many kg needed
     branch_id: uuid.UUID | None = None  # restrict to one branch's layout
 
 

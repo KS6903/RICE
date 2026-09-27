@@ -15,6 +15,7 @@ tables. For a column/constraint change, add the equivalent ``ALTER TABLE`` to
 Usage:
     cd backend && .venv/Scripts/python migrate_all_tenants.py
 """
+
 from __future__ import annotations
 
 import os

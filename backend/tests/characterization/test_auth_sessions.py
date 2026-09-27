@@ -51,7 +51,9 @@ def test_logout_revokes_the_refresh_session(client, seed_owner):
     )
     assert res.status_code == 200
 
-    refreshed = client.post("/api/auth/refresh", json={"refresh_token": tokens["refresh_token"]}, headers=NATIVE_HEADERS)
+    refreshed = client.post(
+        "/api/auth/refresh", json={"refresh_token": tokens["refresh_token"]}, headers=NATIVE_HEADERS
+    )
     assert refreshed.status_code == 401
 
 
@@ -65,8 +67,18 @@ def test_logout_does_not_kill_other_devices(client, seed_owner):
     assert res.status_code == 200
 
     # Device A's chain is dead; device B's separate family still works.
-    assert client.post("/api/auth/refresh", json={"refresh_token": device_a["refresh_token"]}, headers=NATIVE_HEADERS).status_code == 401
-    assert client.post("/api/auth/refresh", json={"refresh_token": device_b["refresh_token"]}, headers=NATIVE_HEADERS).status_code == 200
+    assert (
+        client.post(
+            "/api/auth/refresh", json={"refresh_token": device_a["refresh_token"]}, headers=NATIVE_HEADERS
+        ).status_code
+        == 401
+    )
+    assert (
+        client.post(
+            "/api/auth/refresh", json={"refresh_token": device_b["refresh_token"]}, headers=NATIVE_HEADERS
+        ).status_code
+        == 200
+    )
 
 
 def test_password_change_revokes_all_sessions(client, seed_owner):
@@ -80,5 +92,15 @@ def test_password_change_revokes_all_sessions(client, seed_owner):
     assert res.status_code == 200, res.text
 
     # Every refresh chain for the user is revoked, both devices must re-login.
-    assert client.post("/api/auth/refresh", json={"refresh_token": device_a["refresh_token"]}, headers=NATIVE_HEADERS).status_code == 401
-    assert client.post("/api/auth/refresh", json={"refresh_token": device_b["refresh_token"]}, headers=NATIVE_HEADERS).status_code == 401
+    assert (
+        client.post(
+            "/api/auth/refresh", json={"refresh_token": device_a["refresh_token"]}, headers=NATIVE_HEADERS
+        ).status_code
+        == 401
+    )
+    assert (
+        client.post(
+            "/api/auth/refresh", json={"refresh_token": device_b["refresh_token"]}, headers=NATIVE_HEADERS
+        ).status_code
+        == 401
+    )

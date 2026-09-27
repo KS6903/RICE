@@ -1,12 +1,11 @@
 """The API queues production tenant setup but never performs DDL itself."""
+
 import app.core.config as cfg
 
 NATIVE_HEADERS = {"X-Client-Type": "bearer", "User-Agent": "Electron/Test"}
 
 
-def test_production_login_queues_unprovisioned_tenant(
-    client, db_session, seed_owner, monkeypatch
-):
+def test_production_login_queues_unprovisioned_tenant(client, db_session, seed_owner, monkeypatch):
     monkeypatch.setattr(cfg.settings, "ENV", "prod")
     seed_owner.company.provisioned_at = None
     seed_owner.company.provisioning_requested_at = None
@@ -24,9 +23,7 @@ def test_production_login_queues_unprovisioned_tenant(
     assert seed_owner.company.provisioning_requested_at is not None
 
 
-def test_data_routes_fail_closed_until_tenant_is_provisioned(
-    auth_client, db_session, seed_owner
-):
+def test_data_routes_fail_closed_until_tenant_is_provisioned(auth_client, db_session, seed_owner):
     seed_owner.company.provisioned_at = None
     db_session.flush()
 

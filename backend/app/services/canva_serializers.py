@@ -5,6 +5,7 @@ These functions are moved byte-for-byte from ``api/canva.py`` (the old
 rows and return the exact same dict shapes, so the wire contract is unchanged.
 No DB access — every service shares these for response building.
 """
+
 from __future__ import annotations
 
 from datetime import date
@@ -22,10 +23,19 @@ STRUCTURAL_ZONE_TYPES = {"wall", "door", "walkway", "loading_dock"}
 # All allowed zone_type values. Frontend uses this to populate dropdowns.
 ALLOWED_ZONE_TYPES = [
     # storage
-    "general", "milling", "premium_storage", "customer_storage",
-    "paddy_intake", "drying", "shipping_dock", "office",
+    "general",
+    "milling",
+    "premium_storage",
+    "customer_storage",
+    "paddy_intake",
+    "drying",
+    "shipping_dock",
+    "office",
     # structural
-    "wall", "door", "walkway", "loading_dock",
+    "wall",
+    "door",
+    "walkway",
+    "loading_dock",
 ]
 
 
@@ -151,18 +161,18 @@ def serialize_layout_summary(layout: WarehouseLayout) -> dict:
 
 def default_color_for(zone_type: str) -> str:
     return {
-        "milling":           "#94a3b8",
-        "premium_storage":   "#10b981",
-        "customer_storage":  "#0ea5e9",
-        "general":           "#a3a3a3",
-        "paddy_intake":      "#fbbf24",
-        "drying":            "#fcd34d",
-        "shipping_dock":     "#3b82f6",
-        "office":            "#a78bfa",
-        "wall":              "#475569",
-        "door":              "#facc15",
-        "walkway":           "#cbd5e1",
-        "loading_dock":      "#f59e0b",
+        "milling": "#94a3b8",
+        "premium_storage": "#10b981",
+        "customer_storage": "#0ea5e9",
+        "general": "#a3a3a3",
+        "paddy_intake": "#fbbf24",
+        "drying": "#fcd34d",
+        "shipping_dock": "#3b82f6",
+        "office": "#a78bfa",
+        "wall": "#475569",
+        "door": "#facc15",
+        "walkway": "#cbd5e1",
+        "loading_dock": "#f59e0b",
     }.get(zone_type, "#94a3b8")
 
 

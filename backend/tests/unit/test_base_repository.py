@@ -3,6 +3,7 @@
 Uses the real Branch model because it carries both ``company_id`` (tenant scope)
 and ``deleted_at`` (soft delete), so it exercises every base behavior.
 """
+
 from app.models.company import Branch, Company
 from app.repositories.base import BaseRepository
 
