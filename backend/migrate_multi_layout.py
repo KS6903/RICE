@@ -19,9 +19,9 @@ def main():
     from app.core.database import provisioner_engine
 
     with provisioner_engine.connect() as conn:
-        conn.execute(text("ALTER TABLE warehouse_layouts " "DROP CONSTRAINT IF EXISTS warehouse_layouts_branch_id_key"))
+        conn.execute(text("ALTER TABLE warehouse_layouts DROP CONSTRAINT IF EXISTS warehouse_layouts_branch_id_key"))
         conn.execute(
-            text("ALTER TABLE warehouse_layouts " "ADD COLUMN IF NOT EXISTS is_default BOOLEAN NOT NULL DEFAULT true")
+            text("ALTER TABLE warehouse_layouts ADD COLUMN IF NOT EXISTS is_default BOOLEAN NOT NULL DEFAULT true")
         )
         conn.commit()
     print("Migration complete: multi-layout support enabled.")

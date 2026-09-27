@@ -59,7 +59,7 @@ FEATURE_FLAG_UPDATES = [
 
 def _column_exists(conn, table: str, column: str) -> bool:
     row = conn.execute(
-        text("SELECT 1 FROM information_schema.columns " "WHERE table_name = :t AND column_name = :c"),
+        text("SELECT 1 FROM information_schema.columns WHERE table_name = :t AND column_name = :c"),
         {"t": table, "c": column},
     ).first()
     return row is not None

@@ -7,3 +7,6 @@
 
 # style: apply ruff format and Prettier, and normalize line endings to LF
 64d643033033e8844c777eb1bc3cb54ff9a2e54a
+
+# style: reformat for ruff 0.16
+b2a564682727a35d4adb5efb43a8eb840298bd6f

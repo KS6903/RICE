@@ -166,7 +166,7 @@ def _lockout_error(state: LockoutState) -> TooManyRequestsError:
             code="account_locked",
         )
     return TooManyRequestsError(
-        f"Too many failed sign-in attempts. This account is locked for " f"{_format_duration(state.retry_after)}.",
+        f"Too many failed sign-in attempts. This account is locked for {_format_duration(state.retry_after)}.",
         code="account_locked_temporary",
     )
 

@@ -59,7 +59,7 @@ def _reset_database(url: str, maintenance_url: str) -> None:
     db_name = urlparse(url).path.lstrip("/")
     with psycopg.connect(maintenance_url, autocommit=True) as connection:
         connection.execute(
-            "SELECT pg_terminate_backend(pid) FROM pg_stat_activity " "WHERE datname = %s AND pid <> pg_backend_pid()",
+            "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = %s AND pid <> pg_backend_pid()",
             (db_name,),
         )
         connection.execute(sql.SQL("DROP DATABASE IF EXISTS {}").format(sql.Identifier(db_name)))

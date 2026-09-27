@@ -165,7 +165,7 @@ class AdminService(BaseService):
             raise NotFoundError("Plan not found")
         if self.subscriptions.exists_for_plan(plan.id):
             raise ConflictError(
-                "Cannot delete: this plan is currently assigned to one or more tenants. " "Deactivate it instead."
+                "Cannot delete: this plan is currently assigned to one or more tenants. Deactivate it instead."
             )
         with self.transaction():
             self.db.delete(plan)
