@@ -29,7 +29,7 @@ from contextlib import contextmanager
 from typing import Iterator
 
 import jwt
-from sqlalchemy import text
+from sqlalchemy import event, text
 from sqlalchemy.orm import Session
 
 from ..models.base import now_utc
@@ -96,19 +96,42 @@ def public_tables() -> list:
 # ── search_path control ───────────────────────────────────────────────────────
 
 
-def set_search_path(db: Session, schema_name: str | None) -> None:
-    """Point a session at a client schema (or back to ``public`` only).
+# Where a session keeps the schema set_search_path chose for it.
+_SEARCH_PATH_KEY = "oryza.search_path"
 
-    Idempotent and called at the start of every request, so a pooled connection
-    never leaks a previous request's schema.
+
+def _search_path_sql(schema_name: str | None) -> str:
+    """SET LOCAL for a validated schema; identifiers can't be bound parameters."""
+    if schema_name is not None and valid_schema_name(schema_name):
+        return f'SET LOCAL search_path TO "{schema_name}", public'
+    return "SET LOCAL search_path TO public"
+
+
+def set_search_path(db: Session, schema_name: str | None) -> None:
+    """Point a session at a client schema (or back to ``public`` only) for the
+    rest of its life.
+
+    The choice is kept on the session and applied with SET LOCAL, which lasts
+    only for the current transaction; _reapply_search_path applies it again at
+    the start of every later one. A plain (session-level) SET is not enough:
+    the session hands its pooled connection back at every commit and may borrow
+    a different one next, a rollback undoes a SET made inside it, and a SET that
+    did stick would follow the connection to its next borrower, which could be
+    another tenant's request.
     """
-    if valid_schema_name(schema_name):
-        # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
-        db.execute(text(f'SET search_path TO "{schema_name}", public'))
-    else:
-        if schema_name:
-            logger.warning("Ignoring invalid schema name %r; using public", schema_name)
-        db.execute(text("SET search_path TO public"))
+    if schema_name and not valid_schema_name(schema_name):
+        logger.warning("Ignoring invalid schema name %r; using public", schema_name)
+        schema_name = None
+    db.info[_SEARCH_PATH_KEY] = schema_name
+    # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
+    db.execute(text(_search_path_sql(schema_name)))
+
+
+@event.listens_for(Session, "after_begin")
+def _reapply_search_path(session: Session, transaction, connection) -> None:
+    """Give every transaction a session begins the schema the session was set to."""
+    if _SEARCH_PATH_KEY in session.info:
+        connection.exec_driver_sql(_search_path_sql(session.info[_SEARCH_PATH_KEY]))
 
 
 # Cross-tenant code must visit each client by switching to its schema. Use
