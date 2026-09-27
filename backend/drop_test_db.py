@@ -1,6 +1,8 @@
 import os
 from pathlib import Path
 from urllib.parse import urlparse
+
+import psycopg
 from dotenv import load_dotenv
 
 load_dotenv(Path(__file__).parent / ".env")
@@ -10,7 +12,6 @@ db = parsed.path.lstrip("/")
 test_db = f"{db} Test"
 print(f"Dropping test DB: {test_db!r}")
 
-import psycopg
 conn = psycopg.connect(
     host=parsed.hostname, port=parsed.port or 5432,
     user=parsed.username, password=parsed.password,

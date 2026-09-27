@@ -1,10 +1,16 @@
 import uuid
 from datetime import datetime
-from sqlalchemy import String, Boolean, Text, ForeignKey, DateTime
-from sqlalchemy.orm import mapped_column, Mapped, relationship
+from typing import TYPE_CHECKING
+
+from sqlalchemy import Boolean, DateTime, ForeignKey, String, Text
 from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+
 from ..core.database import Base
 from .base import TimestampMixin
+
+if TYPE_CHECKING:
+    from .user import User
 
 
 def _default_schema_name() -> str:

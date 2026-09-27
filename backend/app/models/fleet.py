@@ -1,14 +1,20 @@
 """Fleet models — trucks, drivers, and dispatch trips."""
 import uuid
-from datetime import date, datetime
+from datetime import date
 from decimal import Decimal
+from typing import TYPE_CHECKING
 
-from sqlalchemy import Boolean, Date, DateTime, ForeignKey, Numeric, String, Text
+from sqlalchemy import Boolean, Date, ForeignKey, Numeric, String, Text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from ..core.database import Base
 from .base import TimestampMixin
+
+if TYPE_CHECKING:
+    from .employee import Employee
+    from .sales import SalesOrder
+    from .user import User
 
 
 class Driver(Base, TimestampMixin):
@@ -26,7 +32,7 @@ class Driver(Base, TimestampMixin):
     )
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
 
-    employee: Mapped["Employee | None"] = relationship("Employee", foreign_keys=[employee_id])  # type: ignore[name-defined]
+    employee: Mapped["Employee | None"] = relationship("Employee", foreign_keys=[employee_id])
 
 
 class Truck(Base, TimestampMixin):
@@ -70,5 +76,5 @@ class DispatchTrip(Base, TimestampMixin):
 
     truck: Mapped["Truck"] = relationship("Truck", foreign_keys=[truck_id])
     driver: Mapped["Driver"] = relationship("Driver", foreign_keys=[driver_id])
-    order: Mapped["SalesOrder | None"] = relationship("SalesOrder", foreign_keys=[order_id])  # type: ignore[name-defined]
-    creator: Mapped["User | None"] = relationship("User", foreign_keys=[created_by])  # type: ignore[name-defined]
+    order: Mapped["SalesOrder | None"] = relationship("SalesOrder", foreign_keys=[order_id])
+    creator: Mapped["User | None"] = relationship("User", foreign_keys=[created_by])

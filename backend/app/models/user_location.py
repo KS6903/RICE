@@ -6,9 +6,11 @@ The label is stored as plain text only; we never render upstream HTML.
 """
 import uuid
 from decimal import Decimal
-from sqlalchemy import String, Boolean, Numeric, ForeignKey, UniqueConstraint
-from sqlalchemy.orm import mapped_column, Mapped
+
+from sqlalchemy import Boolean, ForeignKey, Numeric, String, UniqueConstraint
 from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.orm import Mapped, mapped_column
+
 from ..core.database import Base
 from .base import TimestampMixin
 

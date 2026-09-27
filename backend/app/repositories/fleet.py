@@ -2,8 +2,6 @@
 import uuid
 from typing import Sequence
 
-from sqlalchemy.orm import Session
-
 from ..models.fleet import DispatchTrip, Driver, Truck
 from .base import BaseRepository
 

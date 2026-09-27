@@ -1,12 +1,18 @@
 """Spatial warehouse canva models — Phase 1 of the visual inventory system."""
 import uuid
-from datetime import datetime, date
+from datetime import date, datetime
 from decimal import Decimal
-from sqlalchemy import String, Integer, SmallInteger, Numeric, Text, DateTime, Date, ForeignKey
-from sqlalchemy.orm import mapped_column, Mapped, relationship
+from typing import TYPE_CHECKING
+
+from sqlalchemy import Date, DateTime, ForeignKey, Integer, Numeric, SmallInteger, String, Text
 from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+
 from ..core.database import Base
 from .base import TimestampMixin, now_utc
+
+if TYPE_CHECKING:
+    from .reference import QualityGrade, RiceVariety
 
 
 class WarehouseLayout(Base, TimestampMixin):

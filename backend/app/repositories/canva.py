@@ -47,7 +47,7 @@ class WarehouseLayoutRepository(BaseRepository[WarehouseLayout]):
         layouts = self.all_for_branch(branch_id)
         if not layouts:
             return None
-        return next((l for l in layouts if l.is_default), layouts[0])
+        return next((layout for layout in layouts if layout.is_default), layouts[0])
 
     def first_for_branch(self, branch_id: uuid.UUID) -> WarehouseLayout | None:
         return self.db.query(WarehouseLayout).filter(WarehouseLayout.branch_id == branch_id).first()

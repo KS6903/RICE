@@ -7,8 +7,9 @@
 - Re-runs zone-containing logic to set the correct zone_id on every pallet.
 """
 from decimal import Decimal
+
 from app.core.database import SessionLocal
-from app.models.warehouse import WarehouseLayout, WarehouseZone, Pallet
+from app.models.warehouse import Pallet, WarehouseLayout, WarehouseZone
 
 # Same as DEFAULT_ZONES in canva.py
 MILLING       = ("milling",         "Milling Floor",    1.0,  1.0, 13.0, 18.0, "#94a3b8")

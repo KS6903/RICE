@@ -7,13 +7,14 @@ Run AFTER `alembic upgrade head` and `seed.py`.
 Usage: python seed_demo_inventory.py
 """
 from decimal import Decimal
+
 from app.core.database import SessionLocal
 from app.core.tenancy import set_search_path
 from app.models.company import Branch
-from app.models.user import User
-from app.models.reference import RiceVariety, QualityGrade
+from app.models.milling import ByproductInventory, MilledRiceInventory
 from app.models.paddy import PalayInventory
-from app.models.milling import MilledRiceInventory, ByproductInventory
+from app.models.reference import QualityGrade, RiceVariety
+from app.models.user import User
 
 
 def main():

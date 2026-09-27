@@ -21,21 +21,24 @@ from random import choice, uniform
 from app.core.database import SessionLocal
 from app.core.tenancy import session_for_company
 from app.models.company import Branch
-from app.models.user import User
-from app.models.reference import RiceVariety, QualityGrade
-from app.models.supplier_customer import Supplier, Customer
-from app.models.employee import Employee
-from app.models.milling import (
-    MillingEquipment, MillingBatch, MillingBatchInput, MillingBatchOutput,
-)
 from app.models.costs import ExpenseCategory
-from app.models.paddy import PalayPurchase, PalayPurchaseItem
 from app.models.dispatch import Agent, Miller
-from app.models.fleet import Driver, Truck, DispatchTrip
-from app.models.warehouse import WarehouseLayout, WarehouseZone, Pallet, RiceBatch
+from app.models.employee import Employee
+from app.models.fleet import DispatchTrip, Driver, Truck
+from app.models.milling import (
+    MillingBatch,
+    MillingBatchInput,
+    MillingBatchOutput,
+    MillingEquipment,
+)
+from app.models.paddy import PalayPurchase, PalayPurchaseItem
+from app.models.reference import QualityGrade, RiceVariety
+from app.models.supplier_customer import Customer, Supplier
+from app.models.user import User
+from app.models.warehouse import Pallet, RiceBatch, WarehouseZone
 from app.repositories.canva import WarehouseLayoutRepository
 from app.services.canva_bootstrap import _next_pallet_code
-from app.services.rice_shelf_life import compute_best_before, aging_status
+from app.services.rice_shelf_life import aging_status, compute_best_before
 
 
 def _seed_suppliers(db, company_id, branch_id):

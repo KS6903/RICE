@@ -290,7 +290,7 @@ class CanvaLayoutService(BaseService):
     def list_branch_layouts(self, branch_id: uuid.UUID) -> list[dict]:
         self._require_branch(branch_id)
         layouts = self.layouts.list_live_for_branch(branch_id)
-        return [serialize_layout_summary(l) for l in layouts]
+        return [serialize_layout_summary(layout) for layout in layouts]
 
     def _purge_expired_layouts(self, branch_id: uuid.UUID) -> None:
         """Hard-delete trashed layouts whose 30-day window has elapsed.
@@ -299,8 +299,8 @@ class CanvaLayoutService(BaseService):
         expired = self.layouts.expired_trashed_for_branch(branch_id, cutoff)
         if expired:
             with self.transaction():
-                for l in expired:
-                    self.layouts.delete(l)
+                for layout in expired:
+                    self.layouts.delete(layout)
 
     def list_trashed_layouts(self, branch_id: uuid.UUID) -> list[dict]:
         """Layouts in the 30-day trash. Lazily purges expired ones first."""
@@ -313,17 +313,17 @@ class CanvaLayoutService(BaseService):
             for u in self.db.query(User).filter(User.id.in_(deleter_ids)).all():
                 names[u.id] = u.full_name or u.username
         out = []
-        for l in rows:
-            expires_at = l.deleted_at + timedelta(days=_LAYOUT_TRASH_DAYS)
+        for layout in rows:
+            expires_at = layout.deleted_at + timedelta(days=_LAYOUT_TRASH_DAYS)
             days_remaining = max(0, (expires_at - datetime.now(timezone.utc)).days)
             out.append({
-                "id": str(l.id),
-                "name": l.name,
-                "is_default": l.is_default,
-                "width_m": float(l.width_m),
-                "height_m": float(l.height_m),
-                "deleted_at": l.deleted_at.isoformat(),
-                "deleted_by_name": names.get(l.deleted_by),
+                "id": str(layout.id),
+                "name": layout.name,
+                "is_default": layout.is_default,
+                "width_m": float(layout.width_m),
+                "height_m": float(layout.height_m),
+                "deleted_at": layout.deleted_at.isoformat(),
+                "deleted_by_name": names.get(layout.deleted_by),
                 "days_remaining": days_remaining,
             })
         return out
@@ -482,8 +482,8 @@ class CanvaLayoutService(BaseService):
         """Distinct clients with active pallets in the canva, with their assigned
         canva color and occupancy stats. Colors are tenant-unique and persisted
         back to the source row so they stick."""
-        from ..models.supplier_customer import Customer, Supplier
         from ..models.dispatch import Agent, Miller
+        from ..models.supplier_customer import Customer, Supplier
         from .canva_color import pick_unused_color
 
         company_id = self.current_user.company_id

@@ -16,7 +16,6 @@ import uuid
 
 from pydantic import BaseModel, ConfigDict
 
-
 # ── Request models (verbatim from api/canva.py) ──────────────────────────────
 
 

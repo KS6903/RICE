@@ -1,9 +1,7 @@
-import uuid
 from datetime import datetime, timezone
+
 from sqlalchemy import DateTime, func
-from sqlalchemy.orm import mapped_column, Mapped
-from sqlalchemy.dialects.postgresql import UUID
-from ..core.database import Base
+from sqlalchemy.orm import Mapped, mapped_column
 
 
 def now_utc():

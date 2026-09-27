@@ -10,8 +10,8 @@ global byproduct catalog.
 Usage: cd backend && .venv/Scripts/python seed.py
 """
 from app.core.database import SessionLocal
-from app.models.user import Role
 from app.models.reference import ByproductType
+from app.models.user import Role
 
 ROLES = [
     (1, "owner"), (2, "admin"), (3, "mill_operator"),

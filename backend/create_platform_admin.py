@@ -5,8 +5,9 @@ Usage:
 
 Prompts for username, full name, email, and password interactively.
 """
-import sys
 import getpass
+import sys
+
 from app.core.database import SessionLocal
 from app.core.passwords import validate_password_strength
 from app.core.security import hash_password
