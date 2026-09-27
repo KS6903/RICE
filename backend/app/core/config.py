@@ -28,7 +28,9 @@ class Settings(BaseSettings):
     # credential. The API's DATABASE_URL must be a DML-only role in production.
     PROVISIONER_DATABASE_URL: SecretStr | None = None
     RUNTIME_DATABASE_ROLE: str = "ricemill_app"
-    PROCESS_ROLE: Literal["api", "provisioner"] = "api"
+    # api: the web API. provisioner: tenant DDL (the only role that may hold
+    # PROVISIONER_DATABASE_URL). jobs: scheduled work (app/jobs), DML only.
+    PROCESS_ROLE: Literal["api", "provisioner", "jobs"] = "api"
     SECRET_KEY: str
     ALGORITHM: Literal["HS256"] = "HS256"
     JWT_ISSUER: str = "oryza-api"
@@ -232,6 +234,8 @@ class Settings(BaseSettings):
             problems.append("DATABASE_URL must require TLS with sslmode=require or stricter")
         if self.PROCESS_ROLE == "api" and self.PROVISIONER_DATABASE_URL is not None:
             problems.append("PROVISIONER_DATABASE_URL must not be exposed to the long-running API process")
+        if self.PROCESS_ROLE == "jobs" and self.PROVISIONER_DATABASE_URL is not None:
+            problems.append("PROVISIONER_DATABASE_URL must not be exposed to the jobs process; it runs with DML only")
         if self.PROCESS_ROLE == "provisioner" and self.PROVISIONER_DATABASE_URL is None:
             problems.append("PROVISIONER_DATABASE_URL is required by the provisioning process")
         if self.PROVISIONER_DATABASE_URL is not None:

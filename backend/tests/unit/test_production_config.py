@@ -93,3 +93,12 @@ def test_prod_refuses_to_boot_when_legal_documents_cannot_be_read(monkeypatch):
     monkeypatch.setattr(legal, "unresolved_placeholders", boom)
     with pytest.raises(ValidationError, match="legal documents could not be validated"):
         _valid_prod()
+
+
+def test_jobs_process_rejects_the_provisioner_credential():
+    with pytest.raises(ValidationError, match="must not be exposed to the jobs process"):
+        _valid_prod(
+            PROCESS_ROLE="jobs",
+            PROVISIONER_DATABASE_URL="postgresql://owner:ddl@db.internal:5432/ricemill?sslmode=require",
+        )
+    assert _valid_prod(PROCESS_ROLE="jobs").PROCESS_ROLE == "jobs"

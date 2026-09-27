@@ -128,12 +128,16 @@ def test_ambient_environment_cannot_mask_a_missing_value(tmp_path, monkeypatch):
 
 def test_container_env_mirrors_the_worker_roles():
     spec = json.loads(gate.CONTAINER_ENV.read_text(encoding="utf-8"))
+    assert set(spec["roles"]) == {"api", "provisioner", "jobs"}
     api = gate.container_env("api", READY_VARS, spec)
     provisioner = gate.container_env("provisioner", READY_VARS, spec)
+    jobs = gate.container_env("jobs", READY_VARS, spec)
     assert api["PROCESS_ROLE"] == "api"
     assert provisioner["PROCESS_ROLE"] == "provisioner"
+    assert jobs["PROCESS_ROLE"] == "jobs"
     # The DDL credential exists only in the provisioner's environment.
     assert "PROVISIONER_DATABASE_URL" not in api
+    assert "PROVISIONER_DATABASE_URL" not in jobs
     assert "PROVISIONER_DATABASE_URL" in provisioner
     # Empty optional values are not forwarded (host-only cookie on workers.dev).
     assert "COOKIE_DOMAIN" not in api

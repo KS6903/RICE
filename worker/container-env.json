@@ -47,6 +47,12 @@
         "PROCESS_ROLE": "provisioner"
       },
       "secrets": ["PROVISIONER_DATABASE_URL"]
+    },
+    "jobs": {
+      "constants": {
+        "PROCESS_ROLE": "jobs"
+      },
+      "secrets": []
     }
   }
 }

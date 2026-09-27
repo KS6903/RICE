@@ -31,13 +31,22 @@
       "image_build_context": "./",
       "instance_type": "basic",
       "max_instances": 1
+    },
+    {
+      // Scheduled jobs (backend/app/jobs), started by the cron trigger below.
+      "class_name": "JobsContainer",
+      "image": "./backend/Dockerfile",
+      "image_build_context": "./",
+      "instance_type": "basic",
+      "max_instances": 1
     }
   ],
 
   "durable_objects": {
     "bindings": [
       { "name": "API_CONTAINER", "class_name": "ApiContainer" },
-      { "name": "PROVISIONER_CONTAINER", "class_name": "ProvisionerContainer" }
+      { "name": "PROVISIONER_CONTAINER", "class_name": "ProvisionerContainer" },
+      { "name": "JOBS_CONTAINER", "class_name": "JobsContainer" }
     ]
   },
 
@@ -45,10 +54,15 @@
     {
       "tag": "v1",
       "new_sqlite_classes": ["ApiContainer", "ProvisionerContainer"]
+    },
+    {
+      "tag": "v2",
+      "new_sqlite_classes": ["JobsContainer"]
     }
   ],
 
-  // Drains any tenant left queued by a failed inline provision.
+  // Every 15 minutes: the provisioner drains queued tenant schemas, and the
+  // jobs runner runs whatever scheduled work is due (worker/index.ts).
   "triggers": {
     "crons": ["*/15 * * * *"]
   },

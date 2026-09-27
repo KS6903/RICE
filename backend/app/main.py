@@ -32,6 +32,7 @@ from .api import (
 )
 from .core.config import settings
 from .core.exceptions import register_exception_handlers
+from .core.logging_config import configure_logging
 from .core.middleware import MutationAuditMiddleware, SecurityHeadersMiddleware
 from .core.ratelimit import limiter, rate_limit_exceeded_handler
 from .core.security import (
@@ -41,34 +42,13 @@ from .core.security import (
 )
 from .services.canva_realtime import manager as ws_manager
 
+# JSON lines in production, readable text in development; tests leave logging
+# to pytest. Scheduled work (such as the stale-variety purge that used to run
+# as a loop in here) lives in app/jobs, run by its own container.
+if settings.ENV != "test":
+    configure_logging(json_output=settings.is_prod)
+
 logger = logging.getLogger(__name__)
-
-
-async def _purge_stale_varieties() -> None:
-    """Background loop: delete tenant rice varieties deactivated >30 days ago.
-
-    Rice varieties now live in each client's schema, so this visits every tenant
-    schema in turn rather than running one query over a shared table.
-    """
-    from .core.tenancy import iter_tenant_sessions
-    from .services.paddy_service import purge_stale_varieties
-
-    while True:
-        await asyncio.sleep(86400)  # wait 24 h before first run, then repeat
-        try:
-            total = 0
-            for company, db in iter_tenant_sessions():
-                try:
-                    count = purge_stale_varieties(db)
-                    db.commit()
-                    total += count
-                except Exception:
-                    db.rollback()
-                    logger.exception("Stale variety purge failed for company %s", company.id)
-            if total:
-                logger.info("Purged %d stale rice variety rows across tenants (deactivated >30 days)", total)
-        except Exception:
-            logger.exception("Error during stale variety purge")
 
 
 app = FastAPI(
@@ -152,7 +132,6 @@ async def _capture_loop_for_canva_broadcasts() -> None:
     """Give the canva WS manager a handle to the main event loop so sync
     PATCH handlers can schedule broadcasts onto it."""
     ws_manager.set_main_loop(asyncio.get_running_loop())
-    asyncio.create_task(_purge_stale_varieties())
 
 
 @app.on_event("startup")
@@ -168,52 +147,10 @@ async def _verify_runtime_database_role() -> None:
     """Fail production startup if the API accidentally runs with DDL power."""
     if not settings.is_prod:
         return
-    from sqlalchemy import text
-
     from .core.database import engine
+    from .core.runtime_role import verify_runtime_database_role
 
-    with engine.connect() as connection:
-        row = connection.execute(
-            text(
-                "SELECT current_user, r.rolsuper, r.rolcreatedb, r.rolcreaterole, "
-                "r.rolreplication, r.rolbypassrls, "
-                "has_database_privilege(current_user, current_database(), 'CREATE'), "
-                "has_schema_privilege(current_user, 'public', 'CREATE'), "
-                "EXISTS (SELECT 1 FROM pg_namespace n "
-                "WHERE n.nspname ~ '^client_[a-f0-9]{32}$' "
-                "AND has_schema_privilege(current_user, n.oid, 'CREATE')), "
-                "EXISTS (SELECT 1 FROM pg_namespace n "
-                "WHERE (n.nspname = 'public' OR n.nspname ~ '^client_[a-f0-9]{32}$') "
-                "AND n.nspowner = r.oid), "
-                "EXISTS (SELECT 1 FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace "
-                "WHERE (n.nspname = 'public' OR n.nspname ~ '^client_[a-f0-9]{32}$') "
-                "AND c.relowner = r.oid) "
-                "FROM pg_roles r WHERE r.rolname = current_user"
-            )
-        ).one()
-        # The consent ledger is the evidence of who agreed to which terms: the API
-        # may add rows but never rewrite or delete them (migration 007 and
-        # scripts/db_least_privilege.sql revoke both).
-        ledger_writable = connection.execute(
-            text(
-                "SELECT COALESCE(bool_or(has_table_privilege(current_user, c.oid, 'UPDATE') "
-                "OR has_table_privilege(current_user, c.oid, 'DELETE')), false) "
-                "FROM pg_class c WHERE c.oid = to_regclass('public.legal_acceptances')"
-            )
-        ).scalar_one()
-    role_name = row[0]
-    if role_name != settings.RUNTIME_DATABASE_ROLE:
-        raise RuntimeError("DATABASE_URL authenticates as an unexpected role; use the configured DML-only runtime role")
-    if any(row[1:]):
-        raise RuntimeError(
-            "The API database role has administrative, ownership, or CREATE privileges; "
-            "run tenant DDL only through PROVISIONER_DATABASE_URL"
-        )
-    if ledger_writable:
-        raise RuntimeError(
-            "The API database role can UPDATE or DELETE legal_acceptances; the consent ledger "
-            "must be append-only (run alembic upgrade head, then scripts/db_least_privilege.sql)"
-        )
+    verify_runtime_database_role(engine, settings.RUNTIME_DATABASE_ROLE)
 
 
 @app.get("/api/health")

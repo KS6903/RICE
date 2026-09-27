@@ -56,6 +56,7 @@ PUBLIC_TABLE_NAMES: frozenset[str] = frozenset(
         "byproduct_types",  # global byproduct catalog (no company_id)
         "user_locations",  # per-user UI state (FK -> users only)
         "legal_acceptances",  # consent evidence: must outlive a tenant schema
+        "job_runs",  # scheduled-job claims; spans tenants
     }
 )
 
