@@ -239,8 +239,7 @@ export class SyncEngine {
 
   private getClientId(db: Database.Database): string {
     const row = db.prepare("SELECT value FROM _local_sync_meta WHERE key = 'device_id'").get() as
-      | { value: string }
-      | undefined;
+      { value: string } | undefined;
     if (row?.value) return row.value;
     const id = `electron-${crypto.randomUUID()}`;
     db.prepare("INSERT INTO _local_sync_meta (key, value) VALUES ('device_id', ?)").run(id);
@@ -249,8 +248,7 @@ export class SyncEngine {
 
   private getLastSynced(db: Database.Database, cursorKey: string): string {
     const row = db.prepare("SELECT value FROM _local_sync_meta WHERE key = ?").get(cursorKey) as
-      | { value: string }
-      | undefined;
+      { value: string } | undefined;
     return row?.value ?? new Date(0).toISOString();
   }
 

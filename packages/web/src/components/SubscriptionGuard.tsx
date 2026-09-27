@@ -3,12 +3,7 @@ import { Lock, AlertOctagon, Sparkles, CreditCard } from "lucide-react";
 import { useAuthStore } from "../stores/authStore";
 
 type SubLockReason =
-  | "no_subscription"
-  | "expired"
-  | "cancelled"
-  | "past_due"
-  | "no_features"
-  | null;
+  "no_subscription" | "expired" | "cancelled" | "past_due" | "no_features" | null;
 
 function lockReason(user: ReturnType<typeof useAuthStore.getState>["user"]): SubLockReason {
   if (!user) return null;
