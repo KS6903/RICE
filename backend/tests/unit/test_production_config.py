@@ -1,4 +1,5 @@
 """Production configuration must keep DDL credentials out of the API process."""
+
 from __future__ import annotations
 
 import pytest
@@ -22,10 +23,7 @@ def _legal_docs_filled_in(monkeypatch):
 
 def _valid_prod(**overrides):
     values = {
-        "DATABASE_URL": (
-            "postgresql://ricemill_app:runtime@db.internal:5432/ricemill"
-            "?sslmode=require"
-        ),
+        "DATABASE_URL": ("postgresql://ricemill_app:runtime@db.internal:5432/ricemill" "?sslmode=require"),
         "SECRET_KEY": "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ-_",
         "ENV": "prod",
         "PROCESS_ROLE": "api",
@@ -57,11 +55,7 @@ def test_api_accepts_only_runtime_database_credential():
 
 def test_api_rejects_provisioner_credential_exposure():
     with pytest.raises(ValidationError, match="must not be exposed"):
-        _valid_prod(
-            PROVISIONER_DATABASE_URL=(
-                "postgresql://owner:ddl@db.internal:5432/ricemill?sslmode=require"
-            )
-        )
+        _valid_prod(PROVISIONER_DATABASE_URL=("postgresql://owner:ddl@db.internal:5432/ricemill?sslmode=require"))
 
 
 def test_worker_requires_separate_provisioner_credential():
@@ -70,9 +64,7 @@ def test_worker_requires_separate_provisioner_credential():
 
     settings = _valid_prod(
         PROCESS_ROLE="provisioner",
-        PROVISIONER_DATABASE_URL=(
-            "postgresql://owner:ddl@db.internal:5432/ricemill?sslmode=require"
-        ),
+        PROVISIONER_DATABASE_URL=("postgresql://owner:ddl@db.internal:5432/ricemill?sslmode=require"),
     )
     assert settings.PROVISIONER_DATABASE_URL is not None
 

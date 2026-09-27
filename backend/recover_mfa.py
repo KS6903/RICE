@@ -3,6 +3,7 @@
 Run this from a trusted backend host with the normal application environment.
 It never accepts or prints passwords, tokens, MFA seeds, or recovery codes.
 """
+
 from __future__ import annotations
 
 import argparse

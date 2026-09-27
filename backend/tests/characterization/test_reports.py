@@ -2,14 +2,24 @@
 
 
 def test_pnl_shape(auth_client):
-    res = auth_client.get("/api/reports/pnl", params={
-        "period_start": "2026-01-01", "period_end": "2026-12-31",
-    })
+    res = auth_client.get(
+        "/api/reports/pnl",
+        params={
+            "period_start": "2026-01-01",
+            "period_end": "2026-12-31",
+        },
+    )
     assert res.status_code == 200, res.text
     body = res.json()
     assert set(body.keys()) == {
-        "period_start", "period_end", "revenue", "cost_of_goods",
-        "gross_profit", "operating_expenses", "net_profit", "gross_margin_pct",
+        "period_start",
+        "period_end",
+        "revenue",
+        "cost_of_goods",
+        "gross_profit",
+        "operating_expenses",
+        "net_profit",
+        "gross_margin_pct",
     }
 
 
@@ -46,9 +56,13 @@ def test_revenue_annual_with_year(auth_client):
 
 
 def test_compliance_report_shape(auth_client):
-    res = auth_client.get("/api/reports/compliance/nfa", params={
-        "period_start": "2026-01-01", "period_end": "2026-12-31",
-    })
+    res = auth_client.get(
+        "/api/reports/compliance/nfa",
+        params={
+            "period_start": "2026-01-01",
+            "period_end": "2026-12-31",
+        },
+    )
     assert res.status_code == 200
     body = res.json()
     assert body["report_type"] == "nfa"

@@ -1674,8 +1674,7 @@ function ProfileTab() {
   });
   const [saved, setSaved] = useState("");
   const [error, setError] = useState("");
-  const emailChanged =
-    form.email.trim().toLowerCase() !== (user?.email ?? "").trim().toLowerCase();
+  const emailChanged = form.email.trim().toLowerCase() !== (user?.email ?? "").trim().toLowerCase();
   const hasEmailProof = !!form.current_password || (!!user?.mfa_enabled && !!form.mfa_code);
 
   const save = useMutation({
@@ -1787,7 +1786,12 @@ function ProfileTab() {
         <button
           onClick={() => save.mutate()}
           className="btn-primary"
-          disabled={save.isPending || !form.full_name.trim() || !form.email.trim() || (emailChanged && !hasEmailProof)}
+          disabled={
+            save.isPending ||
+            !form.full_name.trim() ||
+            !form.email.trim() ||
+            (emailChanged && !hasEmailProof)
+          }
         >
           {save.isPending ? "Saving…" : "Save profile"}
         </button>
@@ -1906,8 +1910,7 @@ function GoogleIdentityCard() {
   const linked = !!meQ.data?.google_linked;
   const usesMfa = !!user?.mfa_enabled;
 
-  const proofBody = () =>
-    usesMfa ? { mfa_code: proof.trim() } : { current_password: proof };
+  const proofBody = () => (usesMfa ? { mfa_code: proof.trim() } : { current_password: proof });
 
   const link = async (credential?: string) => {
     if (!credential) return;
@@ -1945,7 +1948,9 @@ function GoogleIdentityCard() {
         </p>
       </div>
       <div>
-        <label className={LABEL}>{usesMfa ? "Current authenticator code" : "Current password"}</label>
+        <label className={LABEL}>
+          {usesMfa ? "Current authenticator code" : "Current password"}
+        </label>
         <input
           type={usesMfa ? "text" : "password"}
           className="input"
@@ -1973,7 +1978,9 @@ function GoogleIdentityCard() {
           />
         </div>
       ) : (
-        <p className="text-xs text-muted">Enter your proof above to enable the Google link button.</p>
+        <p className="text-xs text-muted">
+          Enter your proof above to enable the Google link button.
+        </p>
       )}
       <p className="text-xs text-muted">
         Linking or unlinking revokes every active session and requires a fresh sign-in.

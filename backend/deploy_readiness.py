@@ -17,6 +17,7 @@ and only non-secret configuration is judged.
 
 Exit status: 0 ready, 1 not ready (problems listed), 2 configuration unreadable.
 """
+
 from __future__ import annotations
 
 import contextlib
@@ -226,9 +227,7 @@ def check(wrangler_path: Path = WRANGLER_CONFIG, container_env_path: Path = CONT
         *missing_var_problems(wrangler_vars, spec),
         *instance_problems(config),
     ]
-    by_role = {
-        role: settings_problems(container_env(role, wrangler_vars, spec)) for role in spec["roles"]
-    }
+    by_role = {role: settings_problems(container_env(role, wrangler_vars, spec)) for role in spec["roles"]}
     # Most failures (legal placeholders, origins) hit every role alike: report
     # those once, and name the role only where the roles differ.
     common = set.intersection(*(set(found) for found in by_role.values())) if by_role else set()

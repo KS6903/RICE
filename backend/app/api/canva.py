@@ -13,6 +13,7 @@ service/repository layers:
 The realtime WebSocket lives in ``api/canva_ws.py``; its ``ws_router`` is
 re-exported here so ``main.py`` keeps registering ``canva.ws_router`` unchanged.
 """
+
 import uuid
 
 from fastapi import APIRouter, Depends
@@ -48,14 +49,17 @@ from .canva_ws import ws_router  # noqa: F401 — re-exported for main.py regist
 # Roles allowed to mutate spatial state (move/stack/unstack)
 WRITE_ROLES = ("owner", "admin", "mill_operator")
 
-router = APIRouter(dependencies=[
-    Depends(require_feature("inventory")),
-    Depends(require_feature("canva_inventory")),
-    Depends(require_section_access("inventory")),
-])
+router = APIRouter(
+    dependencies=[
+        Depends(require_feature("inventory")),
+        Depends(require_feature("canva_inventory")),
+        Depends(require_section_access("inventory")),
+    ]
+)
 
 
 # ── DI factories ─────────────────────────────────────────────────────────────
+
 
 def get_layout_service(
     db: Session = Depends(get_db),
@@ -114,6 +118,7 @@ def get_aging_service(
 
 # ── Canva read ───────────────────────────────────────────────────────────────
 
+
 @router.get("/warehouses/{branch_id}/canva")
 def get_warehouse_canva(
     branch_id: uuid.UUID,
@@ -124,6 +129,7 @@ def get_warehouse_canva(
 
 
 # ── Spatial mutations (move / resize / stack / unstack) ──────────────────────
+
 
 @router.patch("/pallets/{pallet_id}/move")
 def move_pallet(
@@ -175,6 +181,7 @@ def list_movements(
 
 # ── FIFO dispatch recommender ────────────────────────────────────────────────
 
+
 @router.post("/dispatch/recommend")
 def recommend_fifo(
     body: DispatchRecommendRequest,
@@ -191,6 +198,7 @@ def dispatch_variety_options(
 
 
 # ── Aging report + rack/grid view ────────────────────────────────────────────
+
 
 @router.get("/warehouses/{branch_id}/aging-report")
 def aging_report(
@@ -210,6 +218,7 @@ def get_rack_view(
 
 
 # ── Warehouse builder: zone-types, layout patch, zone CRUD ───────────────────
+
 
 @router.get("/canva/zone-types")
 def list_zone_types(
@@ -261,6 +270,7 @@ def delete_zone(
 
 # ── Customer-specific stock ──────────────────────────────────────────────────
 
+
 @router.get("/canva/customers")
 def list_canva_customers(
     branch_id: uuid.UUID | None = None,
@@ -270,6 +280,7 @@ def list_canva_customers(
 
 
 # ── Multi-layout management ──────────────────────────────────────────────────
+
 
 @router.get("/branches/{branch_id}/layouts/trash")
 def list_trashed_layouts(

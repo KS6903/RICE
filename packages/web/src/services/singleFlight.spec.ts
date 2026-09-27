@@ -5,9 +5,10 @@ describe("createSingleFlight", () => {
   it("shares one refresh operation across concurrent callers", async () => {
     let release!: (value: string) => void;
     const task = vi.fn(
-      () => new Promise<string>((resolve) => {
-        release = resolve;
-      }),
+      () =>
+        new Promise<string>((resolve) => {
+          release = resolve;
+        }),
     );
     const refresh = createSingleFlight(task);
 

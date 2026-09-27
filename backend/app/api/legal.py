@@ -4,6 +4,7 @@ The document endpoints are deliberately unauthenticated: someone deciding
 whether to sign up has to be able to read the terms first, and a term nobody
 could read before agreeing is a weak term.
 """
+
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status

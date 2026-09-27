@@ -1,4 +1,5 @@
 """The lockfile check must pass matching pairs and catch every kind of drift."""
+
 from __future__ import annotations
 
 import importlib.util

@@ -53,15 +53,17 @@ export function useRealtimeCanva(layoutId: string | undefined, cacheKey: string)
       // httpOnly session cookie; the Electron renderer has no cookies and
       // cannot set WS request headers, so it offers the token as the
       // ["bearer", <token>] subprotocol pair (see backend api/canva_ws.py).
-      const host = window.location.protocol === "file:"
-        ? "127.0.0.1:8000"
-        : import.meta.env.DEV
-          ? `${window.location.hostname}:8000`
-          : window.location.host;
+      const host =
+        window.location.protocol === "file:"
+          ? "127.0.0.1:8000"
+          : import.meta.env.DEV
+            ? `${window.location.hostname}:8000`
+            : window.location.host;
       const url = `${proto}://${host}/ws/canva/${encodeURIComponent(layoutId)}`;
-      const ws = isElectronRuntime() && accessToken
-        ? new WebSocket(url, ["bearer", accessToken])
-        : new WebSocket(url);
+      const ws =
+        isElectronRuntime() && accessToken
+          ? new WebSocket(url, ["bearer", accessToken])
+          : new WebSocket(url);
       wsRef.current = ws;
 
       ws.onopen = () => {
@@ -75,7 +77,11 @@ export function useRealtimeCanva(layoutId: string | undefined, cacheKey: string)
 
       ws.onmessage = (e) => {
         let data: CanvaEvent;
-        try { data = JSON.parse(e.data); } catch { return; }
+        try {
+          data = JSON.parse(e.data);
+        } catch {
+          return;
+        }
 
         if (data.event === "hello" || data.event === "pong") return;
 
@@ -84,7 +90,7 @@ export function useRealtimeCanva(layoutId: string | undefined, cacheKey: string)
             if (!old) return old;
             return {
               ...old,
-              pallets: old.pallets.map((p: any) => p.id === updated.id ? updated : p),
+              pallets: old.pallets.map((p: any) => (p.id === updated.id ? updated : p)),
             };
           });
         };
@@ -93,7 +99,11 @@ export function useRealtimeCanva(layoutId: string | undefined, cacheKey: string)
         // Ignore events caused by ourselves — we already applied them optimistically
         if (payload.by_user_id && payload.by_user_id === userId) return;
 
-        if (data.event === "pallet.moved" || data.event === "pallet.stacked" || data.event === "pallet.unstacked") {
+        if (
+          data.event === "pallet.moved" ||
+          data.event === "pallet.stacked" ||
+          data.event === "pallet.unstacked"
+        ) {
           apply(payload.pallet);
           qc.invalidateQueries({ queryKey: ["pallet-movements", payload.pallet.id] });
         } else if (data.event === "zone.created") {
@@ -104,7 +114,10 @@ export function useRealtimeCanva(layoutId: string | undefined, cacheKey: string)
         } else if (data.event === "zone.updated") {
           qc.setQueryData(["canva", cacheKey], (old: any) => {
             if (!old) return old;
-            return { ...old, zones: old.zones.map((z: any) => z.id === payload.zone.id ? payload.zone : z) };
+            return {
+              ...old,
+              zones: old.zones.map((z: any) => (z.id === payload.zone.id ? payload.zone : z)),
+            };
           });
         } else if (data.event === "zone.deleted") {
           qc.setQueryData(["canva", cacheKey], (old: any) => {
@@ -120,7 +133,10 @@ export function useRealtimeCanva(layoutId: string | undefined, cacheKey: string)
       };
 
       ws.onclose = () => {
-        if (pingTimer.current) { window.clearInterval(pingTimer.current); pingTimer.current = null; }
+        if (pingTimer.current) {
+          window.clearInterval(pingTimer.current);
+          pingTimer.current = null;
+        }
         wsRef.current = null;
         setStatus("offline");
         if (closedManually.current) return;
@@ -128,7 +144,9 @@ export function useRealtimeCanva(layoutId: string | undefined, cacheKey: string)
         // doesn't reconnect forever and hammer the backend. Recovers on the next
         // token refresh (this effect re-runs with a fresh token and resets).
         if (reconnectAttempt.current >= MAX_RECONNECT_ATTEMPTS) {
-          console.warn("[canva] realtime gave up after repeated failures; will retry on token refresh.");
+          console.warn(
+            "[canva] realtime gave up after repeated failures; will retry on token refresh.",
+          );
           return;
         }
         // Exponential backoff: 1s, 2s, 4s, 8s, capped at 15s
@@ -146,7 +164,10 @@ export function useRealtimeCanva(layoutId: string | undefined, cacheKey: string)
 
     return () => {
       closedManually.current = true;
-      if (pingTimer.current) { window.clearInterval(pingTimer.current); pingTimer.current = null; }
+      if (pingTimer.current) {
+        window.clearInterval(pingTimer.current);
+        pingTimer.current = null;
+      }
       if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
         wsRef.current.close();
       }

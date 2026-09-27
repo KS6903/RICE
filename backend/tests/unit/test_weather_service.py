@@ -1,4 +1,5 @@
 """Unit tests for WeatherService pure helpers (Phase 3 — no network)."""
+
 from app.services.weather import WeatherService
 
 

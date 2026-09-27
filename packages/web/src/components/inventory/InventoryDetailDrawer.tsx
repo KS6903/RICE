@@ -1,7 +1,14 @@
 import { useEffect, useRef } from "react";
 import {
-  X as XIcon, Wheat, Package, Building2, ArrowRight, Warehouse,
-  Scale, Layers, Percent,
+  X as XIcon,
+  Wheat,
+  Package,
+  Building2,
+  ArrowRight,
+  Warehouse,
+  Scale,
+  Layers,
+  Percent,
 } from "lucide-react";
 
 export type DrawerItem = {
@@ -22,10 +29,28 @@ type Props = {
   onViewInWarehouse?: (branchId: string | null) => void;
 };
 
-const TYPE_THEME: Record<DrawerItem["type"], { dot: string; bar: string; accent: string; soft: string }> = {
-  palay:     { dot: "bg-amber-500",    bar: "from-amber-500 to-orange-400",       accent: "text-amber-600 dark:text-amber-300",     soft: "bg-amber-50 dark:bg-amber-950/30" },
-  milled:    { dot: "bg-emerald-500",  bar: "from-emerald-500 to-teal-400",       accent: "text-emerald-600 dark:text-emerald-300", soft: "bg-emerald-50 dark:bg-emerald-950/30" },
-  byproduct: { dot: "bg-slate-500",    bar: "from-slate-500 to-slate-400",        accent: "text-slate-600 dark:text-slate-300",     soft: "bg-slate-50 dark:bg-slate-800/40" },
+const TYPE_THEME: Record<
+  DrawerItem["type"],
+  { dot: string; bar: string; accent: string; soft: string }
+> = {
+  palay: {
+    dot: "bg-amber-500",
+    bar: "from-amber-500 to-orange-400",
+    accent: "text-amber-600 dark:text-amber-300",
+    soft: "bg-amber-50 dark:bg-amber-950/30",
+  },
+  milled: {
+    dot: "bg-emerald-500",
+    bar: "from-emerald-500 to-teal-400",
+    accent: "text-emerald-600 dark:text-emerald-300",
+    soft: "bg-emerald-50 dark:bg-emerald-950/30",
+  },
+  byproduct: {
+    dot: "bg-slate-500",
+    bar: "from-slate-500 to-slate-400",
+    accent: "text-slate-600 dark:text-slate-300",
+    soft: "bg-slate-50 dark:bg-slate-800/40",
+  },
 };
 
 const TYPE_ICON: Record<DrawerItem["type"], React.ElementType> = {
@@ -34,7 +59,12 @@ const TYPE_ICON: Record<DrawerItem["type"], React.ElementType> = {
   byproduct: Package,
 };
 
-export default function InventoryDetailDrawer({ item, totalKg, onClose, onViewInWarehouse }: Props) {
+export default function InventoryDetailDrawer({
+  item,
+  totalKg,
+  onClose,
+  onViewInWarehouse,
+}: Props) {
   const closeBtnRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
@@ -83,7 +113,9 @@ export default function InventoryDetailDrawer({ item, totalKg, onClose, onViewIn
         {/* Header */}
         <header className="flex items-start justify-between gap-3 p-5 border-b border-soft">
           <div className="flex items-start gap-3 min-w-0">
-            <span className={`shrink-0 inline-flex items-center justify-center w-10 h-10 rounded-xl ${theme.soft} ring-1 ring-inset ring-black/5 dark:ring-white/5`}>
+            <span
+              className={`shrink-0 inline-flex items-center justify-center w-10 h-10 rounded-xl ${theme.soft} ring-1 ring-inset ring-black/5 dark:ring-white/5`}
+            >
               <Icon size={20} className={theme.accent} />
             </span>
             <div className="min-w-0">
@@ -96,7 +128,9 @@ export default function InventoryDetailDrawer({ item, totalKg, onClose, onViewIn
               >
                 {item.variety}
               </h2>
-              <p className="text-xs text-muted mt-0.5">Grade <span className="font-semibold text-secondary">{item.grade}</span></p>
+              <p className="text-xs text-muted mt-0.5">
+                Grade <span className="font-semibold text-secondary">{item.grade}</span>
+              </p>
             </div>
           </div>
           <button
@@ -119,7 +153,9 @@ export default function InventoryDetailDrawer({ item, totalKg, onClose, onViewIn
               {item.quantity_kg.toLocaleString()}
               <span className="text-base font-medium text-muted ml-1.5">kg</span>
             </p>
-            <div className={`mt-3 h-2 rounded-full bg-slate-200/70 dark:bg-slate-700/60 overflow-hidden`}>
+            <div
+              className={`mt-3 h-2 rounded-full bg-slate-200/70 dark:bg-slate-700/60 overflow-hidden`}
+            >
               <div
                 role="progressbar"
                 aria-valuenow={Math.round(pct)}
@@ -132,7 +168,9 @@ export default function InventoryDetailDrawer({ item, totalKg, onClose, onViewIn
             <div className="mt-3 grid grid-cols-2 gap-3 text-xs">
               <div className="flex items-center gap-1.5 text-muted">
                 <Layers size={12} />
-                <span className="tabular-nums font-semibold text-secondary">{cavans.toFixed(1)}</span>
+                <span className="tabular-nums font-semibold text-secondary">
+                  {cavans.toFixed(1)}
+                </span>
                 <span>cavans</span>
               </div>
               <div className="flex items-center gap-1.5 text-muted justify-end">
@@ -145,9 +183,14 @@ export default function InventoryDetailDrawer({ item, totalKg, onClose, onViewIn
 
           {/* Pack-out calculator — only meaningful for sackable stock (palay + milled) */}
           {item.type !== "byproduct" && (
-            <div data-testid="pack-out-calculator" className="rounded-2xl ring-1 ring-soft overflow-hidden">
+            <div
+              data-testid="pack-out-calculator"
+              className="rounded-2xl ring-1 ring-soft overflow-hidden"
+            >
               <div className="px-4 py-2.5 bg-slate-50 dark:bg-slate-800/40 border-b border-soft">
-                <p className="text-[10px] font-bold uppercase tracking-wider text-muted">Pack-out estimate</p>
+                <p className="text-[10px] font-bold uppercase tracking-wider text-muted">
+                  Pack-out estimate
+                </p>
               </div>
               <div className="grid grid-cols-2 divide-x divide-soft">
                 {[
@@ -157,7 +200,10 @@ export default function InventoryDetailDrawer({ item, totalKg, onClose, onViewIn
                   const full = Math.floor(item.quantity_kg / kg);
                   const leftover = +(item.quantity_kg - full * kg).toFixed(2);
                   return (
-                    <div key={kg} className="px-4 py-3 text-center bg-white/30 dark:bg-slate-800/30">
+                    <div
+                      key={kg}
+                      className="px-4 py-3 text-center bg-white/30 dark:bg-slate-800/30"
+                    >
                       <p className="text-2xl font-extrabold text-primary tabular-nums leading-none">
                         {full.toLocaleString()}
                         <span className="text-xs font-medium text-muted ml-1">sacks</span>
@@ -198,7 +244,8 @@ export default function InventoryDetailDrawer({ item, totalKg, onClose, onViewIn
           </dl>
 
           <p className="text-[11px] text-muted leading-relaxed px-1">
-            Recent movements coming soon. For lot-level history, open the Warehouse view and select this stack.
+            Recent movements coming soon. For lot-level history, open the Warehouse view and select
+            this stack.
           </p>
         </div>
 
@@ -215,11 +262,7 @@ export default function InventoryDetailDrawer({ item, totalKg, onClose, onViewIn
               <ArrowRight size={14} className="ml-0.5" />
             </button>
           )}
-          <button
-            type="button"
-            onClick={onClose}
-            className="btn-secondary !py-2"
-          >
+          <button type="button" onClick={onClose} className="btn-secondary !py-2">
             Close
           </button>
         </footer>

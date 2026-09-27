@@ -1,4 +1,5 @@
 """Repository for the activity-log domain (Phase 3b)."""
+
 from __future__ import annotations
 
 import uuid

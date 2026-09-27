@@ -1,10 +1,16 @@
 import uuid
 from datetime import datetime
-from sqlalchemy import String, Boolean, Text, ForeignKey, DateTime
-from sqlalchemy.orm import mapped_column, Mapped, relationship
+from typing import TYPE_CHECKING
+
+from sqlalchemy import Boolean, DateTime, ForeignKey, String, Text
 from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+
 from ..core.database import Base
 from .base import TimestampMixin
+
+if TYPE_CHECKING:
+    from .user import User
 
 
 def _default_schema_name() -> str:
@@ -20,9 +26,7 @@ class Company(Base, TimestampMixin):
     # ── Tenant routing (schema-per-client) ────────────────────────────────────
     # Each client's domain data lives in its own PostgreSQL schema. The default
     # auto-populates on insert, so every company-creation path gets one for free.
-    schema_name: Mapped[str] = mapped_column(
-        String(63), unique=True, nullable=False, default=_default_schema_name
-    )
+    schema_name: Mapped[str] = mapped_column(String(63), unique=True, nullable=False, default=_default_schema_name)
     address: Mapped[str | None] = mapped_column(Text)
     tin: Mapped[str | None] = mapped_column(String(20))
     nfa_license_no: Mapped[str | None] = mapped_column(String(50))
@@ -53,11 +57,11 @@ class Branch(Base):
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     # Soft-delete: live when NULL, otherwise sitting in the 30-day trash until purged.
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
-    deleted_by: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"))
+    deleted_by: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL")
+    )
 
     company: Mapped["Company"] = relationship("Company", back_populates="branches")
     # foreign_keys is required because deleted_by also points at users.id,
     # giving SQLAlchemy two FK paths between branches and users.
-    users: Mapped[list["User"]] = relationship(
-        "User", back_populates="branch", foreign_keys="[User.branch_id]"
-    )
+    users: Mapped[list["User"]] = relationship("User", back_populates="branch", foreign_keys="[User.branch_id]")

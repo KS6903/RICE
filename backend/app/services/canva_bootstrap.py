@@ -8,6 +8,7 @@ These helpers ``add``/``flush`` only — they NEVER commit. The calling service
 wraps a bootstrap in ``BaseService.transaction()`` (matching the original, which
 committed exactly once after bootstrapping).
 """
+
 from __future__ import annotations
 
 import uuid
@@ -29,9 +30,9 @@ DEFAULT_LAYOUT_HEIGHT_M = 120.0
 
 WAREHOUSE_SIZE_PRESETS: dict[str, dict] = {
     # capacity_label is shown to users alongside the dimensions
-    "small":      {"width_m": 15.0, "height_m":  35.0, "capacity_label": "1–2 t/h"},
-    "medium":     {"width_m": 18.0, "height_m":  60.0, "capacity_label": "3–5 t/h"},
-    "large":      {"width_m": 24.0, "height_m":  80.0, "capacity_label": "6–10 t/h"},
+    "small": {"width_m": 15.0, "height_m": 35.0, "capacity_label": "1–2 t/h"},
+    "medium": {"width_m": 18.0, "height_m": 60.0, "capacity_label": "3–5 t/h"},
+    "large": {"width_m": 24.0, "height_m": 80.0, "capacity_label": "6–10 t/h"},
     "commercial": {"width_m": 30.0, "height_m": 120.0, "capacity_label": ">10 t/h"},
 }
 
@@ -50,17 +51,17 @@ def compute_default_zones(width_m: float, height_m: float) -> list[tuple]:
     Coords are clamped to fit inside `width_m × height_m` with a 1 m margin.
     """
     pad = 1.0
-    w = max(width_m - 2 * pad, 1.0)   # usable width
+    w = max(width_m - 2 * pad, 1.0)  # usable width
     h = max(height_m - 2 * pad, 1.0)  # usable depth
 
     # Front-to-back band proportions of the usable depth
     BAND = [
-        ("paddy_intake",  "Paddy Intake",   0.10, "#fbbf24"),
-        ("drying",        "Drying Area",    0.08, "#f59e0b"),
-        ("milling",       "Milling Floor",  0.18, "#94a3b8"),
-        ("storage_split", None,             0.30, None),
-        ("general",       "General Storage", 0.25, "#a78bfa"),
-        ("shipping_dock", "Shipping Dock",  0.09, "#ec4899"),
+        ("paddy_intake", "Paddy Intake", 0.10, "#fbbf24"),
+        ("drying", "Drying Area", 0.08, "#f59e0b"),
+        ("milling", "Milling Floor", 0.18, "#94a3b8"),
+        ("storage_split", None, 0.30, None),
+        ("general", "General Storage", 0.25, "#a78bfa"),
+        ("shipping_dock", "Shipping Dock", 0.09, "#ec4899"),
     ]
     out: list[tuple] = []
     y = pad
@@ -68,8 +69,8 @@ def compute_default_zones(width_m: float, height_m: float) -> list[tuple]:
         band_h = round(h * frac, 2)
         if ztype == "storage_split":
             half = round(w / 2 - 0.5, 2)
-            out.append(("premium_storage",  "Premium Storage",   pad,             y, half, band_h, "#10b981"))
-            out.append(("customer_storage", "Customer Holding",  pad + half + 1,  y, half, band_h, "#3b82f6"))
+            out.append(("premium_storage", "Premium Storage", pad, y, half, band_h, "#10b981"))
+            out.append(("customer_storage", "Customer Holding", pad + half + 1, y, half, band_h, "#3b82f6"))
         else:
             out.append((ztype, name, pad, y, w, band_h, color))
         y = round(y + band_h, 2)
@@ -113,14 +114,18 @@ def bootstrap_layout(db: Session, branch: Branch, name: str | None = None, is_de
     db.add(layout)
     db.flush()
     for ztype, name, x, y, w, h, color in DEFAULT_ZONES:
-        db.add(WarehouseZone(
-            layout_id=layout.id,
-            zone_type=ztype,
-            name=name,
-            x_m=Decimal(str(x)), y_m=Decimal(str(y)),
-            width_m=Decimal(str(w)), height_m=Decimal(str(h)),
-            color_hex=color,
-        ))
+        db.add(
+            WarehouseZone(
+                layout_id=layout.id,
+                zone_type=ztype,
+                name=name,
+                x_m=Decimal(str(x)),
+                y_m=Decimal(str(y)),
+                width_m=Decimal(str(w)),
+                height_m=Decimal(str(h)),
+                color_hex=color,
+            )
+        )
     db.flush()
     return layout
 
@@ -199,20 +204,22 @@ def bootstrap_pallets_from_inventory(db: Session, layout: WarehouseLayout) -> in
             best_before = compute_best_before(assumed_milling, moisture)
             status_now = aging_status(assumed_milling, moisture, today)
 
-            db.add(RiceBatch(
-                company_id=layout.company_id,
-                pallet_id=pallet.id,
-                variety_id=inv.variety_id,
-                client_type="mill_own",
-                client_name="Mill stock (auto-imported)",
-                sack_count=sacks,
-                weight_kg=Decimal(str(actual_kg)),
-                moisture_pct=moisture,
-                milling_date=assumed_milling,
-                best_before_date=best_before,
-                status=status_now,
-                notes=f"Auto-generated from {inv.grade_name or 'inventory'} on {today.isoformat()}",
-            ))
+            db.add(
+                RiceBatch(
+                    company_id=layout.company_id,
+                    pallet_id=pallet.id,
+                    variety_id=inv.variety_id,
+                    client_type="mill_own",
+                    client_name="Mill stock (auto-imported)",
+                    sack_count=sacks,
+                    weight_kg=Decimal(str(actual_kg)),
+                    moisture_pct=moisture,
+                    milling_date=assumed_milling,
+                    best_before_date=best_before,
+                    status=status_now,
+                    notes=f"Auto-generated from {inv.grade_name or 'inventory'} on {today.isoformat()}",
+                )
+            )
             slot += 1
             created += 1
         if remaining > 0.01:

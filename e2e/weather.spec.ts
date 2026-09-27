@@ -42,11 +42,17 @@ async function addFavorite(page: Page, query: string): Promise<string> {
 
 /** Wipe any leftover favorites for the test user so each spec starts clean. */
 async function purgeFavorites(request: APIRequestContext, token: string) {
-  const res = await request.get(`${BACKEND}/api/locations`, { headers: { Authorization: `Bearer ${token}` } });
+  const res = await request.get(`${BACKEND}/api/locations`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
   if (!res.ok()) return;
   const list: { id: string }[] = await res.json();
   await Promise.all(
-    list.map((l) => request.delete(`${BACKEND}/api/locations/${l.id}`, { headers: { Authorization: `Bearer ${token}` } })),
+    list.map((l) =>
+      request.delete(`${BACKEND}/api/locations/${l.id}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      }),
+    ),
   );
 }
 
@@ -65,31 +71,44 @@ test.describe("Weather + saved locations — header dropdown, search, favorites"
 
     for (const path of ["/inventory", "/sales", "/dispatch", "/settings"]) {
       await page.goto(path);
-      await expect(page.getByTestId("location-picker-trigger"), `picker missing on ${path}`).toBeVisible();
+      await expect(
+        page.getByTestId("location-picker-trigger"),
+        `picker missing on ${path}`,
+      ).toBeVisible();
     }
   });
 
-  test("Search a city, save it as a favorite, and have its weather follow next login", async ({ page, context, request }) => {
+  test("Search a city, save it as a favorite, and have its weather follow next login", async ({
+    page,
+    context,
+    request,
+  }) => {
     await page.goto("/");
     const label = await addFavorite(page, "Manila");
     expect(label).toMatch(/manila/i);
 
     // The header pill should now show the saved label
     const trigger = page.getByTestId("location-picker-trigger");
-    await expect(trigger.getByTestId("weather-location")).toContainText(/manila/i, { timeout: 10_000 });
+    await expect(trigger.getByTestId("weather-location")).toContainText(/manila/i, {
+      timeout: 10_000,
+    });
 
     // Logout + log back in — the favorite persists server-side
     await context.clearCookies();
     await page.evaluate(() => localStorage.clear());
     await login(page);
     await page.goto("/");
-    await expect(page.getByTestId("location-picker-trigger").getByTestId("weather-location"))
-      .toContainText(/manila/i, { timeout: 15_000 });
+    await expect(
+      page.getByTestId("location-picker-trigger").getByTestId("weather-location"),
+    ).toContainText(/manila/i, { timeout: 15_000 });
 
     await purgeFavorites(request, await apiToken(request));
   });
 
-  test("Saving multiple favorites and switching default updates the widget", async ({ page, request }) => {
+  test("Saving multiple favorites and switching default updates the widget", async ({
+    page,
+    request,
+  }) => {
     await page.goto("/");
     await addFavorite(page, "Manila");
     await addFavorite(page, "Cebu");
@@ -107,8 +126,9 @@ test.describe("Weather + saved locations — header dropdown, search, favorites"
 
     // Manila is now default — weather pill reflects that
     await page.keyboard.press("Escape");
-    await expect(page.getByTestId("location-picker-trigger").getByTestId("weather-location"))
-      .toContainText(/manila/i, { timeout: 10_000 });
+    await expect(
+      page.getByTestId("location-picker-trigger").getByTestId("weather-location"),
+    ).toContainText(/manila/i, { timeout: 10_000 });
 
     await purgeFavorites(request, await apiToken(request));
   });
@@ -130,7 +150,8 @@ test.describe("Weather + saved locations — header dropdown, search, favorites"
     const token = await apiToken(request);
 
     const r = await request.get(
-      "http://localhost:8000/api/locations/search?q=" + encodeURIComponent("<script>alert(1)</script>"),
+      "http://localhost:8000/api/locations/search?q=" +
+        encodeURIComponent("<script>alert(1)</script>"),
       { headers: { Authorization: `Bearer ${token}` } },
     );
     expect(r.status()).toBe(400);

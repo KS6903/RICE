@@ -5,6 +5,7 @@ and validated against this schema before ever reaching a client. A field that
 doesn't fit (wrong type, too long, an unrecognized verdict) fails the whole
 advisory rather than passing through partially-shaped data.
 """
+
 from __future__ import annotations
 
 from typing import Literal

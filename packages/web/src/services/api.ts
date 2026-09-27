@@ -120,11 +120,15 @@ export async function logoutSession(credentials: LogoutCredentials): Promise<voi
     headers.Authorization = `Bearer ${credentials.accessToken}`;
   }
   if (isElectronRuntime()) headers["X-Client-Type"] = "bearer";
-  await axios.post("/api/auth/logout", {}, {
-    withCredentials: true,
-    headers,
-    timeout: 5_000,
-  });
+  await axios.post(
+    "/api/auth/logout",
+    {},
+    {
+      withCredentials: true,
+      headers,
+      timeout: 5_000,
+    },
+  );
 }
 
 export default api;

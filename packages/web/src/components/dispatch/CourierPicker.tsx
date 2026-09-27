@@ -41,7 +41,8 @@ export default function CourierPicker({ agents, millers, current, onPick, disabl
                 : "text-secondary hover:text-primary"
             }`}
           >
-            {k === "agent" ? "Agents" : "Millers"} ({k === "agent" ? agents.length : millers.length})
+            {k === "agent" ? "Agents" : "Millers"} ({k === "agent" ? agents.length : millers.length}
+            )
           </button>
         ))}
       </div>
@@ -49,7 +50,8 @@ export default function CourierPicker({ agents, millers, current, onPick, disabl
       <div className="max-h-64 overflow-y-auto rounded-lg ring-1 ring-soft divide-y divide-slate-100 dark:divide-slate-800">
         {list.length === 0 && (
           <p className="text-xs text-muted text-center py-4 italic">
-            No {tab === "agent" ? "agents" : "millers"} yet. Add one from the {tab === "agent" ? "Agents" : "Millers"} tab.
+            No {tab === "agent" ? "agents" : "millers"} yet. Add one from the{" "}
+            {tab === "agent" ? "Agents" : "Millers"} tab.
           </p>
         )}
         {list.map((p) => {

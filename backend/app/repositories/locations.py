@@ -1,4 +1,5 @@
 """Repository for saved user locations (Phase 3). Scoped by user_id, not company."""
+
 from __future__ import annotations
 
 import uuid
@@ -28,9 +29,7 @@ class UserLocationRepository(BaseRepository[UserLocation]):
         return loc
 
     def find_by_label(self, user_id: uuid.UUID, label: str) -> UserLocation | None:
-        stmt = select(UserLocation).where(
-            UserLocation.user_id == user_id, UserLocation.label == label
-        )
+        stmt = select(UserLocation).where(UserLocation.user_id == user_id, UserLocation.label == label)
         return self.db.execute(stmt).scalars().first()
 
     def has_any(self, user_id: uuid.UUID) -> bool:
@@ -44,9 +43,5 @@ class UserLocationRepository(BaseRepository[UserLocation]):
         self.db.execute(stmt.values(is_default=False))
 
     def oldest_for_user(self, user_id: uuid.UUID) -> UserLocation | None:
-        stmt = (
-            select(UserLocation)
-            .where(UserLocation.user_id == user_id)
-            .order_by(UserLocation.created_at.asc())
-        )
+        stmt = select(UserLocation).where(UserLocation.user_id == user_id).order_by(UserLocation.created_at.asc())
         return self.db.execute(stmt).scalars().first()

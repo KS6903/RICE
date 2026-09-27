@@ -6,6 +6,7 @@ a verbatim move of the WS code out of the old ``api/canva.py`` monolith. A
 dedicated router omits the ``require_feature`` HTTP dependency (which forces
 OAuth2PasswordBearer-style auth); the plan gate is enforced inline instead.
 """
+
 import asyncio
 import uuid
 
@@ -112,11 +113,7 @@ async def canva_ws(websocket: WebSocket, layout_id: uuid.UUID):
         if mfa_enrollment_pending(user):
             await websocket.close(code=http_status.WS_1008_POLICY_VIOLATION, reason="MFA setup required")
             return
-        if (
-            settings.REQUIRE_EMAIL_VERIFICATION
-            and user.email
-            and not user.email_verified
-        ):
+        if settings.REQUIRE_EMAIL_VERIFICATION and user.email and not user.email_verified:
             await websocket.close(code=http_status.WS_1008_POLICY_VIOLATION, reason="Email verification required")
             return
 
@@ -128,7 +125,9 @@ async def canva_ws(websocket: WebSocket, layout_id: uuid.UUID):
         # Plan gate: only Pro+ tenants get realtime canva
         features = get_user_features(user, db)
         if "*" not in features and "canva_inventory" not in features:
-            await websocket.close(code=http_status.WS_1008_POLICY_VIOLATION, reason="Plan does not include canva_inventory")
+            await websocket.close(
+                code=http_status.WS_1008_POLICY_VIOLATION, reason="Plan does not include canva_inventory"
+            )
             return
 
         layout = db.get(WarehouseLayout, layout_id)
@@ -143,9 +142,7 @@ async def canva_ws(websocket: WebSocket, layout_id: uuid.UUID):
             # back or its WebSocket API aborts the otherwise-open connection.
             subprotocol=_WS_BEARER_PROTOCOL if proto_token else None,
         )
-        await websocket.send_text(
-            '{"event":"hello","payload":{"layout_id":"' + str(layout_id) + '","ok":true}}'
-        )
+        await websocket.send_text('{"event":"hello","payload":{"layout_id":"' + str(layout_id) + '","ok":true}}')
 
         try:
             # Keep the connection alive. We don't expect client→server messages
@@ -154,6 +151,7 @@ async def canva_ws(websocket: WebSocket, layout_id: uuid.UUID):
             while True:
                 # JWT exp is epoch time, so calculate against UTC wall clock.
                 from datetime import datetime, timezone
+
                 remaining = float(payload["exp"]) - datetime.now(timezone.utc).timestamp()
                 if remaining <= 0:
                     await websocket.close(code=http_status.WS_1008_POLICY_VIOLATION, reason="Token expired")

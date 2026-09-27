@@ -1,4 +1,5 @@
 """Repositories for the costs/expenses domain (Phase 3d)."""
+
 from __future__ import annotations
 
 import uuid
@@ -20,9 +21,7 @@ class ExpenseCategoryRepository(BaseRepository[ExpenseCategory]):
         return self.db.execute(stmt.order_by(ExpenseCategory.name)).scalars().all()
 
     def get_by_name(self, company_id: uuid.UUID, name: str) -> ExpenseCategory | None:
-        stmt = select(ExpenseCategory).where(
-            ExpenseCategory.company_id == company_id, ExpenseCategory.name == name
-        )
+        stmt = select(ExpenseCategory).where(ExpenseCategory.company_id == company_id, ExpenseCategory.name == name)
         return self.db.execute(stmt).scalars().first()
 
 

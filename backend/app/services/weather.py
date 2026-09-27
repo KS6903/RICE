@@ -7,6 +7,7 @@ caches responses (Redis-shared + per-process in-memory). All upstream/security
 behavior is preserved verbatim. 502s on upstream failure are raised as
 HTTPException since this is an HTTP proxy with no DB transaction to own.
 """
+
 from __future__ import annotations
 
 import ipaddress
@@ -271,9 +272,7 @@ class WeatherService:
             )
         data = r.json()
         cond_type = (data.get("weatherCondition") or {}).get("type") or "CLEAR"
-        cond_code, cond_label = self._GOOGLE_COND_MAP.get(
-            cond_type, ("unknown", cond_type.replace("_", " ").title())
-        )
+        cond_code, cond_label = self._GOOGLE_COND_MAP.get(cond_type, ("unknown", cond_type.replace("_", " ").title()))
         return {
             "provider": "google",
             "temp_c": (data.get("temperature") or {}).get("degrees"),
@@ -367,14 +366,16 @@ class WeatherService:
             cond_code, cond_label = self._OPEN_METEO_COND_MAP.get(
                 int(codes[i]) if i < len(codes) else 0, ("unknown", "Unknown")
             )
-            hourly.append({
-                "time": times[i],
-                "temp_c": temps[i] if i < len(temps) else None,
-                "condition": cond_label,
-                "condition_code": cond_code,
-                "precip_pct": precips[i] if i < len(precips) else None,
-                "is_daytime": bool(is_days[i]) if i < len(is_days) else True,
-            })
+            hourly.append(
+                {
+                    "time": times[i],
+                    "temp_c": temps[i] if i < len(temps) else None,
+                    "condition": cond_label,
+                    "condition_code": cond_code,
+                    "precip_pct": precips[i] if i < len(precips) else None,
+                    "is_daytime": bool(is_days[i]) if i < len(is_days) else True,
+                }
+            )
 
         # ── Daily: the 7-day outlook ──
         daily_src = data.get("daily") or {}
@@ -388,14 +389,16 @@ class WeatherService:
             cond_code, cond_label = self._OPEN_METEO_COND_MAP.get(
                 int(d_codes[i]) if i < len(d_codes) else 0, ("unknown", "Unknown")
             )
-            daily.append({
-                "date": day,
-                "temp_max_c": d_max[i] if i < len(d_max) else None,
-                "temp_min_c": d_min[i] if i < len(d_min) else None,
-                "condition": cond_label,
-                "condition_code": cond_code,
-                "precip_pct": d_precip[i] if i < len(d_precip) else None,
-            })
+            daily.append(
+                {
+                    "date": day,
+                    "temp_max_c": d_max[i] if i < len(d_max) else None,
+                    "temp_min_c": d_min[i] if i < len(d_min) else None,
+                    "condition": cond_label,
+                    "condition_code": cond_code,
+                    "precip_pct": d_precip[i] if i < len(d_precip) else None,
+                }
+            )
 
         return {
             "provider": "open-meteo",

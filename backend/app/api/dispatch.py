@@ -3,6 +3,7 @@
 Gated by the `sales` feature. Agents, millers, palette, dispatch order list, and
 courier assignment / delivery marking.
 """
+
 import uuid
 
 from fastapi import APIRouter, Depends, status
@@ -22,6 +23,7 @@ from ..services.dispatch_service import DispatchService
 
 router = APIRouter(dependencies=[Depends(require_feature("sales"))])
 
+
 def get_dispatch_service(
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user),
@@ -37,12 +39,17 @@ def get_dispatch_service(
 
 # ── Agents ──────────────────────────────────────────────────────────────────
 
+
 @router.get("/agents", dependencies=[Depends(require_section_access("operators"))])
 def list_agents(include_inactive: bool = False, svc: DispatchService = Depends(get_dispatch_service)):
     return svc.list_agents(include_inactive=include_inactive)
 
 
-@router.post("/agents", status_code=status.HTTP_201_CREATED, dependencies=[Depends(require_section_access("operators", write=True))])
+@router.post(
+    "/agents",
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(require_section_access("operators", write=True))],
+)
 def create_agent(body: AgentCreate, svc: DispatchService = Depends(get_dispatch_service)):
     return svc.create_agent(body)
 
@@ -59,12 +66,17 @@ def delete_agent(agent_id: uuid.UUID, svc: DispatchService = Depends(get_dispatc
 
 # ── Millers ─────────────────────────────────────────────────────────────────
 
+
 @router.get("/millers", dependencies=[Depends(require_section_access("operators"))])
 def list_millers(include_inactive: bool = False, svc: DispatchService = Depends(get_dispatch_service)):
     return svc.list_millers(include_inactive=include_inactive)
 
 
-@router.post("/millers", status_code=status.HTTP_201_CREATED, dependencies=[Depends(require_section_access("operators", write=True))])
+@router.post(
+    "/millers",
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(require_section_access("operators", write=True))],
+)
 def create_miller(body: MillerCreate, svc: DispatchService = Depends(get_dispatch_service)):
     return svc.create_miller(body)
 
@@ -81,6 +93,7 @@ def delete_miller(miller_id: uuid.UUID, svc: DispatchService = Depends(get_dispa
 
 # ── Palette + dispatch orders ────────────────────────────────────────────────
 
+
 @router.get("/dispatch/palette", dependencies=[Depends(require_section_access("dispatch"))])
 def get_palette(svc: DispatchService = Depends(get_dispatch_service)):
     return svc.get_palette()
@@ -91,11 +104,15 @@ def list_dispatch_orders(status_filter: str | None = None, svc: DispatchService 
     return svc.list_dispatch_orders(status_filter)
 
 
-@router.patch("/sales-orders/{order_id}/assign-courier", dependencies=[Depends(require_section_access("dispatch", write=True))])
+@router.patch(
+    "/sales-orders/{order_id}/assign-courier", dependencies=[Depends(require_section_access("dispatch", write=True))]
+)
 def assign_courier(order_id: uuid.UUID, body: CourierAssign, svc: DispatchService = Depends(get_dispatch_service)):
     return svc.assign_courier(order_id, body)
 
 
-@router.patch("/sales-orders/{order_id}/mark-delivered", dependencies=[Depends(require_section_access("dispatch", write=True))])
+@router.patch(
+    "/sales-orders/{order_id}/mark-delivered", dependencies=[Depends(require_section_access("dispatch", write=True))]
+)
 def mark_delivered(order_id: uuid.UUID, svc: DispatchService = Depends(get_dispatch_service)):
     return svc.mark_delivered(order_id)

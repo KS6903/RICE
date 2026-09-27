@@ -4,7 +4,12 @@ import { InventoryService } from "./InventoryService";
 describe("InventoryService (DI-mocked http)", () => {
   it("builds branch-scoped URLs only when a branch is given", async () => {
     const calls: string[] = [];
-    const fakeHttp = { get: (url: string) => { calls.push(url); return Promise.resolve({ data: [] }); } } as any;
+    const fakeHttp = {
+      get: (url: string) => {
+        calls.push(url);
+        return Promise.resolve({ data: [] });
+      },
+    } as any;
     const svc = new InventoryService(fakeHttp);
 
     await svc.getMilledRice("b1");

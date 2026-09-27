@@ -6,6 +6,7 @@ milling-recovery percentage computed against total input. The old module helpers
 (generate_batch_no, deduct_palay_inventory, apply_outputs_to_inventory) are folded
 in as private methods. The service owns the transaction; repositories flush only.
 """
+
 from __future__ import annotations
 
 import uuid
@@ -58,9 +59,7 @@ class MillingService(BaseService):
     # ── equipment ─────────────────────────────────────────────────────────────
 
     def list_equipment(self, *, include_inactive: bool = False) -> Sequence[MillingEquipment]:
-        return self.equipment.list_for_company(
-            self.current_user.company_id, include_inactive=include_inactive
-        )
+        return self.equipment.list_for_company(self.current_user.company_id, include_inactive=include_inactive)
 
     def create_equipment(self, data) -> MillingEquipment:
         eq = MillingEquipment(
@@ -198,8 +197,11 @@ class MillingService(BaseService):
             inv = self.milled.find_bucket(company_id, branch_id, out.variety_id, grade_name)
             if not inv:
                 inv = MilledRiceInventory(
-                    company_id=company_id, branch_id=branch_id,
-                    variety_id=out.variety_id, grade_name=grade_name, quantity_kg=Decimal("0"),
+                    company_id=company_id,
+                    branch_id=branch_id,
+                    variety_id=out.variety_id,
+                    grade_name=grade_name,
+                    quantity_kg=Decimal("0"),
                 )
                 self.db.add(inv)
                 self.db.flush()
@@ -208,8 +210,10 @@ class MillingService(BaseService):
             inv = self.byproducts.find_bucket(company_id, branch_id, out.output_type)
             if not inv:
                 inv = ByproductInventory(
-                    company_id=company_id, branch_id=branch_id,
-                    byproduct_type=out.output_type, quantity_kg=Decimal("0"),
+                    company_id=company_id,
+                    branch_id=branch_id,
+                    byproduct_type=out.output_type,
+                    quantity_kg=Decimal("0"),
                 )
                 self.db.add(inv)
                 self.db.flush()

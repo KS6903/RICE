@@ -4,6 +4,7 @@ Used for per-user TOTP seeds: a database dump alone must not let an attacker
 mint valid MFA codes. Production uses a dedicated encryption key so compromise
 or rotation of the JWT signing key does not also expose/invalidate MFA seeds.
 """
+
 from __future__ import annotations
 
 import base64

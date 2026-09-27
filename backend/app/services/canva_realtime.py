@@ -4,6 +4,7 @@ Single-process, single-instance — fine for Phase 3 dev. For horizontal scaling
 swap _ConnectionManager for a Redis-backed implementation without touching
 the call sites in api/canva.py.
 """
+
 import asyncio
 import json
 import uuid
@@ -21,9 +22,7 @@ class CanvaConnectionManager:
         self._subs: dict[uuid.UUID, set[WebSocket]] = defaultdict(set)
         self._lock = asyncio.Lock()
 
-    async def connect(
-        self, layout_id: uuid.UUID, ws: WebSocket, subprotocol: str | None = None
-    ) -> None:
+    async def connect(self, layout_id: uuid.UUID, ws: WebSocket, subprotocol: str | None = None) -> None:
         await ws.accept(subprotocol=subprotocol)
         async with self._lock:
             self._subs[layout_id].add(ws)
@@ -86,9 +85,7 @@ class CanvaConnectionManager:
         if loop is None or loop.is_closed():
             return
         with suppress(Exception):
-            asyncio.run_coroutine_threadsafe(
-                self.broadcast(layout_id, event, payload), loop
-            )
+            asyncio.run_coroutine_threadsafe(self.broadcast(layout_id, event, payload), loop)
 
 
 manager = CanvaConnectionManager()

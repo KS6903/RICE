@@ -1,4 +1,5 @@
 """Subscription helpers shared across signup, auth, admin, and billing."""
+
 import uuid
 from datetime import datetime, timezone
 
@@ -86,6 +87,7 @@ def ensure_subscription(db: Session, company_id: uuid.UUID) -> Subscription | No
         return None
     from datetime import time as dt_time
     from datetime import timedelta
+
     now = datetime.now(timezone.utc)
     expiry_day = (now + timedelta(days=30)).date()
     expires_at = datetime.combine(expiry_day, dt_time(23, 59, 59), tzinfo=timezone.utc)

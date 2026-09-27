@@ -178,16 +178,21 @@ def test_token_without_valid_schema_is_rejected(client, seed_owner, db_session):
     from app.models.auth_session import AuthSession
 
     family_id = uuid.uuid4()
-    db_session.add(AuthSession(
-        family_id=family_id,
-        user_id=seed_owner.id,
-        expires_at=datetime.now(timezone.utc) + timedelta(hours=1),
-    ))
+    db_session.add(
+        AuthSession(
+            family_id=family_id,
+            user_id=seed_owner.id,
+            expires_at=datetime.now(timezone.utc) + timedelta(hours=1),
+        )
+    )
     db_session.commit()
 
-    base = {"sub": str(seed_owner.id), "company_id": str(seed_owner.company_id),
-            "sid": str(family_id),
-            "is_platform_admin": False}
+    base = {
+        "sub": str(seed_owner.id),
+        "company_id": str(seed_owner.company_id),
+        "sid": str(family_id),
+        "is_platform_admin": False,
+    }
 
     # Control: a proper token with a valid schema is accepted.
     good = create_access_token({**base, "schema": seed_owner.company.schema_name})
@@ -204,21 +209,21 @@ def test_token_without_valid_schema_is_rejected(client, seed_owner, db_session):
     # A valid-looking schema still fails unless it is exactly the authenticated
     # user's company's assigned schema.
     other_tenant = create_access_token({**base, "schema": f"client_{'0' * 32}"})
-    assert client.get(
-        "/api/auth/me", headers={"Authorization": f"Bearer {other_tenant}"}
-    ).status_code == 401
+    assert client.get("/api/auth/me", headers={"Authorization": f"Bearer {other_tenant}"}).status_code == 401
 
 
 def test_inactive_company_invalidates_existing_access_token(client, seed_owner, db_session):
     from app.core.security import create_access_token
 
-    token = create_access_token({
-        "sub": str(seed_owner.id),
-        "company_id": str(seed_owner.company_id),
-        "schema": seed_owner.company.schema_name,
-        "role": "owner",
-        "is_platform_admin": False,
-    })
+    token = create_access_token(
+        {
+            "sub": str(seed_owner.id),
+            "company_id": str(seed_owner.company_id),
+            "schema": seed_owner.company.schema_name,
+            "role": "owner",
+            "is_platform_admin": False,
+        }
+    )
     seed_owner.company.is_active = False
     db_session.flush()
 

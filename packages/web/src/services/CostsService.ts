@@ -31,7 +31,9 @@ export class CostsService {
   }
 
   createExpense(form: ExpenseForm): Promise<any> {
-    return this.http.post("/costs/expenses", CostsService.toExpensePayload(form)).then((r) => r.data);
+    return this.http
+      .post("/costs/expenses", CostsService.toExpensePayload(form))
+      .then((r) => r.data);
   }
 }
 

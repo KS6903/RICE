@@ -49,7 +49,14 @@ def test_multiple_logins_listed_then_revoke_one(client, seed_owner):
     # Revoke the other (device A).
     assert client.delete(f"/api/auth/sessions/{other_id}", headers=_auth(b)).status_code == 200
     # A's refresh token no longer works…
-    assert client.post("/api/auth/refresh", json={"refresh_token": a["refresh_token"]}, headers={**NATIVE_HEADER, "User-Agent": "Electron/Test"}).status_code == 401
+    assert (
+        client.post(
+            "/api/auth/refresh",
+            json={"refresh_token": a["refresh_token"]},
+            headers={**NATIVE_HEADER, "User-Agent": "Electron/Test"},
+        ).status_code
+        == 401
+    )
     # …and only B remains listed.
     remaining = client.get("/api/auth/sessions", headers=_auth(b)).json()
     assert len(remaining) == 1 and remaining[0]["current"] is True
@@ -67,8 +74,22 @@ def test_revoke_others_keeps_current(client, seed_owner):
 
     # Current (B) still works; A is gone.
     assert client.get("/api/auth/sessions", headers=_auth(b)).status_code == 200
-    assert client.post("/api/auth/refresh", json={"refresh_token": a["refresh_token"]}, headers={**NATIVE_HEADER, "User-Agent": "Electron/Test"}).status_code == 401
-    assert client.post("/api/auth/refresh", json={"refresh_token": b["refresh_token"]}, headers={**NATIVE_HEADER, "User-Agent": "Electron/Test"}).status_code == 200
+    assert (
+        client.post(
+            "/api/auth/refresh",
+            json={"refresh_token": a["refresh_token"]},
+            headers={**NATIVE_HEADER, "User-Agent": "Electron/Test"},
+        ).status_code
+        == 401
+    )
+    assert (
+        client.post(
+            "/api/auth/refresh",
+            json={"refresh_token": b["refresh_token"]},
+            headers={**NATIVE_HEADER, "User-Agent": "Electron/Test"},
+        ).status_code
+        == 200
+    )
 
 
 def test_cannot_revoke_another_users_session(client, seed_owner, db_session):
@@ -79,10 +100,14 @@ def test_cannot_revoke_another_users_session(client, seed_owner, db_session):
 
     # A second real user, reusing the seeded owner's role/company.
     attacker = User(
-        company_id=seed_owner.company_id, branch_id=seed_owner.branch_id,
-        username="attacker", email="attacker@test.local",
-        password_hash=hash_password("Password123"), full_name="Attacker",
-        role_id=seed_owner.role_id, is_active=True,
+        company_id=seed_owner.company_id,
+        branch_id=seed_owner.branch_id,
+        username="attacker",
+        email="attacker@test.local",
+        password_hash=hash_password("Password123"),
+        full_name="Attacker",
+        role_id=seed_owner.role_id,
+        is_active=True,
     )
     db_session.add(attacker)
     db_session.flush()
@@ -93,7 +118,8 @@ def test_cannot_revoke_another_users_session(client, seed_owner, db_session):
     victim_sid = jwt.decode(victim["access_token"], options={"verify_signature": False})["sid"]
 
     atk = client.post(
-        "/api/auth/login", data={"username": "attacker", "password": "Password123"},
+        "/api/auth/login",
+        data={"username": "attacker", "password": "Password123"},
         headers={**NATIVE_HEADER, "User-Agent": "Electron/Test"},
     ).json()
     client.cookies.clear()
@@ -102,4 +128,11 @@ def test_cannot_revoke_another_users_session(client, seed_owner, db_session):
     # never forbidden — doesn't confirm the id exists).
     assert client.delete(f"/api/auth/sessions/{victim_sid}", headers=_auth(atk)).status_code == 404
     # The victim's session is untouched.
-    assert client.post("/api/auth/refresh", json={"refresh_token": victim["refresh_token"]}, headers={**NATIVE_HEADER, "User-Agent": "Electron/Test"}).status_code == 200
+    assert (
+        client.post(
+            "/api/auth/refresh",
+            json={"refresh_token": victim["refresh_token"]},
+            headers={**NATIVE_HEADER, "User-Agent": "Electron/Test"},
+        ).status_code
+        == 200
+    )

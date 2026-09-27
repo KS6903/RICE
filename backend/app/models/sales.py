@@ -1,11 +1,19 @@
 import uuid
-from datetime import datetime, date
+from datetime import date, datetime
 from decimal import Decimal
-from sqlalchemy import String, Boolean, Numeric, Text, Date, DateTime, ForeignKey
-from sqlalchemy.orm import mapped_column, Mapped, relationship
+from typing import TYPE_CHECKING
+
+from sqlalchemy import Boolean, Date, DateTime, ForeignKey, Numeric, String, Text
 from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+
 from ..core.database import Base
 from .base import TimestampMixin
+
+if TYPE_CHECKING:
+    from .dispatch import Agent, Miller
+    from .reference import RiceVariety
+    from .supplier_customer import Customer
 
 
 class PriceList(Base):
@@ -49,7 +57,9 @@ class SalesOrder(Base, TimestampMixin):
     customer: Mapped["Customer"] = relationship("Customer")
     assigned_agent: Mapped["Agent | None"] = relationship("Agent", foreign_keys=[assigned_agent_id])
     assigned_miller: Mapped["Miller | None"] = relationship("Miller", foreign_keys=[assigned_miller_id])
-    items: Mapped[list["SalesOrderItem"]] = relationship("SalesOrderItem", back_populates="order", cascade="all, delete-orphan")
+    items: Mapped[list["SalesOrderItem"]] = relationship(
+        "SalesOrderItem", back_populates="order", cascade="all, delete-orphan"
+    )
     invoices: Mapped[list["Invoice"]] = relationship("Invoice", back_populates="order")
 
 

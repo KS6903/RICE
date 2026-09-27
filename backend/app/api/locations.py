@@ -5,6 +5,7 @@ Security posture (unchanged, now enforced in GeocodingClient): HTTPS-only,
 hardcoded upstream host, strict query validation, per-user rate limiting,
 defensive re-shaping. Every endpoint requires auth.
 """
+
 import uuid
 
 from fastapi import APIRouter, Depends, Query, status

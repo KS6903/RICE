@@ -3,6 +3,7 @@
 Owns the (verbatim) employee serialization and branch-map enrichment that used
 to live in the route module.
 """
+
 from __future__ import annotations
 
 import uuid
@@ -26,10 +27,7 @@ class EmployeeService(BaseService):
 
     def _branch_map(self) -> dict:
         rows = self.db.query(Branch).filter(Branch.company_id == self.current_user.company_id).all()
-        return {
-            str(b.id): {"id": str(b.id), "name": b.name, "is_main_branch": b.is_main_branch}
-            for b in rows
-        }
+        return {str(b.id): {"id": str(b.id), "name": b.name, "is_main_branch": b.is_main_branch} for b in rows}
 
     @staticmethod
     def _serialize(e: Employee, branch_map: dict) -> dict:

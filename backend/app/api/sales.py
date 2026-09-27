@@ -1,4 +1,5 @@
 """Sales domain HTTP controllers — thin routing over SalesService (Phase 3)."""
+
 import uuid
 
 from fastapi import APIRouter, Depends, Query, status
@@ -22,10 +23,12 @@ from ..schemas.sales import (
 )
 from ..services.sales_service import SalesService
 
-router = APIRouter(dependencies=[
-    Depends(require_feature("sales")),
-    Depends(require_section_access("sales")),
-])
+router = APIRouter(
+    dependencies=[
+        Depends(require_feature("sales")),
+        Depends(require_section_access("sales")),
+    ]
+)
 
 
 def get_sales_service(
@@ -43,6 +46,7 @@ def get_sales_service(
 
 
 # ── Customers ─────────────────────────────────────────────────────────────────
+
 
 @router.get("/customers")
 def list_customers(include_inactive: bool = False, svc: SalesService = Depends(get_sales_service)):
@@ -68,12 +72,14 @@ def update_customer(customer_id: uuid.UUID, body: CustomerUpdate, svc: SalesServ
 
 # ── Price List ────────────────────────────────────────────────────────────────
 
+
 @router.get("/prices")
 def list_prices(svc: SalesService = Depends(get_sales_service)):
     return svc.list_prices()
 
 
 # ── Orders ────────────────────────────────────────────────────────────────────
+
 
 @router.get("/orders")
 def list_orders(
@@ -104,6 +110,7 @@ def update_order(order_id: uuid.UUID, body: OrderUpdate, svc: SalesService = Dep
 
 # ── Invoices ──────────────────────────────────────────────────────────────────
 
+
 @router.get("/invoices")
 def list_invoices(
     status_filter: str | None = Query(None, alias="status"),
@@ -122,6 +129,7 @@ def create_invoice(body: InvoiceCreate, svc: SalesService = Depends(get_sales_se
 
 
 # ── Payments ──────────────────────────────────────────────────────────────────
+
 
 @router.post(
     "/payments",

@@ -1,4 +1,5 @@
 """Reports domain HTTP controllers — thin routing over ReportsService (Phase 3)."""
+
 from datetime import date
 
 from fastapi import APIRouter, Depends, Query

@@ -1,10 +1,12 @@
 import uuid
 from datetime import datetime
-from sqlalchemy import String, Boolean, Numeric, Text, SmallInteger, ForeignKey, DateTime
-from sqlalchemy.orm import mapped_column, Mapped, relationship
-from sqlalchemy.dialects.postgresql import UUID
-from ..core.database import Base
 from decimal import Decimal
+
+from sqlalchemy import Boolean, DateTime, ForeignKey, Numeric, SmallInteger, String, Text
+from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.orm import Mapped, mapped_column
+
+from ..core.database import Base
 
 
 class RiceVariety(Base):

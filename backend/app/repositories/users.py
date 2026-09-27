@@ -1,4 +1,5 @@
 """Repository for the users domain (Phase 3)."""
+
 from __future__ import annotations
 
 import uuid

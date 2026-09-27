@@ -1,4 +1,5 @@
 """Pydantic request and deliberately-safe response schemas for users."""
+
 import uuid
 from datetime import datetime
 

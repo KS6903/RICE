@@ -1,11 +1,18 @@
 import uuid
 from datetime import datetime
 from decimal import Decimal
-from sqlalchemy import String, Boolean, Numeric, Text, DateTime, ForeignKey
-from sqlalchemy.orm import mapped_column, Mapped, relationship
+from typing import TYPE_CHECKING
+
+from sqlalchemy import Boolean, DateTime, ForeignKey, Numeric, String, Text
 from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+
 from ..core.database import Base
 from .base import TimestampMixin
+
+if TYPE_CHECKING:
+    from .reference import QualityGrade, RiceVariety
+    from .user import User
 
 
 class MillingEquipment(Base):
@@ -37,15 +44,21 @@ class MillingBatch(Base, TimestampMixin):
 
     equipment: Mapped["MillingEquipment"] = relationship("MillingEquipment")
     operator: Mapped["User"] = relationship("User", foreign_keys=[operator_id])
-    inputs: Mapped[list["MillingBatchInput"]] = relationship("MillingBatchInput", back_populates="batch", cascade="all, delete-orphan")
-    outputs: Mapped[list["MillingBatchOutput"]] = relationship("MillingBatchOutput", back_populates="batch", cascade="all, delete-orphan")
+    inputs: Mapped[list["MillingBatchInput"]] = relationship(
+        "MillingBatchInput", back_populates="batch", cascade="all, delete-orphan"
+    )
+    outputs: Mapped[list["MillingBatchOutput"]] = relationship(
+        "MillingBatchOutput", back_populates="batch", cascade="all, delete-orphan"
+    )
 
 
 class MillingBatchInput(Base):
     __tablename__ = "milling_batch_inputs"
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    batch_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("milling_batches.id", ondelete="CASCADE"))
+    batch_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("milling_batches.id", ondelete="CASCADE")
+    )
     variety_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("rice_varieties.id"))
     grade_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("quality_grades.id"))
     input_weight_kg: Mapped[Decimal] = mapped_column(Numeric(10, 3), nullable=False)
@@ -60,7 +73,9 @@ class MillingBatchOutput(Base):
     __tablename__ = "milling_batch_outputs"
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    batch_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("milling_batches.id", ondelete="CASCADE"))
+    batch_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("milling_batches.id", ondelete="CASCADE")
+    )
     output_type: Mapped[str] = mapped_column(String(20), nullable=False)  # milled_rice, ipa, darak, binlid
     variety_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("rice_varieties.id"))
     output_weight_kg: Mapped[Decimal] = mapped_column(Numeric(10, 3), nullable=False)

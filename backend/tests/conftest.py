@@ -16,6 +16,7 @@ Isolation: each test runs inside an outer transaction with
 calls are contained in savepoints and the whole thing is rolled back at the end
 of the test, so the test DB stays clean and tests never see each other's writes.
 """
+
 from __future__ import annotations
 
 import os
@@ -74,9 +75,7 @@ def _ensure_test_database_exists() -> None:
         autocommit=True,
     )
     try:
-        exists = admin.execute(
-            "SELECT 1 FROM pg_database WHERE datname = %s", (test_db,)
-        ).fetchone()
+        exists = admin.execute("SELECT 1 FROM pg_database WHERE datname = %s", (test_db,)).fetchone()
         if not exists:
             # Identifier can't be parametrized; quote it ourselves (it's derived
             # from our own .env, not user input).
@@ -102,9 +101,17 @@ from sqlalchemy.orm import Session  # noqa: E402
 # Every feature code gated by require_feature() in the API, so a seeded owner can
 # reach every router during characterization.
 ALL_FEATURES = [
-    "paddy", "milling", "inventory", "sales", "expenses",
-    "employees", "users", "canva_inventory",
-    "reports_advanced", "compliance_reports", "drying_advisor",
+    "paddy",
+    "milling",
+    "inventory",
+    "sales",
+    "expenses",
+    "employees",
+    "users",
+    "canva_inventory",
+    "reports_advanced",
+    "compliance_reports",
+    "drying_advisor",
 ]
 
 
@@ -157,6 +164,7 @@ def client(db_session: Session) -> TestClient:
 
     Auth is NOT overridden here — use this for real login/token/401 tests.
     """
+
     def _override_get_db():
         # Mirror the real get_db: scope the session to the active client schema.
         set_search_path(db_session, _active_schema["name"])
@@ -262,8 +270,9 @@ def make_auth_client(client: TestClient, db_session: Session):
             _role_ids[name] = rid
         return _role_ids[name]
 
-    def _make(features, *, username: str = "user", role_name: str = "owner",
-              is_platform_admin: bool = False) -> TestClient:
+    def _make(
+        features, *, username: str = "user", role_name: str = "owner", is_platform_admin: bool = False
+    ) -> TestClient:
         role_id = _ensure_role(role_name)
         _n["i"] += 1
         suffix = f"{username}{_n['i']}"
@@ -279,9 +288,14 @@ def make_auth_client(client: TestClient, db_session: Session):
         db_session.flush()
         db_session.add(Subscription(company_id=company.id, plan_id=plan.id, status="active"))
         user = User(
-            company_id=company.id, branch_id=branch.id, username=suffix,
-            email=f"{suffix}@test.local", password_hash=hash_password("Password123"),
-            full_name="Test User", role_id=role_id, is_active=True,
+            company_id=company.id,
+            branch_id=branch.id,
+            username=suffix,
+            email=f"{suffix}@test.local",
+            password_hash=hash_password("Password123"),
+            full_name="Test User",
+            role_id=role_id,
+            is_active=True,
             is_platform_admin=is_platform_admin,
         )
         db_session.add(user)

@@ -1,5 +1,6 @@
 """BillingService — tenant-facing billing (Phase 3). Plans, current subscription,
 and the upgrade-request lifecycle. Uses the shared effective_status helper."""
+
 from __future__ import annotations
 
 import uuid

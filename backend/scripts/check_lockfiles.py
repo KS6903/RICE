@@ -9,6 +9,7 @@ lock header that would make the next relock misbehave.
 
 Run from anywhere: python backend/scripts/check_lockfiles.py
 """
+
 from __future__ import annotations
 
 import re

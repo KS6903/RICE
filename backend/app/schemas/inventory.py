@@ -2,6 +2,7 @@
 
 Moved verbatim out of app/api/inventory.py — request validation is unchanged.
 """
+
 import uuid
 from decimal import Decimal
 

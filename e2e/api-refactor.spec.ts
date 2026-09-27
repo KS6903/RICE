@@ -66,9 +66,15 @@ test.describe("Refactored API contract (paddy / inventory / activity)", () => {
 
   test("duplicate variety code is rejected with 409 + detail", async () => {
     const code = `DUP${Date.now() % 1_000_000}`;
-    const first = await api.post("/api/paddy/varieties", { headers: auth(), data: { code, name: "Dup" } });
+    const first = await api.post("/api/paddy/varieties", {
+      headers: auth(),
+      data: { code, name: "Dup" },
+    });
     expect(first.status()).toBe(201);
-    const dup = await api.post("/api/paddy/varieties", { headers: auth(), data: { code, name: "Dup" } });
+    const dup = await api.post("/api/paddy/varieties", {
+      headers: auth(),
+      data: { code, name: "Dup" },
+    });
     expect(dup.status()).toBe(409);
     expect((await dup.json()).detail).toContain("already exists");
   });
@@ -184,7 +190,10 @@ test.describe("Refactored API contract (paddy / inventory / activity)", () => {
 
   test("sales order -> invoice flow computes totals and advances status", async () => {
     const customer = await (
-      await api.post("/api/sales/customers", { headers: auth(), data: { name: `Cust ${Date.now() % 100000}` } })
+      await api.post("/api/sales/customers", {
+        headers: auth(),
+        data: { name: `Cust ${Date.now() % 100000}` },
+      })
     ).json();
 
     const orderRes = await api.post("/api/sales/orders", {
@@ -323,10 +332,20 @@ test.describe("Refactored API contract (paddy / inventory / activity)", () => {
   });
 
   test("GET /api/weather (explicit coords) returns the normalized schema", async () => {
-    const res = await api.get("/api/weather", { headers: auth(), params: { lat: 14.6, lon: 121.0 } });
+    const res = await api.get("/api/weather", {
+      headers: auth(),
+      params: { lat: 14.6, lon: 121.0 },
+    });
     expect(res.status()).toBe(200);
     const body = await res.json();
-    for (const k of ["provider", "temp_c", "condition", "condition_code", "location", "fetched_at"]) {
+    for (const k of [
+      "provider",
+      "temp_c",
+      "condition",
+      "condition_code",
+      "location",
+      "fetched_at",
+    ]) {
       expect(body).toHaveProperty(k);
     }
   });

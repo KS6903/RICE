@@ -5,22 +5,24 @@ Run AFTER `alembic upgrade head`. Idempotent: skips if pallets already exist.
 
 Usage: python seed_demo_pallets.py
 """
+
 from datetime import date, timedelta
 from decimal import Decimal
-from random import choice, uniform, randint
+from random import choice, uniform
+
 from app.core.database import SessionLocal
 from app.core.tenancy import set_search_path
 from app.models.company import Branch
-from app.models.user import User
 from app.models.reference import RiceVariety
-from app.models.warehouse import WarehouseLayout, WarehouseZone, Pallet, RiceBatch
-from app.services.rice_shelf_life import compute_best_before, aging_status
+from app.models.user import User
+from app.models.warehouse import Pallet, RiceBatch, WarehouseZone
+from app.repositories.canva import WarehouseLayoutRepository
 from app.services.canva_bootstrap import (
+    _next_pallet_code,
     bootstrap_layout,
     bootstrap_pallets_from_inventory,
-    _next_pallet_code,
 )
-from app.repositories.canva import WarehouseLayoutRepository
+from app.services.rice_shelf_life import aging_status, compute_best_before
 
 VARIETIES = ["Rc222", "Rc216", "Rc218", "SINAG"]
 CLIENT_NAMES = ["Juan Cruz Farms", "Lola Maria Co-op", "Pedro Reyes Hacienda", "Mill stock"]
@@ -30,7 +32,7 @@ def main():
     db = SessionLocal()
     try:
         # Pick a non-platform-admin user's company
-        user = db.query(User).filter(User.is_platform_admin == False, User.company_id.is_not(None)).first()
+        user = db.query(User).filter(User.is_platform_admin.is_(False), User.company_id.is_not(None)).first()
         if not user:
             print("No tenant users found. Run create_admin.py / signup first.")
             return
@@ -47,10 +49,14 @@ def main():
             bootstrap_pallets_from_inventory(db, layout)
             db.commit()
             db.refresh(layout)
-        premium = db.query(WarehouseZone).filter(
-            WarehouseZone.layout_id == layout.id,
-            WarehouseZone.zone_type == "premium_storage",
-        ).first()
+        premium = (
+            db.query(WarehouseZone)
+            .filter(
+                WarehouseZone.layout_id == layout.id,
+                WarehouseZone.zone_type == "premium_storage",
+            )
+            .first()
+        )
         if not premium:
             print("No premium_storage zone found.")
             return
@@ -107,20 +113,22 @@ def main():
             )
             db.add(pallet)
             db.flush()
-            db.add(RiceBatch(
-                company_id=branch.company_id,
-                pallet_id=pallet.id,
-                variety_id=variety.id,
-                client_type=client_type,
-                client_name=client_name,
-                sack_count=sack_count,
-                weight_kg=Decimal(str(weight_kg)),
-                moisture_pct=moisture,
-                milling_date=milled,
-                best_before_date=best_before,
-                status=status,
-                notes=f"Demo pallet — {age_days}d aged",
-            ))
+            db.add(
+                RiceBatch(
+                    company_id=branch.company_id,
+                    pallet_id=pallet.id,
+                    variety_id=variety.id,
+                    client_type=client_type,
+                    client_name=client_name,
+                    sack_count=sack_count,
+                    weight_kg=Decimal(str(weight_kg)),
+                    moisture_pct=moisture,
+                    milling_date=milled,
+                    best_before_date=best_before,
+                    status=status,
+                    notes=f"Demo pallet — {age_days}d aged",
+                )
+            )
             created += 1
 
         db.commit()

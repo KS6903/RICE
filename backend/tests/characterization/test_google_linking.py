@@ -1,4 +1,5 @@
 """Authenticated Google linking requires proof and immutable identity binding."""
+
 import types
 
 import app.core.config as cfg
@@ -29,16 +30,12 @@ def _stub_google(monkeypatch, *, email: str, subject: str = "google-subject") ->
     )
 
 
-def test_link_and_unlink_google_requires_current_password(
-    auth_client, seed_owner, db_session, monkeypatch
-):
+def test_link_and_unlink_google_requires_current_password(auth_client, seed_owner, db_session, monkeypatch):
     seed_owner.email_verified = True
     db_session.flush()
     _stub_google(monkeypatch, email=seed_owner.email)
 
-    denied = auth_client.post(
-        "/api/auth/google/link", json={"credential": "google-token"}
-    )
+    denied = auth_client.post("/api/auth/google/link", json={"credential": "google-token"})
     assert denied.status_code == 403
 
     linked = auth_client.post(
@@ -49,17 +46,13 @@ def test_link_and_unlink_google_requires_current_password(
     db_session.refresh(seed_owner)
     assert seed_owner.google_sub == "google-subject"
 
-    unlinked = auth_client.post(
-        "/api/auth/google/unlink", json={"current_password": "Password123"}
-    )
+    unlinked = auth_client.post("/api/auth/google/unlink", json={"current_password": "Password123"})
     assert unlinked.status_code == 200, unlinked.text
     db_session.refresh(seed_owner)
     assert seed_owner.google_sub is None
 
 
-def test_google_link_requires_same_verified_email(
-    auth_client, seed_owner, db_session, monkeypatch
-):
+def test_google_link_requires_same_verified_email(auth_client, seed_owner, db_session, monkeypatch):
     seed_owner.email_verified = True
     db_session.flush()
     _stub_google(monkeypatch, email="different@example.com")

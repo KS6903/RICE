@@ -8,6 +8,7 @@ layer's "never a hard dependency" philosophy.
 Disabled entirely when ``settings.RATE_LIMIT_ENABLED`` is false (the test suite
 sets this via env), so the decorators become no-ops and runs stay deterministic.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -140,7 +141,7 @@ def _attempts_allowed(round_no: int) -> int:
 
 def _lockout_duration(round_no: int) -> int:
     """How long the lock for ``round_no`` lasts — geometric growth, capped."""
-    duration = settings.LOGIN_LOCKOUT_BASE_SECONDS * (settings.LOGIN_LOCKOUT_FACTOR ** round_no)
+    duration = settings.LOGIN_LOCKOUT_BASE_SECONDS * (settings.LOGIN_LOCKOUT_FACTOR**round_no)
     return min(settings.LOGIN_LOCKOUT_MAX_SECONDS, int(duration))
 
 

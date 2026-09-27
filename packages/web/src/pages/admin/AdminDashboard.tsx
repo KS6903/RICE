@@ -228,7 +228,11 @@ export default function AdminDashboard() {
                   <stop offset="100%" stopColor="#10b981" stopOpacity={0} />
                 </linearGradient>
               </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="rgb(148 163 184 / 0.18)" vertical={false} />
+              <CartesianGrid
+                strokeDasharray="3 3"
+                stroke="rgb(148 163 184 / 0.18)"
+                vertical={false}
+              />
               <XAxis
                 dataKey="date"
                 tick={{ fontSize: 11, fill: "rgb(100 116 139)" }}

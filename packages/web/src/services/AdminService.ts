@@ -44,7 +44,9 @@ export class AdminService {
     return this.http.get(`/admin/tenants/${id}/subscription`).then((r) => r.data);
   }
   setTenantActive(id: string, isActive: boolean): Promise<any> {
-    return this.http.put(`/admin/tenants/${id}/active`, { is_active: isActive }).then((r) => r.data);
+    return this.http
+      .put(`/admin/tenants/${id}/active`, { is_active: isActive })
+      .then((r) => r.data);
   }
   assignTenantSubscription(id: string, body: Record<string, unknown>): Promise<any> {
     return this.http.put(`/admin/tenants/${id}/subscription`, body).then((r) => r.data);
@@ -63,7 +65,9 @@ export class AdminService {
 
   // ── upgrade requests ────────────────────────────────────────────────────────
   listUpgradeRequests(statusFilter: string): Promise<any[]> {
-    return this.http.get(`/admin/upgrade-requests?status_filter=${statusFilter}`).then((r) => r.data);
+    return this.http
+      .get(`/admin/upgrade-requests?status_filter=${statusFilter}`)
+      .then((r) => r.data);
   }
   approveRequest(id: string, body: Record<string, unknown> = {}): Promise<any> {
     return this.http.post(`/admin/upgrade-requests/${id}/approve`, body).then((r) => r.data);

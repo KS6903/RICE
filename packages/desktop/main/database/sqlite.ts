@@ -116,7 +116,8 @@ function migrateLegacyDatabase(
         .prepare("SELECT name FROM sqlite_master WHERE type = 'table'")
         .all() as Array<{ name: string }>;
       const names = new Set(tables.map((row) => row.name));
-      if (!names.has("companies") || !names.has("users")) throw new Error("missing identity tables");
+      if (!names.has("companies") || !names.has("users"))
+        throw new Error("missing identity tables");
       const company = legacy
         .prepare("SELECT id FROM companies WHERE id = ? LIMIT 1")
         .get(identity.companyId);

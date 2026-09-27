@@ -13,6 +13,7 @@ These tests turn the limiter back on, which is the only way to see it.
 It is a production-only bug in the most literal sense: it broke MFA enrollment and
 password reset on a deployed instance while every test stayed green.
 """
+
 from __future__ import annotations
 
 import pytest

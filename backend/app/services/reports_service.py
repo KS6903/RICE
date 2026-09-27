@@ -4,6 +4,7 @@ Reports aggregate across many domains (sales, costs, paddy, milling), so the
 query logic lives here rather than in a per-entity repository. Read-only: no
 transactions.
 """
+
 from __future__ import annotations
 
 import calendar
@@ -29,22 +30,29 @@ class ReportsService(BaseService):
         return self.current_user.company_id
 
     def profit_and_loss(self, period_start: date, period_end: date, batch_id: str | None = None) -> dict:
-        revenue = self.db.query(func.sum(SalesOrder.total_amount)).filter(
-            SalesOrder.company_id == self._company_id,
-            SalesOrder.order_date >= period_start,
-            SalesOrder.order_date <= period_end,
-            SalesOrder.status.in_(["invoiced", "paid"]),
-        ).scalar() or 0
+        revenue = (
+            self.db.query(func.sum(SalesOrder.total_amount))
+            .filter(
+                SalesOrder.company_id == self._company_id,
+                SalesOrder.order_date >= period_start,
+                SalesOrder.order_date <= period_end,
+                SalesOrder.status.in_(["invoiced", "paid"]),
+            )
+            .scalar()
+            or 0
+        )
 
-        cogs = self.db.query(
-            func.sum(PalayPurchaseItem.price_per_cavan * PalayPurchaseItem.cavan_count)
-        ).join(
-            PalayPurchase, PalayPurchase.id == PalayPurchaseItem.purchase_id
-        ).filter(
-            PalayPurchase.company_id == self._company_id,
-            PalayPurchase.purchase_date >= period_start,
-            PalayPurchase.purchase_date <= period_end,
-        ).scalar() or 0
+        cogs = (
+            self.db.query(func.sum(PalayPurchaseItem.price_per_cavan * PalayPurchaseItem.cavan_count))
+            .join(PalayPurchase, PalayPurchase.id == PalayPurchaseItem.purchase_id)
+            .filter(
+                PalayPurchase.company_id == self._company_id,
+                PalayPurchase.purchase_date >= period_start,
+                PalayPurchase.purchase_date <= period_end,
+            )
+            .scalar()
+            or 0
+        )
 
         exp_q = self.db.query(func.sum(Expense.amount)).filter(
             Expense.company_id == self._company_id,
@@ -73,22 +81,36 @@ class ReportsService(BaseService):
         milled = self.db.query(MilledRiceInventory).filter(MilledRiceInventory.company_id == self._company_id).all()
         byp = self.db.query(ByproductInventory).filter(ByproductInventory.company_id == self._company_id).all()
         return {
-            "palay": [{"variety_id": str(i.variety_id), "grade_id": str(i.grade_id), "quantity_kg": float(i.quantity_kg)} for i in palay],
-            "milled_rice": [{"variety_id": str(i.variety_id), "grade_name": i.grade_name, "quantity_kg": float(i.quantity_kg)} for i in milled],
+            "palay": [
+                {"variety_id": str(i.variety_id), "grade_id": str(i.grade_id), "quantity_kg": float(i.quantity_kg)}
+                for i in palay
+            ],
+            "milled_rice": [
+                {"variety_id": str(i.variety_id), "grade_name": i.grade_name, "quantity_kg": float(i.quantity_kg)}
+                for i in milled
+            ],
             "byproducts": [{"type": i.byproduct_type, "quantity_kg": float(i.quantity_kg)} for i in byp],
         }
 
     def compliance_report(self, report_type: str, period_start: date, period_end: date) -> dict:
-        batches = self.db.query(MillingBatch).filter(
-            MillingBatch.company_id == self._company_id,
-            func.date(MillingBatch.start_datetime) >= period_start,
-            func.date(MillingBatch.start_datetime) <= period_end,
-        ).all()
-        purchases = self.db.query(PalayPurchase).filter(
-            PalayPurchase.company_id == self._company_id,
-            PalayPurchase.purchase_date >= period_start,
-            PalayPurchase.purchase_date <= period_end,
-        ).all()
+        batches = (
+            self.db.query(MillingBatch)
+            .filter(
+                MillingBatch.company_id == self._company_id,
+                func.date(MillingBatch.start_datetime) >= period_start,
+                func.date(MillingBatch.start_datetime) <= period_end,
+            )
+            .all()
+        )
+        purchases = (
+            self.db.query(PalayPurchase)
+            .filter(
+                PalayPurchase.company_id == self._company_id,
+                PalayPurchase.purchase_date >= period_start,
+                PalayPurchase.purchase_date <= period_end,
+            )
+            .all()
+        )
         return {
             "report_type": report_type,
             "period_start": period_start,
@@ -107,24 +129,35 @@ class ReportsService(BaseService):
             _, last_day = calendar.monthrange(year, month)
             period_start = date(year, month, 1)
             period_end = date(year, month, last_day)
-            revenue = self.db.query(func.sum(SalesOrder.total_amount)).filter(
-                SalesOrder.company_id == self._company_id,
-                SalesOrder.order_date >= period_start,
-                SalesOrder.order_date <= period_end,
-                SalesOrder.status.in_(["invoiced", "paid"]),
-            ).scalar() or 0
-            months.append({
-                "month": month,
-                "month_name": date(year, month, 1).strftime("%b"),
-                "revenue": float(revenue),
-            })
+            revenue = (
+                self.db.query(func.sum(SalesOrder.total_amount))
+                .filter(
+                    SalesOrder.company_id == self._company_id,
+                    SalesOrder.order_date >= period_start,
+                    SalesOrder.order_date <= period_end,
+                    SalesOrder.status.in_(["invoiced", "paid"]),
+                )
+                .scalar()
+                or 0
+            )
+            months.append(
+                {
+                    "month": month,
+                    "month_name": date(year, month, 1).strftime("%b"),
+                    "revenue": float(revenue),
+                }
+            )
         return months
 
     def ar_aging(self) -> dict:
-        invoices = self.db.query(Invoice).filter(
-            Invoice.company_id == self._company_id,
-            Invoice.status.in_(["unpaid", "partial", "overdue"]),
-        ).all()
+        invoices = (
+            self.db.query(Invoice)
+            .filter(
+                Invoice.company_id == self._company_id,
+                Invoice.status.in_(["unpaid", "partial", "overdue"]),
+            )
+            .all()
+        )
         today = date.today()
         buckets: dict[str, Any] = {"current": 0, "1_30": 0, "31_60": 0, "61_90": 0, "over_90": 0}
         for inv in invoices:

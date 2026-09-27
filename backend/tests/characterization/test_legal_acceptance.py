@@ -4,6 +4,7 @@ The point of these tests is evidentiary. If consent can be skipped, or if an
 acceptance row does not pin down the exact text that was on screen, the Terms
 are much harder to rely on in a dispute.
 """
+
 from app.core import legal
 from app.models.legal import LegalAcceptance
 from app.models.subscription import SubscriptionPlan
@@ -60,9 +61,7 @@ def test_unknown_document_404s(client):
 
 def test_signup_without_consent_is_refused(client, db_session):
     _prereqs(db_session)
-    res = client.post(
-        "/api/auth/signup", headers=NATIVE_HEADERS, json=_signup_body(accepted_terms=False)
-    )
+    res = client.post("/api/auth/signup", headers=NATIVE_HEADERS, json=_signup_body(accepted_terms=False))
     assert res.status_code == 400, res.text
     assert "accept" in res.json()["detail"].lower()
 
@@ -100,12 +99,8 @@ def test_signup_records_what_was_accepted(client, db_session):
 
 def test_me_reports_no_outstanding_acceptance_after_signup(client, db_session):
     _prereqs(db_session)
-    tokens = client.post(
-        "/api/auth/signup", headers=NATIVE_HEADERS, json=_signup_body()
-    ).json()
-    res = client.get(
-        "/api/auth/me", headers={**NATIVE_HEADERS, "Authorization": f"Bearer {tokens['access_token']}"}
-    )
+    tokens = client.post("/api/auth/signup", headers=NATIVE_HEADERS, json=_signup_body()).json()
+    res = client.get("/api/auth/me", headers={**NATIVE_HEADERS, "Authorization": f"Bearer {tokens['access_token']}"})
     assert res.status_code == 200, res.text
     assert res.json()["legal_acceptance_required"] is False
 
@@ -142,9 +137,7 @@ def test_a_new_agreement_version_reopens_the_gate(auth_client, seed_owner, monke
     assert auth_client.get("/api/auth/me").json()["legal_acceptance_required"] is True
 
 
-def test_republished_text_at_the_same_version_reopens_the_gate(
-    auth_client, seed_owner, monkeypatch
-):
+def test_republished_text_at_the_same_version_reopens_the_gate(auth_client, seed_owner, monkeypatch):
     """Nobody should be treated as bound by text they were never shown.
 
     Even without a version bump, a changed document changes the bundle hash,

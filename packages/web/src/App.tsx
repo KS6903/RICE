@@ -118,51 +118,141 @@ function AppRoutes() {
   if (mustAccept && !onLegalPage) return <LegalAcceptanceGate />;
   return (
     <Routes>
-        <Route path="/login" element={<LoginPage />} />
-        <Route path="/signup" element={<SignupPage />} />
-        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-        <Route path="/reset-password" element={<ResetPasswordPage />} />
-        <Route path="/verify-email" element={<VerifyEmailPage />} />
-        <Route path="/legal" element={<LegalPage />} />
-        <Route path="/legal/:key" element={<LegalPage />} />
+      <Route path="/login" element={<LoginPage />} />
+      <Route path="/signup" element={<SignupPage />} />
+      <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+      <Route path="/reset-password" element={<ResetPasswordPage />} />
+      <Route path="/verify-email" element={<VerifyEmailPage />} />
+      <Route path="/legal" element={<LegalPage />} />
+      <Route path="/legal/:key" element={<LegalPage />} />
 
-        <Route
-          path="/admin"
-          element={
-            <AdminRoute>
-              <AdminShell />
-            </AdminRoute>
-          }
-        >
-          <Route index element={<AdminDashboard />} />
-          <Route path="tenants" element={<AdminTenants />} />
-          <Route path="tenants/:id" element={<AdminTenantDetail />} />
-          <Route path="users" element={<AdminUsers />} />
-          <Route path="upgrade-requests" element={<AdminUpgradeRequests />} />
-          <Route path="settings" element={<AdminSettingsPage />} />
-        </Route>
+      <Route
+        path="/admin"
+        element={
+          <AdminRoute>
+            <AdminShell />
+          </AdminRoute>
+        }
+      >
+        <Route index element={<AdminDashboard />} />
+        <Route path="tenants" element={<AdminTenants />} />
+        <Route path="tenants/:id" element={<AdminTenantDetail />} />
+        <Route path="users" element={<AdminUsers />} />
+        <Route path="upgrade-requests" element={<AdminUpgradeRequests />} />
+        <Route path="settings" element={<AdminSettingsPage />} />
+      </Route>
 
+      <Route
+        path="/"
+        element={
+          <TenantRoute>
+            <AppShell />
+          </TenantRoute>
+        }
+      >
+        <Route index element={<Dashboard />} />
         <Route
-          path="/"
+          path="paddy"
           element={
-            <TenantRoute>
-              <AppShell />
-            </TenantRoute>
+            <RoleGate section="paddy">
+              <FeatureGate code="paddy" label="Paddy procurement">
+                <PaddyPage />
+              </FeatureGate>
+            </RoleGate>
           }
-        >
-          <Route index element={<Dashboard />} />
-          <Route path="paddy" element={<RoleGate section="paddy"><FeatureGate code="paddy" label="Paddy procurement"><PaddyPage /></FeatureGate></RoleGate>} />
-          <Route path="milling" element={<RoleGate section="milling"><FeatureGate code="milling" label="Milling"><MillingPage /></FeatureGate></RoleGate>} />
-          <Route path="inventory" element={<RoleGate section="inventory"><FeatureGate code="inventory" label="Inventory"><InventoryPage /></FeatureGate></RoleGate>} />
-          <Route path="sales" element={<RoleGate section="sales"><FeatureGate code="sales" label="Sales"><SalesPage /></FeatureGate></RoleGate>} />
-          <Route path="dispatch" element={<RoleGate section="dispatch"><FeatureGate code="sales" label="Dispatch"><DispatchPage /></FeatureGate></RoleGate>} />
-          <Route path="operators" element={<RoleGate section="operators"><FeatureGate code="sales" label="Field Operators"><FieldOperatorsPage /></FeatureGate></RoleGate>} />
-          <Route path="costs" element={<RoleGate section="expenses"><FeatureGate code="expenses" label="Expenses"><CostsPage /></FeatureGate></RoleGate>} />
-          <Route path="reports" element={<RoleGate section="reports"><FeatureGate code="dashboard" label="Reports"><ReportsPage /></FeatureGate></RoleGate>} />
-          <Route path="users" element={<RoleGate section="users"><FeatureGate code="users" label="Users"><UsersPage /></FeatureGate></RoleGate>} />
-          <Route path="employees" element={<RoleGate section="employees"><FeatureGate code="employees" label="Employees" requires="Pro or Enterprise"><EmployeesPage /></FeatureGate></RoleGate>} />
-          <Route path="settings" element={<SettingsPage />} />
-        </Route>
+        />
+        <Route
+          path="milling"
+          element={
+            <RoleGate section="milling">
+              <FeatureGate code="milling" label="Milling">
+                <MillingPage />
+              </FeatureGate>
+            </RoleGate>
+          }
+        />
+        <Route
+          path="inventory"
+          element={
+            <RoleGate section="inventory">
+              <FeatureGate code="inventory" label="Inventory">
+                <InventoryPage />
+              </FeatureGate>
+            </RoleGate>
+          }
+        />
+        <Route
+          path="sales"
+          element={
+            <RoleGate section="sales">
+              <FeatureGate code="sales" label="Sales">
+                <SalesPage />
+              </FeatureGate>
+            </RoleGate>
+          }
+        />
+        <Route
+          path="dispatch"
+          element={
+            <RoleGate section="dispatch">
+              <FeatureGate code="sales" label="Dispatch">
+                <DispatchPage />
+              </FeatureGate>
+            </RoleGate>
+          }
+        />
+        <Route
+          path="operators"
+          element={
+            <RoleGate section="operators">
+              <FeatureGate code="sales" label="Field Operators">
+                <FieldOperatorsPage />
+              </FeatureGate>
+            </RoleGate>
+          }
+        />
+        <Route
+          path="costs"
+          element={
+            <RoleGate section="expenses">
+              <FeatureGate code="expenses" label="Expenses">
+                <CostsPage />
+              </FeatureGate>
+            </RoleGate>
+          }
+        />
+        <Route
+          path="reports"
+          element={
+            <RoleGate section="reports">
+              <FeatureGate code="dashboard" label="Reports">
+                <ReportsPage />
+              </FeatureGate>
+            </RoleGate>
+          }
+        />
+        <Route
+          path="users"
+          element={
+            <RoleGate section="users">
+              <FeatureGate code="users" label="Users">
+                <UsersPage />
+              </FeatureGate>
+            </RoleGate>
+          }
+        />
+        <Route
+          path="employees"
+          element={
+            <RoleGate section="employees">
+              <FeatureGate code="employees" label="Employees" requires="Pro or Enterprise">
+                <EmployeesPage />
+              </FeatureGate>
+            </RoleGate>
+          }
+        />
+        <Route path="settings" element={<SettingsPage />} />
+      </Route>
     </Routes>
   );
 }

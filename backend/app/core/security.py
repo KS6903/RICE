@@ -21,40 +21,88 @@ from .database import get_db
 # never inherits access accidentally.
 SECTION_ACCESS: dict[str, dict[str, str]] = {
     "owner": {
-        "dashboard": "full", "paddy": "full", "milling": "full",
-        "inventory": "full", "sales": "full", "dispatch": "full",
-        "operators": "full", "expenses": "full", "reports": "full",
-        "employees": "full", "users": "full", "settings": "full",
+        "dashboard": "full",
+        "paddy": "full",
+        "milling": "full",
+        "inventory": "full",
+        "sales": "full",
+        "dispatch": "full",
+        "operators": "full",
+        "expenses": "full",
+        "reports": "full",
+        "employees": "full",
+        "users": "full",
+        "settings": "full",
     },
     "admin": {
-        "dashboard": "full", "paddy": "full", "milling": "full",
-        "inventory": "full", "sales": "full", "dispatch": "full",
-        "operators": "full", "expenses": "full", "reports": "full",
-        "employees": "full", "users": "full", "settings": "full",
+        "dashboard": "full",
+        "paddy": "full",
+        "milling": "full",
+        "inventory": "full",
+        "sales": "full",
+        "dispatch": "full",
+        "operators": "full",
+        "expenses": "full",
+        "reports": "full",
+        "employees": "full",
+        "users": "full",
+        "settings": "full",
     },
     "accountant": {
-        "dashboard": "full", "paddy": "view", "milling": "view",
-        "inventory": "view", "sales": "full", "dispatch": "view",
-        "operators": "view", "expenses": "full", "reports": "full",
-        "employees": "full", "users": "none", "settings": "full",
+        "dashboard": "full",
+        "paddy": "view",
+        "milling": "view",
+        "inventory": "view",
+        "sales": "full",
+        "dispatch": "view",
+        "operators": "view",
+        "expenses": "full",
+        "reports": "full",
+        "employees": "full",
+        "users": "none",
+        "settings": "full",
     },
     "cashier": {
-        "dashboard": "full", "paddy": "none", "milling": "none",
-        "inventory": "view", "sales": "full", "dispatch": "view",
-        "operators": "view", "expenses": "none", "reports": "none",
-        "employees": "none", "users": "none", "settings": "full",
+        "dashboard": "full",
+        "paddy": "none",
+        "milling": "none",
+        "inventory": "view",
+        "sales": "full",
+        "dispatch": "view",
+        "operators": "view",
+        "expenses": "none",
+        "reports": "none",
+        "employees": "none",
+        "users": "none",
+        "settings": "full",
     },
     "mill_operator": {
-        "dashboard": "full", "paddy": "full", "milling": "full",
-        "inventory": "full", "sales": "none", "dispatch": "full",
-        "operators": "full", "expenses": "none", "reports": "none",
-        "employees": "none", "users": "none", "settings": "full",
+        "dashboard": "full",
+        "paddy": "full",
+        "milling": "full",
+        "inventory": "full",
+        "sales": "none",
+        "dispatch": "full",
+        "operators": "full",
+        "expenses": "none",
+        "reports": "none",
+        "employees": "none",
+        "users": "none",
+        "settings": "full",
     },
     "encoder": {
-        "dashboard": "full", "paddy": "full", "milling": "view",
-        "inventory": "view", "sales": "full", "dispatch": "none",
-        "operators": "none", "expenses": "none", "reports": "none",
-        "employees": "none", "users": "none", "settings": "full",
+        "dashboard": "full",
+        "paddy": "full",
+        "milling": "view",
+        "inventory": "view",
+        "sales": "full",
+        "dispatch": "none",
+        "operators": "none",
+        "expenses": "none",
+        "reports": "none",
+        "employees": "none",
+        "users": "none",
+        "settings": "full",
     },
 }
 
@@ -318,6 +366,7 @@ def require_roles(*roles: str):
         if role_name not in allowed:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Insufficient permissions")
         return current_user
+
     return checker
 
 
@@ -370,6 +419,7 @@ def invalidate_company_features(company_id) -> None:
 def _compute_user_features(user, db: Session) -> list[str]:
     from ..models.subscription import Subscription
     from ..services.subscription import ACTIVE_STATUSES, effective_status
+
     sub = db.query(Subscription).filter(Subscription.company_id == user.company_id).first()
     if not sub or not sub.plan:
         return []
@@ -402,6 +452,7 @@ def get_user_features(user, db: Session) -> list[str]:
 
 def require_feature(feature: str):
     """FastAPI dependency that enforces the user's plan includes a given feature."""
+
     def checker(current_user=Depends(get_current_user), db: Session = Depends(get_db)):
         if current_user.is_platform_admin:
             return current_user
@@ -412,4 +463,5 @@ def require_feature(feature: str):
                 detail=f"This feature ('{feature}') is not included in your current plan. Please contact your platform administrator to upgrade.",
             )
         return current_user
+
     return checker

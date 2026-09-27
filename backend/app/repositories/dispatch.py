@@ -1,4 +1,5 @@
 """Repositories for the dispatch domain (Phase 3)."""
+
 from __future__ import annotations
 
 import uuid

@@ -4,6 +4,7 @@ X-Forwarded-For is client-spoofable, so it's trusted only when explicitly enable
 (behind a proxy) and the client IP is taken from the RIGHT — the hops our own
 proxies appended. Prepended (spoofed) entries on the left are ignored.
 """
+
 from types import SimpleNamespace
 
 import pytest

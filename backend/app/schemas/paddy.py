@@ -9,6 +9,7 @@ Response serialization is intentionally left as-is for now (handlers return ORM
 objects / hand-built dicts) to guarantee zero response-shape drift; explicit
 response models can be adopted later behind the characterization tests.
 """
+
 import uuid
 from datetime import date
 from decimal import Decimal
@@ -16,6 +17,7 @@ from decimal import Decimal
 from pydantic import BaseModel, Field
 
 # ── Varieties ────────────────────────────────────────────────────────────────
+
 
 class VarietyCreate(BaseModel):
     code: str
@@ -34,12 +36,14 @@ class VarietyUpdate(BaseModel):
 
 # ── Grades ───────────────────────────────────────────────────────────────────
 
+
 class GradeCreate(BaseModel):
     code: str
     name: str | None = None
 
 
 # ── Suppliers ────────────────────────────────────────────────────────────────
+
 
 class SupplierCreate(BaseModel):
     supplier_type: str | None = None
@@ -66,6 +70,7 @@ class SupplierUpdate(BaseModel):
 
 # ── Purchases ────────────────────────────────────────────────────────────────
 
+
 class PurchaseItemIn(BaseModel):
     variety_id: uuid.UUID | None = None
     grade_id: uuid.UUID | None = None
@@ -87,6 +92,7 @@ class PurchaseUpdate(BaseModel):
     """Replaces the old untyped ``body: dict`` on PUT /purchases/{id} — only
     these fields are updatable; anything else fails validation instead of
     silently reaching the service layer."""
+
     status: str | None = Field(None, max_length=30)
     remarks: str | None = Field(None, max_length=2000)
     delivery_type: str | None = Field(None, max_length=30)

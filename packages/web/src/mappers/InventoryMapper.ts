@@ -37,26 +37,41 @@ export class InventoryMapper {
     const out: UnifiedItem[] = [];
     for (const p of palay) {
       out.push({
-        id: `palay-${p.id}`, type: "palay", typeLabel: "Palay (Paddy)",
-        variety: p.variety?.code || "—", grade: p.grade?.code || "—",
-        branchId: p.branch_id, branchName: branchName(p),
-        quantity_kg: Number(p.quantity_kg), color: BAR_COLOR.palay,
+        id: `palay-${p.id}`,
+        type: "palay",
+        typeLabel: "Palay (Paddy)",
+        variety: p.variety?.code || "—",
+        grade: p.grade?.code || "—",
+        branchId: p.branch_id,
+        branchName: branchName(p),
+        quantity_kg: Number(p.quantity_kg),
+        color: BAR_COLOR.palay,
       });
     }
     for (const m of milled) {
       out.push({
-        id: `milled-${m.id}`, type: "milled", typeLabel: "Milled Rice (Bigas)",
-        variety: m.variety?.code || "—", grade: m.grade_name || "—",
-        branchId: m.branch_id, branchName: branchName(m),
-        quantity_kg: Number(m.quantity_kg), color: BAR_COLOR.milled,
+        id: `milled-${m.id}`,
+        type: "milled",
+        typeLabel: "Milled Rice (Bigas)",
+        variety: m.variety?.code || "—",
+        grade: m.grade_name || "—",
+        branchId: m.branch_id,
+        branchName: branchName(m),
+        quantity_kg: Number(m.quantity_kg),
+        color: BAR_COLOR.milled,
       });
     }
     for (const b of byproducts) {
       out.push({
-        id: `bp-${b.id}`, type: "byproduct", typeLabel: "By-product",
-        variety: BYPRODUCT_NAMES[b.byproduct_type] || b.byproduct_type, grade: "—",
-        branchId: b.branch_id, branchName: branchName(b),
-        quantity_kg: Number(b.quantity_kg), color: BAR_COLOR.byproduct,
+        id: `bp-${b.id}`,
+        type: "byproduct",
+        typeLabel: "By-product",
+        variety: BYPRODUCT_NAMES[b.byproduct_type] || b.byproduct_type,
+        grade: "—",
+        branchId: b.branch_id,
+        branchName: branchName(b),
+        quantity_kg: Number(b.quantity_kg),
+        color: BAR_COLOR.byproduct,
       });
     }
     return out;

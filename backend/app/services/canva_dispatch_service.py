@@ -9,6 +9,7 @@ stock for the dispatch modal's dropdown. Read-only; logic preserved verbatim fro
 (Named ``CanvaDispatchService`` to avoid colliding with the unrelated
 ``services.dispatch_service.DispatchService`` — agents/millers/couriers.)
 """
+
 from __future__ import annotations
 
 import uuid

@@ -1,6 +1,5 @@
 """Representative HTTP wiring tests for the shared section-access matrix."""
 
-
 ALL_FEATURES = [
     "paddy",
     "milling",
@@ -25,10 +24,13 @@ def test_accountant_gets_operational_reads_but_not_operational_writes(make_auth_
     assert client.post("/api/milling/equipment", json={"name": "Blocked"}).status_code == 403
 
     assert client.get("/api/inventory/summary").status_code == 200
-    assert client.post(
-        "/api/inventory/stock",
-        json={"inventory_type": "milled_rice", "quantity_kg": 1},
-    ).status_code == 403
+    assert (
+        client.post(
+            "/api/inventory/stock",
+            json={"inventory_type": "milled_rice", "quantity_kg": 1},
+        ).status_code
+        == 403
+    )
 
     # Accountant owns these sections and may mutate them.
     assert client.post("/api/sales/customers", json={"name": "Allowed"}).status_code == 201
@@ -45,10 +47,13 @@ def test_cashier_is_limited_to_sales_and_read_only_stock_dispatch(make_auth_clie
     assert client.get("/api/paddy/varieties").status_code == 403
     assert client.get("/api/milling/equipment").status_code == 403
     assert client.get("/api/inventory/summary").status_code == 200
-    assert client.post(
-        "/api/inventory/stock",
-        json={"inventory_type": "milled_rice", "quantity_kg": 1},
-    ).status_code == 403
+    assert (
+        client.post(
+            "/api/inventory/stock",
+            json={"inventory_type": "milled_rice", "quantity_kg": 1},
+        ).status_code
+        == 403
+    )
 
     assert client.post("/api/sales/customers", json={"name": "Cash Sale"}).status_code == 201
     assert client.get("/api/agents").status_code == 200
@@ -84,10 +89,13 @@ def test_encoder_can_write_paddy_and_sales_but_only_view_milling_inventory(make_
     assert client.get("/api/milling/equipment").status_code == 200
     assert client.post("/api/milling/equipment", json={"name": "Blocked"}).status_code == 403
     assert client.get("/api/inventory/summary").status_code == 200
-    assert client.post(
-        "/api/inventory/stock",
-        json={"inventory_type": "milled_rice", "quantity_kg": 1},
-    ).status_code == 403
+    assert (
+        client.post(
+            "/api/inventory/stock",
+            json={"inventory_type": "milled_rice", "quantity_kg": 1},
+        ).status_code
+        == 403
+    )
 
     assert client.get("/api/agents").status_code == 403
     assert client.get("/api/dispatch/orders").status_code == 403

@@ -4,6 +4,7 @@ The read side is a thin wrapper over core.legal (no database). The write side
 appends to the acceptance ledger; nothing here ever updates or deletes a row,
 because the value of the ledger is that it is append-only.
 """
+
 from __future__ import annotations
 
 import uuid
@@ -71,9 +72,7 @@ class LegalService:
             documents=legal.bundle_manifest(),
             method=method,
             ip_address=(client_ip(request) if request else None),
-            user_agent=((request.headers.get("user-agent") or "")[:_USER_AGENT_MAX] or None)
-            if request
-            else None,
+            user_agent=((request.headers.get("user-agent") or "")[:_USER_AGENT_MAX] or None) if request else None,
         )
         self.db.add(row)
         return row

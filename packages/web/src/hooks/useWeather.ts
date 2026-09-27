@@ -3,11 +3,26 @@ import { weatherService } from "../services/WeatherService";
 import type { Coords } from "./useGeolocation";
 
 export type WeatherConditionCode =
-  | "clear" | "mostly_clear" | "partly_cloudy" | "mostly_cloudy" | "cloudy"
-  | "fog" | "windy" | "wind_rain"
-  | "rain_light" | "rain" | "rain_heavy" | "rain_chance" | "rain_scattered"
-  | "snow_light" | "snow" | "snow_heavy" | "snow_chance"
-  | "sleet" | "hail" | "thunderstorm"
+  | "clear"
+  | "mostly_clear"
+  | "partly_cloudy"
+  | "mostly_cloudy"
+  | "cloudy"
+  | "fog"
+  | "windy"
+  | "wind_rain"
+  | "rain_light"
+  | "rain"
+  | "rain_heavy"
+  | "rain_chance"
+  | "rain_scattered"
+  | "snow_light"
+  | "snow"
+  | "snow_heavy"
+  | "snow_chance"
+  | "sleet"
+  | "hail"
+  | "thunderstorm"
   | "unknown";
 
 export type WeatherPayload = {
@@ -24,7 +39,7 @@ export type WeatherPayload = {
 };
 
 export type HourlyForecast = {
-  time: string;            // local ISO, e.g. "2026-06-15T13:00"
+  time: string; // local ISO, e.g. "2026-06-15T13:00"
   temp_c: number | null;
   condition: string;
   condition_code: WeatherConditionCode;
@@ -33,7 +48,7 @@ export type HourlyForecast = {
 };
 
 export type DailyForecast = {
-  date: string;            // local date, e.g. "2026-06-15"
+  date: string; // local date, e.g. "2026-06-15"
   temp_max_c: number | null;
   temp_min_c: number | null;
   condition: string;

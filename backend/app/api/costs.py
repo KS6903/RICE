@@ -1,4 +1,5 @@
 """Costs/expenses domain HTTP controllers — thin routing over CostsService (Phase 3d)."""
+
 import uuid
 
 from fastapi import APIRouter, Depends, status
@@ -10,10 +11,12 @@ from ..repositories.costs import ExpenseCategoryRepository, ExpenseRepository
 from ..schemas.costs import CategoryCreate, CategoryUpdate, ExpenseCreate
 from ..services.costs_service import CostsService
 
-router = APIRouter(dependencies=[
-    Depends(require_feature("expenses")),
-    Depends(require_section_access("expenses")),
-])
+router = APIRouter(
+    dependencies=[
+        Depends(require_feature("expenses")),
+        Depends(require_section_access("expenses")),
+    ]
+)
 
 
 def get_costs_service(

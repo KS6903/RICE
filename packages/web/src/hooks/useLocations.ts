@@ -33,8 +33,9 @@ export function useLocations() {
   });
 
   const create = useMutation({
-    mutationFn: (body: Omit<SavedLocation, "id" | "is_default" | "created_at"> & { is_default?: boolean }) =>
-      locationsService.create(body) as Promise<SavedLocation>,
+    mutationFn: (
+      body: Omit<SavedLocation, "id" | "is_default" | "created_at"> & { is_default?: boolean },
+    ) => locationsService.create(body) as Promise<SavedLocation>,
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["user-locations"] });
       qc.invalidateQueries({ queryKey: ["weather"] });

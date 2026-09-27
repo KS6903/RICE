@@ -11,6 +11,7 @@ The advisory itself is a plain proxy call (like WeatherService — no DB), cache
 for hours per location/day since DeepSeek calls cost money and the underlying
 forecast changes slowly.
 """
+
 from __future__ import annotations
 
 import json
@@ -181,9 +182,7 @@ class DryingAdvisorService:
         # emits (including a spoofed "location"/"generated_at"/"cached") is
         # dropped here rather than merged — untrusted output is filtered by an
         # explicit allowlist, never splatted wholesale into the constructor.
-        model_fields = {
-            k: parsed.get(k) for k in ("verdict", "headline", "reasoning", "best_window")
-        }
+        model_fields = {k: parsed.get(k) for k in ("verdict", "headline", "reasoning", "best_window")}
         try:
             return DryingAdvisory(
                 **model_fields,

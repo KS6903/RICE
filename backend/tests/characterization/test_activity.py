@@ -1,4 +1,5 @@
 """Characterization: the activity-log read endpoint (Phase 3b target)."""
+
 from app.models.activity import ActivityLog
 
 
@@ -26,9 +27,7 @@ def test_activity_serialized_shape(auth_client, seed_owner, db_session):
     rows = res.json()
     assert len(rows) == 1
     row = rows[0]
-    assert set(row.keys()) == {
-        "id", "action", "user_name", "entity_type", "entity_label", "detail", "created_at"
-    }
+    assert set(row.keys()) == {"id", "action", "user_name", "entity_type", "entity_label", "detail", "created_at"}
     assert row["action"] == "warehouse.delete"
     assert row["entity_label"] == "Main Branch"
     assert row["user_name"] == seed_owner.full_name

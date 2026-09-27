@@ -34,8 +34,7 @@ export default function ManageLayoutsModal({
   }
 
   const bulkDelete = useMutation({
-    mutationFn: (ids: string[]) =>
-      canvaService.bulkDeleteLayouts(ids),
+    mutationFn: (ids: string[]) => canvaService.bulkDeleteLayouts(ids),
     onSuccess: (res: any) => {
       setErrorMsg(null);
       invalidate();
@@ -44,7 +43,7 @@ export default function ManageLayoutsModal({
       if (skipped.length) {
         setErrorMsg(
           "Some layouts couldn't be moved to trash:\n" +
-          skipped.map((s) => `• ${s.reason}`).join("\n")
+            skipped.map((s) => `• ${s.reason}`).join("\n"),
         );
       }
     },
@@ -54,16 +53,18 @@ export default function ManageLayoutsModal({
         typeof detail === "string"
           ? detail
           : err?.response?.status === 403
-          ? "You don't have permission to delete layouts."
-          : "Something went wrong. Check the server logs."
+            ? "You don't have permission to delete layouts."
+            : "Something went wrong. Check the server logs.",
       );
     },
   });
 
   const restore = useMutation({
-    mutationFn: (id: string) =>
-      canvaService.restoreLayout(id),
-    onSuccess: () => { setErrorMsg(null); invalidate(); },
+    mutationFn: (id: string) => canvaService.restoreLayout(id),
+    onSuccess: () => {
+      setErrorMsg(null);
+      invalidate();
+    },
     onError: (err: any) => {
       setErrorMsg(err?.response?.data?.detail ?? "Couldn't restore layout.");
     },
@@ -72,13 +73,17 @@ export default function ManageLayoutsModal({
   function toggle(id: string) {
     setSelected((prev) => {
       const next = new Set(prev);
-      if (next.has(id)) { next.delete(id); } else { next.add(id); }
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
       return next;
     });
   }
   function toggleAll() {
     setSelected((prev) =>
-      prev.size === layouts.length ? new Set() : new Set(layouts.map((l) => l.id))
+      prev.size === layouts.length ? new Set() : new Set(layouts.map((l) => l.id)),
     );
   }
   function handleDelete() {
@@ -91,14 +96,21 @@ export default function ManageLayoutsModal({
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center p-4"
-      role="dialog" aria-modal="true" aria-labelledby="manage-layouts-title"
-      onKeyDown={(e) => { if (e.key === "Escape") onClose(); }}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="manage-layouts-title"
+      onKeyDown={(e) => {
+        if (e.key === "Escape") onClose();
+      }}
     >
-      <button type="button" aria-label="Close"
-        className="absolute inset-0 bg-slate-900/45 backdrop-blur-sm" onClick={onClose} />
+      <button
+        type="button"
+        aria-label="Close"
+        className="absolute inset-0 bg-slate-900/45 backdrop-blur-sm"
+        onClick={onClose}
+      />
 
       <div className="relative w-full max-w-[480px] max-h-[88vh] flex flex-col glass-strong rounded-2xl shadow-2xl ring-1 ring-soft animate-grad-fade-up">
-
         {/* ── Static header ── */}
         <div className="shrink-0 rounded-t-2xl px-5 pt-5 pb-3 border-b border-soft">
           <div className="flex items-start justify-between mb-3">
@@ -123,7 +135,9 @@ export default function ManageLayoutsModal({
               className="h-4 w-4 rounded border-soft accent-rose-500 cursor-pointer disabled:opacity-40"
               disabled={layouts.length === 0}
               checked={layouts.length > 0 && selected.size === layouts.length}
-              ref={(el) => { if (el) el.indeterminate = selected.size > 0 && selected.size < layouts.length; }}
+              ref={(el) => {
+                if (el) el.indeterminate = selected.size > 0 && selected.size < layouts.length;
+              }}
               onChange={toggleAll}
             />
             <span className="text-xs font-semibold text-secondary">
@@ -154,12 +168,12 @@ export default function ManageLayoutsModal({
 
         {/* ── Scrollable body ── */}
         <div className="overflow-y-auto px-5 py-4 space-y-5">
-
           {/* Active layouts */}
           <div className="rounded-xl ring-1 ring-soft overflow-hidden">
             <ul className="divide-y divide-slate-100 dark:divide-slate-800">
               {layouts.map((l) => (
-                <li key={l.id}
+                <li
+                  key={l.id}
                   className={`flex items-center gap-3 px-3 py-2.5 cursor-pointer hover:bg-slate-50/60 dark:hover:bg-slate-800/40 transition-colors ${selected.has(l.id) ? "bg-rose-50/60 dark:bg-rose-950/20" : ""}`}
                   onClick={() => toggle(l.id)}
                 >
@@ -204,10 +218,18 @@ export default function ManageLayoutsModal({
                       <p className="text-sm font-semibold text-primary truncate">{l.name}</p>
                       <p className="text-xs text-muted">
                         {l.deleted_by_name ? `Deleted by ${l.deleted_by_name} · ` : ""}
-                        <span className={l.days_remaining <= 3 ? "text-rose-600 dark:text-rose-400 font-semibold" : ""}>
+                        <span
+                          className={
+                            l.days_remaining <= 3
+                              ? "text-rose-600 dark:text-rose-400 font-semibold"
+                              : ""
+                          }
+                        >
                           {daysLabel(l.days_remaining)}
                         </span>
-                        <span className="ml-1 tabular-nums">· {l.width_m}m × {l.height_m}m</span>
+                        <span className="ml-1 tabular-nums">
+                          · {l.width_m}m × {l.height_m}m
+                        </span>
                       </p>
                     </div>
                     <button
@@ -222,7 +244,6 @@ export default function ManageLayoutsModal({
               </ul>
             )}
           </div>
-
         </div>
       </div>
     </div>

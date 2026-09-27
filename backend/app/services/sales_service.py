@@ -5,6 +5,7 @@ order totals + numbering, invoicing (which advances the order status), and
 payment posting (which advances invoice/order status). The service owns each
 transaction; repositories flush only.
 """
+
 from __future__ import annotations
 
 import uuid
@@ -47,9 +48,7 @@ class SalesService(BaseService):
     # ── customers ─────────────────────────────────────────────────────────────
 
     def list_customers(self, *, include_inactive: bool = False) -> Sequence[Customer]:
-        return self.customers.list_for_company(
-            self.current_user.company_id, include_inactive=include_inactive
-        )
+        return self.customers.list_for_company(self.current_user.company_id, include_inactive=include_inactive)
 
     def create_customer(self, data) -> Customer:
         color = pick_unused_color(self.db, self.current_user.company_id)
@@ -82,9 +81,7 @@ class SalesService(BaseService):
     # ── orders ────────────────────────────────────────────────────────────────
 
     def list_orders(self, *, skip: int = 0, limit: int = 50, status: str | None = None) -> Sequence[SalesOrder]:
-        return self.orders.list_for_company(
-            self.current_user.company_id, status=status, skip=skip, limit=limit
-        )
+        return self.orders.list_for_company(self.current_user.company_id, status=status, skip=skip, limit=limit)
 
     def create_order(self, data) -> SalesOrder:
         # IDOR guards: the customer must be ours; item varieties must be ours or

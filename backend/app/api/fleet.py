@@ -1,4 +1,5 @@
 """Fleet HTTP controllers — trucks, drivers, and dispatch trips."""
+
 import uuid
 
 from fastapi import APIRouter, Depends, status
@@ -10,10 +11,12 @@ from ..repositories.fleet import DriverRepository, TripRepository, TruckReposito
 from ..schemas.fleet import DriverCreate, DriverUpdate, TripCreate, TripUpdate, TruckCreate, TruckUpdate
 from ..services.fleet_service import FleetService
 
-router = APIRouter(dependencies=[
-    Depends(require_feature("sales")),
-    Depends(require_section_access("dispatch")),
-])
+router = APIRouter(
+    dependencies=[
+        Depends(require_feature("sales")),
+        Depends(require_section_access("dispatch")),
+    ]
+)
 
 
 def get_fleet_service(
@@ -31,12 +34,17 @@ def get_fleet_service(
 
 # ── Drivers ───────────────────────────────────────────────────────────────────
 
+
 @router.get("/fleet/drivers")
 def list_drivers(include_inactive: bool = False, svc: FleetService = Depends(get_fleet_service)):
     return svc.list_drivers(include_inactive=include_inactive)
 
 
-@router.post("/fleet/drivers", status_code=status.HTTP_201_CREATED, dependencies=[Depends(require_section_access("dispatch", write=True))])
+@router.post(
+    "/fleet/drivers",
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(require_section_access("dispatch", write=True))],
+)
 def create_driver(body: DriverCreate, svc: FleetService = Depends(get_fleet_service)):
     return svc.create_driver(body)
 
@@ -48,12 +56,17 @@ def update_driver(driver_id: uuid.UUID, body: DriverUpdate, svc: FleetService = 
 
 # ── Trucks ────────────────────────────────────────────────────────────────────
 
+
 @router.get("/fleet/trucks")
 def list_trucks(include_inactive: bool = False, svc: FleetService = Depends(get_fleet_service)):
     return svc.list_trucks(include_inactive=include_inactive)
 
 
-@router.post("/fleet/trucks", status_code=status.HTTP_201_CREATED, dependencies=[Depends(require_section_access("dispatch", write=True))])
+@router.post(
+    "/fleet/trucks",
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(require_section_access("dispatch", write=True))],
+)
 def create_truck(body: TruckCreate, svc: FleetService = Depends(get_fleet_service)):
     return svc.create_truck(body)
 
@@ -65,12 +78,17 @@ def update_truck(truck_id: uuid.UUID, body: TruckUpdate, svc: FleetService = Dep
 
 # ── Trips ─────────────────────────────────────────────────────────────────────
 
+
 @router.get("/fleet/trips")
 def list_trips(limit: int = 100, svc: FleetService = Depends(get_fleet_service)):
     return svc.list_trips(limit=limit)
 
 
-@router.post("/fleet/trips", status_code=status.HTTP_201_CREATED, dependencies=[Depends(require_section_access("dispatch", write=True))])
+@router.post(
+    "/fleet/trips",
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(require_section_access("dispatch", write=True))],
+)
 def create_trip(body: TripCreate, svc: FleetService = Depends(get_fleet_service)):
     return svc.create_trip(body)
 

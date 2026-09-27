@@ -1,4 +1,5 @@
 """CostsService — business logic for the costs/expenses domain (Phase 3d)."""
+
 from __future__ import annotations
 
 import uuid

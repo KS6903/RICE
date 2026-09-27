@@ -5,6 +5,7 @@ When MFA_ENFORCE is on, an owner/platform-admin who hasn't enrolled is blocked
 A verified Google identity for an MFA-enabled account yields a TOTP challenge,
 not tokens. Enforcement is disabled suite-wide (conftest); these tests opt in.
 """
+
 import pyotp
 import pytest
 
@@ -72,9 +73,7 @@ def test_google_login_with_mfa_returns_challenge(client, seed_owner, db_session,
         ),
         raising=False,
     )
-    monkeypatch.setattr(
-        asvc, "google_requests", types.SimpleNamespace(Request=lambda: None), raising=False
-    )
+    monkeypatch.setattr(asvc, "google_requests", types.SimpleNamespace(Request=lambda: None), raising=False)
 
     res = client.post("/api/auth/google", json={"credential": "fake-google-jwt"})
     assert res.status_code == 200

@@ -47,18 +47,26 @@ export default function ForgotPasswordPage() {
               <span>If an account matches, we&apos;ve sent a reset link. Check your email.</span>
             </div>
             {devLink && (
-              <Link to={devLink} className="block text-sm font-semibold text-grad-brand hover:opacity-80 break-all">
+              <Link
+                to={devLink}
+                className="block text-sm font-semibold text-grad-brand hover:opacity-80 break-all"
+              >
                 Dev reset link → {devLink}
               </Link>
             )}
-            <Link to="/login" className="inline-flex items-center gap-1.5 text-sm font-semibold text-muted hover:text-primary">
+            <Link
+              to="/login"
+              className="inline-flex items-center gap-1.5 text-sm font-semibold text-muted hover:text-primary"
+            >
               <ArrowLeft size={14} /> Back to sign in
             </Link>
           </div>
         ) : (
           <form onSubmit={submit} className="space-y-5">
             <div>
-              <h1 className="text-2xl font-bold tracking-tight text-primary">Reset your password</h1>
+              <h1 className="text-2xl font-bold tracking-tight text-primary">
+                Reset your password
+              </h1>
               <p className="mt-2 text-sm text-secondary">
                 Enter your username or email and we&apos;ll send you a reset link.
               </p>
@@ -81,10 +89,17 @@ export default function ForgotPasswordPage() {
                 <span>{error}</span>
               </div>
             )}
-            <button type="submit" className="btn-primary w-full" disabled={loading || !identifier.trim()}>
+            <button
+              type="submit"
+              className="btn-primary w-full"
+              disabled={loading || !identifier.trim()}
+            >
               {loading ? "Sending…" : "Send reset link"}
             </button>
-            <Link to="/login" className="inline-flex items-center gap-1.5 text-sm font-semibold text-muted hover:text-primary">
+            <Link
+              to="/login"
+              className="inline-flex items-center gap-1.5 text-sm font-semibold text-muted hover:text-primary"
+            >
               <ArrowLeft size={14} /> Back to sign in
             </Link>
           </form>

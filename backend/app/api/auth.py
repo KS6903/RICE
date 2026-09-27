@@ -4,6 +4,7 @@ Unauthenticated endpoints (signup/login/refresh/google) use a service with no
 current_user; the account self-service endpoints (me/change-password/profile)
 inject the authenticated user.
 """
+
 import secrets
 import uuid
 
@@ -92,6 +93,7 @@ def get_auth_service(
 
 # ── Unauthenticated ──────────────────────────────────────────────────────────
 
+
 @router.post("/signup", response_model=None, status_code=status.HTTP_201_CREATED)
 @limiter.limit(AUTH_RATE_LIMIT)
 def signup(
@@ -118,11 +120,7 @@ def login(
     instead — the client completes login via POST /auth/mfa/verify. A device that
     already verified MFA carries an ``mfa_trust`` cookie (or X-MFA-Trust header)
     and skips straight to tokens until the next weekly reset (Sunday)."""
-    trust = (
-        request.headers.get("X-MFA-Trust")
-        if _is_bearer_client(request)
-        else request.cookies.get(MFA_TRUST_COOKIE)
-    )
+    trust = request.headers.get("X-MFA-Trust") if _is_bearer_client(request) else request.cookies.get(MFA_TRUST_COOKIE)
     result = svc.login(form.username, form.password, mfa_trust_token=trust)
     if isinstance(result, TokenResponse):
         return _complete_auth(request, response, result)
@@ -211,11 +209,7 @@ def google_auth(
 ):
     """Like /login: an MFA-enabled account gets a challenge instead of tokens,
     unless this device is within its MFA trust window."""
-    trust = (
-        request.headers.get("X-MFA-Trust")
-        if _is_bearer_client(request)
-        else request.cookies.get(MFA_TRUST_COOKIE)
-    )
+    trust = request.headers.get("X-MFA-Trust") if _is_bearer_client(request) else request.cookies.get(MFA_TRUST_COOKIE)
     result = svc.google_auth(body, mfa_trust_token=trust, request=request)
     if isinstance(result, TokenResponse):
         return _complete_auth(request, response, result)
@@ -247,6 +241,7 @@ def unlink_google_identity(
 
 
 # ── MFA (TOTP) ───────────────────────────────────────────────────────────────
+
 
 @router.post("/mfa/verify", response_model=None)
 @limiter.limit(AUTH_RATE_LIMIT)
@@ -321,6 +316,7 @@ def regenerate_backup_codes(
 
 # ── Active sessions / devices ────────────────────────────────────────────────
 
+
 @router.get("/sessions")
 def list_sessions(
     payload: dict = Depends(get_access_token_payload),
@@ -346,6 +342,7 @@ def revoke_other_sessions(
 
 
 # ── Authenticated ────────────────────────────────────────────────────────────
+
 
 @router.post("/logout")
 def logout(

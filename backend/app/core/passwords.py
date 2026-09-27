@@ -7,6 +7,7 @@ HaveIBeenPwned range API (k-anonymity: only the first 5 chars of the SHA-1 ever
 leave the server). The HIBP call is best-effort — offline mills and CI must
 never be blocked by a third-party outage, so any network failure means "allow".
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -61,6 +62,4 @@ def validate_password_strength(password: str) -> None:
     if not (has_alpha and has_digit):
         raise BadRequestError("Password must contain both letters and numbers")
     if settings.PASSWORD_BREACH_CHECK and _is_breached(password):
-        raise BadRequestError(
-            "This password has appeared in known data breaches. Please choose a different one."
-        )
+        raise BadRequestError("This password has appeared in known data breaches. Please choose a different one.")

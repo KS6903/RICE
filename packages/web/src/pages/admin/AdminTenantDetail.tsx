@@ -160,9 +160,7 @@ function SubscriptionIndicator({ sub }: { sub: any | null | undefined }) {
           <p className={`text-sm font-semibold ${banner.titleClass}`}>{banner.title}</p>
           <div className="flex items-center gap-2 mt-0.5">
             <PlanIcon code={sub.plan_code} size={14} />
-            <span className="text-lg font-bold text-primary">
-              {sub.plan_name}
-            </span>
+            <span className="text-lg font-bold text-primary">{sub.plan_name}</span>
             <span className="text-xs text-muted">
               {sub.monthly_price === 0 ? "Free" : `₱${sub.monthly_price.toLocaleString()}/mo`}
             </span>
@@ -185,11 +183,7 @@ function SubscriptionIndicator({ sub }: { sub: any | null | undefined }) {
           <div className="text-sm font-medium text-primary mt-1">
             {started ? format(started, "MMM d, yyyy") : "—"}
           </div>
-          {started && (
-            <div className="text-xs text-muted">
-              {relativeTo(now, started)}
-            </div>
-          )}
+          {started && <div className="text-xs text-muted">{relativeTo(now, started)}</div>}
         </div>
         <div className="px-4 py-3">
           <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted">
@@ -202,9 +196,7 @@ function SubscriptionIndicator({ sub }: { sub: any | null | undefined }) {
               </div>
               <div
                 className={`text-xs ${
-                  expires < now
-                    ? "text-rose-600 dark:text-rose-400 font-medium"
-                    : "text-muted"
+                  expires < now ? "text-rose-600 dark:text-rose-400 font-medium" : "text-muted"
                 }`}
               >
                 {expires < now ? "expired " : ""}
@@ -213,9 +205,7 @@ function SubscriptionIndicator({ sub }: { sub: any | null | undefined }) {
             </>
           ) : (
             <>
-              <div className="text-sm font-medium text-primary mt-1">
-                Never — permanent
-              </div>
+              <div className="text-sm font-medium text-primary mt-1">Never — permanent</div>
               <div className="text-xs text-muted">No expiration set</div>
             </>
           )}
@@ -400,10 +390,7 @@ function SubscriptionManager({ tenantId, tenantName }: { tenantId: string; tenan
           <h3 className="font-semibold text-primary">Subscription</h3>
         </div>
         {!showForm && currentSub && (
-          <button
-            onClick={() => setShowForm(true)}
-            className="link text-xs"
-          >
+          <button onClick={() => setShowForm(true)} className="link text-xs">
             Change tier
           </button>
         )}
@@ -469,9 +456,7 @@ function SubscriptionManager({ tenantId, tenantName }: { tenantId: string; tenan
             <div className="rounded-xl border border-soft bg-surface-muted p-4 flex flex-wrap items-center gap-x-6 gap-y-2 text-sm">
               <div className="flex items-center gap-2">
                 <PlanIcon code={selectedPlan.code} />
-                <span className="font-bold text-primary">
-                  {selectedPlan.name}
-                </span>
+                <span className="font-bold text-primary">{selectedPlan.name}</span>
                 {tier === "trial" && (
                   <span className="ml-1 inline-flex items-center text-[10px] font-bold uppercase tracking-wide bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-200 px-1.5 py-0.5 rounded">
                     Trial
@@ -712,9 +697,7 @@ export default function AdminTenantDetail() {
           <SubscriptionManager tenantId={id!} tenantName={c.name} />
 
           <div className="card">
-            <h3 className="font-semibold text-primary mb-4">
-              Company information
-            </h3>
+            <h3 className="font-semibold text-primary mb-4">Company information</h3>
             <dl className="grid grid-cols-2 gap-4 text-sm">
               <div>
                 <dt className="text-muted">Address</dt>
@@ -738,9 +721,7 @@ export default function AdminTenantDetail() {
               </div>
               <div>
                 <dt className="text-muted">DA Reg.</dt>
-                <dd className="text-primary">
-                  {c.da_registration_no || "—"}
-                </dd>
+                <dd className="text-primary">{c.da_registration_no || "—"}</dd>
               </div>
               <div>
                 <dt className="text-muted">Currency</dt>
@@ -752,9 +733,7 @@ export default function AdminTenantDetail() {
               </div>
               <div>
                 <dt className="text-muted">Multi-branch</dt>
-                <dd className="text-primary">
-                  {c.is_multi_branch ? "Yes" : "No"}
-                </dd>
+                <dd className="text-primary">{c.is_multi_branch ? "Yes" : "No"}</dd>
               </div>
               <div>
                 <dt className="text-muted">Signed up</dt>
@@ -768,9 +747,7 @@ export default function AdminTenantDetail() {
           <div className="panel">
             <div className="px-6 py-4 border-b border-soft flex items-center gap-2">
               <UsersIcon size={16} className="text-muted" />
-              <h3 className="font-semibold text-primary">
-                Users ({users.length})
-              </h3>
+              <h3 className="font-semibold text-primary">Users ({users.length})</h3>
             </div>
             <table className="data-table">
               <thead>
@@ -785,9 +762,7 @@ export default function AdminTenantDetail() {
                   <tr key={u.id}>
                     <td className="px-4 py-3 font-mono text-xs">{u.username}</td>
                     <td className="px-4 py-3">{u.full_name}</td>
-                    <td className="px-4 py-3 text-muted">
-                      {u.email || "—"}
-                    </td>
+                    <td className="px-4 py-3 text-muted">{u.email || "—"}</td>
                     <td className="px-4 py-3 capitalize">{u.role?.replace("_", " ") || "—"}</td>
                     <td className="px-4 py-3">
                       {u.is_active ? (
@@ -815,9 +790,7 @@ export default function AdminTenantDetail() {
           <div className="panel">
             <div className="px-6 py-4 border-b border-soft flex items-center gap-2">
               <MapPin size={16} className="text-muted" />
-              <h3 className="font-semibold text-primary">
-                Branches ({branches.length})
-              </h3>
+              <h3 className="font-semibold text-primary">Branches ({branches.length})</h3>
             </div>
             <table className="data-table">
               <thead>

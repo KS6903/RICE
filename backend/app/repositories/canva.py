@@ -10,6 +10,7 @@ on ``deleted_at`` explicitly, matching the original.
 
 Writes flush only — the owning service commits via ``BaseService.transaction()``.
 """
+
 from __future__ import annotations
 
 import uuid
@@ -47,7 +48,7 @@ class WarehouseLayoutRepository(BaseRepository[WarehouseLayout]):
         layouts = self.all_for_branch(branch_id)
         if not layouts:
             return None
-        return next((l for l in layouts if l.is_default), layouts[0])
+        return next((layout for layout in layouts if layout.is_default), layouts[0])
 
     def first_for_branch(self, branch_id: uuid.UUID) -> WarehouseLayout | None:
         return self.db.query(WarehouseLayout).filter(WarehouseLayout.branch_id == branch_id).first()
@@ -62,10 +63,12 @@ class WarehouseLayoutRepository(BaseRepository[WarehouseLayout]):
     def ids_for_branch_company(self, branch_id: uuid.UUID, company_id: uuid.UUID) -> list[uuid.UUID]:
         return [
             row.id
-            for row in self.db.query(WarehouseLayout.id).filter(
+            for row in self.db.query(WarehouseLayout.id)
+            .filter(
                 WarehouseLayout.branch_id == branch_id,
                 WarehouseLayout.company_id == company_id,
-            ).all()
+            )
+            .all()
         ]
 
     # ---- live / trashed lists ------------------------------------------------
@@ -120,7 +123,9 @@ class WarehouseLayoutRepository(BaseRepository[WarehouseLayout]):
             .count()
         )
 
-    def first_live_for_branch(self, branch_id: uuid.UUID, *, exclude_id: uuid.UUID | None = None) -> WarehouseLayout | None:
+    def first_live_for_branch(
+        self, branch_id: uuid.UUID, *, exclude_id: uuid.UUID | None = None
+    ) -> WarehouseLayout | None:
         q = self.db.query(WarehouseLayout).filter(
             WarehouseLayout.branch_id == branch_id, WarehouseLayout.deleted_at.is_(None)
         )

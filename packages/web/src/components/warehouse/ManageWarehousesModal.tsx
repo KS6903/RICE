@@ -46,19 +46,27 @@ export default function ManageWarehousesModal({ onClose }: { onClose: () => void
   function toggle(id: string) {
     setSelected((prev) => {
       const next = new Set(prev);
-      if (next.has(id)) { next.delete(id); } else { next.add(id); }
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
       return next;
     });
   }
   function toggleAll() {
     setSelected((prev) =>
-      prev.size === selectable.length ? new Set() : new Set(selectable.map((b) => b.id))
+      prev.size === selectable.length ? new Set() : new Set(selectable.map((b) => b.id)),
     );
   }
   function confirmDelete() {
     const ids = [...selected];
     if (!ids.length) return;
-    if (confirm(`Move ${ids.length} warehouse${ids.length === 1 ? "" : "s"} to trash? You can restore within 30 days.`)) {
+    if (
+      confirm(
+        `Move ${ids.length} warehouse${ids.length === 1 ? "" : "s"} to trash? You can restore within 30 days.`,
+      )
+    ) {
       bulkDelete.mutate(ids);
     }
   }
@@ -66,17 +74,32 @@ export default function ManageWarehousesModal({ onClose }: { onClose: () => void
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center p-4"
-      role="dialog" aria-modal="true" aria-labelledby="manage-wh-title"
-      onKeyDown={(e) => { if (e.key === "Escape") onClose(); }}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="manage-wh-title"
+      onKeyDown={(e) => {
+        if (e.key === "Escape") onClose();
+      }}
     >
-      <button type="button" aria-label="Close" className="absolute inset-0 bg-slate-900/45 backdrop-blur-sm" onClick={onClose} />
+      <button
+        type="button"
+        aria-label="Close"
+        className="absolute inset-0 bg-slate-900/45 backdrop-blur-sm"
+        onClick={onClose}
+      />
       <div className="relative w-full max-w-[520px] max-h-[88vh] overflow-y-auto glass-strong rounded-2xl shadow-2xl ring-1 ring-soft p-5 animate-grad-fade-up">
         <div className="flex items-start justify-between mb-3">
           <div>
-            <h3 id="manage-wh-title" className="text-lg font-bold text-primary">Manage warehouses</h3>
-            <p className="text-xs text-muted mt-0.5">Select warehouses to delete. Deleted ones stay recoverable for 30 days.</p>
+            <h3 id="manage-wh-title" className="text-lg font-bold text-primary">
+              Manage warehouses
+            </h3>
+            <p className="text-xs text-muted mt-0.5">
+              Select warehouses to delete. Deleted ones stay recoverable for 30 days.
+            </p>
           </div>
-          <button type="button" aria-label="Close" onClick={onClose} className="btn-ghost !p-1.5"><XIcon size={16} /></button>
+          <button type="button" aria-label="Close" onClick={onClose} className="btn-ghost !p-1.5">
+            <XIcon size={16} />
+          </button>
         </div>
 
         {/* Active warehouses */}
@@ -88,14 +111,22 @@ export default function ManageWarehousesModal({ onClose }: { onClose: () => void
               className="h-4 w-4 rounded border-soft accent-rose-500 cursor-pointer disabled:opacity-40"
               disabled={selectable.length === 0}
               checked={selectable.length > 0 && selected.size === selectable.length}
-              ref={(el) => { if (el) el.indeterminate = selected.size > 0 && selected.size < selectable.length; }}
+              ref={(el) => {
+                if (el) el.indeterminate = selected.size > 0 && selected.size < selectable.length;
+              }}
               onChange={toggleAll}
             />
-            <span className="text-xs font-semibold text-secondary">{branches.length} warehouse{branches.length === 1 ? "" : "s"}</span>
+            <span className="text-xs font-semibold text-secondary">
+              {branches.length} warehouse{branches.length === 1 ? "" : "s"}
+            </span>
             {selected.size > 0 && (
-              <button onClick={confirmDelete} disabled={bulkDelete.isPending}
-                className="ml-auto inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-rose-600 text-white text-xs font-semibold hover:bg-rose-700 disabled:opacity-50">
-                <Trash2 size={13} /> {bulkDelete.isPending ? "Deleting…" : `Delete ${selected.size}`}
+              <button
+                onClick={confirmDelete}
+                disabled={bulkDelete.isPending}
+                className="ml-auto inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-rose-600 text-white text-xs font-semibold hover:bg-rose-700 disabled:opacity-50"
+              >
+                <Trash2 size={13} />{" "}
+                {bulkDelete.isPending ? "Deleting…" : `Delete ${selected.size}`}
               </button>
             )}
           </div>
@@ -144,13 +175,22 @@ export default function ManageWarehousesModal({ onClose }: { onClose: () => void
                     <p className="text-sm font-semibold text-primary truncate">{b.name}</p>
                     <p className="text-xs text-muted">
                       {b.deleted_by_name ? `Deleted by ${b.deleted_by_name} · ` : ""}
-                      <span className={b.days_remaining <= 3 ? "text-rose-600 dark:text-rose-400 font-semibold" : ""}>
+                      <span
+                        className={
+                          b.days_remaining <= 3
+                            ? "text-rose-600 dark:text-rose-400 font-semibold"
+                            : ""
+                        }
+                      >
                         {b.days_remaining}d left
                       </span>
                     </p>
                   </div>
-                  <button onClick={() => restore.mutate(b.id)} disabled={restore.isPending}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg btn-secondary text-sm font-semibold disabled:opacity-50">
+                  <button
+                    onClick={() => restore.mutate(b.id)}
+                    disabled={restore.isPending}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg btn-secondary text-sm font-semibold disabled:opacity-50"
+                  >
                     <RotateCcw size={14} /> Restore
                   </button>
                 </li>

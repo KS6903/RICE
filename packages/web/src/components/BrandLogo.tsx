@@ -9,7 +9,12 @@ interface Props {
  * KS Productions brand mark. Same paths as the admin sidebar logo.
  * `className` sets the stroke color via `text-*` since stroke="currentColor".
  */
-export default function BrandLogo({ width = 28, height = 14, className = "text-amber-400", strokeWidth = 6 }: Props) {
+export default function BrandLogo({
+  width = 28,
+  height = 14,
+  className = "text-amber-400",
+  strokeWidth = 6,
+}: Props) {
   return (
     <svg
       viewBox="80 20 145 65"

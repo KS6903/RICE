@@ -1,6 +1,14 @@
 import { useEffect, useRef, useState } from "react";
 import {
-  MapPin, Search, Star, Trash2, X as XIcon, ChevronDown, Loader2, Check, AlertCircle,
+  MapPin,
+  Search,
+  Star,
+  Trash2,
+  X as XIcon,
+  ChevronDown,
+  Loader2,
+  Check,
+  AlertCircle,
 } from "lucide-react";
 import { useLocations, useGeocodeSearch, type GeocodeHit } from "../hooks/useLocations";
 import { useActiveLocation } from "../hooks/useActiveLocation";
@@ -25,13 +33,17 @@ export default function LocationPicker() {
     if (!open) return;
     const onDown = (e: MouseEvent) => {
       if (
-        popoverRef.current && !popoverRef.current.contains(e.target as Node) &&
-        triggerRef.current && !triggerRef.current.contains(e.target as Node)
+        popoverRef.current &&
+        !popoverRef.current.contains(e.target as Node) &&
+        triggerRef.current &&
+        !triggerRef.current.contains(e.target as Node)
       ) {
         setOpen(false);
       }
     };
-    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setOpen(false); };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(false);
+    };
     window.addEventListener("mousedown", onDown);
     window.addEventListener("keydown", onKey);
     return () => {
@@ -42,7 +54,14 @@ export default function LocationPicker() {
 
   const saveAndUse = (hit: GeocodeHit) => {
     create.mutate(
-      { label: hit.label, lat: hit.lat, lon: hit.lon, country: hit.country, region: hit.region, is_default: true },
+      {
+        label: hit.label,
+        lat: hit.lat,
+        lon: hit.lon,
+        country: hit.country,
+        region: hit.region,
+        is_default: true,
+      },
       {
         onSuccess: () => {
           setQuery("");
@@ -67,7 +86,10 @@ export default function LocationPicker() {
         data-testid="location-picker-trigger"
       >
         <WeatherWidget variant="compact" />
-        <ChevronDown size={14} className={`text-muted ml-1 transition-transform ${open ? "rotate-180" : ""}`} />
+        <ChevronDown
+          size={14}
+          className={`text-muted ml-1 transition-transform ${open ? "rotate-180" : ""}`}
+        />
       </button>
 
       {open && (
@@ -80,10 +102,16 @@ export default function LocationPicker() {
         >
           {/* Active location header */}
           <div className="px-4 py-3 border-b border-soft bg-slate-50/60 dark:bg-slate-800/40">
-            <p className="text-[10px] font-bold uppercase tracking-wider text-muted">Current location</p>
+            <p className="text-[10px] font-bold uppercase tracking-wider text-muted">
+              Current location
+            </p>
             <p className="text-sm font-semibold text-primary truncate flex items-center gap-1.5 mt-0.5">
               <MapPin size={13} className="text-emerald-500 shrink-0" />
-              {active.source === "saved" ? active.label : active.source === "gps" ? "Your device location" : "Detected from network"}
+              {active.source === "saved"
+                ? active.label
+                : active.source === "gps"
+                  ? "Your device location"
+                  : "Detected from network"}
             </p>
           </div>
 
@@ -103,7 +131,9 @@ export default function LocationPicker() {
               <div
                 key={s.id}
                 className={`group flex items-center gap-2 px-3 py-2 ${
-                  s.is_default ? "bg-emerald-500/10" : "hover:bg-slate-100 dark:hover:bg-slate-700/40"
+                  s.is_default
+                    ? "bg-emerald-500/10"
+                    : "hover:bg-slate-100 dark:hover:bg-slate-700/40"
                 }`}
                 data-testid={`favorite-${s.id}`}
               >
@@ -117,8 +147,13 @@ export default function LocationPicker() {
                 >
                   <Star size={14} fill={s.is_default ? "currentColor" : "none"} />
                 </button>
-                <div className="flex-1 min-w-0 cursor-pointer" onClick={() => setDefault.mutate(s.id)}>
-                  <p className={`text-sm truncate ${s.is_default ? "font-semibold text-primary" : "text-secondary"}`}>
+                <div
+                  className="flex-1 min-w-0 cursor-pointer"
+                  onClick={() => setDefault.mutate(s.id)}
+                >
+                  <p
+                    className={`text-sm truncate ${s.is_default ? "font-semibold text-primary" : "text-secondary"}`}
+                  >
                     {s.label}
                   </p>
                   <p className="text-[10px] text-muted tabular-nums">
@@ -142,7 +177,10 @@ export default function LocationPicker() {
           {/* Search */}
           <div className="border-t border-soft p-2 bg-slate-50/40 dark:bg-slate-800/30">
             <div className="relative">
-              <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted pointer-events-none" />
+              <Search
+                size={13}
+                className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted pointer-events-none"
+              />
               <input
                 className="input !py-1.5 !pl-7 !pr-7 text-sm w-full"
                 placeholder="Search a city or place…"
@@ -191,7 +229,10 @@ export default function LocationPicker() {
                   >
                     <MapPin size={11} className="text-muted shrink-0" />
                     <span className="flex-1 truncate">{hit.label}</span>
-                    <Check size={12} className="text-emerald-500 opacity-0 group-hover:opacity-100" />
+                    <Check
+                      size={12}
+                      className="text-emerald-500 opacity-0 group-hover:opacity-100"
+                    />
                   </button>
                 ))}
               </div>

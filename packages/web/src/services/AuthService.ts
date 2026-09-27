@@ -24,7 +24,9 @@ export class AuthService {
     form.append("username", username);
     form.append("password", password);
     return this.http
-      .post("/auth/login", form, { headers: { "Content-Type": "application/x-www-form-urlencoded" } })
+      .post("/auth/login", form, {
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      })
       .then((r) => r.data);
   }
 
@@ -36,9 +38,7 @@ export class AuthService {
     credential: string,
     proof: { current_password?: string; mfa_code?: string },
   ): Promise<{ message: string }> {
-    return this.http
-      .post("/auth/google/link", { credential, ...proof })
-      .then((r) => r.data);
+    return this.http.post("/auth/google/link", { credential, ...proof }).then((r) => r.data);
   }
 
   unlinkGoogle(proof: {
@@ -58,7 +58,10 @@ export class AuthService {
 
   changePassword(currentPassword: string, newPassword: string): Promise<any> {
     return this.http
-      .post("/auth/change-password", { current_password: currentPassword, new_password: newPassword })
+      .post("/auth/change-password", {
+        current_password: currentPassword,
+        new_password: newPassword,
+      })
       .then((r) => r.data);
   }
 
@@ -70,7 +73,9 @@ export class AuthService {
   }
 
   resetPassword(token: string, newPassword: string): Promise<any> {
-    return this.http.post("/auth/reset-password", { token, new_password: newPassword }).then((r) => r.data);
+    return this.http
+      .post("/auth/reset-password", { token, new_password: newPassword })
+      .then((r) => r.data);
   }
 
   // ── Email verification ──────────────────────────────────────────────────────

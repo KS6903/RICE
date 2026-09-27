@@ -1,4 +1,5 @@
 """Inventory domain HTTP controllers — thin routing over InventoryService (Phase 3a)."""
+
 import uuid
 
 from fastapi import APIRouter, Depends, Query, status
@@ -14,10 +15,13 @@ from ..repositories.paddy import PalayInventoryRepository
 from ..schemas.inventory import AdjustmentIn, StockCreate
 from ..services.inventory_service import InventoryService
 
-router = APIRouter(dependencies=[
-    Depends(require_feature("inventory")),
-    Depends(require_section_access("inventory")),
-])
+router = APIRouter(
+    dependencies=[
+        Depends(require_feature("inventory")),
+        Depends(require_section_access("inventory")),
+    ]
+)
+
 
 def get_inventory_service(
     db: Session = Depends(get_db),

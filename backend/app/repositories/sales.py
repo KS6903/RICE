@@ -1,4 +1,5 @@
 """Repositories for the sales domain (Phase 3)."""
+
 from __future__ import annotations
 
 import uuid
@@ -25,9 +26,7 @@ class PriceListRepository(BaseRepository[PriceList]):
     model = PriceList
 
     def list_active_for_company(self, company_id: uuid.UUID) -> Sequence[PriceList]:
-        stmt = select(PriceList).where(
-            PriceList.company_id == company_id, PriceList.is_active.is_(True)
-        )
+        stmt = select(PriceList).where(PriceList.company_id == company_id, PriceList.is_active.is_(True))
         return self.db.execute(stmt).scalars().all()
 
 

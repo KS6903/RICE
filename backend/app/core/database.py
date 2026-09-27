@@ -33,9 +33,7 @@ engine = create_engine(
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 _provisioner_url = (
-    settings.PROVISIONER_DATABASE_URL.get_secret_value()
-    if settings.PROVISIONER_DATABASE_URL is not None
-    else None
+    settings.PROVISIONER_DATABASE_URL.get_secret_value() if settings.PROVISIONER_DATABASE_URL is not None else None
 )
 provisioner_engine = (
     create_engine(_build_engine_url(_provisioner_url), pool_pre_ping=True, pool_size=2, max_overflow=2)

@@ -20,7 +20,9 @@ export class SalesService {
   }
 
   listCustomers(includeInactive = true): Promise<any[]> {
-    return this.http.get(`/sales/customers?include_inactive=${includeInactive}`).then((r) => r.data);
+    return this.http
+      .get(`/sales/customers?include_inactive=${includeInactive}`)
+      .then((r) => r.data);
   }
 
   // ── customers ──────────────────────────────────────────────────────────────
@@ -35,7 +37,9 @@ export class SalesService {
   }
 
   createCustomer(form: Record<string, any>): Promise<any> {
-    return this.http.post("/sales/customers", SalesService.toCustomerPayload(form)).then((r) => r.data);
+    return this.http
+      .post("/sales/customers", SalesService.toCustomerPayload(form))
+      .then((r) => r.data);
   }
 
   setCustomerActive(id: string, isActive: boolean): Promise<any> {

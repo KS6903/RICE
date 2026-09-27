@@ -1,9 +1,18 @@
 """Characterization: tenant billing (Phase 3 sensitive group)."""
+
 from app.models.subscription import SubscriptionPlan
 
 PLAN_KEYS = {
-    "id", "code", "name", "description", "monthly_price", "max_users",
-    "max_branches", "features", "is_active", "sort_order",
+    "id",
+    "code",
+    "name",
+    "description",
+    "monthly_price",
+    "max_users",
+    "max_branches",
+    "features",
+    "is_active",
+    "sort_order",
 }
 
 

@@ -1,4 +1,5 @@
 """Fail-closed tests for the server-side role/section policy."""
+
 from types import SimpleNamespace
 
 import pytest

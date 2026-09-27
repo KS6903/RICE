@@ -3,6 +3,7 @@
 Centralises the audit-trail insert and the permanent purge of warehouses whose
 30-day trash window has elapsed. Callers commit the surrounding transaction.
 """
+
 import re
 import uuid
 from datetime import timedelta
@@ -10,14 +11,14 @@ from datetime import timedelta
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
+from ..models.activity import ActivityLog
+from ..models.base import now_utc
+from ..models.company import Branch
+
 # Defense-in-depth for the catalog-driven UPDATE below: even though table names
 # come from information_schema (not user input), only plain snake_case
 # identifiers are ever interpolated into SQL.
 _SAFE_IDENTIFIER = re.compile(r"^[a-z_][a-z0-9_]*$")
-
-from ..models.activity import ActivityLog
-from ..models.base import now_utc
-from ..models.company import Branch
 
 TRASH_RETENTION_DAYS = 30
 

@@ -6,6 +6,7 @@ than reaching the internet. This pins the security-relevant contract: feature
 gating, "not configured" behavior, response validation against untrusted model
 output, and the location/day cache.
 """
+
 from __future__ import annotations
 
 import json
@@ -21,12 +22,10 @@ FAKE_FORECAST = {
     "provider": "open-meteo",
     "location": {"lat": 14.6, "lon": 120.98, "label": "Manila, Philippines"},
     "daily": [
-        {"date": "2026-07-12", "condition": "Partly cloudy", "precip_pct": 10,
-         "temp_max_c": 32.0, "temp_min_c": 24.0},
+        {"date": "2026-07-12", "condition": "Partly cloudy", "precip_pct": 10, "temp_max_c": 32.0, "temp_min_c": 24.0},
     ],
     "hourly": [
-        {"time": "2026-07-12T09:00", "condition": "Clear", "precip_pct": 5,
-         "temp_c": 28.0, "is_daytime": True},
+        {"time": "2026-07-12T09:00", "condition": "Clear", "precip_pct": 5, "temp_c": 28.0, "is_daytime": True},
     ],
     "fetched_at": "2026-07-12T00:00:00+00:00",
 }

@@ -1,9 +1,6 @@
 import { QueryClient, hashKey, type QueryKey } from "@tanstack/react-query";
 import { useAuthStore } from "../stores/authStore";
-import {
-  registerSessionQueryClient,
-  securityContextFingerprint,
-} from "./sessionCache";
+import { registerSessionQueryClient, securityContextFingerprint } from "./sessionCache";
 
 /**
  * Scope every cached query to the current account/security context. Existing

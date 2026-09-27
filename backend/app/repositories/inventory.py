@@ -4,6 +4,7 @@ Milled-rice and by-product stock access. Palay stock reuses
 PalayInventoryRepository from the paddy domain (it's the same table). Writes
 flush only — InventoryService owns the transaction.
 """
+
 from __future__ import annotations
 
 import uuid
@@ -18,7 +19,9 @@ from .base import BaseRepository
 class MilledRiceInventoryRepository(BaseRepository[MilledRiceInventory]):
     model = MilledRiceInventory
 
-    def list_with_stock(self, company_id: uuid.UUID, *, branch_id: uuid.UUID | None = None) -> Sequence[MilledRiceInventory]:
+    def list_with_stock(
+        self, company_id: uuid.UUID, *, branch_id: uuid.UUID | None = None
+    ) -> Sequence[MilledRiceInventory]:
         stmt = select(MilledRiceInventory).where(
             MilledRiceInventory.company_id == company_id, MilledRiceInventory.quantity_kg > 0
         )
@@ -26,7 +29,9 @@ class MilledRiceInventoryRepository(BaseRepository[MilledRiceInventory]):
             stmt = stmt.where(MilledRiceInventory.branch_id == branch_id)
         return self.db.execute(stmt).scalars().all()
 
-    def list_for_company(self, company_id: uuid.UUID, *, branch_id: uuid.UUID | None = None) -> Sequence[MilledRiceInventory]:
+    def list_for_company(
+        self, company_id: uuid.UUID, *, branch_id: uuid.UUID | None = None
+    ) -> Sequence[MilledRiceInventory]:
         stmt = select(MilledRiceInventory).where(MilledRiceInventory.company_id == company_id)
         if branch_id:
             stmt = stmt.where(MilledRiceInventory.branch_id == branch_id)
@@ -45,7 +50,9 @@ class MilledRiceInventoryRepository(BaseRepository[MilledRiceInventory]):
 class ByproductInventoryRepository(BaseRepository[ByproductInventory]):
     model = ByproductInventory
 
-    def list_for_company(self, company_id: uuid.UUID, *, branch_id: uuid.UUID | None = None) -> Sequence[ByproductInventory]:
+    def list_for_company(
+        self, company_id: uuid.UUID, *, branch_id: uuid.UUID | None = None
+    ) -> Sequence[ByproductInventory]:
         stmt = select(ByproductInventory).where(ByproductInventory.company_id == company_id)
         if branch_id:
             stmt = stmt.where(ByproductInventory.branch_id == branch_id)

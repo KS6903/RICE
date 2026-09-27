@@ -1,4 +1,5 @@
 """Tenant billing HTTP controllers — thin routing over BillingService (Phase 3)."""
+
 import uuid
 
 from fastapi import APIRouter, Depends, status
@@ -16,10 +17,12 @@ from ..services.billing_service import BillingService
 
 WRITE_ROLES = ("owner", "admin")
 
-router = APIRouter(dependencies=[
-    Depends(require_section_access("settings")),
-    Depends(require_roles(*WRITE_ROLES)),
-])
+router = APIRouter(
+    dependencies=[
+        Depends(require_section_access("settings")),
+        Depends(require_roles(*WRITE_ROLES)),
+    ]
+)
 
 
 def get_billing_service(
@@ -50,7 +53,9 @@ def my_latest_request(svc: BillingService = Depends(get_billing_service)):
     return svc.my_latest_request()
 
 
-@router.post("/upgrade-requests", status_code=status.HTTP_201_CREATED, dependencies=[Depends(require_roles(*WRITE_ROLES))])
+@router.post(
+    "/upgrade-requests", status_code=status.HTTP_201_CREATED, dependencies=[Depends(require_roles(*WRITE_ROLES))]
+)
 def create_upgrade_request(body: UpgradeRequestCreate, svc: BillingService = Depends(get_billing_service)):
     return svc.create_upgrade_request(body)
 

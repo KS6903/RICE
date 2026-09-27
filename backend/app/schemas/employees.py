@@ -1,4 +1,5 @@
 """Pydantic request schemas for the employees domain (Phase 3e). Moved verbatim."""
+
 import uuid
 from datetime import date
 from decimal import Decimal

@@ -6,6 +6,7 @@ to it and the accepted/happy path isn't testable here. What IS pinned down is
 the security boundary: every unauthenticated or misdirected handshake must be
 rejected before any data flows.
 """
+
 from __future__ import annotations
 
 import pytest

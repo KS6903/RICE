@@ -66,7 +66,9 @@ export class MillingService {
   }
 
   createBatch(form: BatchForm): Promise<any> {
-    return this.http.post("/milling/batches", MillingService.toBatchPayload(form)).then((r) => r.data);
+    return this.http
+      .post("/milling/batches", MillingService.toBatchPayload(form))
+      .then((r) => r.data);
   }
 }
 

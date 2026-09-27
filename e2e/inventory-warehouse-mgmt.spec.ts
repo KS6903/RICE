@@ -29,7 +29,9 @@ test.describe("Inventory — warehouse picker, pack-out, recenter, layout switch
     await expect(popover.getByText(/main branch/i).first()).toBeVisible();
   });
 
-  test("Inventory drawer shows the 50 kg / 25 kg pack-out calculator for milled rice", async ({ page }) => {
+  test("Inventory drawer shows the 50 kg / 25 kg pack-out calculator for milled rice", async ({
+    page,
+  }) => {
     await login(page);
     await page.goto("/inventory");
     await page.getByRole("button", { name: /^Cards$/ }).click();
@@ -88,10 +90,14 @@ test.describe("Inventory — warehouse picker, pack-out, recenter, layout switch
     await popover.getByTestId("size-preset-small").click();
     await popover.getByRole("button", { name: /^Create layout$/i }).click();
     // The new layout's tab+header should show 15m × 35m
-    await expect(page.getByTestId("warehouse-header").getByText(/15m × 35m/i)).toBeVisible({ timeout: 8_000 });
+    await expect(page.getByTestId("warehouse-header").getByText(/15m × 35m/i)).toBeVisible({
+      timeout: 8_000,
+    });
   });
 
-  test("New-layout modal is centered and offers Vertical / Horizontal orientation", async ({ page }) => {
+  test("New-layout modal is centered and offers Vertical / Horizontal orientation", async ({
+    page,
+  }) => {
     await login(page);
     await page.goto("/inventory");
     await page.getByRole("button", { name: /^Warehouse$/ }).click();
@@ -107,19 +113,26 @@ test.describe("Inventory — warehouse picker, pack-out, recenter, layout switch
     await expect(modal.getByTestId("orientation-vertical")).toHaveAttribute("aria-checked", "true");
     // Flip
     await modal.getByTestId("orientation-horizontal").click();
-    await expect(modal.getByTestId("orientation-horizontal")).toHaveAttribute("aria-checked", "true");
+    await expect(modal.getByTestId("orientation-horizontal")).toHaveAttribute(
+      "aria-checked",
+      "true",
+    );
 
     // Create a Horizontal Small (35 × 15) — dimensions get swapped vs the vertical preset
     const name = `E2E Horizontal ${Date.now()}`;
     await modal.locator("input").first().fill(name);
     await modal.getByTestId("size-preset-small").click();
     await modal.getByRole("button", { name: /^Create layout$/i }).click();
-    await expect(page.getByTestId("warehouse-header").getByText(/35m × 15m/i)).toBeVisible({ timeout: 8_000 });
+    await expect(page.getByTestId("warehouse-header").getByText(/35m × 15m/i)).toBeVisible({
+      timeout: 8_000,
+    });
     // Orientation chip should now read "Horizontal"
     await expect(page.getByTestId("warehouse-orientation")).toContainText(/horizontal/i);
   });
 
-  test("In-canva warehouse picker (multi-branch) does not expose 'Add warehouse'", async ({ page }) => {
+  test("In-canva warehouse picker (multi-branch) does not expose 'Add warehouse'", async ({
+    page,
+  }) => {
     // The bottom-of-popover "Add" footer is only meaningful at the page header;
     // inside the canva section it should be hidden. We verify by checking that
     // when the picker is the in-canva one (allowAdd=false), there's no Add button.
@@ -145,7 +158,9 @@ test.describe("Inventory — warehouse picker, pack-out, recenter, layout switch
     await expect(chip).toContainText(/vertical|horizontal|square/i);
   });
 
-  test("Adding a new warehouse auto-switches and shows a Create-first-layout CTA (not a blank page)", async ({ page }) => {
+  test("Adding a new warehouse auto-switches and shows a Create-first-layout CTA (not a blank page)", async ({
+    page,
+  }) => {
     await login(page);
     await page.goto("/inventory");
     await page.getByRole("button", { name: /^Warehouse$/ }).click();
@@ -180,7 +195,9 @@ test.describe("Inventory — warehouse picker, pack-out, recenter, layout switch
     await expect(emptyState).toHaveCount(0);
   });
 
-  test("Switching between layouts re-mounts the canva with the new floor plan", async ({ page }) => {
+  test("Switching between layouts re-mounts the canva with the new floor plan", async ({
+    page,
+  }) => {
     await login(page);
     await page.goto("/inventory");
     await page.getByRole("button", { name: /^Warehouse$/ }).click();
@@ -198,11 +215,18 @@ test.describe("Inventory — warehouse picker, pack-out, recenter, layout switch
     await expect(page.getByText(layoutName).first()).toBeVisible({ timeout: 5_000 });
 
     // Canva header should reflect the new layout name (re-mount picked up the new layoutId)
-    await expect(page.getByTestId("warehouse-header").getByText(layoutName)).toBeVisible({ timeout: 5_000 });
+    await expect(page.getByTestId("warehouse-header").getByText(layoutName)).toBeVisible({
+      timeout: 5_000,
+    });
 
     // Switch back to the default layout — header should change again, never blank
-    await page.getByText(/main branch warehouse/i).first().click();
-    await expect(page.getByTestId("warehouse-header").getByText(/main branch warehouse/i)).toBeVisible({ timeout: 5_000 });
+    await page
+      .getByText(/main branch warehouse/i)
+      .first()
+      .click();
+    await expect(
+      page.getByTestId("warehouse-header").getByText(/main branch warehouse/i),
+    ).toBeVisible({ timeout: 5_000 });
 
     // Aging summary still renders (proves data loaded for the active layout)
     await expect(page.getByTestId("warehouse-aging-summary")).toBeVisible();

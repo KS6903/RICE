@@ -21,11 +21,15 @@ test.describe("Warehouse canva — modern Canva-style chrome", () => {
     await login(page);
     await page.goto("/inventory");
     // The view-switcher tab should be Warehouse, never Bodega
-    await expect(page.getByRole("button", { name: /^Warehouse$/ })).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByRole("button", { name: /^Warehouse$/ })).toBeVisible({
+      timeout: 10_000,
+    });
     await expect(page.getByRole("button", { name: /^Bodega$/ })).toHaveCount(0);
   });
 
-  test("slim header shows warehouse name, dimensions, live badge, and mode toggles", async ({ page }) => {
+  test("slim header shows warehouse name, dimensions, live badge, and mode toggles", async ({
+    page,
+  }) => {
     const pageErrors: string[] = [];
     page.on("pageerror", (e) => pageErrors.push(e.message));
 
@@ -39,7 +43,9 @@ test.describe("Warehouse canva — modern Canva-style chrome", () => {
     await expect(header.getByText(/\d+m × \d+m/)).toBeVisible();
     // Mode toggles
     await expect(header.getByRole("button", { name: /view only|move pallets/i })).toBeVisible();
-    await expect(header.getByRole("button", { name: /edit floor plan|editing floor plan/i })).toBeVisible();
+    await expect(
+      header.getByRole("button", { name: /edit floor plan|editing floor plan/i }),
+    ).toBeVisible();
 
     expect(pageErrors, `page errors: ${pageErrors.join("\n")}`).toEqual([]);
   });
@@ -71,7 +77,9 @@ test.describe("Warehouse canva — modern Canva-style chrome", () => {
     await login(page);
     await openWarehouse(page);
 
-    const heatmap = page.getByTestId("warehouse-action-bar").getByRole("button", { name: /^Heatmap/ });
+    const heatmap = page
+      .getByTestId("warehouse-action-bar")
+      .getByRole("button", { name: /^Heatmap/ });
     await heatmap.click();
     // Second click should not throw (toggles off)
     await heatmap.click();
@@ -88,7 +96,9 @@ test.describe("Warehouse canva — modern Canva-style chrome", () => {
     const startText = (await zoom.getByText(/^\d+%$/).innerText()).trim();
     await zoom.getByRole("button", { name: /zoom in/i }).click();
     // After zoom in, percentage should change (not equal to start)
-    await expect.poll(async () => (await zoom.getByText(/^\d+%$/).innerText()).trim()).not.toBe(startText);
+    await expect
+      .poll(async () => (await zoom.getByText(/^\d+%$/).innerText()).trim())
+      .not.toBe(startText);
   });
 
   test("Help popover explains the warehouse in plain language", async ({ page }) => {
@@ -96,7 +106,10 @@ test.describe("Warehouse canva — modern Canva-style chrome", () => {
     await openWarehouse(page);
 
     // The ? help button lives in the slim header
-    await page.getByTestId("warehouse-header").getByRole("button", { name: /open help/i }).click();
+    await page
+      .getByTestId("warehouse-header")
+      .getByRole("button", { name: /open help/i })
+      .click();
 
     const dialog = page.getByRole("dialog", { name: /warehouse canva help/i });
     await expect(dialog).toBeVisible();
@@ -116,6 +129,8 @@ test.describe("Warehouse canva — modern Canva-style chrome", () => {
     await openWarehouse(page);
 
     await page.getByTestId("warehouse-action-bar").getByRole("button", { name: /^FIFO/ }).click();
-    await expect(page.getByRole("heading", { name: /find oldest pallets/i })).toBeVisible({ timeout: 5_000 });
+    await expect(page.getByRole("heading", { name: /find oldest pallets/i })).toBeVisible({
+      timeout: 5_000,
+    });
   });
 });

@@ -3,6 +3,7 @@
 Canva color is system-assigned from the shared per-tenant pool (canva_color
 service); delete is a soft-delete that releases the color back to the pool.
 """
+
 from __future__ import annotations
 
 import uuid

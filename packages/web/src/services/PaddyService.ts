@@ -28,7 +28,9 @@ export class PaddyService {
   }
 
   listSuppliers(includeInactive = true): Promise<any[]> {
-    return this.http.get(`/paddy/suppliers?include_inactive=${includeInactive}`).then((r) => r.data);
+    return this.http
+      .get(`/paddy/suppliers?include_inactive=${includeInactive}`)
+      .then((r) => r.data);
   }
 
   listVarieties(includeInactive = false): Promise<any[]> {
@@ -84,7 +86,9 @@ export class PaddyService {
   }
 
   createPurchase(form: PurchaseForm): Promise<any> {
-    return this.http.post("/paddy/purchases", PaddyService.toPurchasePayload(form)).then((r) => r.data);
+    return this.http
+      .post("/paddy/purchases", PaddyService.toPurchasePayload(form))
+      .then((r) => r.data);
   }
 }
 

@@ -10,6 +10,7 @@ tend to be worth very little in a dispute.
 Rows are append-only by convention: a withdrawal or a new version is a new
 row, never an update of an old one, so the history stays intact.
 """
+
 import uuid
 from datetime import datetime
 

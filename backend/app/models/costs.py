@@ -1,11 +1,17 @@
 import uuid
-from datetime import datetime, date
+from datetime import date
 from decimal import Decimal
-from sqlalchemy import String, Boolean, Numeric, Text, Date, DateTime, ForeignKey
-from sqlalchemy.orm import mapped_column, Mapped, relationship
+from typing import TYPE_CHECKING
+
+from sqlalchemy import Boolean, Date, ForeignKey, Numeric, String, Text
 from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+
 from ..core.database import Base
 from .base import TimestampMixin
+
+if TYPE_CHECKING:
+    from .milling import MillingBatch
 
 
 class ExpenseCategory(Base):

@@ -2,9 +2,10 @@
 Lists every user in the database so we can debug why login is failing.
 Usage: python list_users.py
 """
+
 from app.core.database import SessionLocal
-from app.models.user import User
 from app.models.company import Company
+from app.models.user import User
 
 
 def main():

@@ -32,10 +32,23 @@ export const WEIGHT_UNITS = {
 };
 
 export const PROVINCES_PH = [
-  "Agusan del Norte", "Agusan del Sur", "Bukidnon", "Camiguin",
-  "Davao del Norte", "Davao del Sur", "Davao Oriental", "Isabela",
-  "Cagayan", "Pampanga", "Bulacan", "Nueva Ecija", "Tarlac",
-  "Pangasinan", "Laguna", "Mindoro", "Palawan",
+  "Agusan del Norte",
+  "Agusan del Sur",
+  "Bukidnon",
+  "Camiguin",
+  "Davao del Norte",
+  "Davao del Sur",
+  "Davao Oriental",
+  "Isabela",
+  "Cagayan",
+  "Pampanga",
+  "Bulacan",
+  "Nueva Ecija",
+  "Tarlac",
+  "Pangasinan",
+  "Laguna",
+  "Mindoro",
+  "Palawan",
   // Add more as needed
 ];
 

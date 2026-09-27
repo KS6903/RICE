@@ -9,6 +9,7 @@ Per-domain services subclass this and are constructed with their repositories.
 A small FastAPI ``Depends`` factory wires them per request (see each domain's
 ``get_<domain>_service``) — we deliberately keep FastAPI's DI, no IoC container.
 """
+
 from __future__ import annotations
 
 from contextlib import contextmanager

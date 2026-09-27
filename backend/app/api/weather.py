@@ -5,6 +5,7 @@ the API key, resolves the client's location from their IP, normalizes Google
 Weather / Open-Meteo into one schema, and caches responses. All of that now
 lives in WeatherService.
 """
+
 from typing import Any
 
 from fastapi import APIRouter, Depends, Query, Request
