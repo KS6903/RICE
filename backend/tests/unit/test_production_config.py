@@ -23,7 +23,7 @@ def _legal_docs_filled_in(monkeypatch):
 
 def _valid_prod(**overrides):
     values = {
-        "DATABASE_URL": ("postgresql://ricemill_app:runtime@db.internal:5432/ricemill" "?sslmode=require"),
+        "DATABASE_URL": ("postgresql://ricemill_app:runtime@db.internal:5432/ricemill?sslmode=require"),
         "SECRET_KEY": "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ-_",
         "ENV": "prod",
         "PROCESS_ROLE": "api",

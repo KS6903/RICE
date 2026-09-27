@@ -203,9 +203,7 @@ async def _verify_runtime_database_role() -> None:
         ).scalar_one()
     role_name = row[0]
     if role_name != settings.RUNTIME_DATABASE_ROLE:
-        raise RuntimeError(
-            "DATABASE_URL authenticates as an unexpected role; " "use the configured DML-only runtime role"
-        )
+        raise RuntimeError("DATABASE_URL authenticates as an unexpected role; use the configured DML-only runtime role")
     if any(row[1:]):
         raise RuntimeError(
             "The API database role has administrative, ownership, or CREATE privileges; "

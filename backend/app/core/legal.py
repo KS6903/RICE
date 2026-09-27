@@ -143,7 +143,7 @@ def _docs_dir() -> Path:
         if (candidate / "entity.json").is_file():
             return candidate
     raise FileNotFoundError(
-        "Could not locate the legal/ directory. Set LEGAL_DOCS_DIR to the folder " "containing entity.json."
+        "Could not locate the legal/ directory. Set LEGAL_DOCS_DIR to the folder containing entity.json."
     )
 
 

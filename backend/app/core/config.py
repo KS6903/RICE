@@ -169,9 +169,7 @@ class Settings(BaseSettings):
         validator so CI's throwaway key keeps working."""
         low = v.lower()
         if any(marker in low for marker in _PLACEHOLDER_SECRET_MARKERS):
-            raise ValueError(
-                "SECRET_KEY is set to a placeholder value. Generate a real one with: " "openssl rand -hex 32"
-            )
+            raise ValueError("SECRET_KEY is set to a placeholder value. Generate a real one with: openssl rand -hex 32")
         if len(v) < _MIN_SECRET_LEN:
             logger.warning(
                 "SECRET_KEY is shorter than %d chars — acceptable for dev only. "
