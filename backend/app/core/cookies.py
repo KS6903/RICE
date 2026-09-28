@@ -16,6 +16,9 @@ in prod by the config fail-closed validator.
 
 from __future__ import annotations
 
+import time
+
+import jwt
 from fastapi import Response
 
 from .config import settings
@@ -34,14 +37,14 @@ MFA_TRUST_COOKIE_PATH = "/api/auth"
 
 
 def set_mfa_trust_cookie(response: Response, token: str) -> None:
-    """Mark this browser as MFA-trusted until the next weekly reset (Sunday),
-    matching the trust token's own expiry (httpOnly)."""
-    from .mfa_trust import seconds_until_reset
-
+    """Mark this browser as MFA-trusted for exactly as long as the trust token
+    itself: until the next Sunday 00:00 in the user's local time (httpOnly)."""
+    # We minted the token a moment ago; its exp is that Sunday boundary.
+    expires = jwt.decode(token, options={"verify_signature": False})["exp"]
     response.set_cookie(
         MFA_TRUST_COOKIE,
         token,
-        max_age=seconds_until_reset(),
+        max_age=max(1, int(expires - time.time())),
         path=MFA_TRUST_COOKIE_PATH,
         httponly=True,
         secure=settings.COOKIE_SECURE,
@@ -85,11 +88,13 @@ def set_auth_cookies(response: Response, *, access_token: str, refresh_token: st
 
 
 def clear_auth_cookies(response: Response) -> None:
+    """End the session's cookies.
+
+    The MFA trust cookie is deliberately left alone: it belongs to the device,
+    not the session, so signing out (by hand or by the idle timer) doesn't bring
+    the 2FA prompt back before Sunday. Logging in still needs the password, and
+    the trust lapses on Sunday or as soon as MFA is disabled or re-enrolled.
+    """
     response.delete_cookie(ACCESS_COOKIE, path="/", domain=settings.COOKIE_DOMAIN)
     response.delete_cookie(REFRESH_COOKIE, path=REFRESH_COOKIE_PATH, domain=settings.COOKIE_DOMAIN)
     response.delete_cookie(CSRF_COOKIE, path="/", domain=settings.COOKIE_DOMAIN)
-    response.delete_cookie(
-        MFA_TRUST_COOKIE,
-        path=MFA_TRUST_COOKIE_PATH,
-        domain=settings.COOKIE_DOMAIN,
-    )

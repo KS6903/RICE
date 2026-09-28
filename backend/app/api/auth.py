@@ -255,8 +255,9 @@ def mfa_verify(
 
     On success this device is remembered: an httpOnly ``mfa_trust`` cookie (and an
     ``X-MFA-Trust`` response header for bearer clients) lets it skip MFA on login
-    until the next weekly reset (Sunday), so the user isn't prompted every login."""
-    tokens, trust = svc.mfa_verify(body.challenge_token, body.code)
+    until the next weekly reset (Sunday 00:00 in the user's local time), so the
+    user isn't prompted every login."""
+    tokens, trust = svc.mfa_verify(body.challenge_token, body.code, body.timezone)
     if _is_bearer_client(request):
         response.headers["X-MFA-Trust"] = trust
         response.headers["Cache-Control"] = "no-store"

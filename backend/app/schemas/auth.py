@@ -94,6 +94,9 @@ class MfaVerifyRequest(BaseModel):
     challenge_token: str
     # A 6-digit TOTP, or a one-time backup/recovery code (longer).
     code: str = Field(min_length=6, max_length=40)
+    # The browser's IANA time zone (e.g. "America/New_York"), so this device's
+    # weekly 2FA re-prompt lands on Sunday in the user's own local time.
+    timezone: str | None = Field(default=None, max_length=64)
 
 
 class MfaCodeRequest(BaseModel):

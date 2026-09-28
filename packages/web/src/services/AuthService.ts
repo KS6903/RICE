@@ -90,10 +90,13 @@ export class AuthService {
 
   // ── MFA (TOTP) ──────────────────────────────────────────────────────────────
 
-  /** Second login step when login() returned { mfa_required, challenge_token }. */
+  /** Second login step when login() returned { mfa_required, challenge_token }.
+   *  Sends the browser's time zone, so this device's weekly 2FA re-prompt lands
+   *  on Sunday in the user's own local time. */
   mfaVerify(challengeToken: string, code: string): Promise<any> {
+    const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
     return this.http
-      .post("/auth/mfa/verify", { challenge_token: challengeToken, code })
+      .post("/auth/mfa/verify", { challenge_token: challengeToken, code, timezone })
       .then((r) => r.data);
   }
 

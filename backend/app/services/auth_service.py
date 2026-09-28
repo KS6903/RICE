@@ -16,6 +16,7 @@ import string
 import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Any
+from zoneinfo import ZoneInfo
 
 import jwt as pyjwt
 import pyotp
@@ -36,7 +37,7 @@ from ..core.exceptions import (
     TooManyRequestsError,
     UnauthorizedError,
 )
-from ..core.mfa_trust import next_reset_at
+from ..core.mfa_trust import local_zone, next_reset_at
 from ..core.passwords import validate_password_strength
 from ..core.ratelimit import (
     LockoutState,
@@ -343,17 +344,18 @@ class AuthService(BaseService):
             algorithm=settings.ALGORITHM,
         )
 
-    # ── "Remember this device" (skip MFA for a few days) ──────────────────────
+    # ── "Remember this device" (skip MFA until Sunday) ────────────────────────
 
     @staticmethod
-    def _mfa_trust_token(user: User) -> str:
+    def _mfa_trust_token(user: User, zone: ZoneInfo) -> str:
         """A device-scoped token (stored as an httpOnly cookie) that lets this
         browser skip the MFA step on login until the next weekly reset — the
-        coming Sunday 00:00 (local). So every device re-prompts on Sunday.
+        coming Sunday 00:00 in the user's local ``zone``. So every device
+        re-prompts once a week, on the user's own Sunday.
 
         Bound to the user's current MFA secret via ``mv`` so disabling or
         re-enrolling MFA invalidates every outstanding trust token immediately."""
-        expire = next_reset_at()
+        expire = next_reset_at(zone)
         return pyjwt.encode(
             {
                 "sub": str(user.id),
@@ -423,12 +425,14 @@ class AuthService(BaseService):
         h = _sha256(_normalize_backup_code(code))
         user.mfa_backup_codes = [c for c in (user.mfa_backup_codes or []) if c != h]
 
-    def mfa_verify(self, challenge_token: str, code: str) -> tuple[TokenResponse, str]:
+    def mfa_verify(self, challenge_token: str, code: str, browser_zone: str | None = None) -> tuple[TokenResponse, str]:
         """Second login step: exchange the challenge token plus a TOTP code OR a
         one-time backup code for real tokens.
 
         Returns ``(tokens, mfa_trust_token)`` — the controller stores the trust
-        token (httpOnly cookie) so this device skips MFA for MFA_TRUST_DAYS."""
+        token (httpOnly cookie) so this device skips MFA until the next Sunday
+        00:00 in the user's local time: ``browser_zone`` when it is a real IANA
+        zone, else their company's zone (see core/mfa_trust.py)."""
         payload = decode_token(challenge_token)
         if payload.get("type") != "mfa":
             raise UnauthorizedError("Invalid MFA challenge")
@@ -460,7 +464,8 @@ class AuthService(BaseService):
             self._log_security_event(
                 user, "auth.login", "MFA verified (backup code)." if via_backup else "MFA verified."
             )
-        return tokens, self._mfa_trust_token(user)
+        zone = local_zone(browser_zone, user.company.timezone if user.company is not None else None)
+        return tokens, self._mfa_trust_token(user, zone)
 
     def mfa_enroll(self) -> dict:
         """Begin enrollment: mint a TOTP seed (encrypted at rest), pending until
