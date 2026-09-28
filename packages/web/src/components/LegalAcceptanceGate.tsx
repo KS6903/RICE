@@ -18,7 +18,6 @@ import { useAuthStore } from "../stores/authStore";
  */
 export default function LegalAcceptanceGate() {
   const logout = useAuthStore((s) => s.logout);
-  const [checked, setChecked] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -36,9 +35,12 @@ export default function LegalAcceptanceGate() {
     }
   };
 
+  // The animated brand gradient stays on this screen by choice (unlike the
+  // legal page itself). The card is solid rather than glass, so the moving
+  // background is not also re-blurred every frame.
   return (
     <div className="min-h-screen grid place-items-center p-6 bg-grad-brand-anim">
-      <div className="w-full max-w-md card animate-grad-fade-up space-y-5">
+      <div className="w-full max-w-md rounded-2xl border border-soft bg-[rgb(var(--surface))] p-6 space-y-5">
         <div className="flex items-center gap-3">
           <div className="h-11 w-11 rounded-xl bg-grad-brand grid place-items-center shadow-grad-glow">
             <FileText size={20} className="text-white" />
@@ -51,43 +53,18 @@ export default function LegalAcceptanceGate() {
 
         <p className="text-sm text-secondary leading-relaxed">
           Take a moment to read these before you accept. They cover what Oryza is and is not, how we
-          handle personal information under the Data Privacy Act, and the limit on our liability.
+          handle personal information, and the limit on our liability.
         </p>
 
-        <ul className="space-y-2">
-          {[
-            { key: "terms", label: "Terms of Service" },
-            { key: "privacy", label: "Privacy Policy" },
-            { key: "dpa", label: "Data Processing Addendum" },
-            { key: "aup", label: "Acceptable Use Policy" },
-          ].map((d) => (
-            <li key={d.key}>
-              <Link
-                to={`/legal/${d.key}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center justify-between gap-2 px-3 py-2.5 rounded-xl glass hover:border-soft-strong transition-colors"
-              >
-                <span className="text-sm font-medium text-primary">{d.label}</span>
-                <span className="text-xs text-muted">Read</span>
-              </Link>
-            </li>
-          ))}
-        </ul>
-
-        <label className="flex items-start gap-3 cursor-pointer select-none">
-          <input
-            type="checkbox"
-            checked={checked}
-            onChange={(e) => setChecked(e.target.checked)}
-            className="mt-0.5 h-5 w-5 shrink-0 rounded accent-emerald-500"
-            data-testid="legal-gate-checkbox"
-          />
-          <span className="text-sm text-secondary leading-snug">
-            I have read and accept the Terms of Service, Privacy Policy, Data Processing Addendum
-            and Acceptable Use Policy, and I am authorised to accept them for my company.
-          </span>
-        </label>
+        <Link
+          to="/legal"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex items-center justify-between gap-2 px-3 py-2.5 rounded-xl border border-soft hover:border-soft-strong transition-colors"
+        >
+          <span className="text-sm font-medium text-primary">Terms and policies</span>
+          <span className="text-xs text-muted">Read</span>
+        </Link>
 
         {error && (
           <div className="flex items-start gap-2 px-3 py-2.5 rounded-xl bg-rose-500/15 ring-1 ring-inset ring-rose-500/40 text-sm font-medium text-rose-700 dark:text-rose-300">
@@ -96,9 +73,12 @@ export default function LegalAcceptanceGate() {
           </div>
         )}
 
+        {/* No separate checkbox: this button is the acceptance. The Terms name
+            "clicking to accept" as a way to agree, and already carry the
+            authority-to-bind clause the checkbox used to repeat. */}
         <button
           onClick={accept}
-          disabled={!checked || loading}
+          disabled={loading}
           className="btn-primary w-full"
           data-testid="legal-gate-accept"
         >

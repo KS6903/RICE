@@ -150,40 +150,10 @@ export default function LoginPage() {
           }
           .lp-hint-in { opacity: 1; transform: translateY(0) scale(1); }
           .lp-hint-bob { animation: lpHintBob 2.2s ease-in-out 0.6s infinite; }
-          @keyframes lpBackIn {
-            from { opacity: 0; transform: translateX(-14px); }
-            to   { opacity: 1; transform: translateX(0); }
-          }
-          .lp-back {
-            animation: lpBackIn 480ms cubic-bezier(0.23, 1, 0.32, 1) 120ms both;
-            transition: transform 260ms cubic-bezier(0.23, 1, 0.32, 1),
-                        box-shadow 260ms ease,
-                        color 200ms ease;
-          }
-          .lp-back:hover  { transform: translateX(-2px); box-shadow: 0 10px 26px -12px rgba(15, 23, 42, 0.35); }
-          .lp-back:active { transform: translateX(-2px) scale(0.94); }
-          .lp-back-arrow  { transition: transform 300ms cubic-bezier(0.34, 1.56, 0.64, 1); }
-          .lp-back:hover .lp-back-arrow,
-          .lp-back:focus-visible .lp-back-arrow { transform: translateX(-3px); }
-          .lp-back-label {
-            max-width: 0;
-            margin-left: 0;
-            opacity: 0;
-            overflow: hidden;
-            white-space: nowrap;
-            transition: max-width 340ms cubic-bezier(0.23, 1, 0.32, 1),
-                        margin-left 340ms cubic-bezier(0.23, 1, 0.32, 1),
-                        opacity 200ms ease;
-          }
-          .lp-back:hover .lp-back-label,
-          .lp-back:focus-visible .lp-back-label { max-width: 5rem; margin-left: 0.375rem; opacity: 1; }
           @media (prefers-reduced-motion: reduce) {
-            .lp-toggle-glow, .lp-hint-bob, .lp-back { animation: none; }
+            .lp-toggle-glow, .lp-hint-bob { animation: none; }
             .lp-hint { transition: opacity 200ms ease; transform: none; }
             .lp-hint-in { transform: none; }
-            .lp-back, .lp-back-arrow, .lp-back-label { transition: opacity 200ms ease; }
-            .lp-back:hover, .lp-back:active { transform: none; }
-            .lp-back:hover .lp-back-arrow { transform: none; }
           }
         `}</style>
 
@@ -287,16 +257,12 @@ export default function LoginPage() {
       {/* RIGHT — form */}
       <div className="relative flex items-center justify-center p-6 lg:p-12">
         {/* Back — anchored to the form (white) side, clear of the theme toggle */}
-        <button
-          type="button"
-          onClick={handleBack}
-          className="lp-back group absolute top-5 left-5 z-20 inline-flex h-10 items-center rounded-xl glass px-3 text-sm font-semibold text-secondary hover:text-primary"
-          aria-label="Go back"
-        >
-          <span className="lp-back-arrow grid place-items-center">
+        <button type="button" onClick={handleBack} className="btn-back absolute top-5 left-5 z-20">
+          <span className="btn-back-icon" aria-hidden="true">
+            <ArrowLeft size={18} />
             <ArrowLeft size={18} />
           </span>
-          <span className="lp-back-label">Back</span>
+          Back
         </button>
 
         <div className="w-full max-w-sm animate-grad-fade-up">

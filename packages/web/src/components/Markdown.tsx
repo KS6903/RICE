@@ -13,7 +13,12 @@ import React from "react";
  *  are the one surface whose exact wording we may later have to stand behind.
  */
 
-type Props = { source: string };
+type Props = {
+  source: string;
+  /** Prepended to heading ids. Several documents share one page, and they
+   *  reuse headings like "Definitions", so their ids would otherwise collide. */
+  idPrefix?: string;
+};
 
 const BOLD_OR_LINK = /(\*\*[^*]+\*\*|\[[^\]]+\]\([^)]+\))/g;
 
@@ -61,7 +66,7 @@ function splitRow(line: string): string[] {
     .map((c) => c.trim());
 }
 
-export default function Markdown({ source }: Props) {
+export default function Markdown({ source, idPrefix }: Props) {
   const lines = source.replace(/\r\n/g, "\n").split("\n");
   const out: React.ReactNode[] = [];
   let i = 0;
@@ -90,10 +95,11 @@ export default function Markdown({ source }: Props) {
         3: "text-base font-semibold text-primary mt-6 mb-2",
         4: "text-sm font-semibold text-secondary mt-4 mb-1",
       };
-      const id = heading[2]
+      const slug = heading[2]
         .toLowerCase()
         .replace(/[^a-z0-9]+/g, "-")
         .replace(/^-|-$/g, "");
+      const id = idPrefix ? `${idPrefix}-${slug}` : slug;
       const Tag = `h${Math.min(level + 1, 6)}` as unknown as keyof JSX.IntrinsicElements;
       out.push(
         <Tag key={`h-${i}`} id={id} className={cls[level]}>
@@ -114,7 +120,7 @@ export default function Markdown({ source }: Props) {
         j += 1;
       }
       out.push(
-        <div key={`t-${i}`} className="panel my-5 overflow-x-auto">
+        <div key={`t-${i}`} className="my-5 overflow-x-auto rounded-2xl border border-soft">
           <table className="data-table">
             <thead>
               <tr>

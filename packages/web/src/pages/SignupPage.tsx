@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate, useLocation, Link } from "react-router-dom";
 import { authService } from "../services/AuthService";
 import { useAuthStore } from "../stores/authStore";
 import { useThemeStore } from "../stores/themeStore";
@@ -19,6 +19,7 @@ import { legalService } from "../services/LegalService";
 
 export default function SignupPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { setTokens, setUser } = useAuthStore();
   const theme = useThemeStore((s) => s.theme);
   const toggleTheme = useThemeStore((s) => s.toggle);
@@ -35,7 +36,6 @@ export default function SignupPage() {
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [acceptedTerms, setAcceptedTerms] = useState(false);
   // The version on screen travels with the acceptance. If the terms change
   // while this tab is open the server rejects the stale version rather than
   // silently binding the user to text they never saw.
@@ -59,12 +59,19 @@ export default function SignupPage() {
 
   const update = (k: keyof typeof form, v: string | boolean) => setForm((f) => ({ ...f, [k]: v }));
 
+  // One back button for the whole flow: step 2 returns to step 1, and step 1
+  // leaves — to wherever the visitor came from, or to the home page when they
+  // opened this page directly and there is nothing to go back to.
+  const goBack = () => {
+    if (step === 2) return setStep(1);
+    if (location.key !== "default") navigate(-1);
+    else navigate("/");
+  };
+
   const submit = async () => {
     setError("");
     if (form.password !== form.confirm) return setError("Passwords do not match.");
     if (form.password.length < 8) return setError("Password must be at least 8 characters.");
-    if (!acceptedTerms)
-      return setError("Please accept the Terms of Service and Privacy Policy to continue.");
     setLoading(true);
     try {
       const data = await authService.signup({
@@ -75,7 +82,9 @@ export default function SignupPage() {
         email: form.email,
         password: form.password,
         is_multi_branch: form.is_multi_branch,
-        accepted_terms: acceptedTerms,
+        // No separate checkbox: clicking "Create account" is the acceptance.
+        // The Terms name account creation itself as one of the ways to agree.
+        accepted_terms: true,
         ...(agreementVersion ? { agreement_version: agreementVersion } : {}),
       });
       setTokens(data?.access_token, data?.refresh_token);
@@ -90,10 +99,6 @@ export default function SignupPage() {
   };
 
   const handleGoogleSuccess = async (credentialResponse: any) => {
-    if (!acceptedTerms) {
-      setError("Please accept the Terms of Service and Privacy Policy to continue.");
-      return;
-    }
     setLoading(true);
     setError("");
     try {
@@ -101,7 +106,8 @@ export default function SignupPage() {
         company_name: form.company_name,
         ...(form.invite_code.trim() ? { invite_code: form.invite_code.trim() } : {}),
         is_multi_branch: form.is_multi_branch,
-        accepted_terms: acceptedTerms,
+        // Clicking the Google button is the acceptance here too — see submit().
+        accepted_terms: true,
         ...(agreementVersion ? { agreement_version: agreementVersion } : {}),
       });
       setTokens(data?.access_token, data?.refresh_token);
@@ -116,13 +122,32 @@ export default function SignupPage() {
   };
 
   return (
-    <div className="min-h-screen w-full grid lg:grid-cols-2 relative overflow-hidden">
+    // Desktop: exactly one screen tall, so the page itself never scrolls; only
+    // the form panel would, in a window too short to fit it. Phones keep normal
+    // scrolling so the on-screen keyboard can't hide the field being typed in.
+    <div className="min-h-screen w-full grid lg:grid-cols-2 lg:h-screen lg:grid-rows-[minmax(0,1fr)] relative overflow-hidden">
       <button
         onClick={toggleTheme}
         className="absolute top-5 right-5 z-20 h-10 w-10 grid place-items-center rounded-xl glass text-secondary hover:text-primary transition-colors"
         aria-label="Toggle theme"
       >
         {theme === "dark" ? <Sun size={18} /> : <Moon size={18} />}
+      </button>
+
+      {/* Back — shares LoginPage's .btn-back component (index.css). Positioned
+          just right of the seam on desktop; this button isn't nested in the
+          scrollable form column the way LoginPage's is — nesting it would
+          scroll it away in a short window. */}
+      <button
+        type="button"
+        onClick={goBack}
+        className="btn-back absolute top-5 left-5 lg:left-[calc(50%+1.25rem)] z-20"
+      >
+        <span className="btn-back-icon" aria-hidden="true">
+          <ArrowLeft size={18} />
+          <ArrowLeft size={18} />
+        </span>
+        Back
       </button>
 
       <div className="relative hidden lg:flex flex-col justify-between p-12 overflow-hidden">
@@ -191,11 +216,13 @@ export default function SignupPage() {
         </p>
       </div>
 
-      <div className="flex items-center justify-center p-6 lg:p-12">
-        <div className="w-full max-w-lg animate-grad-fade-up">
+      {/* my-auto rather than items-center: it centres the form when there is
+          room and, unlike items-center, never pushes its top out of reach. */}
+      <div className="flex justify-center px-6 pt-20 pb-6 lg:px-12 lg:pt-20 lg:pb-4 lg:overflow-y-auto">
+        <div className="w-full max-w-lg my-auto animate-grad-fade-up">
           <Link
             to="/"
-            className="lg:hidden flex items-center gap-3 mb-8 hover:opacity-80 transition-opacity"
+            className="lg:hidden flex items-center gap-3 mb-6 hover:opacity-80 transition-opacity"
           >
             <div className="h-11 w-11 rounded-xl bg-grad-brand grid place-items-center shadow-grad-glow">
               <img
@@ -208,10 +235,13 @@ export default function SignupPage() {
           </Link>
 
           <h1 className="text-3xl font-bold tracking-tight text-primary">Create your account</h1>
-          <p className="mt-2 text-base text-secondary">Free to start. No credit card required.</p>
+          {/* Desktop hides this: the gradient panel beside it already says so. */}
+          <p className="mt-1 text-base text-secondary lg:hidden">
+            Free to start. No credit card required.
+          </p>
 
           {/* Step indicator */}
-          <div className="mt-6 flex items-center gap-2">
+          <div className="mt-4 flex items-center gap-2">
             {[1, 2].map((s) => (
               <div
                 key={s}
@@ -226,7 +256,7 @@ export default function SignupPage() {
           </div>
 
           {step === 1 && (
-            <div className="mt-8 space-y-5">
+            <div className="mt-5 space-y-4">
               <div>
                 <label className="form-label">Company name *</label>
                 <input
@@ -306,7 +336,7 @@ export default function SignupPage() {
           )}
 
           {step === 2 && (
-            <div className="mt-8 space-y-4">
+            <div className="mt-5 space-y-3">
               <div>
                 <label className="form-label">Full name *</label>
                 <input
@@ -345,7 +375,7 @@ export default function SignupPage() {
                     className="input"
                     value={form.password}
                     onChange={(e) => update("password", e.target.value)}
-                    placeholder="••••••••"
+                    placeholder="8+ characters"
                   />
                 </div>
                 <div>
@@ -359,7 +389,6 @@ export default function SignupPage() {
                   />
                 </div>
               </div>
-              <p className="text-sm font-medium text-muted">Minimum 8 characters.</p>
 
               {error && (
                 <div className="flex items-start gap-2 px-3 py-2.5 rounded-xl bg-rose-500/15 ring-1 ring-inset ring-rose-500/40 text-sm font-medium text-rose-700 dark:text-rose-300">
@@ -368,60 +397,39 @@ export default function SignupPage() {
                 </div>
               )}
 
-              <label className="flex items-start gap-3 pt-1 cursor-pointer select-none">
-                <input
-                  type="checkbox"
-                  checked={acceptedTerms}
-                  onChange={(e) => setAcceptedTerms(e.target.checked)}
-                  className="mt-0.5 h-5 w-5 shrink-0 rounded accent-emerald-500"
-                  data-testid="signup-accept-terms"
-                />
-                <span className="text-sm text-secondary leading-snug">
-                  I have read and accept the{" "}
-                  <Link
-                    to="/legal/terms"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="link"
-                  >
-                    Terms of Service
-                  </Link>
-                  ,{" "}
-                  <Link
-                    to="/legal/privacy"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="link"
-                  >
-                    Privacy Policy
-                  </Link>
-                  ,{" "}
-                  <Link to="/legal/dpa" target="_blank" rel="noopener noreferrer" className="link">
-                    Data Processing Addendum
-                  </Link>{" "}
-                  and{" "}
-                  <Link to="/legal/aup" target="_blank" rel="noopener noreferrer" className="link">
-                    Acceptable Use Policy
-                  </Link>
-                  , and I am authorised to accept them for my company.
-                </span>
-              </label>
+              {/* No checkbox to tick: creating the account is the acceptance.
+                  These links stay live so the terms are still one tap away. */}
+              <p className="text-sm text-secondary leading-snug">
+                By creating an account, you agree to our{" "}
+                <Link to="/legal/terms" target="_blank" rel="noopener noreferrer" className="link">
+                  Terms of Service
+                </Link>
+                ,{" "}
+                <Link
+                  to="/legal/privacy"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="link"
+                >
+                  Privacy Policy
+                </Link>
+                ,{" "}
+                <Link to="/legal/dpa" target="_blank" rel="noopener noreferrer" className="link">
+                  Data Processing Addendum
+                </Link>{" "}
+                and{" "}
+                <Link to="/legal/aup" target="_blank" rel="noopener noreferrer" className="link">
+                  Acceptable Use Policy
+                </Link>
+                .
+              </p>
 
-              <div className="flex gap-2 pt-2">
-                <button onClick={() => setStep(1)} className="btn-secondary flex-1">
-                  <ArrowLeft size={16} />
-                  Back
-                </button>
+              <div className="pt-1">
                 <button
                   onClick={submit}
-                  className="btn-primary flex-1"
+                  className="btn-primary w-full"
                   disabled={
-                    loading ||
-                    !acceptedTerms ||
-                    !form.full_name ||
-                    !form.username ||
-                    !form.email ||
-                    !form.password
+                    loading || !form.full_name || !form.username || !form.email || !form.password
                   }
                 >
                   {loading ? "Creating…" : "Create account"}
@@ -429,13 +437,13 @@ export default function SignupPage() {
                 </button>
               </div>
 
-              <div className="relative flex items-center py-2 mt-4">
+              <div className="relative flex items-center">
                 <div className="flex-grow border-t border-slate-200 dark:border-slate-800"></div>
                 <span className="flex-shrink-0 mx-4 text-sm text-secondary">or</span>
                 <div className="flex-grow border-t border-slate-200 dark:border-slate-800"></div>
               </div>
 
-              <div className="flex justify-center w-full [&>div]:w-full mt-4">
+              <div className="flex justify-center w-full [&>div]:w-full">
                 <GoogleLogin
                   onSuccess={handleGoogleSuccess}
                   onError={() => setError("Google signup failed.")}

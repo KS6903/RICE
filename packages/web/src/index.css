@@ -270,6 +270,122 @@
     background-color: rgb(var(--line) / 0.45);
   }
 
+  /* ========== Back button — shared by the login and signup pages, a docked
+     pill beside the seam of their split layout. Hover points back toward the
+     gradient side: the arrow slips out left while a fresh one chases in, and a
+     brand-tinted wash flows right-to-left across the pill toward the seam
+     (arrives in 240ms, retracts in 160ms). Press dips it. Hover motion runs
+     only on fine pointers, nothing runs while idle, and reduced motion keeps
+     the tint as a plain fade.
+     Markup: <button class="btn-back"><span class="btn-back-icon">{arrow}{arrow}</span>Back</button>
+     ========== */
+  .btn-back {
+    --back-ease: cubic-bezier(0.16, 1, 0.3, 1);
+    position: relative;
+    isolation: isolate;
+    overflow: hidden; /* keeps the wash inside the pill */
+    display: inline-flex;
+    align-items: center;
+    gap: 0.625rem;
+    height: 2.75rem; /* 44px: a generous target for older hands */
+    padding: 0 1.125rem 0 0.3125rem;
+    border-radius: 999px;
+    font-size: 0.9375rem;
+    font-weight: 600;
+    color: rgb(var(--ink));
+    background-color: rgb(var(--surface-raised));
+    border: 1px solid rgb(var(--line));
+    box-shadow:
+      0 1px 2px rgba(15, 23, 42, 0.06),
+      0 6px 16px -10px rgba(15, 23, 42, 0.28);
+    transition:
+      border-color 200ms ease,
+      transform 140ms var(--back-ease);
+  }
+  .dark .btn-back {
+    box-shadow:
+      0 1px 2px rgba(0, 0, 0, 0.4),
+      0 8px 20px -12px rgba(0, 0, 0, 0.8);
+  }
+  .btn-back::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    background-image: linear-gradient(
+      90deg,
+      rgb(16 185 129 / 0.14),
+      rgb(6 182 212 / 0.1) 55%,
+      rgb(139 92 246 / 0.08)
+    );
+    clip-path: inset(0 0 0 100%);
+    transition: clip-path 160ms var(--back-ease);
+  }
+  .dark .btn-back::before {
+    background-image: linear-gradient(
+      90deg,
+      rgb(16 185 129 / 0.24),
+      rgb(6 182 212 / 0.18) 55%,
+      rgb(139 92 246 / 0.16)
+    );
+  }
+  .btn-back:active {
+    transform: scale(0.97);
+  }
+  .btn-back:focus-visible {
+    outline: 2px solid #10b981;
+    outline-offset: 3px;
+  }
+  .btn-back-icon {
+    display: grid;
+    place-items: center;
+    height: 2.125rem;
+    width: 2.125rem;
+    border-radius: 999px;
+    overflow: hidden;
+    color: #fff;
+    background-image: linear-gradient(135deg, #10b981 0%, #06b6d4 55%, #8b5cf6 100%);
+    box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.2);
+  }
+  .btn-back-icon > svg {
+    grid-area: 1 / 1;
+    transition: transform 160ms var(--back-ease);
+  }
+  .btn-back-icon > svg + svg {
+    transform: translateX(160%);
+  }
+  @media (hover: hover) and (pointer: fine) {
+    .btn-back:hover {
+      border-color: rgb(16 185 129 / 0.5);
+    }
+  }
+  @media (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
+    .btn-back:hover::before {
+      clip-path: inset(0);
+      transition-duration: 240ms;
+    }
+    .btn-back:hover .btn-back-icon > svg {
+      transition-duration: 240ms;
+    }
+    .btn-back:hover .btn-back-icon > svg:first-child {
+      transform: translateX(-160%);
+    }
+    .btn-back:hover .btn-back-icon > svg + svg {
+      transform: translateX(0);
+      transition-delay: 50ms; /* a beat behind, so it reads as a chase */
+    }
+  }
+  @media (hover: hover) and (pointer: fine) and (prefers-reduced-motion: reduce) {
+    .btn-back::before {
+      clip-path: none;
+      opacity: 0;
+      transition: opacity 150ms ease;
+    }
+    .btn-back:hover::before {
+      opacity: 1;
+    }
+  }
+
   /* ========== Inputs — bigger, higher-contrast for seniors ========== */
   .input {
     width: 100%;

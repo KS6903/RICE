@@ -1,14 +1,14 @@
 import { useEffect, useState } from "react";
-import { Link, useParams } from "react-router-dom";
-import { ArrowLeft, FileText, ShieldCheck, Fingerprint } from "lucide-react";
+import { Link, useLocation, useParams } from "react-router-dom";
+import { ArrowLeft } from "lucide-react";
 import Markdown from "../components/Markdown";
-import BrandLogo from "../components/BrandLogo";
+import riceLogo from "../assets/Rice_Logo.svg";
 import { legalService, type LegalDocument, type LegalIndex } from "../services/LegalService";
 
 /** Drop a document's own leading `# Title`.
  *
- *  Every document opens with one, and the page header already shows the title,
- *  so rendering both prints it twice.
+ *  Every document opens with one, and the section header already shows the
+ *  title, so rendering both prints it twice.
  */
 function stripLeadingTitle(markdown: string): string {
   const lines = markdown.replace(/\r\n/g, "\n").split("\n");
@@ -20,35 +20,35 @@ function stripLeadingTitle(markdown: string): string {
   return lines.slice(i).join("\n");
 }
 
-/** Public legal surface.
+/** Public legal surface: every document on one page.
  *
  *  Reachable without a session on purpose. A term nobody could read before
  *  agreeing is a weak term, and the same page has to stay reachable afterwards
  *  so a customer can check what they are bound by.
+ *
+ *  `/legal/:key` renders this same page scrolled to that document, so the
+ *  links in signup, the acceptance gate and emails keep working.
  */
 export default function LegalPage() {
   const { key } = useParams<{ key?: string }>();
+  const location = useLocation();
   const [index, setIndex] = useState<LegalIndex | null>(null);
-  const [doc, setDoc] = useState<LegalDocument | null>(null);
+  const [docs, setDocs] = useState<LegalDocument[]>([]);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let cancelled = false;
-    setLoading(true);
-    setError("");
-    const load = key ? legalService.document(key) : legalService.index();
-    load
-      .then((data) => {
+    legalService
+      .index()
+      .then(async (idx) => {
+        const all = await Promise.all(idx.documents.map((d) => legalService.document(d.key)));
         if (cancelled) return;
-        if (key) {
-          setDoc(data as LegalDocument);
-        } else {
-          setIndex(data as LegalIndex);
-        }
+        setIndex(idx);
+        setDocs(all);
       })
       .catch(() => {
-        if (!cancelled) setError("That document could not be loaded.");
+        if (!cancelled) setError("The legal documents could not be loaded.");
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -56,122 +56,99 @@ export default function LegalPage() {
     return () => {
       cancelled = true;
     };
-  }, [key]);
+  }, []);
 
+  // Jump to the requested document once it is on the page. Keyed on
+  // location.key too, so clicking the same contents link twice still jumps.
+  useEffect(() => {
+    if (loading) return;
+    if (key) document.getElementById(key)?.scrollIntoView?.();
+    else window.scrollTo?.(0, 0);
+  }, [key, location.key, loading]);
+
+  // Deliberately plain: a flat surface colour, bordered boxes instead of
+  // `glass`/`card`/`panel`, and no animation of any kind. The animated brand
+  // gradient repainted the page every frame and every glass surface re-blurred
+  // it, which on a long document someone just sits and reads is a GPU drain.
   return (
-    <div className="min-h-screen bg-grad-brand-anim">
-      <header className="glass-strong sticky top-0 z-10 border-b border-soft">
+    <div className="min-h-screen bg-[rgb(var(--surface))]">
+      <header className="sticky top-0 z-10 border-b border-soft bg-[rgb(var(--surface))]">
         <div className="mx-auto max-w-3xl px-6 py-4 flex items-center justify-between gap-4">
           <Link to="/" className="flex items-center gap-2.5" aria-label="Back to Oryza">
-            <BrandLogo />
-            <span className="font-bold text-primary">Oryza</span>
+            <div className="h-9 w-9 rounded-xl bg-grad-brand grid place-items-center shadow-grad-glow">
+              <img
+                src={riceLogo}
+                alt="Oryza"
+                className="h-full w-full object-contain brightness-0 invert"
+              />
+            </div>
+            <span className="text-lg font-bold tracking-tight text-primary">Oryza</span>
           </Link>
-          <Link to="/" className="btn-ghost text-sm">
-            <ArrowLeft size={16} />
-            Back
-          </Link>
+          <div className="flex items-center gap-1">
+            <Link to="/legal" className="btn-ghost text-sm">
+              Contents
+            </Link>
+            <Link to="/" className="btn-ghost text-sm">
+              <ArrowLeft size={16} />
+              Back
+            </Link>
+          </div>
         </div>
       </header>
 
       <main className="mx-auto max-w-3xl px-6 py-8 lg:py-12">
-        {loading && (
-          <div className="space-y-3" aria-busy="true">
-            <div className="skeleton h-8 w-2/3" />
-            <div className="skeleton h-4 w-full" />
-            <div className="skeleton h-4 w-full" />
-            <div className="skeleton h-4 w-4/5" />
-          </div>
-        )}
+        {loading && <p className="text-secondary">Loading the legal documents…</p>}
 
         {!loading && error && (
-          <div className="card">
+          <div className="rounded-2xl border border-soft p-6">
             <p className="text-secondary">{error}</p>
-            <Link to="/legal" className="link mt-3 inline-block">
-              See all documents
-            </Link>
           </div>
         )}
 
-        {!loading && !error && !key && index && (
-          <div className="animate-grad-fade-up">
+        {!loading && !error && index && (
+          <>
             <h1 className="text-2xl font-bold text-primary">Legal</h1>
             <p className="mt-2 text-secondary">
               The agreements that govern your use of Oryza. Current agreement version{" "}
               <span className="font-semibold text-primary">{index.agreement_version}</span>.
             </p>
-            <ul className="mt-6 space-y-3">
-              {index.documents.map((d) => (
-                <li key={d.key}>
-                  <Link
-                    to={`/legal/${d.key}`}
-                    className="card block hover:border-soft-strong transition-colors"
-                  >
-                    <div className="flex items-start gap-3">
-                      <div className="icon-chip shrink-0">
-                        {d.key === "privacy" ? (
-                          <ShieldCheck size={18} />
-                        ) : d.key === "dpa" ? (
-                          <Fingerprint size={18} />
-                        ) : (
-                          <FileText size={18} />
-                        )}
-                      </div>
-                      <div className="min-w-0">
-                        <p className="font-semibold text-primary">{d.title}</p>
-                        <p className="mt-0.5 text-sm text-secondary">{d.summary}</p>
-                        <p className="mt-1.5 text-xs text-muted">
-                          Version {d.version} · effective {d.effective_date}
-                        </p>
-                      </div>
-                    </div>
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
 
-        {!loading && !error && key && doc && (
-          <article className="animate-grad-fade-up">
-            <Link to="/legal" className="link text-sm">
-              All legal documents
-            </Link>
-            <div className="mt-3 mb-6 pb-5 border-b border-soft">
-              <h1 className="text-2xl font-bold text-primary">{doc.title}</h1>
-              <p className="mt-1.5 text-sm text-muted">
-                Version {doc.version} · effective {doc.effective_date}
-              </p>
-              {/* The hash is what an acceptance record stores. Publishing it
-                  lets a customer confirm that the text they are reading is the
-                  text they agreed to. */}
-              <p className="mt-1 text-xs text-muted font-mono break-all">sha256 {doc.sha256}</p>
-            </div>
-            {/* The page header already shows the title, so drop the
-                document's own leading H1 rather than printing it twice. */}
-            <Markdown source={stripLeadingTitle(doc.markdown)} />
-          </article>
+            <nav aria-label="Contents" className="mt-6 rounded-2xl border border-soft p-5">
+              <p className="text-xs font-semibold uppercase tracking-wide text-muted">Contents</p>
+              <ol className="mt-3 space-y-2">
+                {docs.map((d) => (
+                  <li key={d.key}>
+                    <Link to={`/legal/${d.key}`} className="link font-semibold">
+                      {d.title}
+                    </Link>
+                    <span className="text-sm text-secondary"> — {d.summary}</span>
+                  </li>
+                ))}
+              </ol>
+            </nav>
+
+            {docs.map((d) => (
+              <section
+                key={d.key}
+                id={d.key}
+                className="mt-12 scroll-mt-24 border-t border-soft pt-8"
+              >
+                <h2 className="text-2xl font-bold text-primary">{d.title}</h2>
+                <p className="mt-1.5 text-sm text-muted">
+                  Version {d.version} · effective {d.effective_date}
+                </p>
+                {/* The hash is what an acceptance record stores. Publishing it
+                    lets a customer confirm that the text they are reading is the
+                    text they agreed to. */}
+                <p className="mt-1 text-xs text-muted font-mono break-all">sha256 {d.sha256}</p>
+                <div className="mt-6">
+                  <Markdown source={stripLeadingTitle(d.markdown)} idPrefix={d.key} />
+                </div>
+              </section>
+            ))}
+          </>
         )}
       </main>
-
-      <footer className="mx-auto max-w-3xl px-6 pb-12 pt-4 text-xs text-muted">
-        <nav className="flex flex-wrap gap-x-4 gap-y-1">
-          <Link to="/legal/terms" className="link">
-            Terms
-          </Link>
-          <Link to="/legal/privacy" className="link">
-            Privacy
-          </Link>
-          <Link to="/legal/dpa" className="link">
-            Data processing
-          </Link>
-          <Link to="/legal/aup" className="link">
-            Acceptable use
-          </Link>
-          <Link to="/legal/subprocessors" className="link">
-            Sub-processors
-          </Link>
-        </nav>
-      </footer>
     </div>
   );
 }
