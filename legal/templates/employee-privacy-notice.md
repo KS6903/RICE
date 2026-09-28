@@ -5,12 +5,12 @@
 You, the mill, are the Personal Information Controller for your workers' records. Section 6.2 of
 the [Terms of Service](/legal/terms) and section 3.2 of the
 [Data Processing Addendum](/legal/dpa) make giving this notice your responsibility. Issuing it, and
-keeping the signed acknowledgement, is the single cheapest protection you have against a data
+keeping a dated record that you did, is the single cheapest protection you have against a data
 privacy complaint from a worker.
 
 Copy the text below onto your letterhead, fill in every `[ ]`, translate it into the language your
 workers actually read (a Tagalog, Cebuano or Ilocano version is usually the right call), hand a copy
-to each worker, and keep the signed acknowledgement in their 201 file.
+to each worker, and keep a dated record that you did in their 201 file.
 
 This template is a starting point, not legal advice. Have your own counsel review it.
 
@@ -92,18 +92,3 @@ Complex, Roxas Boulevard, Pasay City, complaints@privacy.gov.ph.
 
 If a breach happens that puts your information at risk, we will notify the National Privacy
 Commission and you within 72 hours of knowing about it, as the law requires.
-
----
-
-### Acknowledgement
-
-I confirm that I received this Privacy Notice, that it was explained to me in a language I
-understand, and that I had the chance to ask questions.
-
-Name: ________________________________
-
-Signature: ____________________________
-
-Date: _________________________________
-
-Witness (HR or supervisor): ____________________________
