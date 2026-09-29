@@ -165,5 +165,6 @@ def test_the_registered_jobs_run_cleanly(db_session, sessions, seed_owner):
             "subscriptions.sweep_expired",
             f"varieties.purge_stale[{company.id}]",
             f"invoices.mark_overdue[{company.id}]",
+            f"notifications.deliver_email[{company.id}]",
         ]
     )

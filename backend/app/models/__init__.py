@@ -16,6 +16,7 @@ from .milling import (
     MillingBatchOutput,
     MillingEquipment,
 )
+from .notification import Notification
 from .paddy import DryingRecord, PalayInventory, PalayInventoryMovement, PalayPurchase, PalayPurchaseItem
 from .password_reset import PasswordResetToken
 from .reference import ByproductType, QualityGrade, RiceVariety
@@ -30,6 +31,7 @@ from .warehouse import Pallet, PalletMovement, RiceBatch, WarehouseLayout, Wareh
 
 __all__ = [
     "JobRun",
+    "Notification",
     "Company",
     "Branch",
     "User",

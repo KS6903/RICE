@@ -17,6 +17,7 @@ import { useState, useEffect } from "react";
 import { useCurrentPlan } from "../../hooks/useFeature";
 import { useThemeStore } from "../../stores/themeStore";
 import LocationPicker from "../LocationPicker";
+import NotificationBell from "./NotificationBell";
 
 function PlanBadge() {
   const plan = useCurrentPlan();
@@ -148,6 +149,8 @@ export default function Header() {
         </span>
 
         <PlanBadge />
+
+        <NotificationBell />
 
         <ThemeToggle />
 

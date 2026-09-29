@@ -25,6 +25,8 @@ export interface User {
   legal_acceptance_required?: boolean;
   // Version of the agreement bundle currently published.
   agreement_version?: string;
+  // Unread notices under the header's bell (0 for platform admins).
+  notifications_unread?: number;
   subscription?: {
     code: string;
     name: string;

@@ -23,6 +23,7 @@ from .api import (
     legal,
     locations,
     milling,
+    notifications,
     paddy,
     reports,
     sales,
@@ -124,6 +125,7 @@ app.include_router(weather.router, prefix="/api", tags=["Weather"], dependencies
 app.include_router(drying_advisor.router, prefix="/api", tags=["Drying Advisor"], dependencies=mfa_gate)
 app.include_router(locations.router, prefix="/api", tags=["Saved Locations"], dependencies=mfa_gate)
 app.include_router(activity.router, prefix="/api/activity", tags=["Activity Log"], dependencies=mfa_gate)
+app.include_router(notifications.router, prefix="/api/notifications", tags=["Notifications"], dependencies=mfa_gate)
 app.include_router(fleet.router, prefix="/api", tags=["Fleet"], dependencies=mfa_gate)
 
 

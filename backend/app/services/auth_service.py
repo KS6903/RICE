@@ -1029,7 +1029,28 @@ class AuthService(BaseService):
                 False if user.is_platform_admin else LegalService(self.db).acceptance_required(user.id)
             ),
             "agreement_version": legal_docs.AGREEMENT_VERSION,
+            # The bell's badge. /auth/me is already polled every 10s, so the
+            # count rides along instead of adding a second poller.
+            "notifications_unread": self._notifications_unread(user),
         }
+
+    def _notifications_unread(self, user: User) -> int:
+        # Only a provisioned tenant has a schema with a notifications table;
+        # platform admins belong to no tenant.
+        if user.is_platform_admin or user.company is None or user.company.provisioned_at is None:
+            return 0
+        from sqlalchemy.exc import ProgrammingError
+
+        from .notification_service import unread_count
+
+        try:
+            # A savepoint: a tenant schema not migrated yet (no notifications
+            # table) must not fail /auth/me, which every page depends on.
+            with self.db.begin_nested():
+                return unread_count(self.db, user.id)
+        except ProgrammingError:
+            logger.warning("notifications table missing for company %s", user.company_id)
+            return 0
 
     # ── password reset ────────────────────────────────────────────────────────
 
