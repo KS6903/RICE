@@ -4,12 +4,32 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass
-from datetime import time
-from typing import Literal
+from datetime import date, datetime, time
+from typing import TYPE_CHECKING, Literal
+from zoneinfo import ZoneInfo
 
 from sqlalchemy.orm import Session
 
 from .schedule import Schedule, daily, hourly
+
+if TYPE_CHECKING:
+    from ..models.company import Company
+
+
+@dataclass(frozen=True)
+class JobContext:
+    """What a job run gets to work with."""
+
+    db: Session  # a tenant job's session is already on that tenant's schema
+    now: datetime  # the tick's time (UTC)
+    zone: ZoneInfo  # the tenant's timezone (Manila for platform jobs)
+    run_key: str
+    company: Company | None = None  # None for platform jobs
+
+    @property
+    def local_today(self) -> date:
+        """The tenant's date at this tick, which is not the server's UTC date."""
+        return self.now.astimezone(self.zone).date()
 
 
 @dataclass(frozen=True)
@@ -19,24 +39,31 @@ class Job:
     # in that tenant's timezone and schema.
     scope: Literal["platform", "tenant"]
     schedule: Schedule
-    # Does the work in the given session (a tenant job's session is already on
-    # that tenant's schema) and returns a one-line summary for job_runs.detail.
-    run: Callable[[Session], str]
+    # Does the work and returns a one-line summary for job_runs.detail.
+    run: Callable[[JobContext], str]
 
 
-def _sweep_expired_subscriptions(db: Session) -> str:
+def _sweep_expired_subscriptions(ctx: JobContext) -> str:
     from ..services.subscription import sweep_expired
 
-    count = sweep_expired(db)  # commits its own work
+    count = sweep_expired(ctx.db)  # commits its own work
     return f"{count} subscription(s) moved off an expired plan"
 
 
-def _purge_stale_varieties(db: Session) -> str:
+def _purge_stale_varieties(ctx: JobContext) -> str:
     from ..services.paddy_service import purge_stale_varieties
 
-    count = purge_stale_varieties(db)
-    db.commit()
+    count = purge_stale_varieties(ctx.db)
+    ctx.db.commit()
     return f"{count} stale rice variet{'y' if count == 1 else 'ies'} deleted"
+
+
+def _mark_overdue_invoices(ctx: JobContext) -> str:
+    from ..services.sales_service import mark_overdue_invoices
+
+    count = mark_overdue_invoices(ctx.db, today=ctx.local_today)
+    ctx.db.commit()
+    return f"{count} invoice(s) marked overdue"
 
 
 JOBS: tuple[Job, ...] = (
@@ -48,4 +75,8 @@ JOBS: tuple[Job, ...] = (
     # API process that waited 24h before its first pass; containers sleep after
     # 30 idle minutes, so it never ran.
     Job("varieties.purge_stale", "tenant", daily(time(3, 0)), _purge_stale_varieties),
+    # Unpaid and part-paid invoices past their due date become overdue, for
+    # every plan: the status was defined but nothing ever set it. Shortly after
+    # local midnight, so the day starts with it right.
+    Job("invoices.mark_overdue", "tenant", daily(time(0, 30)), _mark_overdue_invoices),
 )

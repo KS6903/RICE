@@ -9,9 +9,10 @@ transaction; repositories flush only.
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from typing import Any, Sequence
 
+from sqlalchemy import func, update
 from sqlalchemy.orm import Session
 
 from ..core.exceptions import NotFoundError
@@ -136,6 +137,11 @@ class SalesService(BaseService):
         order = self.orders.get_for_company(data.order_id, self.current_user.company_id)
         if not order:
             raise NotFoundError("Order not found")
+        # Without an explicit due date, the invoice is due after the customer's
+        # payment terms (0 days: on the invoice date). Before this, invoices
+        # created without one never aged and never went overdue.
+        terms = order.customer.payment_terms_days if order.customer is not None else 0
+        due_date = data.due_date or data.invoice_date + timedelta(days=terms or 0)
         with self.transaction():
             inv = self.invoices.add(
                 Invoice(
@@ -145,7 +151,7 @@ class SalesService(BaseService):
                     order_id=order.id,
                     customer_id=order.customer_id,
                     invoice_date=data.invoice_date,
-                    due_date=data.due_date,
+                    due_date=due_date,
                     total_amount=order.total_amount,
                     status="unpaid",
                     created_by=self.current_user.id,
@@ -173,7 +179,9 @@ class SalesService(BaseService):
                 invoice.status = "paid"
                 if invoice.order:
                     invoice.order.status = "paid"
-            elif invoice.paid_amount > 0:
+            elif invoice.paid_amount > 0 and invoice.status != "overdue":
+                # A part payment on an overdue invoice leaves it overdue: the
+                # balance is still late.
                 invoice.status = "partial"
         self.db.refresh(payment)
         return payment
@@ -184,3 +192,22 @@ class SalesService(BaseService):
     def _next_no(prefix: str, existing_count: int) -> str:
         today = datetime.now(timezone.utc).strftime("%Y%m%d")
         return f"{prefix}-{today}-{existing_count + 1:04d}"
+
+
+def mark_overdue_invoices(db: Session, *, today: date) -> int:
+    """Mark unpaid and part-paid invoices past their due date overdue.
+
+    Run nightly for every tenant by the invoices.mark_overdue job, in a session
+    on that tenant's schema, with ``today`` as the tenant's local date. An
+    invoice with no due date (created before due dates were defaulted) is due
+    on its invoice date. Returns how many were marked. Does not commit.
+    """
+    result = db.execute(
+        update(Invoice)
+        .where(
+            Invoice.status.in_(("unpaid", "partial")),
+            func.coalesce(Invoice.due_date, Invoice.invoice_date) < today,
+        )
+        .values(status="overdue")
+    )
+    return result.rowcount  # type: ignore[attr-defined]

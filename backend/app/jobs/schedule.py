@@ -10,20 +10,15 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from datetime import datetime, time
-from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
+from zoneinfo import ZoneInfo
+
+from ..core.timezones import DEFAULT_TIMEZONE, tenant_zone
+
+__all__ = ["DEFAULT_TIMEZONE", "Schedule", "daily", "hourly", "tenant_zone"]
 
 Schedule = Callable[[datetime, ZoneInfo], "str | None"]
 
-DEFAULT_TIMEZONE = "Asia/Manila"
 _UTC = ZoneInfo("UTC")
-
-
-def tenant_zone(name: str | None) -> ZoneInfo:
-    """The tenant's timezone, or Manila when it is unset or not a real zone."""
-    try:
-        return ZoneInfo(name or DEFAULT_TIMEZONE)
-    except (ZoneInfoNotFoundError, ValueError):
-        return ZoneInfo(DEFAULT_TIMEZONE)
 
 
 def daily(at: time) -> Schedule:
