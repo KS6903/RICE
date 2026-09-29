@@ -3,14 +3,14 @@ times, recovers runs whose runner died, and keeps tenants apart."""
 
 from __future__ import annotations
 
-from datetime import datetime, time, timedelta
+from datetime import date, datetime, time, timedelta
 
 import pytest
 from sqlalchemy import select, text
 from sqlalchemy.orm import Session
 
 from app.jobs import runner
-from app.jobs.registry import JOBS, Job
+from app.jobs.registry import JOBS, Job, JobContext
 from app.jobs.schedule import daily, hourly
 from app.models.base import now_utc
 from app.models.company import Company
@@ -36,7 +36,7 @@ class Counter:
         self.calls = 0
         self.fail_times = fail_times
 
-    def __call__(self, db: Session) -> str:
+    def __call__(self, ctx: JobContext) -> str:
         self.calls += 1
         if self.calls <= self.fail_times:
             raise RuntimeError(f"boom {self.calls}")
@@ -103,8 +103,8 @@ def test_a_tenant_job_runs_in_that_tenant_schema_and_timezone(db_session, sessio
     company = db_session.get(Company, seed_owner.company_id)
     seen: list[str] = []
 
-    def work(db: Session) -> str:
-        seen.append(db.execute(text("SHOW search_path")).scalar_one().replace('"', ""))
+    def work(ctx: JobContext) -> str:
+        seen.append(ctx.db.execute(text("SHOW search_path")).scalar_one().replace('"', ""))
         return "ok"
 
     job = Job("test.tenant", "tenant", daily(time(3, 0)), work)
@@ -115,6 +115,21 @@ def test_a_tenant_job_runs_in_that_tenant_schema_and_timezone(db_session, sessio
     assert seen == [f"{company.schema_name}, public"]
     [run] = _runs(db_session, "test.tenant")
     assert (run.company_id, run.run_key) == (company.id, "2026-09-27")
+
+
+def test_a_job_sees_the_tenant_local_date_not_the_utc_date(db_session, sessions, seed_owner):
+    company = db_session.get(Company, seed_owner.company_id)
+    seen: list[date] = []
+
+    def work(ctx: JobContext) -> str:
+        seen.append(ctx.local_today)
+        return "ok"
+
+    # 16:40 UTC on the 26th is 00:40 on the 27th in Manila.
+    tick = datetime.fromisoformat("2026-09-26T16:40+00:00")
+    job = Job("test.local-date", "tenant", daily(time(0, 30)), work)
+    runner.run_due_jobs(tick, jobs=[job], session_factory=sessions, companies=[company])
+    assert seen == [date(2026, 9, 27)]
 
 
 def test_only_provisioned_active_tenants_are_visited(db_session, sessions, seed_owner):
@@ -145,4 +160,10 @@ def test_the_registered_jobs_run_cleanly(db_session, sessions, seed_owner):
     company = db_session.get(Company, seed_owner.company_id)
     report = runner.run_due_jobs(NOW, jobs=JOBS, session_factory=sessions, companies=[company])
     assert report.failed == []
-    assert sorted(report.succeeded) == sorted(["subscriptions.sweep_expired", f"varieties.purge_stale[{company.id}]"])
+    assert sorted(report.succeeded) == sorted(
+        [
+            "subscriptions.sweep_expired",
+            f"varieties.purge_stale[{company.id}]",
+            f"invoices.mark_overdue[{company.id}]",
+        ]
+    )

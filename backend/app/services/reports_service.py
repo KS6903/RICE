@@ -14,6 +14,7 @@ from typing import Any
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
+from ..core.timezones import local_today
 from ..models.costs import Expense
 from ..models.milling import ByproductInventory, MilledRiceInventory, MillingBatch
 from ..models.paddy import PalayInventory, PalayPurchase, PalayPurchaseItem
@@ -149,7 +150,9 @@ class ReportsService(BaseService):
             )
         return months
 
-    def ar_aging(self) -> dict:
+    def ar_aging(self, *, today: date | None = None) -> dict:
+        """Outstanding receivables by days past due, as of ``today``: by default
+        the mill's local date, not the server's UTC one."""
         invoices = (
             self.db.query(Invoice)
             .filter(
@@ -158,20 +161,24 @@ class ReportsService(BaseService):
             )
             .all()
         )
-        today = date.today()
+        if today is None:
+            company = getattr(self.current_user, "company", None)
+            today = local_today(getattr(company, "timezone", None))
         buckets: dict[str, Any] = {"current": 0, "1_30": 0, "31_60": 0, "61_90": 0, "over_90": 0}
         for inv in invoices:
             outstanding = float(inv.total_amount - inv.paid_amount)
-            if inv.due_date:
-                days = (today - inv.due_date).days
-                if days <= 0:
-                    buckets["current"] += outstanding
-                elif days <= 30:
-                    buckets["1_30"] += outstanding
-                elif days <= 60:
-                    buckets["31_60"] += outstanding
-                elif days <= 90:
-                    buckets["61_90"] += outstanding
-                else:
-                    buckets["over_90"] += outstanding
+            # An invoice with no due date (created before due dates were
+            # defaulted) is due on its invoice date. These used to fall into
+            # no bucket at all, so they vanished from the report.
+            days = (today - (inv.due_date or inv.invoice_date)).days
+            if days <= 0:
+                buckets["current"] += outstanding
+            elif days <= 30:
+                buckets["1_30"] += outstanding
+            elif days <= 60:
+                buckets["31_60"] += outstanding
+            elif days <= 90:
+                buckets["61_90"] += outstanding
+            else:
+                buckets["over_90"] += outstanding
         return buckets

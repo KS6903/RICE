@@ -16,6 +16,7 @@ import uuid
 from collections.abc import Callable, Iterable, Sequence
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
+from zoneinfo import ZoneInfo
 
 from sqlalchemy import and_, or_, select, update
 from sqlalchemy.dialects.postgresql import insert
@@ -26,7 +27,7 @@ from ..core.tenancy import set_search_path
 from ..models.base import now_utc
 from ..models.company import Company
 from ..models.job_run import JobRun
-from .registry import JOBS, Job
+from .registry import JOBS, Job, JobContext
 from .schedule import DEFAULT_TIMEZONE, tenant_zone
 
 logger = logging.getLogger("ricemill.jobs")
@@ -77,7 +78,7 @@ def run_due_jobs(
             zone = tenant_zone(company.timezone if company is not None else DEFAULT_TIMEZONE)
             run_key = job.schedule(now, zone)
             if run_key is not None:
-                _run_once(job, company, run_key, session_factory, report)
+                _run_once(job, company, now, zone, run_key, session_factory, report)
     return report
 
 
@@ -98,6 +99,8 @@ def _active_tenants(session_factory: Callable[[], Session]) -> list[Company]:
 def _run_once(
     job: Job,
     company: Company | None,
+    now: datetime,
+    zone: ZoneInfo,
     run_key: str,
     session_factory: Callable[[], Session],
     report: Report,
@@ -116,7 +119,7 @@ def _run_once(
             with session_factory() as db:
                 if company is not None:
                     set_search_path(db, company.schema_name)
-                summary = job.run(db)
+                summary = job.run(JobContext(db=db, now=now, zone=zone, run_key=run_key, company=company))
         except Exception as exc:
             _finish(ledger, run_id, "failed", f"{type(exc).__name__}: {exc}"[:500])
             report.failed.append(label)
