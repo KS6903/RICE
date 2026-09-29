@@ -10,7 +10,7 @@ from zoneinfo import ZoneInfo
 
 from sqlalchemy.orm import Session
 
-from .schedule import Schedule, daily, hourly
+from .schedule import Schedule, daily, every_tick, hourly
 
 if TYPE_CHECKING:
     from ..models.company import Company
@@ -66,6 +66,13 @@ def _mark_overdue_invoices(ctx: JobContext) -> str:
     return f"{count} invoice(s) marked overdue"
 
 
+def _deliver_notification_emails(ctx: JobContext) -> str:
+    from ..services.notification_service import deliver_pending_emails
+
+    outcome = deliver_pending_emails(ctx.db, now=ctx.now)  # commits
+    return ", ".join(f"{count} {name}" for name, count in outcome.items())
+
+
 JOBS: tuple[Job, ...] = (
     # Paid plans past their end date move to their queued plan or to Free.
     # Before this job that happened only lazily, on the tenant's own /auth/me
@@ -79,4 +86,7 @@ JOBS: tuple[Job, ...] = (
     # every plan: the status was defined but nothing ever set it. Shortly after
     # local midnight, so the day starts with it right.
     Job("invoices.mark_overdue", "tenant", daily(time(0, 30)), _mark_overdue_invoices),
+    # Notices that asked for email are sent after the work that produced them
+    # committed, on the next tick, within a daily cap per tenant.
+    Job("notifications.deliver_email", "tenant", every_tick(), _deliver_notification_emails),
 )

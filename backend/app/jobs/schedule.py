@@ -14,7 +14,7 @@ from zoneinfo import ZoneInfo
 
 from ..core.timezones import DEFAULT_TIMEZONE, tenant_zone
 
-__all__ = ["DEFAULT_TIMEZONE", "Schedule", "daily", "hourly", "tenant_zone"]
+__all__ = ["DEFAULT_TIMEZONE", "Schedule", "daily", "every_tick", "hourly", "tenant_zone"]
 
 Schedule = Callable[[datetime, ZoneInfo], "str | None"]
 
@@ -27,6 +27,16 @@ def daily(at: time) -> Schedule:
     def schedule(now: datetime, zone: ZoneInfo) -> str | None:
         local = now.astimezone(zone)
         return local.date().isoformat() if local.time() >= at else None
+
+    return schedule
+
+
+def every_tick() -> Schedule:
+    """Due on every tick; the run key is the UTC time floored to 15 minutes."""
+
+    def schedule(now: datetime, zone: ZoneInfo) -> str | None:
+        utc = now.astimezone(_UTC)
+        return utc.replace(minute=utc.minute - utc.minute % 15).strftime("%Y-%m-%dT%H:%M")
 
     return schedule
 

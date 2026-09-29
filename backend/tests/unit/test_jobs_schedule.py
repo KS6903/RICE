@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import datetime, time
 from zoneinfo import ZoneInfo
 
-from app.jobs.schedule import daily, hourly, tenant_zone
+from app.jobs.schedule import daily, every_tick, hourly, tenant_zone
 
 MANILA = ZoneInfo("Asia/Manila")
 
@@ -46,3 +46,10 @@ def test_an_unknown_or_malformed_timezone_falls_back_to_manila():
     assert tenant_zone("Not/AZone") == MANILA
     assert tenant_zone("../../etc/passwd") == MANILA
     assert tenant_zone("Asia/Tokyo") == ZoneInfo("Asia/Tokyo")
+
+
+def test_every_tick_names_each_15_minute_slot_in_utc():
+    tick = every_tick()
+    assert tick(_at("2026-09-27T11:44+08:00"), MANILA) == "2026-09-27T03:30"
+    assert tick(_at("2026-09-27T11:45+08:00"), MANILA) == "2026-09-27T03:45"
+    assert tick(_at("2026-09-27T03:59+00:00"), ZoneInfo("America/New_York")) == "2026-09-27T03:45"
