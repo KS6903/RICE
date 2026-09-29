@@ -13,6 +13,7 @@ import {
   Lock,
   Truck,
   HardHat,
+  Workflow,
 } from "lucide-react";
 import riceLogo from "../../assets/Rice_Logo.svg";
 import { clsx } from "clsx";
@@ -57,6 +58,13 @@ const NAV: {
   },
   { to: "/costs", label: "Expenses", icon: Receipt, feature: "expenses", section: "expenses" },
   { to: "/reports", label: "Reports", icon: BarChart3, feature: "dashboard", section: "reports" },
+  {
+    to: "/automations",
+    label: "Automations",
+    icon: Workflow,
+    feature: "automations",
+    section: "automations",
+  },
   {
     to: "/employees",
     label: "Employees",

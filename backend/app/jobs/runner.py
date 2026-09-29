@@ -109,7 +109,7 @@ def _run_once(
     context = {"job": job.name, "company_id": str(company_id) if company_id else None, "run_key": run_key}
     label = job.name if company_id is None else f"{job.name}[{company_id}]"
     with session_factory() as ledger:
-        run_id = _claim(ledger, job.name, company_id, run_key)
+        run_id = claim_run(ledger, job.name, company_id, run_key)
         if run_id is None:
             return  # done already, running elsewhere, or out of attempts
         started = clock.monotonic()
@@ -121,11 +121,11 @@ def _run_once(
                     set_search_path(db, company.schema_name)
                 summary = job.run(JobContext(db=db, now=now, zone=zone, run_key=run_key, company=company))
         except Exception as exc:
-            _finish(ledger, run_id, "failed", f"{type(exc).__name__}: {exc}"[:500])
+            finish_run(ledger, run_id, "failed", f"{type(exc).__name__}: {exc}"[:500])
             report.failed.append(label)
             logger.exception("job failed", extra=context)
             return
-        _finish(ledger, run_id, "succeeded", summary)
+        finish_run(ledger, run_id, "succeeded", summary)
         report.succeeded.append(label)
         logger.info(
             "job succeeded",
@@ -133,7 +133,7 @@ def _run_once(
         )
 
 
-def _claim(db: Session, job: str, company_id: uuid.UUID | None, run_key: str) -> uuid.UUID | None:
+def claim_run(db: Session, job: str, company_id: uuid.UUID | None, run_key: str) -> uuid.UUID | None:
     """Claim a run; None when it is already done, in progress, or spent."""
     table = JobRun.__table__
     now = now_utc()
@@ -172,6 +172,6 @@ def _claim(db: Session, job: str, company_id: uuid.UUID | None, run_key: str) ->
     return run_id
 
 
-def _finish(db: Session, run_id: uuid.UUID, status: str, detail: str) -> None:
+def finish_run(db: Session, run_id: uuid.UUID, status: str, detail: str) -> None:
     db.execute(update(JobRun).where(JobRun.id == run_id).values(status=status, finished_at=now_utc(), detail=detail))
     db.commit()

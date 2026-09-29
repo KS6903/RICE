@@ -66,6 +66,12 @@ def _mark_overdue_invoices(ctx: JobContext) -> str:
     return f"{count} invoice(s) marked overdue"
 
 
+def _run_automations(ctx: JobContext) -> str:
+    from ..automations.engine import run_due_automations
+
+    return run_due_automations(ctx)
+
+
 def _deliver_notification_emails(ctx: JobContext) -> str:
     from ..services.notification_service import deliver_pending_emails
 
@@ -86,6 +92,9 @@ JOBS: tuple[Job, ...] = (
     # every plan: the status was defined but nothing ever set it. Shortly after
     # local midnight, so the day starts with it right.
     Job("invoices.mark_overdue", "tenant", daily(time(0, 30)), _mark_overdue_invoices),
+    # Enterprise tenants' switched-on recipes (app/automations). Before the
+    # email job, so what they produce goes out on the same tick.
+    Job("automations.run", "tenant", every_tick(), _run_automations),
     # Notices that asked for email are sent after the work that produced them
     # committed, on the next tick, within a daily cap per tenant.
     Job("notifications.deliver_email", "tenant", every_tick(), _deliver_notification_emails),

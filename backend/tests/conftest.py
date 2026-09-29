@@ -112,6 +112,7 @@ ALL_FEATURES = [
     "reports_advanced",
     "compliance_reports",
     "drying_advisor",
+    "automations",
 ]
 
 

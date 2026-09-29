@@ -33,6 +33,7 @@ ALL_FEATURES = [
     "compliance_reports",
     "drying_advisor",
     "offline_sync",
+    "automations",
 ]
 
 
