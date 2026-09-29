@@ -39,8 +39,16 @@ MFA_TRUST_COOKIE_PATH = "/api/auth"
 def set_mfa_trust_cookie(response: Response, token: str) -> None:
     """Mark this browser as MFA-trusted for exactly as long as the trust token
     itself: until the next Sunday 00:00 in the user's local time (httpOnly)."""
-    # We minted the token a moment ago; its exp is that Sunday boundary.
-    expires = jwt.decode(token, options={"verify_signature": False})["exp"]
+    # We minted the token a moment ago; its exp is that Sunday boundary. Read it
+    # through a verified decode anyway, so nothing here ever trusts a token's
+    # claims without its signature.
+    expires = jwt.decode(
+        token,
+        settings.SECRET_KEY,
+        algorithms=[settings.ALGORITHM],
+        issuer=settings.JWT_ISSUER,
+        audience=settings.JWT_AUDIENCE,
+    )["exp"]
     response.set_cookie(
         MFA_TRUST_COOKIE,
         token,
