@@ -9,7 +9,8 @@
 //   - The API e2e suite runs against "ricemill_e2e" on the server named in
 //     backend/.env. The launcher drops and recreates only databases whose
 //     name contains "e2e".
-//   - Semgrep and Docker run only when installed; CI always runs them.
+//   - Semgrep runs from a local install, or through uv when that's present.
+//     Docker runs only when it's running. CI always runs both.
 //     gitleaks is required: a leaked secret must never leave this machine.
 //
 // Flags:
@@ -211,29 +212,33 @@ step("security: gitleaks (full history)", () => {
   return run(bin, ["git", "--redact", "--no-banner", "--exit-code", "1", "."]);
 });
 step("security: npm audit", () => run("npm", ["audit", "--omit=dev"], { shell: isWindows }));
-if (onPath("semgrep")) {
+// Same version as the semgrep job in checks.yml. Without a local install, uv
+// fetches that exact version into its cache on first use. A skipped Semgrep
+// let a finding reach main once; with uv present it no longer skips.
+const SEMGREP_VERSION = "1.177.0";
+const semgrepArgs = [
+  "scan",
+  "--config",
+  "p/python",
+  "--config",
+  "p/typescript",
+  "--config",
+  "p/react",
+  "--metrics=off",
+  "--error",
+  "--quiet",
+];
+const semgrepCommand = onPath("semgrep")
+  ? ["semgrep", semgrepArgs]
+  : onPath("uv")
+    ? ["uv", ["tool", "run", "--from", `semgrep==${SEMGREP_VERSION}`, "semgrep", ...semgrepArgs]]
+    : null;
+if (semgrepCommand) {
   step("security: Semgrep", () =>
-    run(
-      "semgrep",
-      [
-        "scan",
-        "--config",
-        "p/python",
-        "--config",
-        "p/typescript",
-        "--config",
-        "p/react",
-        "--metrics=off",
-        "--error",
-        "--quiet",
-      ],
-      {
-        env: { PYTHONUTF8: "1" },
-      },
-    ),
+    run(semgrepCommand[0], semgrepCommand[1], { env: { PYTHONUTF8: "1" } }),
   );
 } else {
-  skip("security: Semgrep", "not installed; CI runs it");
+  skip("security: Semgrep", "neither semgrep nor uv is installed; CI runs it");
 }
 
 // ── Container image (checks.yml: docker) ─────────────────────────────────────
