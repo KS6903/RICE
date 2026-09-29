@@ -1,5 +1,6 @@
 from .activity import ActivityLog
 from .auth_session import AuthSession
+from .automation import AutomationRule
 from .company import Branch, Company
 from .compliance import ComplianceReport
 from .costs import Expense, ExpenseCategory
@@ -30,6 +31,7 @@ from .user_location import UserLocation
 from .warehouse import Pallet, PalletMovement, RiceBatch, WarehouseLayout, WarehouseZone
 
 __all__ = [
+    "AutomationRule",
     "JobRun",
     "Notification",
     "Company",

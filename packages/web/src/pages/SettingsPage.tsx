@@ -166,6 +166,8 @@ const FEATURE_LABELS: Record<string, string> = {
   compliance_reports: "DA / NFA compliance reports",
   offline_sync: "Offline sync (Electron desktop)",
   canva_inventory: "Visual Warehouse canva (spatial inventory)",
+  drying_advisor: "Palay drying advisor",
+  automations: "Automations (morning summary, reminders)",
 };
 
 const ALL_FEATURE_KEYS = Object.keys(FEATURE_LABELS);

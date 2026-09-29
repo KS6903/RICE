@@ -11,6 +11,7 @@ from .api import (
     activity,
     admin,
     auth,
+    automations,
     billing,
     branches,
     canva,
@@ -126,6 +127,7 @@ app.include_router(drying_advisor.router, prefix="/api", tags=["Drying Advisor"]
 app.include_router(locations.router, prefix="/api", tags=["Saved Locations"], dependencies=mfa_gate)
 app.include_router(activity.router, prefix="/api/activity", tags=["Activity Log"], dependencies=mfa_gate)
 app.include_router(notifications.router, prefix="/api/notifications", tags=["Notifications"], dependencies=mfa_gate)
+app.include_router(automations.router, prefix="/api/automations", tags=["Automations"], dependencies=mfa_gate)
 app.include_router(fleet.router, prefix="/api", tags=["Fleet"], dependencies=mfa_gate)
 
 

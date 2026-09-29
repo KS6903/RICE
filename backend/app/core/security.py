@@ -33,6 +33,7 @@ SECTION_ACCESS: dict[str, dict[str, str]] = {
         "employees": "full",
         "users": "full",
         "settings": "full",
+        "automations": "full",
     },
     "admin": {
         "dashboard": "full",
@@ -47,6 +48,7 @@ SECTION_ACCESS: dict[str, dict[str, str]] = {
         "employees": "full",
         "users": "full",
         "settings": "full",
+        "automations": "full",
     },
     "accountant": {
         "dashboard": "full",
@@ -61,6 +63,7 @@ SECTION_ACCESS: dict[str, dict[str, str]] = {
         "employees": "full",
         "users": "none",
         "settings": "full",
+        "automations": "view",
     },
     "cashier": {
         "dashboard": "full",
@@ -75,6 +78,7 @@ SECTION_ACCESS: dict[str, dict[str, str]] = {
         "employees": "none",
         "users": "none",
         "settings": "full",
+        "automations": "none",
     },
     "mill_operator": {
         "dashboard": "full",
@@ -89,6 +93,7 @@ SECTION_ACCESS: dict[str, dict[str, str]] = {
         "employees": "none",
         "users": "none",
         "settings": "full",
+        "automations": "none",
     },
     "encoder": {
         "dashboard": "full",
@@ -103,6 +108,7 @@ SECTION_ACCESS: dict[str, dict[str, str]] = {
         "employees": "none",
         "users": "none",
         "settings": "full",
+        "automations": "none",
     },
 }
 
