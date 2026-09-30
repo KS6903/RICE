@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { clsx } from "clsx";
 import UpgradeRequestToast from "../admin/UpgradeRequestToast";
+import BrandLogo from "../BrandLogo";
 
 const NAV = [
   { to: "/admin", label: "Dashboard", icon: LayoutDashboard, end: true },
@@ -66,13 +67,6 @@ export default function AdminShell() {
     navigate("/");
   };
 
-  const initials = (user?.full_name || user?.username || "?")
-    .split(" ")
-    .map((w) => w[0])
-    .slice(0, 2)
-    .join("")
-    .toUpperCase();
-
   return (
     <div className="flex h-screen overflow-hidden">
       <aside className="relative w-60 shrink-0 flex flex-col glass border-r border-soft">
@@ -80,8 +74,10 @@ export default function AdminShell() {
 
         <div className="relative px-5 py-5 border-b border-soft">
           <div className="flex items-center gap-2.5">
-            <div className="h-10 w-10 rounded-xl bg-grad-brand grid place-items-center shadow-grad-glow">
-              <ShieldCheck size={18} className="text-white" />
+            {/* The KS brand mark: the platform console wears the company's own
+                logo rather than the product's rice logo. */}
+            <div className="h-10 w-10 grid place-items-center">
+              <BrandLogo gradient width={40} height={18} strokeWidth={6} />
             </div>
             <div className="min-w-0">
               <h1 className="text-base font-bold tracking-tight text-primary leading-tight truncate">
@@ -142,8 +138,13 @@ export default function AdminShell() {
             <ThemeToggle />
 
             <div className="hidden sm:flex items-center gap-2.5 pl-3 border-l border-soft">
-              <div className="h-9 w-9 rounded-full bg-grad-brand grid place-items-center text-white text-xs font-bold shadow-grad-glow">
-                {initials}
+              {/* The platform owner's avatar is the KS mark, not initials. The
+                  stroke is thicker than the sidebar's so it reads at this size. */}
+              <div
+                className="h-9 w-9 rounded-full bg-grad-brand grid place-items-center shadow-grad-glow"
+                title={user?.full_name || user?.username}
+              >
+                <BrandLogo width={24} height={11} strokeWidth={10} className="text-white" />
               </div>
               <div className="hidden lg:block leading-tight">
                 <p className="text-sm font-semibold text-primary truncate max-w-[10rem]">
