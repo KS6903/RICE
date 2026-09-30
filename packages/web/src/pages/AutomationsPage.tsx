@@ -175,9 +175,12 @@ function AutomationCard({ automation, readOnly }: { automation: Automation; read
               enabled ? "bg-emerald-600" : "bg-slate-300 dark:bg-slate-600"
             }`}
           >
+            {/* Pinned to the left edge: without left-0 an absolute child of a
+                button starts from its centre, and the knob lands off the end.
+                The 24px knob then sits 2px in from either end of the 48px track. */}
             <span
-              className={`absolute top-0.5 h-6 w-6 rounded-full bg-white shadow transition-transform ${
-                enabled ? "translate-x-5" : "translate-x-0.5"
+              className={`absolute left-0 top-0.5 h-6 w-6 rounded-full bg-white shadow transition-transform ${
+                enabled ? "translate-x-[22px]" : "translate-x-0.5"
               }`}
             />
           </button>
