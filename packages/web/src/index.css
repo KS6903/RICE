@@ -406,6 +406,35 @@
     box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.22);
   }
 
+  /* ========== Dropdowns — our own chevron, set in from the edge ==========
+     The browser's arrow sits hard against the right border; this one sits 1rem
+     in, with room so a long choice never runs under it. It turns green with
+     the focus ring. */
+  select.input {
+    appearance: none;
+    -webkit-appearance: none;
+    padding-right: 2.75rem;
+    cursor: pointer;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2.25' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 1rem center;
+    background-size: 1.05rem;
+  }
+  .dark select.input {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2.25' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  }
+  select.input:focus {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2310b981' stroke-width='2.25' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  }
+  select.input:disabled {
+    cursor: not-allowed;
+    opacity: 0.65;
+  }
+  /* Old Edge draws its own arrow as well. */
+  select.input::-ms-expand {
+    display: none;
+  }
+
   /* ========== Form label — standard senior-readable size ========== */
   .form-label {
     display: block;
