@@ -120,13 +120,14 @@ export default function SignupPage() {
     // scrolling so the on-screen keyboard can't hide the field being typed in.
     <div className="min-h-screen w-full grid lg:grid-cols-2 lg:h-screen lg:grid-rows-[minmax(0,1fr)] relative overflow-hidden">
       {/* Back — shares LoginPage's .btn-back component (index.css). Positioned
-          just right of the seam on desktop; this button isn't nested in the
-          scrollable form column the way LoginPage's is — nesting it would
-          scroll it away in a short window. */}
+          just right of the seam on desktop, level with the Oryza logo (p-12 +
+          a 44px logo, the same height as this pill, so top-12 lines them up);
+          this button isn't nested in the scrollable form column the way
+          LoginPage's is — nesting it would scroll it away in a short window. */}
       <button
         type="button"
         onClick={goBack}
-        className="btn-back absolute top-5 left-5 lg:left-[calc(50%+1.25rem)] z-20"
+        className="btn-back absolute top-5 left-5 lg:top-12 lg:left-[calc(50%+1.25rem)] z-20"
       >
         <span className="btn-back-icon" aria-hidden="true">
           <ArrowLeft size={18} />
@@ -202,8 +203,9 @@ export default function SignupPage() {
       </div>
 
       {/* my-auto rather than items-center: it centres the form when there is
-          room and, unlike items-center, never pushes its top out of reach. */}
-      <div className="flex justify-center px-6 pt-20 pb-6 lg:px-12 lg:pt-20 lg:pb-4 lg:overflow-y-auto">
+          room and, unlike items-center, never pushes its top out of reach.
+          lg:pt-28 keeps the form clear of the Back button, which ends at 92px. */}
+      <div className="flex justify-center px-6 pt-20 pb-6 lg:px-12 lg:pt-28 lg:pb-4 lg:overflow-y-auto">
         <div className="w-full max-w-lg my-auto animate-grad-fade-up">
           <Link
             to="/"

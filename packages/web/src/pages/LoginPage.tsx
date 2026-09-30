@@ -164,8 +164,14 @@ export default function LoginPage() {
 
       {/* RIGHT — form */}
       <div className="relative flex items-center justify-center p-6 lg:p-12">
-        {/* Back — anchored to the form (white) side */}
-        <button type="button" onClick={handleBack} className="btn-back absolute top-5 left-5 z-20">
+        {/* Back — anchored to the form (white) side.
+            On desktop it sits level with the Oryza logo: the logo row's centre is
+            72px down (p-12 + a 48px logo), so this 44px pill starts at 50px. */}
+        <button
+          type="button"
+          onClick={handleBack}
+          className="btn-back absolute top-5 lg:top-[3.125rem] left-5 z-20"
+        >
           <span className="btn-back-icon" aria-hidden="true">
             <ArrowLeft size={18} />
             <ArrowLeft size={18} />
