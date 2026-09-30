@@ -682,12 +682,25 @@ export default function HomePage() {
       <footer className="border-t border-soft py-6">
         <div className="mx-auto max-w-6xl px-4 sm:px-6 flex flex-col sm:flex-row items-center justify-between gap-3 text-sm text-muted">
           <span>© {new Date().getFullYear()} Oryza by K Systematics</span>
-          <div className="flex items-center gap-4">
-            <Link to="/login" className="hover:text-primary transition-colors">
-              Log in
+          {/* Login/Signup already have prominent buttons in the nav and the
+              CTA sections above; this slot is more useful as the agreements a
+              visitor is about to be bound by, reachable before they ever
+              create an account. */}
+          <div className="flex flex-wrap items-center justify-center gap-4">
+            <Link to="/legal/terms" className="hover:text-primary transition-colors">
+              Terms
             </Link>
-            <Link to="/signup" className="hover:text-primary transition-colors">
-              Sign up
+            <Link to="/legal/privacy" className="hover:text-primary transition-colors">
+              Privacy
+            </Link>
+            <Link to="/legal/dpa" className="hover:text-primary transition-colors">
+              Data processing
+            </Link>
+            <Link to="/legal/aup" className="hover:text-primary transition-colors">
+              Acceptable use
+            </Link>
+            <Link to="/legal/subprocessors" className="hover:text-primary transition-colors">
+              Sub-processors
             </Link>
           </div>
         </div>
