@@ -28,6 +28,22 @@ export class EmployeesService {
       .then((r) => r.data);
   }
 
+  /** Like toCreatePayload, but a blank optional field is sent as null so the
+   *  server clears it. Pure. */
+  static toUpdatePayload(form: Record<string, any>) {
+    const payload: Record<string, any> = EmployeesService.toCreatePayload(form);
+    for (const [key, value] of Object.entries(payload)) {
+      if (value === "" && key !== "first_name" && key !== "last_name") payload[key] = null;
+    }
+    return payload;
+  }
+
+  update(id: string, form: Record<string, any>): Promise<any> {
+    return this.http
+      .put(`/employees/${id}`, EmployeesService.toUpdatePayload(form))
+      .then((r) => r.data);
+  }
+
   setActive(id: string, isActive: boolean): Promise<any> {
     return this.http.put(`/employees/${id}`, { is_active: isActive }).then((r) => r.data);
   }

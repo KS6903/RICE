@@ -11,7 +11,7 @@ from typing import Any
 
 from sqlalchemy.orm import Session
 
-from ..core.exceptions import NotFoundError
+from ..core.exceptions import BadRequestError, NotFoundError
 from ..models.company import Branch
 from ..models.employee import Employee
 from ..repositories.employees import EmployeeRepository
@@ -99,8 +99,16 @@ class EmployeeService(BaseService):
         if not e:
             raise NotFoundError("Employee not found")
         self.assert_company_fk(Branch, data.branch_id, label="Branch")
+        # Only the fields the caller sent are touched, and a sent null clears an
+        # optional field (a termination date, a rate, an email). The name and
+        # the active flag can't be cleared.
+        changes = data.model_dump(exclude_unset=True)
+        if any(changes[f] in (None, "") for f in ("first_name", "last_name") if f in changes):
+            raise BadRequestError("First and last name are required.")
+        if changes.get("is_active", True) is None:
+            del changes["is_active"]
         with self.transaction():
-            for field, val in data.model_dump(exclude_none=True).items():
+            for field, val in changes.items():
                 setattr(e, field, val)
         self.db.refresh(e)
         return self._serialize(e, self._branch_map())

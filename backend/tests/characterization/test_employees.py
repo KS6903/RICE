@@ -74,3 +74,40 @@ def test_create_employee_denied_for_cashier(make_auth_client):
     c = make_auth_client(features=["employees"], username="cash", role_name="cashier")
     res = c.post("/api/employees/", json={"first_name": "X", "last_name": "Y"})
     assert res.status_code == 403
+
+
+def test_update_clears_optional_fields_sent_as_null(auth_client):
+    e = auth_client.post(
+        "/api/employees/",
+        json={
+            "first_name": "Rosa",
+            "last_name": "Diaz",
+            "email": "rosa@x.ph",
+            "daily_rate": "500",
+            "date_terminated": "2026-01-31",
+        },
+    ).json()
+    # Re-hired: the termination date, rate and email are cleared; the rest stays.
+    res = auth_client.put(
+        f"/api/employees/{e['id']}",
+        json={"date_terminated": None, "daily_rate": None, "email": None, "position": "Foreman"},
+    )
+    assert res.status_code == 200, res.text
+    body = res.json()
+    assert (body["date_terminated"], body["daily_rate"], body["email"]) == (None, None, None)
+    assert (body["position"], body["first_name"], body["last_name"]) == ("Foreman", "Rosa", "Diaz")
+
+
+def test_update_leaves_unsent_fields_alone(auth_client):
+    e = auth_client.post("/api/employees/", json={"first_name": "Ben", "last_name": "Uy", "phone": "0917"}).json()
+    res = auth_client.put(f"/api/employees/{e['id']}", json={"is_active": False})
+    assert res.status_code == 200, res.text
+    assert res.json()["phone"] == "0917"
+    assert res.json()["is_active"] is False
+
+
+def test_update_refuses_to_blank_the_name(auth_client):
+    e = auth_client.post("/api/employees/", json={"first_name": "Lia", "last_name": "Go"}).json()
+    for body in ({"first_name": None}, {"last_name": ""}):
+        res = auth_client.put(f"/api/employees/{e['id']}", json=body)
+        assert res.status_code == 400, res.text

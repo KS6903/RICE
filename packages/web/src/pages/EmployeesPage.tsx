@@ -1,24 +1,15 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { employeesService } from "../services/EmployeesService";
 import { inventoryService } from "../services/InventoryService";
 import { format } from "date-fns";
-import {
-  Plus,
-  Power,
-  History,
-  ChevronDown,
-  ChevronUp,
-  Search,
-  X,
-  Mail,
-  Phone,
-  MapPin,
-  IdCard,
-} from "lucide-react";
+import { Plus, Power, History, ChevronDown, ChevronUp, Search, X, Pencil } from "lucide-react";
 import { useFeature } from "../hooks/useFeature";
 import UpgradeRequired from "../components/UpgradeRequired";
 import LegalNotice from "../components/LegalNotice";
+import UserAvatar from "../components/UserAvatar";
+import { useAccess } from "../hooks/useAccess";
 
 const EMPLOYMENT_TYPES = [
   { value: "regular", label: "Regular" },
@@ -638,158 +629,339 @@ function EmployeesPageInner() {
         )}
       </div>
 
-      {viewing && <EmployeeDrawer e={viewing} onClose={() => setViewing(null)} />}
+      {viewing && (
+        <EmployeeProfile
+          e={viewing}
+          branches={branches}
+          onClose={() => setViewing(null)}
+          onSaved={setViewing}
+        />
+      )}
     </div>
   );
 }
 
-function EmployeeDrawer({ e, onClose }: { e: any; onClose: () => void }) {
-  return (
-    <div className="fixed inset-0 z-50 bg-black/40 flex justify-end" onClick={onClose}>
-      <div
-        className="bg-white dark:bg-slate-800 w-full max-w-lg h-full overflow-y-auto p-6 shadow-xl"
-        onClick={(ev) => ev.stopPropagation()}
-      >
-        <div className="flex justify-between items-start mb-4">
-          <div>
-            <h3 className="text-lg font-bold text-gray-900 dark:text-slate-100">{e.full_name}</h3>
-            <p className="text-sm text-gray-500 dark:text-slate-400">
-              {e.position || "—"}
+type FieldSpec = {
+  key: keyof typeof EMPTY_FORM;
+  label: string;
+  kind?: "text" | "email" | "date" | "money" | "select" | "textarea";
+  options?: { value: string; label: string }[];
+  mono?: boolean;
+  /** Spans both columns. */
+  wide?: boolean;
+  placeholder?: string;
+};
+
+const CIVIL_OPTIONS = CIVIL_STATUSES.map((s) => ({
+  value: s,
+  label: s.charAt(0).toUpperCase() + s.slice(1),
+}));
+
+/** The profile, section by section. The same list draws the read-only view and
+ *  the edit form, so the two always line up. */
+const PROFILE_SECTIONS: {
+  title: string;
+  fields: FieldSpec[];
+  /** Only shown while editing (the header already shows these). */
+  editOnly?: boolean;
+  notice?: boolean;
+}[] = [
+  {
+    title: "Name",
+    editOnly: true,
+    fields: [
+      { key: "first_name", label: "First name *" },
+      { key: "last_name", label: "Last name *" },
+      { key: "middle_name", label: "Middle name" },
+      { key: "employee_no", label: "Employee #", mono: true, placeholder: "EMP-001" },
+    ],
+  },
+  {
+    title: "Employment",
+    fields: [
+      { key: "position", label: "Position", placeholder: "e.g. Mill Operator" },
+      { key: "department", label: "Department", placeholder: "Operations / Office" },
+      {
+        key: "employment_type",
+        label: "Employment type",
+        kind: "select",
+        options: EMPLOYMENT_TYPES,
+      },
+      { key: "branch_id", label: "Branch", kind: "select" },
+      { key: "date_hired", label: "Date hired", kind: "date" },
+      { key: "date_terminated", label: "Date terminated", kind: "date" },
+      { key: "daily_rate", label: "Daily rate", kind: "money", placeholder: "500" },
+      { key: "monthly_salary", label: "Monthly salary", kind: "money", placeholder: "15000" },
+    ],
+  },
+  {
+    title: "Contact",
+    fields: [
+      { key: "phone", label: "Phone", placeholder: "09xx xxx xxxx" },
+      { key: "email", label: "Email", kind: "email" },
+      { key: "address", label: "Address", wide: true },
+    ],
+  },
+  {
+    title: "Personal",
+    fields: [
+      { key: "birthdate", label: "Birthdate", kind: "date" },
+      { key: "gender", label: "Gender", kind: "select", options: GENDERS },
+      { key: "civil_status", label: "Civil status", kind: "select", options: CIVIL_OPTIONS },
+    ],
+  },
+  {
+    title: "Government IDs",
+    notice: true,
+    fields: [
+      { key: "sss_no", label: "SSS", mono: true },
+      { key: "philhealth_no", label: "PhilHealth", mono: true },
+      { key: "pagibig_no", label: "Pag-IBIG", mono: true },
+      { key: "tin", label: "TIN", mono: true },
+    ],
+  },
+  {
+    title: "Emergency contact",
+    fields: [
+      { key: "emergency_contact_name", label: "Name" },
+      { key: "emergency_contact_phone", label: "Phone" },
+      { key: "emergency_contact_relation", label: "Relation", placeholder: "Spouse, Parent…" },
+    ],
+  },
+  {
+    title: "Notes",
+    fields: [{ key: "notes", label: "Notes", kind: "textarea", wide: true }],
+  },
+];
+
+/** An employee record as form values: every field a string, never null. */
+function toForm(e: any): typeof EMPTY_FORM {
+  const form = { ...EMPTY_FORM };
+  for (const key of Object.keys(EMPTY_FORM) as (keyof typeof EMPTY_FORM)[]) {
+    form[key] = e[key] == null ? "" : String(e[key]);
+  }
+  return form;
+}
+
+const peso = (v: string) => `₱${Number(v).toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
+
+const inputType = (kind: FieldSpec["kind"]) =>
+  kind === "date" ? "date" : kind === "email" ? "email" : kind === "money" ? "number" : "text";
+
+/** The employee's profile in a centred window: read it, and, for roles that
+ *  manage employees (the Boss included), edit it in place. */
+function EmployeeProfile({
+  e,
+  branches,
+  onClose,
+  onSaved,
+}: {
+  e: any;
+  branches: any[];
+  onClose: () => void;
+  onSaved: (updated: any) => void;
+}) {
+  const { canEdit } = useAccess();
+  const mayEdit = canEdit("employees");
+  const [editing, setEditing] = useState(false);
+  const [form, setForm] = useState(() => toForm(e));
+  const qc = useQueryClient();
+
+  const save = useMutation({
+    mutationFn: () => employeesService.update(e.id, form),
+    onSuccess: (updated) => {
+      qc.invalidateQueries({ queryKey: ["employees"] });
+      onSaved(updated);
+      setEditing(false);
+    },
+  });
+
+  const startEdit = () => {
+    setForm(toForm(e));
+    save.reset();
+    setEditing(true);
+  };
+
+  // Escape backs out of editing first, then closes the window.
+  useEffect(() => {
+    const onKey = (ev: KeyboardEvent) => {
+      if (ev.key !== "Escape") return;
+      if (editing) setEditing(false);
+      else onClose();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [editing, onClose]);
+
+  const branchOptions = branches.map((b: any) => ({ value: String(b.id), label: b.name }));
+  const optionsFor = (f: FieldSpec) => (f.key === "branch_id" ? branchOptions : (f.options ?? []));
+
+  const shown = (f: FieldSpec): string => {
+    const raw = e[f.key];
+    if (raw == null || raw === "") return "—";
+    if (f.key === "branch_id") return e.branch?.name ?? "—";
+    if (f.kind === "select")
+      return optionsFor(f).find((o) => o.value === raw)?.label ?? String(raw);
+    if (f.kind === "date") return format(new Date(raw), "MMM d, yyyy");
+    if (f.kind === "money") return peso(raw);
+    return String(raw);
+  };
+
+  const input = (f: FieldSpec) => {
+    const common = {
+      id: `emp-${f.key}`,
+      className: `input ${f.mono ? "font-mono text-sm" : ""}`,
+      value: form[f.key],
+      onChange: (
+        ev: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>,
+      ) => setForm((cur) => ({ ...cur, [f.key]: ev.target.value })),
+    };
+    if (f.kind === "select") {
+      return (
+        <select {...common}>
+          <option value="">{f.key === "branch_id" ? "— Default —" : "—"}</option>
+          {optionsFor(f).map((o) => (
+            <option key={o.value} value={o.value}>
+              {o.label}
+            </option>
+          ))}
+        </select>
+      );
+    }
+    if (f.kind === "textarea") return <textarea rows={3} {...common} />;
+    return (
+      <input
+        {...common}
+        type={inputType(f.kind)}
+        placeholder={f.placeholder}
+        list={f.key === "position" ? "positions" : undefined}
+      />
+    );
+  };
+
+  // Rendered into <body>: the page content sits in an animated (transformed)
+  // wrapper, and a transformed ancestor would trap this fixed layer inside it
+  // instead of letting it cover and centre on the whole screen.
+  return createPortal(
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="employee-profile-title"
+    >
+      <button
+        type="button"
+        aria-label="Close"
+        className="absolute inset-0 bg-slate-900/45 backdrop-blur-sm"
+        onClick={() => !editing && onClose()}
+      />
+      <div className="relative flex w-full max-w-2xl max-h-[88vh] flex-col overflow-hidden rounded-2xl bg-white shadow-2xl ring-1 ring-soft animate-grad-fade-up dark:bg-slate-800">
+        {/* Header */}
+        <div className="flex items-start gap-4 border-b border-soft px-6 py-5">
+          <UserAvatar className="h-14 w-14" name={e.full_name} />
+          <div className="min-w-0 flex-1">
+            <h3 id="employee-profile-title" className="truncate text-lg font-bold text-primary">
+              {e.full_name}
+            </h3>
+            <p className="text-sm text-secondary">
+              {e.position || "No position yet"}
               {e.department ? ` · ${e.department}` : ""}
             </p>
-            {e.employee_no && <p className="text-xs font-mono text-gray-400">#{e.employee_no}</p>}
+            <div className="mt-2 flex flex-wrap items-center gap-1.5">
+              {e.is_active ? (
+                <span className="badge-green">Active</span>
+              ) : (
+                <span className="badge-red">Inactive</span>
+              )}
+              {e.employment_type && (
+                <span className="badge-gray">
+                  {EMPLOYMENT_TYPES.find((t) => t.value === e.employment_type)?.label ??
+                    e.employment_type}
+                </span>
+              )}
+              {e.branch?.name && <span className="badge-gray">{e.branch.name}</span>}
+              {e.employee_no && (
+                <span className="font-mono text-xs text-muted">#{e.employee_no}</span>
+              )}
+            </div>
           </div>
-          <button
-            onClick={onClose}
-            className="text-gray-400 hover:text-gray-700 dark:hover:text-slate-200"
-          >
-            <X size={18} />
-          </button>
+          <div className="flex shrink-0 items-center gap-1">
+            {mayEdit && !editing && (
+              <button type="button" onClick={startEdit} className="btn-secondary !py-1.5 text-sm">
+                <Pencil size={14} /> Edit
+              </button>
+            )}
+            <button type="button" aria-label="Close" onClick={onClose} className="btn-ghost !p-1.5">
+              <X size={18} />
+            </button>
+          </div>
         </div>
 
-        <div className="flex gap-2 mb-4">
-          {e.is_active ? (
-            <span className="badge-green">Active</span>
-          ) : (
-            <span className="badge-red">Inactive</span>
-          )}
-          {e.employment_type && <span className="badge-gray capitalize">{e.employment_type}</span>}
-          {e.branch?.name && <span className="badge-gray">{e.branch.name}</span>}
+        {/* Body */}
+        <div className="flex-1 space-y-6 overflow-y-auto px-6 py-5">
+          {PROFILE_SECTIONS.filter((s) => editing || !s.editOnly).map((section) => (
+            <section key={section.title}>
+              <h4 className="mb-3 text-xs font-bold uppercase tracking-wide text-muted">
+                {section.title}
+              </h4>
+              {editing && section.notice && <LegalNotice kind="employeeData" className="mb-3" />}
+              {editing ? (
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  {section.fields.map((f) => (
+                    <div key={f.key} className={f.wide ? "sm:col-span-2" : ""}>
+                      <label
+                        htmlFor={`emp-${f.key}`}
+                        className="mb-1 block text-xs font-semibold text-secondary"
+                      >
+                        {f.label}
+                      </label>
+                      {input(f)}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <dl className="grid grid-cols-1 gap-x-6 gap-y-3 sm:grid-cols-2">
+                  {section.fields.map((f) => (
+                    <div key={f.key} className={f.wide ? "sm:col-span-2" : ""}>
+                      <dt className="text-xs font-medium text-muted">{f.label}</dt>
+                      <dd
+                        className={`mt-0.5 text-sm font-medium text-primary ${
+                          f.mono ? "font-mono" : ""
+                        } ${f.kind === "textarea" ? "whitespace-pre-line" : ""}`}
+                      >
+                        {shown(f)}
+                      </dd>
+                    </div>
+                  ))}
+                </dl>
+              )}
+            </section>
+          ))}
         </div>
 
-        <div className="space-y-4 text-sm">
-          {(e.phone || e.email || e.address) && (
-            <Section title="Contact">
-              {e.phone && <Item icon={Phone} label="Phone" value={e.phone} />}
-              {e.email && <Item icon={Mail} label="Email" value={e.email} />}
-              {e.address && <Item icon={MapPin} label="Address" value={e.address} />}
-            </Section>
-          )}
-
-          <Section title="Employment">
-            <Field
-              label="Date hired"
-              value={e.date_hired ? format(new Date(e.date_hired), "MMM d, yyyy") : "—"}
-            />
-            {e.date_terminated && (
-              <Field
-                label="Date terminated"
-                value={format(new Date(e.date_terminated), "MMM d, yyyy")}
-              />
+        {/* Footer, while editing */}
+        {editing && (
+          <div className="flex items-center justify-end gap-2 border-t border-soft px-6 py-4">
+            {save.isError && (
+              <p className="mr-auto text-sm font-medium text-rose-600 dark:text-rose-400">
+                {(save.error as any)?.response?.data?.detail || "Couldn't save the changes."}
+              </p>
             )}
-            {e.daily_rate != null && (
-              <Field label="Daily rate" value={`₱${Number(e.daily_rate).toLocaleString()}`} />
-            )}
-            {e.monthly_salary != null && (
-              <Field
-                label="Monthly salary"
-                value={`₱${Number(e.monthly_salary).toLocaleString()}`}
-              />
-            )}
-          </Section>
-
-          {(e.birthdate || e.gender || e.civil_status) && (
-            <Section title="Personal">
-              {e.birthdate && (
-                <Field label="Birthdate" value={format(new Date(e.birthdate), "MMM d, yyyy")} />
-              )}
-              {e.gender && <Field label="Gender" value={e.gender} className="capitalize" />}
-              {e.civil_status && (
-                <Field label="Civil status" value={e.civil_status} className="capitalize" />
-              )}
-            </Section>
-          )}
-
-          {(e.sss_no || e.philhealth_no || e.pagibig_no || e.tin) && (
-            <Section title="Government IDs">
-              {e.sss_no && <Item icon={IdCard} label="SSS" value={e.sss_no} mono />}
-              {e.philhealth_no && (
-                <Item icon={IdCard} label="PhilHealth" value={e.philhealth_no} mono />
-              )}
-              {e.pagibig_no && <Item icon={IdCard} label="Pag-IBIG" value={e.pagibig_no} mono />}
-              {e.tin && <Item icon={IdCard} label="TIN" value={e.tin} mono />}
-            </Section>
-          )}
-
-          {(e.emergency_contact_name || e.emergency_contact_phone) && (
-            <Section title="Emergency contact">
-              <Field label="Name" value={e.emergency_contact_name || "—"} />
-              <Field label="Phone" value={e.emergency_contact_phone || "—"} />
-              <Field label="Relation" value={e.emergency_contact_relation || "—"} />
-            </Section>
-          )}
-
-          {e.notes && (
-            <Section title="Notes">
-              <p className="text-gray-700 dark:text-slate-200 whitespace-pre-line">{e.notes}</p>
-            </Section>
-          )}
-        </div>
+            <button type="button" onClick={() => setEditing(false)} className="btn-secondary">
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={() => save.mutate()}
+              className="btn-primary"
+              disabled={save.isPending || !form.first_name.trim() || !form.last_name.trim()}
+            >
+              {save.isPending ? "Saving…" : "Save changes"}
+            </button>
+          </div>
+        )}
       </div>
-    </div>
-  );
-}
-
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <div>
-      <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-slate-400 mb-2">
-        {title}
-      </p>
-      <div className="space-y-1.5 pl-1">{children}</div>
-    </div>
-  );
-}
-
-function Field({ label, value, className }: { label: string; value: string; className?: string }) {
-  return (
-    <div className="flex justify-between gap-4">
-      <span className="text-gray-500 dark:text-slate-400">{label}</span>
-      <span className={`text-gray-900 dark:text-slate-100 text-right ${className || ""}`}>
-        {value}
-      </span>
-    </div>
-  );
-}
-
-function Item({
-  icon: Icon,
-  label,
-  value,
-  mono,
-}: {
-  icon: React.ElementType;
-  label: string;
-  value: string;
-  mono?: boolean;
-}) {
-  return (
-    <div className="flex items-center gap-2">
-      <Icon size={14} className="text-gray-400 shrink-0" />
-      <span className="text-gray-500 dark:text-slate-400 w-20 shrink-0">{label}</span>
-      <span className={`text-gray-900 dark:text-slate-100 ${mono ? "font-mono text-xs" : ""}`}>
-        {value}
-      </span>
-    </div>
+    </div>,
+    document.body,
   );
 }
