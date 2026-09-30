@@ -11,6 +11,7 @@ import { costsService } from "../services/CostsService";
 import { useAuthStore } from "../stores/authStore";
 import { useThemeStore, type Theme } from "../stores/themeStore";
 import UserAvatar from "../components/UserAvatar";
+import PasswordInput from "../components/PasswordInput";
 import {
   Building2,
   MapPin,
@@ -1761,8 +1762,7 @@ function ProfileTab() {
           </div>
           <div>
             <label className={LABEL}>Current password</label>
-            <input
-              type="password"
+            <PasswordInput
               className="input"
               value={form.current_password}
               onChange={(e) => setForm((f) => ({ ...f, current_password: e.target.value }))}
@@ -1945,8 +1945,7 @@ function PasswordTab() {
         ].map(({ label, key }) => (
           <div key={key}>
             <label className={LABEL}>{label}</label>
-            <input
-              type="password"
+            <PasswordInput
               className="input"
               value={(form as any)[key]}
               onChange={(e) => setForm((f) => ({ ...f, [key]: e.target.value }))}
@@ -2034,15 +2033,22 @@ function GoogleIdentityCard() {
         <label className={LABEL}>
           {usesMfa ? "Current authenticator code" : "Current password"}
         </label>
-        <input
-          type={usesMfa ? "text" : "password"}
-          className="input"
-          value={proof}
-          onChange={(e) =>
-            setProof(usesMfa ? e.target.value.replace(/\D/g, "").slice(0, 6) : e.target.value)
-          }
-          autoComplete={usesMfa ? "one-time-code" : "current-password"}
-        />
+        {usesMfa ? (
+          <input
+            type="text"
+            className="input"
+            value={proof}
+            onChange={(e) => setProof(e.target.value.replace(/\D/g, "").slice(0, 6))}
+            autoComplete="one-time-code"
+          />
+        ) : (
+          <PasswordInput
+            className="input"
+            value={proof}
+            onChange={(e) => setProof(e.target.value)}
+            autoComplete="current-password"
+          />
+        )}
       </div>
       {error && <p className="text-sm font-medium text-rose-600 dark:text-rose-400">{error}</p>}
       {linked ? (

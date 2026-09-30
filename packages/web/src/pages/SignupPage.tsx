@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate, useLocation, Link } from "react-router-dom";
 import { authService } from "../services/AuthService";
 import { useAuthStore } from "../stores/authStore";
+import PasswordInput from "../components/PasswordInput";
 import { Building2, Building, AlertCircle, ArrowRight, ArrowLeft, Check } from "lucide-react";
 import { GoogleLogin } from "@react-oauth/google";
 import riceLogo from "../assets/Rice_Logo.svg";
@@ -350,8 +351,7 @@ export default function SignupPage() {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="form-label">Password *</label>
-                  <input
-                    type="password"
+                  <PasswordInput
                     className="input"
                     value={form.password}
                     onChange={(e) => update("password", e.target.value)}
@@ -360,8 +360,7 @@ export default function SignupPage() {
                 </div>
                 <div>
                   <label className="form-label">Confirm *</label>
-                  <input
-                    type="password"
+                  <PasswordInput
                     className="input"
                     value={form.confirm}
                     onChange={(e) => update("confirm", e.target.value)}

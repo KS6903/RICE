@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { authService } from "../services/AuthService";
 import { consumeSensitiveUrlToken } from "../services/sensitiveUrl";
+import PasswordInput from "../components/PasswordInput";
 import { Sparkles, AlertCircle, CheckCircle2, ArrowLeft } from "lucide-react";
 
 export default function ResetPasswordPage() {
@@ -69,8 +70,7 @@ export default function ResetPasswordPage() {
             </div>
             <div>
               <label className="form-label">New password</label>
-              <input
-                type="password"
+              <PasswordInput
                 className="input"
                 value={pw}
                 onChange={(e) => setPw(e.target.value)}
@@ -82,8 +82,7 @@ export default function ResetPasswordPage() {
             </div>
             <div>
               <label className="form-label">Confirm new password</label>
-              <input
-                type="password"
+              <PasswordInput
                 className="input"
                 value={confirm}
                 onChange={(e) => setConfirm(e.target.value)}

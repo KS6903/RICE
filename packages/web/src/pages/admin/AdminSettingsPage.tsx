@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { adminService } from "../../services/AdminService";
 import { authService } from "../../services/AuthService";
 import { useAuthStore } from "../../stores/authStore";
+import PasswordInput from "../../components/PasswordInput";
 import { clsx } from "clsx";
 import {
   CreditCard,
@@ -508,8 +509,7 @@ function PasswordTab() {
       <div className="card space-y-4">
         <div>
           <label className={LABEL}>Current password</label>
-          <input
-            type="password"
+          <PasswordInput
             className={INPUT}
             value={form.current}
             onChange={(e) => setForm((f) => ({ ...f, current: e.target.value }))}
@@ -518,8 +518,7 @@ function PasswordTab() {
         </div>
         <div>
           <label className={LABEL}>New password</label>
-          <input
-            type="password"
+          <PasswordInput
             className={INPUT}
             value={form.next}
             onChange={(e) => setForm((f) => ({ ...f, next: e.target.value }))}
@@ -528,8 +527,7 @@ function PasswordTab() {
         </div>
         <div>
           <label className={LABEL}>Confirm new password</label>
-          <input
-            type="password"
+          <PasswordInput
             className={INPUT}
             value={form.confirm}
             onChange={(e) => setForm((f) => ({ ...f, confirm: e.target.value }))}

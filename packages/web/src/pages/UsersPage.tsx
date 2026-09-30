@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { usersService } from "../services/UsersService";
+import PasswordInput from "../components/PasswordInput";
 import { Plus } from "lucide-react";
 import { ROLES } from "@rice-mill/shared";
 
@@ -55,12 +56,21 @@ export default function UsersPage() {
                 <label className="block text-sm font-medium text-gray-700 dark:text-slate-200 mb-1">
                   {label}
                 </label>
-                <input
-                  type={type}
-                  className="input"
-                  value={(form as any)[key]}
-                  onChange={(e) => setForm((f) => ({ ...f, [key]: e.target.value }))}
-                />
+                {type === "password" ? (
+                  <PasswordInput
+                    className="input"
+                    value={(form as any)[key]}
+                    onChange={(e) => setForm((f) => ({ ...f, [key]: e.target.value }))}
+                    autoComplete="new-password"
+                  />
+                ) : (
+                  <input
+                    type={type}
+                    className="input"
+                    value={(form as any)[key]}
+                    onChange={(e) => setForm((f) => ({ ...f, [key]: e.target.value }))}
+                  />
+                )}
               </div>
             ))}
             <div>

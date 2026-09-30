@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate, Link, useSearchParams } from "react-router-dom";
 import { authService } from "../services/AuthService";
 import { useAuthStore } from "../stores/authStore";
+import PasswordInput from "../components/PasswordInput";
 import { ShieldCheck, Wifi, Building2, AlertCircle, Clock, ArrowLeft } from "lucide-react";
 import { GoogleLogin } from "@react-oauth/google";
 import riceLogo from "../assets/Rice_Logo.svg";
@@ -300,8 +301,7 @@ export default function LoginPage() {
                     Forgot?
                   </Link>
                 </div>
-                <input
-                  type="password"
+                <PasswordInput
                   className="input"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
