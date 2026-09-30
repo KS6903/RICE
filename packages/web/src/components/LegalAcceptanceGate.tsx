@@ -18,6 +18,7 @@ import { useAuthStore } from "../stores/authStore";
  */
 export default function LegalAcceptanceGate() {
   const logout = useAuthStore((s) => s.logout);
+  const [checked, setChecked] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -66,6 +67,22 @@ export default function LegalAcceptanceGate() {
           <span className="text-xs text-muted">Read</span>
         </Link>
 
+        {/* Same wording as the signup checkbox, so an existing account accepts
+            exactly what a new one does. */}
+        <label className="flex items-start gap-3 cursor-pointer select-none">
+          <input
+            type="checkbox"
+            checked={checked}
+            onChange={(e) => setChecked(e.target.checked)}
+            className="mt-0.5 h-5 w-5 shrink-0 rounded accent-emerald-500"
+            data-testid="legal-gate-checkbox"
+          />
+          <span className="text-sm text-secondary leading-snug">
+            I have read and accept the Terms of Service, Privacy Policy, Data Processing Addendum
+            and Acceptable Use Policy, and I am authorised to accept them for my company.
+          </span>
+        </label>
+
         {error && (
           <div className="flex items-start gap-2 px-3 py-2.5 rounded-xl bg-rose-500/15 ring-1 ring-inset ring-rose-500/40 text-sm font-medium text-rose-700 dark:text-rose-300">
             <AlertCircle size={16} className="mt-0.5 shrink-0" />
@@ -73,12 +90,9 @@ export default function LegalAcceptanceGate() {
           </div>
         )}
 
-        {/* No separate checkbox: this button is the acceptance. The Terms name
-            "clicking to accept" as a way to agree, and already carry the
-            authority-to-bind clause the checkbox used to repeat. */}
         <button
           onClick={accept}
-          disabled={loading}
+          disabled={!checked || loading}
           className="btn-primary w-full"
           data-testid="legal-gate-accept"
         >

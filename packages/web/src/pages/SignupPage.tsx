@@ -8,6 +8,8 @@ import { GoogleLogin } from "@react-oauth/google";
 import riceLogo from "../assets/Rice_Logo.svg";
 import { legalService } from "../services/LegalService";
 
+const TICK_TERMS = "Tick the box to accept the Terms of Service and policies first.";
+
 export default function SignupPage() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -25,6 +27,7 @@ export default function SignupPage() {
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
   // The version on screen travels with the acceptance. If the terms change
   // while this tab is open the server rejects the stale version rather than
   // silently binding the user to text they never saw.
@@ -61,6 +64,7 @@ export default function SignupPage() {
     setError("");
     if (form.password !== form.confirm) return setError("Passwords do not match.");
     if (form.password.length < 8) return setError("Password must be at least 8 characters.");
+    if (!acceptedTerms) return setError(TICK_TERMS);
     setLoading(true);
     try {
       const data = await authService.signup({
@@ -71,9 +75,9 @@ export default function SignupPage() {
         email: form.email,
         password: form.password,
         is_multi_branch: form.is_multi_branch,
-        // No separate checkbox: clicking "Create account" is the acceptance.
-        // The Terms name account creation itself as one of the ways to agree.
-        accepted_terms: true,
+        // The server refuses the signup without it, so an account can't exist
+        // with no acceptance on record.
+        accepted_terms: acceptedTerms,
         ...(agreementVersion ? { agreement_version: agreementVersion } : {}),
       });
       setTokens(data?.access_token, data?.refresh_token);
@@ -88,6 +92,7 @@ export default function SignupPage() {
   };
 
   const handleGoogleSuccess = async (credentialResponse: any) => {
+    if (!acceptedTerms) return setError(TICK_TERMS);
     setLoading(true);
     setError("");
     try {
@@ -95,8 +100,7 @@ export default function SignupPage() {
         company_name: form.company_name,
         ...(form.invite_code.trim() ? { invite_code: form.invite_code.trim() } : {}),
         is_multi_branch: form.is_multi_branch,
-        // Clicking the Google button is the acceptance here too — see submit().
-        accepted_terms: true,
+        accepted_terms: acceptedTerms,
         ...(agreementVersion ? { agreement_version: agreementVersion } : {}),
       });
       setTokens(data?.access_token, data?.refresh_token);
@@ -376,32 +380,49 @@ export default function SignupPage() {
                 </div>
               )}
 
-              {/* No checkbox to tick: creating the account is the acceptance.
-                  These links stay live so the terms are still one tap away. */}
-              <p className="text-sm text-secondary leading-snug">
-                By creating an account, you agree to our{" "}
-                <Link to="/legal/terms" target="_blank" rel="noopener noreferrer" className="link">
-                  Terms of Service
-                </Link>
-                ,{" "}
-                <Link
-                  to="/legal/privacy"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="link"
-                >
-                  Privacy Policy
-                </Link>
-                ,{" "}
-                <Link to="/legal/dpa" target="_blank" rel="noopener noreferrer" className="link">
-                  Data Processing Addendum
-                </Link>{" "}
-                and{" "}
-                <Link to="/legal/aup" target="_blank" rel="noopener noreferrer" className="link">
-                  Acceptable Use Policy
-                </Link>
-                .
-              </p>
+              {/* The whole sentence is the tap target, not just the small box.
+                  The links open in a new tab, so reading them keeps the form. */}
+              <label className="flex items-start gap-3 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={acceptedTerms}
+                  onChange={(e) => {
+                    setAcceptedTerms(e.target.checked);
+                    if (e.target.checked && error === TICK_TERMS) setError("");
+                  }}
+                  className="mt-0.5 h-5 w-5 shrink-0 rounded accent-emerald-500"
+                  data-testid="signup-accept-terms"
+                />
+                <span className="text-sm text-secondary leading-snug">
+                  I have read and accept the{" "}
+                  <Link
+                    to="/legal/terms"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="link"
+                  >
+                    Terms of Service
+                  </Link>
+                  ,{" "}
+                  <Link
+                    to="/legal/privacy"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="link"
+                  >
+                    Privacy Policy
+                  </Link>
+                  ,{" "}
+                  <Link to="/legal/dpa" target="_blank" rel="noopener noreferrer" className="link">
+                    Data Processing Addendum
+                  </Link>{" "}
+                  and{" "}
+                  <Link to="/legal/aup" target="_blank" rel="noopener noreferrer" className="link">
+                    Acceptable Use Policy
+                  </Link>
+                  , and I am authorised to accept them for my company.
+                </span>
+              </label>
 
               <div className="pt-1">
                 <button
@@ -422,11 +443,22 @@ export default function SignupPage() {
                 <div className="flex-grow border-t border-slate-200 dark:border-slate-800"></div>
               </div>
 
-              <div className="flex justify-center w-full [&>div]:w-full">
+              <div className="relative flex justify-center w-full [&>div]:w-full">
                 <GoogleLogin
                   onSuccess={handleGoogleSuccess}
                   onError={() => setError("Google signup failed.")}
                 />
+                {/* Until the box is ticked, a click here says so straight away
+                    rather than after the visitor has been through Google's
+                    sign-in window. */}
+                {!acceptedTerms && (
+                  <button
+                    type="button"
+                    onClick={() => setError(TICK_TERMS)}
+                    className="absolute inset-0 cursor-pointer"
+                    aria-label="Sign up with Google"
+                  />
+                )}
               </div>
             </div>
           )}

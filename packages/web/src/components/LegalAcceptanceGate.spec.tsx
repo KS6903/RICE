@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import LegalAcceptanceGate from "./LegalAcceptanceGate";
 
@@ -18,10 +18,12 @@ describe("LegalAcceptanceGate", () => {
     expect(screen.getByRole("link", { name: /terms and policies/i })).toBeInTheDocument();
   });
 
-  it("has no acknowledgement checkbox; the Accept button works on its own", () => {
-    const { container } = draw();
-    expect(container.querySelector('input[type="checkbox"]')).toBeNull();
-    expect(screen.getByRole("button", { name: /accept and continue/i })).toBeEnabled();
+  it("keeps Accept disabled until the acceptance box is ticked", () => {
+    draw();
+    const accept = screen.getByRole("button", { name: /accept and continue/i });
+    expect(accept).toBeDisabled();
+    fireEvent.click(screen.getByRole("checkbox", { name: /i have read and accept/i }));
+    expect(accept).toBeEnabled();
   });
 
   it("keeps glass off the animated background", () => {

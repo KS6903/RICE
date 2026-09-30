@@ -1,8 +1,9 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { GoogleOAuthProvider } from "@react-oauth/google";
 import SignupPage from "./SignupPage";
+import { authService } from "../services/AuthService";
 import { legalService } from "../services/LegalService";
 
 function draw(history: string[]) {
@@ -55,5 +56,57 @@ describe("SignupPage back button", () => {
     expect(screen.getByText("Step 1 of 2")).toBeInTheDocument();
     // The company name typed on step 1 survives the round trip.
     expect(screen.getByPlaceholderText("ABC Rice Mill Corp.")).toHaveValue("Test Mill");
+  });
+});
+
+describe("SignupPage terms checkbox", () => {
+  const toStep2 = () => {
+    fireEvent.change(screen.getByPlaceholderText("ABC Rice Mill Corp."), {
+      target: { value: "Test Mill" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /continue/i }));
+  };
+  const fillStep2 = () => {
+    for (const [placeholder, value] of [
+      ["Juan Dela Cruz", "Juan Dela Cruz"],
+      ["juandc", "juandc"],
+      ["you@company.com", "juan@example.com"],
+      ["8+ characters", "password123"],
+      ["••••••••", "password123"],
+    ]) {
+      fireEvent.change(screen.getByPlaceholderText(placeholder), { target: { value } });
+    }
+  };
+  const tickBox = () =>
+    fireEvent.click(screen.getByRole("checkbox", { name: /i have read and accept/i }));
+
+  it("won't create the account until the box is ticked", async () => {
+    const signup = vi.spyOn(authService, "signup").mockRejectedValue(new Error("stop here"));
+    draw(["/signup"]);
+    toStep2();
+    fillStep2();
+
+    fireEvent.click(screen.getByRole("button", { name: /create account/i }));
+    expect(screen.getByText(/tick the box/i)).toBeInTheDocument();
+    expect(signup).not.toHaveBeenCalled();
+
+    // Ticking clears the reminder, and the acceptance goes out with the signup.
+    tickBox();
+    expect(screen.queryByText(/tick the box/i)).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: /create account/i }));
+    await waitFor(() =>
+      expect(signup).toHaveBeenCalledWith(expect.objectContaining({ accepted_terms: true })),
+    );
+  });
+
+  it("asks for the tick before Google's sign-in window, not after", () => {
+    draw(["/signup"]);
+    toStep2();
+    fireEvent.click(screen.getByRole("button", { name: "Sign up with Google" }));
+    expect(screen.getByText(/tick the box/i)).toBeInTheDocument();
+
+    // Once ticked, the cover is gone and clicks reach Google's own button.
+    tickBox();
+    expect(screen.queryByRole("button", { name: "Sign up with Google" })).toBeNull();
   });
 });
