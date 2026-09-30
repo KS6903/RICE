@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useLocation, useParams } from "react-router-dom";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, ArrowUp } from "lucide-react";
 import Markdown from "../components/Markdown";
 import riceLogo from "../assets/Rice_Logo.svg";
 import { legalService, type LegalDocument, type LegalIndex } from "../services/LegalService";
@@ -66,6 +66,24 @@ export default function LegalPage() {
     else window.scrollTo?.(0, 0);
   }, [key, location.key, loading]);
 
+  // The floating up button: an explicit, user-triggered action, so it scrolls
+  // smoothly (unlike the instant jumps above) — except for reduced motion,
+  // since smooth-scroll ignores that OS setting on its own.
+  const scrollToTop = () => {
+    const reduceMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+    window.scrollTo({ top: 0, behavior: reduceMotion ? "auto" : "smooth" });
+  };
+
+  // Only worth showing once there's real distance to close — hidden at the
+  // top of the page, where it would have nothing to do.
+  const [showUp, setShowUp] = useState(false);
+  useEffect(() => {
+    const onScroll = () => setShowUp(window.scrollY > window.innerHeight * 0.6);
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
   // Deliberately plain: a flat surface colour, bordered boxes instead of
   // `glass`/`card`/`panel`, and no animation of any kind. The animated brand
   // gradient repainted the page every frame and every glass surface re-blurred
@@ -84,15 +102,10 @@ export default function LegalPage() {
             </div>
             <span className="text-lg font-bold tracking-tight text-primary">Oryza</span>
           </Link>
-          <div className="flex items-center gap-1">
-            <Link to="/legal" className="btn-ghost text-sm">
-              Contents
-            </Link>
-            <Link to="/" className="btn-ghost text-sm">
-              <ArrowLeft size={16} />
-              Back
-            </Link>
-          </div>
+          <Link to="/" className="btn-ghost text-sm">
+            <ArrowLeft size={16} />
+            Back
+          </Link>
         </div>
       </header>
 
@@ -149,6 +162,21 @@ export default function LegalPage() {
           </>
         )}
       </main>
+
+      {/* Floating, not in the header, so it stays out of the way until there's
+          real distance to close, then follows the viewport as you scroll. */}
+      <button
+        type="button"
+        onClick={scrollToTop}
+        aria-label="Back to top"
+        aria-hidden={!showUp}
+        tabIndex={showUp ? 0 : -1}
+        className={`fixed bottom-6 right-6 z-20 h-11 w-11 grid place-items-center rounded-xl border border-soft bg-[rgb(var(--surface))] text-secondary shadow-lg hover:text-primary hover:border-soft-strong transition duration-200 ease-out motion-reduce:transition-none ${
+          showUp ? "opacity-100 scale-100" : "pointer-events-none opacity-0 scale-90"
+        }`}
+      >
+        <ArrowUp size={18} />
+      </button>
     </div>
   );
 }
