@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { CloudDrizzle, CloudRain, Lock, Sparkles, Sun } from "lucide-react";
+import { CloudDrizzle, CloudRain, Info, Lock, Sparkles, Sun } from "lucide-react";
 import { useFeature } from "../hooks/useFeature";
 import { useDryingAdvisory } from "../hooks/useDryingAdvisory";
 import type { Coords } from "../hooks/useGeolocation";
@@ -46,12 +46,82 @@ const FALLBACK_STYLE = {
 };
 
 const POPOVER_WIDTH = 320;
+const INFO_POPOVER_WIDTH = 220;
 const VIEWPORT_MARGIN = 12;
 // A short delay before showing (not on hiding) avoids a flash when the
 // cursor merely passes over the box on its way to the stat cards below.
 const SHOW_DELAY_MS = 120;
 
 type PopoverPos = { top: number; left: number };
+
+/** Red so the "this is only an estimate" caveat reads as a warning, not a
+ *  generic help icon — since, unlike the result box's own hover popover, this
+ *  is the *only* place that caveat lives (see the note where it's used). */
+function InfoTooltip({ text }: { text: string }) {
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const showTimeout = useRef<number | null>(null);
+  const [hovered, setHovered] = useState(false);
+  const [pos, setPos] = useState<PopoverPos | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (showTimeout.current) window.clearTimeout(showTimeout.current);
+    };
+  }, []);
+
+  const scheduleShow = () => {
+    const rect = triggerRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    const left = Math.min(
+      Math.max(rect.left, VIEWPORT_MARGIN),
+      window.innerWidth - INFO_POPOVER_WIDTH - VIEWPORT_MARGIN,
+    );
+    setPos({ top: rect.bottom + 6, left });
+    showTimeout.current = window.setTimeout(() => setHovered(true), SHOW_DELAY_MS);
+  };
+
+  const cancelShow = () => {
+    if (showTimeout.current) {
+      window.clearTimeout(showTimeout.current);
+      showTimeout.current = null;
+    }
+    setHovered(false);
+  };
+
+  return (
+    <>
+      <button
+        ref={triggerRef}
+        type="button"
+        onMouseEnter={scheduleShow}
+        onMouseLeave={cancelShow}
+        onFocus={scheduleShow}
+        onBlur={cancelShow}
+        className="shrink-0 text-red-500 hover:text-red-600 dark:text-red-400 dark:hover:text-red-300"
+        aria-label="About this advisory"
+        data-testid="drying-advisor-info"
+      >
+        <Info size={13} />
+      </button>
+      {pos &&
+        createPortal(
+          <div
+            role="tooltip"
+            className={`fixed z-[100] rounded-xl ring-1 ring-soft shadow-xl bg-white dark:bg-slate-800 p-2.5 text-[11px] leading-snug text-secondary origin-top transition-[opacity,transform] ease-[cubic-bezier(0.23,1,0.32,1)] motion-reduce:transition-opacity ${
+              hovered
+                ? "duration-180 opacity-100 scale-100 translate-y-0"
+                : "duration-120 opacity-0 scale-95 -translate-y-1 pointer-events-none motion-reduce:scale-100 motion-reduce:translate-y-0"
+            }`}
+            style={{ top: pos.top, left: pos.left, width: INFO_POPOVER_WIDTH }}
+            data-testid="drying-advisor-info-tooltip"
+          >
+            {text}
+          </div>,
+          document.body,
+        )}
+    </>
+  );
+}
 
 /** Palay Drying Advisor (inline, lives inside the expanded weather card).
  *
@@ -66,7 +136,15 @@ type PopoverPos = { top: number; left: number };
  *  into document.body — the weather card has overflow-hidden (it clips a
  *  decorative blur circle), so an absolutely-positioned child here would get
  *  silently clipped; a portal escapes that entirely without touching the
- *  card's own layout/CSS. */
+ *  card's own layout/CSS.
+ *
+ *  The "estimate, not a guarantee" caveat lives behind the red info icon next
+ *  to the title (InfoTooltip), not as permanent on-screen text. That was a
+ *  deliberate call made against the alternative — an always-visible line is
+ *  harder to miss, especially since this feeds decisions about real stock —
+ *  but a tidier header won out. Worth knowing if this ever needs revisiting:
+ *  hover has no equivalent on touch, so the icon is the only way a touch user
+ *  ever sees this text at all. */
 export default function DryingAdvisor({ coords }: { coords: Coords | null }) {
   const allowed = useFeature("drying_advisor");
   const q = useDryingAdvisory(coords, { enabled: allowed });
@@ -110,7 +188,10 @@ export default function DryingAdvisor({ coords }: { coords: Coords | null }) {
           <Sparkles size={15} className="text-white" />
         </div>
         <div className="min-w-0">
-          <p className="text-sm font-bold text-primary leading-tight">Drying Advisor</p>
+          <p className="flex items-center gap-1 text-sm font-bold text-primary leading-tight">
+            Drying Advisor
+            <InfoTooltip text="Estimate from forecast data, not a guarantee. Check conditions yourself before drying." />
+          </p>
           <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wide text-violet-600 dark:text-violet-400">
             AI
           </span>
@@ -119,7 +200,7 @@ export default function DryingAdvisor({ coords }: { coords: Coords | null }) {
 
       {!allowed && (
         <div
-          className="mt-2.5 rounded-xl ring-1 ring-amber-200 dark:ring-amber-800 bg-amber-50 dark:bg-amber-900/20 p-2.5 flex items-start gap-2"
+          className="mt-2 rounded-xl ring-1 ring-amber-200 dark:ring-amber-800 bg-amber-50 dark:bg-amber-900/20 p-2 flex items-start gap-2"
           data-testid="drying-advisor-upsell"
         >
           <Lock size={13} className="text-amber-500 shrink-0 mt-0.5" />
@@ -132,7 +213,7 @@ export default function DryingAdvisor({ coords }: { coords: Coords | null }) {
 
       {allowed && q.isLoading && (
         <div
-          className="mt-2.5 rounded-xl ring-1 ring-soft bg-slate-500/5 p-2.5 space-y-1.5"
+          className="mt-2 rounded-xl ring-1 ring-soft bg-slate-500/5 p-2 space-y-1.5"
           data-testid="drying-advisor-loading"
         >
           <div className="flex items-center gap-1.5">
@@ -145,7 +226,7 @@ export default function DryingAdvisor({ coords }: { coords: Coords | null }) {
       )}
 
       {allowed && !q.isLoading && (q.isError || !q.data) && (
-        <p className="mt-2.5 text-[11px] text-muted" data-testid="drying-advisor-error">
+        <p className="mt-2 text-[11px] text-muted" data-testid="drying-advisor-error">
           Advisor unavailable right now.
         </p>
       )}
@@ -162,7 +243,7 @@ export default function DryingAdvisor({ coords }: { coords: Coords | null }) {
                 ref={triggerRef}
                 onMouseEnter={scheduleShow}
                 onMouseLeave={cancelShow}
-                className={`mt-2.5 rounded-xl ring-1 p-2.5 cursor-help transition-colors ${styles.box}`}
+                className={`mt-2 rounded-xl ring-1 p-2 cursor-help transition-colors ${styles.box}`}
                 data-testid="drying-advisor-result"
               >
                 <div className="flex items-start gap-1.5 min-w-0">
@@ -178,17 +259,6 @@ export default function DryingAdvisor({ coords }: { coords: Coords | null }) {
                   <p className="mt-1 text-[10px] text-muted truncate">Best: {data.best_window}</p>
                 )}
               </div>
-              {/* Always on screen with the verdict, never behind the hover. A
-                disclaimer that only appears on hover is not a disclaimer, and
-                this advisory drives decisions about stock worth real money. */}
-              <p
-                className="mt-1.5 text-[10px] leading-snug text-muted"
-                data-testid="drying-advisor-disclaimer"
-              >
-                Estimate from forecast data, not a guarantee. Check conditions yourself before
-                drying.
-              </p>
-
               {pos &&
                 createPortal(
                   <div
