@@ -9,3 +9,4 @@ class UpgradeRequestCreate(BaseModel):
     plan_id: uuid.UUID
     note: str | None = None
     request_type: str = "upgrade"  # "upgrade" or "change"
+    billing_interval: str = "monthly"  # "monthly" or "annual"

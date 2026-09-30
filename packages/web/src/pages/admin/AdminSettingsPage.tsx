@@ -39,6 +39,7 @@ type Plan = {
   name: string;
   description?: string | null;
   monthly_price: number;
+  annual_price: number;
   features: string[];
   max_branches: number | null;
   max_users: number | null;
@@ -76,6 +77,11 @@ function PlanRow({
       <td className="font-semibold text-primary tabular-nums">
         ₱{Number(plan.monthly_price).toLocaleString()}
         <span className="text-xs font-normal text-muted">/mo</span>
+        {plan.annual_price > 0 && (
+          <div className="text-xs font-normal text-muted">
+            ₱{Number(plan.annual_price).toLocaleString()}/yr
+          </div>
+        )}
       </td>
       <td className="tabular-nums">
         {plan.max_branches === null ? "Unlimited" : plan.max_branches}
@@ -109,6 +115,7 @@ const EMPTY_PLAN = {
   name: "",
   description: "" as string,
   monthly_price: 0,
+  annual_price: 0,
   features: [] as string[],
   max_branches: null as number | null,
   max_users: null as number | null,
@@ -170,6 +177,7 @@ function PlansTab() {
       name: p.name,
       description: p.description ?? "",
       monthly_price: p.monthly_price,
+      annual_price: p.annual_price,
       features: p.features,
       max_branches: p.max_branches,
       max_users: p.max_users,
@@ -250,6 +258,17 @@ function PlansTab() {
                 className={INPUT}
                 value={form.monthly_price}
                 onChange={(e) => setForm((f) => ({ ...f, monthly_price: Number(e.target.value) }))}
+              />
+            </div>
+            <div>
+              <label className={LABEL}>Annual price (₱)</label>
+              <input
+                type="number"
+                min={0}
+                className={INPUT}
+                value={form.annual_price}
+                onChange={(e) => setForm((f) => ({ ...f, annual_price: Number(e.target.value) }))}
+                placeholder="e.g. 10x monthly for 2 months free"
               />
             </div>
             <div>

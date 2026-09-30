@@ -69,6 +69,7 @@ class AdminService(BaseService):
             "name": p.name,
             "description": p.description,
             "monthly_price": float(p.monthly_price),
+            "annual_price": float(p.annual_price),
             "max_users": p.max_users,
             "max_branches": p.max_branches,
             "features": list(p.features or []),
@@ -106,6 +107,7 @@ class AdminService(BaseService):
             "current_plan_id": str(r.current_plan_id) if r.current_plan_id else None,
             "current_plan_code": r.current_plan.code if r.current_plan else None,
             "current_plan_name": r.current_plan.name if r.current_plan else None,
+            "billing_interval": r.billing_interval,
             "status": r.status,
             "note": r.note,
             "admin_note": r.admin_note,
@@ -126,6 +128,7 @@ class AdminService(BaseService):
             name=data.name,
             description=data.description,
             monthly_price=data.monthly_price,
+            annual_price=data.annual_price,
             max_users=data.max_users,
             max_branches=data.max_branches,
             features=data.features,
@@ -148,6 +151,7 @@ class AdminService(BaseService):
             plan.name = data.name
             plan.description = data.description
             plan.monthly_price = data.monthly_price
+            plan.annual_price = data.annual_price
             plan.max_users = data.max_users
             plan.max_branches = data.max_branches
             plan.features = data.features

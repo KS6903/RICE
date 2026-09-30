@@ -253,6 +253,7 @@ function BillingTab() {
   const isOnPaidPlan =
     !!plan && plan.monthly_price > 0 && (plan.status === "active" || plan.status === "trial");
   const [dismissedIds, setDismissedIds] = useState<string[]>(() => getSeenRequests());
+  const [billingInterval, setBillingInterval] = useState<"monthly" | "annual">("monthly");
 
   const { data: plans = [] } = useQuery<SubscriptionPlan[]>({
     queryKey: ["billing-plans"],
@@ -286,6 +287,7 @@ function BillingTab() {
       billingService.createUpgradeRequest({
         plan_id,
         request_type: isOnPaidPlan ? "change" : "upgrade",
+        billing_interval: billingInterval,
       }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["billing-my-request"] });
@@ -450,6 +452,9 @@ function BillingTab() {
                   <span className="text-indigo-600 dark:text-indigo-400">
                     {pendingRequest.requested_plan_name}
                   </span>
+                  {pendingRequest.billing_interval === "annual" && (
+                    <span className="badge-green ml-2 !text-[10px] align-middle">Annual</span>
+                  )}
                   {pendingRequest.created_at && (
                     <span className="font-normal text-slate-400 text-sm">
                       {" "}
@@ -472,14 +477,35 @@ function BillingTab() {
       )}
 
       <div className="card">
-        <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
           <h3 className="text-lg font-bold text-primary">Available plans</h3>
-          {!canRequest && (
-            <span className="text-xs font-medium text-muted">
-              Only owners/admins can request upgrades
-            </span>
-          )}
+          <div className="flex items-center gap-3 flex-wrap">
+            {!canRequest && (
+              <span className="text-xs font-medium text-muted">
+                Only owners/admins can request upgrades
+              </span>
+            )}
+            <div className="seg" role="group" aria-label="Billing interval">
+              <button
+                type="button"
+                onClick={() => setBillingInterval("monthly")}
+                aria-pressed={billingInterval === "monthly"}
+                className={`seg-btn ${billingInterval === "monthly" ? "is-active" : ""}`}
+              >
+                Monthly
+              </button>
+              <button
+                type="button"
+                onClick={() => setBillingInterval("annual")}
+                aria-pressed={billingInterval === "annual"}
+                className={`seg-btn ${billingInterval === "annual" ? "is-active" : ""}`}
+              >
+                Annual
+              </button>
+            </div>
+          </div>
         </div>
+
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {plans.map((p) => {
             const isCurrent = p.code === plan.code;
@@ -524,6 +550,15 @@ function BillingTab() {
             const accent = accentText[p.code] ?? "text-emerald-600 dark:text-emerald-400";
             const checkColor =
               checkNeon[p.code] ?? "text-emerald-400 drop-shadow-[0_0_6px_rgba(52,211,153,0.9)]";
+            const isAnnual = billingInterval === "annual";
+            // A plan with no annual price set is billed as 12 months.
+            const hasAnnualPrice = p.annual_price > 0;
+            const annualPrice = hasAnnualPrice ? p.annual_price : p.monthly_price * 12;
+            const displayPrice = isAnnual ? annualPrice : p.monthly_price;
+            const annualSavingsPct =
+              isAnnual && hasAnnualPrice && p.monthly_price > 0
+                ? Math.round((1 - p.annual_price / (p.monthly_price * 12)) * 100)
+                : 0;
             return (
               <div
                 key={p.id}
@@ -536,14 +571,19 @@ function BillingTab() {
                 </div>
                 <div className="flex items-baseline gap-1 mt-1">
                   <span className="text-2xl font-extrabold text-slate-900 dark:text-slate-100">
-                    {p.monthly_price === 0 ? "Free" : `₱${p.monthly_price.toLocaleString()}`}
+                    {displayPrice === 0 ? "Free" : `₱${displayPrice.toLocaleString()}`}
                   </span>
-                  {p.monthly_price > 0 && (
+                  {displayPrice > 0 && (
                     <span className="text-sm font-semibold text-slate-600 dark:text-slate-400">
-                      /mo
+                      {isAnnual ? "/yr" : "/mo"}
                     </span>
                   )}
                 </div>
+                {annualSavingsPct > 0 && (
+                  <p className="text-xs font-bold text-emerald-600 dark:text-emerald-400 -mt-0.5">
+                    Save {annualSavingsPct}% vs monthly
+                  </p>
+                )}
                 <p className="text-sm text-slate-800 dark:text-slate-200 mt-1 mb-2">
                   {p.description}
                 </p>

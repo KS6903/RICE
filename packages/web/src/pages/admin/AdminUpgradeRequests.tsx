@@ -64,6 +64,9 @@ function RequestRow({
           <span className="badge-gray">{r.current_plan_name || "—"}</span>
           <ArrowRight size={12} className="text-muted" />
           <span className="font-semibold text-primary">{r.requested_plan_name || "—"}</span>
+          {r.billing_interval === "annual" && (
+            <span className="badge-green !text-[10px] !py-0.5">Annual</span>
+          )}
         </div>
       </td>
       <td className="text-xs text-muted whitespace-nowrap">

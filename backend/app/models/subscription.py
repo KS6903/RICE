@@ -18,6 +18,7 @@ class SubscriptionPlan(Base):
     name: Mapped[str] = mapped_column(String(100), nullable=False)
     description: Mapped[str | None] = mapped_column(Text)
     monthly_price: Mapped[Decimal] = mapped_column(Numeric(10, 2), default=0)
+    annual_price: Mapped[Decimal] = mapped_column(Numeric(10, 2), default=0)
     max_users: Mapped[int | None] = mapped_column(Integer)  # null = unlimited
     max_branches: Mapped[int | None] = mapped_column(Integer)  # null = unlimited
     features: Mapped[list] = mapped_column(JSONB, default=list)

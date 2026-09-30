@@ -8,6 +8,7 @@ PLAN_KEYS = {
     "name",
     "description",
     "monthly_price",
+    "annual_price",
     "max_users",
     "max_branches",
     "features",
@@ -40,6 +41,7 @@ def test_upgrade_request_lifecycle(auth_client, db_session):
     req = created.json()
     assert req["requested_plan_code"] == "pro"
     assert req["status"] == "pending"
+    assert req["billing_interval"] == "monthly"
 
     mine = auth_client.get("/api/billing/upgrade-requests/mine").json()["request"]
     assert mine["id"] == req["id"]
@@ -50,6 +52,24 @@ def test_upgrade_request_lifecycle(auth_client, db_session):
 
     cancel = auth_client.delete(f"/api/billing/upgrade-requests/{req['id']}")
     assert cancel.status_code == 200
+
+
+def test_upgrade_request_annual_interval(auth_client, db_session):
+    pro = SubscriptionPlan(
+        code="pro", name="Pro", monthly_price=1499, annual_price=14990, features=["paddy"], is_active=True
+    )
+    db_session.add(pro)
+    db_session.flush()
+
+    created = auth_client.post(
+        "/api/billing/upgrade-requests", json={"plan_id": str(pro.id), "billing_interval": "annual"}
+    )
+    assert created.status_code == 201, created.text
+    assert created.json()["billing_interval"] == "annual"
+
+    plans = auth_client.get("/api/billing/plans").json()
+    plan = next(p for p in plans if p["code"] == "pro")
+    assert plan["annual_price"] == 14990.0
 
 
 def test_cannot_request_free_plan_400(auth_client, db_session):

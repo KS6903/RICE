@@ -11,6 +11,7 @@ class PlanUpsert(BaseModel):
     name: str
     description: str | None = None
     monthly_price: float = 0
+    annual_price: float = 0
     max_users: int | None = None
     max_branches: int | None = None
     features: list[str] = []

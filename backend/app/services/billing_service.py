@@ -46,6 +46,7 @@ class BillingService(BaseService):
             "name": p.name,
             "description": p.description,
             "monthly_price": float(p.monthly_price),
+            "annual_price": float(p.annual_price),
             "max_users": p.max_users,
             "max_branches": p.max_branches,
             "features": list(p.features or []),
@@ -66,6 +67,7 @@ class BillingService(BaseService):
             "current_plan_name": r.current_plan.name if r.current_plan else None,
             "requested_by": str(r.requested_by) if r.requested_by else None,
             "request_type": r.request_type,
+            "billing_interval": r.billing_interval,
             "status": r.status,
             "note": r.note,
             "admin_note": r.admin_note,
@@ -136,6 +138,7 @@ class BillingService(BaseService):
             current_plan_id=current_sub.plan_id if current_sub else None,
             requested_by=self.current_user.id,
             request_type=data.request_type if data.request_type in ("upgrade", "change") else "upgrade",
+            billing_interval=data.billing_interval if data.billing_interval == "annual" else "monthly",
             status="pending",
             note=data.note,
         )

@@ -24,6 +24,7 @@ class UpgradeRequest(Base, TimestampMixin):
     )
     requested_by: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
     request_type: Mapped[str] = mapped_column(String(20), default="upgrade", nullable=False)  # upgrade, change
+    billing_interval: Mapped[str] = mapped_column(String(10), default="monthly", nullable=False)  # monthly, annual
     status: Mapped[str] = mapped_column(
         String(20), default="pending", nullable=False
     )  # pending, approved, rejected, cancelled

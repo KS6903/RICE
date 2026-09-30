@@ -235,6 +235,7 @@ export interface SubscriptionPlan {
   name: string;
   description?: string | null;
   monthly_price: number;
+  annual_price: number;
   max_users: number | null;
   max_branches: number | null;
   features: string[];
@@ -244,6 +245,7 @@ export interface SubscriptionPlan {
 
 export type UpgradeRequestStatus = "pending" | "approved" | "rejected" | "cancelled";
 export type UpgradeRequestType = "upgrade" | "change";
+export type BillingInterval = "monthly" | "annual";
 
 export interface UpgradeRequest {
   id: string;
@@ -257,6 +259,7 @@ export interface UpgradeRequest {
   current_plan_name: string | null;
   requested_by?: string | null;
   request_type?: UpgradeRequestType | null;
+  billing_interval?: BillingInterval | null;
   status: UpgradeRequestStatus;
   note: string | null;
   admin_note: string | null;
