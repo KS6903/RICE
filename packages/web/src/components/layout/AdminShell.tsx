@@ -63,7 +63,7 @@ export default function AdminShell() {
 
   const handleLogout = async () => {
     await logout();
-    navigate("/login");
+    navigate("/");
   };
 
   const initials = (user?.full_name || user?.username || "?")
