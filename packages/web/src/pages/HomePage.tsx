@@ -631,9 +631,6 @@ export default function HomePage() {
                   Log in
                 </Link>
               </div>
-              <p className="mt-4 text-sm text-muted">
-                Free to start · Works on any device · Sign in with Google
-              </p>
             </div>
 
             <MockDashboard />
