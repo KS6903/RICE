@@ -84,7 +84,7 @@ export default function WeatherWidget({ variant = "compact" }: { variant?: Varia
   return (
     <div
       data-testid="weather-widget"
-      className="card relative overflow-hidden flex items-center gap-4"
+      className="card relative overflow-hidden flex items-center gap-4 !py-3"
     >
       <div
         className="absolute -top-10 -right-10 h-32 w-32 rounded-full bg-sky-300/20 dark:bg-sky-500/10 blur-2xl pointer-events-none"
