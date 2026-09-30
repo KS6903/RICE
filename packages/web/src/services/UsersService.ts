@@ -9,6 +9,13 @@ export type UserForm = {
   role_id: string;
 };
 
+export type UserUpdate = {
+  full_name?: string;
+  email?: string;
+  role_id?: number;
+  is_active?: boolean;
+};
+
 export class UsersService {
   constructor(private http = api) {}
 
@@ -23,6 +30,12 @@ export class UsersService {
 
   create(form: UserForm): Promise<any> {
     return this.http.post("/users/", UsersService.toCreatePayload(form)).then((r) => r.data);
+  }
+
+  /** Edit another user, or remove (is_active: false) / restore them. The
+   *  server refuses to remove you or change your own role. */
+  update(id: string, body: UserUpdate): Promise<any> {
+    return this.http.put(`/users/${id}`, body).then((r) => r.data);
   }
 }
 

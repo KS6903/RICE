@@ -6,6 +6,7 @@ import { useCurrentPlan } from "../../hooks/useFeature";
 import LocationPicker from "../LocationPicker";
 import NotificationBell from "./NotificationBell";
 import UserAvatar from "../UserAvatar";
+import { roleLabel } from "@rice-mill/shared";
 
 function PlanBadge() {
   const plan = useCurrentPlan();
@@ -123,7 +124,7 @@ export default function Header() {
             <p className="text-sm font-semibold text-primary truncate max-w-[10rem]">
               {user?.full_name}
             </p>
-            <p className="text-xs text-muted capitalize font-medium">{user?.role}</p>
+            <p className="text-xs text-muted font-medium">{roleLabel(user?.role)}</p>
           </div>
         </div>
 

@@ -10,7 +10,7 @@ from typing import Any
 
 from sqlalchemy.orm import Session
 
-from ..core.exceptions import BadRequestError, FeatureRequiredError, NotFoundError
+from ..core.exceptions import BadRequestError, FeatureRequiredError, NotFoundError, PermissionDeniedError
 from ..core.passwords import validate_password_strength
 from ..core.security import hash_password
 from ..models.company import Branch
@@ -45,13 +45,7 @@ class UserService(BaseService):
         if data.role_id is not None and self.db.get(Role, data.role_id) is None:
             raise BadRequestError("Invalid role")
 
-        existing_count = self.users.count_for_company(self.current_user.company_id)
-        sub = self.db.query(Subscription).filter(Subscription.company_id == self.current_user.company_id).first()
-        if sub and sub.plan and sub.plan.max_users is not None and existing_count >= sub.plan.max_users:
-            raise FeatureRequiredError(
-                f"Your plan allows up to {sub.plan.max_users} users. Please upgrade to add more.",
-                code="user_limit",
-            )
+        self._assert_seat_free()
 
         user = User(
             company_id=self.current_user.company_id,
@@ -67,13 +61,54 @@ class UserService(BaseService):
         self.db.refresh(user)
         return self._safe(user)
 
+    def _assert_seat_free(self) -> None:
+        """402 when the plan's user limit is reached. Removed (inactive) users
+        don't take a seat."""
+        active = self.users.count_active_for_company(self.current_user.company_id)
+        sub = self.db.query(Subscription).filter(Subscription.company_id == self.current_user.company_id).first()
+        if sub and sub.plan and sub.plan.max_users is not None and active >= sub.plan.max_users:
+            raise FeatureRequiredError(
+                f"Your plan allows up to {sub.plan.max_users} users. Please upgrade to add more.",
+                code="user_limit",
+            )
+
     def update_user(self, user_id: uuid.UUID, data) -> UserResponse:
+        """Edit or remove (is_active=False) another user, or restore one.
+
+        Removing is a deactivation, not a delete: the user's past records and
+        consent history keep pointing at them, and they can't sign in.
+        """
         user = self.users.get_for_company(user_id, self.current_user.company_id)
         if not user:
             raise NotFoundError("User not found")
+        new_role = None
+        if data.role_id is not None:
+            new_role = self.db.get(Role, data.role_id)
+            if new_role is None:
+                raise BadRequestError("Invalid role")
+
+        # Your own account can't be removed, and you can't change your own role
+        # (an owner demoting themselves could leave the mill without one).
+        if user.id == self.current_user.id:
+            if data.is_active is False:
+                raise BadRequestError("You can't remove your own account.")
+            if data.role_id is not None and data.role_id != user.role_id:
+                raise BadRequestError("You can't change your own role.")
+
+        # Owners (shown as "Boss") outrank admins: only an owner can edit or
+        # remove an owner, or make someone an owner.
+        editor_is_owner = bool(self.current_user.role and self.current_user.role.name == "owner")
+        if not editor_is_owner:
+            if user.role and user.role.name == "owner":
+                raise PermissionDeniedError("Only the Boss can change a Boss account.")
+            if new_role is not None and new_role.name == "owner":
+                raise PermissionDeniedError("Only the Boss can make someone a Boss.")
+
+        # Restoring a removed user takes a seat again.
+        if data.is_active is True and not user.is_active:
+            self._assert_seat_free()
+
         self.assert_company_fk(Branch, data.branch_id, label="Branch")
-        if data.role_id is not None and self.db.get(Role, data.role_id) is None:
-            raise BadRequestError("Invalid role")
         with self.transaction():
             for field, val in data.model_dump(exclude_none=True).items():
                 setattr(user, field, val)

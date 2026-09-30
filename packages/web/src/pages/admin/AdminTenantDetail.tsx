@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useParams, Link } from "react-router-dom";
 import { adminService } from "../../services/AdminService";
 import { format } from "date-fns";
+import { roleLabel } from "@rice-mill/shared";
 import ActivityLogList from "../../components/activity/ActivityLogList";
 import type { ActivityRow } from "../../components/activity/format";
 import {
@@ -763,7 +764,7 @@ export default function AdminTenantDetail() {
                     <td className="px-4 py-3 font-mono text-xs">{u.username}</td>
                     <td className="px-4 py-3">{u.full_name}</td>
                     <td className="px-4 py-3 text-muted">{u.email || "—"}</td>
-                    <td className="px-4 py-3 capitalize">{u.role?.replace("_", " ") || "—"}</td>
+                    <td className="px-4 py-3">{roleLabel(u.role) || "—"}</td>
                     <td className="px-4 py-3">
                       {u.is_active ? (
                         <span className="badge-green">Active</span>

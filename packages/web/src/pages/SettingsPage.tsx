@@ -48,7 +48,7 @@ import {
 } from "lucide-react";
 import { format } from "date-fns";
 import { useCurrentPlan } from "../hooks/useFeature";
-import type { SubscriptionPlan, UpgradeRequest } from "@rice-mill/shared";
+import { roleLabel, type SubscriptionPlan, type UpgradeRequest } from "@rice-mill/shared";
 import ActivityLogList from "../components/activity/ActivityLogList";
 import BackupCodes from "../components/BackupCodes";
 import type { ActivityRow } from "../components/activity/format";
@@ -1722,7 +1722,7 @@ function ProfileTab() {
         <UserAvatar className="h-12 w-12" name={user?.full_name || user?.username} />
         <div>
           <h3 className="text-lg font-bold text-primary">My profile</h3>
-          <p className="text-xs text-muted font-medium capitalize">{user?.role}</p>
+          <p className="text-xs text-muted font-medium">{roleLabel(user?.role)}</p>
         </div>
       </div>
 

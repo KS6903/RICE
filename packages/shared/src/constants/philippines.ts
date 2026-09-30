@@ -82,14 +82,23 @@ export const DEFAULT_EXPENSE_CATEGORIES = [
   { name: "Government Fees", is_production_cost: false },
 ];
 
+// `name` is what the server and permissions use; `label` is what people see.
+// The owner role is shown as "Boss".
 export const ROLES = [
-  { id: 1, name: "owner", label: "Owner" },
+  { id: 1, name: "owner", label: "Boss" },
   { id: 2, name: "admin", label: "Admin" },
   { id: 3, name: "mill_operator", label: "Mill Operator" },
   { id: 4, name: "accountant", label: "Accountant" },
   { id: 5, name: "cashier", label: "Cashier" },
   { id: 6, name: "encoder", label: "Encoder" },
 ];
+
+/** The display name of a role ("owner" → "Boss", "mill_operator" → "Mill
+ *  Operator"); unknown names come back as given, and none as "". */
+export function roleLabel(name: string | null | undefined): string {
+  if (!name) return "";
+  return ROLES.find((r) => r.name === name)?.label ?? name;
+}
 
 export const CURRENCY = "PHP";
 export const TIMEZONE = "Asia/Manila";

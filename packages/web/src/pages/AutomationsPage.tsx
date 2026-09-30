@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { BellRing, CheckCircle2, Clock, History, Send, Sunrise, XCircle } from "lucide-react";
 import { useAccess } from "../hooks/useAccess";
+import { roleLabel } from "@rice-mill/shared";
 import {
   automationsService,
   type Automation,
@@ -14,10 +15,6 @@ const GROUP_ICON = { reports: Sunrise, watch: BellRing, stock: Clock, receivable
 function errorText(error: unknown, fallback: string): string {
   const detail = (error as { response?: { data?: { detail?: unknown } } })?.response?.data?.detail;
   return typeof detail === "string" ? detail : fallback;
-}
-
-function roleLabel(role: string | null): string {
-  return role ? role.replace("_", " ") : "";
 }
 
 function whenLabel(iso: string): string {
@@ -219,7 +216,7 @@ function AutomationCard({ automation, readOnly }: { automation: Automation; read
                       onChange={() => toggleRecipient(c.id)}
                     />
                     <span className="text-sm text-primary">{c.name}</span>
-                    <span className="text-xs text-muted capitalize">{roleLabel(c.role)}</span>
+                    <span className="text-xs text-muted">{roleLabel(c.role)}</span>
                   </label>
                 </li>
               ))}

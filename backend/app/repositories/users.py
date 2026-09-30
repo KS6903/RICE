@@ -21,5 +21,6 @@ class UserRepository(BaseRepository[User]):
         """Usernames are globally unique, so this is not company-scoped."""
         return self.db.execute(select(User).where(User.username == username)).scalars().first()
 
-    def count_for_company(self, company_id: uuid.UUID) -> int:
-        return self.db.query(User).filter(User.company_id == company_id).count()
+    def count_active_for_company(self, company_id: uuid.UUID) -> int:
+        """Users holding a seat on the plan; removed (inactive) users don't."""
+        return self.db.query(User).filter(User.company_id == company_id, User.is_active.is_(True)).count()

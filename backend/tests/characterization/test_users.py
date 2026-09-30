@@ -1,5 +1,10 @@
 """Characterization: the users domain (Phase 3 target)."""
 
+from app.core.security import get_current_user, hash_password
+from app.main import app
+from app.models.subscription import Subscription
+from app.models.user import User
+
 SAFE_USER_FIELDS = {
     "id",
     "company_id",
@@ -100,3 +105,86 @@ def test_list_users_denied_for_non_management_roles(make_auth_client):
     for role_name in ("accountant", "cashier", "mill_operator", "encoder"):
         c = make_auth_client(features=["users"], username=f"read-{role_name}", role_name=role_name)
         assert c.get("/api/users/").status_code == 403
+
+
+# --- Editing and removing users ------------------------------------------------
+# Removing is a deactivation (is_active=False): the account can't sign in and
+# stops taking a seat, but its history stays.
+
+
+def _add_user(db_session, owner, username, role_id=2):
+    user = User(
+        company_id=owner.company_id,
+        branch_id=owner.branch_id,
+        username=username,
+        password_hash=hash_password("Password123"),
+        full_name=username.title(),
+        role_id=role_id,
+        is_active=True,
+    )
+    db_session.add(user)
+    db_session.flush()
+    return user
+
+
+def test_nobody_can_remove_their_own_account(auth_client, seed_owner):
+    res = auth_client.put(f"/api/users/{seed_owner.id}", json={"is_active": False})
+    assert res.status_code == 400
+    assert "your own account" in res.json()["detail"]
+
+
+def test_nobody_can_change_their_own_role(auth_client, seed_owner):
+    res = auth_client.put(f"/api/users/{seed_owner.id}", json={"role_id": 2})
+    assert res.status_code == 400
+    assert "your own role" in res.json()["detail"]
+
+
+def test_own_name_can_still_be_edited(auth_client, seed_owner):
+    res = auth_client.put(f"/api/users/{seed_owner.id}", json={"full_name": "Renamed Owner"})
+    assert res.status_code == 200, res.text
+    assert res.json()["full_name"] == "Renamed Owner"
+
+
+def test_owner_can_edit_remove_and_restore_another_user(auth_client, db_session, seed_owner):
+    other = _add_user(db_session, seed_owner, "clerk")
+
+    edited = auth_client.put(f"/api/users/{other.id}", json={"full_name": "Head Clerk", "email": "c@x.ph"})
+    assert edited.status_code == 200, edited.text
+    assert (edited.json()["full_name"], edited.json()["email"]) == ("Head Clerk", "c@x.ph")
+
+    removed = auth_client.put(f"/api/users/{other.id}", json={"is_active": False})
+    assert removed.status_code == 200, removed.text
+    assert removed.json()["is_active"] is False
+
+    restored = auth_client.put(f"/api/users/{other.id}", json={"is_active": True})
+    assert restored.status_code == 200, restored.text
+    assert restored.json()["is_active"] is True
+
+
+def test_removing_a_user_frees_their_seat(auth_client, db_session, seed_owner):
+    sub = db_session.query(Subscription).filter_by(company_id=seed_owner.company_id).one()
+    sub.plan.max_users = 2
+    db_session.flush()
+    other = _add_user(db_session, seed_owner, "clerk")  # owner + clerk: the plan is full
+    new = {"username": "newhire", "password": "secret123", "full_name": "New Hire", "role_id": 2}
+
+    assert auth_client.post("/api/users/", json=new).status_code == 402
+    assert auth_client.put(f"/api/users/{other.id}", json={"is_active": False}).status_code == 200
+    assert auth_client.post("/api/users/", json=new).status_code == 201
+    # The plan is full again, so the removed user can't be restored.
+    restore = auth_client.put(f"/api/users/{other.id}", json={"is_active": True})
+    assert restore.status_code == 402
+
+
+def test_an_admin_cannot_touch_an_owner_or_make_one(client, db_session, seed_owner):
+    admin = _add_user(db_session, seed_owner, "manager", role_id=2)
+    clerk = _add_user(db_session, seed_owner, "clerk", role_id=2)
+    app.dependency_overrides[get_current_user] = lambda: admin
+    try:
+        assert client.put(f"/api/users/{seed_owner.id}", json={"is_active": False}).status_code == 403
+        assert client.put(f"/api/users/{seed_owner.id}", json={"full_name": "X"}).status_code == 403
+        assert client.put(f"/api/users/{clerk.id}", json={"role_id": 1}).status_code == 403
+        # Everyone else is fair game.
+        assert client.put(f"/api/users/{clerk.id}", json={"is_active": False}).status_code == 200
+    finally:
+        app.dependency_overrides.pop(get_current_user, None)

@@ -4,11 +4,14 @@ import { Link } from "react-router-dom";
 import { adminService } from "../../services/AdminService";
 import { Search, Users as UsersIcon } from "lucide-react";
 import { format } from "date-fns";
+import { roleLabel } from "@rice-mill/shared";
+import { useAuthStore } from "../../stores/authStore";
 
 const COLS = ["Username", "Full name", "Email", "Tenant", "Role", "Status", "Last login"];
 
 export default function AdminUsers() {
   const [search, setSearch] = useState("");
+  const myId = useAuthStore((s) => s.user?.id);
 
   const { data: users = [], isLoading } = useQuery({
     queryKey: ["admin-users"],
@@ -73,7 +76,10 @@ export default function AdminUsers() {
               filtered.map((u: any) => (
                 <tr key={u.id}>
                   <td className="font-mono text-xs text-secondary">{u.username}</td>
-                  <td className="font-medium text-primary">{u.full_name}</td>
+                  <td className="font-medium text-primary">
+                    {u.full_name}
+                    {u.id === myId && <span className="ml-1 font-normal text-muted">(you)</span>}
+                  </td>
                   <td>{u.email || "—"}</td>
                   <td>
                     {u.company_id ? (
@@ -84,7 +90,7 @@ export default function AdminUsers() {
                       <span className="text-muted">—</span>
                     )}
                   </td>
-                  <td className="capitalize">{u.role?.replace("_", " ") || "—"}</td>
+                  <td>{roleLabel(u.role) || "—"}</td>
                   <td>
                     {u.is_active ? (
                       <span className="badge-green">Active</span>

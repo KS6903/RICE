@@ -1,15 +1,7 @@
 import { ShieldX } from "lucide-react";
 import { Link } from "react-router-dom";
+import { roleLabel as labelFor } from "@rice-mill/shared";
 import { useAuthStore } from "../stores/authStore";
-
-const ROLE_LABELS: Record<string, string> = {
-  owner: "Owner",
-  admin: "Admin",
-  mill_operator: "Mill Operator",
-  accountant: "Accountant",
-  cashier: "Cashier",
-  encoder: "Encoder",
-};
 
 /**
  * Shown when a signed-in user navigates to a section their role can't access.
@@ -18,7 +10,7 @@ const ROLE_LABELS: Record<string, string> = {
  */
 export default function AccessDenied({ section }: { section?: string }) {
   const user = useAuthStore((s) => s.user);
-  const roleLabel = user?.role ? (ROLE_LABELS[user.role] ?? user.role) : "your role";
+  const roleLabel = labelFor(user?.role) || "your role";
 
   return (
     <div className="flex items-center justify-center py-16">
