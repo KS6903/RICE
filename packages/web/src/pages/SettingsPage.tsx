@@ -9,6 +9,7 @@ import { paddyService } from "../services/PaddyService";
 import { millingService } from "../services/MillingService";
 import { costsService } from "../services/CostsService";
 import { useAuthStore } from "../stores/authStore";
+import UserAvatar from "../components/UserAvatar";
 import {
   Building2,
   MapPin,
@@ -1710,14 +1711,7 @@ function ProfileTab() {
   return (
     <div className="card max-w-xl space-y-5">
       <div className="flex items-center gap-3">
-        <div className="h-12 w-12 rounded-full bg-grad-brand grid place-items-center text-white text-base font-bold shadow-grad-glow">
-          {(user?.full_name || user?.username || "?")
-            .split(" ")
-            .map((w) => w[0])
-            .slice(0, 2)
-            .join("")
-            .toUpperCase()}
-        </div>
+        <UserAvatar className="h-12 w-12" name={user?.full_name || user?.username} />
         <div>
           <h3 className="text-lg font-bold text-primary">My profile</h3>
           <p className="text-xs text-muted font-medium capitalize">{user?.role}</p>

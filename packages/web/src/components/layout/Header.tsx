@@ -18,6 +18,7 @@ import { useCurrentPlan } from "../../hooks/useFeature";
 import { useThemeStore } from "../../stores/themeStore";
 import LocationPicker from "../LocationPicker";
 import NotificationBell from "./NotificationBell";
+import UserAvatar from "../UserAvatar";
 
 function PlanBadge() {
   const plan = useCurrentPlan();
@@ -108,13 +109,6 @@ export default function Header() {
     navigate("/login");
   };
 
-  const initials = (user?.full_name || user?.username || "?")
-    .split(" ")
-    .map((w) => w[0])
-    .slice(0, 2)
-    .join("")
-    .toUpperCase();
-
   return (
     <header className="h-16 glass-strong border-b border-soft flex items-center justify-between px-6 shrink-0 relative z-10">
       <div className="hidden md:flex items-center gap-2 flex-1 max-w-md">
@@ -155,9 +149,7 @@ export default function Header() {
         <ThemeToggle />
 
         <div className="hidden sm:flex items-center gap-2.5 pl-3 border-l border-soft">
-          <div className="h-9 w-9 rounded-full bg-grad-brand grid place-items-center text-white text-xs font-bold shadow-grad-glow">
-            {initials}
-          </div>
+          <UserAvatar className="h-9 w-9" name={user?.full_name || user?.username} />
           <div className="hidden lg:block leading-tight">
             <p className="text-sm font-semibold text-primary truncate max-w-[10rem]">
               {user?.full_name}
