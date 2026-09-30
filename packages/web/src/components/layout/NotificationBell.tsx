@@ -33,6 +33,10 @@ export default function NotificationBell() {
     queryKey: ["notifications"],
     queryFn: () => notificationService.list(),
     enabled: open,
+    // Override the client's 5-minute default: this must refetch every time
+    // the panel opens, not just once per cache window, or new notices are
+    // invisible until a full page reload wipes the cache.
+    staleTime: 0,
   });
 
   const markRead = useMutation({

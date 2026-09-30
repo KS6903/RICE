@@ -70,6 +70,35 @@ describe("NotificationBell", () => {
     expect(await screen.findByText("Your Enterprise plan ends in 7 days")).toBeInTheDocument();
   });
 
+  it("refetches the list on reopen, not just once per cache window", async () => {
+    useAuthStore.setState({ user: tenantUser });
+    draw();
+    fireEvent.click(screen.getByTestId("notification-bell"));
+    expect(await screen.findByText("Your Enterprise plan ends in 7 days")).toBeInTheDocument();
+    expect(notificationService.list).toHaveBeenCalledTimes(1);
+
+    // Close the panel, then simulate a new notice arriving server-side.
+    fireEvent.click(screen.getByTestId("notification-bell"));
+    vi.spyOn(notificationService, "list").mockResolvedValue({
+      unread: 2,
+      items: [
+        {
+          id: "n2",
+          kind: "invoice.overdue",
+          title: "Invoice #204 is overdue",
+          body: null,
+          link: "/sales",
+          created_at: new Date().toISOString(),
+          read: false,
+        },
+      ],
+    });
+
+    // Reopening must refetch — a real page reload shouldn't be required.
+    fireEvent.click(screen.getByTestId("notification-bell"));
+    expect(await screen.findByText("Invoice #204 is overdue")).toBeInTheDocument();
+  });
+
   it("is hidden for platform admins, who have no tenant", () => {
     useAuthStore.setState({ user: { ...tenantUser, company_id: null, is_platform_admin: true } });
     const { container } = draw();
