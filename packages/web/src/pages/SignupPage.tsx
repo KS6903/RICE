@@ -2,17 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate, useLocation, Link } from "react-router-dom";
 import { authService } from "../services/AuthService";
 import { useAuthStore } from "../stores/authStore";
-import { useThemeStore } from "../stores/themeStore";
-import {
-  Building2,
-  Building,
-  Sun,
-  Moon,
-  AlertCircle,
-  ArrowRight,
-  ArrowLeft,
-  Check,
-} from "lucide-react";
+import { Building2, Building, AlertCircle, ArrowRight, ArrowLeft, Check } from "lucide-react";
 import { GoogleLogin } from "@react-oauth/google";
 import riceLogo from "../assets/Rice_Logo.svg";
 import { legalService } from "../services/LegalService";
@@ -21,8 +11,6 @@ export default function SignupPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const { setTokens, setUser } = useAuthStore();
-  const theme = useThemeStore((s) => s.theme);
-  const toggleTheme = useThemeStore((s) => s.toggle);
   const [step, setStep] = useState<1 | 2>(1);
   const [form, setForm] = useState({
     company_name: "",
@@ -126,14 +114,6 @@ export default function SignupPage() {
     // the form panel would, in a window too short to fit it. Phones keep normal
     // scrolling so the on-screen keyboard can't hide the field being typed in.
     <div className="min-h-screen w-full grid lg:grid-cols-2 lg:h-screen lg:grid-rows-[minmax(0,1fr)] relative overflow-hidden">
-      <button
-        onClick={toggleTheme}
-        className="absolute top-5 right-5 z-20 h-10 w-10 grid place-items-center rounded-xl glass text-secondary hover:text-primary transition-colors"
-        aria-label="Toggle theme"
-      >
-        {theme === "dark" ? <Sun size={18} /> : <Moon size={18} />}
-      </button>
-
       {/* Back — shares LoginPage's .btn-back component (index.css). Positioned
           just right of the seam on desktop; this button isn't nested in the
           scrollable form column the way LoginPage's is — nesting it would

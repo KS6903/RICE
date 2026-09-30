@@ -9,6 +9,7 @@ import { paddyService } from "../services/PaddyService";
 import { millingService } from "../services/MillingService";
 import { costsService } from "../services/CostsService";
 import { useAuthStore } from "../stores/authStore";
+import { useThemeStore, type Theme } from "../stores/themeStore";
 import UserAvatar from "../components/UserAvatar";
 import {
   Building2,
@@ -40,6 +41,9 @@ import {
   ShieldCheck,
   MonitorSmartphone,
   LogOut,
+  Palette,
+  Sun,
+  Moon,
 } from "lucide-react";
 import { format } from "date-fns";
 import { useCurrentPlan } from "../hooks/useFeature";
@@ -58,6 +62,7 @@ type Tab =
   | "categories"
   | "activity"
   | "profile"
+  | "appearance"
   | "password"
   | "sessions";
 
@@ -87,6 +92,7 @@ export default function SettingsPage() {
       : []),
     // Personal settings — available to every role.
     { key: "profile", label: "My Profile", icon: UserIcon },
+    { key: "appearance", label: "Appearance", icon: Palette },
     { key: "password", label: "Password", icon: KeyRound },
     { key: "sessions", label: "Devices", icon: MonitorSmartphone },
   ];
@@ -145,6 +151,7 @@ export default function SettingsPage() {
           {tab === "categories" && <CategoriesTab />}
           {tab === "activity" && <ActivityTab />}
           {tab === "profile" && <ProfileTab />}
+          {tab === "appearance" && <AppearanceTab />}
           {tab === "password" && <PasswordTab />}
           {tab === "sessions" && <SessionsTab />}
         </main>
@@ -1800,6 +1807,86 @@ function ProfileTab() {
           <span className="text-sm font-medium text-rose-600 dark:text-rose-400">{error}</span>
         )}
       </div>
+    </div>
+  );
+}
+
+const THEME_OPTIONS: { value: Theme; label: string; icon: React.ElementType }[] = [
+  { value: "light", label: "Light", icon: Sun },
+  { value: "dark", label: "Dark", icon: Moon },
+];
+
+/** A thumbnail of the app in one theme. Its colours are fixed, so each
+ *  thumbnail looks the same whichever theme is on. */
+function ThemePreview({ dark }: { dark: boolean }) {
+  const panel = dark ? "bg-slate-800 border-slate-700" : "bg-white border-slate-200";
+  const line = dark ? "bg-slate-600" : "bg-slate-300";
+  return (
+    <div
+      aria-hidden
+      className={`flex h-20 overflow-hidden rounded-lg border ${
+        dark ? "bg-slate-900 border-slate-700" : "bg-slate-50 border-slate-200"
+      }`}
+    >
+      <div className={`w-6 border-r ${panel}`} />
+      <div className="flex-1 space-y-1.5 p-2">
+        <div className={`h-2 w-1/2 rounded ${line}`} />
+        <div className={`h-8 rounded-md border ${panel}`} />
+        <div className="h-2 w-1/3 rounded bg-emerald-500" />
+      </div>
+    </div>
+  );
+}
+
+function AppearanceTab() {
+  const theme = useThemeStore((s) => s.theme);
+  const setTheme = useThemeStore((s) => s.setTheme);
+
+  return (
+    <div className="card max-w-xl space-y-5">
+      <div>
+        <h3 className="text-lg font-bold text-primary">Appearance</h3>
+        <p className="text-sm text-secondary mt-0.5">
+          Your choice is saved to your account on this device. The sign-in and home pages always
+          stay light.
+        </p>
+      </div>
+
+      <fieldset>
+        <legend className={LABEL}>Theme</legend>
+        <div className="grid grid-cols-2 gap-3">
+          {THEME_OPTIONS.map(({ value, label, icon: Icon }) => {
+            const active = theme === value;
+            return (
+              <label
+                key={value}
+                className={`cursor-pointer rounded-xl border-2 p-3 transition-colors has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-emerald-500/40 ${
+                  active
+                    ? "border-emerald-500"
+                    : "border-slate-200 hover:border-slate-300 dark:border-slate-700 dark:hover:border-slate-500"
+                }`}
+              >
+                <input
+                  type="radio"
+                  name="theme"
+                  value={value}
+                  checked={active}
+                  onChange={() => setTheme(value)}
+                  className="sr-only"
+                />
+                <ThemePreview dark={value === "dark"} />
+                <span className="mt-3 flex items-center gap-2 text-sm font-semibold text-primary">
+                  <Icon size={16} className="text-secondary" />
+                  {label}
+                  {active && (
+                    <Check size={16} className="ml-auto text-emerald-600 dark:text-emerald-400" />
+                  )}
+                </span>
+              </label>
+            );
+          })}
+        </div>
+      </fieldset>
     </div>
   );
 }

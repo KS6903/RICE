@@ -1,18 +1,8 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useNavigate, Link, useSearchParams } from "react-router-dom";
 import { authService } from "../services/AuthService";
 import { useAuthStore } from "../stores/authStore";
-import { useThemeStore } from "../stores/themeStore";
-import {
-  ShieldCheck,
-  Wifi,
-  Building2,
-  Sun,
-  Moon,
-  AlertCircle,
-  Clock,
-  ArrowLeft,
-} from "lucide-react";
+import { ShieldCheck, Wifi, Building2, AlertCircle, Clock, ArrowLeft } from "lucide-react";
 import { GoogleLogin } from "@react-oauth/google";
 import riceLogo from "../assets/Rice_Logo.svg";
 
@@ -30,36 +20,10 @@ export default function LoginPage() {
   const [mfaCode, setMfaCode] = useState("");
   const [useBackupCode, setUseBackupCode] = useState(false);
   const { setTokens, setUser } = useAuthStore();
-  const theme = useThemeStore((s) => s.theme);
-  const toggle = useThemeStore((s) => s.toggle);
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   // Set by useIdleLogout when it signs the user out for inactivity.
   const idleSignedOut = searchParams.get("reason") === "idle";
-  const isDark = theme === "dark";
-  const [chipMounted, setChipMounted] = useState(false);
-  const [chipIn, setChipIn] = useState(false);
-  const [glow, setGlow] = useState(false);
-  useEffect(() => {
-    const show = setTimeout(() => {
-      setChipMounted(true);
-      setGlow(true);
-    }, 700);
-    return () => clearTimeout(show);
-  }, []);
-  useEffect(() => {
-    if (!chipMounted) return;
-    const enter = requestAnimationFrame(() => setChipIn(true));
-    const exit = setTimeout(() => setChipIn(false), 5000);
-    return () => {
-      cancelAnimationFrame(enter);
-      clearTimeout(exit);
-    };
-  }, [chipMounted]);
-  const handleToggle = () => {
-    toggle();
-    setChipIn(false);
-  };
   // Prefer real history so the user lands where they came from; fall back to the
   // marketing home when login was opened directly (deep link, new tab).
   const handleBack = () => {
@@ -131,63 +95,6 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen w-full grid lg:grid-cols-2 relative overflow-hidden">
-      <style>{`
-          @keyframes lpToggleGlow {
-            0%, 100% { box-shadow: 0 0 0 0 rgba(139, 92, 246, 0.5); transform: scale(1); }
-            50%      { box-shadow: 0 0 0 9px rgba(139, 92, 246, 0); transform: scale(1.08); }
-          }
-          @keyframes lpHintBob {
-            0%, 100% { transform: translateY(0); }
-            50%      { transform: translateY(3px); }
-          }
-          .lp-toggle-glow { animation: lpToggleGlow 1.8s ease-in-out infinite; }
-          .lp-hint {
-            transform-origin: top right;
-            opacity: 0;
-            transform: translateY(-7px) scale(0.94);
-            transition: opacity 300ms cubic-bezier(0.23, 1, 0.32, 1),
-                        transform 300ms cubic-bezier(0.23, 1, 0.32, 1);
-          }
-          .lp-hint-in { opacity: 1; transform: translateY(0) scale(1); }
-          .lp-hint-bob { animation: lpHintBob 2.2s ease-in-out 0.6s infinite; }
-          @media (prefers-reduced-motion: reduce) {
-            .lp-toggle-glow, .lp-hint-bob { animation: none; }
-            .lp-hint { transition: opacity 200ms ease; transform: none; }
-            .lp-hint-in { transform: none; }
-          }
-        `}</style>
-
-      <div className="absolute top-5 right-5 z-20">
-        <div className="relative">
-          <button
-            onClick={handleToggle}
-            className={`h-10 w-10 grid place-items-center rounded-xl glass transition-colors ${glow ? "lp-toggle-glow text-violet-500 dark:text-violet-300" : "text-secondary hover:text-primary"}`}
-            aria-label="Toggle theme"
-          >
-            {isDark ? <Sun size={18} /> : <Moon size={18} />}
-          </button>
-          {chipMounted && (
-            <div
-              className={`lp-hint absolute right-0 top-full mt-2.5 z-30 ${chipIn ? "lp-hint-in" : "pointer-events-none"}`}
-            >
-              <button
-                type="button"
-                onClick={handleToggle}
-                className="lp-hint-bob inline-flex items-center gap-1.5 rounded-lg glass-strong px-3 py-1.5 text-xs font-semibold text-primary shadow-xl whitespace-nowrap hover:scale-[1.03] transition-transform"
-              >
-                <span className="absolute -top-1 right-3.5 h-2 w-2 rotate-45 rounded-[2px] glass-strong" />
-                {isDark ? (
-                  <Sun size={13} className="text-amber-500" />
-                ) : (
-                  <Moon size={13} className="text-violet-500 dark:text-violet-300" />
-                )}
-                Try {isDark ? "light" : "dark"} mode
-              </button>
-            </div>
-          )}
-        </div>
-      </div>
-
       {/* LEFT — marketing */}
       <div className="relative hidden lg:flex flex-col justify-between p-12 overflow-hidden">
         <div
@@ -256,7 +163,7 @@ export default function LoginPage() {
 
       {/* RIGHT — form */}
       <div className="relative flex items-center justify-center p-6 lg:p-12">
-        {/* Back — anchored to the form (white) side, clear of the theme toggle */}
+        {/* Back — anchored to the form (white) side */}
         <button type="button" onClick={handleBack} className="btn-back absolute top-5 left-5 z-20">
           <span className="btn-back-icon" aria-hidden="true">
             <ArrowLeft size={18} />

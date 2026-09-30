@@ -1,21 +1,8 @@
 import { useAuthStore } from "../../stores/authStore";
-import {
-  LogOut,
-  Wifi,
-  WifiOff,
-  Crown,
-  Zap,
-  Rocket,
-  Star,
-  AlertCircle,
-  Sun,
-  Moon,
-  Search,
-} from "lucide-react";
+import { LogOut, Wifi, WifiOff, Crown, Zap, Rocket, Star, AlertCircle, Search } from "lucide-react";
 import { useNavigate, Link } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { useCurrentPlan } from "../../hooks/useFeature";
-import { useThemeStore } from "../../stores/themeStore";
 import LocationPicker from "../LocationPicker";
 import NotificationBell from "./NotificationBell";
 import UserAvatar from "../UserAvatar";
@@ -69,22 +56,6 @@ function PlanBadge() {
       {plan.name}
       <span className={`w-1.5 h-1.5 rounded-full ml-0.5 ${statusTint}`} />
     </Link>
-  );
-}
-
-function ThemeToggle() {
-  const theme = useThemeStore((s) => s.theme);
-  const toggle = useThemeStore((s) => s.toggle);
-  const isDark = theme === "dark";
-  return (
-    <button
-      onClick={toggle}
-      className="h-9 w-9 grid place-items-center rounded-xl glass text-secondary hover:text-primary transition-colors"
-      title={isDark ? "Switch to light mode" : "Switch to dark mode"}
-      aria-label="Toggle theme"
-    >
-      {isDark ? <Sun size={16} /> : <Moon size={16} />}
-    </button>
   );
 }
 
@@ -145,8 +116,6 @@ export default function Header() {
         <PlanBadge />
 
         <NotificationBell />
-
-        <ThemeToggle />
 
         <div className="hidden sm:flex items-center gap-2.5 pl-3 border-l border-soft">
           <UserAvatar className="h-9 w-9" name={user?.full_name || user?.username} />

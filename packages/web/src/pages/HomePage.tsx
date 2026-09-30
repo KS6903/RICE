@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { useThemeStore } from "../stores/themeStore";
 import {
   Wheat,
   Factory,
@@ -11,8 +10,6 @@ import {
   BarChart3,
   Users,
   ShieldCheck,
-  Sun,
-  Moon,
   ArrowRight,
   Sparkles,
   LayoutDashboard,
@@ -547,9 +544,6 @@ function FeatureCard({ f, index }: { f: (typeof FEATURES)[number]; index: number
 /* Page                                                                */
 /* ------------------------------------------------------------------ */
 export default function HomePage() {
-  const theme = useThemeStore((s) => s.theme);
-  const toggle = useThemeStore((s) => s.toggle);
-
   // Always land at the top on load/reload — don't let the browser restore
   // a previous (scrolled-down) position.
   useEffect(() => {
@@ -559,33 +553,6 @@ export default function HomePage() {
 
   // Block text selection / copy on the public landing page.
   const blockCopy = (e: React.SyntheticEvent) => e.preventDefault();
-
-  // Nudge inviting visitors to try the other theme. The chip fades out 5s
-  // after appearing; the pulsing ring stays until the visitor clicks it.
-  const isDark = theme === "dark";
-  const [chipMounted, setChipMounted] = useState(false);
-  const [chipIn, setChipIn] = useState(false);
-  const [glow, setGlow] = useState(false);
-  useEffect(() => {
-    const show = setTimeout(() => {
-      setChipMounted(true);
-      setGlow(true);
-    }, 700);
-    return () => clearTimeout(show);
-  }, []);
-  useEffect(() => {
-    if (!chipMounted) return;
-    const enter = requestAnimationFrame(() => setChipIn(true));
-    const exit = setTimeout(() => setChipIn(false), 5000);
-    return () => {
-      cancelAnimationFrame(enter);
-      clearTimeout(exit);
-    };
-  }, [chipMounted]);
-  const handleToggle = () => {
-    toggle();
-    setChipIn(false);
-  };
 
   return (
     <div
@@ -630,62 +597,6 @@ export default function HomePage() {
             <span className="text-lg font-bold tracking-tight text-primary">Oryza</span>
           </div>
           <div className="flex items-center gap-2">
-            <div className="relative">
-              <style>{`
-                @keyframes hpToggleGlow {
-                  0%, 100% { box-shadow: 0 0 0 0 rgba(139, 92, 246, 0.5); transform: scale(1); }
-                  50%      { box-shadow: 0 0 0 9px rgba(139, 92, 246, 0); transform: scale(1.08); }
-                }
-                @keyframes hpHintBob {
-                  0%, 100% { transform: translateY(0); }
-                  50%      { transform: translateY(3px); }
-                }
-                .hp-toggle-glow { animation: hpToggleGlow 1.8s ease-in-out infinite; }
-                .hp-hint {
-                  transform-origin: top right;
-                  opacity: 0;
-                  transform: translateY(-7px) scale(0.94);
-                  transition: opacity 300ms cubic-bezier(0.23, 1, 0.32, 1),
-                              transform 300ms cubic-bezier(0.23, 1, 0.32, 1);
-                }
-                .hp-hint-in { opacity: 1; transform: translateY(0) scale(1); }
-                .hp-hint-bob { animation: hpHintBob 2.2s ease-in-out 0.6s infinite; }
-                @media (prefers-reduced-motion: reduce) {
-                  .hp-toggle-glow, .hp-hint-bob { animation: none; }
-                  .hp-hint { transition: opacity 200ms ease; transform: none; }
-                  .hp-hint-in { transform: none; }
-                }
-              `}</style>
-              <button
-                onClick={handleToggle}
-                className={`btn-ghost !p-2 rounded-full ${glow ? "hp-toggle-glow text-violet-500 dark:text-violet-300" : ""}`}
-                aria-label="Toggle theme"
-                title="Toggle theme"
-              >
-                {isDark ? <Sun size={18} /> : <Moon size={18} />}
-              </button>
-              {chipMounted && (
-                <div
-                  className={`hp-hint absolute right-0 top-full mt-2.5 z-30 ${
-                    chipIn ? "hp-hint-in" : "pointer-events-none"
-                  }`}
-                >
-                  <button
-                    type="button"
-                    onClick={handleToggle}
-                    className="hp-hint-bob inline-flex items-center gap-1.5 rounded-lg glass-strong px-3 py-1.5 text-xs font-semibold text-primary shadow-xl whitespace-nowrap hover:scale-[1.03] transition-transform"
-                  >
-                    <span className="absolute -top-1 right-3.5 h-2 w-2 rotate-45 rounded-[2px] glass-strong" />
-                    {isDark ? (
-                      <Sun size={13} className="text-amber-500" />
-                    ) : (
-                      <Moon size={13} className="text-violet-500 dark:text-violet-300" />
-                    )}
-                    Try {isDark ? "light" : "dark"} mode
-                  </button>
-                </div>
-              )}
-            </div>
             <Link to="/login" className="btn-secondary !py-2">
               Log in
             </Link>

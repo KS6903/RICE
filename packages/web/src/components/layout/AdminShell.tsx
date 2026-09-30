@@ -2,6 +2,7 @@ import { Outlet, NavLink, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { useAuthStore } from "../../stores/authStore";
 import { useThemeStore } from "../../stores/themeStore";
+import { useAccountTheme } from "../../hooks/useAccountTheme";
 import { adminService } from "../../services/AdminService";
 import {
   LayoutDashboard,
@@ -49,6 +50,7 @@ function ThemeToggle() {
 export default function AdminShell() {
   const { user, logout } = useAuthStore();
   const navigate = useNavigate();
+  useAccountTheme();
 
   const { data: pending } = useQuery({
     queryKey: ["admin-pending-upgrades"],

@@ -4,8 +4,10 @@ import Header from "./Header";
 import BillingNoticeBanner from "../BillingNoticeBanner";
 import VerifyEmailBanner from "../VerifyEmailBanner";
 import SubscriptionGuard from "../SubscriptionGuard";
+import { useAccountTheme } from "../../hooks/useAccountTheme";
 
 export default function AppShell() {
+  useAccountTheme();
   return (
     <div className="flex h-screen overflow-hidden">
       <Sidebar />
