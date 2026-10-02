@@ -79,6 +79,14 @@ def _deliver_notification_emails(ctx: JobContext) -> str:
     return ", ".join(f"{count} {name}" for name, count in outcome.items())
 
 
+def _prune_job_runs(ctx: JobContext) -> str:
+    from .runner import prune_job_runs
+
+    count = prune_job_runs(ctx.db, now=ctx.now)
+    ctx.db.commit()
+    return f"{count} old job run(s) deleted"
+
+
 JOBS: tuple[Job, ...] = (
     # Paid plans past their end date move to their queued plan or to Free.
     # Before this job that happened only lazily, on the tenant's own /auth/me
@@ -98,4 +106,7 @@ JOBS: tuple[Job, ...] = (
     # Notices that asked for email are sent after the work that produced them
     # committed, on the next tick, within a daily cap per tenant.
     Job("notifications.deliver_email", "tenant", every_tick(), _deliver_notification_emails),
+    # Every-tick jobs and recipes claim a row per tick; keep a month of history.
+    # A deleted run can't come round again: run keys are dates and times.
+    Job("job_runs.prune", "platform", daily(time(3, 30)), _prune_job_runs),
 )

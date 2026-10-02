@@ -72,7 +72,18 @@ def _serialize(db: Session, company_id: uuid.UUID, recipe: Recipe, rule: Automat
         "title": recipe.title,
         "description": recipe.description,
         "group": recipe.group,
-        "fields": [{"name": f.name, "label": f.label, "kind": f.kind, "help": f.help} for f in recipe.fields],
+        "section": recipe.section,
+        "fields": [
+            {
+                "name": f.name,
+                "label": f.label,
+                "kind": f.kind,
+                "help": f.help,
+                "unit": f.unit,
+                "options": [{"value": v, "label": label} for v, label in f.options],
+            }
+            for f in recipe.fields
+        ],
         "params": params.model_dump(),
         "enabled": bool(rule and rule.enabled),
         "recipients": chosen,

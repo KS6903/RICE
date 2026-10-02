@@ -54,8 +54,13 @@ class Field:
 
     name: str
     label: str
-    kind: Literal["time", "bool", "number", "money", "percent"]
+    kind: Literal["time", "bool", "number", "money", "percent", "select"]
     help: str = ""
+    unit: str = ""  # shown after a number, e.g. "hours"
+    options: tuple[tuple[str, str], ...] = ()  # (value, label) for a select
+
+
+Group = Literal["reports", "watch", "production", "stock", "receivables", "deliveries", "people"]
 
 
 @dataclass(frozen=True)
@@ -63,7 +68,7 @@ class Recipe:
     code: str
     title: str
     description: str  # one sentence, in the mill's terms
-    group: Literal["reports", "watch", "stock", "receivables"]
+    group: Group
     # The app section a recipient needs at least view access to. A digest full
     # of financial figures needs "reports", so a cashier can't receive it.
     section: str
