@@ -8,7 +8,7 @@
 pytest==9.0.3
 pytest-asyncio==1.4.0
 coverage==7.16.1
-ruff==0.16.8
+ruff==0.16.9
 mypy==1.13.0
 bandit==1.9.4
 pip-audit==2.10.1
