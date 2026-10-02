@@ -250,11 +250,13 @@ function AutomationCard({ automation, readOnly }: { automation: Automation; read
 
   const test = useMutation({
     mutationFn: () => automationsService.sendTest(automation.code),
-    onSuccess: () =>
+    onSuccess: ({ sent }) =>
       setTestNote(
-        params.email
-          ? "Sent to you. It's under the bell now, and the email follows within 15 minutes."
-          : "Sent to you. It's under the bell now.",
+        sent === 0
+          ? "Nothing to report right now, so nothing was sent. It will tell you when there is."
+          : params.email
+            ? "Sent to you. It's under the bell now, and the email follows within 15 minutes."
+            : "Sent to you. It's under the bell now.",
       ),
   });
 

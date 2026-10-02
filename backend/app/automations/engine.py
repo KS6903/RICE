@@ -31,7 +31,7 @@ from ..models.subscription import Subscription
 from ..models.user import User
 from ..services.notification_service import notify
 from ..services.subscription import is_active
-from .base import Notice, Recipe, RecipeContext
+from .base import Notice, Recipe, RecipeContext, RecipeProblem
 from .recipes import RECIPES
 
 logger = logging.getLogger("ricemill.automations")
@@ -140,6 +140,12 @@ def run_due_automations(ctx: JobContext) -> str:
             ctx.db.commit()
             finish_run(ctx.db, run_id, "succeeded", f"{new} notice(s) to {len(user_ids)} recipient(s)")
             ran += 1
+        except RecipeProblem as exc:
+            # Set up wrong (a deleted location, say): the owner reads why on the page.
+            ctx.db.rollback()
+            finish_run(ctx.db, run_id, "failed", str(exc)[:500])
+            logger.warning("automation can't run as set up", extra={"recipe": recipe.code})
+            failed += 1
         except Exception as exc:
             ctx.db.rollback()
             finish_run(ctx.db, run_id, "failed", f"{type(exc).__name__}: {exc}"[:500])
@@ -149,10 +155,13 @@ def run_due_automations(ctx: JobContext) -> str:
 
 
 def send_test(db: Session, company: Company, recipe: Recipe, user: User, *, now: datetime, zone) -> int:
-    """Build the recipe as of now and send it to one user only. Commits."""
+    """Build the recipe as of now and send it to one user only. Commits.
+
+    A test changes no remembered state (RecipeContext.test), and raises
+    RecipeProblem when the recipe can't run as set up."""
     rule = db.query(AutomationRule).filter(AutomationRule.recipe == recipe.code).first()
     params = parse_params(recipe, rule.params if rule else None)
-    notices = recipe.build(RecipeContext(db=db, company=company, now=now, zone=zone), params)
+    notices = recipe.build(RecipeContext(db=db, company=company, now=now, zone=zone, test=True), params)
     new = deliver(
         db,
         company,
