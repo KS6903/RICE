@@ -259,7 +259,7 @@ PALAY_PRICE_OUTLIER = Recipe(
 _UUID = r"([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})"
 # The dated records that can be edited after they're entered, by the API path
 # the edit was made through (as the mutation audit records it).
-_EDITABLE = (
+_EDITABLE: tuple[tuple[re.Pattern[str], type[PalayPurchase] | type[SalesOrder], str, str, str], ...] = (
     (re.compile(rf"^/api/paddy/purchases/{_UUID}$"), PalayPurchase, "reference_no", "palay purchase", "/paddy"),
     (re.compile(rf"^/api/sales/orders/{_UUID}$"), SalesOrder, "order_no", "sales order", "/sales"),
 )
@@ -296,7 +296,10 @@ def _late_edit(ctx: RecipeContext, params: BaseModel) -> list[Notice]:
             match = pattern.match(log.entity_label or "")
             if not match:
                 continue
-            record = db.get(model, uuid.UUID(match.group(1)))
+            record_id = uuid.UUID(match.group(1))
+            record: PalayPurchase | SalesOrder | None = (
+                db.get(PalayPurchase, record_id) if model is PalayPurchase else db.get(SalesOrder, record_id)
+            )
             if record is None or record.created_at is None:
                 break
             age = log.created_at - record.created_at
@@ -594,7 +597,7 @@ def _unusual_expense(ctx: RecipeContext, params: BaseModel) -> list[Notice]:
         ratio = Decimal(e.amount) / Decimal(avg)
         if ratio < Decimal(str(params.times)):
             continue
-        category = categories.get(e.category_id, "this category")
+        category = categories.get(e.category_id, "this category") if e.category_id else "this category"
         detail = f" {e.description.strip()}." if e.description and e.description.strip() else ""
         notices.append(
             Notice(
