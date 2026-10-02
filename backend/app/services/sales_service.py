@@ -15,7 +15,8 @@ from typing import Any, Sequence
 from sqlalchemy import func, update
 from sqlalchemy.orm import Session
 
-from ..core.exceptions import NotFoundError
+from ..automations import credit
+from ..core.exceptions import ConflictError, NotFoundError
 from ..models.reference import RiceVariety
 from ..models.sales import Invoice, Payment, PriceList, SalesOrder, SalesOrderItem
 from ..models.supplier_customer import Customer
@@ -93,6 +94,17 @@ class SalesService(BaseService):
         subtotal = sum(i.quantity_kg * i.unit_price_per_kg for i in data.items)
         discount = subtotal * (data.discount_pct / 100)
         total = subtotal - discount
+        # Enterprise credit-limit guard (automations): None unless it's on and
+        # this order takes the customer over their limit.
+        over = credit.check(self.db, self.current_user.company_id, data.customer_id, total)
+        approved = bool(over and data.approve_over_limit and credit.can_approve(self.current_user))
+        if over and over.mode == "block" and not approved:
+            who = (
+                "Approve it to go ahead."
+                if credit.can_approve(self.current_user)
+                else "An owner or admin can approve it."
+            )
+            raise ConflictError(f"{over.describe()} {who}", code="over_credit_limit")
         with self.transaction():
             order = self.orders.add(
                 SalesOrder(
@@ -113,6 +125,8 @@ class SalesService(BaseService):
             )
             for item in data.items:
                 self.db.add(SalesOrderItem(order_id=order.id, **item.model_dump()))
+            if over:
+                credit.report(self.db, self.current_user.company, over, order, self.current_user, approved=approved)
         self.db.refresh(order)
         return order
 

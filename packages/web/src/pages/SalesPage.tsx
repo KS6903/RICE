@@ -7,6 +7,18 @@ import { Plus, Power, History, ChevronDown, ChevronUp } from "lucide-react";
 import { format } from "date-fns";
 import { CUSTOMER_TYPES } from "@rice-mill/shared";
 import QuickAdd from "../components/QuickAdd";
+import { useAuthStore } from "../stores/authStore";
+
+type ApiError = { response?: { data?: { detail?: unknown; code?: string } } };
+
+function apiError(error: unknown): { message: string; code?: string } {
+  const data = (error as ApiError)?.response?.data;
+  return {
+    message:
+      typeof data?.detail === "string" ? data.detail : "The order couldn't be saved. Try again.",
+    code: data?.code,
+  };
+}
 
 function StatusBadge({ status }: { status: string }) {
   const map: Record<string, string> = {
@@ -100,12 +112,18 @@ export default function SalesPage() {
   });
 
   const createOrder = useMutation({
-    mutationFn: (body: typeof orderForm) => salesService.createOrder(body),
+    mutationFn: (body: typeof orderForm & { approve_over_limit?: boolean }) =>
+      salesService.createOrder(body),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["sales-orders"] });
       setShowOrderForm(false);
     },
   });
+  const orderError = createOrder.isError ? apiError(createOrder.error) : null;
+  // The credit-limit guard (Enterprise automations) may stop an order; owners
+  // and admins can approve it anyway.
+  const role = useAuthStore((s) => s.user?.role);
+  const canApprove = role === "owner" || role === "admin";
 
   const createInvoice = useMutation({
     mutationFn: (order_id: string) => salesService.createInvoice(order_id),
@@ -291,6 +309,24 @@ export default function SalesPage() {
               </div>
             ))}
           </div>
+          {orderError && (
+            <div
+              role="alert"
+              className="rounded-xl border border-rose-200 dark:border-rose-900/60 bg-rose-50 dark:bg-rose-950/30 p-3 space-y-2"
+            >
+              <p className="text-sm text-rose-700 dark:text-rose-300">{orderError.message}</p>
+              {orderError.code === "over_credit_limit" && canApprove && (
+                <button
+                  type="button"
+                  className="btn-secondary"
+                  onClick={() => createOrder.mutate({ ...orderForm, approve_over_limit: true })}
+                  disabled={createOrder.isPending}
+                >
+                  Approve over the limit
+                </button>
+              )}
+            </div>
+          )}
           <div className="flex gap-2 justify-end">
             <button onClick={() => setShowOrderForm(false)} className="btn-secondary">
               Cancel

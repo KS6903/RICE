@@ -14,19 +14,51 @@ from zoneinfo import ZoneInfo
 
 from ..core.timezones import DEFAULT_TIMEZONE, tenant_zone
 
-__all__ = ["DEFAULT_TIMEZONE", "Schedule", "daily", "every_tick", "hourly", "tenant_zone"]
+__all__ = ["DEFAULT_TIMEZONE", "Schedule", "daily", "every_tick", "hourly", "monthly", "tenant_zone", "weekly"]
 
 Schedule = Callable[[datetime, ZoneInfo], "str | None"]
 
 _UTC = ZoneInfo("UTC")
 
+MONDAY, SATURDAY, SUNDAY = 0, 5, 6
 
-def daily(at: time) -> Schedule:
-    """Due once a day from ``at`` local time; the run key is the local date."""
+
+def daily(at: time, *, days: frozenset[int] | None = None) -> Schedule:
+    """Due once a day from ``at`` local time; the run key is the local date.
+    ``days`` limits it to those weekdays (Monday is 0)."""
 
     def schedule(now: datetime, zone: ZoneInfo) -> str | None:
         local = now.astimezone(zone)
+        if days is not None and local.weekday() not in days:
+            return None
         return local.date().isoformat() if local.time() >= at else None
+
+    return schedule
+
+
+def weekly(weekday: int, at: time) -> Schedule:
+    """Due on that weekday (Monday is 0) from ``at`` local time until midnight;
+    the run key is the ISO week, e.g. 2026-W40."""
+
+    def schedule(now: datetime, zone: ZoneInfo) -> str | None:
+        local = now.astimezone(zone)
+        if local.weekday() != weekday or local.time() < at:
+            return None
+        year, week, _ = local.isocalendar()
+        return f"{year}-W{week:02d}"
+
+    return schedule
+
+
+def monthly(day: int, at: time) -> Schedule:
+    """Due from ``at`` local time on that day of the month until the month
+    ends; the run key is the month, e.g. 2026-10. Day 1 is the usual choice."""
+
+    def schedule(now: datetime, zone: ZoneInfo) -> str | None:
+        local = now.astimezone(zone)
+        if (local.day, local.time()) < (day, at):
+            return None
+        return f"{local.year}-{local.month:02d}"
 
     return schedule
 

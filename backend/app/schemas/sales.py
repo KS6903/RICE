@@ -46,6 +46,9 @@ class OrderCreate(BaseModel):
     discount_pct: Decimal = Decimal("0")
     remarks: str | None = None
     items: list[OrderItemIn]
+    # Only counts from an owner or admin, when the credit-limit guard would
+    # otherwise stop the order (automations, Enterprise).
+    approve_over_limit: bool = False
 
 
 class OrderUpdate(BaseModel):
