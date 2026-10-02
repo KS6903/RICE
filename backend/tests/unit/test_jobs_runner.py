@@ -166,6 +166,7 @@ def test_the_registered_jobs_run_cleanly(db_session, sessions, seed_owner):
             f"varieties.purge_stale[{company.id}]",
             f"invoices.mark_overdue[{company.id}]",
             f"automations.run[{company.id}]",
+            f"automations.run_ai[{company.id}]",
             f"notifications.deliver_email[{company.id}]",
         ]
     )
