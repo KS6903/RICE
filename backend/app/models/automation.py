@@ -1,11 +1,12 @@
 import uuid
+from datetime import datetime
 
-from sqlalchemy import Boolean, ForeignKey, String, UniqueConstraint
+from sqlalchemy import Boolean, DateTime, ForeignKey, String, UniqueConstraint
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from ..core.database import Base
-from .base import TimestampMixin
+from .base import TimestampMixin, now_utc
 
 
 class AutomationRule(Base, TimestampMixin):
@@ -32,3 +33,23 @@ class AutomationRule(Base, TimestampMixin):
     # or lost access to the recipe's section silently drops off.
     recipients: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
     updated_by: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"))
+
+
+class AutomationState(Base):
+    """A condition a recipe has already reported, so it isn't reported again
+    until it clears: rice that is still low on stock tomorrow is old news.
+
+    One row per (recipe, key) while the condition holds. The recipe deletes the
+    row when the condition clears, which re-arms it.
+    """
+
+    __tablename__ = "automation_state"
+    __table_args__ = (UniqueConstraint("recipe", "key", name="uq_automation_state_recipe_key"),)
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    company_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("companies.id", ondelete="CASCADE"), nullable=False
+    )
+    recipe: Mapped[str] = mapped_column(String(40), nullable=False)
+    key: Mapped[str] = mapped_column(String(120), nullable=False)
+    since: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=now_utc)

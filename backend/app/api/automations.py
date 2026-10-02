@@ -14,8 +14,10 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from ..automations import engine
-from ..automations.base import Recipe
+from ..automations.base import Field as RecipeField
+from ..automations.base import Recipe, RecipeProblem
 from ..automations.recipes import RECIPES
+from ..automations.sources import saved_locations
 from ..core.database import get_db
 from ..core.security import get_current_user, require_feature, require_section_access
 from ..core.timezones import tenant_zone
@@ -62,6 +64,12 @@ def _run_out(run: JobRun) -> dict:
     }
 
 
+def _tenant_options(db: Session, company_id: uuid.UUID, field: RecipeField) -> list[tuple[str, str]]:
+    if field.options_from == "saved_locations":
+        return [(str(loc.id), loc.label) for loc in saved_locations(db, company_id)]
+    return []
+
+
 def _serialize(db: Session, company_id: uuid.UUID, recipe: Recipe, rule: AutomationRule | None) -> dict:
     params = engine.parse_params(recipe, rule.params if rule else None)
     candidates = engine.eligible_users(db, company_id, recipe)
@@ -80,7 +88,9 @@ def _serialize(db: Session, company_id: uuid.UUID, recipe: Recipe, rule: Automat
                 "kind": f.kind,
                 "help": f.help,
                 "unit": f.unit,
-                "options": [{"value": v, "label": label} for v, label in f.options],
+                "options": [
+                    {"value": v, "label": label} for v, label in (*f.options, *_tenant_options(db, company_id, f))
+                ],
             }
             for f in recipe.fields
         ],
@@ -141,9 +151,13 @@ def update_automation(
 def send_test(code: str, current_user=Depends(get_current_user), db: Session = Depends(get_db)):
     recipe = _recipe(code)
     company = current_user.company
-    sent = engine.send_test(
-        db, company, recipe, current_user, now=datetime.now(timezone.utc), zone=tenant_zone(company.timezone)
-    )
+    try:
+        sent = engine.send_test(
+            db, company, recipe, current_user, now=datetime.now(timezone.utc), zone=tenant_zone(company.timezone)
+        )
+    except RecipeProblem as exc:
+        db.rollback()
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
     return {"sent": sent}
 
 

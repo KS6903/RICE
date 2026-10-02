@@ -149,6 +149,17 @@ describe("AutomationsPage", () => {
     );
   });
 
+  it("says so when a test had nothing to report", async () => {
+    useAuthStore.setState({ user: owner });
+    vi.spyOn(automationsService, "sendTest").mockResolvedValue({ sent: 0 });
+    draw();
+    await screen.findByRole("heading", { name: "Big transaction" });
+    const big = card("Big transaction");
+    fireEvent.click(within(big).getByRole("button", { name: "Settings" }));
+    fireEvent.click(within(big).getByRole("button", { name: /send me a test/i }));
+    expect(await within(big).findByText(/Nothing to report right now/)).toBeInTheDocument();
+  });
+
   it("is read-only for an accountant", async () => {
     useAuthStore.setState({ user: { ...owner, id: "u2", role: "accountant" } });
     draw();

@@ -27,12 +27,21 @@ class Notice:
     link: str | None = None
 
 
+class RecipeProblem(Exception):
+    """The recipe can't run as set up; the message tells the owner what to fix.
+    A scheduled run records it as the run's failure, and "Send me a test"
+    shows it."""
+
+
 @dataclass(frozen=True)
 class RecipeContext:
     db: Session  # on the tenant's schema
     company: Company
     now: datetime  # UTC
     zone: ZoneInfo  # the tenant's timezone
+    # "Send me a test": show everything that is true now, and change nothing
+    # (no remembered state), so a test can't swallow tomorrow's real alert.
+    test: bool = False
 
     @property
     def local_now(self) -> datetime:
@@ -58,6 +67,9 @@ class Field:
     help: str = ""
     unit: str = ""  # shown after a number, e.g. "hours"
     options: tuple[tuple[str, str], ...] = ()  # (value, label) for a select
+    # A select whose options are the tenant's own records, filled in by the API:
+    # "saved_locations" lists the weather locations the mill's users saved.
+    options_from: str = ""
 
 
 Group = Literal["reports", "watch", "production", "stock", "receivables", "deliveries", "people"]
