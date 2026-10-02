@@ -45,6 +45,8 @@ class RecipeContext:
     # "Send me a test": show everything that is true now, and change nothing
     # (no remembered state), so a test can't swallow tomorrow's real alert.
     test: bool = False
+    # The language the owner picked for AI-written text (automations.ai.LANGUAGES).
+    language: str = "en"
 
     @property
     def local_now(self) -> datetime:
@@ -75,7 +77,7 @@ class Field:
     options_from: str = ""
 
 
-Group = Literal["reports", "watch", "production", "stock", "receivables", "deliveries", "people"]
+Group = Literal["advisor", "reports", "watch", "production", "stock", "receivables", "deliveries", "people"]
 
 
 @dataclass(frozen=True)
@@ -93,3 +95,6 @@ class Recipe:
     fields: tuple[Field, ...]
     schedule: Callable[[BaseModel], Schedule]
     build: Callable[[RecipeContext, BaseModel], list[Notice]]
+    # Sends the mill's figures to DeepSeek (automations.ai): runs only once the
+    # owner has switched AI on, in its own job, and tests are rate-limited.
+    uses_ai: bool = False

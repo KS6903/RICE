@@ -169,6 +169,14 @@ forecast values already reduced to a fixed vocabulary of condition labels on our
 personal information and no Customer Data are transmitted to the language model provider. There is
 no chat interface and no free-text input path to that provider.
 
+7.4 The AI advisor (Enterprise plan) transmits Customer Data to the language model provider, DeepSeek,
+in the People's Republic of China, **only after your account's owner switches it on**, which is your
+documented instruction to do so; switching it off withdraws that instruction for all later
+processing. While it is on, we transmit figures computed from your records and the names of your
+customers, suppliers and staff, and never telephone numbers, addresses, tax identification numbers,
+government identifier numbers, or text your users typed into notes, remarks or descriptions. We
+record who switched it on or off and when. {{deepseek_training_optout}}
+
 ## 8. Audit
 
 8.1 On reasonable written notice, not more than once in any 12 months unless a breach has occurred

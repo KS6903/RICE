@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from ..base import Recipe
+from .advisor import ADVISOR_RECIPES
 from .deliveries import DELIVERY_RECIPES
 from .owner_digest import OWNER_DIGEST
 from .people import PEOPLE_RECIPES
@@ -15,6 +16,7 @@ from .watch import WATCH_RECIPES
 RECIPES: dict[str, Recipe] = {
     recipe.code: recipe
     for recipe in (
+        *ADVISOR_RECIPES,
         OWNER_DIGEST,
         *REPORT_RECIPES,
         *WATCH_RECIPES,

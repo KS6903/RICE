@@ -29,5 +29,8 @@
   "claim_window_months": "12",
   "data_export_window_days": "30",
   "data_deletion_days": "90",
-  "terms_change_notice_days": "30"
+  "terms_change_notice_days": "30",
+
+  "ai_advisor_effective_date": "2026-11-03",
+  "deepseek_training_optout": "TODO: opt the DeepSeek account the AI automations use out of model training (DeepSeek's privacy policy offers this), then replace this value with a sentence such as: We have opted our DeepSeek account out of that, so what we send is not used to train its models."
 }

@@ -53,3 +53,26 @@ class AutomationState(Base):
     recipe: Mapped[str] = mapped_column(String(40), nullable=False)
     key: Mapped[str] = mapped_column(String(120), nullable=False)
     since: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=now_utc)
+
+
+class AutomationSettings(Base, TimestampMixin):
+    """The tenant's choices that apply to every automation; one row.
+
+    AI recipes send the mill's records, names included, to DeepSeek outside the
+    Philippines. That needs the owner's own decision, so ai_enabled starts off,
+    only an owner can switch it on, and who did and when is kept. Switching it
+    off stops every AI recipe at once without touching their settings.
+    """
+
+    __tablename__ = "automation_settings"
+    __table_args__ = (UniqueConstraint("company_id", name="uq_automation_settings_company"),)
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    company_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("companies.id", ondelete="CASCADE"), nullable=False
+    )
+    ai_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    ai_language: Mapped[str] = mapped_column(String(10), nullable=False, default="en")
+    # The owner who last switched AI on or off, and when.
+    ai_changed_by: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"))
+    ai_changed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))

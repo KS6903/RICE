@@ -3,17 +3,21 @@
 Plan gate: require_feature("automations") answers 402 for tenants not on
 Enterprise. Role gate: the "automations" section; owners and admins manage,
 accountants can look, everyone else gets 403.
+
+AI recipes send the mill's records to DeepSeek, so they also need the tenant's
+AI switch on (PUT /ai), which only an owner can flip.
 """
 
 import uuid
 from datetime import datetime, timezone
+from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field, ValidationError
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from ..automations import engine
+from ..automations import ai, engine
 from ..automations.base import Field as RecipeField
 from ..automations.base import Recipe, RecipeProblem
 from ..automations.recipes import RECIPES
@@ -21,13 +25,19 @@ from ..automations.sources import saved_locations
 from ..core.database import get_db
 from ..core.security import get_current_user, require_feature, require_section_access
 from ..core.timezones import tenant_zone
-from ..models.automation import AutomationRule
+from ..models.automation import AutomationRule, AutomationSettings
 from ..models.job_run import JobRun
+from ..models.user import User
 
 router = APIRouter(
     dependencies=[Depends(require_feature("automations")), Depends(require_section_access("automations"))]
 )
 manage = [Depends(require_section_access("automations", write=True))]
+
+
+class AISettingsUpdate(BaseModel):
+    enabled: bool
+    language: Literal["en", "fil", "taglish"] = "en"
 
 
 class RuleUpdate(BaseModel):
@@ -104,6 +114,20 @@ def _serialize(db: Session, company_id: uuid.UUID, recipe: Recipe, rule: Automat
             for u in candidates
         ],
         "last_run": _last_run(db, company_id, recipe),
+        "uses_ai": recipe.uses_ai,
+    }
+
+
+def _ai_out(db: Session, company_id: uuid.UUID) -> dict:
+    settings = engine.ai_settings(db, company_id)
+    changed_by = db.get(User, settings.ai_changed_by) if settings and settings.ai_changed_by else None
+    return {
+        "enabled": bool(settings and settings.ai_enabled),
+        "language": settings.ai_language if settings else "en",
+        "languages": [{"value": code, "label": label.split(":")[0]} for code, label in ai.LANGUAGES.items()],
+        "configured": ai.configured(),
+        "changed_by": (changed_by.full_name or changed_by.username) if changed_by else None,
+        "changed_at": settings.ai_changed_at.isoformat() if settings and settings.ai_changed_at else None,
     }
 
 
@@ -113,8 +137,30 @@ def list_automations(current_user=Depends(get_current_user), db: Session = Depen
     return {
         "recipes": [
             _serialize(db, current_user.company_id, recipe, rules.get(code)) for code, recipe in RECIPES.items()
-        ]
+        ],
+        "ai": _ai_out(db, current_user.company_id),
     }
+
+
+@router.put("/ai", dependencies=manage)
+def update_ai(body: AISettingsUpdate, current_user=Depends(get_current_user), db: Session = Depends(get_db)):
+    """Switch AI on or off for the mill's automations, and pick its language.
+    Owner only: it sends the mill's records abroad, the owner's decision to make."""
+    if not current_user.role or current_user.role.name != "owner":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="Only the mill's owner can change the AI settings."
+        )
+    settings = engine.ai_settings(db, current_user.company_id)
+    if settings is None:
+        settings = AutomationSettings(company_id=current_user.company_id)
+        db.add(settings)
+    if bool(settings.ai_enabled) != body.enabled:
+        settings.ai_changed_by = current_user.id
+        settings.ai_changed_at = datetime.now(timezone.utc)
+    settings.ai_enabled = body.enabled
+    settings.ai_language = body.language
+    db.commit()
+    return _ai_out(db, current_user.company_id)
 
 
 @router.put("/{code}", dependencies=manage)
@@ -122,6 +168,11 @@ def update_automation(
     code: str, body: RuleUpdate, current_user=Depends(get_current_user), db: Session = Depends(get_db)
 ):
     recipe = _recipe(code)
+    if recipe.uses_ai and body.enabled and not engine.ai_enabled(db, current_user.company_id):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Switch on AI for your automations first, at the top of the AI advisor section.",
+        )
     try:
         params = engine.parse_params(recipe, body.params)
     except ValidationError as exc:
@@ -156,7 +207,7 @@ def send_test(code: str, current_user=Depends(get_current_user), db: Session = D
             db, company, recipe, current_user, now=datetime.now(timezone.utc), zone=tenant_zone(company.timezone)
         )
     except RecipeProblem as exc:
-        db.rollback()
+        # Raised before anything is written: nothing to undo.
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
     return {"sent": sent}
 

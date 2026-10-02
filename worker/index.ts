@@ -32,6 +32,7 @@ export interface Env {
   GOOGLE_CLIENT_ID?: string;
   GOOGLE_WEATHER_API_KEY?: string;
   DEEPSEEK_API_KEY?: string;
+  DEEPSEEK_AUTOMATIONS_API_KEY?: string;
 }
 
 type ContainerRole = keyof typeof containerEnv.roles;

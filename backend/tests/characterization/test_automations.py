@@ -66,7 +66,8 @@ def test_accountants_can_look_but_not_change(make_auth_client):
 
 
 def test_the_owner_sees_the_morning_summary_with_its_defaults(auth_client):
-    digest = auth_client.get("/api/automations/").json()["recipes"][0]
+    recipes = auth_client.get("/api/automations/").json()["recipes"]
+    [digest] = [r for r in recipes if r["code"] == "owner_digest"]
     assert digest["code"] == "owner_digest"
     assert digest["enabled"] is False
     assert digest["params"] == {"send_at": "06:00", "email": True}

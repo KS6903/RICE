@@ -38,7 +38,7 @@ from pathlib import Path
 # Bump when any document in the bundle changes materially. This forces every
 # account back through the acceptance gate, so treat it as a product decision:
 # a typo fix does not warrant it, a new limitation of liability does.
-AGREEMENT_VERSION = "2026.09.1"
+AGREEMENT_VERSION = "2026.11.1"
 
 _PLACEHOLDER_RE = re.compile(r"\{\{\s*([a-z0-9_]+)\s*\}\}")
 _TODO_SENTINEL = "TODO:"
@@ -71,8 +71,8 @@ DOCUMENTS: tuple[LegalDocument, ...] = (
     LegalDocument(
         key="privacy",
         title="Privacy Policy",
-        version="1.0",
-        effective_date=date(2026, 9, 24),
+        version="1.1",
+        effective_date=date(2026, 11, 3),
         filename="privacy-policy.md",
         summary="How we handle personal information under the Data Privacy Act of 2012, and the "
         "rights you have over it.",
@@ -80,8 +80,8 @@ DOCUMENTS: tuple[LegalDocument, ...] = (
     LegalDocument(
         key="dpa",
         title="Data Processing Addendum",
-        version="1.0",
-        effective_date=date(2026, 9, 24),
+        version="1.1",
+        effective_date=date(2026, 11, 3),
         filename="data-processing-addendum.md",
         summary="The written outsourcing contract required by section 21 of the Data Privacy Act, "
         "covering security measures, sub-processors, audit and breach notification.",
@@ -97,8 +97,8 @@ DOCUMENTS: tuple[LegalDocument, ...] = (
     LegalDocument(
         key="subprocessors",
         title="Sub-processor register",
-        version="1.0",
-        effective_date=date(2026, 9, 24),
+        version="1.1",
+        effective_date=date(2026, 11, 3),
         filename="subprocessors.md",
         summary="Every third party that processes data for us, what it receives, and where.",
         # Informational: it changes on its own 30-day notice cycle and must not

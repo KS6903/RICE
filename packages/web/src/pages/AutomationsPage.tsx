@@ -9,6 +9,7 @@ import {
   History,
   Send,
   ShieldAlert,
+  Sparkles,
   Sunrise,
   Truck,
   Users,
@@ -19,6 +20,7 @@ import {
 import { useAccess } from "../hooks/useAccess";
 import {
   automationsService,
+  type AISettings,
   type Automation,
   type AutomationField,
   type AutomationGroup,
@@ -29,6 +31,13 @@ type Params = Automation["params"];
 
 // Page order. A group shows only once it has recipes.
 const GROUPS: { key: AutomationGroup; title: string; blurb: string; icon: LucideIcon }[] = [
+  {
+    key: "advisor",
+    title: "AI advisor",
+    blurb:
+      "Advice written by AI from your own figures: what to do today, what to buy, where money leaks.",
+    icon: Sparkles,
+  },
   {
     key: "reports",
     title: "Reports and summaries",
@@ -221,7 +230,16 @@ function FieldInput({
   );
 }
 
-function AutomationCard({ automation, readOnly }: { automation: Automation; readOnly: boolean }) {
+function AutomationCard({
+  automation,
+  readOnly,
+  aiOff = false,
+}: {
+  automation: Automation;
+  readOnly: boolean;
+  /** An AI recipe while the mill's AI switch is off: it can't be switched on. */
+  aiOff?: boolean;
+}) {
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
   const [params, setParams] = useState<Params>(automation.params);
@@ -284,12 +302,21 @@ function AutomationCard({ automation, readOnly }: { automation: Automation; read
     <article className="card space-y-4" aria-labelledby={`title-${automation.code}`}>
       <div className="flex items-start gap-4">
         <div className="min-w-0 flex-1">
-          <h3 id={`title-${automation.code}`} className="text-base font-bold text-primary">
-            {automation.title}
-          </h3>
+          <div className="flex items-center gap-2 flex-wrap">
+            <h3 id={`title-${automation.code}`} className="text-base font-bold text-primary">
+              {automation.title}
+            </h3>
+            {automation.uses_ai && <span className="badge-violet">AI</span>}
+          </div>
           <p className="text-sm text-secondary mt-0.5 max-w-prose">{automation.description}</p>
           <div className="mt-2">
-            {automation.last_run ? (
+            {aiOff ? (
+              <span className="text-sm text-muted">
+                {automation.enabled
+                  ? "Paused: AI is switched off."
+                  : "Switch on AI above to use this."}
+              </span>
+            ) : automation.last_run ? (
               <RunLine run={automation.last_run} />
             ) : (
               <span className="text-sm text-muted">
@@ -307,7 +334,7 @@ function AutomationCard({ automation, readOnly }: { automation: Automation; read
             role="switch"
             aria-checked={enabled}
             aria-label={`${automation.title}: ${enabled ? "on" : "off"}`}
-            disabled={readOnly || save.isPending}
+            disabled={readOnly || save.isPending || (aiOff && !automation.enabled)}
             onClick={() => save.mutate(!automation.enabled)}
             className={`relative h-7 w-12 rounded-full transition-colors disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-500 ${
               enabled ? "bg-emerald-600" : "bg-slate-300 dark:bg-slate-600"
@@ -468,11 +495,121 @@ function AutomationCard({ automation, readOnly }: { automation: Automation; read
   );
 }
 
+function AISettingsCard({ ai, isOwner }: { ai: AISettings; isOwner: boolean }) {
+  const queryClient = useQueryClient();
+  const [language, setLanguage] = useState(ai.language);
+  useEffect(() => setLanguage(ai.language), [ai.language]);
+  const save = useMutation({
+    mutationFn: (enabled: boolean) => automationsService.updateAI({ enabled, language }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["automations"] }),
+  });
+  const since = ai.changed_at
+    ? new Date(ai.changed_at).toLocaleDateString(undefined, {
+        day: "numeric",
+        month: "long",
+        year: "numeric",
+      })
+    : null;
+
+  return (
+    <div className="card space-y-4 border border-violet-200 dark:border-violet-900/50">
+      <div className="flex items-start justify-between gap-4 flex-wrap">
+        <div className="max-w-prose space-y-2">
+          <p className="font-semibold text-primary">
+            {ai.enabled ? "AI is on for your automations." : "AI is off."}
+          </p>
+          <p className="text-sm text-secondary">
+            When it's on, the AI recipes below send your mill's figures to DeepSeek, an AI service
+            outside the Philippines, to write their advice: sales, purchases, stock, and the names
+            of customers, suppliers and staff. Phone numbers, addresses, TINs, government ID numbers
+            and anything typed into notes are never sent. Oryza works out every number itself, and
+            each message shows those figures so you can check the advice. AI can still be wrong:
+            check before you act.
+          </p>
+          {ai.enabled && ai.changed_by && since && (
+            <p className="text-xs text-muted">
+              Switched on by {ai.changed_by} on {since}.
+            </p>
+          )}
+          {!ai.configured && (
+            <p className="text-xs text-amber-700 dark:text-amber-400">
+              AI isn't set up on this server yet, so these send their figures without the advice.
+            </p>
+          )}
+          {!isOwner && (
+            <p className="text-xs text-muted">Only the mill's owner can switch AI on or off.</p>
+          )}
+        </div>
+        {isOwner && (
+          <div className="space-y-3 shrink-0">
+            <div>
+              <label htmlFor="ai-language" className="form-label">
+                Write the advice in
+              </label>
+              <select
+                id="ai-language"
+                className="input max-w-[16rem]"
+                value={language}
+                onChange={(e) => setLanguage(e.target.value)}
+              >
+                {ai.languages.map((l) => (
+                  <option key={l.value} value={l.value}>
+                    {l.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="flex gap-2 flex-wrap">
+              {ai.enabled ? (
+                <>
+                  {language !== ai.language && (
+                    <button
+                      type="button"
+                      className="btn-primary"
+                      disabled={save.isPending}
+                      onClick={() => save.mutate(true)}
+                    >
+                      Save language
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    className="btn-secondary"
+                    disabled={save.isPending}
+                    onClick={() => save.mutate(false)}
+                  >
+                    Switch AI off
+                  </button>
+                </>
+              ) : (
+                <button
+                  type="button"
+                  className="btn-primary"
+                  disabled={save.isPending}
+                  onClick={() => save.mutate(true)}
+                >
+                  <Sparkles size={15} />I agree, switch AI on
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+      {save.isError && (
+        <p className="text-sm text-rose-600 dark:text-rose-400" role="alert">
+          {errorText(save.error, "Couldn't change the AI setting. Try again.")}
+        </p>
+      )}
+    </div>
+  );
+}
+
 export default function AutomationsPage() {
-  const { isReadOnly } = useAccess();
+  const { isReadOnly, role } = useAccess();
   const readOnly = isReadOnly("automations");
   const list = useQuery({ queryKey: ["automations"], queryFn: () => automationsService.list() });
   const recipes = list.data?.recipes ?? [];
+  const ai = list.data?.ai;
   const onCount = recipes.filter((r) => r.enabled).length;
 
   return (
@@ -524,12 +661,16 @@ export default function AutomationsPage() {
                   <p className="text-sm text-secondary">{group.blurb}</p>
                 </div>
               </div>
+              {group.key === "advisor" && ai && (
+                <AISettingsCard ai={ai} isOwner={role === "owner"} />
+              )}
               <div className="grid gap-3">
                 {items.map((automation) => (
                   <AutomationCard
                     key={automation.code}
                     automation={automation}
                     readOnly={readOnly}
+                    aiOff={Boolean(automation.uses_ai && !ai?.enabled)}
                   />
                 ))}
               </div>
