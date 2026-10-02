@@ -57,7 +57,8 @@ def _cover_line(what: str, left: Decimal, per_day: Decimal, verb: str) -> str:
         return f"{what}: none left. You've {verb} about {kg(per_day)} a day this past month."
     days = int(left / per_day)
     pace = "less than a day" if days < 1 else f"about {plural(days, 'day')}"
-    return f"{what}: {kg(left)} left, {pace} at your usual pace"
+    ahead = "at your usual pace" if verb == "sold" else "of milling"
+    return f"{what}: {kg(left)} left, {pace} {ahead}"
 
 
 class LowStockParams(BaseModel):
