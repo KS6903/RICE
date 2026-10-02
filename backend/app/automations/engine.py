@@ -17,7 +17,7 @@ from __future__ import annotations
 import logging
 import uuid
 from collections.abc import Sequence
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from pydantic import BaseModel, ValidationError
 from sqlalchemy.orm import Session
@@ -25,8 +25,9 @@ from sqlalchemy.orm import Session
 from ..core.security import SECTION_ACCESS
 from ..jobs.registry import JobContext
 from ..jobs.runner import claim_run, finish_run
-from ..models.automation import AutomationRule
+from ..models.automation import AutomationRule, AutomationSettings
 from ..models.company import Company
+from ..models.notification import Notification
 from ..models.subscription import Subscription
 from ..models.user import User
 from ..services.notification_service import attach, notify
@@ -111,20 +112,38 @@ def deliver(
     return new
 
 
-def run_due_automations(ctx: JobContext) -> str:
+def ai_settings(db: Session, company_id: uuid.UUID) -> AutomationSettings | None:
+    return db.query(AutomationSettings).filter(AutomationSettings.company_id == company_id).first()
+
+
+def ai_enabled(db: Session, company_id: uuid.UUID) -> bool:
+    settings = ai_settings(db, company_id)
+    return bool(settings and settings.ai_enabled)
+
+
+def run_due_automations(ctx: JobContext, *, ai: bool = False) -> str:
+    """Run the due recipes of one kind: rule-based ones (automations.run), or
+    the AI ones (automations.run_ai), which are slow and run in their own job
+    so they never hold up the rest."""
     company = ctx.company
     assert company is not None, "automations are a tenant job"
-    rules = ctx.db.query(AutomationRule).filter(AutomationRule.enabled.is_(True)).all()
+    rules = [
+        rule
+        for rule in ctx.db.query(AutomationRule).filter(AutomationRule.enabled.is_(True)).all()
+        if rule.recipe in RECIPES and RECIPES[rule.recipe].uses_ai == ai
+    ]
     if not rules:
         return "no automations switched on"
     if not entitled(ctx.db, company.id):
         return f"{len(rules)} automation(s) paused: the plan doesn't include automations"
+    settings = ai_settings(ctx.db, company.id)
+    if ai and not (settings and settings.ai_enabled):
+        return f"{len(rules)} AI automation(s) paused: AI is switched off"
+    language = settings.ai_language if settings else "en"
 
     ran = failed = 0
     for rule in rules:
-        recipe = RECIPES.get(rule.recipe)
-        if recipe is None:
-            continue
+        recipe = RECIPES[rule.recipe]
         try:
             params = parse_params(recipe, rule.params)
         except ValidationError:
@@ -137,7 +156,8 @@ def run_due_automations(ctx: JobContext) -> str:
         if run_id is None:
             continue
         try:
-            notices = recipe.build(RecipeContext(db=ctx.db, company=company, now=ctx.now, zone=ctx.zone), params)
+            context = RecipeContext(db=ctx.db, company=company, now=ctx.now, zone=ctx.zone, language=language)
+            notices = recipe.build(context, params)
             user_ids = recipient_ids(ctx.db, company.id, recipe, rule.recipients or [])
             new = deliver(ctx.db, company, recipe, notices, user_ids, email=bool(getattr(params, "email", True)))
             ctx.db.commit()
@@ -157,6 +177,10 @@ def run_due_automations(ctx: JobContext) -> str:
     return f"{ran} automation(s) ran, {failed} failed"
 
 
+# Each AI test is a paid model call: one per recipe per this long.
+AI_TEST_COOLDOWN = timedelta(minutes=10)
+
+
 def send_test(db: Session, company: Company, recipe: Recipe, user: User, *, now: datetime, zone) -> int:
     """Build the recipe as of now and send it to one user only. Commits.
 
@@ -164,7 +188,25 @@ def send_test(db: Session, company: Company, recipe: Recipe, user: User, *, now:
     RecipeProblem when the recipe can't run as set up."""
     rule = db.query(AutomationRule).filter(AutomationRule.recipe == recipe.code).first()
     params = parse_params(recipe, rule.params if rule else None)
-    notices = recipe.build(RecipeContext(db=db, company=company, now=now, zone=zone, test=True), params)
+    settings = ai_settings(db, company.id)
+    if recipe.uses_ai:
+        if not (settings and settings.ai_enabled):
+            raise RecipeProblem("Switch on AI for your automations first, at the top of the AI advisor section.")
+        recent = (
+            db.query(Notification.id)
+            .filter(
+                Notification.kind == job_name(recipe.code),
+                Notification.dedupe_key.like("%:test:%"),
+                Notification.created_at >= now - AI_TEST_COOLDOWN,
+            )
+            .first()
+        )
+        if recent is not None:
+            raise RecipeProblem("Each AI test costs a little. Try this one again in a few minutes.")
+    context = RecipeContext(
+        db=db, company=company, now=now, zone=zone, test=True, language=settings.ai_language if settings else "en"
+    )
+    notices = recipe.build(context, params)
     new = deliver(
         db,
         company,

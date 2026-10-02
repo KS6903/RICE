@@ -31,7 +31,13 @@
       "REDIS_URL",
       "SMTP_PASSWORD"
     ],
-    "optional": ["COOKIE_DOMAIN", "GOOGLE_CLIENT_ID", "GOOGLE_WEATHER_API_KEY", "DEEPSEEK_API_KEY"]
+    "optional": [
+      "COOKIE_DOMAIN",
+      "GOOGLE_CLIENT_ID",
+      "GOOGLE_WEATHER_API_KEY",
+      "DEEPSEEK_API_KEY",
+      "DEEPSEEK_AUTOMATIONS_API_KEY"
+    ]
   },
   "roles": {
     "api": {

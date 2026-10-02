@@ -1,6 +1,6 @@
 from .activity import ActivityLog
 from .auth_session import AuthSession
-from .automation import AutomationRule, AutomationState
+from .automation import AutomationRule, AutomationSettings, AutomationState
 from .company import Branch, Company
 from .compliance import ComplianceReport
 from .costs import Expense, ExpenseCategory
@@ -32,6 +32,7 @@ from .warehouse import Pallet, PalletMovement, RiceBatch, WarehouseLayout, Wareh
 
 __all__ = [
     "AutomationRule",
+    "AutomationSettings",
     "AutomationState",
     "JobRun",
     "Notification",

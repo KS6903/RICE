@@ -111,6 +111,22 @@ the code is worth considerably more than a promise in a policy.
 `ipapi.co` is the exception: it receives an IP address, and only when no coordinates are supplied.
 It is disclosed as such.
 
+**Changed (October 2026): the AI advisor.** Enterprise mills can now have DeepSeek write advice from
+their own figures, and that sends personal information abroad: the names of customers, suppliers and
+staff, with sales and purchase figures, to the People's Republic of China. Still open, for counsel:
+
+- **Consent and lawful basis.** It is off until the mill's owner switches it on, after a plain
+  disclosure; the switch records who and when. The mill is the Controller for its customers' and
+  workers' names, so the question is whether the mill's own notices to those people cover this
+  transfer. The employee privacy notice template may need a line on it.
+- **DeepSeek's terms.** Its privacy policy (10 February 2026) says it stores data in the PRC, keeps
+  inputs for as long as the account exists, and may use them to train its models unless the account
+  holder opts out. The documents carry a `deepseek_training_optout` TODO, which blocks the production
+  gate until the opt-out is done and the sentence filled in.
+- **Minimisation, as code.** No phone numbers, addresses, TINs, government IDs or user free text are
+  selected for these prompts. `test_every_ai_recipe_runs_and_sends_nothing_private` plants each of
+  them and fails if any reaches the model.
+
 ### 7. Tenant isolation
 
 A cross-tenant data leak is the single most reliable way for a B2B SaaS to be sued by every customer

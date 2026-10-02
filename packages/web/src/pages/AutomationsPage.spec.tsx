@@ -173,3 +173,62 @@ describe("AutomationsPage", () => {
     expect(screen.queryByRole("button", { name: /send me a test/i })).toBeNull();
   });
 });
+
+const briefing: Automation = {
+  ...digest,
+  code: "ai_briefing",
+  title: "Morning briefing",
+  description: "What to do first today.",
+  group: "advisor",
+  uses_ai: true,
+};
+
+const aiOff = {
+  enabled: false,
+  language: "en",
+  languages: [
+    { value: "en", label: "English" },
+    { value: "taglish", label: "Taglish" },
+  ],
+  configured: true,
+  changed_by: null,
+  changed_at: null,
+};
+
+describe("AutomationsPage AI advisor", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+    useAuthStore.setState({ user: null });
+  });
+
+  it("keeps AI recipes off until the owner agrees, then sends the chosen language", async () => {
+    useAuthStore.setState({ user: owner });
+    vi.spyOn(automationsService, "list").mockResolvedValue({ recipes: [briefing], ai: aiOff });
+    const updateAI = vi
+      .spyOn(automationsService, "updateAI")
+      .mockResolvedValue({ ...aiOff, enabled: true, language: "taglish" });
+    draw();
+    const advisor = await screen.findByRole("region", { name: "AI advisor" });
+    expect(within(advisor).getByText("AI is off.")).toBeInTheDocument();
+    expect(within(advisor).getByText(/never sent/)).toBeInTheDocument();
+    expect(within(card("Morning briefing")).getByRole("switch")).toBeDisabled();
+    expect(within(card("Morning briefing")).getByText("AI")).toBeInTheDocument();
+
+    fireEvent.change(within(advisor).getByLabelText("Write the advice in"), {
+      target: { value: "taglish" },
+    });
+    fireEvent.click(within(advisor).getByRole("button", { name: /I agree, switch AI on/ }));
+    await waitFor(() =>
+      expect(updateAI).toHaveBeenCalledWith({ enabled: true, language: "taglish" }),
+    );
+  });
+
+  it("lets only the owner change it", async () => {
+    useAuthStore.setState({ user: { ...owner, id: "u3", role: "admin" } });
+    vi.spyOn(automationsService, "list").mockResolvedValue({ recipes: [briefing], ai: aiOff });
+    draw();
+    const advisor = await screen.findByRole("region", { name: "AI advisor" });
+    expect(within(advisor).getByText(/Only the mill's owner/)).toBeInTheDocument();
+    expect(within(advisor).queryByRole("button", { name: /switch AI on/ })).toBeNull();
+  });
+});

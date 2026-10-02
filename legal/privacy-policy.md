@@ -68,7 +68,10 @@ the Data Privacy Act defines it, in particular:
 - salary and employment details.
 
 We hold this only to run the service for the mill. We do not use it for our own purposes, do not
-sell it, and do not use it to train any machine learning or artificial intelligence model.
+sell it, and do not use it to train any machine learning or artificial intelligence model. If the
+mill's owner switches on the AI advisor, figures and names from these records are sent to DeepSeek to
+write the mill's advice, as section 4.2 describes; government identifier numbers, addresses and
+telephone numbers never are.
 
 ### 2.5 Billing information
 
@@ -98,13 +101,26 @@ We use the service providers listed in the [Sub-processor register](/legal/subpr
 bound to process information only on our instructions and to protect it. The register names each
 provider, what it receives, why, and where it processes.
 
-### 4.2 The Drying Advisor and cross-border processing
+### 4.2 DeepSeek, the AI language model provider, and cross-border processing
 
-The Drying Advisor sends data to an automated language model operated by DeepSeek, whose processing
-takes place outside the Philippines. **We send only weather data: coordinates, place name, and
-forecast values already reduced to a fixed set of condition labels on our own servers.** No
-personal information, no account information, and no mill records are sent. There is no chat, no
-free-text field, and no way for you to send your own text to the model through this feature.
+Two features use automated language models operated by DeepSeek, whose processing takes place in the
+People's Republic of China.
+
+**The Drying Advisor** sends only weather data: coordinates, place name, and forecast values already
+reduced to a fixed set of condition labels on our own servers. No personal information, no account
+information, and no mill records are sent.
+
+**The AI advisor** (Enterprise plan only) is off until the mill's owner switches it on, and the owner
+can switch it off at any time. While it is on, its recipes send DeepSeek figures computed from the
+mill's records (purchases, milling, stock, sales, invoices, payments and expenses) together with the
+names of the mill's customers, suppliers and staff, so that it can write advice for the mill. **They
+never send** telephone numbers, addresses, tax identification numbers, government identifier numbers,
+or anything a user typed into a note, remark or description. Neither feature has a chat or free-text
+path: you cannot send your own text to the model.
+
+DeepSeek's own privacy policy says it may keep what it receives for as long as the account that sent
+it exists, and may use it to improve its models unless the account holder opts out.
+{{deepseek_training_optout}}
 
 Some of our other providers also process outside the Philippines, including in the United States and
 the European Union. Where information crosses a border we remain accountable for it under section 21

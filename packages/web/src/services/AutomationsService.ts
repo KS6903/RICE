@@ -22,7 +22,14 @@ export type AutomationRun = {
 export type AutomationCandidate = { id: string; name: string; role: string | null };
 
 export type AutomationGroup =
-  "reports" | "watch" | "production" | "stock" | "receivables" | "deliveries" | "people";
+  | "advisor"
+  | "reports"
+  | "watch"
+  | "production"
+  | "stock"
+  | "receivables"
+  | "deliveries"
+  | "people";
 
 export type Automation = {
   code: string;
@@ -38,6 +45,18 @@ export type Automation = {
   default_roles: string[];
   candidates: AutomationCandidate[];
   last_run: AutomationRun | null;
+  /** Sends the mill's figures to DeepSeek; needs the owner's AI switch on. */
+  uses_ai?: boolean;
+};
+
+export type AISettings = {
+  enabled: boolean;
+  language: string;
+  languages: { value: string; label: string }[];
+  /** False when the server has no DeepSeek key: AI recipes send figures only. */
+  configured: boolean;
+  changed_by: string | null;
+  changed_at: string | null;
 };
 
 export type AutomationUpdate = {
@@ -49,8 +68,12 @@ export type AutomationUpdate = {
 export class AutomationsService {
   constructor(private http = api) {}
 
-  list(): Promise<{ recipes: Automation[] }> {
+  list(): Promise<{ recipes: Automation[]; ai?: AISettings }> {
     return this.http.get("/automations/").then((r) => r.data);
+  }
+
+  updateAI(body: { enabled: boolean; language: string }): Promise<AISettings> {
+    return this.http.put("/automations/ai", body).then((r) => r.data);
   }
 
   update(code: string, body: AutomationUpdate): Promise<Automation> {

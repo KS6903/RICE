@@ -72,6 +72,12 @@ def _run_automations(ctx: JobContext) -> str:
     return run_due_automations(ctx)
 
 
+def _run_ai_automations(ctx: JobContext) -> str:
+    from ..automations.engine import run_due_automations
+
+    return run_due_automations(ctx, ai=True)
+
+
 def _deliver_notification_emails(ctx: JobContext) -> str:
     from ..services.notification_service import deliver_pending_emails
 
@@ -119,4 +125,8 @@ JOBS: tuple[Job, ...] = (
     # Every-tick jobs and recipes claim a row per tick; keep a month of history.
     # A deleted run can't come round again: run keys are dates and times.
     Job("job_runs.prune", "platform", daily(time(3, 30)), _prune_job_runs),
+    # AI recipes (once the owner switches AI on) last: a model call can take a
+    # couple of minutes, and the tick's time budget must not run out before the
+    # quick work and the emails are done. Their emails go out on the next tick.
+    Job("automations.run_ai", "tenant", every_tick(), _run_ai_automations),
 )

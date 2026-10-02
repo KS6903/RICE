@@ -124,11 +124,16 @@ class Settings(BaseSettings):
     # configured" (501) when unset; nothing else in the app depends on it.
     DEEPSEEK_API_KEY: SecretStr | None = None
     DEEPSEEK_BASE_URL: str = "https://api.deepseek.com"
-    # v4-flash only, and only here — no other feature calls DeepSeek. The old
-    # "deepseek-chat" alias now maps to this same model anyway and is being
-    # retired 2026-07-24, so this pins the real identifier rather than riding
-    # a soon-dead legacy name.
+    # The Drying Advisor's model. The old "deepseek-chat" alias now maps to
+    # this same model anyway and is being retired 2026-07-24, so this pins the
+    # real identifier rather than riding a soon-dead legacy name.
     DEEPSEEK_MODEL: str = "deepseek-flash"
+    # The Enterprise AI automations (app/automations/ai.py) use the strongest
+    # model: they reason over a mill's own figures, a few calls per tenant a
+    # day. Their own key when set (to bill or rotate it apart), else the one
+    # above.
+    DEEPSEEK_AUTOMATIONS_API_KEY: SecretStr | None = None
+    DEEPSEEK_AUTOMATIONS_MODEL: str = "deepseek-v4-pro"
     # Advisory calls cost money per request; kept tight since the endpoint is
     # also cached server-side for hours per location/day (see TTL_DRYING_ADVISORY).
     RATE_LIMIT_DRYING_ADVISOR: str = "10/hour"
