@@ -92,7 +92,7 @@ def test_low_recovery_and_high_broken_rice_are_flagged(db_session, company, vari
             "Poor milling batch: MB-LOW",
             "Recovery 59.0%: 590 kg of rice from 1,000 kg of palay. Expected about 65%.",
         ),
-        ("Poor milling batch: MB-BROKEN", "Broken rice 22%, over your 15% limit."),
+        ("Poor milling batch: MB-BROKEN", "Broken rice 22.0%, over your 15% limit."),
     ]
 
 
@@ -176,7 +176,7 @@ def test_low_stock_is_reported_when_it_starts_and_again_after_a_restock(db_sessi
 
     [first] = _build(db_session, company, "low_stock", days=7)
     assert first.title == "Running low: 1 item"
-    assert first.body == "RC222 Premium rice: 400 kg left, about 4 days at your usual pace"
+    assert first.body == "RC222 (grade Premium) rice: 400 kg left, about 4 days at your usual pace"
     # The next morning it's still low: nothing new to say.
     assert _build(db_session, company, "low_stock", now=NOW + timedelta(days=1), days=7) == []
     # A test always shows the current state, and doesn't change what's remembered.
@@ -309,7 +309,7 @@ def test_stock_below_zero_is_flagged_once(db_session, company, variety, seed_own
     )
     db_session.flush()
     [notice] = _build(db_session, company, "negative_stock")
-    assert notice.body.splitlines()[:2] == ["Rice bran: -40 kg", "RC222 Premium rice: -250 kg"]
+    assert notice.body.splitlines()[:2] == ["Rice bran: -40 kg", "RC222 (grade Premium) rice: -250 kg"]
     assert _build(db_session, company, "negative_stock", now=NOW + timedelta(days=1)) == []
 
 
@@ -385,3 +385,11 @@ def test_branch_names_show_only_for_multi_branch_mills(db_session, company, vari
     db_session.flush()
     [notice] = _build(db_session, company, "negative_stock")
     assert notice.body.splitlines()[0] == "RC222 rice: -5 kg at Gapan"
+
+
+def test_rice_that_has_run_out_says_so(db_session, company, variety):
+    db_session.add(MilledRiceInventory(variety_id=variety.id, grade_name="Premium", quantity_kg=Decimal(0)))
+    _sold(db_session, variety, 3000)
+    db_session.flush()
+    [notice] = _build(db_session, company, "low_stock", days=7)
+    assert notice.body == "RC222 (grade Premium) rice: none left. You've sold about 100 kg a day this past month."

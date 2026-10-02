@@ -93,7 +93,7 @@ def _milling_quality(ctx: RecipeContext, params: BaseModel) -> list[Notice]:
         if broken_kg:
             broken = Decimal(broken_weighted) / Decimal(broken_kg)
             if broken > Decimal(str(params.broken_over)):
-                problems.append(f"Broken rice {broken:.0f}%, over your {params.broken_over:g}% limit.")
+                problems.append(f"Broken rice {broken:.1f}%, over your {params.broken_over:g}% limit.")
         if not problems:
             continue
         operator = db.get(User, batch.operator_id) if batch.operator_id else None

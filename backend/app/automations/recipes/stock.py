@@ -28,7 +28,7 @@ from ...models.user_location import UserLocation
 from ...models.warehouse import Pallet, RiceBatch, WarehouseLayout, WarehouseZone
 from ...services.rice_shelf_life import compute_best_before
 from ..base import Field, Notice, Recipe, RecipeContext, RecipeProblem
-from ..format import kg, plural
+from ..format import kg, plural, rice_name
 from ..sources import saved_locations
 from ..state import newly_true
 from .watch import EMAIL_FIELD
@@ -50,6 +50,14 @@ def _branch_names(ctx: RecipeContext) -> dict[uuid.UUID, str]:
 
 
 # ── low stock ────────────────────────────────────────────────────────────────
+
+
+def _cover_line(what: str, left: Decimal, per_day: Decimal, verb: str) -> str:
+    if left <= 0:
+        return f"{what}: none left. You've {verb} about {kg(per_day)} a day this past month."
+    days = int(left / per_day)
+    pace = "less than a day" if days < 1 else f"about {plural(days, 'day')}"
+    return f"{what}: {kg(left)} left, {pace} at your usual pace"
 
 
 class LowStockParams(BaseModel):
@@ -86,10 +94,8 @@ def _low_stock(ctx: RecipeContext, params: BaseModel) -> list[Notice]:
         per_day = Decimal(qty or 0) / PACE_DAYS
         left = rice_stock.get((variety_id, grade), Decimal(0))
         if per_day > 0 and left / per_day < params.days:
-            label = " ".join(x for x in (names.get(variety_id), grade) if x) or "Rice"
-            low[f"rice:{variety_id}:{grade}"] = (
-                f"{label} rice: {kg(max(left, Decimal(0)))} left, about "
-                f"{plural(int(max(left, Decimal(0)) / per_day), 'day')} at your usual pace"
+            low[f"rice:{variety_id}:{grade}"] = _cover_line(
+                f"{rice_name(names.get(variety_id), grade)} rice", left, per_day, "sold"
             )
 
     palay_stock: dict[uuid.UUID | None, Decimal] = defaultdict(Decimal)
@@ -107,9 +113,8 @@ def _low_stock(ctx: RecipeContext, params: BaseModel) -> list[Notice]:
         per_day = Decimal(qty or 0) / PACE_DAYS
         left = palay_stock.get(variety_id, Decimal(0))
         if per_day > 0 and left / per_day < params.days:
-            low[f"palay:{variety_id}"] = (
-                f"{names.get(variety_id, 'Unnamed')} palay: {kg(max(left, Decimal(0)))} left, about "
-                f"{plural(int(max(left, Decimal(0)) / per_day), 'day')} of milling"
+            low[f"palay:{variety_id}"] = _cover_line(
+                f"{names.get(variety_id, 'Unnamed')} palay", left, per_day, "milled"
             )
 
     new = sorted(newly_true(ctx, "low_stock", low))
@@ -391,7 +396,7 @@ def _negative_stock(ctx: RecipeContext, params: BaseModel) -> list[Notice]:
 
     below: dict[str, str] = {}
     for rice_row in db.query(MilledRiceInventory).filter(MilledRiceInventory.quantity_kg < 0).all():
-        rice = " ".join(x for x in (names.get(rice_row.variety_id), rice_row.grade_name) if x) or "Rice"
+        rice = rice_name(names.get(rice_row.variety_id), rice_row.grade_name)
         below[f"rice:{rice_row.id}"] = f"{rice} rice: {kg(rice_row.quantity_kg)}{where(rice_row.branch_id)}"
     for palay_row in db.query(PalayInventory).filter(PalayInventory.quantity_kg < 0).all():
         below[f"palay:{palay_row.id}"] = (
