@@ -5,8 +5,10 @@ import api from "./api";
 export type AutomationField = {
   name: string;
   label: string;
-  kind: "time" | "bool" | "number" | "money" | "percent";
+  kind: "time" | "bool" | "number" | "money" | "percent" | "select";
   help: string;
+  unit?: string;
+  options?: { value: string; label: string }[];
 };
 
 export type AutomationRun = {
@@ -19,11 +21,15 @@ export type AutomationRun = {
 
 export type AutomationCandidate = { id: string; name: string; role: string | null };
 
+export type AutomationGroup =
+  "reports" | "watch" | "production" | "stock" | "receivables" | "deliveries" | "people";
+
 export type Automation = {
   code: string;
   title: string;
   description: string;
-  group: "reports" | "watch" | "stock" | "receivables";
+  group: AutomationGroup;
+  section?: string;
   fields: AutomationField[];
   params: Record<string, string | number | boolean>;
   enabled: boolean;

@@ -169,3 +169,19 @@ def test_the_registered_jobs_run_cleanly(db_session, sessions, seed_owner):
             f"notifications.deliver_email[{company.id}]",
         ]
     )
+
+
+def test_pruning_keeps_a_month_of_history_and_anything_still_running(db_session):
+    now = now_utc()
+    old = now - timedelta(days=31)
+    db_session.add_all(
+        [
+            JobRun(job="test.prune", run_key="old-ok", status="succeeded", started_at=old, finished_at=old),
+            JobRun(job="test.prune", run_key="old-failed", status="failed", started_at=old, finished_at=old),
+            JobRun(job="test.prune", run_key="old-running", status="running", started_at=old),
+            JobRun(job="test.prune", run_key="recent", status="succeeded", started_at=now - timedelta(days=29)),
+        ]
+    )
+    db_session.commit()
+    assert runner.prune_job_runs(db_session, now=now) == 2
+    assert sorted(r.run_key for r in _runs(db_session, "test.prune")) == ["old-running", "recent"]

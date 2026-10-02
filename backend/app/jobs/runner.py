@@ -18,7 +18,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 
-from sqlalchemy import and_, or_, select, update
+from sqlalchemy import and_, delete, or_, select, update
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
@@ -175,3 +175,16 @@ def claim_run(db: Session, job: str, company_id: uuid.UUID | None, run_key: str)
 def finish_run(db: Session, run_id: uuid.UUID, status: str, detail: str) -> None:
     db.execute(update(JobRun).where(JobRun.id == run_id).values(status=status, finished_at=now_utc(), detail=detail))
     db.commit()
+
+
+KEEP_RUNS_FOR = timedelta(days=30)
+
+
+def prune_job_runs(db: Session, *, now: datetime) -> int:
+    """Delete finished runs older than KEEP_RUNS_FOR. Does not commit.
+
+    Safe because no run key repeats: they're dates, hours and tick times, so a
+    deleted run can never be claimed again. Runs still "running" stay, however
+    old, for the stale-run recovery to find."""
+    result = db.execute(delete(JobRun).where(JobRun.status != "running", JobRun.started_at < now - KEEP_RUNS_FOR))
+    return result.rowcount  # type: ignore[attr-defined]

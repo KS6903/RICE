@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from datetime import datetime, time, timedelta
-from decimal import Decimal
 from zoneinfo import ZoneInfo
 
 from pydantic import BaseModel, field_validator
@@ -16,11 +15,13 @@ from ...models.milling import MillingBatch, MillingBatchOutput
 from ...models.paddy import PalayPurchase, PalayPurchaseItem
 from ...models.sales import Invoice, Payment, SalesOrder
 from ..base import Field, Notice, Recipe, RecipeContext
+from ..format import KG_PER_CAVAN
+from ..format import kg as _kg
+from ..format import peso as _peso
 
 # A summary of yesterday is only useful in the morning. If the jobs runner was
 # down until after this, the day's digest is skipped rather than sent late.
 LATEST_SEND = time(12, 0)
-KG_PER_CAVAN = Decimal(50)
 
 
 class OwnerDigestParams(BaseModel):
@@ -48,14 +49,6 @@ def _schedule(params: BaseModel) -> Schedule:
         return local.date().isoformat() if send_at <= local.time() < LATEST_SEND else None
 
     return due
-
-
-def _peso(amount: Decimal | float | int | None) -> str:
-    return f"₱{Decimal(amount or 0):,.0f}"
-
-
-def _kg(amount: Decimal | float | int | None) -> str:
-    return f"{Decimal(amount or 0):,.0f} kg"
 
 
 def _build(ctx: RecipeContext, params: BaseModel) -> list[Notice]:
