@@ -274,7 +274,7 @@ def test_rice_sold_under_the_price_list_is_flagged(db_session, company, variety)
     assert notice.title == "SO-CHEAP sold below your price list"
     assert notice.body.splitlines() == [
         "To a walk-in customer.",
-        "RC222 Premium, 500 kg: ₱44.00/kg, list ₱48.00/kg (8% under)",
+        "RC222 (grade Premium), 500 kg: ₱44.00/kg, list ₱48.00/kg (8% under)",
     ]
 
 

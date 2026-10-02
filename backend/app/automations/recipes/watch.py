@@ -28,7 +28,7 @@ from ...models.reference import RiceVariety
 from ...models.sales import PriceList, SalesOrder, SalesOrderItem
 from ...models.user import User
 from ..base import Field, Notice, Recipe, RecipeContext
-from ..format import KG_PER_CAVAN, kg, local_time, percent, peso, peso_exact, plural
+from ..format import KG_PER_CAVAN, kg, local_time, percent, peso, peso_exact, plural, rice_name
 
 LOOKBACK = timedelta(hours=24)
 
@@ -462,7 +462,7 @@ def _below_price_list(ctx: RecipeContext, params: BaseModel) -> list[Notice]:
             if listed is None or Decimal(item.unit_price_per_kg) >= listed * threshold:
                 continue
             under = (listed - Decimal(item.unit_price_per_kg)) / listed * 100
-            rice = " ".join(x for x in (varieties.get(item.variety_id), item.grade_name) if x) or "Rice"
+            rice = rice_name(varieties.get(item.variety_id), item.grade_name)
             lines.append(
                 f"{rice}, {kg(item.quantity_kg)}: {peso_exact(item.unit_price_per_kg)}/kg, "
                 f"list {peso_exact(listed)}/kg ({under:.0f}% under)"

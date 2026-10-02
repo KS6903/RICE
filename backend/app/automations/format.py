@@ -10,12 +10,22 @@ KG_PER_CAVAN = Decimal(50)
 
 
 def peso(amount: Decimal | float | int | None) -> str:
-    return f"₱{Decimal(amount or 0):,.0f}"
+    """₱1,250, and -₱1,250 for a loss."""
+    value = Decimal(amount or 0).quantize(Decimal(1))
+    return f"{'-' if value < 0 else ''}₱{abs(value):,.0f}"
 
 
 def peso_exact(amount: Decimal | float | int | None) -> str:
     """Pesos and centavos, for unit prices: ₱44.50."""
-    return f"₱{Decimal(amount or 0):,.2f}"
+    value = Decimal(amount or 0)
+    return f"{'-' if value < 0 else ''}₱{abs(value):,.2f}"
+
+
+def rice_name(variety: str | None, grade: str | None) -> str:
+    """'NSIC Rc222 (grade A)', or whichever part is known."""
+    if variety and grade:
+        return f"{variety} (grade {grade})"
+    return variety or (f"Grade {grade}" if grade else "Rice")
 
 
 def kg(amount: Decimal | float | int | None) -> str:
