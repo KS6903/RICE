@@ -17,7 +17,7 @@ from .milling import (
     MillingBatchOutput,
     MillingEquipment,
 )
-from .notification import Notification
+from .notification import Notification, NotificationAttachment
 from .paddy import DryingRecord, PalayInventory, PalayInventoryMovement, PalayPurchase, PalayPurchaseItem
 from .password_reset import PasswordResetToken
 from .reference import ByproductType, QualityGrade, RiceVariety
@@ -35,6 +35,7 @@ __all__ = [
     "AutomationState",
     "JobRun",
     "Notification",
+    "NotificationAttachment",
     "Company",
     "Branch",
     "User",
