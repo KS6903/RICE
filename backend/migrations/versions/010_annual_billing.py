@@ -18,7 +18,6 @@ Create Date: 2026-09-30
 
 from __future__ import annotations
 
-import sqlalchemy as sa
 from alembic import op
 
 revision = "010_annual_billing"
@@ -28,15 +27,17 @@ depends_on = None
 
 
 def upgrade() -> None:
-    op.add_column(
-        "subscription_plans",
-        sa.Column("annual_price", sa.Numeric(10, 2), nullable=False, server_default="0"),
+    # IF NOT EXISTS: on a fresh database 001 builds these tables from today's
+    # models, which already have both columns (the trap 008 documents).
+    op.execute(
+        "ALTER TABLE subscription_plans ADD COLUMN IF NOT EXISTS annual_price NUMERIC(10, 2) NOT NULL DEFAULT 0"
     )
-    op.execute("UPDATE subscription_plans SET annual_price = monthly_price * 10 WHERE monthly_price > 0")
-
-    op.add_column(
-        "subscription_upgrade_requests",
-        sa.Column("billing_interval", sa.String(10), nullable=False, server_default="monthly"),
+    op.execute(
+        "UPDATE subscription_plans SET annual_price = monthly_price * 10 WHERE monthly_price > 0 AND annual_price = 0"
+    )
+    op.execute(
+        "ALTER TABLE subscription_upgrade_requests "
+        "ADD COLUMN IF NOT EXISTS billing_interval VARCHAR(10) NOT NULL DEFAULT 'monthly'"
     )
 
 
