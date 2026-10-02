@@ -29,7 +29,7 @@ from ..models.automation import AutomationRule
 from ..models.company import Company
 from ..models.subscription import Subscription
 from ..models.user import User
-from ..services.notification_service import notify
+from ..services.notification_service import attach, notify
 from ..services.subscription import is_active
 from .base import Notice, Recipe, RecipeContext, RecipeProblem
 from .recipes import RECIPES
@@ -92,8 +92,10 @@ def deliver(
     key_suffix: str = "",
 ) -> int:
     """Record the notices for the recipients. Does not commit; returns how many were new."""
-    return sum(
-        notify(
+    new = 0
+    for n in notices:
+        key = n.dedupe_key + key_suffix
+        new += notify(
             db,
             company_id=company.id,
             user_ids=user_ids,
@@ -101,11 +103,12 @@ def deliver(
             title=n.title,
             body=n.body,
             link=n.link,
-            dedupe_key=n.dedupe_key + key_suffix,
+            dedupe_key=key,
             email=email,
         )
-        for n in notices
-    )
+        if email and n.attachments and user_ids:
+            attach(db, company_id=company.id, dedupe_key=key, attachments=n.attachments)
+    return new
 
 
 def run_due_automations(ctx: JobContext) -> str:

@@ -11,6 +11,7 @@ from zoneinfo import ZoneInfo
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
+from ..core.mailer import Attachment
 from ..jobs.schedule import Schedule
 
 if TYPE_CHECKING:
@@ -25,6 +26,8 @@ class Notice:
     body: str
     dedupe_key: str
     link: str | None = None
+    # Emailed with the notice (a report's CSV); not shown under the bell.
+    attachments: tuple[Attachment, ...] = ()
 
 
 class RecipeProblem(Exception):

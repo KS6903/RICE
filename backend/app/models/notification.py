@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import DateTime, ForeignKey, Index, String, Text, UniqueConstraint, func
+from sqlalchemy import DateTime, ForeignKey, Index, LargeBinary, String, Text, UniqueConstraint, func
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -44,3 +44,25 @@ class Notification(Base):
         UniqueConstraint("user_id", "dedupe_key", name="uq_notifications_user_dedupe"),
         Index("ix_notifications_user_unread", "user_id", "read_at", "created_at"),
     )
+
+
+class NotificationAttachment(Base):
+    """A file emailed with every notice that has this dedupe key, such as a
+    scheduled report's CSV. Kept once per notice, not once per recipient, and
+    deleted after a couple of weeks by the notifications.prune_attachments job."""
+
+    __tablename__ = "notification_attachments"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    company_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("companies.id", ondelete="CASCADE"), nullable=False
+    )
+    dedupe_key: Mapped[str] = mapped_column(String(120), nullable=False)
+    filename: Mapped[str] = mapped_column(String(120), nullable=False)
+    mime_type: Mapped[str] = mapped_column(String(80), nullable=False, default="text/csv")
+    content: Mapped[bytes] = mapped_column(LargeBinary, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=now_utc, server_default=func.now(), nullable=False
+    )
+
+    __table_args__ = (UniqueConstraint("dedupe_key", "filename", name="uq_notification_attachments_key_file"),)

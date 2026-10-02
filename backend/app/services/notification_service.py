@@ -15,13 +15,13 @@ import uuid
 from collections.abc import Iterable, Sequence
 from datetime import datetime, timedelta
 
-from sqlalchemy import func, select, update
+from sqlalchemy import delete, func, select, update
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
-from ..core.mailer import Mailer
+from ..core.mailer import Attachment, Mailer
 from ..models.base import now_utc
-from ..models.notification import Notification
+from ..models.notification import Notification, NotificationAttachment
 from ..models.user import User
 
 logger = logging.getLogger("ricemill.notifications")
@@ -67,6 +67,47 @@ def notify(
         .returning(Notification.id)
     )
     return len(db.execute(stmt).all())
+
+
+KEEP_ATTACHMENTS_FOR = timedelta(days=14)
+
+
+def attach(db: Session, *, company_id: uuid.UUID, dedupe_key: str, attachments: Sequence[Attachment]) -> None:
+    """Keep files to email with every notice under ``dedupe_key``. Does not commit."""
+    rows = [
+        {
+            "id": uuid.uuid4(),
+            "company_id": company_id,
+            "dedupe_key": dedupe_key[:120],  # as notify() stores it
+            "filename": a.filename[:120],
+            "mime_type": a.mime_type,
+            "content": a.content,
+        }
+        for a in attachments
+    ]
+    if rows:
+        db.execute(
+            insert(NotificationAttachment)
+            .values(rows)
+            .on_conflict_do_nothing(constraint="uq_notification_attachments_key_file")
+        )
+
+
+def prune_attachments(db: Session, *, now: datetime) -> int:
+    """Delete attachments older than KEEP_ATTACHMENTS_FOR; their emails went out
+    long ago. Does not commit."""
+    result = db.execute(
+        delete(NotificationAttachment).where(NotificationAttachment.created_at < now - KEEP_ATTACHMENTS_FOR)
+    )
+    return result.rowcount  # type: ignore[attr-defined]
+
+
+def _attachments_for(db: Session, keys: set[str]) -> dict[str, tuple[Attachment, ...]]:
+    found: dict[str, list[Attachment]] = {}
+    if keys:
+        for row in db.scalars(select(NotificationAttachment).where(NotificationAttachment.dedupe_key.in_(keys))):
+            found.setdefault(row.dedupe_key, []).append(Attachment(row.filename, row.content, row.mime_type))
+    return {key: tuple(files) for key, files in found.items()}
 
 
 def unread_count(db: Session, user_id: uuid.UUID) -> int:
@@ -128,13 +169,19 @@ def deliver_pending_emails(db: Session, *, now: datetime | None = None) -> dict[
     outcome = {"sent": 0, "failed": 0, "skipped": 0, "deferred": pending_total - len(rows)}
     if not rows:
         return outcome
+    files = _attachments_for(db, {notice.dedupe_key for notice, _ in rows})
     with Mailer() as mailer:
         for notice, address in rows:
             if not address:
                 notice.email_status = "skipped"
             else:
                 try:
-                    sent = mailer.send(to=address, subject=notice.title, text=_email_text(notice))
+                    sent = mailer.send(
+                        to=address,
+                        subject=notice.title,
+                        text=_email_text(notice),
+                        attachments=files.get(notice.dedupe_key, ()),
+                    )
                     notice.email_status = "sent" if sent else "skipped"
                 except Exception:
                     logger.exception("notification email failed", extra={"notification_id": str(notice.id)})
