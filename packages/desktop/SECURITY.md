@@ -44,7 +44,7 @@ the feed still can't ship code. Unsigned builds never update themselves.
 
 ## Encryption limitation
 
-`better-sqlite3` does not provide SQLCipher encryption in this build, so the local
+The app's SQLite is `node:sqlite`, built into Electron, which has no SQLCipher, so the local
 database, WAL, and shared-memory files are **not encrypted by the application**.
 They rely on the operating system's per-user application-data permissions and full-
 disk encryption (BitLocker, FileVault, or an equivalent). Deployments that store

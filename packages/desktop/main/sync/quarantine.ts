@@ -8,12 +8,12 @@
 // A new app version is the likely fix for either, so after an update both are
 // retried: refused rows go back in the queue, and the pull rewinds to the
 // first record it skipped.
-import Database from "better-sqlite3";
+import { Db, transaction } from "../database/db";
 import { SYNC_TABLES, SyncTable } from "./contract";
 
 export const QUARANTINED = 2;
 
-export function createQuarantineTable(db: Database.Database): void {
+export function createQuarantineTable(db: Db): void {
   db.exec(`
     CREATE TABLE IF NOT EXISTS _sync_quarantine (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -29,7 +29,7 @@ export function createQuarantineTable(db: Database.Database): void {
 }
 
 function note(
-  db: Database.Database,
+  db: Db,
   direction: "push" | "pull",
   table: string,
   recordId: string,
@@ -53,22 +53,22 @@ function note(
 
 /** Set aside a local row the server refused (or that isn't valid to send). */
 export function quarantinePush(
-  db: Database.Database,
+  db: Db,
   table: SyncTable,
   recordId: string,
   reason: string,
   appVersion: string,
 ): void {
-  db.transaction(() => {
+  transaction(db, () => {
     // `table` is a SyncTable from the compile-time list, never external input.
     db.prepare(`UPDATE ${table} SET _synced = ${QUARANTINED} WHERE id = ?`).run(recordId);
     note(db, "push", table, recordId, reason, appVersion);
-  })();
+  });
 }
 
 /** Note a pulled record that couldn't be applied; the caller moves on. */
 export function quarantinePull(
-  db: Database.Database,
+  db: Db,
   table: string,
   recordId: string,
   reason: string,
@@ -78,7 +78,7 @@ export function quarantinePull(
   note(db, "pull", table, recordId, reason, appVersion, syncedAt);
 }
 
-export function quarantineCount(db: Database.Database): number {
+export function quarantineCount(db: Db): number {
   return (db.prepare("SELECT COUNT(*) AS n FROM _sync_quarantine").get() as { n: number }).n;
 }
 
@@ -86,9 +86,9 @@ export function quarantineCount(db: Database.Database): number {
  * After an update, retry what an older version set aside. Returns the pull
  * cursor to rewind to (just before the first skipped record), if any.
  */
-export function retryAfterUpdate(db: Database.Database, appVersion: string): string | null {
+export function retryAfterUpdate(db: Db, appVersion: string): string | null {
   let rewindTo: string | null = null;
-  db.transaction(() => {
+  transaction(db, () => {
     const older = db
       .prepare(
         "SELECT direction, table_name, record_id, synced_at FROM _sync_quarantine WHERE app_version <> ?",
@@ -111,6 +111,6 @@ export function retryAfterUpdate(db: Database.Database, appVersion: string): str
       }
     }
     db.prepare("DELETE FROM _sync_quarantine WHERE app_version <> ?").run(appVersion);
-  })();
+  });
   return rewindTo;
 }

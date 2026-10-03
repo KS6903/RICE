@@ -179,8 +179,9 @@ Start from the templates — they already list every required key:
   vars: older builds then get 426 and are told to update instead of misreading the server.
 - [ ] Enable BitLocker on every device storing offline SQLite; confirm with `manage-bde -status`.
 - [ ] Store recovery keys in a secure organization account.
-- [ ] Deferred: SQLCipher app-level encryption stays out until `better-sqlite3` is swapped for a
-  SQLCipher-capable build. BitLocker is the interim control.
+- [ ] Deferred: app-level encryption of the local database. The desktop app uses `node:sqlite`
+  (built into Electron), which has no SQLCipher; it would need an encrypting SQLite build.
+  BitLocker is the interim control.
 
 ## Phase 8 — GitHub hardening  ·  Runs `[GITHUB]`  ·  Supervision **A**
 

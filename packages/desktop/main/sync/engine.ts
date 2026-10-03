@@ -1,7 +1,7 @@
 import axios from "axios";
 import crypto from "crypto";
-import Database from "better-sqlite3";
 import { net } from "electron";
+import { Db, Statement, sqlValue, transaction } from "../database/db";
 import { TenantDatabaseManager } from "../database/sqlite";
 import {
   assertValidRecord,
@@ -40,7 +40,7 @@ interface SyncContext {
   version: number;
   token: string;
   identity: SyncIdentity;
-  db: Database.Database;
+  db: Db;
 }
 
 export class SyncEngine {
@@ -193,9 +193,9 @@ export class SyncEngine {
     });
   }
 
-  private markSynced(db: Database.Database, items: QueuedRecord[]): void {
-    const statements = new Map<SyncTable, Database.Statement>();
-    db.transaction(() => {
+  private markSynced(db: Db, items: QueuedRecord[]): void {
+    const statements = new Map<SyncTable, Statement>();
+    transaction(db, () => {
       for (const item of items) {
         let statement = statements.get(item.table);
         if (!statement) {
@@ -207,7 +207,7 @@ export class SyncEngine {
         }
         statement.run(item.id);
       }
-    })();
+    });
   }
 
   private headers(context: SyncContext): Record<string, string> {
@@ -218,7 +218,7 @@ export class SyncEngine {
   }
 
   /** After an update, give what an older version set aside another try. */
-  private retryWhatAnOlderVersionSetAside(db: Database.Database, cursorKey: string): void {
+  private retryWhatAnOlderVersionSetAside(db: Db, cursorKey: string): void {
     try {
       const rewindTo = retryAfterUpdate(db, this.appVersion);
       if (rewindTo && Date.parse(rewindTo) < Date.parse(this.getLastSynced(db, cursorKey))) {
@@ -249,7 +249,7 @@ export class SyncEngine {
       // applies in its own savepoint: one that fails (a malformed row, an update
       // before its insert) is rolled back alone and set aside, instead of
       // failing the page and stalling every sync after it.
-      const applyPage = db.transaction(() => {
+      transaction(db, () => {
         for (const rejected of page.rejected) {
           quarantinePull(
             db,
@@ -262,7 +262,7 @@ export class SyncEngine {
         }
         for (const record of page.records) {
           try {
-            db.transaction(() => this.applyRecord(db, record))();
+            transaction(db, () => this.applyRecord(db, record));
           } catch (error) {
             const reason = error instanceof Error ? error.message : "could not apply";
             quarantinePull(
@@ -277,7 +277,6 @@ export class SyncEngine {
         }
         this.setLastSynced(db, cursorKey, page.server_time);
       });
-      applyPage();
       if (page.rejected.length > 0) {
         console.error(`[SyncEngine] set aside ${page.rejected.length} invalid pulled records`);
       }
@@ -286,7 +285,7 @@ export class SyncEngine {
     }
   }
 
-  private applyRecord(db: Database.Database, record: SyncRecord): void {
+  private applyRecord(db: Db, record: SyncRecord): void {
     const table = record.table_name;
     if (record.operation === "DELETE") {
       // Table is already a validated SyncTable; the record id remains bound.
@@ -298,7 +297,7 @@ export class SyncEngine {
     // list. Response keys merely decide membership; they are never interpolated.
     const cols = TABLE_COLUMNS[table].filter((column) => Object.hasOwn(record.payload, column));
     if (!cols.includes("id")) throw new Error("Sync payload is missing its id");
-    const values = cols.map((column) => record.payload[column]);
+    const values = cols.map((column) => sqlValue(record.payload[column]));
 
     if (record.operation === "UPDATE") {
       const existing = db.prepare(`SELECT 1 FROM ${table} WHERE id = ?`).get(record.record_id);
@@ -307,7 +306,7 @@ export class SyncEngine {
       if (mutable.length === 0) return;
       db.prepare(
         `UPDATE ${table} SET ${mutable.map((column) => `${column} = ?`).join(", ")}, _synced = 1 WHERE id = ?`,
-      ).run(...mutable.map((column) => record.payload[column]), record.record_id);
+      ).run(...mutable.map((column) => sqlValue(record.payload[column])), record.record_id);
       return;
     }
 
@@ -323,7 +322,7 @@ export class SyncEngine {
     ).run(...values);
   }
 
-  private getClientId(db: Database.Database): string {
+  private getClientId(db: Db): string {
     const row = db.prepare("SELECT value FROM _local_sync_meta WHERE key = 'device_id'").get() as
       { value: string } | undefined;
     if (row?.value) return row.value;
@@ -332,14 +331,14 @@ export class SyncEngine {
     return id;
   }
 
-  private setLastSynced(db: Database.Database, cursorKey: string, value: string): void {
+  private setLastSynced(db: Db, cursorKey: string, value: string): void {
     db.prepare(
       "INSERT INTO _local_sync_meta (key, value) VALUES (?, ?) " +
         "ON CONFLICT(key) DO UPDATE SET value = excluded.value",
     ).run(cursorKey, value);
   }
 
-  private getLastSynced(db: Database.Database, cursorKey: string): string {
+  private getLastSynced(db: Db, cursorKey: string): string {
     const row = db.prepare("SELECT value FROM _local_sync_meta WHERE key = ?").get(cursorKey) as
       { value: string } | undefined;
     return row?.value ?? new Date(0).toISOString();

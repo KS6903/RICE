@@ -1,10 +1,10 @@
-import Database from "better-sqlite3";
 import path from "path";
 import fs from "fs";
 import crypto from "crypto";
 import { app } from "electron";
 import { SyncIdentity, SYNC_TABLES } from "../sync/contract";
 import { createQuarantineTable } from "../sync/quarantine";
+import { Db, openDatabase, pragma } from "./db";
 
 /**
  * Owns exactly one identity-partitioned SQLite handle at a time. The renderer
@@ -12,10 +12,10 @@ import { createQuarantineTable } from "../sync/quarantine";
  * from a server-validated access token in main/index.ts.
  */
 export class TenantDatabaseManager {
-  private db: Database.Database | null = null;
+  private db: Db | null = null;
   private identity: SyncIdentity | null = null;
 
-  activate(identity: SyncIdentity): Database.Database {
+  activate(identity: SyncIdentity): Db {
     if (
       this.db &&
       this.identity?.companyId === identity.companyId &&
@@ -35,13 +35,13 @@ export class TenantDatabaseManager {
     assertSafeDatabaseFile(dbPath);
     migrateLegacyDatabase(identity, dbPath, partition);
     assertSafeDatabaseFile(dbPath);
-    const db = new Database(dbPath);
+    const db = openDatabase(dbPath);
 
-    db.pragma("journal_mode = WAL");
-    db.pragma("foreign_keys = ON");
-    db.pragma("secure_delete = ON");
-    db.pragma("trusted_schema = OFF");
-    db.pragma("busy_timeout = 5000");
+    pragma(db, "journal_mode = WAL");
+    pragma(db, "foreign_keys = ON");
+    pragma(db, "secure_delete = ON");
+    pragma(db, "trusted_schema = OFF");
+    pragma(db, "busy_timeout = 5000");
 
     createSchema(db);
     ensureSyncMarkers(db);
@@ -61,11 +61,11 @@ export class TenantDatabaseManager {
     return db;
   }
 
-  getDatabase(): Database.Database | null {
+  getDatabase(): Db | null {
     return this.db;
   }
 
-  requireDatabase(): Database.Database {
+  requireDatabase(): Db {
     if (!this.db || !this.identity) throw new Error("No authenticated desktop data session");
     return this.db;
   }
@@ -112,7 +112,7 @@ function migrateLegacyDatabase(
     if (fs.existsSync(backupPath)) throw new Error("legacy backup already exists");
     const stat = fs.lstatSync(legacyPath);
     if (!stat.isFile() || stat.isSymbolicLink()) throw new Error("unsafe legacy file");
-    const legacy = new Database(legacyPath);
+    const legacy = openDatabase(legacyPath);
     try {
       const tables = legacy
         .prepare("SELECT name FROM sqlite_master WHERE type = 'table'")
@@ -130,7 +130,7 @@ function migrateLegacyDatabase(
         .prepare("SELECT id FROM users WHERE id = ? AND company_id = ? LIMIT 1")
         .get(identity.userId, identity.companyId);
       if (!company || foreignCompany || !user) throw new Error("identity mismatch");
-      legacy.pragma("wal_checkpoint(TRUNCATE)");
+      pragma(legacy, "wal_checkpoint(TRUNCATE)");
     } finally {
       legacy.close();
     }
@@ -138,9 +138,9 @@ function migrateLegacyDatabase(
     const temporary = `${targetPath}.migrating`;
     fs.copyFileSync(legacyPath, temporary, fs.constants.COPYFILE_EXCL);
     try {
-      const candidate = new Database(temporary, { readonly: true, fileMustExist: true });
+      const candidate = openDatabase(temporary, { readOnly: true });
       try {
-        const integrity = candidate.pragma("quick_check", { simple: true });
+        const integrity = pragma(candidate, "quick_check");
         if (integrity !== "ok") throw new Error("integrity check failed");
       } finally {
         candidate.close();
@@ -162,7 +162,7 @@ function migrateLegacyDatabase(
   }
 }
 
-function ensureSyncMarkers(db: Database.Database): void {
+function ensureSyncMarkers(db: Db): void {
   for (const table of SYNC_TABLES) {
     const columns = db.prepare(`PRAGMA table_info(${table})`).all() as Array<{ name: string }>;
     if (!columns.some((column) => column.name === "_synced")) {
@@ -172,14 +172,14 @@ function ensureSyncMarkers(db: Database.Database): void {
   }
 }
 
-function removeLegacyPasswordHash(db: Database.Database): void {
+function removeLegacyPasswordHash(db: Db): void {
   const columns = db.prepare("PRAGMA table_info(users)").all() as Array<{ name: string }>;
   if (columns.some((column) => column.name === "password_hash")) {
     db.exec("ALTER TABLE users DROP COLUMN password_hash");
   }
 }
 
-function createSchema(db: Database.Database) {
+function createSchema(db: Db) {
   db.exec(`
     -- Sync metadata
     CREATE TABLE IF NOT EXISTS _local_sync_meta (
