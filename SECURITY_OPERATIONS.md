@@ -6,16 +6,18 @@ dump, SQLite file, log, or recovery artifact.
 
 ## Production release gate
 
-1. Generate a one-time local secret file:
+1. Generate the app's own secrets straight into the Worker's secret store:
 
    ```powershell
    cd backend
    .\.venv\Scripts\python.exe generate_security_secrets.py
    ```
 
-   Copy the values into the deployment secret manager, then securely remove the
-   generated file. `.env*` files are ignored, but the secret manager remains the
-   source of truth.
+   No value is printed or written to disk, and a secret the Worker already has is
+   left alone. `--only SIGNUP_INVITE_CODE` rotates one; `MFA_ENCRYPTION_KEY` is
+   never rotated, because it decrypts every user's two-factor seed. For another
+   host, `--output FILE` writes a new mode-600 file; move the values into that
+   secret manager and delete the file.
 
 2. Create two deployment configurations:
 

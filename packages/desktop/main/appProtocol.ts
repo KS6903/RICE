@@ -9,11 +9,11 @@
 import { net, protocol } from "electron";
 import { pathToFileURL } from "url";
 import {
-  APP_ORIGIN,
   APP_SCHEME,
   apiTarget,
   forwardedHeaders,
   isApiPath,
+  isAppUrl,
   staticFile,
 } from "./appRoutes";
 
@@ -41,7 +41,7 @@ export function serveApp(options: AppProtocolOptions): void {
 
 async function respond(request: Request, options: AppProtocolOptions): Promise<Response> {
   const url = new URL(request.url);
-  if (url.origin !== APP_ORIGIN) return new Response(null, { status: 404 });
+  if (!isAppUrl(url)) return new Response(null, { status: 404 });
   if (isApiPath(url.pathname)) return forward(request, url, options);
   if (request.method !== "GET" && request.method !== "HEAD") {
     return new Response(null, { status: 405 });

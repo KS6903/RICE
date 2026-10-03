@@ -8,6 +8,18 @@ export const APP_HOST = "oryza";
 export const APP_ORIGIN = `${APP_SCHEME}://${APP_HOST}`;
 export const CLIENT_VERSION_HEADER = "X-Client-Version";
 
+/**
+ * Whether a URL is the app's own. Compares scheme and host, never `.origin`:
+ * by the URL standard a custom scheme's origin is opaque, so in the main
+ * process `new URL("app://oryza/").origin` is the string "null". Comparing
+ * origins refused every request the app made.
+ */
+export function isAppUrl(url: URL): boolean {
+  return (
+    url.protocol === `${APP_SCHEME}:` && url.host === APP_HOST && !url.username && !url.password
+  );
+}
+
 export function isApiPath(pathname: string): boolean {
   return pathname === "/api" || pathname.startsWith("/api/");
 }

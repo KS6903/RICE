@@ -7,6 +7,13 @@ import "./index.css";
 // Side-effect import: applies persisted/system theme to <html> before first paint.
 import "./stores/themeStore";
 import { queryClient } from "./services/queryClient";
+import { registerSW } from "virtual:pwa-register";
+
+// The offline cache is for the browser. The desktop app (app://oryza) has its
+// own offline store, and its scheme can't host a service worker anyway.
+if ("serviceWorker" in navigator && location.protocol.startsWith("http")) {
+  registerSW({ immediate: true });
+}
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>

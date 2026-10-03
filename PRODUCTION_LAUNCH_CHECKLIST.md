@@ -80,18 +80,14 @@ Each phase is tagged with how much human involvement it genuinely needs:
 
 ## Phase 0 — Secrets  ·  Runs `[WORKSTATION]` -> `[HOSTING]`  ·  Supervision **A** (custody) + **C** (generation)
 
-- [ ] Generate the one-time secret file:
+- [ ] Generate `SECRET_KEY`, `MFA_ENCRYPTION_KEY` and `SIGNUP_INVITE_CODE` straight into the
+  Worker (nothing printed, nothing written to disk; existing ones are left alone):
   ```powershell
   cd backend
   .\.venv\Scripts\python.exe generate_security_secrets.py
   ```
-  Creates `.env.production.secrets` (mode 600, refuses to overwrite) containing
-  `SECRET_KEY`, `MFA_ENCRYPTION_KEY`, and `SIGNUP_INVITE_CODE`.
-- [ ] Paste those three values into the hosting provider's secret manager.
-- [ ] Securely delete the local file:
-  ```powershell
-  Remove-Item backend\.env.production.secrets -Force
-  ```
+  For a host other than Cloudflare, `--output FILE` writes a new mode-600 file instead. Paste
+  the values into that host's secret manager, then delete the file.
 - [ ] Confirm `.env*` is gitignored and nothing secret is staged (`git status`).
 
 ## Phase 1 — Database roles  ·  Runs `[PROD DB]`  ·  Supervision **A**
@@ -167,6 +163,10 @@ Start from the templates — they already list every required key:
 
 ## Phase 7 — Desktop devices  ·  Runs `[DEVICES]`  ·  Supervision **A**
 
+- [ ] Before each desktop release, smoke-test the app:// scheme in real Electron against a running
+  API: `npm run build:web`, then `npm run build:main` and `npm run smoke` in `packages/desktop`
+  (`SMOKE_API` picks the API; it defaults to the local one). It fails on any refused request,
+  console error or escaped path.
 - [ ] Build the installer for the production API:
   `ORYZA_API_ORIGIN=https://<domain> npm run build --workspace=packages/desktop`
   (packages/desktop/scripts/build-desktop.mjs). A build without it refuses to package.

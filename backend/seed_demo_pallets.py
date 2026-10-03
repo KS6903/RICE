@@ -1,9 +1,11 @@
-"""Generate 12 demo pallets for the first non-admin company's first branch.
+"""Generate 12 demo pallets in a tenant's first branch.
 
 Useful for showcasing the spatial canva without needing real milling history.
-Run AFTER `alembic upgrade head`. Idempotent: skips if pallets already exist.
+Run AFTER `alembic upgrade head`. Idempotent: skips a layout that already has
+pallets. (seed_demo.py's base part seeds pallets too; this one adds a denser,
+aged set to one premium zone.)
 
-Usage: python seed_demo_pallets.py
+Usage: python seed_demo_pallets.py [username ...]     # default: mill1
 """
 
 from datetime import date, timedelta
@@ -28,20 +30,20 @@ VARIETIES = ["Rc222", "Rc216", "Rc218", "SINAG"]
 CLIENT_NAMES = ["Juan Cruz Farms", "Lola Maria Co-op", "Pedro Reyes Hacienda", "Mill stock"]
 
 
-def main():
+def seed(username: str) -> str:
+    """Seed one tenant's pallets; say what happened."""
     db = SessionLocal()
     try:
-        # Pick a non-platform-admin user's company
-        user = db.query(User).filter(User.is_platform_admin.is_(False), User.company_id.is_not(None)).first()
+        # The named tenant. It used to take the first tenant it found, whatever
+        # was asked for.
+        user = db.query(User).filter(User.username == username, User.company_id.is_not(None)).first()
         if not user:
-            print("No tenant users found. Run create_admin.py / signup first.")
-            return
+            return f"{username}: not found or has no company — skipped"
         # Domain tables live in this client's schema — point the session at it.
         set_search_path(db, user.company.schema_name)
         branch = db.query(Branch).filter(Branch.company_id == user.company_id).first()
         if not branch:
-            print("No branch on this company.")
-            return
+            return f"{username}: no branch — skipped"
 
         layout = WarehouseLayoutRepository(db).get_default_for_branch(branch.id)
         if not layout:
@@ -58,18 +60,15 @@ def main():
             .first()
         )
         if not premium:
-            print("No premium_storage zone found.")
-            return
+            return f"{username}: no premium_storage zone — skipped"
 
         existing = db.query(Pallet).filter(Pallet.layout_id == layout.id).count()
         if existing > 0:
-            print(f"Layout already has {existing} pallets. Skipping (delete them first to re-seed).")
-            return
+            return f"{username}: layout already has {existing} pallets — skipped"
 
         varieties = db.query(RiceVariety).filter(RiceVariety.code.in_(VARIETIES)).all()
         if not varieties:
-            print("No varieties found. Run seed.py first.")
-            return
+            return f"{username}: no varieties (run seed.py first) — skipped"
 
         today = date.today()
         cols = 6
@@ -132,9 +131,16 @@ def main():
             created += 1
 
         db.commit()
-        print(f"Seeded {created} demo pallets in {branch.name} ({layout.name}).")
+        return f"{username}: {created} demo pallets in {branch.name} ({layout.name})"
     finally:
         db.close()
+
+
+def main() -> None:
+    import sys
+
+    for username in sys.argv[1:] or ["mill1"]:
+        print(seed(username))
 
 
 if __name__ == "__main__":
