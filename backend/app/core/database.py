@@ -51,7 +51,7 @@ class Base(DeclarativeBase):
     pass
 
 
-def get_db(request: Request = None):
+def get_db(request: Request):
     """Per-request session, scoped to the caller's client schema.
 
     The client is resolved from the access token's ``schema`` claim and applied
@@ -60,8 +60,10 @@ def get_db(request: Request = None):
     ``public`` only — where identity + the control plane live — which is exactly
     what auth/get_current_user need before any client is known.
 
-    ``request`` is injected by FastAPI; it's optional so the dependency can also
-    be called/overridden without one (tests, ad-hoc use).
+    ``request`` is injected by FastAPI on every HTTP route. A WebSocket route
+    gets no ``Request``, so it can't use this dependency (canva_ws scopes its
+    own session): it fails loudly there rather than falling back to ``public``.
+    Tests override the dependency instead of calling it.
     """
     # Imported lazily to avoid a circular import (tenancy imports this module).
     # resolve_request_session opens a shared-engine session and sets its

@@ -132,8 +132,11 @@ class DryingAdvisorService:
 
     def _ask_deepseek(self, forecast_summary: str, location: dict[str, Any]) -> DryingAdvisory:
         url = f"{settings.DEEPSEEK_BASE_URL.rstrip('/')}/chat/completions"
+        key = settings.DEEPSEEK_API_KEY
+        if key is None:  # get_advisory refuses first; this keeps the call honest
+            raise NotConfiguredError("The Drying Advisor is not configured on this server.")
         headers = {
-            "Authorization": f"Bearer {settings.DEEPSEEK_API_KEY.get_secret_value()}",
+            "Authorization": f"Bearer {key.get_secret_value()}",
             "Content-Type": "application/json",
         }
         body = {

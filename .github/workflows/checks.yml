@@ -60,7 +60,7 @@ jobs:
         run: ruff check .
       - name: Format check (ruff format)
         run: ruff format --check .
-      - name: Type-check (mypy, scoped)
+      - name: Type-check (mypy, whole backend)
         run: mypy
       - name: Single Alembic head
         # Two heads means two migrations claim the same parent; upgrade would

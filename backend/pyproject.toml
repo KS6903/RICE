@@ -41,70 +41,18 @@ quote-style = "double"
 [tool.mypy]
 python_version = "3.11"
 ignore_missing_imports = true
-# Only report errors in files we've explicitly adopted; imports into legacy
-# modules (e.g. app/models forward-refs) are followed for types but not reported.
-follow_imports = "silent"
-# Scope type-checking to the new clean layers only. Legacy app/api is checked
-# as each domain is refactored. This keeps `mypy` actionable, not noisy.
-# Expand this list as new OOP layers land (app/repositories, app/services/base.py, ...).
-files = [
-    "app/core",
-    "app/jobs",
-    "app/automations",
-    "app/models/automation.py",
-    "app/api/automations.py",
-    "app/models/job_run.py",
-    "app/models/notification.py",
-    "app/services/notification_service.py",
-    "app/api/notifications.py",
-    "app/repositories",
-    "app/schemas",
-    "app/services/base.py",
-    "app/services/paddy_service.py",
-    "app/services/inventory_service.py",
-    "app/services/activity_service.py",
-    "app/services/milling_service.py",
-    "app/services/costs_service.py",
-    "app/services/employee_service.py",
-    "app/services/sales_service.py",
-    "app/services/user_service.py",
-    "app/services/location_service.py",
-    "app/services/geocoding.py",
-    "app/services/branch_service.py",
-    "app/services/reports_service.py",
-    "app/services/sync_service.py",
-    "app/services/weather.py",
-    "app/services/dispatch_service.py",
-    "app/services/auth_service.py",
-    "app/services/billing_service.py",
-    "app/services/admin_service.py",
-    "app/services/legal_service.py",
-    "app/api/paddy.py",
-    "app/api/inventory.py",
-    "app/api/activity.py",
-    "app/api/legal.py",
-    "app/api/milling.py",
-    "app/api/costs.py",
-    "app/api/employees.py",
-    "app/api/sales.py",
-    "app/api/users.py",
-    "app/api/locations.py",
-    "app/api/branches.py",
-    "app/api/reports.py",
-    "app/api/sync.py",
-    "app/api/weather.py",
-    "app/api/dispatch.py",
-    "app/api/auth.py",
-    "app/api/billing.py",
-    "app/api/admin.py",
-]
+# The whole backend: the app, its scripts, and every top-level script. Tests
+# and migrations are not type-checked.
+files = ["app", "scripts", "*.py"]
+follow_imports = "normal"
 check_untyped_defs = true
 warn_redundant_casts = true
+# pydantic's plugin types models and settings the way pydantic builds them:
+# a Settings() reads its fields from the environment, so none is a required
+# argument, and a model built from a dict is validated at runtime, not here.
+plugins = ["pydantic.mypy"]
 
-# Legacy core modules not yet refactored to the OOP standard. Each entry is
-# removed when its module is cleaned up. config/cache use pydantic-settings and
-# optional-import patterns that need plugins to type cleanly; security/database
-# land in Phase 3f. New OOP layers (exceptions, repositories, services) ARE checked.
-[[tool.mypy.overrides]]
-module = ["app.core.security", "app.core.database", "app.core.config", "app.core.cache"]
-ignore_errors = true
+[tool.pydantic-mypy]
+init_forbid_extra = true
+init_typed = false
+warn_required_dynamic_aliases = true

@@ -226,7 +226,7 @@ def blocklist_access_token(payload: dict[str, Any]) -> None:
 
 def is_access_token_blocklisted(payload: dict[str, Any]) -> bool:
     jti = payload.get("jti")
-    return bool(jti) and cache.exists(_blocklist_key(jti))
+    return isinstance(jti, str) and bool(jti) and cache.exists(_blocklist_key(jti))
 
 
 def get_access_token_payload(token: str = Depends(get_token)) -> dict[str, Any]:
@@ -248,8 +248,8 @@ def authenticate_access_token(token: str, db: Session):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token type")
     if is_access_token_blocklisted(payload):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token has been revoked")
-    user_id: str = payload.get("sub")
-    if not user_id:
+    user_id = payload.get("sub")
+    if not isinstance(user_id, str) or not user_id:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
     # Fail-closed tenant isolation: a normal (tenant) user's token MUST carry a
     # valid client schema — get_db scopes the session's search_path to it, so a
@@ -392,7 +392,7 @@ def require_section_access(section: str, *, write: bool = False):
             return current_user
         role = getattr(current_user, "role", None)
         role_name = getattr(role, "name", None)
-        level = SECTION_ACCESS.get(role_name, {}).get(section, "none")
+        level = SECTION_ACCESS.get(role_name or "", {}).get(section, "none")
         allowed = level == "full" if write else level in {"view", "full"}
         if not allowed:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Insufficient permissions")
