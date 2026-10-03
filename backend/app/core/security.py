@@ -146,9 +146,16 @@ def hash_password(password: str) -> str:
     return _bcrypt.hashpw(password.encode("utf-8"), _bcrypt.gensalt(rounds=12)).decode("ascii")
 
 
+# bcrypt reads at most 72 bytes. bcrypt 4 silently dropped the rest; bcrypt 5
+# raises instead. New passwords are capped at 72 bytes (passwords.py), but a
+# hash made from a longer one under bcrypt 4 must still verify, so a login
+# compares what bcrypt always compared: the first 72 bytes.
+BCRYPT_MAX_BYTES = 72
+
+
 def verify_password(plain: str, hashed: str) -> bool:
     try:
-        return _bcrypt.checkpw(plain.encode("utf-8"), hashed.encode("ascii"))
+        return _bcrypt.checkpw(plain.encode("utf-8")[:BCRYPT_MAX_BYTES], hashed.encode("ascii"))
     except ValueError:
         return False  # malformed stored hash — treat as non-match, never crash auth
 

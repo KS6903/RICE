@@ -21,6 +21,7 @@ from slowapi.util import get_remote_address
 
 from .cache import cache
 from .config import settings
+from .redis_options import redis_client_options
 
 
 def client_ip(request: Request) -> str:
@@ -54,11 +55,10 @@ limiter = Limiter(
     key_func=client_ip,
     default_limits=_default_limits,
     storage_uri=settings.REDIS_URL or "memory://",
-    # Short socket timeouts so a downed Redis never adds multi-second latency to
-    # auth requests. Without these, the OS TCP timeout (5–10 s) fires before
-    # slowapi's in_memory_fallback kicks in. (redis-py wants floats here; the
-    # limits stub types storage_options as dict[str, str], hence the ignore.)
-    storage_options={"socket_connect_timeout": 0.5, "socket_timeout": 0.5} if settings.REDIS_URL else {},  # type: ignore[dict-item]
+    # Fail fast, so a downed Redis never adds seconds to auth requests before
+    # slowapi's in_memory_fallback kicks in (see redis_options.py). The limits
+    # stub types storage_options as dict[str, str]; redis-py takes richer values.
+    storage_options=redis_client_options() if settings.REDIS_URL else {},
     enabled=settings.RATE_LIMIT_ENABLED,
     in_memory_fallback_enabled=True,
     swallow_errors=True,
