@@ -24,7 +24,7 @@ psycopg[binary]==3.3.6
 # unmaintained passlib → direct bcrypt. Stored $2b$ hashes verify unchanged.
 PyJWT==2.15.1
 cryptography==50.0.1  # JWT alg backends + Fernet (core/crypto.py for MFA seeds); PYSEC-2026-3552 fix
-bcrypt==4.2.1
+bcrypt==5.0.0
 python-multipart==0.0.32
 slowapi==0.1.10
 pydantic==2.13.5
@@ -36,7 +36,7 @@ httpx==0.28.1
 # google.auth.transport.requests needs (the app otherwise uses httpx). Without it
 # the transport import fails and Google login silently disables itself.
 google-auth[requests]==2.59.0
-redis==5.2.1
+redis==8.1.0
 pyotp==2.10.0
 
 # Windows-only transitive dependencies (psycopg -> tzdata, click -> colorama),

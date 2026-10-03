@@ -30,6 +30,7 @@ from types import ModuleType
 from typing import Any, Callable
 
 from .config import settings
+from .redis_options import redis_client_options
 
 logger = logging.getLogger("ricemill.cache")
 
@@ -80,12 +81,7 @@ class _Cache:
         if self._client is not None:
             return self._client
         try:
-            client = _redis.from_url(
-                settings.REDIS_URL,
-                socket_connect_timeout=0.5,
-                socket_timeout=0.5,
-                decode_responses=True,
-            )
+            client = _redis.from_url(settings.REDIS_URL, decode_responses=True, **redis_client_options())
             client.ping()
         except Exception as e:  # noqa: BLE001 — any failure → degrade, don't crash
             logger.warning("Redis unavailable (%s); falling back to DB for ~%.0fs.", e, _BREAKER_COOLDOWN)
