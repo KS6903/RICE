@@ -36,7 +36,7 @@ httpx==0.28.1
 # google.auth.transport.requests needs (the app otherwise uses httpx). Without it
 # the transport import fails and Google login silently disables itself.
 google-auth[requests]==2.59.0
-redis==5.2.1
+redis==8.1.0
 pyotp==2.10.0
 
 # Windows-only transitive dependencies (psycopg -> tzdata, click -> colorama),
