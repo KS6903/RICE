@@ -157,8 +157,25 @@ function poolInstanceName(key: string, instances: number): string {
   return `instance-${(hash >>> 0) % instances}`;
 }
 
+/** The API marks a response that queued a tenant schema (signup, a verified
+ *  email, a Google sign-up, an admin's Retry). Start the provisioner now rather
+ *  than at the next 15-minute tick, and keep the marker from the browser. */
+const PROVISIONING_QUEUED = "X-Provisioning-Queued";
+
+function startProvisioningIfQueued(response: Response, env: Env, ctx: ExecutionContext): Response {
+  if (!response.headers.has(PROVISIONING_QUEUED)) return response;
+  ctx.waitUntil(
+    env.PROVISIONER_CONTAINER.getByName("provisioner")
+      .drain()
+      .catch((error: unknown) => console.error("provisioner failed to start", error)),
+  );
+  const cleaned = new Response(response.body, response);
+  cleaned.headers.delete(PROVISIONING_QUEUED);
+  return cleaned;
+}
+
 export default {
-  async fetch(request: Request, env: Env): Promise<Response> {
+  async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     const url = new URL(request.url);
     if (!isBackendPath(url.pathname)) {
       return env.ASSETS.fetch(request);
@@ -201,7 +218,8 @@ export default {
       try {
         const container = await getRandom(env.API_CONTAINER, instances);
         // Clone per attempt: a failed attempt may already have consumed the body.
-        return await container.fetch(proxied.clone());
+        const response = await container.fetch(proxied.clone());
+        return startProvisioningIfQueued(response, env, ctx);
       } catch (error) {
         lastError = error;
       }

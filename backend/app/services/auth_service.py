@@ -23,6 +23,7 @@ import pyotp
 from sqlalchemy.orm import Session
 
 from ..core import legal as legal_docs
+from ..core import provisioning
 from ..core.config import settings
 from ..core.crypto import decrypt_str, encrypt_str
 from ..core.email import send_account_email
@@ -674,9 +675,7 @@ class AuthService(BaseService):
 
     @staticmethod
     def _request_tenant_provisioning(company: Company) -> None:
-        if company.provisioned_at is None:
-            company.provisioning_requested_at = now_utc()
-            company.provisioning_error = None
+        provisioning.request(company, now=now_utc())
 
     @staticmethod
     def _require_agreement_acceptance(data) -> None:

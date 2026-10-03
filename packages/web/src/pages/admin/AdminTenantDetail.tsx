@@ -1,3 +1,4 @@
+import { ProvisioningBadge, ProvisioningPanel } from "../../components/admin/Provisioning";
 import { useEffect, useRef, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useParams, Link } from "react-router-dom";
@@ -666,6 +667,7 @@ export default function AdminTenantDetail() {
             ) : (
               <span className="badge-red">Inactive</span>
             )}
+            <ProvisioningBadge info={c.provisioning} />
           </div>
           <p className="text-sm text-muted mt-1">
             Tenant ID: <span className="font-mono">{c.id || id}</span>
@@ -691,6 +693,8 @@ export default function AdminTenantDetail() {
           </button>
         )}
       </div>
+
+      {id && <ProvisioningPanel tenantId={id} info={c.provisioning} />}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-6">

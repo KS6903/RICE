@@ -163,6 +163,7 @@ def test_the_registered_jobs_run_cleanly(db_session, sessions, seed_owner):
     assert sorted(report.succeeded) == sorted(
         [
             "subscriptions.sweep_expired",
+            "platform.health_watch",
             f"varieties.purge_stale[{company.id}]",
             f"invoices.mark_overdue[{company.id}]",
             f"automations.run[{company.id}]",

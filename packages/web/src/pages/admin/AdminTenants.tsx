@@ -1,3 +1,4 @@
+import { ProvisioningBadge } from "../../components/admin/Provisioning";
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
@@ -112,11 +113,14 @@ function TenantRow({
         </span>
       </td>
       <td>
-        {t.is_active ? (
-          <span className="badge-green">Active</span>
-        ) : (
-          <span className="badge-gray">Inactive</span>
-        )}
+        <div className="flex flex-col items-start gap-1">
+          {t.is_active ? (
+            <span className="badge-green">Active</span>
+          ) : (
+            <span className="badge-gray">Inactive</span>
+          )}
+          <ProvisioningBadge info={t.provisioning} />
+        </div>
       </td>
       <td>
         <div className="flex items-center gap-3 justify-end">

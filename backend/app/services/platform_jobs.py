@@ -69,6 +69,51 @@ def remind_expiring(db: Session, company: Company, *, today: date, zone) -> int:
     )
 
 
+def health_watch(db: Session, *, now: datetime) -> str:
+    """Run the readiness checks from the jobs container and email platform
+    admins about each problem, at most once a day per problem."""
+    from ..core.health import check
+    from ..jobs.runner import claim_run, finish_run
+    from . import platform_emails
+
+    result = check(db, now=now)
+    checks = result["checks"]
+    problems: dict[str, tuple[str, str]] = {}
+    if not checks["database"]["ok"]:
+        return "database unreachable"  # nothing else can be checked, or emailed
+    schema = checks["schema"]
+    if not schema["ok"]:
+        problems["schema"] = (
+            "database schema doesn't match the code",
+            f"The database is at {schema['database'] or 'no revision'}; this code expects {schema['code']}. "
+            "Run alembic upgrade head and migrate_all_tenants.py with the provisioner credential.",
+        )
+    if not checks["redis"]["ok"]:
+        problems["redis"] = (
+            "Redis is unreachable",
+            "Rate limits, lockouts and the cache have fallen back to each container's memory.",
+        )
+    prov = checks["provisioning"]
+    if prov["failed_tenants"]:
+        problems["provisioning_failed"] = (
+            "tenant setup keeps failing",
+            f"{prov['failed_tenants']} mill(s) used up their setup retries. Check the provisioner logs, "
+            "then press Retry on the tenant in the admin console.",
+        )
+    elif not prov["ok"]:
+        problems["provisioning_stuck"] = (
+            "tenant setup is stuck",
+            f"A mill has waited {prov['oldest_waiting_minutes']} minutes for its account to be set up.",
+        )
+    day = now.strftime("%Y-%m-%d")
+    for key, (problem, detail) in problems.items():
+        run_id = claim_run(db, f"platform.health_watch.{key}", None, day)
+        if run_id is not None:
+            sent = platform_emails.health_problem(db, problem=problem, detail=detail)
+            finish_run(db, run_id, "succeeded", f"{sent} admin(s) emailed")
+    return ", ".join(sorted(problems)) or "all healthy"
+
+
 BUDGET_LEVELS = (90, 70)  # highest first: one email per level per month
 
 

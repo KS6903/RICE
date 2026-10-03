@@ -104,6 +104,20 @@ class _Cache:
         """True if Redis is currently reachable. For health checks."""
         return self._client_or_none() is not None
 
+    def ping(self) -> bool | None:
+        """Round-trip to Redis now: True if it answered, False if it didn't, None
+        when Redis isn't configured at all. For the readiness check."""
+        if self._permanently_off:
+            return None
+        client = self._client_or_none()
+        if client is None:
+            return False
+        try:
+            return bool(client.ping())
+        except Exception as e:  # noqa: BLE001
+            self._trip(e)
+            return False
+
     # ---- core operations ------------------------------------------------------
 
     def get_json(self, key: str) -> Any | None:
