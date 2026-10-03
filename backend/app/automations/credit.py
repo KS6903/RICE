@@ -50,6 +50,8 @@ def owed(db: Session, customer_ids: list[uuid.UUID] | None = None) -> dict[uuid.
         orders = orders.filter(SalesOrder.customer_id.in_(customer_ids))
     for query in (invoices.group_by(Invoice.customer_id), orders.group_by(SalesOrder.customer_id)):
         for customer_id, amount in query.all():
+            if customer_id is None:  # filtered out above; the column itself is nullable
+                continue
             balances[customer_id] = balances.get(customer_id, Decimal(0)) + Decimal(amount or 0)
     return balances
 

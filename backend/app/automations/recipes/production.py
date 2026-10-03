@@ -90,7 +90,7 @@ def _milling_quality(ctx: RecipeContext, params: BaseModel) -> list[Notice]:
                     f"Recovery {recovery:.1f}%: {kg(milled)} of rice from {kg(input_kg)} of palay. "
                     f"Expected about {expected:.0f}%."
                 )
-        if broken_kg:
+        if broken_kg and broken_weighted is not None:
             broken = Decimal(broken_weighted) / Decimal(broken_kg)
             if broken > Decimal(str(params.broken_over)):
                 problems.append(f"Broken rice {broken:.1f}%, over your {params.broken_over:g}% limit.")

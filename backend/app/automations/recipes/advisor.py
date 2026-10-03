@@ -17,7 +17,7 @@ from collections import defaultdict
 from collections.abc import Callable
 from datetime import date, datetime, time, timedelta
 from decimal import Decimal
-from typing import Any
+from typing import Any, TypedDict
 from zoneinfo import ZoneInfo
 
 from pydantic import BaseModel, field_validator
@@ -43,6 +43,15 @@ from .watch import _EDITABLE, EMAIL_FIELD, list_price
 SAFE_MOISTURE = Decimal(14)  # % at which palay stores; drying takes it here
 DEFAULT_RECOVERY = Decimal(63)
 D0 = Decimal(0)
+
+
+class _DryingLot(TypedDict):
+    lot: str | None
+    variety: str | None
+    kg: float | int
+    moisture_pct: float | int
+    hours_since_bought: int
+    drying_started: bool
 
 
 def _n(v: Any, places: int = 0) -> float | int:
@@ -1160,7 +1169,7 @@ def _drying_planner(ctx: RecipeContext, params: BaseModel) -> list[Notice]:
         return []
     loc = _location(ctx, params.location_id)
     forecast = _forecast(float(loc.lat), float(loc.lon))
-    lots = [
+    lots: list[_DryingLot] = [
         {
             "lot": p.reference_no,
             "variety": item.variety.name if item.variety else None,
@@ -1169,7 +1178,10 @@ def _drying_planner(ctx: RecipeContext, params: BaseModel) -> list[Notice]:
             "hours_since_bought": max(0, int((ctx.now - p.created_at).total_seconds() // 3600)),
             "drying_started": bool(is_drying),
         }
-        for item, p, is_drying in sorted(rows, key=lambda r: (-Decimal(r[0].moisture_content_pct), r[1].created_at))
+        # Moisture is filtered above SAFE_MOISTURE, so never None here; the column is nullable.
+        for item, p, is_drying in sorted(
+            rows, key=lambda r: (-Decimal(r[0].moisture_content_pct or 0), r[1].created_at)
+        )
     ]
     weather = {
         "days": [
