@@ -35,8 +35,16 @@ from app.core.tenancy import (
 from app.models.company import Company
 
 # One-off ALTERs to apply inside each client schema (e.g. "ALTER TABLE sales_orders
-# ADD COLUMN IF NOT EXISTS …"). Keep idempotent. Empty in normal operation.
-_extra_ddl: list[str] = []
+# ADD COLUMN IF NOT EXISTS …"). Keep idempotent.
+_extra_ddl: list[str] = [
+    # The colour indexes were only ever made by a one-off script from the days
+    # before schema-per-tenant, so no tenant schema had them.
+    *(
+        f"CREATE UNIQUE INDEX IF NOT EXISTS uq_{table}_company_color "
+        f"ON {table} (company_id, canva_color_hex) WHERE canva_color_hex IS NOT NULL"
+        for table in ("suppliers", "customers", "agents", "millers")
+    ),
+]
 
 
 def migrate_all() -> None:

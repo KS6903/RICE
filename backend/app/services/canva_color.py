@@ -5,8 +5,8 @@ that is unique within its tenant — once a color is claimed by ANY of those fou
 tables for a `company_id`, no other row in any of those tables for the same
 company may claim it.
 
-Per-table uniqueness is enforced by partial unique indexes (see
-`migrate_dispatch.py`). Cross-table uniqueness is enforced here at the
+Per-table uniqueness is enforced by partial unique indexes declared on the
+models. Cross-table uniqueness is enforced here at the
 application layer — a single SQL constraint across four tables would require
 a union table, which isn't worth the complexity at this write rate.
 

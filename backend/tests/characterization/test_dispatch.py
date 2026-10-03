@@ -113,3 +113,19 @@ def test_dispatch_orders_courier_and_delivery(auth_client):
     assert delivered.status_code == 200
     assert delivered.json()["status"] == "delivered"
     assert delivered.json()["delivered_at"]
+
+
+def test_a_tenant_schema_refuses_a_duplicate_party_colour(db_session, seed_owner):
+    """The per-table colour indexes come from the models now, so a newly
+    provisioned tenant has them; before, only a one-off script ever made them."""
+    import pytest
+    from sqlalchemy.exc import IntegrityError
+
+    from app.models.supplier_customer import Customer
+
+    db_session.add(Customer(company_id=seed_owner.company_id, name="A", canva_color_hex="#10b981"))
+    db_session.flush()
+    db_session.add(Customer(company_id=seed_owner.company_id, name="B", canva_color_hex="#10b981"))
+    with pytest.raises(IntegrityError, match="uq_customers_company_color"):
+        db_session.flush()
+    db_session.rollback()

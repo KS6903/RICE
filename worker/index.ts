@@ -138,6 +138,21 @@ function instanceCount(env: Env): number {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : 1;
 }
 
+/** The pool instance a sticky key always lands on. getRandom() spreads plain
+ *  requests over "instance-0".."instance-N-1", and a socket key has to map into
+ *  that same pool. Naming a container after the key itself ("canva-<layout>")
+ *  asked for one container per layout; once the pool was warm, max_instances
+ *  left no room to start them and those sockets failed to connect. FNV-1a keeps
+ *  a layout on one instance for as long as the pool size doesn't change. */
+function poolInstanceName(key: string, instances: number): string {
+  let hash = 0x811c9dc5;
+  for (let i = 0; i < key.length; i++) {
+    hash ^= key.charCodeAt(i);
+    hash = Math.imul(hash, 0x01000193);
+  }
+  return `instance-${(hash >>> 0) % instances}`;
+}
+
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
@@ -151,7 +166,8 @@ export default {
       // handle that carries the upgrade, and the socket would fail to connect.
       // That means a caller-supplied X-Forwarded-For rides through untouched, so
       // the WS path must not be IP-rate-limited on the container side.
-      return env.API_CONTAINER.getByName(sticky).fetch(request);
+      const instance = poolInstanceName(sticky, instanceCount(env));
+      return env.API_CONTAINER.getByName(instance).fetch(request);
     }
 
     // Preserve the caller's IP for slowapi's limiter and the progressive

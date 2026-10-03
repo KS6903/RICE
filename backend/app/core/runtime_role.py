@@ -34,7 +34,7 @@ def verify_runtime_database_role(engine: Engine, expected_role: str) -> None:
         # The consent ledger is the evidence of who agreed to which terms: the
         # runtime role may add rows but never rewrite or delete them (migration
         # 007 and scripts/db_least_privilege.sql revoke both).
-        ledger_writable = connection.execute(
+        ledger_writable: bool = connection.execute(
             text(
                 "SELECT COALESCE(bool_or(has_table_privilege(current_user, c.oid, 'UPDATE') "
                 "OR has_table_privilege(current_user, c.oid, 'DELETE')), false) "
