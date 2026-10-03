@@ -18,82 +18,81 @@ from app.models.reference import QualityGrade, RiceVariety
 from app.models.user import User
 
 
+def seed(db, username: str) -> str:
+    """Seed one tenant's inventory; say what happened."""
+    user = db.query(User).filter(User.username == username).first()
+    if not user or not user.company_id:
+        return f"{username}: not found or has no company — skipped"
+    # Domain tables live in this client's schema — point the session at it.
+    set_search_path(db, user.company.schema_name)
+    branch = db.query(Branch).filter(Branch.company_id == user.company_id).first()
+    if not branch:
+        return f"{username}: no branch — skipped"
+
+    existing_palay = db.query(PalayInventory).filter(PalayInventory.company_id == branch.company_id).count()
+    existing_milled = db.query(MilledRiceInventory).filter(MilledRiceInventory.company_id == branch.company_id).count()
+    existing_bp = db.query(ByproductInventory).filter(ByproductInventory.company_id == branch.company_id).count()
+    if existing_palay or existing_milled or existing_bp:
+        return (
+            f"{username}: inventory already seeded "
+            f"(palay={existing_palay}, milled={existing_milled}, bp={existing_bp}) — skipped"
+        )
+
+    varieties = db.query(RiceVariety).limit(3).all()
+    grades = db.query(QualityGrade).limit(2).all()
+    if not varieties or not grades:
+        return f"{username}: needs varieties and grades (run seed.py first) — skipped"
+
+    created = 0
+
+    # Palay rows
+    for i, v in enumerate(varieties):
+        db.add(
+            PalayInventory(
+                company_id=branch.company_id,
+                branch_id=branch.id,
+                variety_id=v.id,
+                grade_id=grades[i % len(grades)].id,
+                quantity_kg=Decimal("2500.0") - Decimal(str(i * 300)),
+            )
+        )
+        created += 1
+
+    # Milled rice rows
+    for i, v in enumerate(varieties):
+        db.add(
+            MilledRiceInventory(
+                company_id=branch.company_id,
+                branch_id=branch.id,
+                variety_id=v.id,
+                grade_name=["premium", "regular", "broken"][i % 3],
+                quantity_kg=Decimal("1750.0") - Decimal(str(i * 200)),
+            )
+        )
+        created += 1
+
+    # By-products rows
+    for kind, kg in (("ipa", "850.0"), ("darak", "640.0"), ("binlid", "320.0")):
+        db.add(
+            ByproductInventory(
+                company_id=branch.company_id,
+                branch_id=branch.id,
+                byproduct_type=kind,
+                quantity_kg=Decimal(kg),
+            )
+        )
+        created += 1
+
+    db.commit()
+    return f"{username}: {created} inventory rows in {branch.name}"
+
+
 def main():
+    import sys
+
     db = SessionLocal()
     try:
-        import sys
-
-        target_username = sys.argv[1] if len(sys.argv) > 1 else "mill1"
-        user = db.query(User).filter(User.username == target_username).first()
-        if not user or not user.company_id:
-            print(f"User {target_username!r} not found or has no company.")
-            return
-        # Domain tables live in this client's schema — point the session at it.
-        set_search_path(db, user.company.schema_name)
-        branch = db.query(Branch).filter(Branch.company_id == user.company_id).first()
-        if not branch:
-            print("No branch on this company.")
-            return
-
-        existing_palay = db.query(PalayInventory).filter(PalayInventory.company_id == branch.company_id).count()
-        existing_milled = (
-            db.query(MilledRiceInventory).filter(MilledRiceInventory.company_id == branch.company_id).count()
-        )
-        existing_bp = db.query(ByproductInventory).filter(ByproductInventory.company_id == branch.company_id).count()
-        if existing_palay or existing_milled or existing_bp:
-            print(
-                f"Inventory already seeded (palay={existing_palay}, milled={existing_milled}, bp={existing_bp}). Skipping."
-            )
-            return
-
-        varieties = db.query(RiceVariety).limit(3).all()
-        grades = db.query(QualityGrade).limit(2).all()
-        if not varieties or not grades:
-            print("Need varieties + grades. Run seed.py first.")
-            return
-
-        created = 0
-
-        # Palay rows
-        for i, v in enumerate(varieties):
-            db.add(
-                PalayInventory(
-                    company_id=branch.company_id,
-                    branch_id=branch.id,
-                    variety_id=v.id,
-                    grade_id=grades[i % len(grades)].id,
-                    quantity_kg=Decimal("2500.0") - Decimal(str(i * 300)),
-                )
-            )
-            created += 1
-
-        # Milled rice rows
-        for i, v in enumerate(varieties):
-            db.add(
-                MilledRiceInventory(
-                    company_id=branch.company_id,
-                    branch_id=branch.id,
-                    variety_id=v.id,
-                    grade_name=["premium", "regular", "broken"][i % 3],
-                    quantity_kg=Decimal("1750.0") - Decimal(str(i * 200)),
-                )
-            )
-            created += 1
-
-        # By-products rows
-        for kind, kg in (("ipa", "850.0"), ("darak", "640.0"), ("binlid", "320.0")):
-            db.add(
-                ByproductInventory(
-                    company_id=branch.company_id,
-                    branch_id=branch.id,
-                    byproduct_type=kind,
-                    quantity_kg=Decimal(kg),
-                )
-            )
-            created += 1
-
-        db.commit()
-        print(f"Seeded {created} inventory rows in {branch.name}.")
+        print(seed(db, sys.argv[1] if len(sys.argv) > 1 else "mill1"))
     finally:
         db.close()
 

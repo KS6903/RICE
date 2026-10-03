@@ -433,18 +433,16 @@ def _seed_pallets(db, company_id, branch_id):
     return f"pallets: +{n}"
 
 
-def seed_company(username: str):
+def seed_company(username: str) -> str:
     control = SessionLocal()
     try:
         user = control.query(User).filter(User.username == username).first()
         if not user or not user.company_id:
-            print(f"[{username}] not found / no company — skip")
-            return
+            return f"{username}: not found or has no company — skipped"
         company = user.company
         branch = control.query(Branch).filter(Branch.company_id == company.id).first()
         if not branch:
-            print(f"[{username}] no branch — skip")
-            return
+            return f"{username}: no branch — skipped"
         company_id, branch_id = company.id, branch.id
     finally:
         control.close()
@@ -467,7 +465,7 @@ def seed_company(username: str):
             _seed_pallets(db, company_id, branch_id),
         ]
         db.commit()
-        print(f"[{username}] " + " | ".join(steps))
+        return f"{username}: " + " | ".join(steps)
     except Exception as e:
         db.rollback()
         print(f"[{username}] ERROR: {e}")
@@ -485,4 +483,4 @@ if __name__ == "__main__":
     else:
         targets = ["mill1"]
     for t in targets:
-        seed_company(t)
+        print(seed_company(t))
