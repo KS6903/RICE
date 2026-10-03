@@ -56,6 +56,7 @@ def check(db: Session, *, now: datetime) -> dict[str, Any]:
         return {"ready": False, "checks": checks}
 
     expected = code_heads()
+    current: tuple[str, ...]
     try:
         current = tuple(sorted(db.execute(text("SELECT version_num FROM alembic_version")).scalars()))
     except Exception:  # noqa: BLE001

@@ -347,11 +347,11 @@ def _zone_overweight(ctx: RecipeContext, params: BaseModel) -> list[Notice]:
     )
     over = {
         str(zone.id): (
-            f"{zone.name} ({layout}): {kg(load)} on a {kg(zone.max_weight_kg)} limit "
-            f"({Decimal(load) / Decimal(zone.max_weight_kg) * 100:.0f}%)"
+            f"{zone.name} ({layout}): {kg(load)} on a {kg(limit)} limit ({Decimal(load) / limit * 100:.0f}%)"
         )
         for zone, layout, load in rows
-        if load is not None and Decimal(load) > Decimal(zone.max_weight_kg)
+        # The query keeps zones with a limit; a nullable column still says None may come.
+        if (limit := Decimal(zone.max_weight_kg or 0)) and load is not None and Decimal(load) > limit
     }
     new = sorted(newly_true(ctx, "zone_overweight", over))
     if not new:
