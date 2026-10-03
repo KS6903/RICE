@@ -75,6 +75,7 @@ from ..services.subscription import (
     effective_status,
     ensure_subscription,
 )
+from . import platform_emails
 
 # Imported independently so a missing transport (e.g. the `requests` extra) can't
 # also null out id_token, and vice versa — both are checked before use below.
@@ -294,8 +295,11 @@ class AuthService(BaseService):
                 with self.transaction():
                     self._log_security_event(user, "auth.login_failed", "Invalid password.")
             # If that failure tripped the threshold, tell the user they're now
-            # locked (and for how long) rather than a generic "invalid credentials".
+            # locked (and for how long) rather than a generic "invalid credentials",
+            # and email the account holder: it may not have been them.
             if state.locked:
+                if user is not None:
+                    platform_emails.account_locked(user, state)
                 raise _lockout_error(state)
             raise UnauthorizedError("Invalid credentials")
         if not user.is_active:

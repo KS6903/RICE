@@ -150,6 +150,14 @@ class Settings(BaseSettings):
     # Optional Redis cache. When unset (or unreachable), the app runs without
     # caching and reads straight from PostgreSQL — Redis is never required.
     REDIS_URL: str | None = None
+    # Optional: Upstash's developer API, read daily by the platform.redis_budget
+    # job to warn platform admins at 70% and 90% of the month's request quota.
+    # The stats API reports usage but not the plan's limit, so that's set here
+    # (the free tier's 500K by default). Unset: the job does nothing.
+    UPSTASH_API_EMAIL: str | None = None
+    UPSTASH_API_KEY: SecretStr | None = None
+    UPSTASH_DATABASE_ID: str | None = None
+    UPSTASH_MONTHLY_REQUEST_LIMIT: int = 500_000
 
     @property
     def origins_list(self) -> list[str]:

@@ -9,6 +9,7 @@ from fastapi import APIRouter, Depends, status
 from sqlalchemy.orm import Session
 
 from ..core.database import get_db
+from ..core.ratelimit import limiter
 from ..core.security import require_platform_admin
 from ..repositories.billing import (
     SubscriptionPlanRepository,
@@ -149,7 +150,10 @@ def list_upgrade_requests(status_filter: str | None = "pending", svc: AdminServi
     return svc.list_upgrade_requests(status_filter)
 
 
+# Polled by every open tab: exempt from the per-IP default limit, which would
+# otherwise spend Redis commands (Upstash bills per command) on every poll.
 @router.get("/upgrade-requests/pending-count")
+@limiter.exempt
 def pending_upgrade_request_count(svc: AdminService = Depends(get_admin_service)):
     return svc.pending_upgrade_request_count()
 

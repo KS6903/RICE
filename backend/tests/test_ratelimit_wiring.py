@@ -1,10 +1,12 @@
 """Every ``@limiter.limit`` endpoint must declare ``response: Response``.
 
-slowapi is configured with ``headers_enabled=True`` (core/ratelimit.py), so after
-running an endpoint it injects the X-RateLimit-* headers by reaching for a kwarg
-literally named ``response``. An endpoint that doesn't declare one makes slowapi
-raise ``parameter `response` must be an instance of starlette.responses.Response``
-— which surfaces as a 500 on a route that otherwise looks fine.
+With ``headers_enabled=True``, slowapi injects the X-RateLimit-* headers after
+running an endpoint by reaching for a kwarg literally named ``response``. An
+endpoint that doesn't declare one makes slowapi raise ``parameter `response`
+must be an instance of starlette.responses.Response`` — which surfaces as a 500
+on a route that otherwise looks fine. The headers are off now (each one cost a
+Redis window lookup, which Upstash bills), but the declarations stay so that
+turning them back on can't bring the 500 back.
 
 The rest of the suite runs with RATE_LIMIT_ENABLED=false, and a disabled limiter
 short-circuits before that injection, so this failure mode is invisible there.
@@ -62,17 +64,30 @@ def test_authenticated_rate_limited_endpoints_do_not_500(auth_client, limited, p
     assert res.status_code != 500, f"{path} -> 500: {res.text}"
 
 
-def test_rate_limit_headers_are_actually_injected(client, limited):
-    """Proves the injection path this guards is really exercised, rather than the
-    endpoints above passing because the limiter quietly did nothing.
+def test_rate_limit_headers_stay_off(client, limited):
+    """Each X-RateLimit header set costs Redis commands on every limited request,
+    and Upstash bills per command. The limiter itself still counts (see below).
 
     Uses forgot-password because it is enumeration-safe and returns 200 whether or
-    not the account exists — slowapi only injects headers on a normal return, not
-    when the handler raises.
+    not the account exists.
     """
     res = client.post("/api/auth/forgot-password", json={"identifier": "nobody-at-all"})
     assert res.status_code == 200, res.text
-    assert any(h.lower().startswith("x-ratelimit") for h in res.headers), dict(res.headers)
+    assert not any(h.lower().startswith("x-ratelimit") for h in res.headers), dict(res.headers)
+
+
+def test_polled_endpoints_are_exempt_from_the_default_limit():
+    """/auth/me is polled by every open tab, /api/health by uptime checks, and
+    the two upgrade-request polls by the billing page and the admin console.
+    Exempt routes never touch the limiter's storage, so they spend no Redis
+    commands (the suite runs without a default limit, so this is checked on
+    the limiter's own record rather than by counting hits)."""
+    from app.api import admin, auth, billing
+    from app.main import health_check
+
+    exempt = limiter._exempt_routes
+    for route in (health_check, auth.me, admin.pending_upgrade_request_count, billing.my_latest_request):
+        assert f"{route.__module__}.{route.__name__}" in exempt, route.__name__
 
 
 def test_every_limited_auth_endpoint_declares_a_response_param():

@@ -266,7 +266,8 @@ function BillingTab() {
   const { data: requestData } = useQuery<{ request: UpgradeRequest | null }>({
     queryKey: ["billing-my-request"],
     queryFn: () => billingService.getMyRequest(),
-    refetchInterval: 10 * 1000,
+    // The decision is also emailed; this only keeps an open page current.
+    refetchInterval: 60 * 1000,
     refetchOnWindowFocus: true,
   });
   const myRequest = requestData?.request ?? null;

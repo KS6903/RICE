@@ -158,6 +158,7 @@ async def _verify_runtime_database_role() -> None:
 
 
 @app.get("/api/health")
+@limiter.exempt
 def health_check():
     from .core.cache import cache
 

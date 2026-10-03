@@ -106,7 +106,6 @@ def test_route_accepts_response_headers_with_rate_limiting_enabled(make_auth_cli
     c = make_auth_client(features=["drying_advisor"], username="ratelimited")
     res = c.get("/api/drying-advisory")
     assert res.status_code == 200, res.text
-    assert "X-RateLimit-Limit" in res.headers
 
 
 def test_requires_drying_advisor_feature(make_auth_client):
