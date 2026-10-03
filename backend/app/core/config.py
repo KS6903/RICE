@@ -137,6 +137,8 @@ class Settings(BaseSettings):
     # Advisory calls cost money per request; kept tight since the endpoint is
     # also cached server-side for hours per location/day (see TTL_DRYING_ADVISORY).
     RATE_LIMIT_DRYING_ADVISOR: str = "10/hour"
+    # A full data export reads every table the mill has; a few an hour is plenty.
+    RATE_LIMIT_DATA_EXPORT: str = "3/hour"
     # SMTP delivery for password-reset and verification links. Production
     # refuses to boot without it so live secrets never need to be logged.
     SMTP_HOST: str | None = None

@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text
+from sqlalchemy import Boolean, DateTime, ForeignKey, Index, Integer, String, Text, text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -20,6 +20,15 @@ def _default_schema_name() -> str:
 
 class Company(Base, TimestampMixin):
     __tablename__ = "companies"
+    __table_args__ = (
+        # The provisioner's queue (migration 005); declared here so a fresh
+        # database and an upgraded one end up identical.
+        Index(
+            "ix_companies_provisioning_queue",
+            "provisioning_requested_at",
+            postgresql_where=text("provisioned_at IS NULL AND provisioning_requested_at IS NOT NULL"),
+        ),
+    )
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     name: Mapped[str] = mapped_column(String(200), nullable=False)

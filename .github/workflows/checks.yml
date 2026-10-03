@@ -72,6 +72,57 @@ jobs:
       - name: Tests (pytest)
         run: pytest
 
+  migrations:
+    name: Migrations match the models
+    # Two paths on a disposable database: main's schema plus this branch's new
+    # migrations (what production goes through), and every migration from
+    # empty (a new environment). Each ends with `alembic check`, which fails
+    # when the models describe something the migrations don't build.
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/rice_drift
+      SECRET_KEY: ci-test-secret-key
+      REDIS_URL: ""
+      # The schema to upgrade from: a PR's base, or the commit before a push.
+      BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+      - name: Install dependencies
+        run: python -m pip install --require-hashes -r requirements.txt
+      - name: Upgrade path and fresh path
+        run: |
+          base=""
+          # A new branch's "before" is all zeros; a deploy dispatch has none.
+          if [ -n "$BASE_SHA" ] && [ "$BASE_SHA" != "0000000000000000000000000000000000000000" ]              && git cat-file -e "$BASE_SHA^{commit}" 2>/dev/null; then
+            base="--base-ref $BASE_SHA"
+          fi
+          python scripts/check_migrations.py --database-url "$DATABASE_URL" $base
+
   frontend:
     runs-on: ubuntu-latest
     steps:

@@ -47,15 +47,21 @@ _extra_ddl: list[str] = [
 ]
 
 
-def migrate_all() -> None:
+def migrate_all() -> int:
+    """Returns how many tenants failed."""
     db = ProvisionerSessionLocal()
     try:
         companies = db.query(Company).all()
     finally:
         db.close()
 
-    print(f"Syncing {len(companies)} client schema(s)…")
+    print(f"Syncing {len(companies)} client schema(s)...")
+    failed = 0
     for company in companies:
+        if company.provisioned_at is None:
+            # No schema yet: the provisioner builds it, already current.
+            print(f"  - {company.name}: not provisioned yet, skipped")
+            continue
         schema = schema_name_for(company)
         session = ProvisionerSessionLocal()
         try:
@@ -66,14 +72,18 @@ def migrate_all() -> None:
             if settings.PROVISIONER_DATABASE_URL is not None:
                 grant_runtime_schema_access(session, schema)
             session.commit()
-            print(f"  ✓ {schema} ({company.name})")
+            print(f"  ok {schema} ({company.name})")
         except Exception as exc:  # noqa: BLE001
             session.rollback()
-            print(f"  ✗ {schema} ({company.name}): {exc}")
+            failed += 1
+            print(f"  FAILED {schema} ({company.name}): {exc}")
         finally:
             session.close()
-    print("Done.")
+    print(f"Done: {len(companies) - failed} ok, {failed} failed.")
+    return failed
 
 
 if __name__ == "__main__":
-    migrate_all()
+    # Non-zero when any tenant failed, so a deploy stops instead of rolling
+    # out code against a half-migrated database.
+    raise SystemExit(1 if migrate_all() else 0)
