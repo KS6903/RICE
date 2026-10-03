@@ -12,10 +12,9 @@
 // An update feed without a certificate is refused: an unsigned build has
 // nothing for the updater to check an installer against.
 //
-// Native modules aren't rebuilt (package.json build.npmRebuild = false):
-// better-sqlite3 13 ships one Node-API binary per platform that runs on any
-// Electron as is, so a rebuild would only add a Visual Studio requirement.
-// npm run smoke opens a database in Electron to keep that true.
+// There are no native modules to rebuild (package.json build.npmRebuild =
+// false): SQLite is node:sqlite, built into Electron. npm run smoke opens a
+// database in Electron to keep that true.
 //
 // Usage, from packages/desktop:  node scripts/build-desktop.mjs [electron-builder args]
 import { spawnSync } from "node:child_process";

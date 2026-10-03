@@ -12,6 +12,8 @@
 // (In a VS Code terminal, ELECTRON_RUN_AS_NODE is set and makes Electron act
 // as plain Node; the npm script clears it.)
 const { app, BrowserWindow } = require("electron");
+const fs = require("fs");
+const os = require("os");
 const path = require("path");
 
 const desktop = path.resolve(__dirname, "..");
@@ -19,6 +21,15 @@ const { registerAppScheme, serveApp } = require(path.join(desktop, "main", "appP
 const apiOrigin = process.env.SMOKE_API || "http://127.0.0.1:8000";
 
 registerAppScheme();
+
+// All app data in a temporary folder, set before the app starts, so the smoke
+// test never touches the user's own. Chromium holds files there until exit, so
+// earlier runs' folders are swept here instead.
+for (const old of fs.readdirSync(os.tmpdir()).filter((name) => name.startsWith("oryza-smoke-"))) {
+  fs.rmSync(path.join(os.tmpdir(), old), { recursive: true, force: true, maxRetries: 2 });
+}
+const scratch = fs.mkdtempSync(path.join(os.tmpdir(), "oryza-smoke-"));
+app.setPath("userData", scratch);
 let upgrades = 0;
 const consoleErrors = [];
 
@@ -81,13 +92,34 @@ app.whenReady().then(async () => {
       if (src) { const a = await fetch(src); out.asset = a.status + " " + a.headers.get("content-type"); }
       return out;
     })()`);
-    // The native SQLite module, loaded by this Electron the way the app loads it.
+    // The app's local database, opened the way sign-in opens it: a tenant
+    // partition with its pragmas, the full schema, sync markers and the
+    // quarantine table, all on node:sqlite. In a temporary folder, never the
+    // user's app data.
     let sqlite;
     try {
-      const Database = require("better-sqlite3");
-      const db = new Database(":memory:");
-      sqlite = db.prepare("select sqlite_version() as v").get().v;
-      db.close();
+      const { initDatabase } = require(path.join(desktop, "main", "database", "sqlite.js"));
+      const { quarantinePush, quarantineCount } = require(
+        path.join(desktop, "main", "sync", "quarantine.js"),
+      );
+      const manager = initDatabase();
+      const db = manager.activate({
+        userId: "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+        companyId: "9b2b1c3e-1d2f-4a5b-8c6d-7e8f9a0b1c2d",
+        schema: "client_smoke",
+        role: "owner",
+      });
+      db.prepare("INSERT INTO payments (id, payment_date, amount, method) VALUES (?, ?, ?, ?)").run(
+        "smoke-1",
+        "2026-10-03",
+        10,
+        "cash",
+      );
+      quarantinePush(db, "payments", "smoke-1", "smoke test", "0.0.0");
+      const journal = db.prepare("PRAGMA journal_mode").get().journal_mode;
+      const version = db.prepare("select sqlite_version() as v").get().v;
+      sqlite = quarantineCount(db) === 1 && journal === "wal" ? version : `journal ${journal}`;
+      manager.clear();
     } catch (error) {
       sqlite = String(error && error.message ? error.message : error).slice(0, 200);
     }
