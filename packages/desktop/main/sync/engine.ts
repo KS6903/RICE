@@ -13,6 +13,19 @@ import {
   SyncTable,
   TABLE_COLUMNS,
 } from "./contract";
+import { pushIsolating, recordRejection } from "./push";
+import { quarantinePull, quarantinePush, retryAfterUpdate } from "./quarantine";
+
+export const CLIENT_VERSION_HEADER = "X-Client-Version";
+
+export interface SyncEngineOptions {
+  apiBase: string;
+  /** This app's version, sent on every request (the server may require a minimum). */
+  appVersion: string;
+  onSessionInvalidated?: () => void;
+  /** The server answered 426: this build is too old to sync. */
+  onUpgradeRequired?: () => void;
+}
 
 const PUSH_BATCH_SIZE = 100;
 const MAX_PULL_PAGES_PER_RUN = 20;
@@ -36,12 +49,19 @@ export class SyncEngine {
   private identity: SyncIdentity | null = null;
   private syncInFlight: Promise<void> | null = null;
   private sessionVersion = 0;
+  private readonly apiBase: string;
+  private readonly appVersion: string;
+  private readonly onSessionInvalidated: () => void;
+  private readonly onUpgradeRequired: () => void;
 
   constructor(
     private readonly dbManager: TenantDatabaseManager,
-    private readonly apiBase = "http://localhost:8000/api",
-    private readonly onSessionInvalidated: () => void = () => {},
+    options: SyncEngineOptions,
   ) {
+    this.apiBase = options.apiBase;
+    this.appVersion = options.appVersion;
+    this.onSessionInvalidated = options.onSessionInvalidated ?? (() => {});
+    this.onUpgradeRequired = options.onUpgradeRequired ?? (() => {});
     this.startMonitoring();
   }
 
@@ -50,6 +70,8 @@ export class SyncEngine {
     this.dbManager.activate(identity);
     this.accessToken = token;
     this.identity = { ...identity };
+    const db = this.dbManager.getDatabase();
+    if (db) this.retryWhatAnOlderVersionSetAside(db, `last_synced_at:${identity.role}`);
   }
 
   clearSession(): void {
@@ -95,6 +117,7 @@ export class SyncEngine {
         this.clearSession();
         this.onSessionInvalidated();
       }
+      if (status === 426) this.onUpgradeRequired();
       this.logSafeFailure(error);
     }
   }
@@ -111,61 +134,99 @@ export class SyncEngine {
         .prepare(`SELECT * FROM ${table} WHERE _synced = 0 LIMIT ?`)
         .all(remaining) as Array<Record<string, unknown>>;
       for (const row of rows) {
-        const payload = payloadFromLocalRow(table, row);
-        if (Object.hasOwn(payload, "company_id")) payload.company_id = identity.companyId;
-        if (Object.hasOwn(payload, "created_by")) payload.created_by = identity.userId;
-        if (Object.hasOwn(payload, "received_by")) payload.received_by = identity.userId;
-        const id = payload.id;
-        if (typeof id !== "string") throw new Error("Local sync row has no valid id");
-        const record = assertValidRecord(
-          {
-            table_name: table,
-            record_id: id,
-            operation: "INSERT",
-            payload,
-            updated_at: new Date().toISOString(),
-          },
-          identity,
-        );
-        records.push({ table, id, record });
+        const id = row.id;
+        try {
+          const payload = payloadFromLocalRow(table, row);
+          if (Object.hasOwn(payload, "company_id")) payload.company_id = identity.companyId;
+          if (Object.hasOwn(payload, "created_by")) payload.created_by = identity.userId;
+          if (Object.hasOwn(payload, "received_by")) payload.received_by = identity.userId;
+          if (typeof payload.id !== "string") throw new Error("Local sync row has no valid id");
+          const record = assertValidRecord(
+            {
+              table_name: table,
+              record_id: payload.id,
+              operation: "INSERT",
+              payload,
+              updated_at: new Date().toISOString(),
+            },
+            identity,
+          );
+          records.push({ table, id: payload.id, record });
+        } catch (error) {
+          // A row this device can't even send would fail every batch it's in.
+          if (typeof id !== "string") throw error;
+          const reason = error instanceof Error ? error.message : "invalid row";
+          quarantinePush(db, table, id, `not sendable: ${reason}`, this.appVersion);
+        }
       }
     }
     if (records.length === 0) return;
 
-    const response = await axios.post(
-      `${this.apiBase}/sync/push`,
-      { client_id: this.getClientId(db), records: records.map((item) => item.record) },
-      {
-        headers: { Authorization: `Bearer ${context.token}` },
-        timeout: 15_000,
-        maxBodyLength: 512 * 1024,
-        maxContentLength: 128 * 1024,
+    const clientId = this.getClientId(db);
+    await pushIsolating(records, {
+      send: async (batch) => {
+        const response = await axios.post(
+          `${this.apiBase}/sync/push`,
+          { client_id: clientId, records: batch.map((item) => item.record) },
+          {
+            headers: this.headers(context),
+            timeout: 15_000,
+            maxBodyLength: 512 * 1024,
+            maxContentLength: 128 * 1024,
+          },
+        );
+        if (
+          typeof response.data !== "object" ||
+          response.data === null ||
+          response.data.synced !== batch.length
+        ) {
+          throw new Error("Invalid sync push acknowledgement");
+        }
+        this.assertCurrent(context);
       },
-    );
-    if (
-      typeof response.data !== "object" ||
-      response.data === null ||
-      response.data.synced !== records.length
-    ) {
-      throw new Error("Invalid sync push acknowledgement");
-    }
-    this.assertCurrent(context);
+      rejection: recordRejection,
+      onSynced: (batch) => this.markSynced(db, batch),
+      onRejected: (item, reason) => {
+        this.assertCurrent(context);
+        quarantinePush(db, item.table, item.id, reason, this.appVersion);
+      },
+    });
+  }
 
-    const markSynced = new Map<SyncTable, Database.Statement>();
-    const commit = db.transaction(() => {
-      for (const item of records) {
-        let statement = markSynced.get(item.table);
+  private markSynced(db: Database.Database, items: QueuedRecord[]): void {
+    const statements = new Map<SyncTable, Database.Statement>();
+    db.transaction(() => {
+      for (const item of items) {
+        let statement = statements.get(item.table);
         if (!statement) {
           // Table identifiers are drawn from SYNC_TABLES, not HTTP/renderer data.
           statement = db.prepare(
             `UPDATE ${item.table} SET _synced = 1 WHERE id = ? AND _synced = 0`,
           );
-          markSynced.set(item.table, statement);
+          statements.set(item.table, statement);
         }
         statement.run(item.id);
       }
-    });
-    commit();
+    })();
+  }
+
+  private headers(context: SyncContext): Record<string, string> {
+    return {
+      Authorization: `Bearer ${context.token}`,
+      [CLIENT_VERSION_HEADER]: this.appVersion,
+    };
+  }
+
+  /** After an update, give what an older version set aside another try. */
+  private retryWhatAnOlderVersionSetAside(db: Database.Database, cursorKey: string): void {
+    try {
+      const rewindTo = retryAfterUpdate(db, this.appVersion);
+      if (rewindTo && Date.parse(rewindTo) < Date.parse(this.getLastSynced(db, cursorKey))) {
+        this.setLastSynced(db, cursorKey, rewindTo);
+      }
+    } catch {
+      console.error("[SyncEngine] could not requeue set-aside records");
+    }
   }
 
   private async pull(context: SyncContext): Promise<void> {
@@ -177,24 +238,49 @@ export class SyncEngine {
       this.assertCurrent(context);
       const response = await axios.get(`${this.apiBase}/sync/pull`, {
         params: { since },
-        headers: { Authorization: `Bearer ${context.token}` },
+        headers: this.headers(context),
         timeout: 15_000,
         maxContentLength: 2 * 1024 * 1024,
       });
       this.assertCurrent(context);
       const page = parsePullResponse(response.data, identity);
 
-      // Replay and cursor advancement are one SQLite transaction. A malformed
-      // row or constraint failure rolls back the entire page, so it is retried
-      // rather than silently skipped.
+      // Replay and cursor advancement are one SQLite transaction. Each record
+      // applies in its own savepoint: one that fails (a malformed row, an update
+      // before its insert) is rolled back alone and set aside, instead of
+      // failing the page and stalling every sync after it.
       const applyPage = db.transaction(() => {
-        for (const record of page.records) this.applyRecord(db, record);
-        db.prepare(
-          "INSERT INTO _local_sync_meta (key, value) VALUES (?, ?) " +
-            "ON CONFLICT(key) DO UPDATE SET value = excluded.value",
-        ).run(cursorKey, page.server_time);
+        for (const rejected of page.rejected) {
+          quarantinePull(
+            db,
+            rejected.table,
+            rejected.recordId,
+            rejected.reason,
+            this.appVersion,
+            null,
+          );
+        }
+        for (const record of page.records) {
+          try {
+            db.transaction(() => this.applyRecord(db, record))();
+          } catch (error) {
+            const reason = error instanceof Error ? error.message : "could not apply";
+            quarantinePull(
+              db,
+              record.table_name,
+              record.record_id,
+              reason,
+              this.appVersion,
+              record.synced_at ?? null,
+            );
+          }
+        }
+        this.setLastSynced(db, cursorKey, page.server_time);
       });
       applyPage();
+      if (page.rejected.length > 0) {
+        console.error(`[SyncEngine] set aside ${page.rejected.length} invalid pulled records`);
+      }
       since = page.server_time;
       if (!page.has_more) break;
     }
@@ -244,6 +330,13 @@ export class SyncEngine {
     const id = `electron-${crypto.randomUUID()}`;
     db.prepare("INSERT INTO _local_sync_meta (key, value) VALUES ('device_id', ?)").run(id);
     return id;
+  }
+
+  private setLastSynced(db: Database.Database, cursorKey: string, value: string): void {
+    db.prepare(
+      "INSERT INTO _local_sync_meta (key, value) VALUES (?, ?) " +
+        "ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+    ).run(cursorKey, value);
   }
 
   private getLastSynced(db: Database.Database, cursorKey: string): string {

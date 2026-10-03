@@ -8,13 +8,15 @@
     "dev:vite": "vite --config ../web/vite.config.ts --port 8448",
     "dev:electron": "wait-on http://localhost:8448 && npm run build:main && electron .",
     "build:main": "tsc -p tsconfig.json",
-    "build": "npm run build:web && npm run build:main && electron-builder",
-    "build:web": "cd ../web && npm run build"
+    "build": "node scripts/build-desktop.mjs",
+    "build:web": "cd ../web && npm run build",
+    "test": "vitest run"
   },
   "dependencies": {
     "@rice-mill/shared": "*",
+    "axios": "1.20.0",
     "better-sqlite3": "^11.7.0",
-    "axios": "1.20.0"
+    "electron-updater": "^6.8.9"
   },
   "devDependencies": {
     "@types/better-sqlite3": "^7.6.12",
@@ -23,6 +25,7 @@
     "electron": "42.10.0",
     "electron-builder": "^26.15.3",
     "typescript": "^5.7.2",
+    "vitest": "^4.1.11",
     "wait-on": "^8.0.1"
   },
   "build": {
@@ -33,12 +36,18 @@
     },
     "win": {
       "target": "nsis",
-      "icon": "assets/icon.ico"
+      "icon": "../web/public/icon-512.png"
     },
     "files": [
-      "main/**/*",
-      "preload/**/*",
-      "../web/dist/**/*"
+      "main/**/*.js",
+      "main/build-config.json",
+      "preload/**/*.js"
+    ],
+    "extraResources": [
+      {
+        "from": "../web/dist",
+        "to": "web"
+      }
     ]
   }
 }

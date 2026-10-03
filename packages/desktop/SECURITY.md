@@ -14,6 +14,34 @@ and renames the original to `rice-mill-legacy-<partition>.bak`. Mixed-company or
 mismatched files fail closed and require a reviewed manual export. Delete the backup
 only after the new partition has synced and the retention policy permits destruction.
 
+## Where the app runs, and what it talks to
+
+The packaged renderer loads from `app://oryza`, a privileged scheme the main process serves
+(`main/appProtocol.ts`): the web bundle's files, `index.html` for the app's routes, and nothing
+outside the bundle. Requests to `app://oryza/api/...` are forwarded by the main process to the API
+fixed at build time (`ORYZA_API_ORIGIN`, https only), with the page's own `Origin`, `Referer` and
+`Cookie` removed and the app's version added (`X-Client-Version`). The renderer is same-origin with
+its API, so the API never has to accept the opaque `null` origin a `file://` page sends, which
+would also admit every sandboxed page on the web. Only the warehouse WebSocket connects to the API
+directly, with the bearer token as a subprotocol, never in the URL.
+
+Below the server's `DESKTOP_MIN_VERSION`, every request gets 426 and the app asks to be updated.
+
+## Sync that doesn't stall
+
+A record the server refuses on its own (422, 413, or a 403 marked `X-Sync-Rejection: record`) is
+found by halving the batch, kept locally with `_synced = 2`, and noted in `_sync_quarantine` with
+the reason; the rest of the batch syncs. A pulled record this device can't apply is rolled back
+alone and noted without its payload. Anything else (offline, session over, plan lapsed, a refusal
+of the account) stops the run as before. After an update, set-aside records are retried.
+
+## Updates
+
+Auto-update is off unless the build was made with an update feed **and** a code-signing
+certificate (`scripts/build-desktop.mjs` refuses a feed without one). The publisher name is baked
+into the build, and electron-updater installs only installers signed by it, so whoever controls
+the feed still can't ship code. Unsigned builds never update themselves.
+
 ## Encryption limitation
 
 `better-sqlite3` does not provide SQLCipher encryption in this build, so the local

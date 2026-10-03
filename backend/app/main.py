@@ -38,7 +38,12 @@ from .core.config import settings
 from .core.database import get_db
 from .core.exceptions import register_exception_handlers
 from .core.logging_config import configure_logging
-from .core.middleware import MutationAuditMiddleware, ProvisioningSignalMiddleware, SecurityHeadersMiddleware
+from .core.middleware import (
+    ClientVersionMiddleware,
+    MutationAuditMiddleware,
+    ProvisioningSignalMiddleware,
+    SecurityHeadersMiddleware,
+)
 from .core.ratelimit import limiter, rate_limit_exceeded_handler
 from .core.security import (
     enforce_email_verified,
@@ -69,6 +74,8 @@ app = FastAPI(
 app.state.limiter = limiter
 # Global per-IP throttle (innermost). No-op when rate limiting is disabled.
 app.add_middleware(SlowAPIMiddleware)
+# A desktop app older than DESKTOP_MIN_VERSION gets 426 (inside the headers below).
+app.add_middleware(ClientVersionMiddleware)
 # Hardening headers on every response.
 app.add_middleware(SecurityHeadersMiddleware)
 # Structured + durable audit coverage for every mutating API request.

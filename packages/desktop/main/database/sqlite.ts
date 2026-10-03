@@ -4,6 +4,7 @@ import fs from "fs";
 import crypto from "crypto";
 import { app } from "electron";
 import { SyncIdentity, SYNC_TABLES } from "../sync/contract";
+import { createQuarantineTable } from "../sync/quarantine";
 
 /**
  * Owns exactly one identity-partitioned SQLite handle at a time. The renderer
@@ -44,6 +45,7 @@ export class TenantDatabaseManager {
 
     createSchema(db);
     ensureSyncMarkers(db);
+    createQuarantineTable(db);
     removeLegacyPasswordHash(db);
     try {
       // Best effort on POSIX. Windows privacy is inherited from Electron's

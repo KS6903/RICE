@@ -14,8 +14,13 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 // Vite's HMR (eval + inline) only.
 //
 // Allowances: Google Fonts (googleapis/gstatic), Google login (accounts.google.com),
-// the canvas WebSocket (ws:/wss:), and the desktop/dev backend on :8000 so the
-// same policy works for the Electron build (file://) and local dev.
+// the canvas WebSocket (ws:/wss:), and the dev backend on :8000. A desktop build
+// (ORYZA_API_ORIGIN, set by packages/desktop/scripts/build-desktop.mjs) adds its
+// API's socket: its renderer runs at app://oryza and opens the socket there.
+const desktopSocket = process.env.ORYZA_API_ORIGIN
+  ? [new URL(process.env.ORYZA_API_ORIGIN).origin.replace(/^http/, "ws")]
+  : [];
+
 function cspDirectives(dev: boolean, forHeader: boolean): Record<string, string[]> {
   const d: Record<string, string[]> = {
     "default-src": ["'self'"],
@@ -40,6 +45,7 @@ function cspDirectives(dev: boolean, forHeader: boolean): Record<string, string[
       "http://127.0.0.1:8000",
       "ws://localhost:8000",
       "ws://127.0.0.1:8000",
+      ...desktopSocket,
       ...(dev ? ["ws://localhost:8448", "ws://127.0.0.1:8448"] : []),
     ],
     "frame-src": ["https://accounts.google.com"],

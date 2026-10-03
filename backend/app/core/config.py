@@ -139,6 +139,9 @@ class Settings(BaseSettings):
     RATE_LIMIT_DRYING_ADVISOR: str = "10/hour"
     # A full data export reads every table the mill has; a few an hour is plenty.
     RATE_LIMIT_DATA_EXPORT: str = "3/hour"
+    # The oldest desktop app served (app/core/client_version.py); older builds get
+    # 426 and are told to update. Empty: every version is served.
+    DESKTOP_MIN_VERSION: str = ""
     # SMTP delivery for password-reset and verification links. Production
     # refuses to boot without it so live secrets never need to be logged.
     SMTP_HOST: str | None = None

@@ -1,6 +1,7 @@
 import {
   app,
   BrowserWindow,
+  dialog,
   ipcMain,
   IpcMainInvokeEvent,
   Menu,
@@ -9,25 +10,33 @@ import {
 } from "electron";
 import fs from "fs";
 import path from "path";
-import { fileURLToPath } from "url";
+import { registerAppScheme, serveApp } from "./appProtocol";
+import { APP_ORIGIN } from "./appRoutes";
+import { DesktopConfig, loadConfig } from "./config";
 import { initDatabase, TenantDatabaseManager } from "./database/sqlite";
 import { registerIpcHandlers } from "./ipc/handlers";
 import { SyncIdentity } from "./sync/contract";
 import { SyncEngine } from "./sync/engine";
 import { identityFromToken, sameIdentity, validateTokenWithServer } from "./security/token";
+import { startUpdates, Updates } from "./updater";
 
 let mainWindow: BrowserWindow | null = null;
 let dbManager: TenantDatabaseManager | null = null;
 let syncEngine: SyncEngine | null = null;
+let updates: Updates | null = null;
 let sessionGeneration = 0;
+let toldToUpdate = false;
 
 const isDev = !app.isPackaged;
 const DEV_ORIGIN = "http://localhost:8448";
-const API_BASE = "http://localhost:8000/api";
-const WEB_ROOT = path.resolve(__dirname, "../../web/dist");
-const APP_INDEX = path.join(WEB_ROOT, "index.html");
-const DEV_ROUTE_RE =
-  /^\/(?:|login|signup|forgot-password|reset-password|verify-email|paddy|milling|inventory|sales|dispatch|operators|costs|reports|users|employees|settings|admin(?:\/(?:tenants(?:\/[0-9a-f-]+)?|users|upgrade-requests|settings))?)\/?$/i;
+// Packaged: electron-builder copies the web bundle to resources/web
+// (extraResources). In development it is the web package's own build.
+const WEB_ROOT = app.isPackaged
+  ? path.join(process.resourcesPath, "web")
+  : path.resolve(__dirname, "../../web/dist");
+
+// Before ready: the packaged app runs at app://oryza (see appProtocol.ts).
+registerAppScheme();
 
 interface StoredSession {
   version: 1;
@@ -106,17 +115,10 @@ function isAllowedAppUrl(rawUrl: string): boolean {
   try {
     const parsed = new URL(rawUrl);
     if (parsed.username || parsed.password) return false;
-    if (isDev) {
-      return parsed.origin === DEV_ORIGIN && DEV_ROUTE_RE.test(parsed.pathname);
-    }
-    if (parsed.protocol !== "file:" || parsed.host) return false;
-    const candidate = path.resolve(fileURLToPath(parsed));
-    const relative = path.relative(WEB_ROOT, candidate);
-    if (candidate === APP_INDEX) return true;
-    if (!relative || relative.startsWith("..") || path.isAbsolute(relative)) return false;
-    // BrowserRouter may represent a logical SPA route as a path beside
-    // index.html. No other local HTML/assets are valid top-level app frames.
-    return DEV_ROUTE_RE.test(`/${relative.split(path.sep).join("/")}`);
+    // The app's own origin only. app://oryza serves nothing but the web bundle
+    // (and its SPA routes), so any path on it is the app; a list of routes here
+    // went stale as pages were added, and locked those pages out of IPC.
+    return parsed.origin === (isDev ? DEV_ORIGIN : APP_ORIGIN);
   } catch {
     return false;
   }
@@ -134,7 +136,22 @@ function authorizeIpc(event: IpcMainInvokeEvent): void {
   }
 }
 
-function createWindow(): void {
+/** Once per run: the server won't serve this build any more. */
+function tellToUpdate(): void {
+  if (toldToUpdate) return;
+  toldToUpdate = true;
+  updates?.checkNow();
+  void dialog.showMessageBox({
+    type: "warning",
+    title: "Update needed",
+    message: "This version of Oryza is too old to sync.",
+    detail: updates?.enabled
+      ? "The update is downloading. You'll be asked to restart when it's ready."
+      : "Install the latest version to keep working. Ask your mill's owner for the installer.",
+  });
+}
+
+function createWindow(config: DesktopConfig): void {
   mainWindow = new BrowserWindow({
     width: 1280,
     height: 800,
@@ -148,6 +165,9 @@ function createWindow(): void {
       webSecurity: true,
       allowRunningInsecureContent: false,
       spellcheck: false,
+      // The renderer opens the warehouse WebSocket to the API itself (a
+      // protocol handler can't carry one); the preload hands it the origin.
+      additionalArguments: [`--oryza-api-origin=${config.apiOrigin}`],
     },
     titleBarStyle: "hiddenInset",
     title: "Rice Mill System",
@@ -157,7 +177,7 @@ function createWindow(): void {
     void mainWindow.loadURL(DEV_ORIGIN);
     mainWindow.webContents.openDevTools();
   } else {
-    void mainWindow.loadFile(APP_INDEX);
+    void mainWindow.loadURL(`${APP_ORIGIN}/`);
   }
   mainWindow.on("closed", () => {
     mainWindow = null;
@@ -202,8 +222,36 @@ function clearActiveSession(): void {
 app.whenReady().then(() => {
   if (!isDev) Menu.setApplicationMenu(null);
 
+  let config: DesktopConfig;
+  try {
+    config = loadConfig({ packaged: app.isPackaged, dir: __dirname });
+  } catch (error) {
+    dialog.showErrorBox(
+      "Oryza can't start",
+      `This build is misconfigured: ${error instanceof Error ? error.message : "unknown error"}.`,
+    );
+    app.quit();
+    return;
+  }
+  const apiBase = `${config.apiOrigin}/api`;
+  const appVersion = app.getVersion();
+  updates = startUpdates(config.updates);
+  if (!isDev) {
+    serveApp({
+      webRoot: WEB_ROOT,
+      apiOrigin: config.apiOrigin,
+      appVersion,
+      onUpgradeRequired: tellToUpdate,
+    });
+  }
+
   dbManager = initDatabase();
-  syncEngine = new SyncEngine(dbManager, API_BASE, () => persistSession(null));
+  syncEngine = new SyncEngine(dbManager, {
+    apiBase,
+    appVersion,
+    onSessionInvalidated: () => persistSession(null),
+    onUpgradeRequired: tellToUpdate,
+  });
   registerIpcHandlers(dbManager, authorizeIpc);
 
   // The encrypted envelope was server-validated when stored. Its still-live JWT
@@ -224,7 +272,7 @@ app.whenReady().then(() => {
     try {
       // `/auth/me` verifies the JWT signature, expiry/revocation, database user,
       // tenant identity, and offline_sync subscription before local activation.
-      const identity = await validateTokenWithServer(token, API_BASE);
+      const identity = await validateTokenWithServer(token, apiBase, appVersion);
       if (generation !== sessionGeneration) return { ok: false, superseded: true };
       syncEngine?.setSession(token, identity);
       persistSession({ version: 1, token, identity, validatedAt: new Date().toISOString() });
@@ -242,9 +290,9 @@ app.whenReady().then(() => {
     return { ok: true };
   });
 
-  createWindow();
+  createWindow(config);
   app.on("activate", () => {
-    if (BrowserWindow.getAllWindows().length === 0) createWindow();
+    if (BrowserWindow.getAllWindows().length === 0) createWindow(config);
   });
 });
 

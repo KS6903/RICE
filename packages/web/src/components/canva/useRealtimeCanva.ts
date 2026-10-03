@@ -24,6 +24,26 @@ type CanvaEvent =
   | { event: "layout.updated"; payload: { layout: any; by_user_id: string } }
   | { event: "pong"; payload: {} };
 
+/** Where the warehouse socket lives: the desktop build's API (its renderer runs
+ *  at app://oryza, which has no socket of its own), the dev API on :8000, or
+ *  this page's own host. */
+export function canvaSocketUrl(
+  layoutId: string,
+  where: { protocol: string; host: string; hostname: string } = window.location,
+  apiOrigin: string | undefined = window.electronAPI?.apiOrigin,
+  dev: boolean = import.meta.env.DEV,
+): string {
+  let base: string;
+  if (apiOrigin) {
+    const api = new URL(apiOrigin);
+    base = `${api.protocol === "https:" ? "wss" : "ws"}://${api.host}`;
+  } else {
+    const proto = where.protocol === "https:" ? "wss" : "ws";
+    base = `${proto}://${dev ? `${where.hostname}:8000` : where.host}`;
+  }
+  return `${base}/ws/canva/${encodeURIComponent(layoutId)}`;
+}
+
 /** Subscribes to /ws/canva/{layout_id} and applies remote events to the
  *  ["canva", cacheKey] React Query cache. Auto-reconnects with backoff. */
 /** cacheKey must match the React Query key used for the canva data: layoutId when a specific
@@ -47,19 +67,12 @@ export function useRealtimeCanva(layoutId: string | undefined, cacheKey: string)
 
     const connect = () => {
       setStatus("connecting");
-      const proto = window.location.protocol === "https:" ? "wss" : "ws";
       // Never put a JWT in the URL: WebSocket URLs are commonly retained in
       // browser, proxy, and server access logs. Browsers authenticate with the
       // httpOnly session cookie; the Electron renderer has no cookies and
       // cannot set WS request headers, so it offers the token as the
       // ["bearer", <token>] subprotocol pair (see backend api/canva_ws.py).
-      const host =
-        window.location.protocol === "file:"
-          ? "127.0.0.1:8000"
-          : import.meta.env.DEV
-            ? `${window.location.hostname}:8000`
-            : window.location.host;
-      const url = `${proto}://${host}/ws/canva/${encodeURIComponent(layoutId)}`;
+      const url = canvaSocketUrl(layoutId);
       const ws =
         isElectronRuntime() && accessToken
           ? new WebSocket(url, ["bearer", accessToken])

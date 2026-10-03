@@ -13,7 +13,7 @@ import uuid
 
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 from starlette.requests import Request
-from starlette.responses import Response
+from starlette.responses import JSONResponse, Response
 
 from .config import settings
 
@@ -62,6 +62,29 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         if settings.is_prod:
             headers.setdefault("Strict-Transport-Security", "max-age=63072000; includeSubDomains")
         return response
+
+
+class ClientVersionMiddleware(BaseHTTPMiddleware):
+    """Turn away a desktop app older than DESKTOP_MIN_VERSION with 426, before
+    it reads or writes anything. Health checks stay open to every client."""
+
+    async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
+        from . import client_version
+
+        minimum = settings.DESKTOP_MIN_VERSION
+        if (
+            minimum
+            and not request.url.path.startswith("/api/health")
+            and client_version.too_old(request.headers.get(client_version.HEADER), minimum)
+        ):
+            return JSONResponse(
+                status_code=426,
+                content={
+                    "detail": "This version of the desktop app is too old. Update it to continue.",
+                    "minimum_version": minimum,
+                },
+            )
+        return await call_next(request)
 
 
 class ProvisioningSignalMiddleware(BaseHTTPMiddleware):

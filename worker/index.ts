@@ -37,6 +37,7 @@ export interface Env {
   UPSTASH_API_KEY?: string;
   UPSTASH_DATABASE_ID?: string;
   UPSTASH_MONTHLY_REQUEST_LIMIT?: string;
+  DESKTOP_MIN_VERSION?: string;
 }
 
 type ContainerRole = keyof typeof containerEnv.roles;
