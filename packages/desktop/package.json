@@ -10,12 +10,13 @@
     "build:main": "tsc -p tsconfig.json",
     "build": "node scripts/build-desktop.mjs",
     "build:web": "cd ../web && npm run build",
-    "test": "vitest run"
+    "test": "vitest run",
+    "smoke": "node scripts/run-smoke.cjs"
   },
   "dependencies": {
     "@rice-mill/shared": "*",
     "axios": "1.20.0",
-    "better-sqlite3": "^11.7.0",
+    "better-sqlite3": "^12.11.1",
     "electron-updater": "^6.8.9"
   },
   "devDependencies": {

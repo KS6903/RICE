@@ -2,7 +2,7 @@ import fs from "fs";
 import os from "os";
 import path from "path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { apiTarget, forwardedHeaders, isApiPath, staticFile } from "../main/appRoutes";
+import { apiTarget, forwardedHeaders, isApiPath, isAppUrl, staticFile } from "../main/appRoutes";
 
 let root: string;
 let outside: string;
@@ -40,6 +40,26 @@ describe("staticFile", () => {
       "/%E0%A4%A",
     ]) {
       expect(staticFile(root, attempt)).toBe(path.join(root, "index.html"));
+    }
+  });
+});
+
+describe("isAppUrl", () => {
+  it('knows the app\'s own URLs, though their origin reads as "null"', () => {
+    const url = new URL("app://oryza/settings?tab=data");
+    expect(url.origin).toBe("null"); // why origins can't be compared here
+    expect(isAppUrl(url)).toBe(true);
+  });
+
+  it("refuses everything else", () => {
+    for (const raw of [
+      "app://evil/",
+      "app://user:pw@oryza/",
+      "https://oryza/",
+      "file:///C:/oryza/index.html",
+      "http://localhost:8448/",
+    ]) {
+      expect(isAppUrl(new URL(raw))).toBe(false);
     }
   });
 });

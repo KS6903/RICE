@@ -90,6 +90,10 @@ export default defineConfig({
     cspMetaPlugin(),
     VitePWA({
       registerType: "autoUpdate",
+      // Registered from src/main.tsx, on http(s) pages only: the desktop app runs
+      // at app://oryza, where a service worker can't register (the injected
+      // script's rejection went uncaught) and isn't wanted (it syncs via SQLite).
+      injectRegister: false,
       manifest: {
         name: "Rice Mill System",
         short_name: "RiceMill",

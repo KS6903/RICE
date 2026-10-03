@@ -86,18 +86,20 @@ Create an Upstash Redis database and copy its `rediss://` URL.
 
 ### 3. Secrets
 
-Generate the three app secrets, then push everything to Cloudflare:
+The app's own three secrets (`SECRET_KEY`, `MFA_ENCRYPTION_KEY`, `SIGNUP_INVITE_CODE`) are
+generated straight into the Worker. Nothing is printed, and nothing is written to disk. It sets
+only the ones the Worker doesn't have yet, and it never rotates `MFA_ENCRYPTION_KEY` (every
+user's two-factor seed is encrypted with it):
 
 ```bash
 cd backend && .venv/Scripts/python.exe generate_security_secrets.py
 ```
 
+Then the rest, from their sources:
+
 ```bash
 wrangler secret put DATABASE_URL              # runtime role, sslmode=require
 wrangler secret put PROVISIONER_DATABASE_URL  # owner/DDL role, different user
-wrangler secret put SECRET_KEY
-wrangler secret put MFA_ENCRYPTION_KEY
-wrangler secret put SIGNUP_INVITE_CODE
 wrangler secret put REDIS_URL                 # rediss:// from Upstash
 wrangler secret put SMTP_PASSWORD
 # Optional — omit to leave the feature disabled:
@@ -105,8 +107,6 @@ wrangler secret put GOOGLE_CLIENT_ID
 wrangler secret put GOOGLE_WEATHER_API_KEY
 wrangler secret put DEEPSEEK_API_KEY
 ```
-
-Then delete `backend/.env.production.secrets`.
 
 ### 4. Domain
 

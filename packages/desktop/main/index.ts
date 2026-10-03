@@ -11,7 +11,7 @@ import {
 import fs from "fs";
 import path from "path";
 import { registerAppScheme, serveApp } from "./appProtocol";
-import { APP_ORIGIN } from "./appRoutes";
+import { APP_ORIGIN, isAppUrl } from "./appRoutes";
 import { DesktopConfig, loadConfig } from "./config";
 import { initDatabase, TenantDatabaseManager } from "./database/sqlite";
 import { registerIpcHandlers } from "./ipc/handlers";
@@ -118,7 +118,7 @@ function isAllowedAppUrl(rawUrl: string): boolean {
     // The app's own origin only. app://oryza serves nothing but the web bundle
     // (and its SPA routes), so any path on it is the app; a list of routes here
     // went stale as pages were added, and locked those pages out of IPC.
-    return parsed.origin === (isDev ? DEV_ORIGIN : APP_ORIGIN);
+    return isDev ? parsed.origin === DEV_ORIGIN : isAppUrl(parsed);
   } catch {
     return false;
   }
