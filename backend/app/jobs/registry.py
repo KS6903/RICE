@@ -93,6 +93,29 @@ def _prune_notification_attachments(ctx: JobContext) -> str:
     return f"{count} old attachment(s) deleted"
 
 
+def _remind_expiring(ctx: JobContext) -> str:
+    from ..services.platform_jobs import remind_expiring
+
+    assert ctx.company is not None
+    count = remind_expiring(ctx.db, ctx.company, today=ctx.local_today, zone=ctx.zone)
+    ctx.db.commit()
+    return f"{count} plan-ending reminder(s)"
+
+
+def _purge_auth_records(ctx: JobContext) -> str:
+    from ..services.platform_jobs import purge_auth_records
+
+    tokens, sessions = purge_auth_records(ctx.db, now=ctx.now)
+    ctx.db.commit()
+    return f"{tokens} reset token(s) and {sessions} session(s) deleted"
+
+
+def _redis_budget(ctx: JobContext) -> str:
+    from ..services.platform_jobs import redis_budget
+
+    return redis_budget(ctx.db, now=ctx.now)
+
+
 def _prune_job_runs(ctx: JobContext) -> str:
     from .runner import prune_job_runs
 
@@ -125,6 +148,13 @@ JOBS: tuple[Job, ...] = (
     # Every-tick jobs and recipes claim a row per tick; keep a month of history.
     # A deleted run can't come round again: run keys are dates and times.
     Job("job_runs.prune", "platform", daily(time(3, 30)), _prune_job_runs),
+    # Owners and admins hear 7 days and 1 day before a paid plan or trial ends,
+    # instead of finding out when features stop.
+    Job("subscriptions.remind_expiring", "tenant", daily(time(9, 0)), _remind_expiring),
+    # Spent reset links and long-expired sessions; nothing can use them.
+    Job("auth.purge_expired", "platform", daily(time(3, 45)), _purge_auth_records),
+    # Upstash bills per command: warn before the month's quota runs out.
+    Job("platform.redis_budget", "platform", daily(time(8, 0)), _redis_budget),
     # AI recipes (once the owner switches AI on) last: a model call can take a
     # couple of minutes, and the tick's time budget must not run out before the
     # quick work and the emails are done. Their emails go out on the next tick.

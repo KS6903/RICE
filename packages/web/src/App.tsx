@@ -54,8 +54,10 @@ function AuthSessionSync() {
     enabled: !reauthenticationRequired && (hasAccessToken || !!user),
     refetchOnWindowFocus: true,
     refetchOnReconnect: true,
-    refetchInterval: 10 * 1000,
-    staleTime: 10 * 1000,
+    // Once a minute: every poll is a request (and Redis commands, which Upstash
+    // bills). Focus and reconnect still refetch at once.
+    refetchInterval: 60 * 1000,
+    staleTime: 30 * 1000,
     retry: 0,
   });
 

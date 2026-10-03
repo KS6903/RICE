@@ -17,6 +17,7 @@ from ..repositories.billing import (
     SubscriptionRepository,
     UpgradeRequestRepository,
 )
+from ..services import platform_emails
 from ..services.base import BaseService
 from ..services.subscription import effective_status
 
@@ -145,6 +146,10 @@ class BillingService(BaseService):
         with self.transaction():
             self.requests.add(req)
         self.db.refresh(req)
+        company = self.current_user.company
+        platform_emails.upgrade_request_filed(
+            self.db, req, company=company.name if company else "A mill", plan=plan.name
+        )
         return self._serialize_request(req)
 
     def cancel_upgrade_request(self, request_id: uuid.UUID) -> dict:

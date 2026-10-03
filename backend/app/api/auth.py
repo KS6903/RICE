@@ -371,7 +371,10 @@ def logout(
     return result
 
 
+# Polled by every open tab: exempt from the per-IP default limit, which would
+# otherwise spend Redis commands (Upstash bills per command) on every poll.
 @router.get("/me")
+@limiter.exempt
 def me(svc: AuthService = Depends(get_auth_service)):
     return svc.me()
 

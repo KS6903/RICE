@@ -40,6 +40,7 @@ from ..services.subscription import (
     resolve_pending_upgrade_requests,
     sweep_expired,
 )
+from . import platform_emails
 
 ALLOWED_SUB_STATUSES = {"active", "trial", "past_due", "cancelled", "expired"}
 
@@ -610,6 +611,10 @@ class AdminService(BaseService):
             r.resolved_at = datetime.now(timezone.utc)
             r.resolved_by = admin_id
             resolve_pending_upgrade_requests(self.db, r.company_id, plan.id, admin_id=admin_id)
+        # A plan change waits for the current period to end, unless there was none.
+        sub_now = self.subscriptions.get_by_company(r.company_id)
+        queued = bool(sub_now and sub_now.queued_plan_id == plan.id)
+        platform_emails.upgrade_request_decided(self.db, r, plan=plan.name, approved=True, queued=queued)
         msg = (
             f"Plan change queued — {plan.name} will activate when current subscription expires."
             if is_plan_change
@@ -628,4 +633,8 @@ class AdminService(BaseService):
             r.admin_note = data.admin_note
             r.resolved_at = datetime.now(timezone.utc)
             r.resolved_by = self.current_user.id
+        plan = self.db.get(SubscriptionPlan, r.requested_plan_id)
+        platform_emails.upgrade_request_decided(
+            self.db, r, plan=plan.name if plan else "requested", approved=False, queued=False
+        )
         return {"message": "Upgrade request rejected"}

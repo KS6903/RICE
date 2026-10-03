@@ -25,9 +25,9 @@ export default function UpgradeRequestToast() {
   const { data } = useQuery<PendingPayload>({
     queryKey: ["admin-pending-upgrades"],
     queryFn: () => adminService.getPendingCount(),
-    refetchInterval: 5 * 1000,
+    refetchInterval: 30 * 1000,
     refetchOnWindowFocus: true,
-    refetchIntervalInBackground: true,
+    refetchIntervalInBackground: false,
   });
 
   const baselineRef = useRef<{ count: number; latestId: string | null } | null>(null);

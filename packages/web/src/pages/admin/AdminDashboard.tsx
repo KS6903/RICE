@@ -77,9 +77,9 @@ export default function AdminDashboard() {
   const { data: pending } = useQuery({
     queryKey: ["admin-pending-upgrades"],
     queryFn: () => adminService.getPendingCount(),
-    refetchInterval: 5 * 1000,
+    refetchInterval: 30 * 1000,
     refetchOnWindowFocus: true,
-    refetchIntervalInBackground: true,
+    refetchIntervalInBackground: false,
   });
 
   const trendData = trend.map((p: any) => ({

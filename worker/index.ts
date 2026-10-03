@@ -33,6 +33,10 @@ export interface Env {
   GOOGLE_WEATHER_API_KEY?: string;
   DEEPSEEK_API_KEY?: string;
   DEEPSEEK_AUTOMATIONS_API_KEY?: string;
+  UPSTASH_API_EMAIL?: string;
+  UPSTASH_API_KEY?: string;
+  UPSTASH_DATABASE_ID?: string;
+  UPSTASH_MONTHLY_REQUEST_LIMIT?: string;
 }
 
 type ContainerRole = keyof typeof containerEnv.roles;

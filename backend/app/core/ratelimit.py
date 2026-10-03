@@ -63,7 +63,10 @@ limiter = Limiter(
     enabled=settings.RATE_LIMIT_ENABLED,
     in_memory_fallback_enabled=True,
     swallow_errors=True,
-    headers_enabled=True,
+    # X-RateLimit-* headers would cost a window lookup (more Redis commands,
+    # which Upstash bills) on every limited request. The 429 body still tells
+    # the client to slow down.
+    headers_enabled=False,
 )
 
 # The auth-endpoint limit string, resolved once for the route decorators.

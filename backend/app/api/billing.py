@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends, status
 from sqlalchemy.orm import Session
 
 from ..core.database import get_db
+from ..core.ratelimit import limiter
 from ..core.security import get_current_user, require_roles, require_section_access
 from ..repositories.billing import (
     SubscriptionPlanRepository,
@@ -48,7 +49,10 @@ def my_subscription(svc: BillingService = Depends(get_billing_service)):
     return svc.my_subscription()
 
 
+# Polled by every open tab: exempt from the per-IP default limit, which would
+# otherwise spend Redis commands (Upstash bills per command) on every poll.
 @router.get("/upgrade-requests/mine")
+@limiter.exempt
 def my_latest_request(svc: BillingService = Depends(get_billing_service)):
     return svc.my_latest_request()
 
