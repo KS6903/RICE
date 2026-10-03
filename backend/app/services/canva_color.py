@@ -29,6 +29,7 @@ import uuid
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
+from ..core.database import Base
 from ..models.dispatch import Agent, Miller
 from ..models.supplier_customer import Customer, Supplier
 
@@ -72,7 +73,7 @@ PALETTE: tuple[str, ...] = (
 _PARTY_TABLES = (Customer, Supplier, Agent, Miller)
 
 
-def _key(table: type, row_id: uuid.UUID | None) -> tuple[str, uuid.UUID | None]:
+def _key(table: type[Base], row_id: uuid.UUID | None) -> tuple[str, uuid.UUID | None]:
     return (table.__tablename__, row_id)
 
 

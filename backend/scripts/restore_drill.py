@@ -38,6 +38,7 @@ import tempfile
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Any
 from urllib.parse import parse_qsl, quote, unquote, urlencode, urlparse, urlunparse
 
 BACKEND = Path(__file__).resolve().parents[1]
@@ -102,16 +103,24 @@ def _tool(pg_bin: str | None, name: str) -> str:
     return found
 
 
+def _one(conn, sql: str) -> Any:
+    """The single value a query returns."""
+    row = conn.execute(sql).fetchone()
+    if row is None:
+        raise RuntimeError(f"no row from: {sql}")
+    return row[0]
+
+
 def _counts(conn) -> dict[tuple[str, str], int]:
     tables = conn.execute(TABLES_SQL).fetchall()
     return {
-        (schema, table): conn.execute(f"SELECT count(*) FROM {_quote(schema)}.{_quote(table)}").fetchone()[0]
+        (schema, table): _one(conn, f"SELECT count(*) FROM {_quote(schema)}.{_quote(table)}")
         for schema, table in tables
     }
 
 
 def _alembic_version(conn) -> tuple[str, ...]:
-    exists = conn.execute("SELECT to_regclass('public.alembic_version')").fetchone()[0]
+    exists = _one(conn, "SELECT to_regclass('public.alembic_version')")
     if not exists:
         return ()
     return tuple(sorted(r[0] for r in conn.execute("SELECT version_num FROM public.alembic_version")))
@@ -144,8 +153,8 @@ def _dump(source: str, pg_bin: str | None, workdir: Path, report: Report):
     conn = psycopg.connect(source)
     try:
         conn.execute("BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY")
-        snapshot = conn.execute("SELECT pg_export_snapshot()").fetchone()[0]
-        server = conn.execute("SHOW server_version").fetchone()[0]
+        snapshot = _one(conn, "SELECT pg_export_snapshot()")
+        server = _one(conn, "SHOW server_version")
         schemas = [r[0] for r in conn.execute(SCHEMAS_SQL)]
         version = _alembic_version(conn)
         tenants = conn.execute(

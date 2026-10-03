@@ -152,7 +152,7 @@ step("backend: lockfiles match their inputs", () =>
 );
 step("backend: ruff", py("ruff", ["check", "."]));
 step("backend: ruff format", py("ruff", ["format", "--check", "."]));
-step("backend: mypy (scoped)", py("mypy", []));
+step("backend: mypy (whole backend)", py("mypy", []));
 step("backend: single Alembic head", () => {
   const heads = capture(python, ["-m", "alembic", "heads"], { cwd: backend });
   console.log(heads.out);

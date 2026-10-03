@@ -17,7 +17,6 @@ from typing import Callable
 from fastapi import Request
 from fastapi.responses import JSONResponse
 from slowapi import Limiter
-from slowapi.errors import RateLimitExceeded
 from slowapi.util import get_remote_address
 
 from .cache import cache
@@ -73,7 +72,7 @@ limiter = Limiter(
 AUTH_RATE_LIMIT = settings.RATE_LIMIT_AUTH
 
 
-def rate_limit_exceeded_handler(request: Request, exc: RateLimitExceeded) -> JSONResponse:
+def rate_limit_exceeded_handler(request: Request, exc: Exception) -> JSONResponse:
     """Render a 429 in the app's ``{"detail", "code"}`` envelope."""
     return JSONResponse(
         status_code=429,

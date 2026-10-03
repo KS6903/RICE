@@ -614,7 +614,7 @@ def seed(db, username: str, *, reset: bool) -> str:
     e = 0
     for back in range(DAYS, 0, -1):
         day = today - timedelta(days=back)
-        for cat, amount, every in regular:
+        for cat, usual, every in regular:
             if back % every or cat not in categories:
                 continue
             e += 1
@@ -625,7 +625,7 @@ def seed(db, username: str, *, reset: bool) -> str:
                     branch_id=bid,
                     category_id=categories[cat].id,
                     expense_date=day,
-                    amount=Decimal(amount + rng.randint(-400, 400)),
+                    amount=Decimal(usual + rng.randint(-400, 400)),
                     description=f"{cat} ({MARKER})",
                     reference_no=f"EXP-AUTO-{e:04d}",
                     created_by=owner.id,

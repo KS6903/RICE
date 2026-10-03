@@ -319,7 +319,10 @@ class CanvaLayoutService(BaseService):
                 names[u.id] = u.full_name or u.username
         out = []
         for layout in rows:
-            expires_at = layout.deleted_at + timedelta(days=_LAYOUT_TRASH_DAYS)
+            deleted_at = layout.deleted_at
+            if deleted_at is None:  # the query returns trashed layouts only
+                continue
+            expires_at = deleted_at + timedelta(days=_LAYOUT_TRASH_DAYS)
             days_remaining = max(0, (expires_at - datetime.now(timezone.utc)).days)
             out.append(
                 {
@@ -328,7 +331,7 @@ class CanvaLayoutService(BaseService):
                     "is_default": layout.is_default,
                     "width_m": float(layout.width_m),
                     "height_m": float(layout.height_m),
-                    "deleted_at": layout.deleted_at.isoformat(),
+                    "deleted_at": deleted_at.isoformat(),
                     "deleted_by_name": names.get(layout.deleted_by),
                     "days_remaining": days_remaining,
                 }
@@ -525,16 +528,14 @@ class CanvaLayoutService(BaseService):
             agg[key]["weight_kg"] += float(batch.weight_kg)
 
         # Resolve colors from all four party tables (shared tenant-wide pool).
-        cust_colors = dict(
-            self.db.query(Customer.id, Customer.canva_color_hex).filter(Customer.company_id == company_id).all()
-        )
-        sup_colors = dict(
-            self.db.query(Supplier.id, Supplier.canva_color_hex).filter(Supplier.company_id == company_id).all()
-        )
-        agent_colors = dict(self.db.query(Agent.id, Agent.canva_color_hex).filter(Agent.company_id == company_id).all())
-        miller_colors = dict(
-            self.db.query(Miller.id, Miller.canva_color_hex).filter(Miller.company_id == company_id).all()
-        )
+        def colors(model: type[Customer] | type[Supplier] | type[Agent] | type[Miller]) -> dict[uuid.UUID, str | None]:
+            rows = self.db.query(model.id, model.canva_color_hex).filter(model.company_id == company_id).all()
+            return {row[0]: row[1] for row in rows}
+
+        cust_colors = colors(Customer)
+        sup_colors = colors(Supplier)
+        agent_colors = colors(Agent)
+        miller_colors = colors(Miller)
 
         # Sorted iteration so fallback color assignment is deterministic per request.
         sorted_keys = sorted(agg.keys(), key=lambda k: (k[2] or "").lower())

@@ -26,12 +26,14 @@ from __future__ import annotations
 import json
 import logging
 import time
+from types import ModuleType
 from typing import Any, Callable
 
 from .config import settings
 
 logger = logging.getLogger("ricemill.cache")
 
+_redis: ModuleType | None
 try:
     import redis as _redis
 except ImportError:  # redis package not installed — cache silently disabled
@@ -70,7 +72,7 @@ class _Cache:
 
     def _client_or_none(self):
         """Return a live client, or None if Redis is off / cooling down / unreachable."""
-        if self._permanently_off:
+        if self._permanently_off or _redis is None:
             return None
         now = time.monotonic()
         if now < self._down_until:

@@ -206,8 +206,10 @@ def settings_problems(env: dict[str, str]) -> list[str]:
     from app.core.config import Settings
 
     with _isolated_environ({name.upper() for name in Settings.model_fields}):
+        # As the container gets them: environment variables, and no .env file.
+        os.environ.update(env)
         try:
-            Settings(_env_file=None, **env)  # type: ignore[call-arg]
+            Settings(_env_file=None)
         except ValidationError as error:
             problems: list[str] = []
             for item in error.errors(include_input=False, include_url=False):
