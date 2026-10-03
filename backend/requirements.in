@@ -24,7 +24,7 @@ psycopg[binary]==3.3.6
 # unmaintained passlib → direct bcrypt. Stored $2b$ hashes verify unchanged.
 PyJWT==2.15.1
 cryptography==50.0.1  # JWT alg backends + Fernet (core/crypto.py for MFA seeds); PYSEC-2026-3552 fix
-bcrypt==4.2.1
+bcrypt==5.0.0
 python-multipart==0.0.32
 slowapi==0.1.10
 pydantic==2.13.5
