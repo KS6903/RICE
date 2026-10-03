@@ -37,6 +37,8 @@ function verdict(result) {
     problems.push(`the script asset gave ${result.asset}`);
   if (result.consoleErrors.length)
     problems.push(`console errors: ${result.consoleErrors.join(" | ")}`);
+  if (!/^\d+\.\d+/.test(String(result.sqlite)))
+    problems.push(`SQLite didn't open: ${result.sqlite}`);
   return problems;
 }
 
@@ -79,7 +81,24 @@ app.whenReady().then(async () => {
       if (src) { const a = await fetch(src); out.asset = a.status + " " + a.headers.get("content-type"); }
       return out;
     })()`);
-    const report = { apiOrigin, ...result, upgrades, consoleErrors };
+    // The native SQLite module, loaded by this Electron the way the app loads it.
+    let sqlite;
+    try {
+      const Database = require("better-sqlite3");
+      const db = new Database(":memory:");
+      sqlite = db.prepare("select sqlite_version() as v").get().v;
+      db.close();
+    } catch (error) {
+      sqlite = String(error && error.message ? error.message : error).slice(0, 200);
+    }
+    const report = {
+      apiOrigin,
+      electron: process.versions.electron,
+      sqlite,
+      ...result,
+      upgrades,
+      consoleErrors,
+    };
     const problems = verdict(report);
     console.log(JSON.stringify(report, null, 2));
     console.log(
