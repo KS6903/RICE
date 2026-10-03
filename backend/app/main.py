@@ -5,6 +5,7 @@ from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
+from sqlalchemy.orm import Session
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 from .api import (
@@ -33,9 +34,10 @@ from .api import (
     weather,
 )
 from .core.config import settings
+from .core.database import get_db
 from .core.exceptions import register_exception_handlers
 from .core.logging_config import configure_logging
-from .core.middleware import MutationAuditMiddleware, SecurityHeadersMiddleware
+from .core.middleware import MutationAuditMiddleware, ProvisioningSignalMiddleware, SecurityHeadersMiddleware
 from .core.ratelimit import limiter, rate_limit_exceeded_handler
 from .core.security import (
     enforce_email_verified,
@@ -70,6 +72,8 @@ app.add_middleware(SlowAPIMiddleware)
 app.add_middleware(SecurityHeadersMiddleware)
 # Structured + durable audit coverage for every mutating API request.
 app.add_middleware(MutationAuditMiddleware)
+# A request that queued a tenant schema says so to the Worker, which starts the provisioner.
+app.add_middleware(ProvisioningSignalMiddleware)
 # Reject unexpected Host headers (prod sets an explicit allowlist; dev allows "*").
 app.add_middleware(TrustedHostMiddleware, allowed_hosts=settings.trusted_hosts_list)
 # CORS outermost: answers preflight and attaches CORS headers to every response,
@@ -155,6 +159,23 @@ async def _verify_runtime_database_role() -> None:
     from .core.runtime_role import verify_runtime_database_role
 
     verify_runtime_database_role(engine, settings.RUNTIME_DATABASE_ROLE)
+
+
+@app.get("/api/health/ready")
+@limiter.exempt
+def readiness_check(db: Session = Depends(get_db)):
+    """Ready to serve: the database answers and its schema matches this code.
+    Public, so it says only which checks pass; platform.health_watch emails
+    the details."""
+    from datetime import datetime, timezone
+
+    from fastapi.responses import JSONResponse
+
+    from .core.health import check
+
+    result = check(db, now=datetime.now(timezone.utc))
+    body = {"ready": result["ready"], "checks": {name: c["ok"] for name, c in result["checks"].items()}}
+    return JSONResponse(body, status_code=200 if result["ready"] else 503)
 
 
 @app.get("/api/health")

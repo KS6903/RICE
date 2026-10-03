@@ -64,6 +64,21 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         return response
 
 
+class ProvisioningSignalMiddleware(BaseHTTPMiddleware):
+    """Tell the Worker when this request queued a tenant schema, so it starts the
+    provisioner at once (worker/index.ts strips the header before the browser
+    sees it). Without this, a new mill waited for the next 15-minute tick."""
+
+    async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
+        from . import provisioning
+
+        queued = provisioning.start_request()
+        response = await call_next(request)
+        if queued:
+            response.headers[provisioning.QUEUED_HEADER] = "1"
+        return response
+
+
 class MutationAuditMiddleware(BaseHTTPMiddleware):
     """Audit every API mutation without recording bodies, tokens, or query strings."""
 

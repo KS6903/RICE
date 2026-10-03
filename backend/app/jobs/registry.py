@@ -116,6 +116,12 @@ def _redis_budget(ctx: JobContext) -> str:
     return redis_budget(ctx.db, now=ctx.now)
 
 
+def _health_watch(ctx: JobContext) -> str:
+    from ..services.platform_jobs import health_watch
+
+    return health_watch(ctx.db, now=ctx.now)
+
+
 def _prune_job_runs(ctx: JobContext) -> str:
     from .runner import prune_job_runs
 
@@ -155,6 +161,9 @@ JOBS: tuple[Job, ...] = (
     Job("auth.purge_expired", "platform", daily(time(3, 45)), _purge_auth_records),
     # Upstash bills per command: warn before the month's quota runs out.
     Job("platform.redis_budget", "platform", daily(time(8, 0)), _redis_budget),
+    # Schema drift, Redis down, tenants stuck or failing setup: email the
+    # platform admins, once a day per problem.
+    Job("platform.health_watch", "platform", hourly(), _health_watch),
     # AI recipes (once the owner switches AI on) last: a model call can take a
     # couple of minutes, and the tick's time budget must not run out before the
     # quick work and the emails are done. Their emails go out on the next tick.

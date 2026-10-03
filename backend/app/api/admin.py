@@ -109,6 +109,11 @@ def get_tenant(tenant_id: uuid.UUID, svc: AdminService = Depends(get_admin_servi
     return svc.get_tenant(tenant_id)
 
 
+@router.post("/tenants/{tenant_id}/provisioning/retry")
+def retry_tenant_provisioning(tenant_id: uuid.UUID, svc: AdminService = Depends(get_admin_service)):
+    return svc.retry_provisioning(tenant_id)
+
+
 @router.get("/tenants/{tenant_id}/activity")
 def get_tenant_activity(tenant_id: uuid.UUID, svc: AdminService = Depends(get_admin_service)):
     return svc.get_tenant_activity(tenant_id)

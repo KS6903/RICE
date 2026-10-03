@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, String, Text
+from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -41,6 +41,9 @@ class Company(Base, TimestampMixin):
     provisioning_requested_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     provisioned_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     provisioning_error: Mapped[str | None] = mapped_column(String(120))
+    # Failed attempts so far, and when the next may run (core/provisioning.py).
+    provisioning_attempts: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
+    provisioning_next_attempt_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
     branches: Mapped[list["Branch"]] = relationship("Branch", back_populates="company")
     users: Mapped[list["User"]] = relationship("User", back_populates="company")

@@ -69,6 +69,13 @@ def redis_budget(db: Session, *, used: int, limit: int, level: int) -> int:
     return sum(_send(a.email, f"Redis at {level}% of this month's quota", text) for a in admins)
 
 
+def health_problem(db: Session, *, problem: str, detail: str) -> int:
+    """Tell platform admins something in production needs a person."""
+    admins = db.query(User).filter(User.is_platform_admin.is_(True), User.is_active.is_(True)).all()
+    text = f"{detail}\n\nReadiness: {_app_link('/api/health/ready')}\n"
+    return sum(_send(a.email, f"{settings.APP_NAME}: {problem}", text) for a in admins)
+
+
 def upgrade_request_filed(db: Session, request: UpgradeRequest, *, company: str, plan: str) -> int:
     """Tell every platform admin a mill is waiting for a plan decision."""
     admins = db.query(User).filter(User.is_platform_admin.is_(True), User.is_active.is_(True)).all()

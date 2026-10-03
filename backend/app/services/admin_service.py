@@ -15,6 +15,7 @@ from typing import Any
 from sqlalchemy import func, true
 from sqlalchemy.orm import Session
 
+from ..core import provisioning
 from ..core.exceptions import AppException, BadRequestError, ConflictError, NotFoundError
 from ..core.security import invalidate_company_features
 from ..core.tenancy import tenant_session
@@ -419,6 +420,7 @@ class AdminService(BaseService):
                 "currency": c.currency,
                 "created_at": c.created_at.isoformat() if c.created_at else None,
                 "users_count": user_counts.get(c.id, 0),
+                "provisioning": provisioning.describe(c),
                 "branches_count": branch_counts.get(c.id, 0),
                 "purchases_count": purchase_counts.get(c.id, 0),
                 "orders_count": order_counts.get(c.id, 0),
@@ -426,6 +428,19 @@ class AdminService(BaseService):
             }
             for c in companies
         ]
+
+    def retry_provisioning(self, tenant_id: uuid.UUID) -> dict:
+        """Queue a tenant's schema again from scratch, clearing its failures.
+        The response tells the Worker to start the provisioner at once."""
+        company = self.db.get(Company, tenant_id)
+        if not company:
+            raise NotFoundError("Tenant not found")
+        if company.provisioned_at is not None:
+            raise ConflictError("This tenant is already set up.")
+        with self.transaction():
+            provisioning.request(company, now=datetime.now(timezone.utc))
+        self.db.refresh(company)
+        return provisioning.describe(company)
 
     def get_tenant(self, tenant_id: uuid.UUID) -> dict:
         db = self.db
@@ -469,6 +484,7 @@ class AdminService(BaseService):
                 "is_multi_branch": company.is_multi_branch,
                 "is_active": company.is_active,
                 "created_at": company.created_at.isoformat() if company.created_at else None,
+                "provisioning": provisioning.describe(company),
             },
             "users": [
                 {

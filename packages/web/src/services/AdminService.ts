@@ -37,6 +37,9 @@ export class AdminService {
   getTenant(id: string): Promise<any> {
     return this.http.get(`/admin/tenants/${id}`).then((r) => r.data);
   }
+  retryProvisioning(id: string): Promise<any> {
+    return this.http.post(`/admin/tenants/${id}/provisioning/retry`).then((r) => r.data);
+  }
   getTenantActivity(id: string): Promise<any[]> {
     return this.http.get(`/admin/tenants/${id}/activity`).then((r) => r.data);
   }
