@@ -5,6 +5,7 @@ approve flow. All endpoints require is_platform_admin.
 """
 
 import uuid
+from datetime import datetime, timezone
 
 from app.models.subscription import SubscriptionPlan
 from app.models.upgrade_request import UpgradeRequest
@@ -89,3 +90,21 @@ def test_upgrade_request_inbox_and_approve(admin_client, db_session):
 def test_reject_unknown_request_404(admin_client):
     res = admin_client.post("/api/admin/upgrade-requests/00000000-0000-0000-0000-000000000000/reject", json={})
     assert res.status_code == 404
+
+
+def test_the_dashboard_survives_a_tenant_that_is_not_provisioned_yet(admin_client, db_session):
+    """A tenant waiting for its schema (signup queues it; the provisioner builds
+    it within 15 minutes) used to 500 every admin view that counts rows per
+    tenant: the query hit a schema that didn't exist and aborted the request."""
+    from app.models.company import Company
+
+    waiting = Company(name="Queued Mill", provisioning_requested_at=datetime.now(timezone.utc))
+    db_session.add(waiting)
+    db_session.commit()
+    assert admin_client.get("/api/admin/stats").status_code == 200
+    tenants = admin_client.get("/api/admin/tenants")
+    assert tenants.status_code == 200
+    [row] = [t for t in tenants.json() if t["id"] == str(waiting.id)]
+    assert (row["purchases_count"], row["orders_count"]) == (0, 0)
+    detail = admin_client.get(f"/api/admin/tenants/{waiting.id}")
+    assert detail.status_code == 200, detail.text

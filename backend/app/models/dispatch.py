@@ -2,7 +2,8 @@
 
 Shape mirrors `supplier_customer.py` so the canva color resolver can treat all
 four party tables uniformly. Per-tenant color uniqueness is enforced by:
-  - partial unique index on (company_id, canva_color_hex) for each table
+  - a partial unique index on (company_id, canva_color_hex) on each table,
+    declared on the models (migrate_all_tenants.py adds it to older schemas)
   - app-layer cross-table check in services/canva_color.py
 """
 
@@ -11,7 +12,7 @@ from datetime import datetime
 from decimal import Decimal
 from typing import TYPE_CHECKING
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Numeric, String, Text
+from sqlalchemy import Boolean, DateTime, ForeignKey, Index, Numeric, String, Text, text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -26,6 +27,16 @@ class Agent(Base, TimestampMixin):
     """Delivery agent or sales broker — typically external, paid per delivery."""
 
     __tablename__ = "agents"
+    __table_args__ = (
+        # One colour per party per tenant; services/canva_color.py checks across the four tables.
+        Index(
+            "uq_agents_company_color",
+            "company_id",
+            "canva_color_hex",
+            unique=True,
+            postgresql_where=text("canva_color_hex IS NOT NULL"),
+        ),
+    )
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     company_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("companies.id"))
@@ -49,6 +60,16 @@ class Miller(Base, TimestampMixin):
     """Third-party miller — uses our facility / space and may store rice on our floor."""
 
     __tablename__ = "millers"
+    __table_args__ = (
+        # One colour per party per tenant; services/canva_color.py checks across the four tables.
+        Index(
+            "uq_millers_company_color",
+            "company_id",
+            "canva_color_hex",
+            unique=True,
+            postgresql_where=text("canva_color_hex IS NOT NULL"),
+        ),
+    )
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     company_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("companies.id"))

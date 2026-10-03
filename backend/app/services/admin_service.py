@@ -287,8 +287,10 @@ class AdminService(BaseService):
         total_branches = db.query(func.count(Branch.id)).scalar() or 0
         total_users = db.query(func.count(User.id)).filter(User.is_platform_admin.is_(False)).scalar() or 0
         # Domain tables now live in each client's schema — sum across all tenants.
+        # Only provisioned ones: an unprovisioned tenant has no schema yet, and a
+        # query against it would fail and abort the whole request's transaction.
         total_purchases = total_batches = total_orders = 0
-        for company in db.query(Company).all():
+        for company in db.query(Company).filter(Company.provisioned_at.isnot(None)).all():
             with tenant_session(db, company) as ts:
                 total_purchases += ts.query(func.count(PalayPurchase.id)).scalar() or 0
                 total_batches += ts.query(func.count(MillingBatch.id)).scalar() or 0
@@ -378,6 +380,8 @@ class AdminService(BaseService):
         purchase_counts: dict = {}
         order_counts: dict = {}
         for c in companies:
+            if c.provisioned_at is None:  # no schema yet: nothing to count
+                continue
             with tenant_session(db, c) as ts:
                 purchase_counts[c.id] = ts.query(func.count(PalayPurchase.id)).scalar() or 0
                 order_counts[c.id] = ts.query(func.count(SalesOrder.id)).scalar() or 0
@@ -429,21 +433,25 @@ class AdminService(BaseService):
             raise NotFoundError("Tenant not found")
         users = db.query(User).filter(User.company_id == company.id).all()
         branches = db.query(Branch).filter(Branch.company_id == company.id).all()
-        # Domain metrics live in the client's own database/schema.
-        with tenant_session(db, company) as ts:
-            purchases = ts.query(func.count(PalayPurchase.id)).scalar() or 0
-            batches = ts.query(func.count(MillingBatch.id)).scalar() or 0
-            orders = ts.query(func.count(SalesOrder.id)).scalar() or 0
-            invoices = ts.query(func.count(Invoice.id)).scalar() or 0
-            expenses_total = ts.query(func.coalesce(func.sum(Expense.amount), 0)).scalar() or 0
-            revenue_total = (
-                ts.query(func.coalesce(func.sum(SalesOrder.total_amount), 0))
-                .filter(
-                    SalesOrder.status.in_(["invoiced", "paid"]),
+        # Domain metrics live in the client's own schema; an unprovisioned tenant
+        # has none yet, so its metrics are zero.
+        purchases = batches = orders = invoices = 0
+        expenses_total = revenue_total = 0
+        if company.provisioned_at is not None:
+            with tenant_session(db, company) as ts:
+                purchases = ts.query(func.count(PalayPurchase.id)).scalar() or 0
+                batches = ts.query(func.count(MillingBatch.id)).scalar() or 0
+                orders = ts.query(func.count(SalesOrder.id)).scalar() or 0
+                invoices = ts.query(func.count(Invoice.id)).scalar() or 0
+                expenses_total = ts.query(func.coalesce(func.sum(Expense.amount), 0)).scalar() or 0
+                revenue_total = (
+                    ts.query(func.coalesce(func.sum(SalesOrder.total_amount), 0))
+                    .filter(
+                        SalesOrder.status.in_(["invoiced", "paid"]),
+                    )
+                    .scalar()
+                    or 0
                 )
-                .scalar()
-                or 0
-            )
 
         return {
             "company": {

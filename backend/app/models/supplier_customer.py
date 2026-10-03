@@ -1,7 +1,7 @@
 import uuid
 from decimal import Decimal
 
-from sqlalchemy import Boolean, ForeignKey, Integer, Numeric, String, Text
+from sqlalchemy import Boolean, ForeignKey, Index, Integer, Numeric, String, Text, text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -11,6 +11,16 @@ from .base import TimestampMixin
 
 class Supplier(Base, TimestampMixin):
     __tablename__ = "suppliers"
+    __table_args__ = (
+        # One colour per party per tenant; services/canva_color.py checks across the four tables.
+        Index(
+            "uq_suppliers_company_color",
+            "company_id",
+            "canva_color_hex",
+            unique=True,
+            postgresql_where=text("canva_color_hex IS NOT NULL"),
+        ),
+    )
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     company_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("companies.id"))
@@ -29,6 +39,16 @@ class Supplier(Base, TimestampMixin):
 
 class Customer(Base, TimestampMixin):
     __tablename__ = "customers"
+    __table_args__ = (
+        # One colour per party per tenant; services/canva_color.py checks across the four tables.
+        Index(
+            "uq_customers_company_color",
+            "company_id",
+            "canva_color_hex",
+            unique=True,
+            postgresql_where=text("canva_color_hex IS NOT NULL"),
+        ),
+    )
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     company_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("companies.id"))
