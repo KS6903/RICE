@@ -15,6 +15,7 @@ const ACTION_VERBS: Record<string, string> = {
   "warehouse.delete": "Deleted warehouse",
   "warehouse.restore": "Restored warehouse",
   "warehouse.purge": "Permanently deleted warehouse",
+  "data.export": "Downloaded all data for",
 };
 
 export function formatActivity(row: ActivityRow): string {

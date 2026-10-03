@@ -49,7 +49,8 @@ notes which of its phases it maps to.
 ## Phase 6 — External services  ·  prod/ops  ·  = Phase 6
 
 - [ ] TLS/proxy, real domains, secure cookie domain, HSTS + cert-renewal alerts.
-- [ ] Managed TLS PostgreSQL + Redis; encrypted backups + tested restore.
+- [ ] Managed TLS PostgreSQL + Redis; encrypted backups + tested restore (the restore drill
+  workflow is built and waits for a runner and two secrets: see `restore-drill.yml`).
 - [ ] SMTP credentials + Google OAuth production origins/redirects.
 
 ## Phase 7 — Device encryption  ·  devices  ·  = Phase 7

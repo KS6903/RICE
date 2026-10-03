@@ -45,12 +45,14 @@ import {
   Palette,
   Sun,
   Moon,
+  Download,
 } from "lucide-react";
 import { format } from "date-fns";
 import { useCurrentPlan } from "../hooks/useFeature";
 import { roleLabel, type SubscriptionPlan, type UpgradeRequest } from "@rice-mill/shared";
 import ActivityLogList from "../components/activity/ActivityLogList";
 import BackupCodes from "../components/BackupCodes";
+import DataExport from "../components/DataExport";
 import type { ActivityRow } from "../components/activity/format";
 import { Trash2, RotateCcw } from "lucide-react";
 
@@ -62,6 +64,7 @@ type Tab =
   | "equipment"
   | "categories"
   | "activity"
+  | "data"
   | "profile"
   | "appearance"
   | "password"
@@ -91,6 +94,8 @@ export default function SettingsPage() {
           { key: "activity" as Tab, label: "Activity Log", icon: History },
         ]
       : []),
+    // The full data export holds every record, government IDs included: owner only.
+    ...(role === "owner" ? [{ key: "data" as Tab, label: "Your Data", icon: Download }] : []),
     // Personal settings — available to every role.
     { key: "profile", label: "My Profile", icon: UserIcon },
     { key: "appearance", label: "Appearance", icon: Palette },
@@ -151,6 +156,7 @@ export default function SettingsPage() {
           {tab === "equipment" && <EquipmentTab />}
           {tab === "categories" && <CategoriesTab />}
           {tab === "activity" && <ActivityTab />}
+          {tab === "data" && <DataExport />}
           {tab === "profile" && <ProfileTab />}
           {tab === "appearance" && <AppearanceTab />}
           {tab === "password" && <PasswordTab />}
@@ -1705,7 +1711,8 @@ function ActivityTab() {
       <div>
         <h3 className="text-lg font-bold text-primary">Activity log</h3>
         <p className="text-sm text-secondary">
-          Who deleted, restored, or purged warehouses — most recent first.
+          Who deleted, restored, or purged warehouses, and who downloaded the mill&apos;s data — most
+          recent first.
         </p>
       </div>
       <div className="card">

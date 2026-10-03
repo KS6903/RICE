@@ -17,6 +17,7 @@ from .api import (
     branches,
     canva,
     costs,
+    data_export,
     dispatch,
     drying_advisor,
     employees,
@@ -133,6 +134,7 @@ app.include_router(activity.router, prefix="/api/activity", tags=["Activity Log"
 app.include_router(notifications.router, prefix="/api/notifications", tags=["Notifications"], dependencies=mfa_gate)
 app.include_router(automations.router, prefix="/api/automations", tags=["Automations"], dependencies=mfa_gate)
 app.include_router(fleet.router, prefix="/api", tags=["Fleet"], dependencies=mfa_gate)
+app.include_router(data_export.router, prefix="/api/export", tags=["Data Export"], dependencies=mfa_gate)
 
 
 @app.on_event("startup")

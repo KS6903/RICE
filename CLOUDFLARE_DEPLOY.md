@@ -116,7 +116,12 @@ Replace every `example.com` value in the `vars` block of
 
 ### 5. Migrations
 
-Run once against the provisioner credential, from a machine that can reach the database:
+The Deploy workflow runs them in its `migrate` job, after the checks and before the rollout: the
+public schema, then every tenant schema, and the deploy stops if any tenant fails. It needs
+`PROVISIONER_DATABASE_URL` in the `production` environment's secrets and `RUNTIME_DATABASE_ROLE`
+in its variables, and the database must accept connections from GitHub's runners.
+
+By hand, against the provisioner credential, from a machine that can reach the database:
 
 ```bash
 cd backend

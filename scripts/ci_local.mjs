@@ -92,7 +92,7 @@ function onPath(tool) {
   return capture(isWindows ? "where" : "which", [tool]).ok;
 }
 
-function e2eDatabaseUrl() {
+function e2eDatabaseUrl(name = "ricemill_e2e") {
   // Same server and credentials as backend/.env, a dedicated disposable DB.
   const envFile = path.join(backend, ".env");
   if (!existsSync(envFile)) return null;
@@ -106,7 +106,7 @@ function e2eDatabaseUrl() {
     .replace(/^["']|["']$/g, "");
   try {
     const url = new URL(raw);
-    url.pathname = "/ricemill_e2e";
+    url.pathname = `/${name}`;
     return url.toString();
   } catch {
     return null;
@@ -158,6 +158,22 @@ step("backend: single Alembic head", () => {
   console.log(heads.out);
   return heads.ok && heads.out.split(/\r?\n/).filter(Boolean).length === 1;
 });
+// checks.yml: migrations. Upgrades from origin/main's schema and from empty.
+if (fast) skip("backend: migrations match the models", "--fast");
+else {
+  const driftUrl = e2eDatabaseUrl("ricemill_drift");
+  if (!driftUrl) fail("could not derive the drift database from DATABASE_URL in backend/.env.");
+  const base = capture("git", ["rev-parse", "--verify", "--quiet", "origin/main"]).ok
+    ? ["--base-ref", "origin/main"]
+    : [];
+  step("backend: migrations match the models", () =>
+    run(
+      python,
+      [path.join("scripts", "check_migrations.py"), "--database-url", driftUrl, ...base],
+      { cwd: backend },
+    ),
+  );
+}
 if (fast) skip("backend: pytest", "--fast");
 else step("backend: pytest", py("pytest", []));
 

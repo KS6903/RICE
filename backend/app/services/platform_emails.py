@@ -1,5 +1,5 @@
-"""Emails sent as a side effect of an action: an account locked, an upgrade
-request filed or decided.
+"""Emails sent as a side effect of an action: an account locked, a data export,
+an upgrade request filed or decided.
 
 Best effort, every one: a mail failure is logged and never fails the action
 that caused it. A locked account must still answer "locked", and an approved
@@ -55,6 +55,21 @@ def account_locked(user: User, state: LockoutState) -> bool:
         "tell your mill's owner.\n"
     )
     return _send(user.email, f"Your {settings.APP_NAME} sign-in was locked", text)
+
+
+def data_exported(user: User, *, company: str, files: int, rows: int) -> bool:
+    """Tell the owner their mill's data was downloaded: either it was them, and
+    this is a receipt, or it wasn't, and they need to know today."""
+    text = (
+        f"Hello {user.full_name or user.username},\n\n"
+        f"A full copy of {company}'s data ({rows:,} records in {files} files) was just downloaded from "
+        f"{settings.APP_NAME} by your account ({user.username}).\n\n"
+        "If that was you, there's nothing to do. Keep the file somewhere only the people who need it can "
+        "open: it includes employees' government ID numbers.\n\n"
+        "If it wasn't you, change your password now and sign out your other devices: "
+        f"{_app_link('/settings')}\n"
+    )
+    return _send(user.email, f"{company}'s data was downloaded", text)
 
 
 def redis_budget(db: Session, *, used: int, limit: int, level: int) -> int:

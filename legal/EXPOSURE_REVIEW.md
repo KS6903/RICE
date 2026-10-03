@@ -194,7 +194,8 @@ Ordered by how much exposure each removes.
 6. **Log reads of employee SPI, and mask it in the UI by default** behind a "reveal" action. Both
    deter internal misuse and give an audit trail if it happens anyway.
 7. **Data subject request endpoints**: export and deletion, per §16 of the Data Privacy Act and §9
-   of the DPA. The DPA commits to a 30-day export window; today that would be a manual database
+   of the DPA. Export is built: the owner downloads every record from Settings → Your data, on any
+   plan and after a plan ends, which covers the 30-day window. Deletion is still a manual database
    job.
 8. **Rename "invoice" in the UI** to "Sales record", and print a "not an Official Receipt" line on
    any exported or printed document. Removing the misunderstanding beats disclaiming it.

@@ -9,6 +9,8 @@ name: Deploy (Cloudflare)
 #                   boot-time validator, so a config the API would refuse to
 #                   start with (template values, unfilled legal placeholders)
 #                   blocks here instead of crash-looping after rollout.
+# Then migrate brings the database (public schema, then every tenant schema)
+# to this code, and only then does the new code roll out.
 on:
   workflow_dispatch:
     inputs:
@@ -60,8 +62,49 @@ jobs:
       - name: Would the containers boot with this configuration?
         run: python backend/deploy_readiness.py
 
-  deploy:
+  migrate:
+    name: Migrate the database
+    # Schema first, code second: the API checks at /api/health/ready that the
+    # database is at this code's migrations. Uses the provisioner (DDL)
+    # credential, which only this job and the provisioner container hold; the
+    # database must accept connections from GitHub's runners.
     needs: [verify, readiness]
+    runs-on: ubuntu-latest
+    environment: production
+    env:
+      PROCESS_ROLE: provisioner
+      PROVISIONER_DATABASE_URL: ${{ secrets.PROVISIONER_DATABASE_URL }}
+      DATABASE_URL: ${{ secrets.PROVISIONER_DATABASE_URL }}
+      RUNTIME_DATABASE_ROLE: ${{ vars.RUNTIME_DATABASE_ROLE }}
+      # Settings requires one; this job signs nothing, so it never sees the real key.
+      SECRET_KEY: migrations-only-not-a-signing-key
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - name: The provisioner credential is set
+        run: |
+          if [ -z "$PROVISIONER_DATABASE_URL" ]; then
+            echo "::error::Add PROVISIONER_DATABASE_URL to the production environment's secrets."
+            exit 1
+          fi
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+      - name: Install backend dependencies
+        run: python -m pip install --require-hashes -r requirements.txt
+      - name: Public schema (alembic upgrade head)
+        run: python -m alembic upgrade head
+      - name: Every tenant schema (fails the deploy if any tenant fails)
+        run: python migrate_all_tenants.py
+
+  deploy:
+    needs: [verify, readiness, migrate]
     runs-on: ubuntu-latest
     environment: production
     steps:

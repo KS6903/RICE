@@ -1,0 +1,98 @@
+name: Restore drill
+
+# Monthly proof that production's data can come back: dump it inside one
+# snapshot, restore it into a scratch database, and check the copy matches
+# (backend/scripts/restore_drill.py). Nothing is kept or uploaded.
+#
+# The dump holds every mill's data, so the drill runs only on a runner you
+# name, never on GitHub's by default: GitHub isn't in the sub-processor
+# register (legal/subprocessors.md), and adding it needs 30 days' notice.
+#
+# To set it up:
+#   - vars.RESTORE_DRILL_RUNNER: the runner's label, e.g. a self-hosted runner
+#     beside the database ("self-hosted" or ["self-hosted", "linux", "drill"]).
+#     It needs Python 3.11 and the PostgreSQL client tools of the server's
+#     major version (vars.RESTORE_DRILL_PG_BIN if they aren't on PATH).
+#   - secrets.BACKUP_SOURCE_DATABASE_URL: a direct (not pooled) connection as a
+#     read-only role: GRANT pg_read_all_data TO <role>.
+#   - secrets.RESTORE_DRILL_TARGET_URL: a scratch database on that runner's
+#     side, whose name contains "restore_drill". It is dropped every run.
+#   - vars.RESTORE_DRILL_ALLOW_GITHUB_HOSTED = "true" only once GitHub is in
+#     the register.
+# Until then, each run says it isn't set up, and passes with a warning.
+on:
+  schedule:
+    - cron: "17 3 2 * *" # 03:17 UTC on the 2nd of each month
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: restore-drill
+  cancel-in-progress: false
+
+jobs:
+  setup:
+    name: Is the drill set up?
+    runs-on: ubuntu-latest
+    outputs:
+      ready: ${{ steps.check.outputs.ready }}
+    steps:
+      - id: check
+        env:
+          RUNNER_LABEL: ${{ vars.RESTORE_DRILL_RUNNER }}
+          HAS_SOURCE: ${{ secrets.BACKUP_SOURCE_DATABASE_URL != '' }}
+          HAS_TARGET: ${{ secrets.RESTORE_DRILL_TARGET_URL != '' }}
+        run: |
+          missing=""
+          [ -n "$RUNNER_LABEL" ] || missing="$missing vars.RESTORE_DRILL_RUNNER"
+          [ "$HAS_SOURCE" = "true" ] || missing="$missing secrets.BACKUP_SOURCE_DATABASE_URL"
+          [ "$HAS_TARGET" = "true" ] || missing="$missing secrets.RESTORE_DRILL_TARGET_URL"
+          if [ -n "$missing" ]; then
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::The restore drill isn't set up, so it didn't run. Missing:$missing (see .github/workflows/restore-drill.yml)."
+            {
+              echo "## Restore drill not run"
+              echo
+              echo "It isn't set up yet. Missing:$missing."
+              echo "See the comment at the top of \`.github/workflows/restore-drill.yml\`."
+            } >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          fi
+
+  drill:
+    name: Dump, restore, compare
+    needs: setup
+    if: needs.setup.outputs.ready == 'true'
+    runs-on: ${{ startsWith(vars.RESTORE_DRILL_RUNNER, '[') && fromJSON(vars.RESTORE_DRILL_RUNNER) || vars.RESTORE_DRILL_RUNNER }}
+    timeout-minutes: 120
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - name: Never on GitHub's runners without saying so
+        if: runner.environment == 'github-hosted' && vars.RESTORE_DRILL_ALLOW_GITHUB_HOSTED != 'true'
+        working-directory: .
+        run: |
+          echo "::error::This runner is GitHub-hosted, and GitHub isn't in the sub-processor register. Use a self-hosted runner, or list GitHub first and set vars.RESTORE_DRILL_ALLOW_GITHUB_HOSTED to true."
+          exit 1
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.11"
+      - name: Install backend dependencies
+        run: python -m pip install --require-hashes -r requirements.txt
+      - name: Restore drill
+        env:
+          BACKUP_SOURCE_DATABASE_URL: ${{ secrets.BACKUP_SOURCE_DATABASE_URL }}
+          RESTORE_DRILL_TARGET_URL: ${{ secrets.RESTORE_DRILL_TARGET_URL }}
+          PG_BIN: ${{ vars.RESTORE_DRILL_PG_BIN }}
+          # The script reads the code's models through app settings, which
+          # require these; it signs nothing and connects only where told to.
+          DATABASE_URL: ${{ secrets.RESTORE_DRILL_TARGET_URL }}
+          SECRET_KEY: restore-drill-not-a-signing-key
+        run: python scripts/restore_drill.py

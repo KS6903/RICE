@@ -128,7 +128,10 @@ Start from the templates — they already list every required key:
 
 ## Phase 3 — Migrations  ·  Runs `[WORKSTATION]` / CI, using ONLY the provisioner config  ·  Supervision **B**
 
-- [ ] As the DB owner (provisioner credential):
+- [ ] Add `PROVISIONER_DATABASE_URL` to the GitHub `production` environment's secrets (and
+  `RUNTIME_DATABASE_ROLE` to its variables): the Deploy workflow's `migrate` job then runs both
+  commands below before every rollout.
+- [ ] Or by hand, as the DB owner (provisioner credential):
   ```powershell
   .\.venv\Scripts\python.exe -m alembic upgrade head
   .\.venv\Scripts\python.exe migrate_all_tenants.py
@@ -147,13 +150,19 @@ Start from the templates — they already list every required key:
   ```powershell
   .\.venv\Scripts\python.exe provision_pending_tenants.py --watch
   ```
-- [ ] Alert on worker failure and on any non-null `companies.provisioning_error`.
+- [ ] Alert on worker failure and on any non-null `companies.provisioning_error`. The hourly
+  `platform.health_watch` job emails platform admins about failed or stuck setups; confirm SMTP
+  delivers it, and watch the provisioner container's exit status.
 
 ## Phase 6 — External services  ·  Runs `[OPS]`  ·  Supervision **A** (setup) + **B** (renewals)
 
 - [ ] Terminate TLS at a maintained reverse proxy / load balancer; HSTS monitoring + cert-renewal alerts.
 - [ ] Managed TLS PostgreSQL + Redis (`rediss://`); network allowlists; separate service identities.
 - [ ] Encrypted database backups + tested restore into an **isolated** database; document the recovery procedure.
+  - [ ] Set up the monthly restore drill (`.github/workflows/restore-drill.yml`): a runner beside the
+    database, a read-only `BACKUP_SOURCE_DATABASE_URL`, a scratch `RESTORE_DRILL_TARGET_URL`. Run it
+    once by hand; it must pass. It never runs on GitHub's runners unless GitHub is in the
+    sub-processor register.
 - [ ] Configure SMTP and Google OAuth production origins/redirects; rotate any credential ever shared, logged, or committed.
 
 ## Phase 7 — Desktop devices  ·  Runs `[DEVICES]`  ·  Supervision **A**
