@@ -23,6 +23,7 @@ from __future__ import annotations
 import argparse
 import os
 import shutil
+import stat
 import subprocess
 import sys
 import tempfile
@@ -62,15 +63,32 @@ def _alembic(args: list[str], *, cwd: Path, url: str) -> None:
         raise SystemExit(f"alembic {' '.join(args)} failed")
 
 
+def _writable_then_retry(func, path, _exc) -> None:
+    # Windows: git leaves some files read-only, which rmtree can't delete.
+    os.chmod(path, stat.S_IWRITE)
+    func(path)
+
+
 def _upgrade_from(ref: str, url: str) -> None:
     """Migrate to the schema ``ref`` would leave, from its own checkout."""
     workdir = Path(tempfile.mkdtemp(prefix="migrations-base-"))
+    common = subprocess.run(
+        ["git", "rev-parse", "--path-format=absolute", "--git-common-dir"],
+        cwd=BACKEND,
+        capture_output=True,
+        text=True,
+        check=True,
+    ).stdout.strip()
     try:
         subprocess.run(["git", "worktree", "add", "--detach", str(workdir), ref], check=True, cwd=BACKEND)
         _alembic(["upgrade", "head"], cwd=workdir / "backend", url=url)
     finally:
         subprocess.run(["git", "worktree", "remove", "--force", str(workdir)], cwd=BACKEND)
-        shutil.rmtree(workdir, ignore_errors=True)
+        # Whatever remove couldn't delete, so no stale worktree is left behind.
+        for leftover in (workdir, Path(common) / "worktrees" / workdir.name):
+            if leftover.exists():
+                shutil.rmtree(leftover, onerror=_writable_then_retry)
+        subprocess.run(["git", "worktree", "prune"], cwd=BACKEND)
 
 
 def main() -> int:
