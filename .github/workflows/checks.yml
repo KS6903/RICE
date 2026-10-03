@@ -147,6 +147,8 @@ jobs:
         run: npx wrangler deploy --dry-run --containers-rollout=none --outdir "$RUNNER_TEMP/worker"
         env:
           WRANGLER_SEND_METRICS: "false"
+      - name: Desktop unit tests (Vitest)
+        run: npm run test:desktop
       - name: Type-check the desktop app
         run: npx tsc -p packages/desktop/tsconfig.json --noEmit
       - name: Format check (Prettier)

@@ -42,8 +42,18 @@ export interface SyncRecord {
   updated_at?: string;
 }
 
+/** A pulled record this device refused. Never its payload: it may be malformed,
+ *  or another tenant's, and neither belongs in the local database. */
+export interface PullRejection {
+  table: string;
+  recordId: string;
+  reason: string;
+}
+
 export interface SyncPullResponse {
   records: SyncRecord[];
+  /** Set aside, so one bad record never holds back the rest of the page. */
+  rejected: PullRejection[];
   server_time: string;
   has_more: boolean;
 }
@@ -317,11 +327,25 @@ export function parsePullResponse(input: unknown, identity: SyncIdentity): SyncP
   }
   assertAwareDateTime(input.server_time, "server_time");
   if (typeof input.has_more !== "boolean") throw new Error("Invalid sync pagination flag");
-  return {
-    records: input.records.map((record) => assertValidRecord(record, identity)),
-    server_time: input.server_time,
-    has_more: input.has_more,
-  };
+  // The page itself must be sound (above); a record in it that isn't is set
+  // aside, where it used to fail the page, and with it every later sync.
+  const records: SyncRecord[] = [];
+  const rejected: PullRejection[] = [];
+  for (const record of input.records) {
+    try {
+      records.push(assertValidRecord(record, identity));
+    } catch (error) {
+      rejected.push({
+        table: isObject(record) && isSyncTable(record.table_name) ? record.table_name : "unknown",
+        recordId:
+          isObject(record) && typeof record.record_id === "string" && UUID_RE.test(record.record_id)
+            ? record.record_id
+            : "unknown",
+        reason: error instanceof Error ? error.message : "Invalid sync record",
+      });
+    }
+  }
+  return { records, rejected, server_time: input.server_time, has_more: input.has_more };
 }
 
 /** Copy a known local SQLite row into the wire contract without local metadata. */

@@ -167,6 +167,16 @@ Start from the templates — they already list every required key:
 
 ## Phase 7 — Desktop devices  ·  Runs `[DEVICES]`  ·  Supervision **A**
 
+- [ ] Build the installer for the production API:
+  `ORYZA_API_ORIGIN=https://<domain> npm run build --workspace=packages/desktop`
+  (packages/desktop/scripts/build-desktop.mjs). A build without it refuses to package.
+- [ ] Buy a Windows code-signing certificate (OV or EV) and set `CSC_LINK`/`CSC_KEY_PASSWORD`.
+  Without one, Windows SmartScreen warns on install and auto-update stays off.
+- [ ] With the certificate: host the update feed over https and build with `ORYZA_UPDATE_URL`
+  and `ORYZA_PUBLISHER` (the certificate's subject name). Upload `latest.yml` and the installer
+  from `packages/desktop/dist/` to that URL for each release.
+- [ ] Before a release that changes the sync contract, set `DESKTOP_MIN_VERSION` in the Worker's
+  vars: older builds then get 426 and are told to update instead of misreading the server.
 - [ ] Enable BitLocker on every device storing offline SQLite; confirm with `manage-bde -status`.
 - [ ] Store recovery keys in a secure organization account.
 - [ ] Deferred: SQLCipher app-level encryption stays out until `better-sqlite3` is swapped for a

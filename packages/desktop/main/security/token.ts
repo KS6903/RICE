@@ -73,10 +73,11 @@ export function identityFromToken(token: string): SyncIdentity {
 export async function validateTokenWithServer(
   token: string,
   apiBase: string,
+  appVersion: string,
 ): Promise<SyncIdentity> {
   const identity = identityFromToken(token);
   const response = await axios.get<MeResponse>(`${apiBase}/auth/me`, {
-    headers: { Authorization: `Bearer ${token}` },
+    headers: { Authorization: `Bearer ${token}`, "X-Client-Version": appVersion },
     timeout: 10_000,
     maxContentLength: 128 * 1024,
   });

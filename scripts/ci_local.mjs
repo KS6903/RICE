@@ -202,6 +202,7 @@ else {
     }
   });
 }
+step("desktop: unit tests (Vitest)", npm("test:desktop"));
 step("desktop: type-check", () =>
   run("npx", ["tsc", "-p", "packages/desktop/tsconfig.json", "--noEmit"], { shell: isWindows }),
 );

@@ -43,6 +43,8 @@ Thumbs.db
 # Electron
 packages/desktop/out/
 packages/desktop/dist/
+# Written by packages/desktop/scripts/build-desktop.mjs for each packaged build.
+packages/desktop/main/build-config.json
 release/
 
 # SQLite local databases

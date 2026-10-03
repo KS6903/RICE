@@ -1,5 +1,13 @@
 import { contextBridge, ipcRenderer } from "electron";
 
+// The API's origin, from the main process's build config (additionalArguments):
+// the renderer needs it only for the warehouse WebSocket, which can't go
+// through the app:// handler the way every HTTP request does.
+const API_ORIGIN_ARG = "--oryza-api-origin=";
+const apiOrigin = process.argv
+  .find((arg) => arg.startsWith(API_ORIGIN_ARG))
+  ?.slice(API_ORIGIN_ARG.length);
+
 contextBridge.exposeInMainWorld("electronAPI", {
   db: {
     // SECURITY: a generic `query(sql, params)` bridge used to live here. It let
@@ -23,4 +31,5 @@ contextBridge.exposeInMainWorld("electronAPI", {
     clearToken: () => ipcRenderer.invoke("sync:clearToken"),
   },
   isElectron: true,
+  apiOrigin,
 });

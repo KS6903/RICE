@@ -23,6 +23,12 @@ from ..services.base import BaseService
 ALL_SYNC_ROLES: FrozenSet[str] = frozenset(SECTION_ACCESS)
 MANAGE_ROLES: FrozenSet[str] = frozenset({"owner", "admin"})
 
+# Marks a refusal of one record, as opposed to of the account or the session:
+# the desktop app splits the batch to find that record, sets it aside, and
+# syncs the rest (packages/desktop/main/sync/push.ts). An unmarked 403 means
+# "stop": nothing in the batch would fare better on its own.
+REJECTION_HEADER = "X-Sync-Rejection"
+
 
 def _section_roles(section: str, *, write: bool) -> FrozenSet[str]:
     return frozenset(
@@ -204,14 +210,19 @@ class SyncService(BaseService):
         return role
 
     @staticmethod
-    def _unprocessable(detail: str) -> HTTPException:
-        return HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=detail)
+    def _reject(status_code: int, detail: str) -> HTTPException:
+        """A refusal of this one record (see REJECTION_HEADER)."""
+        return HTTPException(status_code=status_code, detail=detail, headers={REJECTION_HEADER: "record"})
+
+    @classmethod
+    def _unprocessable(cls, detail: str) -> HTTPException:
+        return cls._reject(status.HTTP_422_UNPROCESSABLE_ENTITY, detail)
 
     def _assert_company(self, payload: dict[str, JsonScalar]) -> None:
         expected = str(self.current_user.company_id)
         supplied = payload.get("company_id")
         if supplied is not None and str(supplied) != expected:
-            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Sync record belongs to another company")
+            raise self._reject(status.HTTP_403_FORBIDDEN, "Sync record belongs to another company")
         payload["company_id"] = expected
 
     def _bind_branch(self, payload: dict[str, JsonScalar], role: str) -> None:
@@ -234,11 +245,9 @@ class SyncService(BaseService):
             or not branch.is_active
             or branch.deleted_at is not None
         ):
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN, detail="Sync branch does not belong to this company"
-            )
+            raise self._reject(status.HTTP_403_FORBIDDEN, "Sync branch does not belong to this company")
         if role not in MANAGE_ROLES and branch.id != self.current_user.branch_id:
-            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Sync is limited to your assigned branch")
+            raise self._reject(status.HTTP_403_FORBIDDEN, "Sync is limited to your assigned branch")
         payload["branch_id"] = str(branch.id)
 
     def _bind_user_fields(self, payload: dict[str, JsonScalar], policy: TablePolicy) -> None:
@@ -246,7 +255,7 @@ class SyncService(BaseService):
         for key in policy.force_user_keys:
             supplied = payload.get(key)
             if supplied is not None and str(supplied) != expected:
-                raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=f"{key} cannot identify another user")
+                raise self._reject(status.HTTP_403_FORBIDDEN, f"{key} cannot identify another user")
             payload[key] = expected
 
         for key in policy.user_reference_keys:
@@ -259,17 +268,14 @@ class SyncService(BaseService):
                 raise self._unprocessable(f"Invalid {key}")
             user = self.db.get(User, user_id)
             if user is None or user.company_id != self.current_user.company_id or not user.is_active:
-                raise HTTPException(
-                    status_code=status.HTTP_403_FORBIDDEN, detail=f"{key} is not an active company user"
-                )
+                raise self._reject(status.HTTP_403_FORBIDDEN, f"{key} is not an active company user")
             payload[key] = str(user.id)
 
     def _sanitize_record(self, record: SyncRecord, role: str) -> dict[str, JsonScalar]:
         policy = TABLE_POLICIES[record.table_name]
         if role not in policy.write_roles:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail=f"Role '{role}' cannot write offline records for {record.table_name}",
+            raise self._reject(
+                status.HTTP_403_FORBIDDEN, f"Role '{role}' cannot write offline records for {record.table_name}"
             )
         if record.updated_at > datetime.now(timezone.utc) + timedelta(minutes=5):
             raise self._unprocessable("updated_at cannot be more than five minutes in the future")
@@ -308,9 +314,7 @@ class SyncService(BaseService):
         except (TypeError, ValueError):
             raise self._unprocessable("Sync payload must contain finite JSON scalar values")
         if len(encoded) > MAX_RECORD_BYTES:
-            raise HTTPException(
-                status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE, detail="Sync record payload is too large"
-            )
+            raise self._reject(status.HTTP_413_REQUEST_ENTITY_TOO_LARGE, "Sync record payload is too large")
         return payload
 
     def push(self, client_id: str, records: Sequence[SyncRecord]) -> dict:
