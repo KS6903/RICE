@@ -1711,8 +1711,8 @@ function ActivityTab() {
       <div>
         <h3 className="text-lg font-bold text-primary">Activity log</h3>
         <p className="text-sm text-secondary">
-          Who deleted, restored, or purged warehouses, and who downloaded the mill&apos;s data — most
-          recent first.
+          Who deleted, restored, or purged warehouses, and who downloaded the mill&apos;s data —
+          most recent first.
         </p>
       </div>
       <div className="card">
