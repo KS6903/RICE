@@ -5,24 +5,24 @@
 #
 # Pins refreshed by the security hardening pass (pip-audit clean as of 2026-06):
 # fastapi/starlette, python-multipart, python-dotenv bumped past known CVEs.
-fastapi==0.141.1
+fastapi==0.142.2
 # uvicorn's [standard] extras, listed one by one instead of via the extra:
 # the extra adds uvloop on Linux only, and pip-compile drops platform
 # markers, so a lock compiled on Linux (Dependabot, CI) listed uvloop and the
 # install failed on Windows, where uvloop can't build. Production has never
 # had uvloop (the lock was compiled on Windows), so leaving it out keeps the
 # runtime exactly as it was: asyncio's own event loop.
-uvicorn==0.53.0
+uvicorn==0.54.0
 httptools==0.8.0
 websockets==16.1
-watchfiles==1.2.0
+watchfiles==1.3.0
 pyyaml==6.0.3
-sqlalchemy==2.0.54
+sqlalchemy==2.1.1
 alembic==1.20.0
 psycopg[binary]==3.3.6
 # Security hardening P2.13: python-jose (CVE-2024-33663/33664) → PyJWT, and the
 # unmaintained passlib → direct bcrypt. Stored $2b$ hashes verify unchanged.
-PyJWT==2.15.0
+PyJWT==2.15.1
 cryptography==50.0.1  # JWT alg backends + Fernet (core/crypto.py for MFA seeds); PYSEC-2026-3552 fix
 bcrypt==4.2.1
 python-multipart==0.0.32
@@ -35,7 +35,7 @@ httpx==0.28.1
 # The [requests] extra pulls in the `requests` HTTP lib that
 # google.auth.transport.requests needs (the app otherwise uses httpx). Without it
 # the transport import fails and Google login silently disables itself.
-google-auth[requests]==2.58.0
+google-auth[requests]==2.59.0
 redis==5.2.1
 pyotp==2.10.0
 
