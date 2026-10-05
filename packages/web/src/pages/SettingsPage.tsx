@@ -2128,22 +2128,29 @@ function GoogleIdentityCard() {
 
 /** Two-factor authentication management (security hardening P1.9).
  *  Enroll: fetch secret → user adds it to an authenticator app → verify a code.
- *  Strongly recommended (and surfaced via mfa_setup_recommended) for owners
- *  and platform admins. */
-function MfaCard() {
+ *  Recommended (surfaced via mfa_setup_recommended) for owners and platform
+ *  admins, but optional unless the account's role is required to use it
+ *  (mfa_required): anyone else can turn it off, and back on again with the
+ *  authenticator they had (mfa_previous_authenticator) or a new one. */
+export function MfaCard() {
   const qc = useQueryClient();
   const logout = useAuthStore((s) => s.logout);
   const requireReauthentication = useAuthStore((s) => s.requireReauthentication);
   const meQ = useQuery({ queryKey: ["auth-me-mfa"], queryFn: () => authService.me() });
   const [enroll, setEnroll] = useState<{ secret: string; otpauth_uri: string } | null>(null);
+  // Switching back on with the authenticator that was on file, so no new secret.
+  const [reuse, setReuse] = useState(false);
   const [code, setCode] = useState("");
   const [disabling, setDisabling] = useState(false);
+  const [password, setPassword] = useState("");
   const [regenerating, setRegenerating] = useState(false);
   const [backupCodes, setBackupCodes] = useState<string[] | null>(null);
   const [msg, setMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null);
 
   const mfaEnabled = !!meQ.data?.mfa_enabled;
   const recommended = !!meQ.data?.mfa_setup_recommended;
+  const required = !!meQ.data?.mfa_required;
+  const previous = !!meQ.data?.mfa_previous_authenticator;
   const codesRemaining = meQ.data?.mfa_backup_codes_remaining ?? 0;
 
   const refresh = () => {
@@ -2165,6 +2172,7 @@ function MfaCard() {
     try {
       const res = await authService.mfaEnrollVerify(code.trim());
       setEnroll(null);
+      setReuse(false);
       setCode("");
       setBackupCodes(res.backup_codes); // show once
       // The server revoked every pre-MFA session. Pause the global /me poll so
@@ -2191,15 +2199,19 @@ function MfaCard() {
   const confirmDisable = async () => {
     setMsg(null);
     try {
-      await authService.mfaDisable(code.trim());
+      await authService.mfaDisable(code.trim(), password);
       await logout();
     } catch (e: any) {
+      // A refused attempt doesn't use up the code, so keep it and ask for the
+      // password again.
+      setPassword("");
       setMsg({ type: "err", text: e.response?.data?.detail || "Invalid code." });
     }
   };
 
   const codeInput = (
     <input
+      aria-label="Authenticator code"
       className="input text-center tracking-[0.4em]"
       value={code}
       onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
@@ -2220,16 +2232,19 @@ function MfaCard() {
           <p className="text-sm text-secondary">
             {mfaEnabled
               ? "Enabled — codes required at sign-in."
-              : "Add a 6-digit authenticator code to sign-in."}
+              : previous
+                ? "Off — your earlier authenticator is still on file."
+                : "Add a 6-digit authenticator code to sign-in."}
           </p>
         </div>
       </div>
 
-      {recommended && !enroll && (
+      {recommended && !enroll && !reuse && (
         <div className="flex items-start gap-2 px-3 py-2.5 rounded-xl bg-amber-500/15 ring-1 ring-inset ring-amber-500/40 text-sm font-medium text-amber-700 dark:text-amber-300">
           <AlertCircle size={16} className="mt-0.5 shrink-0" />
           <span>
-            As an owner/admin account, enabling two-factor authentication is strongly recommended.
+            As an owner/admin account, turning on two-factor authentication is recommended. It is
+            your choice, and you can switch it off and on again later.
           </span>
         </div>
       )}
@@ -2243,10 +2258,63 @@ function MfaCard() {
         </div>
       )}
 
-      {!mfaEnabled && !enroll && !backupCodes && (
-        <button onClick={start} className="btn-primary w-full">
-          Enable two-factor authentication
-        </button>
+      {!mfaEnabled && !enroll && !reuse && !backupCodes && (
+        <div className="space-y-3">
+          {previous ? (
+            <>
+              <p className="text-sm text-secondary">
+                Your earlier authenticator is still on file. Switch back on with it, or set up a new
+                one.
+              </p>
+              <button
+                onClick={() => {
+                  setReuse(true);
+                  setMsg(null);
+                }}
+                className="btn-primary w-full"
+              >
+                Switch back on with my earlier authenticator
+              </button>
+              <button onClick={start} className="btn-secondary w-full">
+                Set up a new authenticator
+              </button>
+              <p className="text-xs text-muted">A new authenticator replaces the earlier one.</p>
+            </>
+          ) : (
+            <button onClick={start} className="btn-primary w-full">
+              Enable two-factor authentication
+            </button>
+          )}
+        </div>
+      )}
+
+      {reuse && (
+        <div className="space-y-4">
+          <p className="text-sm text-secondary">
+            Enter the 6-digit code your earlier authenticator shows now. It can&apos;t be the code
+            you used to turn two-factor off, so if it is refused, wait for the next one.
+          </p>
+          {codeInput}
+          <div className="flex gap-2">
+            <button
+              onClick={confirmEnroll}
+              className="btn-primary flex-1"
+              disabled={code.length < 6}
+            >
+              Confirm &amp; enable
+            </button>
+            <button
+              onClick={() => {
+                setReuse(false);
+                setCode("");
+                setMsg(null);
+              }}
+              className="btn-secondary flex-1"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
       )}
 
       {enroll && (
@@ -2301,15 +2369,21 @@ function MfaCard() {
               Regenerate
             </button>
           </div>
-          <button
-            onClick={() => {
-              setDisabling(true);
-              setMsg(null);
-            }}
-            className="btn-secondary w-full"
-          >
-            Disable two-factor authentication
-          </button>
+          {required ? (
+            <p className="text-xs text-muted">
+              Two-factor authentication is required for your role, so it can&apos;t be turned off.
+            </p>
+          ) : (
+            <button
+              onClick={() => {
+                setDisabling(true);
+                setMsg(null);
+              }}
+              className="btn-secondary w-full"
+            >
+              Disable two-factor authentication
+            </button>
+          )}
         </div>
       )}
 
@@ -2345,14 +2419,30 @@ function MfaCard() {
       {disabling && (
         <div className="space-y-4">
           <p className="text-sm text-secondary">
-            Enter a current authenticator code to confirm disabling.
+            To turn two-factor authentication off, enter your password and a current authenticator
+            code. You will be signed out.
           </p>
-          {codeInput}
+          <div>
+            <label htmlFor="mfa-off-password" className="form-label">
+              Password
+            </label>
+            <PasswordInput
+              id="mfa-off-password"
+              className="input"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              autoComplete="current-password"
+            />
+          </div>
+          <div>
+            <span className="form-label">Authenticator code</span>
+            {codeInput}
+          </div>
           <div className="flex gap-2">
             <button
               onClick={confirmDisable}
               className="btn-primary flex-1"
-              disabled={code.length < 6}
+              disabled={code.length < 6 || password.length === 0}
             >
               Disable
             </button>
@@ -2360,6 +2450,7 @@ function MfaCard() {
               onClick={() => {
                 setDisabling(false);
                 setCode("");
+                setPassword("");
                 setMsg(null);
               }}
               className="btn-secondary flex-1"

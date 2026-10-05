@@ -3,6 +3,7 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { GoogleOAuthProvider } from "@react-oauth/google";
 import LoginPage from "./LoginPage";
+import { authService } from "../services/AuthService";
 
 function draw(history: string[]) {
   return render(
@@ -44,5 +45,75 @@ describe("LoginPage back button", () => {
     draw(["/login"]);
     back();
     expect(await screen.findByText("Home page")).toBeInTheDocument();
+  });
+});
+
+describe("LoginPage when the account is locked", () => {
+  const signInAs = (username: string) => {
+    fireEvent.change(screen.getByPlaceholderText("your.username"), { target: { value: username } });
+    fireEvent.change(screen.getByPlaceholderText("••••••••"), {
+      target: { value: "wrong-password" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Sign in" }));
+  };
+  const lockedBy = (code: string, detail: string) =>
+    vi
+      .spyOn(authService, "login")
+      .mockRejectedValue({ response: { status: 429, data: { detail, code } } });
+
+  it("tells an employee to ask their Boss, and a Boss to email the admin", async () => {
+    lockedBy("account_locked_temporary", "This account is locked for 15 minutes.");
+    draw(["/login"]);
+    signInAs("maria");
+    const help = await screen.findByRole("region", { name: "Locked out?" });
+    expect(help).toHaveTextContent(/Employee: ask your Boss to give you a temporary password/);
+    expect(help).toHaveTextContent(/Boss: email the admin/);
+  });
+
+  it("is the same for a permanent lock, which also keeps the reset link", async () => {
+    lockedBy("account_locked", "Locked. Reset your password to regain access.");
+    draw(["/login"]);
+    signInAs("maria");
+    expect(await screen.findByRole("region", { name: "Locked out?" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /Reset your password to unlock/ })).toBeInTheDocument();
+  });
+
+  it("emails the admin for the username typed, and says only what the server said", async () => {
+    lockedBy("account_locked_temporary", "This account is locked for 15 minutes.");
+    const ask = vi
+      .spyOn(authService, "requestLockoutHelp")
+      .mockResolvedValue({ message: "If that is a locked Boss account, the admin has been told." });
+    draw(["/login"]);
+    signInAs("  theboss ");
+    fireEvent.click(await screen.findByRole("button", { name: "Email the admin" }));
+    expect(await screen.findByRole("status")).toHaveTextContent(
+      "If that is a locked Boss account, the admin has been told.",
+    );
+    expect(ask).toHaveBeenCalledWith("theboss");
+    // Once is enough: no second email from the same screen.
+    expect(screen.getByRole("button", { name: "Email the admin" })).toBeDisabled();
+  });
+
+  it("says so when the request couldn't be sent", async () => {
+    lockedBy("account_locked_temporary", "Locked.");
+    vi.spyOn(authService, "requestLockoutHelp").mockRejectedValue({
+      response: { status: 429, data: { detail: "Too many requests. Try again later." } },
+    });
+    draw(["/login"]);
+    signInAs("theboss");
+    fireEvent.click(await screen.findByRole("button", { name: "Email the admin" }));
+    expect(await screen.findByRole("alert", { name: "" })).toHaveTextContent(
+      "Too many requests. Try again later.",
+    );
+  });
+
+  it("offers none of this for an ordinary wrong password", async () => {
+    vi.spyOn(authService, "login").mockRejectedValue({
+      response: { status: 401, data: { detail: "Invalid credentials" } },
+    });
+    draw(["/login"]);
+    signInAs("maria");
+    expect(await screen.findByText("Invalid credentials")).toBeInTheDocument();
+    expect(screen.queryByRole("region", { name: "Locked out?" })).toBeNull();
   });
 });

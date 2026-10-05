@@ -16,6 +16,14 @@ export type UserUpdate = {
   is_active?: boolean;
 };
 
+/** What giving someone a temporary password returns. The password is shown once and
+ *  never stored or emailed; they must replace it at first sign-in, and it expires. */
+export type TemporaryPassword = {
+  username: string;
+  temporary_password: string;
+  expires_at: string;
+};
+
 export class UsersService {
   constructor(private http = api) {}
 
@@ -36,6 +44,11 @@ export class UsersService {
    *  server refuses to remove you or change your own role. */
   update(id: string, body: UserUpdate): Promise<any> {
     return this.http.put(`/users/${id}`, body).then((r) => r.data);
+  }
+
+  /** The Boss gives a locked-out member of staff a temporary password. */
+  issueTemporaryPassword(id: string): Promise<TemporaryPassword> {
+    return this.http.post(`/users/${id}/temporary-password`).then((r) => r.data);
   }
 }
 

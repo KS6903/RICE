@@ -2,14 +2,19 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { usersService, type UserUpdate } from "../services/UsersService";
 import PasswordInput from "../components/PasswordInput";
-import { Pencil, Plus, RotateCcw, Trash2 } from "lucide-react";
+import { KeyRound, Pencil, Plus, RotateCcw, Trash2 } from "lucide-react";
+import TemporaryPasswordDialog from "../components/TemporaryPasswordDialog";
 import { ROLES, roleLabel } from "@rice-mill/shared";
 import { useAuthStore } from "../stores/authStore";
+import Select from "../components/Select";
 
 const FIELD_LABEL = "block text-sm font-medium text-gray-700 dark:text-slate-200 mb-1";
 const ERROR_TEXT = "text-sm font-medium text-rose-600 dark:text-rose-400";
 
 const errorText = (e: any, fallback: string) => e?.response?.data?.detail || fallback;
+
+const roleOptions = (roles: readonly { id: number; label: string }[]) =>
+  roles.map((r) => ({ value: String(r.id), label: r.label }));
 
 export default function UsersPage() {
   const qc = useQueryClient();
@@ -17,6 +22,8 @@ export default function UsersPage() {
   const iAmBoss = me?.role === "owner";
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<any | null>(null);
+  // Who the Boss is giving a temporary password to (a locked-out member of staff).
+  const [tempFor, setTempFor] = useState<any | null>(null);
   const [editForm, setEditForm] = useState({ full_name: "", email: "", role_id: "" });
   const [actionError, setActionError] = useState("");
 
@@ -136,18 +143,15 @@ export default function UsersPage() {
               </div>
             ))}
             <div>
-              <label className={FIELD_LABEL}>Role</label>
-              <select
-                className="input"
+              <label htmlFor="new-user-role" className={FIELD_LABEL}>
+                Role
+              </label>
+              <Select
+                id="new-user-role"
                 value={form.role_id}
-                onChange={(e) => setForm((f) => ({ ...f, role_id: e.target.value }))}
-              >
-                {roleChoices.map((r) => (
-                  <option key={r.id} value={r.id}>
-                    {r.label}
-                  </option>
-                ))}
-              </select>
+                onChange={(role_id) => setForm((f) => ({ ...f, role_id }))}
+                options={roleOptions(roleChoices)}
+              />
             </div>
           </div>
           {createUser.isError && (
@@ -195,19 +199,16 @@ export default function UsersPage() {
               />
             </div>
             <div>
-              <label className={FIELD_LABEL}>Role</label>
-              <select
-                className="input"
+              <label htmlFor="edit-user-role" className={FIELD_LABEL}>
+                Role
+              </label>
+              <Select
+                id="edit-user-role"
                 value={editForm.role_id}
                 disabled={editing.id === me?.id}
-                onChange={(e) => setEditForm((f) => ({ ...f, role_id: e.target.value }))}
-              >
-                {(editing.id === me?.id ? ROLES : roleChoices).map((r) => (
-                  <option key={r.id} value={r.id}>
-                    {r.label}
-                  </option>
-                ))}
-              </select>
+                onChange={(role_id) => setEditForm((f) => ({ ...f, role_id }))}
+                options={roleOptions(editing.id === me?.id ? ROLES : roleChoices)}
+              />
               {editing.id === me?.id && (
                 <p className="text-xs text-muted mt-1">You can't change your own role.</p>
               )}
@@ -276,8 +277,26 @@ export default function UsersPage() {
                             <Pencil size={14} /> Edit
                           </button>
                         )}
-                        {/* Your own account can't be removed; keep its slot so
+                        {/* Only the Boss can: it's how a locked-out employee gets back
+                            in. Your own password is changed in Settings. */}
+                        {iAmBoss && u.is_active && !isMe && (
+                          <button
+                            type="button"
+                            onClick={() => setTempFor(u)}
+                            className="btn-ghost !px-2 !py-1.5 text-xs"
+                            title={`Give ${u.username} a temporary password`}
+                            aria-label={`Give ${u.username} a temporary password`}
+                          >
+                            <KeyRound size={14} /> Temporary password
+                          </button>
+                        )}
+                        {/* Your own account can't be removed or reset; keep their slots so
                             the Edit buttons line up down the column. */}
+                        {iAmBoss && u.is_active && isMe && (
+                          <span aria-hidden className="btn-ghost invisible !px-2 !py-1.5 text-xs">
+                            <KeyRound size={14} /> Temporary password
+                          </span>
+                        )}
                         {u.is_active && isMe && (
                           <span aria-hidden className="btn-ghost invisible !px-2 !py-1.5 text-xs">
                             <Trash2 size={14} /> Remove
@@ -323,6 +342,14 @@ export default function UsersPage() {
           </tbody>
         </table>
       </div>
+
+      {tempFor && (
+        <TemporaryPasswordDialog
+          name={tempFor.full_name || tempFor.username}
+          issue={() => usersService.issueTemporaryPassword(tempFor.id)}
+          onClose={() => setTempFor(null)}
+        />
+      )}
     </div>
   );
 }

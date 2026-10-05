@@ -1,6 +1,7 @@
 // AdminService — typed API client for the platform-admin domain (Phase F).
 // One service for all /admin/* endpoints the admin pages use.
 import api from "./api";
+import type { TemporaryPassword } from "./UsersService";
 
 export class AdminService {
   constructor(private http = api) {}
@@ -82,6 +83,11 @@ export class AdminService {
   // ── users ───────────────────────────────────────────────────────────────────
   listAllUsers(): Promise<any[]> {
     return this.http.get("/admin/users").then((r) => r.data);
+  }
+
+  /** Give a locked-out user (usually a Boss who emailed for help) a temporary password. */
+  issueTemporaryPassword(id: string): Promise<TemporaryPassword> {
+    return this.http.post(`/admin/users/${id}/temporary-password`).then((r) => r.data);
   }
 }
 

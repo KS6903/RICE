@@ -3,7 +3,15 @@ import { useNavigate, Link, useSearchParams } from "react-router-dom";
 import { authService } from "../services/AuthService";
 import { useAuthStore } from "../stores/authStore";
 import PasswordInput from "../components/PasswordInput";
-import { ShieldCheck, Wifi, Building2, AlertCircle, Clock, ArrowLeft } from "lucide-react";
+import {
+  ShieldCheck,
+  Wifi,
+  Building2,
+  AlertCircle,
+  Clock,
+  ArrowLeft,
+  LifeBuoy,
+} from "lucide-react";
 import { GoogleLogin } from "@react-oauth/google";
 import riceLogo from "../assets/Rice_Logo.svg";
 
@@ -14,6 +22,13 @@ export default function LoginPage() {
   // Set when the account is permanently locked (code "account_locked") — only a
   // password reset frees it, so we steer the user there.
   const [lockedOut, setLockedOut] = useState(false);
+  // Set when the account is locked for any reason, timed or permanent: that is when
+  // the way back in is a temporary password, from the Boss or (for a Boss) the admin.
+  const [locked, setLocked] = useState(false);
+  const [help, setHelp] = useState<{ state: "idle" | "sending" | "sent" | "error"; text: string }>({
+    state: "idle",
+    text: "",
+  });
   const [loading, setLoading] = useState(false);
   // Two-step MFA login: when set, the password step passed and we're waiting
   // for the authenticator code.
@@ -44,6 +59,8 @@ export default function LoginPage() {
     setLoading(true);
     setError("");
     setLockedOut(false);
+    setLocked(false);
+    setHelp({ state: "idle", text: "" });
     try {
       const data = await authService.login(username, password);
       if (data.mfa_required) {
@@ -54,9 +71,26 @@ export default function LoginPage() {
     } catch (err: any) {
       setError(err.response?.data?.detail || "Invalid username or password.");
       // A permanent lockout can only be cleared by resetting the password.
-      setLockedOut(err.response?.data?.code === "account_locked");
+      const code = err.response?.data?.code;
+      setLockedOut(code === "account_locked");
+      setLocked(code === "account_locked" || code === "account_locked_temporary");
     } finally {
       setLoading(false);
+    }
+  };
+
+  // A locked-out Boss asks the platform admin for a temporary password. The server
+  // answers the same whatever the username is, so say only what it said.
+  const askTheAdmin = async () => {
+    setHelp({ state: "sending", text: "" });
+    try {
+      const res = await authService.requestLockoutHelp(username.trim());
+      setHelp({ state: "sent", text: res.message });
+    } catch (err: any) {
+      setHelp({
+        state: "error",
+        text: err.response?.data?.detail || "Couldn't send that. Try again in a little while.",
+      });
     }
   };
 
@@ -332,6 +366,49 @@ export default function LoginPage() {
                     </Link>
                   )}
                 </div>
+              )}
+
+              {error && locked && (
+                <section
+                  aria-label="Locked out?"
+                  className="space-y-3 rounded-xl bg-slate-500/10 px-3 py-3 text-sm text-secondary ring-1 ring-inset ring-slate-500/30"
+                >
+                  <p className="flex items-center gap-2 font-semibold text-primary">
+                    <LifeBuoy size={16} aria-hidden /> Locked out?
+                  </p>
+                  <p>
+                    <strong>Employee:</strong> ask your Boss to give you a temporary password from
+                    the Users page.
+                  </p>
+                  <div className="space-y-2">
+                    <p>
+                      <strong>Boss:</strong> email the admin, who will give you a temporary
+                      password.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={askTheAdmin}
+                      disabled={
+                        !username.trim() || help.state === "sending" || help.state === "sent"
+                      }
+                      className="btn-secondary w-full"
+                    >
+                      {help.state === "sending" ? "Sending…" : "Email the admin"}
+                    </button>
+                    {(help.state === "sent" || help.state === "error") && (
+                      <p
+                        role={help.state === "error" ? "alert" : "status"}
+                        className={
+                          help.state === "error"
+                            ? "font-semibold text-rose-600 dark:text-rose-400"
+                            : "font-semibold text-emerald-700 dark:text-emerald-400"
+                        }
+                      >
+                        {help.text}
+                      </p>
+                    )}
+                  </div>
+                </section>
               )}
 
               <button type="submit" className="btn-primary w-full" disabled={loading || lockedOut}>

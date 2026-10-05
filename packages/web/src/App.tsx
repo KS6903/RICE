@@ -34,6 +34,7 @@ import AdminSettingsPage from "./pages/admin/AdminSettingsPage";
 import FeatureGate from "./components/FeatureGate";
 import RoleGate from "./components/RoleGate";
 import MfaEnrollmentGate from "./components/MfaEnrollmentGate";
+import PasswordChangeGate from "./components/PasswordChangeGate";
 import EmailVerificationGate from "./components/EmailVerificationGate";
 import LegalAcceptanceGate from "./components/LegalAcceptanceGate";
 import LegalPage from "./pages/LegalPage";
@@ -110,12 +111,15 @@ function AdminRoute({ children }: { children: React.ReactNode }) {
  *  user can complete verification from the gate. */
 function AppRoutes() {
   const { pathname } = useLocation();
+  const mustChangePassword = useAuthStore((s) => !!s.user?.password_change_required);
   const mustEnroll = useAuthStore((s) => !!s.user?.mfa_enrollment_required);
   const mustVerify = useAuthStore((s) => !!s.user?.email_verification_required);
   const mustAccept = useAuthStore((s) => !!s.user?.legal_acceptance_required);
   // /legal/* stays reachable from every gate: nobody should be asked to accept
   // terms they cannot open, and the pages are public anyway.
   const onLegalPage = pathname.startsWith("/legal");
+  // First, the temporary password: nothing else matters until it is replaced.
+  if (mustChangePassword && !onLegalPage) return <PasswordChangeGate />;
   if (mustEnroll && !onLegalPage) return <MfaEnrollmentGate />;
   if (mustVerify && pathname !== "/verify-email" && !onLegalPage) return <EmailVerificationGate />;
   if (mustAccept && !onLegalPage) return <LegalAcceptanceGate />;

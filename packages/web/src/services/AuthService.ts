@@ -56,6 +56,14 @@ export class AuthService {
     return this.http.put("/auth/me", body).then((r) => r.data);
   }
 
+  /** A locked-out Boss asks the platform admin for a temporary password. The answer
+   *  is the same whoever the username is, so it can't be used to find accounts. */
+  requestLockoutHelp(username: string, message?: string): Promise<{ message: string }> {
+    return this.http
+      .post("/auth/lockout-help", { username, message: message || undefined })
+      .then((r) => r.data);
+  }
+
   changePassword(currentPassword: string, newPassword: string): Promise<any> {
     return this.http
       .post("/auth/change-password", {
@@ -109,8 +117,9 @@ export class AuthService {
     return this.http.post("/auth/mfa/enroll/verify", { code }).then((r) => r.data);
   }
 
-  mfaDisable(code: string): Promise<any> {
-    return this.http.post("/auth/mfa/disable", { code }).then((r) => r.data);
+  /** Turning 2FA off takes both factors: a current authenticator code and the password. */
+  mfaDisable(code: string, password: string): Promise<any> {
+    return this.http.post("/auth/mfa/disable", { code, password }).then((r) => r.data);
   }
 
   /** Issues a fresh set of backup codes (invalidates the old set). Needs a TOTP. */

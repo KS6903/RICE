@@ -2,15 +2,18 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { adminService } from "../../services/AdminService";
-import { Search, Users as UsersIcon } from "lucide-react";
+import { KeyRound, Search, Users as UsersIcon } from "lucide-react";
+import TemporaryPasswordDialog from "../../components/TemporaryPasswordDialog";
 import { format } from "date-fns";
 import { roleLabel } from "@rice-mill/shared";
 import { useAuthStore } from "../../stores/authStore";
 
-const COLS = ["Username", "Full name", "Email", "Tenant", "Role", "Status", "Last login"];
+const COLS = ["Username", "Full name", "Email", "Tenant", "Role", "Status", "Last login", ""];
 
 export default function AdminUsers() {
   const [search, setSearch] = useState("");
+  // Who is being given a temporary password: usually a Boss who emailed for help.
+  const [tempFor, setTempFor] = useState<any | null>(null);
   const myId = useAuthStore((s) => s.user?.id);
 
   const { data: users = [], isLoading } = useQuery({
@@ -101,6 +104,19 @@ export default function AdminUsers() {
                   <td className="text-xs text-muted">
                     {u.last_login ? format(new Date(u.last_login), "MMM d, HH:mm") : "Never"}
                   </td>
+                  <td className="text-right">
+                    {u.is_active && (
+                      <button
+                        type="button"
+                        onClick={() => setTempFor(u)}
+                        className="btn-ghost !px-2 !py-1.5 text-xs"
+                        title={`Give ${u.username} a temporary password`}
+                        aria-label={`Give ${u.username} a temporary password`}
+                      >
+                        <KeyRound size={14} /> Temporary password
+                      </button>
+                    )}
+                  </td>
                 </tr>
               ))}
             {!isLoading && filtered.length === 0 && (
@@ -116,6 +132,14 @@ export default function AdminUsers() {
           </tbody>
         </table>
       </div>
+
+      {tempFor && (
+        <TemporaryPasswordDialog
+          name={tempFor.full_name || tempFor.username}
+          issue={() => adminService.issueTemporaryPassword(tempFor.id)}
+          onClose={() => setTempFor(null)}
+        />
+      )}
     </div>
   );
 }

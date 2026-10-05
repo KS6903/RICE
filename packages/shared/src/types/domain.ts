@@ -15,6 +15,14 @@ export interface User {
   mfa_enabled?: boolean;
   mfa_backup_codes_remaining?: number;
   mfa_setup_recommended?: boolean;
+  // When true, the user signed in on a temporary password (given after a lockout)
+  // and must choose their own before anything else; the server blocks data endpoints.
+  password_change_required?: boolean;
+  // When true, this account's role must use MFA, so it can't be turned off.
+  mfa_required?: boolean;
+  // When true, MFA is off but the authenticator it was turned off with is still on
+  // file: it can be switched back on with a code from it, instead of a new one.
+  mfa_previous_authenticator?: boolean;
   // When true, the server blocks data endpoints until this user enrolls in MFA.
   mfa_enrollment_required?: boolean;
   email_verified?: boolean;
