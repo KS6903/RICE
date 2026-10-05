@@ -183,6 +183,15 @@ def register_login_failure(username: str) -> LockoutState:
     return LockoutState(locked=True, permanent=False, retry_after=duration)
 
 
+def first_lockout_help_request(username: str, window_seconds: int = 3600) -> bool:
+    """True the first time in ``window_seconds`` that a locked-out Boss asks the
+    platform admin for help. The public request can name any username, so without
+    this a locked account could be used to flood the admin's inbox from many IPs.
+    With Redis down it is always True: the per-IP limiter stays the floor."""
+    count = cache.incr(f"login:help:{_normalize(username)}", ttl=window_seconds)
+    return count is None or count <= 1
+
+
 def clear_login_failures(username: str) -> None:
     """Wipe ALL lockout state for an account — the failure tally, the active lock,
     the escalation memory, and any permanent block. Called on a successful login and

@@ -2,7 +2,7 @@
 
 import uuid
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, Response, status
 from sqlalchemy.orm import Session
 
 from ..core.database import get_db
@@ -48,3 +48,18 @@ def create_user(body: UserCreate, svc: UserService = Depends(get_user_service)):
 )
 def update_user(user_id: uuid.UUID, body: UserUpdate, svc: UserService = Depends(get_user_service)):
     return svc.update_user(user_id, body)
+
+
+@router.post(
+    "/{user_id}/temporary-password",
+    dependencies=[Depends(require_section_access("users", write=True))],
+)
+def issue_temporary_password(
+    user_id: uuid.UUID,
+    response: Response,
+    svc: UserService = Depends(get_user_service),
+):
+    """The Boss gives a locked-out employee a temporary password. It is returned
+    once, here, to be handed over in person; it is never emailed."""
+    response.headers["Cache-Control"] = "no-store"
+    return svc.issue_temporary_password(user_id)

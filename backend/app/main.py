@@ -48,6 +48,7 @@ from .core.ratelimit import limiter, rate_limit_exceeded_handler
 from .core.security import (
     enforce_email_verified,
     enforce_mfa_enrollment,
+    enforce_password_change,
     enforce_tenant_provisioned,
 )
 from .services.canva_realtime import manager as ws_manager
@@ -111,6 +112,7 @@ app.add_exception_handler(RateLimitExceeded, rate_limit_exceeded_handler)
 # the account is ready (both are no-ops unless their enforcement flag is on).
 mfa_gate = [
     Depends(enforce_mfa_enrollment),
+    Depends(enforce_password_change),
     Depends(enforce_email_verified),
     Depends(enforce_tenant_provisioned),
 ]

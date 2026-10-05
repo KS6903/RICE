@@ -323,9 +323,15 @@ def mfa_required_for(user) -> bool:
     return bool(role and role.name in settings.mfa_required_role_names)
 
 
+def mfa_is_mandatory(user) -> bool:
+    """True when enforcement is on and this account must use MFA: it can't be left
+    off, and can't be turned off."""
+    return settings.MFA_ENFORCE and mfa_required_for(user)
+
+
 def mfa_enrollment_pending(user) -> bool:
-    """True when enforcement is on, this account must use MFA, and it hasn't enrolled."""
-    return settings.MFA_ENFORCE and mfa_required_for(user) and not getattr(user, "mfa_enabled", False)
+    """True when this account must use MFA and hasn't enrolled."""
+    return mfa_is_mandatory(user) and not getattr(user, "mfa_enabled", False)
 
 
 def enforce_mfa_enrollment(current_user=Depends(get_current_user)):
@@ -337,6 +343,24 @@ def enforce_mfa_enrollment(current_user=Depends(get_current_user)):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Two-factor authentication setup is required for your role before continuing.",
+        )
+    return current_user
+
+
+def password_change_pending(user) -> bool:
+    """True while the user is on a temporary password and must choose their own."""
+    return bool(getattr(user, "must_change_password", False))
+
+
+def enforce_password_change(current_user=Depends(get_current_user)):
+    """Gate dependency for data routers: someone signed in on a temporary password
+    is blocked (403) from everything except the auth/* endpoints (so they can still
+    call /me, change the password, and log out). The web app reads the same
+    condition from /me (`password_change_required`) and shows a change screen."""
+    if password_change_pending(current_user):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Choose a new password before continuing.",
         )
     return current_user
 

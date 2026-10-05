@@ -71,6 +71,13 @@ class ForgotPasswordRequest(BaseModel):
     identifier: str = Field(min_length=1, max_length=255)
 
 
+class LockoutHelpRequest(BaseModel):
+    """A locked-out Boss asking the platform admin for a temporary password."""
+
+    username: str = Field(min_length=1, max_length=50)
+    message: str | None = Field(default=None, max_length=500)
+
+
 class ResetPasswordRequest(BaseModel):
     token: str = Field(min_length=1, max_length=255)
     new_password: str
@@ -101,6 +108,14 @@ class MfaVerifyRequest(BaseModel):
 
 class MfaCodeRequest(BaseModel):
     code: str = Field(min_length=6, max_length=8)
+
+
+class MfaDisableRequest(BaseModel):
+    """Turning MFA off takes both factors: a current authenticator code AND the
+    account password, so a stolen session or an unattended screen isn't enough."""
+
+    code: str = Field(min_length=6, max_length=8)
+    password: str = Field(min_length=1, max_length=72)
 
 
 class MfaEnrollResponse(BaseModel):

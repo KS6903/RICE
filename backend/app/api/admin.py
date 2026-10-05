@@ -5,7 +5,7 @@ Every endpoint requires is_platform_admin (enforced by the DI factory).
 
 import uuid
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, Response, status
 from sqlalchemy.orm import Session
 
 from ..core.database import get_db
@@ -130,6 +130,14 @@ def list_all_users(svc: AdminService = Depends(get_admin_service)):
 
 
 # ── Subscription maintenance ──────────────────────────────────────────────────
+
+
+@router.post("/users/{user_id}/temporary-password")
+def issue_temporary_password(user_id: uuid.UUID, response: Response, svc: AdminService = Depends(get_admin_service)):
+    """Give a locked-out user a temporary password, returned once to be passed on
+    after checking who is asking. Never emailed."""
+    response.headers["Cache-Control"] = "no-store"
+    return svc.issue_temporary_password(user_id)
 
 
 @router.post("/subscriptions/sweep-expired")

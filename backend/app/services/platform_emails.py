@@ -57,6 +57,37 @@ def account_locked(user: User, state: LockoutState) -> bool:
     return _send(user.email, f"Your {settings.APP_NAME} sign-in was locked", text)
 
 
+def lockout_help_requested(db: Session, user: User, state: LockoutState, *, company: str, message: str) -> int:
+    """Tell every platform admin a Boss is locked out and asking for a temporary
+    password. The admin must check it really is them before giving one."""
+    admins = db.query(User).filter(User.is_platform_admin.is_(True), User.is_active.is_(True)).all()
+    kind = "permanently (a password reset is the only way out)" if state.permanent else "for a while"
+    note = f"\nTheir message: {message}\n" if message else ""
+    text = (
+        f"{user.full_name or user.username} ({user.username}), the Boss of {company}, is locked out of "
+        f"{settings.APP_NAME} {kind} and asked for help. The email on their account is "
+        f"{user.email or 'not set'}.\n{note}\n"
+        "Anyone can send this request for a username, so check it is really them first (call the number "
+        "you have for the mill). Then give them a temporary password in the admin console: "
+        f"{_app_link('/admin/users')}\n"
+    )
+    return sum(_send(a.email, f"{company}'s Boss is locked out", text) for a in admins)
+
+
+def temporary_password_issued(user: User, *, by: str) -> bool:
+    """Tell the account holder their password was replaced, and by whom. Never the
+    password itself: that is handed over in person or by phone."""
+    text = (
+        f"Hello {user.full_name or user.username},\n\n"
+        f"{by} gave your {settings.APP_NAME} account ({user.username}) a temporary password, because you "
+        "were locked out. They will pass it on to you directly. You will be asked to choose your own "
+        "password the first time you sign in with it, and it stops working after "
+        f"{settings.TEMP_PASSWORD_HOURS} hours.\n\n"
+        "If you did not expect this, tell your mill's Boss.\n"
+    )
+    return _send(user.email, f"A temporary password was set for your {settings.APP_NAME} account", text)
+
+
 def data_exported(user: User, *, company: str, files: int, rows: int) -> bool:
     """Tell the owner their mill's data was downloaded: either it was them, and
     this is a receipt, or it wasn't, and they need to know today."""

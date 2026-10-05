@@ -33,8 +33,10 @@ from ..schemas.auth import (
     GoogleAuthRequest,
     GoogleLinkRequest,
     GoogleUnlinkRequest,
+    LockoutHelpRequest,
     MfaBackupCodesResponse,
     MfaCodeRequest,
+    MfaDisableRequest,
     MfaEnrollResponse,
     MfaVerifyRequest,
     RefreshRequest,
@@ -48,6 +50,7 @@ from ..services.auth_service import AuthService
 
 router = APIRouter()
 MFA_RATE_LIMIT = "5/minute"
+LOCKOUT_HELP_RATE_LIMIT = "5/hour"
 
 
 def _is_bearer_client(request: Request) -> bool:
@@ -139,6 +142,19 @@ def forgot_password(
     """Request a password reset. Always responds the same way (no account
     enumeration); the reset link is delivered out-of-band."""
     return svc.request_password_reset(body.identifier)
+
+
+@router.post("/lockout-help")
+@limiter.limit(LOCKOUT_HELP_RATE_LIMIT)
+def lockout_help(
+    request: Request,
+    response: Response,
+    body: LockoutHelpRequest,
+    svc: AuthService = Depends(get_public_auth_service),
+):
+    """A locked-out Boss asks the platform admin for a temporary password. Always
+    responds the same way (no account enumeration)."""
+    return svc.request_lockout_help(body.username, body.message)
 
 
 @router.post("/reset-password")
@@ -296,10 +312,10 @@ def mfa_enroll_verify(
 def mfa_disable(
     request: Request,
     response: Response,
-    body: MfaCodeRequest,
+    body: MfaDisableRequest,
     svc: AuthService = Depends(get_auth_service),
 ):
-    return svc.mfa_disable(body.code)
+    return svc.mfa_disable(body.code, body.password)
 
 
 @router.post("/mfa/backup-codes/regenerate", response_model=MfaBackupCodesResponse)

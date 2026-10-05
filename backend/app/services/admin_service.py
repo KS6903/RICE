@@ -550,6 +550,19 @@ class AdminService(BaseService):
             for u in users
         ]
 
+    def issue_temporary_password(self, user_id: uuid.UUID) -> dict:
+        """Give a locked-out tenant user (usually a Boss who emailed for help) a
+        temporary password. Platform admins are never reset here: another operator
+        account is recovered by an operator, from the server."""
+        user = self.db.get(User, user_id)
+        if user is None or user.is_platform_admin:
+            raise NotFoundError("User not found")
+        if not user.is_active:
+            raise BadRequestError("This user was removed. Restore them first.")
+        from .auth_service import AuthService
+
+        return AuthService(self.db, self.current_user).issue_temporary_password(user, self.current_user)
+
     # ── subscription maintenance ──────────────────────────────────────────────
 
     def sweep_expired_subscriptions(self) -> dict:

@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import hashlib
 import logging
+import secrets
 
 import httpx
 
@@ -49,6 +50,27 @@ def _is_breached(password: str) -> bool:
             except ValueError:
                 return True
     return False
+
+
+# No i, l, o, 0 or 1: a temporary password is read out or copied by hand.
+_TEMP_LOWER = "abcdefghjkmnpqrstuvwxyz"
+_TEMP_UPPER = "ABCDEFGHJKMNPQRSTUVWXYZ"
+_TEMP_DIGITS = "23456789"
+
+
+def generate_temporary_password() -> str:
+    """A one-time password to hand to someone locked out, such as ``Xk7m-Rp4q-Tz9w``:
+    twelve random characters (about 69 bits) in three groups, always with a
+    lower-case letter, an upper-case letter and a digit, so it passes the policy."""
+    pool = _TEMP_LOWER + _TEMP_UPPER + _TEMP_DIGITS
+    while True:
+        password = "-".join("".join(secrets.choice(pool) for _ in range(4)) for _ in range(3))
+        if (
+            any(c in _TEMP_LOWER for c in password)
+            and any(c in _TEMP_UPPER for c in password)
+            and any(c in _TEMP_DIGITS for c in password)
+        ):
+            return password
 
 
 def validate_password_strength(password: str) -> None:

@@ -9,6 +9,8 @@ import time
 
 import pyotp
 
+PASSWORD = "Password123"  # the seeded owner's
+
 
 def _next_totp(secret: str) -> str:
     return pyotp.TOTP(secret).at(time.time() + 30)
@@ -91,7 +93,10 @@ def test_regenerate_requires_valid_totp(auth_client):
 
 def test_disable_clears_backup_codes(client, auth_client, seed_owner):
     secret, codes = _enroll(auth_client)
-    assert auth_client.post("/api/auth/mfa/disable", json={"code": _next_totp(secret)}).status_code == 200
+    assert (
+        auth_client.post("/api/auth/mfa/disable", json={"code": _next_totp(secret), "password": PASSWORD}).status_code
+        == 200
+    )
     # MFA is off, so login no longer challenges and the old backup code is moot.
     res = client.post("/api/auth/login", data={"username": "owner", "password": "Password123"})
     assert res.json() == {"authenticated": True}

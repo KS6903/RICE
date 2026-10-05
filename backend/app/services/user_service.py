@@ -61,6 +61,27 @@ class UserService(BaseService):
         self.db.refresh(user)
         return self._safe(user)
 
+    def issue_temporary_password(self, user_id: uuid.UUID) -> dict:
+        """The Boss gives a locked-out member of their own staff a temporary password.
+
+        Boss only, as a Boss outranks an admin: an admin able to reset the Boss's
+        password could then sign in as the Boss. The Boss's own way back in is the
+        platform admin (see AdminService)."""
+        if not (self.current_user.role and self.current_user.role.name == "owner"):
+            raise PermissionDeniedError("Only the Boss can give someone a temporary password.")
+        user = self.users.get_for_company(user_id, self.current_user.company_id)
+        if not user:
+            raise NotFoundError("User not found")
+        if user.id == self.current_user.id:
+            raise BadRequestError("To change your own password, use Settings.")
+        if user.is_platform_admin:
+            raise NotFoundError("User not found")
+        if not user.is_active:
+            raise BadRequestError("This user was removed. Restore them first.")
+        from .auth_service import AuthService
+
+        return AuthService(self.db, self.current_user).issue_temporary_password(user, self.current_user)
+
     def _assert_seat_free(self) -> None:
         """402 when the plan's user limit is reached. Removed (inactive) users
         don't take a seat."""

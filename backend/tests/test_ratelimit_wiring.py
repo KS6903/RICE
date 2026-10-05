@@ -38,6 +38,7 @@ PUBLIC_CASES = [
     ("/api/auth/forgot-password", {"identifier": "nobody-at-all"}),
     ("/api/auth/reset-password", {"token": "not-a-real-token", "new_password": "Passw0rdish"}),
     ("/api/auth/verify-email", {"token": "not-a-real-token"}),
+    ("/api/auth/lockout-help", {"username": "nobody-at-all"}),
 ]
 
 # Same, for endpoints behind get_current_user.
@@ -45,7 +46,7 @@ AUTHED_CASES = [
     ("/api/auth/resend-verification", None),
     ("/api/auth/mfa/enroll", None),
     ("/api/auth/mfa/enroll/verify", {"code": "000000"}),
-    ("/api/auth/mfa/disable", {"code": "000000"}),
+    ("/api/auth/mfa/disable", {"code": "000000", "password": "not-the-password"}),
     ("/api/auth/mfa/backup-codes/regenerate", {"code": "000000"}),
     ("/api/auth/google/link", {"credential": "not-a-real-credential"}),
     ("/api/auth/google/unlink", {}),
@@ -111,3 +112,13 @@ def test_every_limited_auth_endpoint_declares_a_response_param():
         "these @limiter.limit endpoints are missing `response: Response` and will "
         f"return 500 once rate limiting is on: {offenders}"
     )
+
+
+def test_asking_the_admin_for_lockout_help_is_limited_per_address(client, limited):
+    """Anyone can name any username, so the request can't be spammed from one place:
+    five an hour, however many different usernames. (Earlier tests may already have
+    spent some of the hour, so this only pins that it stops by the sixth.)"""
+    codes = [client.post("/api/auth/lockout-help", json={"username": f"user{i}"}).status_code for i in range(8)]
+    assert 429 in codes and codes.index(429) <= 5
+    assert codes.count(200) <= 5
+    assert set(codes) <= {200, 429}

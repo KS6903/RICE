@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import BigInteger, Boolean, DateTime, ForeignKey, SmallInteger, String
+from sqlalchemy import BigInteger, Boolean, DateTime, ForeignKey, Integer, SmallInteger, String
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -36,13 +36,26 @@ class User(Base, TimestampMixin):
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     is_platform_admin: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     last_login: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
-    # TOTP MFA. The seed is Fernet-encrypted at rest (core/crypto.py); a secret
-    # with mfa_enabled=False is a pending enrollment awaiting code verification.
+    # Set when the Boss (or the platform admin) gives the user a temporary password
+    # after a lockout. Until the user chooses their own, the API blocks data
+    # endpoints; the temporary one stops working at temp_password_expires_at.
+    must_change_password: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false", nullable=False)
+    temp_password_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # TOTP MFA. The seed is Fernet-encrypted at rest (core/crypto.py). A secret
+    # with mfa_enabled=False is one of two things, told apart by mfa_last_used_step:
+    # a pending enrollment awaiting its first code (step is None), or the earlier
+    # authenticator kept when the user turned MFA off (step is set), which they can
+    # switch back on with a fresh code from it instead of setting up a new one.
     mfa_secret: Mapped[str | None] = mapped_column(String(255))
     mfa_enabled: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     # Highest accepted TOTP time-step. Rejecting the same/lower step makes a
-    # six-digit code single-use even within pyotp's clock-skew window.
+    # six-digit code single-use even within pyotp's clock-skew window. Kept when
+    # MFA is turned off, so the code that turned it off can't turn it back on.
     mfa_last_used_step: Mapped[int | None] = mapped_column(BigInteger)
+    # Bumped every time MFA is turned off or on. "Remember this device" tokens are
+    # bound to it, so a device remembered before the change is asked again even
+    # when the earlier secret comes back.
+    mfa_epoch: Mapped[int] = mapped_column(Integer, default=0, server_default="0", nullable=False)
     # Single-use recovery codes — stored as SHA-256 hashes of the still-unused
     # codes; a code is removed from the list when consumed. Used when the user
     # can't reach their authenticator.

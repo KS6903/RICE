@@ -39,10 +39,11 @@ from ..core.exceptions import (
     UnauthorizedError,
 )
 from ..core.mfa_trust import local_zone, next_reset_at
-from ..core.passwords import validate_password_strength
+from ..core.passwords import generate_temporary_password, validate_password_strength
 from ..core.ratelimit import (
     LockoutState,
     clear_login_failures,
+    first_lockout_help_request,
     login_lockout,
     register_login_failure,
 )
@@ -54,6 +55,8 @@ from ..core.security import (
     get_user_features,
     hash_password,
     mfa_enrollment_pending,
+    mfa_is_mandatory,
+    password_change_pending,
     verify_password,
 )
 from ..core.tenancy import (
@@ -132,6 +135,19 @@ def _client_label(user_agent: str | None) -> str:
     else:
         os_name = ""
     return f"{browser} · {os_name}" if os_name else browser
+
+
+def _mfa_fingerprint(user: User) -> str:
+    """What "remember this device" tokens are bound to: the current secret and epoch."""
+    return _sha256(f"{user.mfa_secret or ''}:{user.mfa_epoch or 0}")[:16]
+
+
+def has_previous_mfa_secret(user: User) -> bool:
+    """True when MFA is off but the authenticator the user turned off is still on
+    file, so they can switch back on with a fresh code from it. A pending
+    enrollment also has a secret, but its code was never accepted (see the
+    ``mfa_last_used_step`` note on the model), so it doesn't count."""
+    return bool(user.mfa_secret) and not user.mfa_enabled and user.mfa_last_used_step is not None
 
 
 def _generate_backup_codes(n: int = 10) -> tuple[list[str], list[str]]:
@@ -309,6 +325,8 @@ class AuthService(BaseService):
             raise PermissionDeniedError(
                 "Your company account has been deactivated. Please contact the platform administrator."
             )
+        if user.must_change_password and user.temp_password_expires_at and user.temp_password_expires_at <= now_utc():
+            raise UnauthorizedError("Your temporary password has expired. Ask for a new one.")
         if settings.is_prod and user.company is not None and user.company.provisioned_at is None:
             with self.transaction():
                 self._request_tenant_provisioning(user.company)
@@ -358,15 +376,17 @@ class AuthService(BaseService):
         coming Sunday 00:00 in the user's local ``zone``. So every device
         re-prompts once a week, on the user's own Sunday.
 
-        Bound to the user's current MFA secret via ``mv`` so disabling or
-        re-enrolling MFA invalidates every outstanding trust token immediately."""
+        Bound to the user's current MFA secret and epoch via ``mv``, so turning MFA
+        off or on, or setting up a new authenticator, invalidates every outstanding
+        trust token immediately (the epoch is what covers switching the same
+        earlier secret back on)."""
         expire = next_reset_at(zone)
         return pyjwt.encode(
             {
                 "sub": str(user.id),
                 "type": "mfa_trust",
                 "jti": uuid.uuid4().hex,
-                "mv": _sha256(user.mfa_secret or "")[:16],
+                "mv": _mfa_fingerprint(user),
                 "iat": datetime.now(timezone.utc),
                 "iss": settings.JWT_ISSUER,
                 "aud": settings.JWT_AUDIENCE,
@@ -397,7 +417,7 @@ class AuthService(BaseService):
         return (
             payload.get("type") == "mfa_trust"
             and payload.get("sub") == str(user.id)
-            and payload.get("mv") == _sha256(user.mfa_secret or "")[:16]
+            and payload.get("mv") == _mfa_fingerprint(user)
         )
 
     @staticmethod
@@ -474,7 +494,10 @@ class AuthService(BaseService):
 
     def mfa_enroll(self) -> dict:
         """Begin enrollment: mint a TOTP seed (encrypted at rest), pending until
-        the user proves their authenticator works via mfa_enroll_verify()."""
+        the user proves their authenticator works via mfa_enroll_verify(). It
+        replaces any earlier authenticator kept from a time MFA was turned off.
+        To switch back on with that earlier one instead, skip this and send a code
+        from it straight to mfa_enroll_verify()."""
         user = self.current_user
         if user.mfa_enabled:
             raise BadRequestError("MFA is already enabled. Disable it first to re-enroll.")
@@ -497,6 +520,7 @@ class AuthService(BaseService):
         raw_codes, hashes = _generate_backup_codes()
         with self.transaction():
             user.mfa_enabled = True
+            user.mfa_epoch = (user.mfa_epoch or 0) + 1
             user.mfa_last_used_step = totp_step
             user.mfa_backup_codes = hashes
             # Tokens issued before MFA enrollment carry no MFA assurance. Kill
@@ -525,17 +549,43 @@ class AuthService(BaseService):
             self._log_security_event(user, "auth.mfa_backup_regenerated")
         return {"backup_codes": raw_codes}
 
-    def mfa_disable(self, code: str) -> dict:
+    def mfa_disable(self, code: str, password: str) -> dict:
+        """Turn MFA off. It takes both the account password and a current
+        authenticator code, and an account that must use MFA can't.
+
+        A wrong password or code counts toward the same progressive lockout as a
+        bad login, so a stolen session can't be used to guess either one.
+
+        The authenticator is kept (and the step of the code that just authorised
+        this, so that code can't switch it straight back on): the user may switch
+        MFA back on with it, or set up a new one. Backup codes are not kept; turning
+        MFA on issues a fresh set. Every session and remembered device is dropped."""
         user = self.db.query(User).filter(User.id == self.current_user.id).with_for_update().one()
         if not user.mfa_enabled:
             raise BadRequestError("MFA is not enabled.")
+        if mfa_is_mandatory(user):
+            raise BadRequestError("Two-factor authentication is required for your role, so it can't be turned off.")
+        lock = login_lockout(user.username)
+        if lock.locked:
+            raise _lockout_error(lock)
+        password_ok = verify_password(password, user.password_hash)
         totp_step = self._matching_totp_step(user, code)
-        if totp_step is None:
-            raise BadRequestError("Invalid authentication code.")
+        if not password_ok or totp_step is None:
+            state = register_login_failure(user.username)
+            with self.transaction():
+                self._log_security_event(
+                    user, "auth.mfa_disable_failed", "Wrong password." if not password_ok else "Invalid code."
+                )
+            if state.locked:
+                raise _lockout_error(state)
+            raise BadRequestError(
+                "Current password is incorrect." if not password_ok else "Invalid authentication code."
+            )
+        clear_login_failures(user.username)
         with self.transaction():
             user.mfa_enabled = False
-            user.mfa_secret = None
-            user.mfa_last_used_step = None
+            user.mfa_epoch = (user.mfa_epoch or 0) + 1
+            user.mfa_last_used_step = totp_step
             user.mfa_backup_codes = None
             self.db.query(AuthSession).filter(
                 AuthSession.user_id == user.id,
@@ -1013,7 +1063,14 @@ class AuthService(BaseService):
             "email_verification_required": (
                 settings.REQUIRE_EMAIL_VERIFICATION and bool(user.email) and not user.email_verified
             ),
+            # On a temporary password: the app asks for a new one before anything else.
+            "password_change_required": password_change_pending(user),
             "mfa_enabled": user.mfa_enabled,
+            # This account must use MFA: no turning it off.
+            "mfa_required": mfa_is_mandatory(user),
+            # MFA is off, and the authenticator it was turned off with is still on
+            # file: it can be switched back on with a fresh code from it.
+            "mfa_previous_authenticator": has_previous_mfa_secret(user),
             "google_linked": bool(user.google_sub),
             "mfa_backup_codes_remaining": len(user.mfa_backup_codes or []) if user.mfa_enabled else 0,
             # High-privilege accounts (platform admin / owner) should enroll in
@@ -1121,6 +1178,8 @@ class AuthService(BaseService):
             raise BadRequestError("This reset link is invalid or has expired.")
         with self.transaction():
             user.password_hash = hash_password(new_password)
+            user.must_change_password = False
+            user.temp_password_expires_at = None
             row.used_at = now_utc()
             # A reset is a credential change — kill every existing session.
             self.db.query(AuthSession).filter(
@@ -1133,12 +1192,69 @@ class AuthService(BaseService):
         clear_login_failures(user.username)
         return {"message": "Password has been reset. Please log in."}
 
+    def issue_temporary_password(self, target: User, issued_by: User) -> dict:
+        """Replace ``target``'s password with a temporary one, for someone locked out.
+
+        Callers decide who may do this (a Boss for their own staff, the platform
+        admin for anyone). This unlocks the account, signs the person out everywhere,
+        and makes them choose their own password at first sign-in; the temporary one
+        also expires. The password is returned once, to be handed over directly: it
+        is never emailed, and never stored in the clear."""
+        password = generate_temporary_password()
+        expires = now_utc() + timedelta(hours=settings.TEMP_PASSWORD_HOURS)
+        who = issued_by.full_name or issued_by.username
+        with self.transaction():
+            target.password_hash = hash_password(password)
+            target.must_change_password = True
+            target.temp_password_expires_at = expires
+            self.db.query(AuthSession).filter(
+                AuthSession.user_id == target.id,
+                AuthSession.revoked_at.is_(None),
+            ).update({AuthSession.revoked_at: now_utc()})
+            self._log_security_event(
+                target, "auth.temporary_password_issued", f"Issued by {who}. All sessions revoked."
+            )
+        # Locked out, so the lockout is what a temporary password is for.
+        clear_login_failures(target.username)
+        platform_emails.temporary_password_issued(target, by=who)
+        return {
+            "username": target.username,
+            "temporary_password": password,
+            "expires_at": expires.isoformat(),
+        }
+
+    def request_lockout_help(self, username: str, message: str | None) -> dict:
+        """A locked-out Boss asks the platform admin for a temporary password.
+
+        Public, so it answers the same whatever matched: the admin is only emailed
+        when the username is a real, active Boss account that is locked right now,
+        and at most once an hour per account. Employees go to their Boss instead."""
+        answer = {"message": "If that is a locked Boss account, the admin has been told and will contact you."}
+        user = self.db.query(User).filter(User.username == username.strip()).first()
+        if user is None or user.is_platform_admin or not user.is_active:
+            return answer
+        if not (user.role and user.role.name == "owner"):
+            return answer
+        state = login_lockout(user.username)
+        if not state.locked or not first_lockout_help_request(user.username):
+            return answer
+        company = user.company.name if user.company is not None else ""
+        note = " ".join((message or "").split())[:300]
+        platform_emails.lockout_help_requested(self.db, user, state, company=company, message=note)
+        with self.transaction():
+            self._log_security_event(user, "auth.lockout_help_requested")
+        return answer
+
     def change_password(self, data) -> dict:
         if not verify_password(data.current_password, self.current_user.password_hash):
             raise BadRequestError("Current password is incorrect")
         validate_password_strength(data.new_password)
+        if self.current_user.must_change_password and data.new_password == data.current_password:
+            raise BadRequestError("Choose a password different from the temporary one.")
         with self.transaction():
             self.current_user.password_hash = hash_password(data.new_password)
+            self.current_user.must_change_password = False
+            self.current_user.temp_password_expires_at = None
             # Kill every refresh session for this user: a password change must
             # invalidate any token a previous holder (or thief) still has.
             self.db.query(AuthSession).filter(

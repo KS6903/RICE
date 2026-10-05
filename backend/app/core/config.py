@@ -92,11 +92,19 @@ class Settings(BaseSettings):
     # treated as a serial offender; the permanent flag is effectively durable.
     LOGIN_LOCKOUT_ROUND_TTL_SECONDS: int = 86400  # 1 day
     LOGIN_LOCKOUT_PERMANENT_TTL_SECONDS: int = 2592000  # 30 days
-    # MFA enforcement. When on, accounts in MFA_REQUIRED_ROLES (plus all platform
-    # admins) must enroll in TOTP before they can use the app — the API blocks
-    # data endpoints until they do. Disabled in tests via env.
+    # A temporary password (given to someone locked out) stops working after this
+    # long, and must be replaced by one of their own at first sign-in.
+    TEMP_PASSWORD_HOURS: int = 24
+    # MFA enforcement. When on, platform admins and any accounts in
+    # MFA_REQUIRED_ROLES must enroll in TOTP before they can use the app — the API
+    # blocks data endpoints until they do, and they can't turn it off. Disabled in
+    # tests via env.
+    #
+    # MFA_REQUIRED_ROLES lists the roles obliged to use MFA (they can't turn it off).
+    # It is empty by default; the production readiness check below still requires
+    # it to include owner and admin, so a production deploy must set it.
     MFA_ENFORCE: bool = True
-    MFA_REQUIRED_ROLES: str = "owner,admin"
+    MFA_REQUIRED_ROLES: str = ""
     # Opt-in breached-password check (HIBP k-anonymity) on signup/password change.
     # Best-effort: any network failure means "allow", so offline deployments are
     # never blocked. Recommended true where the server has internet access.

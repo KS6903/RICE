@@ -1,7 +1,9 @@
 """MFA enforcement for privileged roles + Google-login TOTP (hardening phase 2).
 
-When MFA_ENFORCE is on, an owner/platform-admin who hasn't enrolled is blocked
-(403) from every data endpoint but can still reach /auth (me, enroll, logout).
+When MFA_ENFORCE is on, a platform admin (and any account whose role is listed in
+MFA_REQUIRED_ROLES) who hasn't enrolled is blocked (403) from every data endpoint
+but can still reach /auth (me, enroll, logout). No tenant role is listed by default:
+signing up never forces two-factor on a mill's owner.
 A verified Google identity for an MFA-enabled account yields a TOTP challenge,
 not tokens. Enforcement is disabled suite-wide (conftest); these tests opt in.
 """
@@ -15,8 +17,49 @@ from app.core.crypto import encrypt_str
 
 @pytest.fixture
 def enforce_mfa(monkeypatch):
+    """Enforcement on, with owners and admins listed as the roles that must enroll."""
     monkeypatch.setattr(cfg.settings, "MFA_ENFORCE", True, raising=False)
+    monkeypatch.setattr(cfg.settings, "MFA_REQUIRED_ROLES", "owner,admin", raising=False)
     yield
+
+
+def test_a_new_owner_is_not_forced_to_set_up_two_factor_by_default(auth_client, monkeypatch):
+    # Enforcement on, no role listed: the owner just signed up and goes straight in.
+    monkeypatch.setattr(cfg.settings, "MFA_ENFORCE", True, raising=False)
+    monkeypatch.setattr(cfg.settings, "MFA_REQUIRED_ROLES", "", raising=False)
+    me = auth_client.get("/api/auth/me").json()
+    assert me["mfa_enrollment_required"] is False
+    assert me["mfa_required"] is False
+    assert me["mfa_setup_recommended"] is True  # nudged in Settings, not blocked
+    assert auth_client.get("/api/paddy/varieties").status_code == 200
+
+
+def test_the_shipped_default_lists_no_tenant_role():
+    assert cfg.Settings.model_fields["MFA_REQUIRED_ROLES"].default == ""
+
+
+def test_a_platform_admin_must_use_two_factor_whatever_roles_are_listed(monkeypatch):
+    import types
+
+    from app.core.security import mfa_enrollment_pending, mfa_is_mandatory
+
+    monkeypatch.setattr(cfg.settings, "MFA_ENFORCE", True, raising=False)
+    monkeypatch.setattr(cfg.settings, "MFA_REQUIRED_ROLES", "", raising=False)
+    admin = types.SimpleNamespace(is_platform_admin=True, role=None, mfa_enabled=False)
+    owner = types.SimpleNamespace(is_platform_admin=False, role=types.SimpleNamespace(name="owner"), mfa_enabled=False)
+    assert mfa_is_mandatory(admin) and mfa_enrollment_pending(admin)
+    assert not mfa_is_mandatory(owner) and not mfa_enrollment_pending(owner)
+
+    admin.mfa_enabled = True
+    assert mfa_is_mandatory(admin) and not mfa_enrollment_pending(admin)
+
+    monkeypatch.setattr(cfg.settings, "MFA_ENFORCE", False, raising=False)
+    assert not mfa_is_mandatory(admin)
+
+
+def test_a_listed_role_is_obliged(auth_client, enforce_mfa):
+    me = auth_client.get("/api/auth/me").json()
+    assert (me["mfa_required"], me["mfa_enrollment_required"]) == (True, True)
 
 
 def test_unenrolled_owner_is_blocked_from_data_endpoints(auth_client, enforce_mfa):

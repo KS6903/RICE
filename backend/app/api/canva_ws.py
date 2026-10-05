@@ -20,6 +20,7 @@ from ..core.security import (
     authenticate_access_token,
     get_user_features,
     mfa_enrollment_pending,
+    password_change_pending,
 )
 from ..core.tenancy import schema_name_for, set_search_path
 from ..models.user import User
@@ -112,6 +113,9 @@ async def canva_ws(websocket: WebSocket, layout_id: uuid.UUID):
 
         if mfa_enrollment_pending(user):
             await websocket.close(code=http_status.WS_1008_POLICY_VIOLATION, reason="MFA setup required")
+            return
+        if password_change_pending(user):
+            await websocket.close(code=http_status.WS_1008_POLICY_VIOLATION, reason="Password change required")
             return
         if settings.REQUIRE_EMAIL_VERIFICATION and user.email and not user.email_verified:
             await websocket.close(code=http_status.WS_1008_POLICY_VIOLATION, reason="Email verification required")
