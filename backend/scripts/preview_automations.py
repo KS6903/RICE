@@ -37,7 +37,7 @@ def main() -> None:
     parser.add_argument("username")
     parser.add_argument("--ai", action="store_true", help="include the AI recipes (calls DeepSeek)")
     parser.add_argument("--only", default="", help="comma-separated recipe codes")
-    parser.add_argument("--language", default="en", choices=("en", "fil", "taglish"))
+    parser.add_argument("--language", default="en", choices=tuple(ai.LANGUAGES))
     args = parser.parse_args()
     only = {c.strip() for c in args.only.split(",") if c.strip()}
 

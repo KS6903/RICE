@@ -107,6 +107,123 @@ def test_without_a_key_nothing_is_sent(monkeypatch):
         ai.ask({}, KEYS, task="t")
 
 
+# ── languages ────────────────────────────────────────────────────────────────
+
+KNOWN = ai.known_numbers({"overdue_php": 120038, "price": 58, "drop": 35})
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "把价格提高到每公斤₱99。",  # Chinese runs a figure straight up against its words
+        "销量下降47%的原因是价格。",
+        "应收款项₱130,000元。",
+        "應收款項₱130,000元。",  # Traditional characters read the same way
+        "銷量下降47%的原因是價格。",
+        "ยอดขายลดลง47%เพราะราคา",  # and so does Thai
+    ],
+)
+def test_an_invented_figure_is_caught_in_any_script(text):
+    assert ai.unsupported_figures(text, KNOWN)
+
+
+@pytest.mark.parametrize(
+    "text", ["应收款项₱120,038元。", "應收款項₱120,038元。", "销量下降35%的原因是价格。", "ราคา₱58ต่อกิโลกรัม"]
+)
+def test_a_real_figure_passes_in_any_script(text):
+    assert not ai.unsupported_figures(text, KNOWN)
+
+
+def test_sentences_end_at_each_scripts_full_stop():
+    split = lambda text: [s for s in ai._SENTENCE.split(text) if s]  # noqa: E731
+    assert split("第一句。第二句。Third one. Fourth!") == ["第一句。", "第二句。", "Third one.", "Fourth!"]
+    assert split("पहला वाक्य। दूसरा वाक्य।") == ["पहला वाक्य।", "दूसरा वाक्य।"]
+    assert split("جملہ ایک۔ جملہ دو؟") == ["جملہ ایک۔", "جملہ دو؟"]
+
+
+@pytest.mark.parametrize(
+    ("language", "answer", "kept", "script"),
+    [
+        ("zh", "应收款项₱120,038元。价格提高到每公斤₱99。", "应收款项₱120,038元。", "Simplified Chinese"),
+        ("zh-hant", "應收款項₱120,038元。價格提高到每公斤₱99。", "應收款項₱120,038元。", "Traditional Chinese"),
+    ],
+)
+def test_only_the_sentence_with_the_invented_figure_is_dropped_from_a_chinese_answer(
+    key, monkeypatch, language, answer, kept, script
+):
+    calls = []
+    _reply(monkeypatch, content=json.dumps({"headline": answer, "steps": []}), calls=calls)
+    out = ai.ask({"overdue_php": 120038}, KEYS, task="Chase money.", language=language)
+    assert out == {"headline": kept, "steps": []}
+    system = calls[0]["messages"][0]["content"]
+    assert script in system and "digits 0-9" in system
+
+
+def test_the_two_chinese_scripts_are_asked_for_by_name():
+    simplified, traditional = ai.LANGUAGES["zh"], ai.LANGUAGES["zh-hant"]
+    assert "Simplified Chinese" in simplified and "Traditional Chinese" in traditional
+    assert "never simplified" in traditional
+
+
+HOKKIEN = {
+    "nan-ph": "Traditional",
+    "nan-tw": "Traditional",
+    "nan-fj": "Simplified",
+    "nan-sg": "Simplified",
+    "nan-my": "Simplified",
+    "nan-id": "Simplified",
+}
+
+
+@pytest.mark.parametrize(("code", "script"), HOKKIEN.items())
+def test_each_hokkien_region_is_asked_for_in_its_own_script_and_not_as_mandarin(code, script, key, monkeypatch):
+    description = ai.LANGUAGES[code]
+    assert description.startswith("Hokkien, ") and "not Mandarin" in description
+    assert f"{script} Chinese characters" in description
+    calls = []
+    answer = {"headline": "應收款項₱120,038元。", "steps": []}
+    _reply(monkeypatch, content=json.dumps(answer), calls=calls)
+    out = ai.ask({"overdue_php": 120038}, KEYS, task="Chase money.", language=code)
+    assert out["headline"] == "應收款項₱120,038元。"
+    assert description in calls[0]["messages"][0]["content"]
+
+
+def test_hokkien_is_offered_by_region_and_labelled_apart():
+    labels = {code: ai.LANGUAGES[code].split(":")[0] for code in HOKKIEN}
+    assert labels["nan-ph"] == "Hokkien, Philippines (咱人話)"
+    assert labels["nan-tw"] == "Hokkien, Taiwan (臺語)"
+    assert len(set(labels.values())) == len(HOKKIEN)  # no two regions share a label
+
+
+def test_the_leading_rice_countries_languages_are_on_offer():
+    assert {"en", "fil", "taglish", "zh", "zh-hant", "hi", "bn", "id", "vi", "th", "my", "km", "ur"} <= set(
+        ai.LANGUAGES
+    )
+    labels = [description.split(":")[0] for description in ai.LANGUAGES.values()]
+    assert len(set(labels)) == len(labels) and all(labels)
+    assert all(len(code) <= 10 for code in ai.LANGUAGES)  # AutomationSettings.ai_language is String(10)
+
+
+def test_the_language_is_any_on_offer_and_nothing_else(auth_client, seed_owner):
+    res = auth_client.put("/api/automations/ai", json={"enabled": True, "language": "zh"})
+    assert res.status_code == 200, res.text
+    assert res.json()["language"] == "zh"
+    listed = auth_client.get("/api/automations/").json()["ai"]
+    assert listed["language"] == "zh"
+    assert {"value": "zh", "label": "Simplified Chinese (简体中文)"} in listed["languages"]
+    assert {"value": "zh-hant", "label": "Traditional Chinese (繁體中文)"} in listed["languages"]
+    assert {"value": "id", "label": "Indonesian"} in listed["languages"]
+
+    for code in ("zh-hant", "nan-ph", "nan-tw"):
+        res = auth_client.put("/api/automations/ai", json={"enabled": True, "language": code})
+        assert res.status_code == 200, res.text
+        assert auth_client.get("/api/automations/").json()["ai"]["language"] == code
+    assert {"value": "nan-ph", "label": "Hokkien, Philippines (咱人話)"} in listed["languages"]
+
+    res = auth_client.put("/api/automations/ai", json={"enabled": True, "language": "xx"})
+    assert res.status_code == 422
+
+
 # ── the switch ───────────────────────────────────────────────────────────────
 
 

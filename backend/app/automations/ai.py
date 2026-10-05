@@ -38,10 +38,56 @@ logger = logging.getLogger("ricemill.automations.ai")
 MAX_TOKENS = 12_000
 TIMEOUT_SECONDS = 150.0
 
+# What the owner can pick for AI-written text. The label shown in the app is what
+# comes before the colon; the whole line is what the model is told. After the
+# Philippine languages come those of the leading rice producers and exporters
+# (FAOSTAT production and WITS/USDA trade data, 2023-24): China (in both
+# scripts), India, Bangladesh, Indonesia, Vietnam, Thailand, Myanmar, Cambodia,
+# Pakistan.
 LANGUAGES = {
     "en": "English",
     "fil": "Filipino (Tagalog)",
     "taglish": "Taglish: the everyday mix of Tagalog and English used in Philippine business",
+    "zh": "Simplified Chinese (简体中文): Simplified Chinese (Mandarin), as written in mainland China and Singapore",
+    "zh-hant": "Traditional Chinese (繁體中文): Traditional Chinese (Mandarin), as written in Taiwan and Hong Kong, in traditional characters, never simplified ones",
+    # Hokkien (Southern Min) has no single standard, so there is one entry per region,
+    # each with the script that region writes it in and the loanwords it uses.
+    # Traditional characters for the Philippines and Taiwan, Simplified elsewhere.
+    "nan-ph": (
+        "Hokkien, Philippines (咱人話): Philippine Hokkien (Lán-lâng-ōe) as Chinese Filipinos speak it, "
+        "in Traditional Chinese characters with Hokkien wording, not Mandarin, "
+        "keeping the Tagalog, Spanish and English words they use every day"
+    ),
+    "nan-tw": (
+        "Hokkien, Taiwan (臺語): Taiwanese Hokkien (Tâi-gí) in Traditional Chinese characters "
+        "with Hokkien wording, not Mandarin"
+    ),
+    "nan-fj": (
+        "Hokkien, Fujian (閩南語): Southern Min (Hokkien) as spoken around Xiamen, Quanzhou and "
+        "Zhangzhou, in Simplified Chinese characters with Hokkien wording, not Mandarin"
+    ),
+    "nan-sg": (
+        "Hokkien, Singapore (福建話): Singapore Hokkien in Simplified Chinese characters with "
+        "Hokkien wording, not Mandarin, keeping the Malay and English words it uses every day"
+    ),
+    "nan-my": (
+        "Hokkien, Malaysia (福建話): Malaysian Hokkien (Penang and the peninsula) in Simplified "
+        "Chinese characters with Hokkien wording, not Mandarin, keeping the Malay and English "
+        "words it uses every day"
+    ),
+    "nan-id": (
+        "Hokkien, Indonesia (福建話): Indonesian Hokkien (Medan and Riau) in Simplified Chinese "
+        "characters with Hokkien wording, not Mandarin, keeping the Indonesian and Malay words "
+        "it uses every day"
+    ),
+    "hi": "Hindi (हिन्दी): Hindi in Devanagari script",
+    "bn": "Bengali (বাংলা): Bengali in Bengali script",
+    "id": "Indonesian: standard Bahasa Indonesia",
+    "vi": "Vietnamese: standard Vietnamese, with all its diacritics",
+    "th": "Thai (ไทย): Thai in Thai script",
+    "my": "Burmese (မြန်မာ): Burmese in Myanmar script",
+    "km": "Khmer (ខ្មែរ): Khmer in Khmer script",
+    "ur": "Urdu (اردو): Urdu in Arabic script, written right to left",
 }
 
 _RULES = """You write for the owner of a rice mill in the Philippines, inside the Oryza \
@@ -57,6 +103,10 @@ changes and candidate figures you may need. Money is in Philippine pesos \
 rice; a cavan is 50 kg.
 
 Your task: {task}
+
+Whatever the language, write every number with the digits 0-9 and in full, \
+such as ₱1,200,000 or 35%, never as 12万, lakh, crore or in native digits, and \
+keep the symbols and units ₱, %, kg and cavan as written here.
 
 Write plainly and briefly, in {language}. Be specific: name the variety, \
 customer, supplier or person and quote the figure. Never pad with generic \
@@ -195,11 +245,17 @@ def ask(facts: dict[str, Any], keys: tuple[Key, ...], *, task: str, language: st
 # dropped, whatever else it says. Small bare numbers (counts, days, dates) and
 # numbers inside identifiers (INV-20260929-0003) aren't checked.
 
-_SENTENCE = re.compile(r"(?<=[.!?])\s+")
+# Sentences end at . ! ? and at the full stops of Chinese, Hindi and Bengali
+# (। ॥), Urdu (۔ ؟), Burmese (။) and Khmer (។), which aren't followed by a space.
+_SENTENCE = re.compile(r"(?<=[.!?])\s+|(?<=[。！？।॥۔؟။។])\s*")
+# The boundaries are ASCII-only on purpose. "Word" characters would include
+# Chinese and Thai letters, and those scripts run a figure straight up against
+# the words around it (35%的, ₱58每公斤); a figure that "touches a word" would then
+# go unread, and unchecked.
 _FIGURE = re.compile(
-    r"(?<![\w\-/.])(?P<peso>₱\s?)?(?P<num>\d[\d,]*(?:\.\d+)?)"
-    r"(?:\s?(?P<scale>million|thousand|[mk])\b)?"
-    r"(?:\s?(?P<unit>%|percent|kg|kilos?|cavans?|tons?))?(?![\w\-/])",
+    r"(?<![A-Za-z0-9_\-/.])(?P<peso>₱\s?)?(?P<num>\d[\d,]*(?:\.\d+)?)"
+    r"(?:\s?(?P<scale>million|thousand|[mk])(?![A-Za-z0-9_]))?"
+    r"(?:\s?(?P<unit>%|percent|kg|kilos?|cavans?|tons?))?(?![A-Za-z0-9_\-/])",
     re.IGNORECASE,
 )
 _SCALE = {"k": 1_000, "thousand": 1_000, "m": 1_000_000, "million": 1_000_000}

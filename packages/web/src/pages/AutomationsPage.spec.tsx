@@ -1,11 +1,17 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, configure, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { User } from "@rice-mill/shared";
 import AutomationsPage from "./AutomationsPage";
 import { useAuthStore } from "../stores/authStore";
 import { automationsService, type Automation } from "../services/AutomationsService";
+
+// The first render in a file pays for a cold start, which on a busy machine takes
+// longer than the default second: the page was still showing its loading state and
+// the first test failed, though it passes alone. Waiting longer costs nothing when
+// the page is ready.
+configure({ asyncUtilTimeout: 5000 });
 
 const digest: Automation = {
   code: "owner_digest",
@@ -72,6 +78,7 @@ const draw = () =>
   );
 
 const card = (title: string) => screen.getByRole("article", { name: title });
+const tab = (name: string) => screen.getByRole("tab", { name });
 
 describe("AutomationsPage", () => {
   beforeEach(() => {
@@ -83,16 +90,171 @@ describe("AutomationsPage", () => {
     useAuthStore.setState({ user: null });
   });
 
-  it("groups the recipes under headings and counts what's on", async () => {
+  it("puts each group on its own tab, opens the first, and counts what's on", async () => {
     useAuthStore.setState({ user: owner });
     draw();
-    const reports = await screen.findByRole("region", { name: "Reports and summaries" });
-    expect(within(reports).getByRole("heading", { name: "Morning summary" })).toBeInTheDocument();
-    const watch = screen.getByRole("region", { name: "Owner watch" });
-    expect(within(watch).getByRole("heading", { name: "Big transaction" })).toBeInTheDocument();
+    await screen.findByRole("heading", { name: "Morning summary" });
+    expect(tab("Reports and summaries")).toHaveAttribute("aria-selected", "true");
+    expect(tab("Owner watch")).toHaveAttribute("aria-selected", "false");
+    expect(screen.getByRole("tabpanel", { name: "Reports and summaries" })).toBeInTheDocument();
+    // Only the open tab's recipes are on the page.
+    expect(screen.queryByRole("heading", { name: "Big transaction" })).toBeNull();
     expect(screen.getByText(/0 of 2 switched on/)).toBeInTheDocument();
-    // Groups with nothing in them aren't shown.
-    expect(screen.queryByRole("region", { name: "Deliveries" })).toBeNull();
+
+    fireEvent.click(tab("Owner watch"));
+    const watch = screen.getByRole("tabpanel", { name: "Owner watch" });
+    expect(within(watch).getByRole("heading", { name: "Big transaction" })).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Morning summary" })).toBeNull();
+    // Groups with nothing in them get no tab.
+    expect(screen.queryByRole("tab", { name: "Deliveries" })).toBeNull();
+  });
+
+  it("moves between tabs with the arrow keys", async () => {
+    useAuthStore.setState({ user: owner });
+    draw();
+    await screen.findByRole("heading", { name: "Morning summary" });
+    fireEvent.keyDown(tab("Reports and summaries"), { key: "ArrowRight" });
+    expect(tab("Owner watch")).toHaveAttribute("aria-selected", "true");
+    expect(tab("Owner watch")).toHaveFocus();
+    fireEvent.keyDown(tab("Owner watch"), { key: "ArrowRight" });
+    expect(tab("Reports and summaries")).toHaveAttribute("aria-selected", "true");
+    fireEvent.keyDown(tab("Reports and summaries"), { key: "End" });
+    expect(tab("Owner watch")).toHaveAttribute("aria-selected", "true");
+  });
+
+  it("folds what a recipe does behind an (i), instead of printing it", async () => {
+    useAuthStore.setState({ user: owner });
+    draw();
+    await screen.findByRole("heading", { name: "Morning summary" });
+    const note = "Every morning, yesterday at a glance.";
+    expect(screen.queryByText(note)).toBeNull();
+
+    const info = within(card("Morning summary")).getByRole("button", {
+      name: "What Morning summary does",
+    });
+    fireEvent.click(info);
+    expect(screen.getByRole("tooltip")).toHaveTextContent(note);
+    expect(info).toHaveAttribute("aria-describedby", screen.getByRole("tooltip").id);
+
+    fireEvent.keyDown(info, { key: "Escape" });
+    expect(screen.queryByRole("tooltip")).toBeNull();
+  });
+
+  describe("the note stays while it is read, and can be copied", () => {
+    afterEach(() => vi.useRealTimers());
+
+    const wait = (ms: number) =>
+      act(() => {
+        vi.advanceTimersByTime(ms);
+      });
+
+    // Hover the (i) with the clock stopped, so the grace period can be stepped through.
+    const hoverTheInfo = async () => {
+      useAuthStore.setState({ user: owner });
+      draw();
+      await screen.findByRole("heading", { name: "Morning summary" });
+      vi.useFakeTimers();
+      const info = within(card("Morning summary")).getByRole("button", {
+        name: "What Morning summary does",
+      });
+      fireEvent.mouseEnter(info);
+      return { info, note: screen.getByRole("tooltip") };
+    };
+
+    it("stays when the pointer crosses onto it, and goes when it leaves", async () => {
+      const { info, note } = await hoverTheInfo();
+      fireEvent.mouseLeave(info);
+      wait(100); // still crossing the gap
+      fireEvent.mouseEnter(note);
+      wait(2000);
+      expect(screen.getByRole("tooltip")).toBeInTheDocument();
+      fireEvent.mouseLeave(note);
+      wait(200);
+      expect(screen.queryByRole("tooltip")).toBeNull();
+    });
+
+    it("goes if the pointer leaves the (i) and goes nowhere near it", async () => {
+      const { info } = await hoverTheInfo();
+      fireEvent.mouseLeave(info);
+      wait(200);
+      expect(screen.queryByRole("tooltip")).toBeNull();
+    });
+
+    it("can be selected and copied: pressing in it pins it, even if a drag strays off it", async () => {
+      const { note } = await hoverTheInfo();
+      expect(note).not.toHaveClass("pointer-events-none");
+      expect(note).toHaveClass("select-text");
+
+      fireEvent.mouseDown(note);
+      fireEvent.mouseLeave(note);
+      wait(2000);
+      expect(screen.getByRole("tooltip")).toBeInTheDocument();
+      // Scrolling inside it, or pressing in it again, doesn't put it away...
+      fireEvent.scroll(note);
+      fireEvent.mouseDown(note);
+      expect(screen.getByRole("tooltip")).toBeInTheDocument();
+      // ...pressing anywhere else does.
+      fireEvent.mouseDown(document.body);
+      expect(screen.queryByRole("tooltip")).toBeNull();
+    });
+
+    it("goes when the page scrolls", async () => {
+      await hoverTheInfo();
+      fireEvent.scroll(window);
+      expect(screen.queryByRole("tooltip")).toBeNull();
+    });
+  });
+
+  describe("the note opens where it fits", () => {
+    afterEach(() => {
+      Object.defineProperty(window, "innerHeight", { configurable: true, value: 768 });
+      // Own properties set below shadow the prototype's; drop them.
+      delete (HTMLElement.prototype as { scrollHeight?: number }).scrollHeight;
+    });
+
+    // jsdom has no layout, so give the (i) a place on a 600px-high window and the
+    // note a height of 120px.
+    const openNoteWithTriggerAt = (top: number) => {
+      Object.defineProperty(window, "innerHeight", { configurable: true, value: 600 });
+      Object.defineProperty(HTMLElement.prototype, "scrollHeight", {
+        configurable: true,
+        get: () => 120,
+      });
+      vi.spyOn(Element.prototype, "getBoundingClientRect").mockImplementation(
+        () => ({ top, bottom: top + 20, left: 40, right: 60, width: 20, height: 20 }) as DOMRect,
+      );
+      fireEvent.click(
+        within(card("Morning summary")).getByRole("button", { name: "What Morning summary does" }),
+      );
+      return screen.getByRole("tooltip");
+    };
+
+    it("below the (i) when there is room", async () => {
+      useAuthStore.setState({ user: owner });
+      draw();
+      await screen.findByRole("heading", { name: "Morning summary" });
+      const note = openNoteWithTriggerAt(100);
+      expect(note.style.top).toBe("128px");
+      expect(note.style.bottom).toBe("");
+    });
+
+    it("above the (i) when it would run past the bottom of the window", async () => {
+      useAuthStore.setState({ user: owner });
+      draw();
+      await screen.findByRole("heading", { name: "Morning summary" });
+      const note = openNoteWithTriggerAt(560);
+      expect(note.style.bottom).toBe("48px"); // window height 600 - (i) top 560 + gap 8
+      expect(note.style.top).toBe("");
+    });
+
+    it("fixed in <body>, so it can't make the page scroll", async () => {
+      useAuthStore.setState({ user: owner });
+      draw();
+      await screen.findByRole("heading", { name: "Morning summary" });
+      const note = openNoteWithTriggerAt(560);
+      expect(note.parentElement).toBe(document.body);
+      expect(note).toHaveClass("fixed");
+    });
   });
 
   it("keeps settings folded away until asked for", async () => {
@@ -126,7 +288,7 @@ describe("AutomationsPage", () => {
     useAuthStore.setState({ user: owner });
     const update = vi.spyOn(automationsService, "update").mockResolvedValue(bigSale);
     draw();
-    await screen.findByRole("heading", { name: "Big transaction" });
+    fireEvent.click(await screen.findByRole("tab", { name: "Owner watch" }));
     const big = card("Big transaction");
     fireEvent.click(within(big).getByRole("button", { name: "Settings" }));
     const save = within(big).getByRole("button", { name: "Save" });
@@ -153,7 +315,7 @@ describe("AutomationsPage", () => {
     useAuthStore.setState({ user: owner });
     vi.spyOn(automationsService, "sendTest").mockResolvedValue({ sent: 0 });
     draw();
-    await screen.findByRole("heading", { name: "Big transaction" });
+    fireEvent.click(await screen.findByRole("tab", { name: "Owner watch" }));
     const big = card("Big transaction");
     fireEvent.click(within(big).getByRole("button", { name: "Settings" }));
     fireEvent.click(within(big).getByRole("button", { name: /send me a test/i }));
@@ -189,6 +351,8 @@ const aiOff = {
   languages: [
     { value: "en", label: "English" },
     { value: "taglish", label: "Taglish" },
+    { value: "zh", label: "Simplified Chinese (简体中文)" },
+    { value: "zh-hant", label: "Traditional Chinese (繁體中文)" },
   ],
   configured: true,
   changed_by: null,
@@ -201,34 +365,137 @@ describe("AutomationsPage AI advisor", () => {
     useAuthStore.setState({ user: null });
   });
 
-  it("keeps AI recipes off until the owner agrees, then sends the chosen language", async () => {
+  const aiBox = () => screen.findByRole("region", { name: "AI settings" });
+
+  it("keeps AI recipes off until the owner presses Turn AI on", async () => {
     useAuthStore.setState({ user: owner });
     vi.spyOn(automationsService, "list").mockResolvedValue({ recipes: [briefing], ai: aiOff });
     const updateAI = vi
       .spyOn(automationsService, "updateAI")
-      .mockResolvedValue({ ...aiOff, enabled: true, language: "taglish" });
+      .mockResolvedValue({ ...aiOff, enabled: true });
     draw();
-    const advisor = await screen.findByRole("region", { name: "AI advisor" });
-    expect(within(advisor).getByText("AI is off.")).toBeInTheDocument();
-    expect(within(advisor).getByText(/never sent/)).toBeInTheDocument();
+    const box = await aiBox();
+    expect(within(box).getByText("AI is off.")).toBeInTheDocument();
     expect(within(card("Morning briefing")).getByRole("switch")).toBeDisabled();
     expect(within(card("Morning briefing")).getByText("AI")).toBeInTheDocument();
 
-    fireEvent.change(within(advisor).getByLabelText("Write the advice in"), {
-      target: { value: "taglish" },
+    // A button, not a switch.
+    expect(within(box).queryByRole("switch")).toBeNull();
+    fireEvent.click(within(box).getByRole("button", { name: "Turn AI on" }));
+    await waitFor(() => expect(updateAI).toHaveBeenCalledWith({ enabled: true, language: "en" }));
+  });
+
+  it("turns AI off again with the same button, leaving the language as it was", async () => {
+    useAuthStore.setState({ user: owner });
+    vi.spyOn(automationsService, "list").mockResolvedValue({
+      recipes: [briefing],
+      ai: { ...aiOff, enabled: true, language: "zh", changed_by: "Mill Owner" },
     });
-    fireEvent.click(within(advisor).getByRole("button", { name: /I agree, switch AI on/ }));
+    const updateAI = vi.spyOn(automationsService, "updateAI").mockResolvedValue(aiOff);
+    draw();
+    const box = await aiBox();
+    expect(within(box).getByText("AI is on for your automations.")).toBeInTheDocument();
+    expect(within(box).queryByRole("button", { name: "Turn AI on" })).toBeNull();
+    fireEvent.click(within(box).getByRole("button", { name: "Turn AI off" }));
+    await waitFor(() => expect(updateAI).toHaveBeenCalledWith({ enabled: false, language: "zh" }));
+  });
+
+  it("saves a language as soon as it is picked, without touching on/off", async () => {
+    useAuthStore.setState({ user: owner });
+    vi.spyOn(automationsService, "list").mockResolvedValue({ recipes: [briefing], ai: aiOff });
+    const updateAI = vi
+      .spyOn(automationsService, "updateAI")
+      .mockResolvedValue({ ...aiOff, language: "taglish" });
+    draw();
+    const box = await aiBox();
+    fireEvent.click(within(box).getByLabelText("Write the advice in"));
+    expect(
+      screen.getByRole("option", { name: "Simplified Chinese (简体中文)" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("option", { name: "Traditional Chinese (繁體中文)" }),
+    ).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("option", { name: "Taglish" }));
     await waitFor(() =>
-      expect(updateAI).toHaveBeenCalledWith({ enabled: true, language: "taglish" }),
+      expect(updateAI).toHaveBeenCalledWith({ enabled: false, language: "taglish" }),
     );
+  });
+
+  it("puts the language and the button side by side", async () => {
+    useAuthStore.setState({ user: owner });
+    vi.spyOn(automationsService, "list").mockResolvedValue({ recipes: [briefing], ai: aiOff });
+    draw();
+    const box = await aiBox();
+    const language = within(box).getByLabelText("Write the advice in");
+    const button = within(box).getByRole("button", { name: "Turn AI on" });
+    // One row: the same wrapper holds both, and it lays its children out in a row.
+    const row = language.closest("div.flex-wrap");
+    expect(row).toContainElement(button);
+    expect(row).toHaveClass("flex", "items-end");
+  });
+
+  it("sits above the tabs and stays on show whichever tab is open", async () => {
+    useAuthStore.setState({ user: owner });
+    vi.spyOn(automationsService, "list").mockResolvedValue({
+      recipes: [briefing, digest],
+      ai: aiOff,
+    });
+    draw();
+    const box = await aiBox();
+    const tabs = screen.getByRole("tablist");
+    expect(box.compareDocumentPosition(tabs) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(box.closest('[role="tabpanel"]')).toBeNull();
+
+    for (const name of ["AI advisor", "Reports and summaries"]) {
+      fireEvent.click(screen.getByRole("tab", { name }));
+      expect(screen.getByRole("region", { name: "AI settings" })).toBe(box);
+      expect(within(box).getByRole("button", { name: "Turn AI on" })).toBeInTheDocument();
+    }
+  });
+
+  it("explains what is sent behind a red (i), and names Oryza's AI", async () => {
+    useAuthStore.setState({ user: owner });
+    vi.spyOn(automationsService, "list").mockResolvedValue({ recipes: [briefing], ai: aiOff });
+    draw();
+    const box = await aiBox();
+    expect(screen.queryByText(/never sent/)).toBeNull();
+    const info = within(box).getByRole("button", {
+      name: "What the AI sends and what it doesn't",
+    });
+    expect(info).toHaveClass("text-rose-600");
+    fireEvent.click(info);
+    const note = screen.getByRole("tooltip");
+    expect(note).toHaveTextContent(/never sent/);
+    expect(note).toHaveTextContent(/Oryza's AI/);
+    expect(note).not.toHaveTextContent(/DeepSeek/);
   });
 
   it("lets only the owner change it", async () => {
     useAuthStore.setState({ user: { ...owner, id: "u3", role: "admin" } });
     vi.spyOn(automationsService, "list").mockResolvedValue({ recipes: [briefing], ai: aiOff });
     draw();
-    const advisor = await screen.findByRole("region", { name: "AI advisor" });
-    expect(within(advisor).getByText(/Only the mill's owner/)).toBeInTheDocument();
-    expect(within(advisor).queryByRole("button", { name: /switch AI on/ })).toBeNull();
+    const box = await aiBox();
+    expect(within(box).getByText(/Only the mill's owner/)).toBeInTheDocument();
+    expect(within(box).queryByRole("button", { name: /Turn AI/ })).toBeNull();
+    expect(within(box).queryByLabelText("Write the advice in")).toBeNull();
+  });
+
+  it("puts the (i) right at the end of the automation's name, before the AI badge", async () => {
+    useAuthStore.setState({ user: owner });
+    vi.spyOn(automationsService, "list").mockResolvedValue({ recipes: [briefing], ai: aiOff });
+    draw();
+    const title = await screen.findByRole("heading", { name: "Morning briefing" });
+    const info = within(card("Morning briefing")).getByRole("button", {
+      name: "What Morning briefing does",
+    });
+    const badge = within(card("Morning briefing")).getByText("AI");
+    // The (i) is in the title's own text, in one no-wrap span with the name's last
+    // word, so a wrapping title can't leave it alone on a line below.
+    expect(title).toContainElement(info);
+    const glued = info.closest("span.whitespace-nowrap");
+    expect(glued).toHaveTextContent(/^briefing/);
+    expect(glued?.parentElement).toBe(title);
+    expect(glued?.previousSibling?.textContent).toBe("Morning ");
+    expect(info.compareDocumentPosition(badge) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 });

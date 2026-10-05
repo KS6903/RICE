@@ -10,10 +10,9 @@ AI switch on (PUT /ai), which only an owner can flip.
 
 import uuid
 from datetime import datetime, timezone
-from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from pydantic import BaseModel, Field, ValidationError
+from pydantic import BaseModel, Field, ValidationError, field_validator
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -37,7 +36,14 @@ manage = [Depends(require_section_access("automations", write=True))]
 
 class AISettingsUpdate(BaseModel):
     enabled: bool
-    language: Literal["en", "fil", "taglish"] = "en"
+    language: str = "en"
+
+    @field_validator("language")
+    @classmethod
+    def _known_language(cls, value: str) -> str:
+        if value not in ai.LANGUAGES:
+            raise ValueError("Unknown language")
+        return value
 
 
 class RuleUpdate(BaseModel):

@@ -45,7 +45,7 @@ export type Automation = {
   default_roles: string[];
   candidates: AutomationCandidate[];
   last_run: AutomationRun | null;
-  /** Sends the mill's figures to DeepSeek; needs the owner's AI switch on. */
+  /** Sends the mill's figures to the AI service; needs the owner's AI switch on. */
   uses_ai?: boolean;
 };
 
@@ -53,7 +53,7 @@ export type AISettings = {
   enabled: boolean;
   language: string;
   languages: { value: string; label: string }[];
-  /** False when the server has no DeepSeek key: AI recipes send figures only. */
+  /** False when the server has no AI key: AI recipes send figures only. */
   configured: boolean;
   changed_by: string | null;
   changed_at: string | null;
