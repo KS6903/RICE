@@ -119,6 +119,12 @@ def get_tenant_activity(tenant_id: uuid.UUID, svc: AdminService = Depends(get_ad
     return svc.get_tenant_activity(tenant_id)
 
 
+@router.get("/tenants/{tenant_id}/legal-acceptances")
+def get_tenant_legal_acceptances(tenant_id: uuid.UUID, svc: AdminService = Depends(get_admin_service)):
+    """Read-only: the tenant's agreement-acceptance ledger, for the platform's records."""
+    return svc.get_tenant_legal_acceptances(tenant_id)
+
+
 @router.put("/tenants/{tenant_id}/active")
 def set_tenant_active(tenant_id: uuid.UUID, body: TenantActiveToggle, svc: AdminService = Depends(get_admin_service)):
     return svc.set_tenant_active(tenant_id, body)

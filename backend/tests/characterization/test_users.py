@@ -2,6 +2,7 @@
 
 from app.core.security import get_current_user, hash_password
 from app.main import app
+from app.models.activity import ActivityLog
 from app.models.subscription import Subscription
 from app.models.user import User
 
@@ -188,3 +189,37 @@ def test_an_admin_cannot_touch_an_owner_or_make_one(client, db_session, seed_own
         assert client.put(f"/api/users/{clerk.id}", json={"is_active": False}).status_code == 200
     finally:
         app.dependency_overrides.pop(get_current_user, None)
+
+
+def test_an_admin_cannot_create_a_boss_either(client, db_session, seed_owner):
+    admin = _add_user(db_session, seed_owner, "manager", role_id=2)
+    app.dependency_overrides[get_current_user] = lambda: admin
+    try:
+        body = {"username": "newboss", "password": "secret123", "full_name": "New Boss"}
+        res = client.post("/api/users/", json={**body, "role_id": 1})
+        assert res.status_code == 403
+        assert "Only the Boss" in res.json()["detail"]
+        assert client.post("/api/users/", json={**body, "role_id": 2}).status_code == 201
+    finally:
+        app.dependency_overrides.pop(get_current_user, None)
+
+
+def test_account_changes_go_in_the_activity_log(auth_client, db_session, seed_owner):
+    """Who added, re-roled, removed or restored which account, for the company's
+    Settings and the platform admin's records."""
+    created = auth_client.post(
+        "/api/users/",
+        json={"username": "logged", "password": "secret123", "full_name": "Logged", "role_id": 2},
+    ).json()
+    uid = created["id"]
+    auth_client.put(f"/api/users/{uid}", json={"full_name": "Renamed"})  # not logged
+    auth_client.put(f"/api/users/{uid}", json={"role_id": 1})
+    auth_client.put(f"/api/users/{uid}", json={"is_active": False})
+    auth_client.put(f"/api/users/{uid}", json={"is_active": True})
+
+    rows = db_session.query(ActivityLog).filter_by(entity_type="user", entity_label="logged").all()
+    assert sorted(r.action for r in rows) == ["user.create", "user.remove", "user.restore", "user.role_change"]
+    assert {r.user_id for r in rows} == {seed_owner.id}
+    by_action = {r.action: r for r in rows}
+    assert by_action["user.create"].detail == "Role: admin"
+    assert by_action["user.role_change"].detail == "admin → owner"

@@ -15,12 +15,13 @@ from typing import Any
 from sqlalchemy import func, true
 from sqlalchemy.orm import Session
 
-from ..core import provisioning
+from ..core import legal, provisioning
 from ..core.exceptions import AppException, BadRequestError, ConflictError, NotFoundError
 from ..core.security import invalidate_company_features
 from ..core.tenancy import tenant_session
 from ..models.company import Branch, Company
 from ..models.costs import Expense
+from ..models.legal import LegalAcceptance
 from ..models.milling import MillingBatch
 from ..models.paddy import PalayPurchase
 from ..models.sales import Invoice, SalesOrder
@@ -34,6 +35,7 @@ from ..repositories.billing import (
 )
 from ..services.activity_service import ActivityService
 from ..services.base import BaseService
+from ..services.legal_service import LegalService
 from ..services.subscription import (
     activate_subscription,
     backfill_free,
@@ -495,6 +497,7 @@ class AdminService(BaseService):
                     "role": u.role.name if u.role else None,
                     "is_active": u.is_active,
                     "last_login": u.last_login.isoformat() if u.last_login else None,
+                    "created_at": u.created_at.isoformat() if u.created_at else None,
                 }
                 for u in users
             ],
@@ -510,6 +513,55 @@ class AdminService(BaseService):
                 "total_expenses": float(expenses_total),
                 "total_revenue": float(revenue_total),
             },
+        }
+
+    def get_tenant_legal_acceptances(self, tenant_id: uuid.UUID) -> dict:
+        """The tenant's agreement-acceptance ledger, read-only, for the platform's
+        legal records: every acceptance its users gave (which version, the hash of
+        the text they were shown, how, when, from where), newest first, plus which
+        of its active users haven't accepted the current terms."""
+        company = self.db.get(Company, tenant_id)
+        if not company:
+            raise NotFoundError("Tenant not found")
+        rows = (
+            self.db.query(LegalAcceptance)
+            .filter(LegalAcceptance.company_id == company.id)
+            .order_by(LegalAcceptance.accepted_at.desc())
+            .all()
+        )
+        members = self.db.query(User).filter(User.company_id == company.id).all()
+        user_ids = {r.user_id for r in rows} | {u.id for u in members}
+        by_id = {u.id: u for u in self.db.query(User).filter(User.id.in_(user_ids)).all()} if user_ids else {}
+        legal_svc = LegalService(self.db)
+
+        def _who(user_id) -> dict:
+            u = by_id.get(user_id)
+            return {
+                "user_id": str(user_id),
+                "username": u.username if u else None,
+                "full_name": u.full_name if u else None,
+                "role": u.role.name if u and u.role else None,
+            }
+
+        return {
+            "agreement_version": legal.AGREEMENT_VERSION,
+            "acceptances": [
+                {
+                    "id": str(r.id),
+                    **_who(r.user_id),
+                    "agreement_version": r.agreement_version,
+                    "content_hash": r.content_hash,
+                    "documents": r.documents,
+                    "method": r.method,
+                    "ip_address": r.ip_address,
+                    "user_agent": r.user_agent,
+                    "accepted_at": r.accepted_at.isoformat(),
+                }
+                for r in rows
+            ],
+            "not_accepted_current": [
+                _who(u.id) for u in members if u.is_active and legal_svc.acceptance_required(u.id)
+            ],
         }
 
     def get_tenant_activity(self, tenant_id: uuid.UUID) -> list[dict]:
