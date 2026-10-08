@@ -16,6 +16,10 @@ const ACTION_VERBS: Record<string, string> = {
   "warehouse.restore": "Restored warehouse",
   "warehouse.purge": "Permanently deleted warehouse",
   "data.export": "Downloaded all data for",
+  "user.create": "Added user",
+  "user.role_change": "Changed the role of",
+  "user.remove": "Removed user",
+  "user.restore": "Restored user",
 };
 
 export function formatActivity(row: ActivityRow): string {
@@ -30,7 +34,8 @@ export function activityActor(row: ActivityRow): string {
 
 // Tone for the row's accent dot.
 export function activityTone(action: string): "rose" | "emerald" | "slate" {
-  if (action === "warehouse.restore") return "emerald";
-  if (action === "warehouse.delete" || action === "warehouse.purge") return "rose";
+  if (action === "warehouse.restore" || action === "user.restore") return "emerald";
+  if (action === "warehouse.delete" || action === "warehouse.purge" || action === "user.remove")
+    return "rose";
   return "slate";
 }

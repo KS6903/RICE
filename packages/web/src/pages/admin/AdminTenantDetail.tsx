@@ -27,6 +27,7 @@ import {
   CircleSlash,
   CheckCircle2,
   Clock,
+  ScrollText,
 } from "lucide-react";
 
 /* ─── Plan icon helper ─── */
@@ -57,6 +58,93 @@ function TenantActivityLog({ tenantId }: { tenantId: string }) {
     enabled: !!tenantId,
   });
   return <ActivityLogList rows={rows} loading={isLoading} />;
+}
+
+const ACCEPTANCE_METHOD: Record<string, string> = {
+  signup: "At sign-up",
+  gate: "At sign-in",
+  invite: "Added by the Boss",
+};
+
+/* ─── Terms-acceptance ledger: who agreed to which terms, read-only ─── */
+function TenantLegalLedger({ tenantId }: { tenantId: string }) {
+  const { data, isLoading } = useQuery({
+    queryKey: ["admin-tenant-legal", tenantId],
+    queryFn: () => adminService.getTenantLegalAcceptances(tenantId),
+    enabled: !!tenantId,
+  });
+  const rows = data?.acceptances ?? [];
+  const pending = data?.not_accepted_current ?? [];
+  return (
+    <div className="panel">
+      <div className="px-6 py-4 border-b border-soft">
+        <div className="flex items-center gap-2">
+          <ScrollText size={16} className="text-muted" />
+          <h3 className="font-semibold text-primary">Terms acceptance ({rows.length})</h3>
+        </div>
+        <p className="text-xs text-muted mt-1">
+          Every time someone at this mill agreed to the terms: which version, a fingerprint of the
+          exact text they were shown, how, when and from where. These records can't be changed.
+          {data && (
+            <>
+              {" "}
+              Current version: <span className="font-mono">{data.agreement_version}</span>.
+            </>
+          )}
+        </p>
+      </div>
+      {pending.length > 0 && (
+        <div className="mx-6 mt-4 flex items-start gap-2 rounded-xl border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/30 px-4 py-3 text-sm text-amber-900 dark:text-amber-200">
+          <AlertCircle size={16} className="shrink-0 mt-0.5" />
+          <p>
+            Haven't accepted the current terms yet:{" "}
+            {pending.map((u) => u.full_name || u.username).join(", ")}. They're asked at their next
+            sign-in.
+          </p>
+        </div>
+      )}
+      <table className="data-table">
+        <thead>
+          <tr>
+            {["User", "Version", "How", "When", "From", "Fingerprint"].map((h) => (
+              <th key={h}>{h}</th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((r) => (
+            <tr key={r.id}>
+              <td className="px-4 py-3">
+                <span className="font-medium">{r.full_name || "—"}</span>
+                <span className="block font-mono text-xs text-muted">{r.username || "—"}</span>
+              </td>
+              <td className="px-4 py-3 font-mono text-xs">{r.agreement_version}</td>
+              <td className="px-4 py-3">{ACCEPTANCE_METHOD[r.method] ?? r.method}</td>
+              <td className="px-4 py-3 text-xs text-muted" title={r.accepted_at}>
+                {format(new Date(r.accepted_at), "MMM d, yyyy HH:mm")}
+              </td>
+              <td
+                className="px-4 py-3 font-mono text-xs text-muted"
+                title={r.user_agent ?? undefined}
+              >
+                {r.ip_address || "—"}
+              </td>
+              <td className="px-4 py-3 font-mono text-xs text-muted" title={r.content_hash}>
+                {r.content_hash.slice(0, 12)}…
+              </td>
+            </tr>
+          ))}
+          {!isLoading && rows.length === 0 && (
+            <tr>
+              <td colSpan={6} className="px-4 py-6 text-center text-muted">
+                No acceptances recorded yet.
+              </td>
+            </tr>
+          )}
+        </tbody>
+      </table>
+    </div>
+  );
 }
 
 /* ─── Tier dropdown options ─── */
@@ -757,7 +845,15 @@ export default function AdminTenantDetail() {
             <table className="data-table">
               <thead>
                 <tr>
-                  {["Username", "Full name", "Email", "Role", "Status", "Last login"].map((h) => (
+                  {[
+                    "Username",
+                    "Full name",
+                    "Email",
+                    "Role",
+                    "Status",
+                    "Created",
+                    "Last login",
+                  ].map((h) => (
                     <th key={h}>{h}</th>
                   ))}
                 </tr>
@@ -777,13 +873,16 @@ export default function AdminTenantDetail() {
                       )}
                     </td>
                     <td className="px-4 py-3 text-muted text-xs">
+                      {u.created_at ? format(new Date(u.created_at), "MMM d, yyyy") : "—"}
+                    </td>
+                    <td className="px-4 py-3 text-muted text-xs">
                       {u.last_login ? format(new Date(u.last_login), "MMM d, HH:mm") : "—"}
                     </td>
                   </tr>
                 ))}
                 {users.length === 0 && (
                   <tr>
-                    <td colSpan={6} className="px-4 py-6 text-center text-muted">
+                    <td colSpan={7} className="px-4 py-6 text-center text-muted">
                       No users yet.
                     </td>
                   </tr>
@@ -791,6 +890,8 @@ export default function AdminTenantDetail() {
               </tbody>
             </table>
           </div>
+
+          <TenantLegalLedger tenantId={id!} />
 
           <div className="panel">
             <div className="px-6 py-4 border-b border-soft flex items-center gap-2">
@@ -839,7 +940,8 @@ export default function AdminTenantDetail() {
           <div className="card">
             <h3 className="font-semibold text-primary mb-1">Activity log</h3>
             <p className="text-xs text-muted mb-3">
-              Warehouse delete / restore / purge actions, per user.
+              Who did what, newest first: accounts added, removed or re-roled, sign-in and password
+              events, and warehouse deletes.
             </p>
             <TenantActivityLog tenantId={id!} />
           </div>

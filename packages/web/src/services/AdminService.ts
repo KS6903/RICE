@@ -3,6 +3,32 @@
 import api from "./api";
 import type { TemporaryPassword } from "./UsersService";
 
+type LedgerUser = {
+  user_id: string;
+  username: string | null;
+  full_name: string | null;
+  role: string | null;
+};
+
+/** One "I agree" click: which bundle version, the hash of the text shown, how and where. */
+export type LegalAcceptanceRow = LedgerUser & {
+  id: string;
+  agreement_version: string;
+  content_hash: string;
+  documents: { key: string; version: string; effective_date: string; sha256: string }[];
+  method: "signup" | "gate" | "invite" | string;
+  ip_address: string | null;
+  user_agent: string | null;
+  accepted_at: string;
+};
+
+export type TenantLegalAcceptances = {
+  agreement_version: string;
+  acceptances: LegalAcceptanceRow[];
+  /** Active users who haven't accepted the current version yet. */
+  not_accepted_current: LedgerUser[];
+};
+
 export class AdminService {
   constructor(private http = api) {}
 
@@ -43,6 +69,10 @@ export class AdminService {
   }
   getTenantActivity(id: string): Promise<any[]> {
     return this.http.get(`/admin/tenants/${id}/activity`).then((r) => r.data);
+  }
+  /** Read-only: the tenant's agreement-acceptance ledger, for the platform's records. */
+  getTenantLegalAcceptances(id: string): Promise<TenantLegalAcceptances> {
+    return this.http.get(`/admin/tenants/${id}/legal-acceptances`).then((r) => r.data);
   }
   getTenantSubscription(id: string): Promise<any> {
     return this.http.get(`/admin/tenants/${id}/subscription`).then((r) => r.data);
