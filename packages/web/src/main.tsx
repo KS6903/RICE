@@ -7,6 +7,7 @@ import "./index.css";
 // Side-effect import: applies persisted/system theme to <html> before first paint.
 import "./stores/themeStore";
 import { queryClient } from "./services/queryClient";
+import { googleClientId, googleSignInEnabled } from "./utils/googleSignIn";
 import { registerSW } from "virtual:pwa-register";
 
 // The offline cache is for the browser. The desktop app (app://oryza) has its
@@ -15,12 +16,19 @@ if ("serviceWorker" in navigator && location.protocol.startsWith("http")) {
   registerSW({ immediate: true });
 }
 
+const app = (
+  <QueryClientProvider client={queryClient}>
+    <App />
+  </QueryClientProvider>
+);
+
+// Google's script is only loaded when Google sign-in is set up: see googleSignIn.ts.
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
-    <GoogleOAuthProvider clientId={import.meta.env.VITE_GOOGLE_CLIENT_ID ?? ""}>
-      <QueryClientProvider client={queryClient}>
-        <App />
-      </QueryClientProvider>
-    </GoogleOAuthProvider>
+    {googleSignInEnabled() ? (
+      <GoogleOAuthProvider clientId={googleClientId()}>{app}</GoogleOAuthProvider>
+    ) : (
+      app
+    )}
   </React.StrictMode>,
 );

@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { GoogleLogin } from "@react-oauth/google";
+import { googleSignInEnabled } from "../utils/googleSignIn";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { billingService } from "../services/BillingService";
 import { branchesService } from "../services/BranchesService";
@@ -2025,7 +2026,7 @@ function PasswordTab() {
       </div>
 
       <MfaCard />
-      <GoogleIdentityCard />
+      {googleSignInEnabled() && <GoogleIdentityCard />}
     </div>
   );
 }
@@ -2105,7 +2106,7 @@ function GoogleIdentityCard() {
           onClick={unlink}
           disabled={pending || !proof.trim()}
         >
-          {pending ? "Unlinkingâ€¦" : "Unlink Google"}
+          {pending ? "Unlinking…" : "Unlink Google"}
         </button>
       ) : proof.trim() ? (
         <div className={pending ? "pointer-events-none opacity-60" : ""}>

@@ -117,3 +117,20 @@ describe("LoginPage when the account is locked", () => {
     expect(screen.queryByRole("region", { name: "Locked out?" })).toBeNull();
   });
 });
+
+describe("LoginPage Google sign-in", () => {
+  afterEach(() => vi.unstubAllEnvs());
+
+  it("is not offered when Google sign-in isn't set up, so no broken button and no console errors", () => {
+    vi.stubEnv("VITE_GOOGLE_CLIENT_ID", "");
+    draw(["/login"]);
+    expect(screen.queryByText("Continue with Google")).toBeNull();
+    expect(screen.queryByText("or")).toBeNull();
+  });
+
+  it("is offered when a Google client ID is set", () => {
+    vi.stubEnv("VITE_GOOGLE_CLIENT_ID", "test-client.apps.googleusercontent.com");
+    draw(["/login"]);
+    expect(screen.getByText("Continue with Google")).toBeInTheDocument();
+  });
+});

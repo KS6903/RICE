@@ -5,6 +5,7 @@ import { useAuthStore } from "../stores/authStore";
 import PasswordInput from "../components/PasswordInput";
 import { Building2, Building, AlertCircle, ArrowRight, ArrowLeft, Check } from "lucide-react";
 import { GoogleLogin } from "@react-oauth/google";
+import { googleSignInEnabled } from "../utils/googleSignIn";
 import riceLogo from "../assets/Rice_Logo.svg";
 import { legalService } from "../services/LegalService";
 
@@ -439,29 +440,34 @@ export default function SignupPage() {
                 </button>
               </div>
 
-              <div className="relative flex items-center">
-                <div className="flex-grow border-t border-slate-200 dark:border-slate-800"></div>
-                <span className="flex-shrink-0 mx-4 text-sm text-secondary">or</span>
-                <div className="flex-grow border-t border-slate-200 dark:border-slate-800"></div>
-              </div>
+              {/* Google sign-up only when it is set up: see googleSignIn.ts. */}
+              {googleSignInEnabled() && (
+                <>
+                  <div className="relative flex items-center">
+                    <div className="flex-grow border-t border-slate-200 dark:border-slate-800"></div>
+                    <span className="flex-shrink-0 mx-4 text-sm text-secondary">or</span>
+                    <div className="flex-grow border-t border-slate-200 dark:border-slate-800"></div>
+                  </div>
 
-              <div className="relative flex justify-center w-full [&>div]:w-full">
-                <GoogleLogin
-                  onSuccess={handleGoogleSuccess}
-                  onError={() => setError("Google signup failed.")}
-                />
-                {/* Until the box is ticked, a click here says so straight away
-                    rather than after the visitor has been through Google's
-                    sign-in window. */}
-                {!acceptedTerms && (
-                  <button
-                    type="button"
-                    onClick={() => setError(TICK_TERMS)}
-                    className="absolute inset-0 cursor-pointer"
-                    aria-label="Sign up with Google"
-                  />
-                )}
-              </div>
+                  <div className="relative flex justify-center w-full [&>div]:w-full">
+                    <GoogleLogin
+                      onSuccess={handleGoogleSuccess}
+                      onError={() => setError("Google signup failed.")}
+                    />
+                    {/* Until the box is ticked, a click here says so straight away
+                        rather than after the visitor has been through Google's
+                        sign-in window. */}
+                    {!acceptedTerms && (
+                      <button
+                        type="button"
+                        onClick={() => setError(TICK_TERMS)}
+                        className="absolute inset-0 cursor-pointer"
+                        aria-label="Sign up with Google"
+                      />
+                    )}
+                  </div>
+                </>
+              )}
             </div>
           )}
         </div>

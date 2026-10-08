@@ -29,6 +29,7 @@ const back = () => fireEvent.click(screen.getByRole("button", { name: "Back" }))
 
 afterEach(() => {
   vi.restoreAllMocks();
+  vi.unstubAllEnvs();
 });
 
 describe("SignupPage back button", () => {
@@ -100,6 +101,7 @@ describe("SignupPage terms checkbox", () => {
   });
 
   it("asks for the tick before Google's sign-in window, not after", () => {
+    vi.stubEnv("VITE_GOOGLE_CLIENT_ID", "test-client.apps.googleusercontent.com");
     draw(["/signup"]);
     toStep2();
     fireEvent.click(screen.getByRole("button", { name: "Sign up with Google" }));
@@ -108,5 +110,13 @@ describe("SignupPage terms checkbox", () => {
     // Once ticked, the cover is gone and clicks reach Google's own button.
     tickBox();
     expect(screen.queryByRole("button", { name: "Sign up with Google" })).toBeNull();
+  });
+
+  it("offers no Google sign-up when Google sign-in isn't set up", () => {
+    vi.stubEnv("VITE_GOOGLE_CLIENT_ID", "");
+    draw(["/signup"]);
+    toStep2();
+    expect(screen.queryByRole("button", { name: "Sign up with Google" })).toBeNull();
+    expect(screen.queryByText("or")).toBeNull();
   });
 });
