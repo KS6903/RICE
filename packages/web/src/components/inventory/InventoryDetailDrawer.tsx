@@ -244,8 +244,8 @@ export default function InventoryDetailDrawer({
           </dl>
 
           <p className="text-[11px] text-muted leading-relaxed px-1">
-            Recent movements coming soon. For lot-level history, open the Warehouse view and select
-            this stack.
+            Recent movements coming soon. To see where this stock sits, open it in the Warehouse
+            view.
           </p>
         </div>
 
