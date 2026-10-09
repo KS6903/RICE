@@ -4,8 +4,8 @@ import React from "react";
 /** Minimal, dependency-free Markdown renderer for the legal pages.
  *
  *  Supports exactly what those documents use: headings, paragraphs, bullet
- *  lists, pipe tables, horizontal rules, bold, and links. Everything else
- *  renders as plain text.
+ *  lists, pipe tables, horizontal rules, bold, links, and greyed-out [[...]]
+ *  for details still to follow. Everything else renders as plain text.
  *
  *  It builds React elements and never touches `dangerouslySetInnerHTML`, so
  *  raw HTML in a document is displayed, not executed. That matters more here
@@ -20,7 +20,9 @@ type Props = {
   idPrefix?: string;
 };
 
-const BOLD_OR_LINK = /(\*\*[^*]+\*\*|\[[^\]]+\]\([^)]+\))/g;
+// [[...]] is a detail still to be filled in (the server writes [[To follow]]
+// where the company's entity.json value is a TODO). It is shown greyed out.
+const BOLD_OR_LINK = /(\[\[[^\]]+\]\]|\*\*[^*]+\*\*|\[[^\]]+\]\([^)]+\))/g;
 
 function inline(text: string, keyPrefix: string): React.ReactNode[] {
   return text
@@ -28,6 +30,13 @@ function inline(text: string, keyPrefix: string): React.ReactNode[] {
     .filter(Boolean)
     .map((part, i) => {
       const key = `${keyPrefix}-${i}`;
+      if (part.startsWith("[[") && part.endsWith("]]")) {
+        return (
+          <span key={key} className="text-muted italic">
+            {part.slice(2, -2)}
+          </span>
+        );
+      }
       if (part.startsWith("**") && part.endsWith("**")) {
         return (
           <strong key={key} className="font-semibold text-primary">

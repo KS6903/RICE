@@ -127,6 +127,16 @@ def test_no_unresolved_placeholders():
     assert legal.unresolved_placeholders() == []
 
 
+def test_a_todo_value_reads_to_follow_but_still_blocks_production():
+    """Customers never see our TODO notes; the production gate still sees the TODO."""
+    filled = legal.substitute("By {{a}} at {{b}}, {{typo}}.", {"a": "TODO: SEC name", "b": "Manila"})
+    assert filled == f"By {legal.PENDING_MARKER} at Manila, {{{{typo}}}}."
+    for key in legal.BY_KEY:
+        assert "TODO:" not in legal.render(key)
+    if any(v.startswith("TODO:") for v in legal.entity().values()):
+        assert legal.unresolved_placeholders()
+
+
 def test_placeholder_check_flags_todo_values():
     """The gate itself has to work, even while the values are still TODO."""
     problems = legal.unresolved_placeholders()

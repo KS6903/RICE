@@ -78,4 +78,15 @@ describe("Markdown", () => {
     const { container } = draw("Above\n\n---\n\nBelow\n");
     expect(container.querySelector("hr")).toBeTruthy();
   });
+
+  it("greys out a detail still to follow, without its brackets", () => {
+    const { container } = draw(
+      "Operated by [[To follow]] (registration [[To follow]]), see [Terms](/legal/terms).\n",
+    );
+    const pending = screen.getAllByText("To follow");
+    expect(pending).toHaveLength(2);
+    expect(pending[0]).toHaveClass("text-muted");
+    expect(container.textContent).not.toContain("[[");
+    expect(screen.getByRole("link", { name: "Terms" })).toHaveAttribute("href", "/legal/terms");
+  });
 });
