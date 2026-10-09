@@ -141,3 +141,47 @@ def test_container_env_mirrors_the_worker_roles():
     assert "PROVISIONER_DATABASE_URL" in provisioner
     # Empty optional values are not forwarded (host-only cookie on workers.dev).
     assert "COOKIE_DOMAIN" not in api
+
+
+# ── The private preview (wrangler.jsonc env.preview) ──────────────────────────
+
+
+def test_the_preview_target_switches_every_container_to_preview_mode():
+    spec = json.loads(gate.CONTAINER_ENV.read_text(encoding="utf-8"))
+    preview_vars = {**READY_VARS, "DEPLOY_TARGET": "preview"}
+    for role in spec["roles"]:
+        env = gate.container_env(role, preview_vars, spec)
+        assert env["ENV"] == "preview"
+        assert env["REQUIRE_EMAIL_VERIFICATION"] == "false"
+    # Without a target, production's constants stand.
+    assert gate.container_env("api", READY_VARS, spec)["ENV"] == "prod"
+
+
+def test_an_unknown_deploy_target_is_refused():
+    spec = json.loads(gate.CONTAINER_ENV.read_text(encoding="utf-8"))
+    with pytest.raises(ValueError, match="DEPLOY_TARGET 'staging'"):
+        gate.container_env("api", {**READY_VARS, "DEPLOY_TARGET": "staging"}, spec)
+
+
+def test_production_vars_may_not_name_a_deploy_target(tmp_path):
+    problems = _check(_wrangler(tmp_path, {"DEPLOY_TARGET": "preview"}))
+    assert "the production vars set DEPLOY_TARGET; only a wrangler.jsonc env may" in problems
+
+
+def test_the_real_preview_config_waits_only_for_the_account_subdomain(monkeypatch):
+    """The checked-in env.preview passes everything but the subdomain placeholder,
+    and the legal "To follow" details don't block it (they still block production)."""
+    monkeypatch.setattr(legal, "unresolved_placeholders", lambda: ["terms-of-service.md: provider_legal_name"])
+    problems = gate.check(gate.WRANGLER_CONFIG, gate.CONTAINER_ENV, env_name="preview")
+    assert problems
+    assert all("__ACCOUNT_SUBDOMAIN__" in p and "template value" in p for p in problems), problems
+    assert {p.split(" var ")[1].split(" ")[0] for p in problems} == {
+        "ALLOWED_ORIGINS",
+        "TRUSTED_HOSTS",
+        "FRONTEND_BASE_URL",
+    }
+
+
+def test_an_env_that_does_not_exist_is_an_error(tmp_path):
+    with pytest.raises(ValueError, match="no env.staging"):
+        gate.check(_wrangler(tmp_path), gate.CONTAINER_ENV, env_name="staging")

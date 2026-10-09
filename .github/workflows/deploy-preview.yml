@@ -1,0 +1,128 @@
+name: Deploy preview (Cloudflare)
+
+# The private test site: oryza-preview.<subdomain>.workers.dev behind Cloudflare
+# Access, built from wrangler.jsonc env.preview (ENV=preview: production checks,
+# except the legal "To follow" details and email are allowed to be missing). See
+# PREVIEW_DEPLOY.md for the one-time setup.
+#
+# Same gates as the production deploy: main only, the full CI (checks.yml), and
+# the readiness gate, here for env.preview. It uses repository secrets prefixed
+# PREVIEW_, not a GitHub environment: environments aren't available to this
+# private repository's plan, and the preview must never pick up production's.
+on:
+  workflow_dispatch:
+    inputs:
+      containers:
+        description: "Also roll out the container images (uncheck for a Worker-only change)"
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-preview
+  cancel-in-progress: false
+
+jobs:
+  main-only:
+    name: Deploys run from main only
+    runs-on: ubuntu-latest
+    steps:
+      - name: Refuse any other branch
+        if: github.ref != 'refs/heads/main'
+        run: |
+          echo "::error::Deploys run from main only; this run is on ${GITHUB_REF}."
+          exit 1
+      - name: On main
+        if: github.ref == 'refs/heads/main'
+        run: echo "Deploying ${GITHUB_SHA} from main to the preview."
+
+  verify:
+    needs: main-only
+    uses: ./.github/workflows/checks.yml
+
+  readiness:
+    name: Preview readiness
+    needs: main-only
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+      - name: Install backend dependencies
+        run: python -m pip install --require-hashes -r backend/requirements.txt
+      - name: Would the preview's containers boot with this configuration?
+        run: python backend/deploy_readiness.py --env preview
+
+  migrate:
+    name: Migrate the preview database
+    # Schema first, code second, with the preview's provisioner (DDL) credential.
+    needs: [verify, readiness]
+    runs-on: ubuntu-latest
+    env:
+      PROCESS_ROLE: provisioner
+      PROVISIONER_DATABASE_URL: ${{ secrets.PREVIEW_PROVISIONER_DATABASE_URL }}
+      DATABASE_URL: ${{ secrets.PREVIEW_PROVISIONER_DATABASE_URL }}
+      RUNTIME_DATABASE_ROLE: ricemill_app
+      # Settings requires one; this job signs nothing, so it never sees the real key.
+      SECRET_KEY: migrations-only-not-a-signing-key
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - name: The preview's provisioner credential is set
+        run: |
+          if [ -z "$PROVISIONER_DATABASE_URL" ]; then
+            echo "::error::Add PREVIEW_PROVISIONER_DATABASE_URL to the repository's Actions secrets."
+            exit 1
+          fi
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+      - name: Install backend dependencies
+        run: python -m pip install --require-hashes -r requirements.txt
+      - name: Public schema (alembic upgrade head)
+        run: python -m alembic upgrade head
+      - name: Every tenant schema (fails the deploy if any tenant fails)
+        run: python migrate_all_tenants.py
+
+  deploy:
+    needs: [verify, readiness, migrate]
+    runs-on: ubuntu-latest
+    steps:
+      - name: The Cloudflare credentials are set
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.PREVIEW_CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.PREVIEW_CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          if [ -z "$CLOUDFLARE_API_TOKEN" ] || [ -z "$CLOUDFLARE_ACCOUNT_ID" ]; then
+            echo "::error::Add PREVIEW_CLOUDFLARE_API_TOKEN and PREVIEW_CLOUDFLARE_ACCOUNT_ID to the repository's Actions secrets."
+            exit 1
+          fi
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "24"
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Build the SPA
+        run: npm run build:web
+      - name: Deploy
+        run: npx wrangler deploy --env preview ${{ inputs.containers && '' || '--containers-rollout=none' }}
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.PREVIEW_CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.PREVIEW_CLOUDFLARE_ACCOUNT_ID }}

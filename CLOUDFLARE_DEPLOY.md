@@ -4,6 +4,10 @@ How Oryza runs on Cloudflare, and the steps to deploy it. Companion to
 [PRODUCTION_LAUNCH_CHECKLIST.md](PRODUCTION_LAUNCH_CHECKLIST.md) — the database-role,
 secret-generation and monitoring phases there still apply.
 
+This page is the production deployment. The private test site for invited testers is a trimmed
+copy of it (`wrangler.jsonc` `env.preview`, one small container, no cron); see
+[PREVIEW_DEPLOY.md](PREVIEW_DEPLOY.md).
+
 ## What runs where
 
 | Piece | Cloudflare home |

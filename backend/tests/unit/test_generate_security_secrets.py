@@ -81,3 +81,18 @@ def test_the_file_mode_still_exists_and_never_overwrites(tmp_path):
     assert [line.split("=")[0] for line in target.read_text().splitlines()] == list(gen.GENERATORS)
     with pytest.raises(FileExistsError):
         gen.main(["--output", str(target)], runner=FakeWrangler())
+
+
+def test_an_environment_gets_its_own_secrets():
+    """--env preview lists and sets the preview Worker's secrets, never production's."""
+    calls: list[list[str]] = []
+
+    def wrangler(args, stdin):
+        calls.append(list(args))
+        if args[:2] == ["secret", "list"]:
+            return 0, "[]"
+        return 0, "✨ Success! Uploaded secret"
+
+    assert gen.main(["--env", "preview"], runner=wrangler) == 0
+    assert calls and all(call[-2:] == ["--env", "preview"] for call in calls)
+    assert {call[2] for call in calls if call[:2] == ["secret", "put"]} == set(gen.GENERATORS)

@@ -44,6 +44,15 @@
       "DESKTOP_MIN_VERSION"
     ]
   },
+  "targets": {
+    "$comment": "Per-deployment overrides of the shared constants, chosen by the DEPLOY_TARGET var (wrangler.jsonc env.<name>.vars). The private preview runs ENV=preview: production behaviour and checks, but the agreements may still read 'To follow' and email is optional, so verification is off.",
+    "preview": {
+      "constants": {
+        "ENV": "preview",
+        "REQUIRE_EMAIL_VERIFICATION": "false"
+      }
+    }
+  },
   "roles": {
     "api": {
       "constants": {
