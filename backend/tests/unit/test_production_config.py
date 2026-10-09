@@ -102,3 +102,63 @@ def test_jobs_process_rejects_the_provisioner_credential():
             PROVISIONER_DATABASE_URL="postgresql://owner:ddl@db.internal:5432/ricemill?sslmode=require",
         )
     assert _valid_prod(PROCESS_ROLE="jobs").PROCESS_ROLE == "jobs"
+
+
+# ── The private preview (ENV=preview) ─────────────────────────────────────────
+# Production behaviour and the same checks, except: the agreements may still
+# say "To follow", and email (so also verification) is optional.
+
+
+def _preview(**overrides):
+    values = {
+        "ENV": "preview",
+        "SMTP_HOST": None,
+        "SMTP_FROM_EMAIL": None,
+        "REQUIRE_EMAIL_VERIFICATION": False,
+        "ALLOWED_ORIGINS": "https://oryza-preview.example.workers.dev",
+        "TRUSTED_HOSTS": "oryza-preview.example.workers.dev",
+        "FRONTEND_BASE_URL": "https://oryza-preview.example.workers.dev",
+    }
+    values.update(overrides)
+    return _valid_prod(**values)
+
+
+def test_preview_boots_without_email_or_the_legal_details(monkeypatch):
+    monkeypatch.setattr(legal, "unresolved_placeholders", lambda: ["terms-of-service.md: 'provider_legal_name'"])
+    settings = _preview()
+    assert settings.is_prod and settings.is_preview
+    assert not settings.email_required
+
+
+def test_production_still_requires_email_and_the_legal_details(monkeypatch):
+    with pytest.raises(ValidationError, match="SMTP_HOST and SMTP_FROM_EMAIL are required"):
+        _valid_prod(SMTP_HOST=None, SMTP_FROM_EMAIL=None)
+    with pytest.raises(ValidationError, match="REQUIRE_EMAIL_VERIFICATION must be true"):
+        _valid_prod(REQUIRE_EMAIL_VERIFICATION=False)
+    monkeypatch.setattr(legal, "unresolved_placeholders", lambda: ["terms-of-service.md: 'provider_legal_name'"])
+    with pytest.raises(ValidationError, match="legal document placeholder unfilled"):
+        _valid_prod()
+
+
+@pytest.mark.parametrize(
+    ("override", "message"),
+    [
+        ({"DEBUG": True}, "DEBUG must be false"),
+        ({"COOKIE_SECURE": False}, "COOKIE_SECURE must be true"),
+        ({"TRUSTED_HOSTS": "*"}, "TRUSTED_HOSTS must be an explicit allowlist"),
+        ({"MFA_REQUIRED_ROLES": ""}, "MFA_REQUIRED_ROLES must include owner and admin"),
+        ({"EXPOSE_RESET_TOKEN": True}, "EXPOSE_RESET_TOKEN must be false"),
+        ({"REDIS_URL": "redis://cache.internal:6379/0"}, "REDIS_URL must use TLS"),
+        ({"REQUIRE_EMAIL_VERIFICATION": True}, "needs SMTP_HOST and SMTP_FROM_EMAIL"),
+    ],
+)
+def test_preview_keeps_every_other_production_check(override, message):
+    with pytest.raises(ValidationError, match=message):
+        _preview(**override)
+
+
+def test_preview_with_email_may_require_verification():
+    settings = _preview(
+        SMTP_HOST="smtp.gmail.com", SMTP_FROM_EMAIL="oryza.preview@gmail.com", REQUIRE_EMAIL_VERIFICATION=True
+    )
+    assert settings.REQUIRE_EMAIL_VERIFICATION

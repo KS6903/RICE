@@ -47,10 +47,13 @@ class Settings(BaseSettings):
     APP_NAME: str = "Oryza by K Systematics"
     DEBUG: bool = False
     # Deployment environment. "prod" turns on fail-closed config checks (see the
-    # model validator below) and enables HSTS. Leave as "dev" locally / in CI.
+    # model validator below) and enables HSTS. "preview" is the private test site
+    # behind Cloudflare Access: production behaviour and the same checks, except
+    # that the published agreements may still hold "To follow" details and email
+    # (so also email verification) is optional. Leave as "dev" locally / in CI.
     # Closed enum: a typo such as ENV=production must fail validation instead
     # of silently selecting insecure development behavior.
-    ENV: Literal["dev", "test", "prod"] = "dev"
+    ENV: Literal["dev", "test", "prod", "preview"] = "dev"
     # Host allowlist for Starlette's TrustedHostMiddleware. "*" (dev default)
     # accepts any Host header; prod MUST set an explicit comma-separated list.
     TRUSTED_HOSTS: str = "*"
@@ -182,6 +185,16 @@ class Settings(BaseSettings):
 
     @property
     def is_prod(self) -> bool:
+        """Production behaviour: the live service, and the private preview."""
+        return self.ENV in ("prod", "preview")
+
+    @property
+    def is_preview(self) -> bool:
+        return self.ENV == "preview"
+
+    @property
+    def email_required(self) -> bool:
+        """Production refuses to work without email delivery; the preview may run without it."""
         return self.ENV == "prod"
 
     @property
@@ -208,7 +221,7 @@ class Settings(BaseSettings):
 
     @model_validator(mode="after")
     def _fail_closed_in_prod(self) -> "Settings":
-        """Refuse to boot with an insecure configuration when ENV=prod."""
+        """Refuse to boot with an insecure configuration when ENV=prod (or preview)."""
         if not self.is_prod:
             return self
         problems: list[str] = []
@@ -236,13 +249,18 @@ class Settings(BaseSettings):
             problems.append("MFA_ENFORCE must be true")
         if not {"owner", "admin"}.issubset(self.mfa_required_role_names):
             problems.append("MFA_REQUIRED_ROLES must include owner and admin")
-        if not self.SMTP_HOST or not self.SMTP_FROM_EMAIL:
+        # The preview may run without an email provider, and so without
+        # verification (owner's decision, 2026-10-09); production may not.
+        has_smtp = bool(self.SMTP_HOST and self.SMTP_FROM_EMAIL)
+        if self.email_required and not has_smtp:
             problems.append("SMTP_HOST and SMTP_FROM_EMAIL are required for secure token delivery")
+        if self.is_preview and self.REQUIRE_EMAIL_VERIFICATION and not has_smtp:
+            problems.append("REQUIRE_EMAIL_VERIFICATION needs SMTP_HOST and SMTP_FROM_EMAIL to send the links")
         if self.MFA_ENCRYPTION_KEY is None or len(self.MFA_ENCRYPTION_KEY.get_secret_value()) < _MIN_SECRET_LEN:
             problems.append("MFA_ENCRYPTION_KEY must be a separate 32+ character secret")
         if self.SIGNUP_INVITE_CODE is None or len(self.SIGNUP_INVITE_CODE.get_secret_value()) < 16:
             problems.append("SIGNUP_INVITE_CODE must be a 16+ character secret")
-        if not self.REQUIRE_EMAIL_VERIFICATION:
+        if self.email_required and not self.REQUIRE_EMAIL_VERIFICATION:
             problems.append("REQUIRE_EMAIL_VERIFICATION must be true")
         if not self.PASSWORD_BREACH_CHECK:
             problems.append("PASSWORD_BREACH_CHECK must be true")
@@ -281,15 +299,17 @@ class Settings(BaseSettings):
         # Published agreements with unfilled placeholders are worse than none:
         # a Terms of Service naming no legal entity and no venue invites the
         # argument that no contract was formed at all. Imported lazily so a
-        # missing legal/ directory cannot break non-prod boot.
-        try:
-            from .legal import unresolved_placeholders
+        # missing legal/ directory cannot break non-prod boot. The private
+        # preview is a beta for invited testers, and shows them "To follow".
+        if not self.is_preview:
+            try:
+                from .legal import unresolved_placeholders
 
-            problems.extend(f"legal document placeholder unfilled: {p}" for p in unresolved_placeholders())
-        except Exception as exc:  # pragma: no cover - defensive
-            problems.append(f"legal documents could not be validated: {exc}")
+                problems.extend(f"legal document placeholder unfilled: {p}" for p in unresolved_placeholders())
+            except Exception as exc:  # pragma: no cover - defensive
+                problems.append(f"legal documents could not be validated: {exc}")
         if problems:
-            raise ValueError("Insecure production configuration (ENV=prod): " + "; ".join(problems))
+            raise ValueError(f"Insecure production configuration (ENV={self.ENV}): " + "; ".join(problems))
         return self
 
     class Config:

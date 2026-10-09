@@ -41,7 +41,7 @@ class Mailer:
 
     def __enter__(self) -> Mailer:
         if not self.configured:
-            if settings.is_prod:
+            if settings.email_required:
                 raise NotConfiguredError("Email delivery is not configured")
             return self
         smtp = smtplib.SMTP(settings.SMTP_HOST or "", settings.SMTP_PORT, timeout=15)
