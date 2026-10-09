@@ -39,6 +39,6 @@
     "@playwright/test": "^1.60.0",
     "concurrently": "^10.0.6",
     "prettier": "^3.4.2",
-    "wrangler": "^4.144.0"
+    "wrangler": "^4.149.0"
   }
 }
