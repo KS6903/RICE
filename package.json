@@ -37,7 +37,7 @@
     "@cloudflare/containers": "^0.3.7",
     "@cloudflare/workers-types": "^5.20260930.2",
     "@playwright/test": "^1.60.0",
-    "concurrently": "^10.0.3",
+    "concurrently": "^10.0.6",
     "prettier": "^3.4.2",
     "wrangler": "^4.144.0"
   }
