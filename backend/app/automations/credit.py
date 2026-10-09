@@ -7,7 +7,8 @@ told ("warn"), or is refused until an owner or admin approves it ("block").
 What a customer owes is their unpaid invoice balances plus orders not yet
 invoiced.
 
-Orders synced from the desktop app don't pass through here.
+Orders entered on the desktop app while offline can't be refused: when they
+sync, check_offline sends the ones over the limit to be reviewed.
 """
 
 from __future__ import annotations
@@ -104,19 +105,63 @@ def can_approve(user: User) -> bool:
 
 def report(db: Session, company: Company, over: OverLimit, order: SalesOrder, user: User, *, approved: bool) -> None:
     """Tell the guard's recipients about an order taken over the limit. Doesn't commit."""
+    who = user.full_name or user.username
+    how = f"Approved over the limit by {who}." if approved else f"Entered by {who}."
+    _tell(
+        db,
+        company,
+        Notice(
+            title=f"Order over credit limit: {order.order_no}",
+            body=f"{over.describe()}\n{how}",
+            link="/sales",
+            dedupe_key=f"{RECIPE}:order:{order.id}",
+        ),
+    )
+
+
+def check_offline(db: Session, company: Company, user: User, record_id: uuid.UUID, payload: dict) -> bool:
+    """An order entered on the desktop app while offline, now synced. The
+    guard couldn't stop it there, so an order over the limit goes to the
+    guard's recipients to review, whatever the mode. Doesn't commit; returns
+    True when the order was sent for review.
+
+    What the customer owes counts the orders entered online only: offline
+    orders are kept for the desktop apps (sync_log), not as sales orders here."""
+    try:
+        customer_id = uuid.UUID(str(payload["customer_id"]))
+        adding = Decimal(str(payload["total_amount"]))
+    except (KeyError, ValueError, ArithmeticError):
+        return False  # no customer or no total: nothing to check
+    if not adding.is_finite() or adding <= 0:
+        return False
+    over = check(db, company.id, customer_id, adding)
+    if over is None:
+        return False
+    order_no = str(payload.get("order_no") or "").strip()[:40]
+    who = user.full_name or user.username
+    _tell(
+        db,
+        company,
+        Notice(
+            title=f"Offline order over credit limit: {order_no}" if order_no else "Offline order over credit limit",
+            body=(
+                f"{over.describe()}\n"
+                f"Entered by {who} on the desktop app while offline, where the limit can't be checked. "
+                "Please review it: confirm it, or ask for payment before delivery."
+            ),
+            link="/sales",
+            dedupe_key=f"{RECIPE}:offline:{record_id}",
+        ),
+    )
+    return True
+
+
+def _tell(db: Session, company: Company, notice: Notice) -> None:
     from . import engine
     from .recipes import RECIPES
 
     recipe = RECIPES[RECIPE]
     rule = db.query(AutomationRule).filter(AutomationRule.recipe == RECIPE).first()
     params = engine.parse_params(recipe, rule.params if rule else None)
-    who = user.full_name or user.username
-    how = f"Approved over the limit by {who}." if approved else f"Entered by {who}."
-    notice = Notice(
-        title=f"Order over credit limit: {order.order_no}",
-        body=f"{over.describe()}\n{how}",
-        link="/sales",
-        dedupe_key=f"{RECIPE}:order:{order.id}",
-    )
     recipients = engine.recipient_ids(db, company.id, recipe, rule.recipients if rule else [])
     engine.deliver(db, company, recipe, [notice], recipients, email=bool(getattr(params, "email", True)))

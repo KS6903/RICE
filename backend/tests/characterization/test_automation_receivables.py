@@ -216,6 +216,67 @@ def test_no_guard_without_the_rule_or_without_a_limit(auth_client, db_session, c
     assert auth_client.post("/api/sales/orders", json=_order_body(unlimited)).status_code == 201
 
 
+def _offline_order(customer, *, total, no="SO-OFF-1"):
+    import uuid
+
+    return {
+        "table_name": "sales_orders",
+        "record_id": str(uuid.uuid4()),
+        "operation": "INSERT",
+        "payload": {
+            "order_no": no,
+            "order_date": TODAY.isoformat(),
+            "customer_id": str(customer.id),
+            "total_amount": total,
+            "status": "confirmed",
+        },
+        "updated_at": "2026-09-29T00:00:00Z",
+    }
+
+
+def _offline_client(make_auth_client, db_session, *, mode="block"):
+    client = make_auth_client(features=["automations", "offline_sync", "sales"], username="desk")
+    company = db_session.query(Company).filter(Company.name.like("Co desk%")).one()
+    _guard(db_session, company, mode)
+    return client, company
+
+
+def test_an_offline_order_over_the_limit_is_sent_for_review_when_it_syncs(make_auth_client, db_session):
+    client, company = _offline_client(make_auth_client, db_session)
+    nena = _customer(db_session, "Aling Nena Store", limit=60_000, company_id=company.id)
+    _order(db_session, nena, "SO-OPEN", total=20_000)
+
+    res = client.post(
+        "/api/sync/push",
+        json={"client_id": "electron-12345678", "records": [_offline_order(nena, total=50_000)]},
+    )
+    assert res.status_code == 200, res.text
+    # Synced, not refused: the order was already taken.
+    assert res.json() == {"synced": 1, "conflicts": 0, "for_review": 1}
+    db_session.expire_all()
+    [notice] = db_session.query(Notification).all()
+    assert notice.title == "Offline order over credit limit: SO-OFF-1"
+    assert notice.body.splitlines() == [
+        "Aling Nena Store would owe ₱70,000 with this ₱50,000 order, over their ₱60,000 credit limit. "
+        "They owe ₱20,000 now.",
+        "Entered by Test User on the desktop app while offline, where the limit can't be checked. "
+        "Please review it: confirm it, or ask for payment before delivery.",
+    ]
+
+
+def test_offline_orders_within_the_limit_or_without_the_guard_pass_quietly(make_auth_client, db_session):
+    client = make_auth_client(features=["automations", "offline_sync", "sales"], username="quiet")
+    company = db_session.query(Company).filter(Company.name.like("Co quiet%")).one()
+    nena = _customer(db_session, "Aling Nena Store", limit=10_000, company_id=company.id)
+    push = {"client_id": "electron-12345678", "records": [_offline_order(nena, total=50_000)]}
+    assert client.post("/api/sync/push", json=push).json()["for_review"] == 0  # guard off
+    _guard(db_session, company, "warn")
+    small = {"client_id": "electron-12345678", "records": [_offline_order(nena, total=5_000, no="SO-OFF-2")]}
+    assert client.post("/api/sync/push", json=small).json()["for_review"] == 0
+    db_session.expire_all()
+    assert db_session.query(Notification).count() == 0
+
+
 def test_the_morning_check_names_customers_newly_over_their_limit(db_session, company):
     nena = _customer(db_session, "Aling Nena Store", limit=10_000)
     _customer(db_session, "Ben's Rice Retail", limit=50_000)

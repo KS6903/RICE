@@ -59,6 +59,15 @@ export type AISettings = {
   changed_at: string | null;
 };
 
+/** What could stop the automations reaching people. */
+export type AutomationsHealth = {
+  /** False when scheduled runs haven't ticked lately (the private preview has none). */
+  scheduler_running: boolean;
+  last_tick: string | null;
+  /** This week's automation emails: given up on, or still being retried. */
+  emails: { failed: number; retrying: number };
+};
+
 export type AutomationUpdate = {
   enabled: boolean;
   params: Record<string, string | number | boolean>;
@@ -68,7 +77,7 @@ export type AutomationUpdate = {
 export class AutomationsService {
   constructor(private http = api) {}
 
-  list(): Promise<{ recipes: Automation[]; ai?: AISettings }> {
+  list(): Promise<{ recipes: Automation[]; ai?: AISettings; health?: AutomationsHealth }> {
     return this.http.get("/automations/").then((r) => r.data);
   }
 

@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import DateTime, ForeignKey, Index, LargeBinary, String, Text, UniqueConstraint, func
+from sqlalchemy import DateTime, ForeignKey, Index, LargeBinary, SmallInteger, String, Text, UniqueConstraint, func
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -34,7 +34,11 @@ class Notification(Base):
     dedupe_key: Mapped[str] = mapped_column(String(120), nullable=False)
     # none: in-app only. pending: waiting to be emailed. sent | failed | skipped
     # (skipped: the user has no email address, or email isn't configured in dev).
+    # failed only once every retry has failed: until then a failed send stays
+    # pending, with email_retry_at saying when it's tried again.
     email_status: Mapped[str] = mapped_column(String(16), nullable=False, default="none")
+    email_attempts: Mapped[int] = mapped_column(SmallInteger, nullable=False, default=0, server_default="0")
+    email_retry_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=now_utc, server_default=func.now(), nullable=False
     )

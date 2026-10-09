@@ -11,6 +11,7 @@ import {
 import { createPortal } from "react-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
+  AlertTriangle,
   CheckCircle2,
   ChevronDown,
   Clock,
@@ -18,6 +19,7 @@ import {
   HandCoins,
   History,
   Info,
+  MailWarning,
   Send,
   ShieldAlert,
   Sparkles,
@@ -37,6 +39,7 @@ import {
   type AutomationField,
   type AutomationGroup,
   type AutomationRun,
+  type AutomationsHealth,
 } from "../services/AutomationsService";
 
 type Params = Automation["params"];
@@ -45,15 +48,9 @@ type Params = Automation["params"];
 // page actually has, not the window's: the sidebar takes a varying share of it.
 const CARD_GRID = "group/grid grid grid-cols-[repeat(auto-fill,minmax(17rem,1fr))] gap-4";
 
-// Tab order. A group gets a tab only once it has recipes; the blurb is the tab's tooltip.
+// Tab order: everyday operations first, the AI advisor last. A group gets a tab
+// only once it has recipes; the blurb is the tab's tooltip.
 const GROUPS: { key: AutomationGroup; title: string; blurb: string; icon: LucideIcon }[] = [
-  {
-    key: "advisor",
-    title: "AI advisor",
-    blurb:
-      "Advice written by AI from your own figures: what to do today, what to buy, where money leaks.",
-    icon: Sparkles,
-  },
   {
     key: "reports",
     title: "Reports and summaries",
@@ -61,10 +58,10 @@ const GROUPS: { key: AutomationGroup; title: string; blurb: string; icon: Lucide
     icon: Sunrise,
   },
   {
-    key: "watch",
-    title: "Owner watch",
-    blurb: "Entries worth a second look, within 15 minutes of being made.",
-    icon: ShieldAlert,
+    key: "receivables",
+    title: "Collections and credit",
+    blurb: "Who owes you, and who is buying beyond their limit.",
+    icon: HandCoins,
   },
   {
     key: "production",
@@ -79,18 +76,25 @@ const GROUPS: { key: AutomationGroup; title: string; blurb: string; icon: Lucide
     icon: Warehouse,
   },
   {
-    key: "receivables",
-    title: "Collections and credit",
-    blurb: "Who owes you, and who is buying beyond their limit.",
-    icon: HandCoins,
-  },
-  {
     key: "deliveries",
     title: "Deliveries",
     blurb: "Orders that are late or still need a truck.",
     icon: Truck,
   },
+  {
+    key: "watch",
+    title: "Owner watch",
+    blurb: "Entries worth a second look, within 15 minutes of being made.",
+    icon: ShieldAlert,
+  },
   { key: "people", title: "People", blurb: "Your team's paperwork.", icon: Users },
+  {
+    key: "advisor",
+    title: "AI advisor",
+    blurb:
+      "Advice written by AI from your own figures: what to do today, what to buy, where money leaks.",
+    icon: Sparkles,
+  },
 ];
 
 const SECTION_NAMES: Record<string, string> = {
@@ -813,6 +817,54 @@ function AISettingsCard({ ai, isOwner }: { ai: AISettings; isOwner: boolean }) {
   );
 }
 
+function HealthNotice({ health }: { health: AutomationsHealth }) {
+  const { failed, retrying } = health.emails;
+  if (health.scheduler_running && failed === 0 && retrying === 0) return null;
+  const emails = (n: number) => `${n} email${n === 1 ? "" : "s"}`;
+  return (
+    <section
+      aria-label="Automation problems"
+      className="card space-y-2 border border-amber-300 dark:border-amber-800/60"
+    >
+      {!health.scheduler_running && (
+        <p className="flex items-start gap-2 text-sm text-primary">
+          <AlertTriangle
+            size={16}
+            className="mt-0.5 shrink-0 text-amber-600 dark:text-amber-400"
+            aria-hidden
+          />
+          <span>
+            <strong>Automatic runs are paused on this server,</strong> so switched-on automations
+            won't send anything until they start again.
+            {health.last_tick
+              ? ` They last ran ${whenLabel(health.last_tick)}.`
+              : " They haven't run yet."}{" "}
+            "Send me a test" still works.
+          </span>
+        </p>
+      )}
+      {failed > 0 && (
+        <p className="flex items-start gap-2 text-sm text-primary">
+          <MailWarning size={16} className="mt-0.5 shrink-0 text-rose-500" aria-hidden />
+          <span>
+            {emails(failed)} from your automations couldn't be delivered this week, even after
+            trying again. They are still under the bell. Check the email addresses on the Users
+            page.
+          </span>
+        </p>
+      )}
+      {retrying > 0 && (
+        <p className="flex items-start gap-2 text-sm text-secondary">
+          <Clock size={16} className="mt-0.5 shrink-0 text-amber-500" aria-hidden />
+          <span>
+            {emails(retrying)} didn't go through the first time and will be tried again shortly.
+          </span>
+        </p>
+      )}
+    </section>
+  );
+}
+
 export default function AutomationsPage() {
   const { isReadOnly, role } = useAccess();
   const readOnly = isReadOnly("automations");
@@ -886,8 +938,7 @@ export default function AutomationsPage() {
         </div>
       ) : (
         <div className="space-y-5">
-          {/* Above the tabs, so it is on show whichever tab is open. */}
-          {ai && <AISettingsCard ai={ai} isOwner={role === "owner"} />}
+          {list.data?.health && <HealthNotice health={list.data.health} />}
           {current && (
             <>
               <div
@@ -925,6 +976,11 @@ export default function AutomationsPage() {
                 aria-labelledby={`tab-${current.key}`}
                 className="space-y-4"
               >
+                {/* In the AI tab, where the recipes it governs are: the everyday
+                    tabs come first, and stay about the mill's own work. */}
+                {current.key === "advisor" && ai && (
+                  <AISettingsCard ai={ai} isOwner={role === "owner"} />
+                )}
                 <div className={CARD_GRID}>
                   {recipes
                     .filter((r) => r.group === current.key)

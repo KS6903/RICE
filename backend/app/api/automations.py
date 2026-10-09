@@ -9,7 +9,7 @@ AI switch on (PUT /ai), which only an owner can flip.
 """
 
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field, ValidationError, field_validator
@@ -27,6 +27,7 @@ from ..core.timezones import tenant_zone
 from ..models.automation import AutomationRule, AutomationSettings
 from ..models.job_run import JobRun
 from ..models.user import User
+from ..services.notification_service import undelivered_emails
 
 router = APIRouter(
     dependencies=[Depends(require_feature("automations")), Depends(require_section_access("automations"))]
@@ -137,6 +138,30 @@ def _ai_out(db: Session, company_id: uuid.UUID) -> dict:
     }
 
 
+# The jobs tick every 15 minutes; three missed ticks means they aren't running
+# on this server (the private preview has no cron, for one).
+SCHEDULER_STALE_AFTER = timedelta(minutes=45)
+# How far back the page counts emails that never reached anyone.
+UNDELIVERED_WINDOW = timedelta(days=7)
+
+
+def _health(db: Session, company_id: uuid.UUID) -> dict:
+    """Is anything stopping the automations from reaching people? The page says
+    so plainly, instead of showing switches that look on but do nothing."""
+    now = datetime.now(timezone.utc)
+    last_tick = db.scalar(
+        select(JobRun.started_at)
+        .where(JobRun.job == "automations.run", JobRun.company_id == company_id)
+        .order_by(JobRun.started_at.desc())
+        .limit(1)
+    )
+    return {
+        "scheduler_running": bool(last_tick and now - last_tick <= SCHEDULER_STALE_AFTER),
+        "last_tick": last_tick.isoformat() if last_tick else None,
+        "emails": undelivered_emails(db, kind_prefix="automation.", since=now - UNDELIVERED_WINDOW),
+    }
+
+
 @router.get("/")
 def list_automations(current_user=Depends(get_current_user), db: Session = Depends(get_db)):
     rules = {r.recipe: r for r in db.query(AutomationRule).all()}
@@ -145,6 +170,7 @@ def list_automations(current_user=Depends(get_current_user), db: Session = Depen
             _serialize(db, current_user.company_id, recipe, rules.get(code)) for code, recipe in RECIPES.items()
         ],
         "ai": _ai_out(db, current_user.company_id),
+        "health": _health(db, current_user.company_id),
     }
 
 

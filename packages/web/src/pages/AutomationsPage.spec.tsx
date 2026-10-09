@@ -109,6 +109,35 @@ describe("AutomationsPage", () => {
     expect(screen.queryByRole("tab", { name: "Deliveries" })).toBeNull();
   });
 
+  it("says nothing about health when runs are ticking and every email arrived", async () => {
+    useAuthStore.setState({ user: owner });
+    vi.spyOn(automationsService, "list").mockResolvedValue({
+      recipes: [digest],
+      health: {
+        scheduler_running: true,
+        last_tick: "2026-10-10T00:00:00Z",
+        emails: { failed: 0, retrying: 0 },
+      },
+    });
+    draw();
+    await screen.findByRole("heading", { name: "Morning summary" });
+    expect(screen.queryByRole("region", { name: "Automation problems" })).toBeNull();
+  });
+
+  it("says plainly when runs are paused and emails didn't arrive", async () => {
+    useAuthStore.setState({ user: owner });
+    vi.spyOn(automationsService, "list").mockResolvedValue({
+      recipes: [digest],
+      health: { scheduler_running: false, last_tick: null, emails: { failed: 2, retrying: 1 } },
+    });
+    draw();
+    const box = await screen.findByRole("region", { name: "Automation problems" });
+    expect(box).toHaveTextContent(/Automatic runs are paused on this server/);
+    expect(box).toHaveTextContent(/haven't run yet/);
+    expect(box).toHaveTextContent(/2 emails from your automations couldn't be delivered/);
+    expect(box).toHaveTextContent(/1 email didn't go through the first time/);
+  });
+
   it("moves between tabs with the arrow keys", async () => {
     useAuthStore.setState({ user: owner });
     draw();
@@ -434,23 +463,25 @@ describe("AutomationsPage AI advisor", () => {
     expect(row).toHaveClass("flex", "items-end");
   });
 
-  it("sits above the tabs and stays on show whichever tab is open", async () => {
+  it("lives in the AI advisor tab, which comes after the everyday ones", async () => {
     useAuthStore.setState({ user: owner });
     vi.spyOn(automationsService, "list").mockResolvedValue({
       recipes: [briefing, digest],
       ai: aiOff,
     });
     draw();
-    const box = await aiBox();
-    const tabs = screen.getByRole("tablist");
-    expect(box.compareDocumentPosition(tabs) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    expect(box.closest('[role="tabpanel"]')).toBeNull();
+    // The everyday tab opens first, without the AI settings.
+    await screen.findByRole("article", { name: "Morning summary" });
+    expect(screen.getAllByRole("tab").map((t) => t.textContent)).toEqual([
+      "Reports and summaries",
+      "AI advisor",
+    ]);
+    expect(screen.queryByRole("region", { name: "AI settings" })).toBeNull();
 
-    for (const name of ["AI advisor", "Reports and summaries"]) {
-      fireEvent.click(screen.getByRole("tab", { name }));
-      expect(screen.getByRole("region", { name: "AI settings" })).toBe(box);
-      expect(within(box).getByRole("button", { name: "Turn AI on" })).toBeInTheDocument();
-    }
+    fireEvent.click(tab("AI advisor"));
+    const box = await aiBox();
+    expect(box.closest('[role="tabpanel"]')).toHaveAttribute("id", "panel-advisor");
+    expect(within(box).getByRole("button", { name: "Turn AI on" })).toBeInTheDocument();
   });
 
   it("explains what is sent behind a red (i), and names Oryza's AI", async () => {

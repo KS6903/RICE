@@ -3,22 +3,25 @@ per schedule, and the morning summary adds up yesterday correctly."""
 
 from __future__ import annotations
 
-from datetime import date, datetime
+from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
 from zoneinfo import ZoneInfo
 
 import pytest
 
 from app.automations.engine import run_due_automations
+from app.core.tenancy import set_search_path
 from app.jobs.registry import JobContext
 from app.models.automation import AutomationRule
 from app.models.company import Company
 from app.models.costs import Expense
+from app.models.job_run import JobRun
 from app.models.milling import MillingBatch, MillingBatchOutput
 from app.models.notification import Notification
 from app.models.paddy import PalayPurchase, PalayPurchaseItem
 from app.models.sales import Invoice, Payment, SalesOrder
 from app.models.subscription import Subscription
+from app.services.notification_service import notify
 
 MANILA = ZoneInfo("Asia/Manila")
 # Tuesday 06:05 in Manila; "yesterday" is Monday 28 Sep.
@@ -81,6 +84,55 @@ def test_every_recipe_loads_with_its_defaults(auth_client):
     assert [r["code"] for r in recipes] == list(RECIPES)
     for r in recipes:
         assert set(r["params"]) == {f["name"] for f in r["fields"]}, r["code"]
+
+
+def test_the_page_says_when_scheduled_runs_have_stopped(auth_client, db_session, seed_owner):
+    health = auth_client.get("/api/automations/").json()["health"]
+    assert health == {
+        "scheduler_running": False,
+        "last_tick": None,
+        "emails": {"failed": 0, "retrying": 0},
+    }
+    db_session.add(
+        JobRun(
+            job="automations.run",
+            company_id=seed_owner.company_id,
+            run_key="tick-now",
+            status="succeeded",
+            started_at=datetime.now(timezone.utc) - timedelta(minutes=10),
+        )
+    )
+    db_session.commit()
+    assert auth_client.get("/api/automations/").json()["health"]["scheduler_running"] is True
+
+
+def test_the_page_counts_automation_emails_that_never_arrived(auth_client, db_session, seed_owner):
+    company = db_session.get(Company, seed_owner.company_id)
+    set_search_path(db_session, company.schema_name)
+    for key, status, attempts in (("a", "failed", 4), ("b", "pending", 1), ("c", "pending", 0), ("d", "sent", 1)):
+        notify(
+            db_session,
+            company_id=company.id,
+            user_ids=[seed_owner.id],
+            kind="automation.due_reminders",
+            title=key,
+            dedupe_key=key,
+            email=True,
+        )
+        db_session.query(Notification).filter(Notification.dedupe_key == key).update(
+            {"email_status": status, "email_attempts": attempts}
+        )
+    notify(
+        db_session,
+        company_id=company.id,
+        user_ids=[seed_owner.id],
+        kind="subscription.expiring",
+        title="x",
+        dedupe_key="x",
+    )
+    db_session.commit()
+    emails = auth_client.get("/api/automations/").json()["health"]["emails"]
+    assert emails == {"failed": 1, "retrying": 1}
 
 
 def test_the_owner_switches_it_on(auth_client, seed_owner):
