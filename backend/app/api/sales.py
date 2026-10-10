@@ -88,7 +88,7 @@ def list_orders(
     status_filter: str | None = Query(None, alias="status"),
     svc: SalesService = Depends(get_sales_service),
 ):
-    return svc.list_orders(skip=skip, limit=limit, status=status_filter)
+    return [svc.serialize_order(o) for o in svc.list_orders(skip=skip, limit=limit, status=status_filter)]
 
 
 @router.post(

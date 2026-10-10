@@ -6,8 +6,9 @@ import uuid
 from typing import Sequence
 
 from sqlalchemy import select
+from sqlalchemy.orm import joinedload, selectinload
 
-from ..models.sales import Invoice, PriceList, SalesOrder
+from ..models.sales import Invoice, PriceList, SalesOrder, SalesOrderItem
 from ..models.supplier_customer import Customer
 from .base import BaseRepository
 
@@ -36,7 +37,16 @@ class SalesOrderRepository(BaseRepository[SalesOrder]):
     def list_for_company(
         self, company_id: uuid.UUID, *, status: str | None = None, skip: int = 0, limit: int = 50
     ) -> Sequence[SalesOrder]:
-        stmt = select(SalesOrder).where(SalesOrder.company_id == company_id)
+        # The list shows each order's customer and, in the invoice preview, its
+        # line items: load them with it rather than one query per row.
+        stmt = (
+            select(SalesOrder)
+            .options(
+                joinedload(SalesOrder.customer),
+                selectinload(SalesOrder.items).joinedload(SalesOrderItem.variety),
+            )
+            .where(SalesOrder.company_id == company_id)
+        )
         if status:
             stmt = stmt.where(SalesOrder.status == status)
         stmt = stmt.order_by(SalesOrder.order_date.desc()).offset(skip).limit(limit)

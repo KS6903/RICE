@@ -82,6 +82,38 @@ class SalesService(BaseService):
 
     # ── orders ────────────────────────────────────────────────────────────────
 
+    @staticmethod
+    def serialize_order(o: SalesOrder) -> dict:
+        """The order's columns, plus its customer and line items (what the orders
+        table and the invoice preview show)."""
+        data = {c.name: getattr(o, c.name) for c in o.__table__.columns}
+        c = o.customer
+        data["customer"] = (
+            {
+                "id": c.id,
+                "name": c.name,
+                "address": c.address,
+                "tin": c.tin,
+                "payment_terms_days": c.payment_terms_days,
+            }
+            if c
+            else None
+        )
+        data["items"] = [
+            {
+                "id": i.id,
+                "item_type": i.item_type,
+                "variety_name": i.variety.name if i.variety else None,
+                "grade_name": i.grade_name,
+                "byproduct_type": i.byproduct_type,
+                "quantity_kg": i.quantity_kg,
+                "unit_price_per_kg": i.unit_price_per_kg,
+                "line_total": i.line_total,
+            }
+            for i in o.items
+        ]
+        return data
+
     def list_orders(self, *, skip: int = 0, limit: int = 50, status: str | None = None) -> Sequence[SalesOrder]:
         return self.orders.list_for_company(self.current_user.company_id, status=status, skip=skip, limit=limit)
 

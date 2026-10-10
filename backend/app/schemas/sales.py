@@ -35,15 +35,15 @@ class OrderItemIn(BaseModel):
     variety_id: uuid.UUID | None = None
     grade_name: str | None = None
     byproduct_type: str | None = None
-    quantity_kg: Decimal
-    unit_price_per_kg: Decimal
+    quantity_kg: Decimal = Field(gt=0)
+    unit_price_per_kg: Decimal = Field(ge=0)
 
 
 class OrderCreate(BaseModel):
     customer_id: uuid.UUID
     order_date: date
     delivery_date: date | None = None
-    discount_pct: Decimal = Decimal("0")
+    discount_pct: Decimal = Field(default=Decimal("0"), ge=0, le=100)
     remarks: str | None = None
     items: list[OrderItemIn]
     # Only counts from an owner or admin, when the credit-limit guard would
