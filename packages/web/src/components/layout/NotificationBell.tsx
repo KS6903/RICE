@@ -3,6 +3,8 @@ import { useNavigate } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Bell, CheckCheck } from "lucide-react";
 import { useAuthStore } from "../../stores/authStore";
+import { useFeature } from "../../hooks/useFeature";
+import { useAccess } from "../../hooks/useAccess";
 import { notificationService, type AppNotification } from "../../services/NotificationService";
 
 function timeAgo(iso: string): string {
@@ -26,8 +28,11 @@ export default function NotificationBell() {
   const triggerRef = useRef<HTMLButtonElement>(null);
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { canView } = useAccess();
 
   const unread = user?.notifications_unread ?? 0;
+  // Tasks come with the automations (Enterprise).
+  const canTask = useFeature("automations") && canView("tasks");
 
   const list = useQuery({
     queryKey: ["notifications"],
@@ -84,6 +89,12 @@ export default function NotificationBell() {
       setOpen(false);
       navigate(notice.link);
     }
+  };
+
+  const makeTask = (notice: AppNotification) => {
+    if (!notice.read) markRead.mutate([notice.id]);
+    setOpen(false);
+    navigate(`/tasks?from=${notice.id}`);
   };
 
   const items = list.data?.items ?? [];
@@ -155,7 +166,7 @@ export default function NotificationBell() {
             ) : (
               <ul className="divide-y divide-slate-100 dark:divide-slate-800">
                 {items.map((n) => (
-                  <li key={n.id}>
+                  <li key={n.id} className="relative">
                     <button
                       type="button"
                       onClick={() => openNotice(n)}
@@ -181,6 +192,16 @@ export default function NotificationBell() {
                         </span>
                       </span>
                     </button>
+                    {canTask && n.kind.startsWith("automation.") && (
+                      // Beside the alert, not inside its button: one control each.
+                      <button
+                        type="button"
+                        onClick={() => makeTask(n)}
+                        className="absolute right-3 bottom-2.5 text-[11px] font-semibold link"
+                      >
+                        Make it a task
+                      </button>
+                    )}
                   </li>
                 ))}
               </ul>

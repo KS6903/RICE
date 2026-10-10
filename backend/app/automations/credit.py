@@ -21,10 +21,12 @@ from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from ..models.automation import AutomationRule
+from ..models.base import now_utc
 from ..models.company import Company
 from ..models.sales import Invoice, SalesOrder
 from ..models.supplier_customer import Customer
 from ..models.user import User
+from . import actions
 from .base import Notice
 from .format import peso
 
@@ -165,3 +167,5 @@ def _tell(db: Session, company: Company, notice: Notice) -> None:
     params = engine.parse_params(recipe, rule.params if rule else None)
     recipients = engine.recipient_ids(db, company.id, recipe, rule.recipients if rule else [])
     engine.deliver(db, company, recipe, [notice], recipients, email=bool(getattr(params, "email", True)))
+    if rule is not None:
+        actions.track(db, company, rule, recipe, [notice], now=now_utc())

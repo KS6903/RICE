@@ -52,6 +52,11 @@ class RuleUpdate(BaseModel):
     params: dict = Field(default_factory=dict)
     # User ids; empty means "the recipe's default recipients".
     recipients: list[uuid.UUID] = Field(default_factory=list, max_length=50)
+    # Track each alert as a task until it's resolved (app/automations/actions).
+    # Each is left as it is when not sent.
+    track: bool | None = None
+    track_assignee: uuid.UUID | None = None
+    track_due_hours: int | None = Field(None, ge=1, le=24 * 14)
 
 
 def _recipe(code: str) -> Recipe:
@@ -123,6 +128,9 @@ def _serialize(db: Session, company_id: uuid.UUID, recipe: Recipe, rule: Automat
         "last_run": _last_run(db, company_id, recipe),
         "uses_ai": recipe.uses_ai,
         "ai_optional": recipe.ai_optional,
+        "track": bool(rule and rule.track),
+        "track_assignee": str(rule.track_assignee) if rule and rule.track_assignee else None,
+        "track_due_hours": rule.track_due_hours if rule and rule.track_due_hours else 24,
     }
 
 
@@ -218,6 +226,11 @@ def update_automation(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"These people can't receive this automation: their role has no access to {recipe.section}.",
         )
+    if body.track_assignee is not None and body.track_assignee not in eligible:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"That person can't be given these tasks: their role has no access to {recipe.section}.",
+        )
     rule = db.query(AutomationRule).filter(AutomationRule.recipe == code).first()
     if rule is None:
         rule = AutomationRule(company_id=current_user.company_id, recipe=code)
@@ -225,6 +238,12 @@ def update_automation(
     rule.enabled = body.enabled
     rule.params = params.model_dump()
     rule.recipients = [str(i) for i in dict.fromkeys(body.recipients)]
+    if body.track is not None:
+        rule.track = body.track
+    if "track_assignee" in body.model_fields_set:
+        rule.track_assignee = body.track_assignee
+    if body.track_due_hours is not None:
+        rule.track_due_hours = body.track_due_hours
     rule.updated_by = current_user.id
     db.commit()
     db.refresh(rule)

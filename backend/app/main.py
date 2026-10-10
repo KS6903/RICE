@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 from .api import (
+    actions,
     activity,
     admin,
     auth,
@@ -142,6 +143,7 @@ app.include_router(locations.router, prefix="/api", tags=["Saved Locations"], de
 app.include_router(activity.router, prefix="/api/activity", tags=["Activity Log"], dependencies=mfa_gate)
 app.include_router(notifications.router, prefix="/api/notifications", tags=["Notifications"], dependencies=mfa_gate)
 app.include_router(automations.router, prefix="/api/automations", tags=["Automations"], dependencies=mfa_gate)
+app.include_router(actions.router, prefix="/api/actions", tags=["Tasks"], dependencies=mfa_gate)
 app.include_router(fleet.router, prefix="/api", tags=["Fleet"], dependencies=mfa_gate)
 app.include_router(data_export.router, prefix="/api/export", tags=["Data Export"], dependencies=mfa_gate)
 

@@ -39,6 +39,7 @@ from app.automations.engine import entitled
 from app.core.database import SessionLocal
 from app.core.tenancy import set_search_path
 from app.core.timezones import tenant_zone
+from app.models.action import ActionItem
 from app.models.activity import ActivityLog
 from app.models.automation import AutomationRule
 from app.models.company import Branch
@@ -104,6 +105,7 @@ def _reset(db, cid: uuid.UUID) -> None:
         delete(MillingBatch).where(MillingBatch.batch_no.like("MB-AUTO-%")),
         delete(Expense).where(Expense.reference_no.like("EXP-AUTO-%")),
         delete(ActivityLog).where(ActivityLog.detail.like(f"%{MARKER}%")),
+        delete(ActionItem).where(ActionItem.source_key.like(f"{MARKER}:task:%")),
     ):
         db.execute(stmt)
     db.flush()
@@ -690,6 +692,42 @@ def seed(db, username: str, *, reset: bool) -> str:
         rule.enabled = True
         rule.params = {**recipe.params().model_dump(), **(rule.params or {}), "email": False}
         switched += 1
+
+    # ── follow-through: two automations tracked as tasks, and a few tasks ────
+    accountant = staff.get("accountant", owner)
+    for code, person, hours in (("due_reminders", accountant, 24), ("wet_palay", operator, 6)):
+        rule = db.query(AutomationRule).filter(AutomationRule.recipe == code).first()
+        if rule is not None:
+            rule.track, rule.track_assignee, rule.track_due_hours = True, person.id, hours
+    now = datetime.now(timezone.utc)
+    demo_tasks = (
+        ("wet_palay", "Wet palay not drying: PP-AUTO-DEMO", operator, now - timedelta(hours=3), "open"),
+        (
+            "due_reminders",
+            "Collections: call Aling Nena Store about 2 overdue invoices",
+            accountant,
+            now + timedelta(hours=20),
+            "acknowledged",
+        ),
+        ("negative_stock", "Stock below zero: Rc216 milled rice", None, now + timedelta(hours=4), "open"),
+    )
+    for source, title, person, due_at, state in demo_tasks:
+        key = f"{MARKER}:task:{source}"
+        if db.query(ActionItem).filter(ActionItem.source_key == key).first() is None:
+            db.add(
+                ActionItem(
+                    company_id=cid,
+                    source=source,
+                    source_key=key,
+                    title=title,
+                    body="Demo task: seeded so the To do page has something to show.",
+                    link="/automations",
+                    assignee_id=person.id if person else None,
+                    due_at=due_at,
+                    status=state,
+                    acknowledged_at=now if state == "acknowledged" else None,
+                )
+            )
 
     db.commit()
     return (

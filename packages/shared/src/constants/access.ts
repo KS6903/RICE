@@ -23,7 +23,8 @@ export type AppSection =
   | "employees"
   | "users"
   | "settings"
-  | "automations";
+  | "automations"
+  | "tasks";
 
 /** "full" = view + create/edit/delete · "view" = read-only · "none" = hidden/blocked. */
 export type AccessLevel = "full" | "view" | "none";
@@ -42,6 +43,7 @@ const ALL_FULL: Record<AppSection, AccessLevel> = {
   users: "full",
   settings: "full",
   automations: "full",
+  tasks: "full",
 };
 
 export const ROLE_ACCESS: Record<Role, Record<AppSection, AccessLevel>> = {
@@ -64,6 +66,7 @@ export const ROLE_ACCESS: Record<Role, Record<AppSection, AccessLevel>> = {
     users: "none",
     settings: "full", // own profile/password only; sensitive tabs gated in-page
     automations: "view",
+    tasks: "full", // their own tasks
   },
 
   // Front desk / point of sale — takes orders, checks stock.
@@ -81,6 +84,7 @@ export const ROLE_ACCESS: Record<Role, Record<AppSection, AccessLevel>> = {
     users: "none",
     settings: "full",
     automations: "none",
+    tasks: "full", // their own tasks
   },
 
   // Floor staff — runs milling, manages warehouse stock and dispatch.
@@ -98,6 +102,7 @@ export const ROLE_ACCESS: Record<Role, Record<AppSection, AccessLevel>> = {
     users: "none",
     settings: "full",
     automations: "none",
+    tasks: "full", // their own tasks
   },
 
   // Secretary / data entry — encodes palay intake and sales orders.
@@ -115,6 +120,7 @@ export const ROLE_ACCESS: Record<Role, Record<AppSection, AccessLevel>> = {
     users: "none",
     settings: "full",
     automations: "none",
+    tasks: "full", // their own tasks
   },
 };
 

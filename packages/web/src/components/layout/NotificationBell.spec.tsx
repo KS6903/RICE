@@ -56,6 +56,60 @@ describe("NotificationBell", () => {
     expect(screen.getByRole("button", { name: "Notifications, 3 unread" })).toHaveTextContent("3");
   });
 
+  it("offers to make an automation's alert a task, on Enterprise only", async () => {
+    vi.mocked(notificationService.list).mockResolvedValue({
+      unread: 1,
+      items: [
+        {
+          id: "n2",
+          kind: "automation.wet_palay",
+          title: "Wet palay not drying: PP-1",
+          body: null,
+          link: "/paddy",
+          created_at: new Date().toISOString(),
+          read: false,
+        },
+        {
+          id: "n1",
+          kind: "subscription.expiring",
+          title: "Your Enterprise plan ends in 7 days",
+          body: null,
+          link: "/settings",
+          created_at: new Date().toISOString(),
+          read: true,
+        },
+      ],
+    });
+    useAuthStore.setState({ user: { ...tenantUser, features: ["automations"] } });
+    draw();
+    fireEvent.click(screen.getByTestId("notification-bell"));
+    await screen.findByText("Wet palay not drying: PP-1");
+    // One for the automation's alert, none for the plan reminder.
+    expect(screen.getAllByRole("button", { name: "Make it a task" })).toHaveLength(1);
+  });
+
+  it("has no tasks without the automations", async () => {
+    vi.mocked(notificationService.list).mockResolvedValue({
+      unread: 0,
+      items: [
+        {
+          id: "n2",
+          kind: "automation.wet_palay",
+          title: "Wet palay not drying: PP-1",
+          body: null,
+          link: "/paddy",
+          created_at: new Date().toISOString(),
+          read: true,
+        },
+      ],
+    });
+    useAuthStore.setState({ user: { ...tenantUser, features: ["sales"] } });
+    draw();
+    fireEvent.click(screen.getByTestId("notification-bell"));
+    await screen.findByText("Wet palay not drying: PP-1");
+    expect(screen.queryByRole("button", { name: "Make it a task" })).toBeNull();
+  });
+
   it("caps the badge at 9+", () => {
     useAuthStore.setState({ user: { ...tenantUser, notifications_unread: 42 } });
     draw();

@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, String, UniqueConstraint
+from sqlalchemy import Boolean, DateTime, ForeignKey, SmallInteger, String, UniqueConstraint
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -33,6 +33,14 @@ class AutomationRule(Base, TimestampMixin):
     # or lost access to the recipe's section silently drops off.
     recipients: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
     updated_by: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"))
+    # Track each alert as a task (ActionItem) until someone resolves it: given
+    # to track_assignee (or, when that person can't receive it, left for a
+    # manager to assign), due track_due_hours after it's raised.
+    track: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="false")
+    track_assignee: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL")
+    )
+    track_due_hours: Mapped[int] = mapped_column(SmallInteger, nullable=False, default=24, server_default="24")
 
 
 class AutomationState(Base):

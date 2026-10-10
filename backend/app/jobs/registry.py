@@ -78,6 +78,18 @@ def _run_ai_automations(ctx: JobContext) -> str:
     return run_due_automations(ctx, ai=True)
 
 
+def _escalate_actions(ctx: JobContext) -> str:
+    from ..automations.actions import escalate
+    from ..automations.engine import entitled
+
+    assert ctx.company is not None
+    if not entitled(ctx.db, ctx.company.id):
+        return "the plan doesn't include automations"
+    count = escalate(ctx.db, ctx.company, now=ctx.now, zone=ctx.zone)
+    ctx.db.commit()
+    return f"{count} overdue task(s) escalated"
+
+
 def _deliver_notification_emails(ctx: JobContext) -> str:
     from ..services.notification_service import deliver_pending_emails
 
@@ -146,6 +158,9 @@ JOBS: tuple[Job, ...] = (
     # Enterprise tenants' switched-on recipes (app/automations). Before the
     # email job, so what they produce goes out on the same tick.
     Job("automations.run", "tenant", every_tick(), _run_automations),
+    # Tasks past due and not resolved go to the owner and admins, once. Before
+    # the email job, so the escalation goes out on the same tick.
+    Job("actions.escalate", "tenant", every_tick(), _escalate_actions),
     # Notices that asked for email are sent after the work that produced them
     # committed, on the next tick, within a daily cap per tenant.
     Job("notifications.deliver_email", "tenant", every_tick(), _deliver_notification_emails),

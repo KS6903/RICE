@@ -1,3 +1,4 @@
+from .action import ActionItem
 from .activity import ActivityLog
 from .auth_session import AuthSession
 from .automation import AutomationRule, AutomationSettings, AutomationState
@@ -31,6 +32,7 @@ from .user_location import UserLocation
 from .warehouse import Pallet, PalletMovement, RiceBatch, WarehouseLayout, WarehouseZone
 
 __all__ = [
+    "ActionItem",
     "AutomationRule",
     "AutomationSettings",
     "AutomationState",

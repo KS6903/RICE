@@ -332,6 +332,29 @@ describe("AutomationsPage", () => {
     expect(screen.getByText(/0 of 1 switched on/)).toBeInTheDocument();
   });
 
+  it("tracks each alert as a task for the person picked, due within the time picked", async () => {
+    useAuthStore.setState({ user: owner });
+    const update = vi.spyOn(automationsService, "update").mockResolvedValue(digest);
+    draw();
+    await screen.findByRole("heading", { name: "Morning summary" });
+    fireEvent.click(within(card("Morning summary")).getByRole("button", { name: "Settings" }));
+    expect(screen.queryByLabelText("Give it to")).toBeNull();
+    fireEvent.click(screen.getByLabelText(/Make each alert a task/));
+    fireEvent.change(screen.getByLabelText("Give it to"), { target: { value: "u2" } });
+    fireEvent.change(screen.getByLabelText("Due within"), { target: { value: "6" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    await waitFor(() =>
+      expect(update).toHaveBeenCalledWith("owner_digest", {
+        enabled: false,
+        params: { send_at: "06:00", email: true },
+        recipients: [],
+        track: true,
+        track_assignee: "u2",
+        track_due_hours: 6,
+      }),
+    );
+  });
+
   it("keeps settings folded away until asked for", async () => {
     useAuthStore.setState({ user: owner });
     draw();
@@ -355,6 +378,9 @@ describe("AutomationsPage", () => {
         enabled: true,
         params: { send_at: "06:00", email: true },
         recipients: [],
+        track: false,
+        track_assignee: null,
+        track_due_hours: 24,
       }),
     );
   });
@@ -382,6 +408,9 @@ describe("AutomationsPage", () => {
         enabled: false,
         params: { sale_over: "150000", older_than: 24, mode: "block" },
         recipients: [],
+        track: false,
+        track_assignee: null,
+        track_due_hours: 24,
       }),
     );
   });

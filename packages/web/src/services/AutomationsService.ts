@@ -49,6 +49,10 @@ export type Automation = {
   uses_ai?: boolean;
   /** Can add AI advice (its ai_advice setting) once the owner switches AI on. */
   ai_optional?: boolean;
+  /** Each alert becomes a task (the To do page) until someone resolves it. */
+  track?: boolean;
+  track_assignee?: string | null;
+  track_due_hours?: number;
 };
 
 export type AISettings = {
@@ -74,6 +78,10 @@ export type AutomationUpdate = {
   enabled: boolean;
   params: Record<string, string | number | boolean>;
   recipients: string[];
+  /** Left as they are when not sent. */
+  track?: boolean;
+  track_assignee?: string | null;
+  track_due_hours?: number;
 };
 
 export class AutomationsService {

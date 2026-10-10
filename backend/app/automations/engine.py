@@ -32,6 +32,7 @@ from ..models.subscription import Subscription
 from ..models.user import User
 from ..services.notification_service import attach, notify
 from ..services.subscription import is_active
+from . import actions
 from .base import Notice, Recipe, RecipeContext, RecipeProblem, asks_ai
 from .recipes import RECIPES
 
@@ -169,6 +170,7 @@ def run_due_automations(ctx: JobContext, *, ai: bool = False) -> str:
             notices = recipe.build(context, params)
             user_ids = recipient_ids(ctx.db, company.id, recipe, rule.recipients or [])
             new = deliver(ctx.db, company, recipe, notices, user_ids, email=bool(getattr(params, "email", True)))
+            actions.track(ctx.db, company, rule, recipe, notices, now=ctx.now)
             ctx.db.commit()
             finish_run(ctx.db, run_id, "succeeded", f"{new} notice(s) to {len(user_ids)} recipient(s)")
             ran += 1

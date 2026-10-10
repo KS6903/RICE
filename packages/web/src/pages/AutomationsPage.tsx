@@ -460,6 +460,107 @@ function FieldInput({
   );
 }
 
+type Tracking = { track: boolean; track_assignee: string | null; track_due_hours: number };
+
+function trackingOf(a: Automation): Tracking {
+  return {
+    track: Boolean(a.track),
+    track_assignee: a.track_assignee ?? null,
+    track_due_hours: a.track_due_hours ?? 24,
+  };
+}
+
+const DUE_WITHIN: { hours: number; label: string }[] = [
+  { hours: 2, label: "2 hours" },
+  { hours: 6, label: "6 hours" },
+  { hours: 24, label: "1 day" },
+  { hours: 48, label: "2 days" },
+  { hours: 72, label: "3 days" },
+  { hours: 168, label: "1 week" },
+];
+
+/** Follow-through: each alert becomes a task someone is given, due within a
+ *  time, until they mark it resolved; past due, it goes to the owner. */
+function TrackingFields({
+  code,
+  tracking,
+  candidates,
+  disabled,
+  onChange,
+}: {
+  code: string;
+  tracking: Tracking;
+  candidates: Automation["candidates"];
+  disabled: boolean;
+  onChange: (next: Tracking) => void;
+}) {
+  const set = (change: Partial<Tracking>) => onChange({ ...tracking, ...change });
+  return (
+    <fieldset className="space-y-3">
+      <legend className="form-label">Follow-through</legend>
+      <label htmlFor={`${code}-track`} className="flex items-start gap-3 cursor-pointer">
+        <input
+          id={`${code}-track`}
+          type="checkbox"
+          className="mt-1 h-5 w-5 accent-emerald-600"
+          checked={tracking.track}
+          disabled={disabled}
+          onChange={(e) => set({ track: e.target.checked })}
+        />
+        <span>
+          <span className="block text-sm font-semibold text-primary">
+            Make each alert a task until it's resolved
+          </span>
+          <span className="block text-xs text-secondary">
+            It goes on the To do page. Still open after its time, the owner hears about it.
+          </span>
+        </span>
+      </label>
+      {tracking.track && (
+        <div className="flex flex-wrap gap-4 pl-8">
+          <div>
+            <label htmlFor={`${code}-track-assignee`} className="form-label">
+              Give it to
+            </label>
+            <select
+              id={`${code}-track-assignee`}
+              className="input w-56 max-w-full"
+              value={tracking.track_assignee ?? ""}
+              disabled={disabled}
+              onChange={(e) => set({ track_assignee: e.target.value || null })}
+            >
+              <option value="">An owner or admin assigns it</option>
+              {candidates.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label htmlFor={`${code}-track-due`} className="form-label">
+              Due within
+            </label>
+            <select
+              id={`${code}-track-due`}
+              className="input w-36"
+              value={tracking.track_due_hours}
+              disabled={disabled}
+              onChange={(e) => set({ track_due_hours: Number(e.target.value) })}
+            >
+              {DUE_WITHIN.map((d) => (
+                <option key={d.hours} value={d.hours}>
+                  {d.label}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+      )}
+    </fieldset>
+  );
+}
+
 function AutomationCard({
   automation,
   readOnly,
@@ -477,6 +578,7 @@ function AutomationCard({
   const [open, setOpen] = useState(false);
   const [params, setParams] = useState<Params>(automation.params);
   const [recipients, setRecipients] = useState<string[]>(automation.recipients);
+  const [tracking, setTracking] = useState(trackingOf(automation));
   const [showRuns, setShowRuns] = useState(false);
   const [testNote, setTestNote] = useState<string | null>(null);
 
@@ -484,18 +586,21 @@ function AutomationCard({
   useEffect(() => {
     setParams(automation.params);
     setRecipients(automation.recipients);
+    setTracking(trackingOf(automation));
   }, [automation]);
 
   const dirty = useMemo(
     () =>
       JSON.stringify(params) !== JSON.stringify(automation.params) ||
-      JSON.stringify([...recipients].sort()) !== JSON.stringify([...automation.recipients].sort()),
-    [params, recipients, automation],
+      JSON.stringify([...recipients].sort()) !==
+        JSON.stringify([...automation.recipients].sort()) ||
+      JSON.stringify(tracking) !== JSON.stringify(trackingOf(automation)),
+    [params, recipients, tracking, automation],
   );
 
   const save = useMutation({
     mutationFn: (enabled: boolean) =>
-      automationsService.update(automation.code, { enabled, params, recipients }),
+      automationsService.update(automation.code, { enabled, params, recipients, ...tracking }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["automations"] }),
   });
 
@@ -655,6 +760,14 @@ function AutomationCard({
               </p>
             )}
           </fieldset>
+
+          <TrackingFields
+            code={automation.code}
+            tracking={tracking}
+            candidates={automation.candidates}
+            disabled={readOnly}
+            onChange={setTracking}
+          />
 
           <div className="flex flex-wrap items-center gap-3">
             <button
