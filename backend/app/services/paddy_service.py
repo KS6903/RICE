@@ -148,6 +148,18 @@ class PaddyService(BaseService):
     def list_purchases(self, *, skip: int = 0, limit: int = 50, status: str | None = None) -> Sequence[PalayPurchase]:
         return self.purchases.list_for_company(self.current_user.company_id, status=status, skip=skip, limit=limit)
 
+    @staticmethod
+    def serialize_purchase(p: PalayPurchase) -> dict:
+        """The purchase's columns, plus its supplier, how many items it has, and
+        who recorded it and in what role."""
+        data = {c.name: getattr(p, c.name) for c in p.__table__.columns}
+        data["supplier"] = {"id": p.supplier.id, "name": p.supplier.name} if p.supplier else None
+        data["item_count"] = len(p.items)
+        creator = p.creator
+        data["created_by_name"] = creator.full_name if creator else None
+        data["created_by_role"] = creator.role.name if creator and creator.role else None
+        return data
+
     def get_purchase(self, purchase_id: uuid.UUID) -> PalayPurchase:
         p = self.purchases.get_for_company(purchase_id, self.current_user.company_id)
         if not p:

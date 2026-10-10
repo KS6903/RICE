@@ -134,6 +134,29 @@ def test_create_purchase_multi_item_updates_inventory(auth_client, db_session):
     assert all(m.movement_type == "in" and m.source_type == "purchase" for m in movements)
 
 
+def test_purchase_list_says_who_recorded_it(auth_client):
+    supplier = _make_supplier(auth_client).json()
+    item = {"gross_weight_kg": "100", "tare_weight_kg": "0", "price_per_cavan": "1000"}
+    created = auth_client.post(
+        "/api/paddy/purchases",
+        json={"supplier_id": supplier["id"], "purchase_date": "2026-06-05", "items": [item, item]},
+    )
+    assert created.status_code == 201, created.text
+
+    rows = auth_client.get("/api/paddy/purchases").json()
+    assert len(rows) == 1
+    # The list carries the supplier and the item count the table shows.
+    assert rows[0]["supplier"] == {"id": supplier["id"], "name": supplier["name"]}
+    assert rows[0]["item_count"] == 2
+    # The seeded owner is the Boss; the role name is what the web app turns into a label.
+    assert rows[0]["created_by_name"] == "Test Owner"
+    assert rows[0]["created_by_role"] == "owner"
+
+    one = auth_client.get(f"/api/paddy/purchases/{rows[0]['id']}").json()
+    assert one["created_by_name"] == "Test Owner"
+    assert one["created_by_role"] == "owner"
+
+
 def test_purchase_is_atomic_on_item_failure(auth_client, db_session):
     """A failure on a later item must roll back the whole purchase (incl. the
     first item's inventory write). Guards the transaction-ownership move."""

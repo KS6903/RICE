@@ -11,10 +11,12 @@ import uuid
 from typing import Sequence
 
 from sqlalchemy import select
+from sqlalchemy.orm import joinedload, selectinload
 
 from ..models.paddy import PalayInventory, PalayPurchase
 from ..models.reference import QualityGrade, RiceVariety
 from ..models.supplier_customer import Supplier
+from ..models.user import User
 from .base import BaseRepository
 
 
@@ -61,7 +63,17 @@ class PalayPurchaseRepository(BaseRepository[PalayPurchase]):
     def list_for_company(
         self, company_id: uuid.UUID, *, status: str | None = None, skip: int = 0, limit: int = 50
     ) -> Sequence[PalayPurchase]:
-        stmt = select(PalayPurchase).where(PalayPurchase.company_id == company_id)
+        # The list shows each purchase's supplier, item count and who recorded it:
+        # load those with it rather than one query per row.
+        stmt = (
+            select(PalayPurchase)
+            .options(
+                joinedload(PalayPurchase.creator).joinedload(User.role),
+                joinedload(PalayPurchase.supplier),
+                selectinload(PalayPurchase.items),
+            )
+            .where(PalayPurchase.company_id == company_id)
+        )
         if status:
             stmt = stmt.where(PalayPurchase.status == status)
         stmt = stmt.order_by(PalayPurchase.purchase_date.desc()).offset(skip).limit(limit)

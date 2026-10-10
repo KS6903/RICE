@@ -131,12 +131,12 @@ def list_purchases(
     status: str | None = Query(None),
     svc: PaddyService = Depends(get_paddy_service),
 ):
-    return svc.list_purchases(skip=skip, limit=limit, status=status)
+    return [svc.serialize_purchase(p) for p in svc.list_purchases(skip=skip, limit=limit, status=status)]
 
 
 @router.get("/purchases/{purchase_id}")
 def get_purchase(purchase_id: uuid.UUID, svc: PaddyService = Depends(get_paddy_service)):
-    return svc.get_purchase(purchase_id)
+    return svc.serialize_purchase(svc.get_purchase(purchase_id))
 
 
 @router.post(
