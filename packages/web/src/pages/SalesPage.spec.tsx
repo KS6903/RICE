@@ -38,11 +38,20 @@ const draw = () =>
     </QueryClientProvider>,
   );
 
+/** Open the new-order form and choose the customer, as a person would. */
+async function startOrder() {
+  fireEvent.click(await screen.findByRole("button", { name: /new order/i }));
+  fireEvent.click(await screen.findByRole("button", { name: "Customer" }));
+  fireEvent.click(await screen.findByRole("option", { name: "Aling Nena Store" }));
+}
+
 describe("SalesPage credit-limit guard", () => {
   beforeEach(() => {
     vi.spyOn(salesService, "listOrders").mockResolvedValue([]);
     vi.spyOn(salesService, "listInvoices").mockResolvedValue([]);
-    vi.spyOn(salesService, "listCustomers").mockResolvedValue([]);
+    vi.spyOn(salesService, "listCustomers").mockResolvedValue([
+      { id: "c1", name: "Aling Nena Store", is_active: true },
+    ]);
     vi.spyOn(inventoryService, "getMilledRice").mockResolvedValue([]);
   });
 
@@ -58,7 +67,7 @@ describe("SalesPage credit-limit guard", () => {
       .mockRejectedValueOnce(overLimit)
       .mockResolvedValueOnce({ id: "o1" });
     draw();
-    fireEvent.click(await screen.findByRole("button", { name: /new order/i }));
+    await startOrder();
     fireEvent.click(screen.getByRole("button", { name: "Create Order" }));
     expect(await screen.findByRole("alert")).toHaveTextContent(/over their ₱60,000 credit limit/);
 
@@ -78,9 +87,40 @@ describe("SalesPage credit-limit guard", () => {
       },
     });
     draw();
-    fireEvent.click(await screen.findByRole("button", { name: /new order/i }));
+    await startOrder();
     fireEvent.click(screen.getByRole("button", { name: "Create Order" }));
     expect(await screen.findByRole("alert")).toHaveTextContent(/An owner or admin can approve it/);
     expect(screen.queryByRole("button", { name: "Approve over the limit" })).toBeNull();
+  });
+
+  it("will not create an order until a customer is chosen", async () => {
+    useAuthStore.setState({ user: owner });
+    const create = vi.spyOn(salesService, "createOrder").mockResolvedValue({ id: "o1" });
+    draw();
+    fireEvent.click(await screen.findByRole("button", { name: /new order/i }));
+    const button = screen.getByRole("button", { name: "Create Order" }) as HTMLButtonElement;
+    expect(button.disabled).toBe(true);
+    fireEvent.click(button);
+    expect(create).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole("button", { name: "Customer" }));
+    fireEvent.click(await screen.findByRole("option", { name: "Aling Nena Store" }));
+    expect(button.disabled).toBe(false);
+  });
+
+  it("does not accept a negative price, quantity or discount", async () => {
+    useAuthStore.setState({ user: owner });
+    draw();
+    fireEvent.click(await screen.findByRole("button", { name: /new order/i }));
+
+    const price = screen.getByPlaceholderText("₱/kg") as HTMLInputElement;
+    fireEvent.change(price, { target: { value: "-50" } });
+    expect(price.value).toBe("50");
+
+    const qty = screen.getByPlaceholderText("Qty kg") as HTMLInputElement;
+    fireEvent.change(qty, { target: { value: "-3" } });
+    expect(qty.value).toBe("3");
+    expect(price.min).toBe("0");
+    expect(qty.min).toBe("0");
   });
 });

@@ -1,13 +1,23 @@
 import { useState } from "react";
+import { useEscapeKey } from "../hooks/useEscapeKey";
+import { Link } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { salesService } from "../services/SalesService";
 import LegalNotice from "../components/LegalNotice";
 import { inventoryService } from "../services/InventoryService";
-import { Plus, Power, History, ChevronDown, ChevronUp } from "lucide-react";
+import { Plus, Power, History, ChevronDown, ChevronUp, ShoppingCart, FileText } from "lucide-react";
+import InvoicePreviewModal, { type PreviewOrder } from "../components/sales/InvoicePreviewModal";
+import TruncatedText from "../components/TruncatedText";
+import Select from "../components/Select";
+import DatePicker from "../components/DatePicker";
 import { format } from "date-fns";
 import { CUSTOMER_TYPES } from "@rice-mill/shared";
 import QuickAdd from "../components/QuickAdd";
 import { useAuthStore } from "../stores/authStore";
+import { useAccess } from "../hooks/useAccess";
+import { useOpenOnArrival } from "../hooks/useOpenOnArrival";
+import EmptyState from "../components/EmptyState";
+import FieldCaption from "../components/FieldCaption";
 
 type ApiError = { response?: { data?: { detail?: unknown; code?: string } } };
 
@@ -19,6 +29,13 @@ function apiError(error: unknown): { message: string; code?: string } {
     code: data?.code,
   };
 }
+
+// Prices, quantities and discounts can't be negative: no minus key, and a minus
+// that arrives any other way (paste, autofill) is dropped.
+const nonNegative = (raw: string) => raw.replace(/-/g, "");
+const blockMinus = (e: React.KeyboardEvent<HTMLInputElement>) => {
+  if (e.key === "-" || e.key === "e" || e.key === "E") e.preventDefault();
+};
 
 function StatusBadge({ status }: { status: string }) {
   const map: Record<string, string> = {
@@ -37,10 +54,13 @@ function StatusBadge({ status }: { status: string }) {
 export default function SalesPage() {
   const qc = useQueryClient();
   const [tab, setTab] = useState<"orders" | "invoices" | "customers">("orders");
-  const [showOrderForm, setShowOrderForm] = useState(false);
+  const { canEdit } = useAccess();
+  const [showOrderForm, setShowOrderForm] = useOpenOnArrival();
+  useEscapeKey(() => setShowOrderForm(false), showOrderForm);
 
   const [showCustomerHistory, setShowCustomerHistory] = useState(false);
   const [showCustomerForm, setShowCustomerForm] = useState(false);
+  useEscapeKey(() => setShowCustomerForm(false), showCustomerForm);
   const [customerForm, setCustomerForm] = useState({
     name: "",
     customer_type: "wholesaler",
@@ -66,7 +86,7 @@ export default function SalesPage() {
   });
   const activeCustomers = customers.filter((c: any) => c.is_active);
   const inactiveCustomers = customers.filter((c: any) => !c.is_active);
-  const { data: milled = [] } = useQuery({
+  const { data: milled = [], isSuccess: milledLoaded } = useQuery({
     queryKey: ["milled-rice"],
     queryFn: () => inventoryService.getMilledRice(),
   });
@@ -125,13 +145,20 @@ export default function SalesPage() {
   const role = useAuthStore((s) => s.user?.role);
   const canApprove = role === "owner" || role === "admin";
 
+  // The order whose invoice is being previewed; generating happens from there.
+  const [previewOrder, setPreviewOrder] = useState<PreviewOrder | null>(null);
   const createInvoice = useMutation({
     mutationFn: (order_id: string) => salesService.createInvoice(order_id),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["invoices"] });
       qc.invalidateQueries({ queryKey: ["sales-orders"] });
+      setPreviewOrder(null);
     },
   });
+  const invoiceError = createInvoice.isError
+    ? (((createInvoice.error as ApiError)?.response?.data?.detail as string | undefined) ??
+      "The invoice couldn't be generated. Try again.")
+    : null;
 
   return (
     <div className="space-y-6">
@@ -198,28 +225,22 @@ export default function SalesPage() {
                   onCreated={(c) => setOrderForm((f) => ({ ...f, customer_id: c.id }))}
                 />
               </div>
-              <select
-                className="input"
+              <Select
+                aria-label="Customer"
+                placeholder="Select customer…"
                 value={orderForm.customer_id}
-                onChange={(e) => setOrderForm((f) => ({ ...f, customer_id: e.target.value }))}
-              >
-                <option value="">Select customer…</option>
-                {activeCustomers.map((c: any) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
-                  </option>
-                ))}
-              </select>
+                onChange={(v) => setOrderForm((f) => ({ ...f, customer_id: v }))}
+                options={activeCustomers.map((c: any) => ({ value: c.id, label: c.name }))}
+              />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-slate-200 mb-1">
                 Order Date
               </label>
-              <input
-                type="date"
-                className="input"
+              <DatePicker
+                aria-label="Order date"
                 value={orderForm.order_date}
-                onChange={(e) => setOrderForm((f) => ({ ...f, order_date: e.target.value }))}
+                onChange={(v) => setOrderForm((f) => ({ ...f, order_date: v }))}
               />
             </div>
             <div>
@@ -228,9 +249,15 @@ export default function SalesPage() {
               </label>
               <input
                 type="number"
+                min="0"
+                max="100"
+                step="any"
                 className="input"
                 value={orderForm.discount_pct}
-                onChange={(e) => setOrderForm((f) => ({ ...f, discount_pct: e.target.value }))}
+                onKeyDown={blockMinus}
+                onChange={(e) =>
+                  setOrderForm((f) => ({ ...f, discount_pct: nonNegative(e.target.value) }))
+                }
               />
             </div>
           </div>
@@ -260,54 +287,88 @@ export default function SalesPage() {
             </div>
             {orderForm.items.map((item, idx) => (
               <div key={idx} className="grid grid-cols-5 gap-2">
-                <select
-                  className="input"
-                  value={item.variety_id}
-                  onChange={(e) => {
-                    const items = [...orderForm.items];
-                    items[idx].variety_id = e.target.value;
-                    setOrderForm((f) => ({ ...f, items }));
-                  }}
-                >
-                  <option value="">Variety</option>
-                  {milled.map((m: any) => (
-                    <option key={m.id} value={m.variety_id}>
-                      {m.variety?.code} ({m.grade_name})
-                    </option>
-                  ))}
-                </select>
-                <input
-                  className="input"
-                  placeholder="Qty kg"
-                  type="number"
-                  value={item.quantity_kg}
-                  onChange={(e) => {
-                    const items = [...orderForm.items];
-                    items[idx].quantity_kg = e.target.value;
-                    setOrderForm((f) => ({ ...f, items }));
-                  }}
-                />
-                <input
-                  className="input"
-                  placeholder="₱/kg"
-                  type="number"
-                  value={item.unit_price_per_kg}
-                  onChange={(e) => {
-                    const items = [...orderForm.items];
-                    items[idx].unit_price_per_kg = e.target.value;
-                    setOrderForm((f) => ({ ...f, items }));
-                  }}
-                />
-                <span className="input bg-gray-50 dark:bg-slate-900/50 text-gray-600 dark:text-slate-300">
-                  ₱
-                  {item.quantity_kg && item.unit_price_per_kg
-                    ? (
-                        parseFloat(item.quantity_kg) * parseFloat(item.unit_price_per_kg)
-                      ).toLocaleString()
-                    : "0"}
-                </span>
+                <FieldCaption label="Rice in stock">
+                  <Select
+                    aria-label="Rice in stock"
+                    placeholder="Variety"
+                    value={
+                      (
+                        milled.find(
+                          (m: any) =>
+                            m.variety_id === item.variety_id && m.grade_name === item.grade_name,
+                        ) ?? milled.find((m: any) => m.variety_id === item.variety_id)
+                      )?.id ?? ""
+                    }
+                    onChange={(stockId) => {
+                      const stock = milled.find((m: any) => m.id === stockId);
+                      if (!stock) return;
+                      const items = [...orderForm.items];
+                      items[idx] = {
+                        ...items[idx],
+                        variety_id: stock.variety_id,
+                        grade_name: stock.grade_name ?? items[idx].grade_name,
+                      };
+                      setOrderForm((f) => ({ ...f, items }));
+                    }}
+                    options={milled.map((m: any) => ({
+                      value: m.id,
+                      label: `${m.variety?.code ?? "Rice"} (${m.grade_name})`,
+                    }))}
+                  />
+                </FieldCaption>
+                <FieldCaption label="Quantity (kg)">
+                  <input
+                    className="input"
+                    placeholder="Qty kg"
+                    type="number"
+                    min="0"
+                    step="any"
+                    value={item.quantity_kg}
+                    onKeyDown={blockMinus}
+                    onChange={(e) => {
+                      const items = [...orderForm.items];
+                      items[idx].quantity_kg = nonNegative(e.target.value);
+                      setOrderForm((f) => ({ ...f, items }));
+                    }}
+                  />
+                </FieldCaption>
+                <FieldCaption label="Price per kg (₱)">
+                  <input
+                    className="input"
+                    placeholder="₱/kg"
+                    type="number"
+                    min="0"
+                    step="any"
+                    value={item.unit_price_per_kg}
+                    onKeyDown={blockMinus}
+                    onChange={(e) => {
+                      const items = [...orderForm.items];
+                      items[idx].unit_price_per_kg = nonNegative(e.target.value);
+                      setOrderForm((f) => ({ ...f, items }));
+                    }}
+                  />
+                </FieldCaption>
+                <FieldCaption label="Amount">
+                  <span className="input block bg-gray-50 dark:bg-slate-900/50 text-gray-600 dark:text-slate-300">
+                    ₱
+                    {item.quantity_kg && item.unit_price_per_kg
+                      ? (
+                          parseFloat(item.quantity_kg) * parseFloat(item.unit_price_per_kg)
+                        ).toLocaleString()
+                      : "0"}
+                  </span>
+                </FieldCaption>
               </div>
             ))}
+            {milledLoaded && milled.length === 0 && (
+              <p className="text-sm text-amber-700 dark:text-amber-400">
+                You have no milled rice in stock to sell yet.{" "}
+                <Link to="/milling?new=1" className="font-medium underline">
+                  Mill a batch first
+                </Link>
+                ; the rice it produces will show up here.
+              </p>
+            )}
           </div>
           {orderError && (
             <div
@@ -334,7 +395,8 @@ export default function SalesPage() {
             <button
               onClick={() => createOrder.mutate(orderForm)}
               className="btn-primary"
-              disabled={createOrder.isPending}
+              disabled={createOrder.isPending || !orderForm.customer_id}
+              title={orderForm.customer_id ? undefined : "Choose the customer first"}
             >
               {createOrder.isPending ? "Saving…" : "Create Order"}
             </button>
@@ -374,7 +436,16 @@ export default function SalesPage() {
                 <tr key={o.id} className="hover:bg-gray-50 dark:hover:bg-slate-900/50">
                   <td className="px-4 py-3 font-mono text-xs">{o.order_no}</td>
                   <td className="px-4 py-3">{o.order_date}</td>
-                  <td className="px-4 py-3">{o.customer?.name || "—"}</td>
+                  <td className="px-4 py-3">
+                    {o.customer?.name ? (
+                      <TruncatedText
+                        text={o.customer.name}
+                        className="max-w-[10rem] sm:max-w-[16rem]"
+                      />
+                    ) : (
+                      "—"
+                    )}
+                  </td>
                   <td className="px-4 py-3 font-medium">
                     ₱{Number(o.total_amount).toLocaleString()}
                   </td>
@@ -382,12 +453,18 @@ export default function SalesPage() {
                     <StatusBadge status={o.status} />
                   </td>
                   <td className="px-4 py-3">
-                    {o.status === "confirmed" && (
+                    {o.status === "confirmed" && canEdit("sales") && (
                       <button
-                        onClick={() => createInvoice.mutate(o.id)}
-                        className="text-xs text-brand-600 dark:text-brand-400 hover:text-brand-700 dark:hover:text-brand-300 font-medium"
+                        type="button"
+                        onClick={() => {
+                          createInvoice.reset();
+                          setPreviewOrder(o);
+                        }}
+                        data-testid={`generate-invoice-${o.id}`}
+                        className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-lg bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700 ring-1 ring-emerald-200 transition hover:bg-emerald-100 hover:ring-emerald-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 dark:bg-emerald-950/30 dark:text-emerald-300 dark:ring-emerald-800/60 dark:hover:bg-emerald-950/50"
                       >
-                        Generate Invoice
+                        <FileText size={14} />
+                        Generate invoice
                       </button>
                     )}
                   </td>
@@ -395,8 +472,17 @@ export default function SalesPage() {
               ))}
               {orders.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="px-4 py-8 text-center text-gray-400">
-                    No sales orders yet
+                  <td colSpan={6}>
+                    <EmptyState
+                      icon={ShoppingCart}
+                      title="No sales yet"
+                      action={canEdit("sales") ? "Create your first order" : undefined}
+                      onAction={() => setShowOrderForm(true)}
+                      next="Once an order is confirmed, use Generate Invoice to bill the customer."
+                    >
+                      An order is what a customer is buying: which rice, how many kilos, at what
+                      price. You can add a new customer right from the order form.
+                    </EmptyState>
                   </td>
                 </tr>
               )}
@@ -436,8 +522,9 @@ export default function SalesPage() {
               ))}
               {invoices.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="px-4 py-8 text-center text-gray-400">
-                    No invoices yet
+                  <td colSpan={6} className="px-4 py-8 text-center text-muted">
+                    No invoices yet. Create one from a confirmed order on the Orders tab with
+                    Generate Invoice.
                   </td>
                 </tr>
               )}
@@ -446,6 +533,16 @@ export default function SalesPage() {
         </div>
       )}
       {tab === "invoices" && <LegalNotice kind="invoice" className="px-1" />}
+
+      {previewOrder && (
+        <InvoicePreviewModal
+          order={previewOrder}
+          onClose={() => setPreviewOrder(null)}
+          onGenerate={() => createInvoice.mutate(previewOrder.id)}
+          pending={createInvoice.isPending}
+          error={invoiceError}
+        />
+      )}
 
       {tab === "customers" && (
         <>
@@ -467,19 +564,12 @@ export default function SalesPage() {
                   <label className="block text-sm font-medium text-gray-700 dark:text-slate-200 mb-1">
                     Type
                   </label>
-                  <select
-                    className="input"
+                  <Select
+                    aria-label="Customer type"
                     value={customerForm.customer_type}
-                    onChange={(e) =>
-                      setCustomerForm((f) => ({ ...f, customer_type: e.target.value }))
-                    }
-                  >
-                    {CUSTOMER_TYPES.map((t) => (
-                      <option key={t.value} value={t.value}>
-                        {t.label}
-                      </option>
-                    ))}
-                  </select>
+                    onChange={(v) => setCustomerForm((f) => ({ ...f, customer_type: v }))}
+                    options={CUSTOMER_TYPES.map((t) => ({ value: t.value, label: t.label }))}
+                  />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-slate-200 mb-1">
@@ -603,8 +693,8 @@ export default function SalesPage() {
                 ))}
                 {activeCustomers.length === 0 && (
                   <tr>
-                    <td colSpan={6} className="px-4 py-8 text-center text-gray-400">
-                      No active customers
+                    <td colSpan={6} className="px-4 py-8 text-center text-muted">
+                      No customers yet. Add one with New Customer, or straight from a new order.
                     </td>
                   </tr>
                 )}
