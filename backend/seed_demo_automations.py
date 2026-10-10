@@ -763,19 +763,25 @@ def seed(db, username: str, *, reset: bool) -> str:
         drawer = min(counted, Decimal(5_000))
 
     # ── maintenance: a huller close to its service, a polisher fine ─────────
-    for name, every, last_service, notes in (
-        (
-            "Rubber-roll huller",
-            {"every_hours": 120, "every_tonnes": Decimal(400)},
-            today - timedelta(days=20),
-            "Replace the rubber rolls.",
+    machines = (
+        Equipment(
+            name="Rubber-roll huller",
+            every_hours=120,
+            every_tonnes=Decimal(400),
+            last_service_on=today - timedelta(days=20),
+            notes="Replace the rubber rolls.",
         ),
-        ("Polisher", {"every_days": 90}, today - timedelta(days=30), "Check the screens and the bran blower."),
-    ):
-        if db.query(Equipment).filter(Equipment.name == name).first() is None:
-            db.add(
-                Equipment(company_id=cid, name=name, last_service_on=last_service, notes=f"{notes} [{MARKER}]", **every)
-            )
+        Equipment(
+            name="Polisher",
+            every_days=90,
+            last_service_on=today - timedelta(days=30),
+            notes="Check the screens and the bran blower.",
+        ),
+    )
+    for machine in machines:
+        if db.query(Equipment).filter(Equipment.name == machine.name).first() is None:
+            machine.company_id, machine.notes = cid, f"{machine.notes} [{MARKER}]"
+            db.add(machine)
 
     # ── collections: a promise not kept, and one still to come ───────────────
     from app.automations.collections import worklist
