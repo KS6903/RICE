@@ -122,6 +122,7 @@ def _serialize(db: Session, company_id: uuid.UUID, recipe: Recipe, rule: Automat
         ],
         "last_run": _last_run(db, company_id, recipe),
         "uses_ai": recipe.uses_ai,
+        "ai_optional": recipe.ai_optional,
     }
 
 

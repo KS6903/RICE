@@ -47,6 +47,9 @@ class RecipeContext:
     test: bool = False
     # The language the owner picked for AI-written text (automations.ai.LANGUAGES).
     language: str = "en"
+    # This run may ask the AI: the owner has switched AI on. A recipe that only
+    # offers advice (Recipe.ai_optional) builds without it otherwise.
+    ai: bool = False
 
     @property
     def local_now(self) -> datetime:
@@ -77,6 +80,15 @@ class Field:
     options_from: str = ""
 
 
+# The setting a recipe with optional AI advice (Recipe.ai_optional) shows.
+AI_ADVICE_FIELD = Field(
+    "ai_advice",
+    "Add AI advice",
+    "bool",
+    "Written by Oryza's AI from your figures, once the owner switches AI on in the AI advisor tab.",
+)
+
+
 Group = Literal["advisor", "reports", "watch", "production", "stock", "receivables", "deliveries", "people"]
 
 
@@ -98,3 +110,16 @@ class Recipe:
     # Sends the mill's figures to DeepSeek (automations.ai): runs only once the
     # owner has switched AI on, in its own job, and tests are rate-limited.
     uses_ai: bool = False
+    # A plain recipe that can add AI advice when its ai_advice setting is on
+    # and the owner has switched AI on; then it runs as an AI recipe would.
+    # With AI off it still runs, without the advice.
+    ai_optional: bool = False
+    # Only these roles may receive it, whatever their section access: what it
+    # says about named staff is for the owner alone.
+    only_roles: tuple[str, ...] = ()
+
+
+def asks_ai(recipe: Recipe, params: BaseModel, ai_on: bool) -> bool:
+    """Whether a run of this recipe calls the AI: always for an AI recipe,
+    and for one with optional advice when it's asked for and AI is on."""
+    return recipe.uses_ai or (recipe.ai_optional and ai_on and bool(getattr(params, "ai_advice", False)))

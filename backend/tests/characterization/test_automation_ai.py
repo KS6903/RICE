@@ -34,6 +34,7 @@ MANILA = ZoneInfo("Asia/Manila")
 NOW = datetime.fromisoformat("2026-10-05T08:40+08:00")  # a Monday
 TODAY = date(2026, 10, 5)
 AI_CODES = [code for code, r in RECIPES.items() if r.uses_ai]
+ADVICE_CODES = [code for code, r in RECIPES.items() if r.ai_optional]
 
 
 @pytest.fixture
@@ -227,7 +228,7 @@ def test_the_language_is_any_on_offer_and_nothing_else(auth_client, seed_owner):
 # ── the switch ───────────────────────────────────────────────────────────────
 
 
-def _enable(db_session, company, code="ai_briefing", **params):
+def _enable(db_session, company, code="ai_leakage_watch", **params):
     db_session.add(AutomationRule(company_id=company.id, recipe=code, enabled=True, params=params, recipients=[]))
     db_session.commit()
 
@@ -238,8 +239,12 @@ def _tick(db_session, company, *, ai_job):
     )
 
 
+QUIET = {"headline": "Quiet weeks.", "patterns": [], "all_clear": "Nothing stands out."}
+ADVICE = {"headline": "A slow Sunday.", "summary": "Nothing sold.", "today": ["Chase the overdue invoices."]}
+
+
 def test_ai_recipes_wait_for_the_owners_switch_and_run_in_their_own_job(db_session, company, key, monkeypatch):
-    _reply(monkeypatch, content=json.dumps({"headline": "Quiet day.", "summary": "Nothing moved.", "today": []}))
+    _reply(monkeypatch, content=json.dumps(QUIET))
     _enable(db_session, company)
     assert _tick(db_session, company, ai_job=False) == "no automations switched on"
     assert _tick(db_session, company, ai_job=True) == "1 AI automation(s) paused: AI is switched off"
@@ -247,25 +252,73 @@ def test_ai_recipes_wait_for_the_owners_switch_and_run_in_their_own_job(db_sessi
     assert _tick(db_session, company, ai_job=True) == "1 automation(s) ran, 0 failed"
     db_session.expire_all()
     [notice] = db_session.query(Notification).all()
-    assert notice.title.startswith("Your morning briefing")
-    assert notice.body.startswith("Quiet day.")
+    assert notice.title == "Unusual patterns to review: the last 28 days"
+    assert notice.body.startswith("Quiet weeks.")
+
+
+def test_the_morning_summary_adds_no_advice_while_ai_is_off(db_session, company, key, monkeypatch):
+    calls: list = []
+    _reply(monkeypatch, content=json.dumps(ADVICE), calls=calls)
+    _enable(db_session, company, code="owner_digest", ai_advice=True)
+    # The plain summary, in the quick job, and nothing reaches the model.
+    assert _tick(db_session, company, ai_job=True) == "no automations switched on"
+    assert _tick(db_session, company, ai_job=False) == "1 automation(s) ran, 0 failed"
+    db_session.expire_all()
+    [plain] = db_session.query(Notification).all()
+    assert plain.body.startswith("Palay bought:")
+    assert calls == []
+
+
+def test_with_ai_on_the_morning_summary_opens_with_advice(db_session, company, key, monkeypatch):
+    _reply(monkeypatch, content=json.dumps(ADVICE))
+    _switch_ai(db_session, company)
+    _enable(db_session, company, code="owner_digest", ai_advice=True)
+    assert _tick(db_session, company, ai_job=False) == "no automations switched on"
+    assert _tick(db_session, company, ai_job=True) == "1 automation(s) ran, 0 failed"
+    db_session.expire_all()
+    [notice] = db_session.query(Notification).all()
+    assert notice.title.startswith("Yesterday at ")
+    assert notice.body.splitlines()[:6] == [
+        "A slow Sunday.",
+        "Nothing sold.",
+        "First today:",
+        "1. Chase the overdue invoices.",
+        "",
+        "The figures:",
+    ]
+    assert "\n\nThe figures:\nPalay bought:" in notice.body
 
 
 def test_when_deepseek_fails_the_figures_still_go_out(db_session, company, key, monkeypatch):
     _reply(monkeypatch, status=503, content="{}")
     _switch_ai(db_session, company)
-    _enable(db_session, company)
+    _enable(db_session, company, code="owner_digest", ai_advice=True)
     assert _tick(db_session, company, ai_job=True) == "1 automation(s) ran, 0 failed"
     db_session.expire_all()
     [notice] = db_session.query(Notification).all()
     assert notice.body.startswith("The AI advice couldn't be written this time. Here are the figures.")
-    assert "\n\nThe figures:\nYesterday: sales ₱0" in notice.body
+    assert "\n\nThe figures:\nPalay bought: 0 kg for ₱0" in notice.body
+
+
+def test_the_month_in_review_sends_its_spreadsheet_with_or_without_advice(db_session, company, key, monkeypatch):
+    _reply(monkeypatch, content=json.dumps({"review": "A steady month. || Collections held.", "watch": []}))
+    recipe = RECIPES["month_in_review"]
+    first = datetime.fromisoformat("2026-10-01T08:05+08:00")
+    plain = recipe.build(RecipeContext(db=db_session, company=company, now=first, zone=MANILA), recipe.params())
+    advised = recipe.build(
+        RecipeContext(db=db_session, company=company, now=first, zone=MANILA, ai=True), recipe.params(ai_advice=True)
+    )
+    for [notice] in (plain, advised):
+        assert notice.title == "September in review"
+        assert [a.filename for a in notice.attachments] == ["month-in-review-2026-09.csv"]
+    assert plain[0].body.startswith("Sales: ₱0")
+    assert advised[0].body.startswith("A steady month.\nCollections held.")
 
 
 def test_only_the_owner_switches_ai_and_ai_recipes_need_it(auth_client, db_session, seed_owner):
-    res = auth_client.put("/api/automations/ai_briefing", json={"enabled": True})
+    res = auth_client.put("/api/automations/ai_leakage_watch", json={"enabled": True})
     assert res.status_code == 400 and "Switch on AI" in res.json()["detail"]
-    assert auth_client.post("/api/automations/ai_briefing/test").status_code == 400
+    assert auth_client.post("/api/automations/ai_leakage_watch/test").status_code == 400
 
     res = auth_client.put("/api/automations/ai", json={"enabled": True, "language": "fil"})
     assert res.status_code == 200, res.text
@@ -274,7 +327,8 @@ def test_only_the_owner_switches_ai_and_ai_recipes_need_it(auth_client, db_sessi
     listed = auth_client.get("/api/automations/").json()
     assert listed["ai"]["enabled"] is True
     assert {r["code"] for r in listed["recipes"] if r["uses_ai"]} == set(AI_CODES)
-    assert auth_client.put("/api/automations/ai_briefing", json={"enabled": True}).status_code == 200
+    assert {r["code"] for r in listed["recipes"] if r["ai_optional"]} == set(ADVICE_CODES)
+    assert auth_client.put("/api/automations/ai_leakage_watch", json={"enabled": True}).status_code == 200
 
     from app.core.security import get_current_user
     from app.main import app
@@ -296,15 +350,23 @@ def test_only_the_owner_switches_ai_and_ai_recipes_need_it(auth_client, db_sessi
     res = auth_client.put("/api/automations/ai", json={"enabled": False})
     assert res.status_code == 403
     assert res.json()["detail"] == "Only the mill's owner can change the AI settings."
+    # Unusual patterns name staff: they go to the owner alone, not to this admin.
+    candidates = auth_client.get("/api/automations/").json()["recipes"]
+    [patterns] = [r for r in candidates if r["code"] == "ai_leakage_watch"]
+    assert {c["role"] for c in patterns["candidates"]} == {"owner"}
 
 
 def test_ai_tests_are_rate_limited(auth_client, monkeypatch):
     # The API client itself speaks httpx, so the model call is stubbed above it.
-    monkeypatch.setattr(ai, "ask", lambda facts, keys, **kw: {"headline": "Fine.", "summary": "Fine.", "today": []})
+    monkeypatch.setattr(ai, "ask", lambda facts, keys, **kw: QUIET)
     auth_client.put("/api/automations/ai", json={"enabled": True})
-    assert auth_client.post("/api/automations/ai_briefing/test").json() == {"sent": 1}
-    res = auth_client.post("/api/automations/ai_briefing/test")
+    assert auth_client.post("/api/automations/ai_leakage_watch/test").json() == {"sent": 1}
+    res = auth_client.post("/api/automations/ai_leakage_watch/test")
     assert res.status_code == 400 and "again in a few minutes" in res.json()["detail"]
+    # Advice a plain recipe adds is rate-limited the same way.
+    auth_client.put("/api/automations/owner_digest", json={"enabled": True, "params": {"ai_advice": True}})
+    assert auth_client.post("/api/automations/owner_digest/test").json() == {"sent": 1}
+    assert auth_client.post("/api/automations/owner_digest/test").status_code == 400
 
 
 # ── what reaches the model ───────────────────────────────────────────────────
@@ -442,13 +504,13 @@ def test_every_ai_recipe_runs_and_sends_nothing_private(db_session, company, mil
         "_forecast",
         lambda lat, lon: {"daily": [{"date": "2026-10-05", "condition": "Rain", "precip_pct": 80}], "hourly": []},
     )
-    ctx = RecipeContext(db=db_session, company=company, now=NOW, zone=MANILA, test=True)
-    for code in AI_CODES:
+    ctx = RecipeContext(db=db_session, company=company, now=NOW, zone=MANILA, test=True, ai=True)
+    for code in AI_CODES + ADVICE_CODES:
         recipe = RECIPES[code]
-        notices = recipe.build(ctx, recipe.params())
+        notices = recipe.build(ctx, recipe.params(ai_advice=True) if recipe.ai_optional else recipe.params())
         assert notices, f"{code} had nothing to say about a busy mill"
         assert "The figures:" in notices[0].body, code
-    assert len(sent) == len(AI_CODES)
+    assert len(sent) == len(AI_CODES) + len(ADVICE_CODES)
     payload = json.dumps(sent, ensure_ascii=False, default=str)
     for secret in SECRETS:
         assert secret not in payload, f"{secret!r} reached the model"

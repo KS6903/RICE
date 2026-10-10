@@ -66,6 +66,15 @@ const owner: User = {
   company_id: "c1",
 };
 
+const aiOffSettings = {
+  enabled: false,
+  language: "en",
+  languages: [{ value: "en", label: "English" }],
+  configured: true,
+  changed_by: null,
+  changed_at: null,
+};
+
 const draw = () =>
   render(
     <QueryClientProvider
@@ -284,6 +293,43 @@ describe("AutomationsPage", () => {
       expect(note.parentElement).toBe(document.body);
       expect(note).toHaveClass("fixed");
     });
+  });
+
+  it("offers AI advice on the morning summary only once AI is on", async () => {
+    useAuthStore.setState({ user: owner });
+    const advisable: Automation = {
+      ...digest,
+      ai_optional: true,
+      fields: [
+        digest.fields[0],
+        { name: "ai_advice", label: "Add AI advice", kind: "bool", help: "" },
+        digest.fields[1],
+      ],
+      params: { ...digest.params, ai_advice: false },
+    };
+    const list = vi
+      .spyOn(automationsService, "list")
+      .mockResolvedValue({ recipes: [advisable], ai: { ...aiOffSettings } });
+    const { unmount } = draw();
+    fireEvent.click(await screen.findByRole("button", { name: "Settings" }));
+    expect(screen.getByLabelText("Add AI advice")).toBeDisabled();
+    unmount();
+
+    list.mockResolvedValue({ recipes: [advisable], ai: { ...aiOffSettings, enabled: true } });
+    draw();
+    fireEvent.click(await screen.findByRole("button", { name: "Settings" }));
+    expect(screen.getByLabelText("Add AI advice")).toBeEnabled();
+  });
+
+  it("leaves the government-numbers reminder to the Employees page", async () => {
+    useAuthStore.setState({ user: owner });
+    vi.spyOn(automationsService, "list").mockResolvedValue({
+      recipes: [digest, { ...digest, code: "government_ids", title: "Missing", group: "people" }],
+    });
+    draw();
+    await screen.findByRole("heading", { name: "Morning summary" });
+    expect(screen.queryByRole("tab", { name: "People" })).toBeNull();
+    expect(screen.getByText(/0 of 1 switched on/)).toBeInTheDocument();
   });
 
   it("keeps settings folded away until asked for", async () => {

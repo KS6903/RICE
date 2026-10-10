@@ -25,7 +25,6 @@ import {
   Sparkles,
   Sunrise,
   Truck,
-  Users,
   Warehouse,
   XCircle,
   type LucideIcon,
@@ -49,7 +48,8 @@ type Params = Automation["params"];
 const CARD_GRID = "group/grid grid grid-cols-[repeat(auto-fill,minmax(17rem,1fr))] gap-4";
 
 // Tab order: everyday operations first, the AI advisor last. A group gets a tab
-// only once it has recipes; the blurb is the tab's tooltip.
+// only once it has recipes; the blurb is the tab's tooltip. The people group's
+// one reminder (missing government numbers) is switched on the Employees page.
 const GROUPS: { key: AutomationGroup; title: string; blurb: string; icon: LucideIcon }[] = [
   {
     key: "reports",
@@ -87,7 +87,6 @@ const GROUPS: { key: AutomationGroup; title: string; blurb: string; icon: Lucide
     blurb: "Entries worth a second look, within 15 minutes of being made.",
     icon: ShieldAlert,
   },
-  { key: "people", title: "People", blurb: "Your team's paperwork.", icon: Users },
   {
     key: "advisor",
     title: "AI advisor",
@@ -465,11 +464,14 @@ function AutomationCard({
   automation,
   readOnly,
   aiOff = false,
+  aiOn = false,
 }: {
   automation: Automation;
   readOnly: boolean;
   /** An AI recipe while the mill's AI switch is off: it can't be switched on. */
   aiOff?: boolean;
+  /** The mill's AI switch is on, so optional AI advice can be asked for. */
+  aiOn?: boolean;
 }) {
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
@@ -614,7 +616,8 @@ function AutomationCard({
                 field={field}
                 idPrefix={automation.code}
                 value={params[field.name]}
-                disabled={readOnly}
+                // Advice can't be asked for while AI is off, only taken away.
+                disabled={readOnly || (field.name === "ai_advice" && !aiOn && !params.ai_advice)}
                 onChange={(value) => setParams((p) => ({ ...p, [field.name]: value }))}
               />
             ))}
@@ -869,7 +872,8 @@ export default function AutomationsPage() {
   const { isReadOnly, role } = useAccess();
   const readOnly = isReadOnly("automations");
   const list = useQuery({ queryKey: ["automations"], queryFn: () => automationsService.list() });
-  const recipes = list.data?.recipes ?? [];
+  // Only the groups this page has tabs for.
+  const recipes = (list.data?.recipes ?? []).filter((r) => GROUPS.some((g) => g.key === r.group));
   const ai = list.data?.ai;
   const onCount = recipes.filter((r) => r.enabled).length;
 
@@ -990,6 +994,7 @@ export default function AutomationsPage() {
                         automation={automation}
                         readOnly={readOnly}
                         aiOff={Boolean(automation.uses_ai && !ai?.enabled)}
+                        aiOn={Boolean(ai?.enabled)}
                       />
                     ))}
                 </div>

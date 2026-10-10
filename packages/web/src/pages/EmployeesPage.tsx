@@ -10,6 +10,7 @@ import UpgradeRequired from "../components/UpgradeRequired";
 import LegalNotice from "../components/LegalNotice";
 import UserAvatar from "../components/UserAvatar";
 import { useAccess } from "../hooks/useAccess";
+import GovernmentIdsNotice from "../components/GovernmentIdsNotice";
 
 const EMPLOYMENT_TYPES = [
   { value: "regular", label: "Regular" },
@@ -208,6 +209,8 @@ function EmployeesPageInner() {
           </button>
         </div>
       </div>
+
+      <GovernmentIdsNotice employees={employees} onOpen={setViewing} />
 
       {showForm && (
         <div className="card space-y-5">

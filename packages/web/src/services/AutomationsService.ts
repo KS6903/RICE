@@ -47,6 +47,8 @@ export type Automation = {
   last_run: AutomationRun | null;
   /** Sends the mill's figures to the AI service; needs the owner's AI switch on. */
   uses_ai?: boolean;
+  /** Can add AI advice (its ai_advice setting) once the owner switches AI on. */
+  ai_optional?: boolean;
 };
 
 export type AISettings = {

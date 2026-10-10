@@ -73,8 +73,9 @@ def test_the_owner_sees_the_morning_summary_with_its_defaults(auth_client):
     [digest] = [r for r in recipes if r["code"] == "owner_digest"]
     assert digest["code"] == "owner_digest"
     assert digest["enabled"] is False
-    assert digest["params"] == {"send_at": "06:00", "email": True}
-    assert [f["name"] for f in digest["fields"]] == ["send_at", "email"]
+    assert digest["params"] == {"send_at": "06:00", "ai_advice": False, "email": True}
+    assert [f["name"] for f in digest["fields"]] == ["send_at", "ai_advice", "email"]
+    assert digest["ai_optional"] is True
 
 
 def test_every_recipe_loads_with_its_defaults(auth_client):
@@ -143,7 +144,7 @@ def test_the_owner_switches_it_on(auth_client, seed_owner):
     assert res.status_code == 200, res.text
     body = res.json()
     assert body["enabled"] is True
-    assert body["params"] == {"send_at": "05:30", "email": False}
+    assert body["params"] == {"send_at": "05:30", "ai_advice": False, "email": False}
     assert body["effective_recipients"] == [str(seed_owner.id)]
 
 

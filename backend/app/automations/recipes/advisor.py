@@ -15,12 +15,13 @@ from __future__ import annotations
 import uuid
 from collections import defaultdict
 from collections.abc import Callable
+from dataclasses import replace
 from datetime import date, datetime, time, timedelta
 from decimal import Decimal
 from typing import Any, TypedDict
 from zoneinfo import ZoneInfo
 
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel
 from sqlalchemy import func
 
 from ...jobs.schedule import MONDAY, Schedule, daily, monthly, weekly
@@ -34,8 +35,9 @@ from ...models.sales import Invoice, Payment, PriceList, SalesOrder, SalesOrderI
 from ...models.supplier_customer import Customer, Supplier
 from ...models.user import User
 from .. import ai, credit
-from ..base import Field, Notice, Recipe, RecipeContext
-from ..format import KG_PER_CAVAN, kg, peso
+from ..base import AI_ADVICE_FIELD, Field, Notice, Recipe, RecipeContext
+from ..csvfile import csv_attachment
+from ..format import KG_PER_CAVAN, kg, peso, plural
 from .reports import _reports, last_month, week_totals
 from .stock import _forecast, _location
 from .watch import _EDITABLE, EMAIL_FIELD, list_price
@@ -310,34 +312,7 @@ def overhead_facts(ctx: RecipeContext, days: int = 30) -> dict[str, Any]:
     return {"rice_milled_last_30_days_kg": _n(rice_made), "period_days": days}
 
 
-# ── 1. AI morning briefing (with the day's alerts sorted) ────────────────────
-
-
-class BriefingParams(BaseModel):
-    send_at: str = "06:15"
-    email: bool = True
-
-    @field_validator("send_at")
-    @classmethod
-    def _morning(cls, value: str) -> str:
-        try:
-            parsed = time.fromisoformat(value)
-        except ValueError as exc:
-            raise ValueError("Use a time like 06:15") from exc
-        if not time(4, 0) <= parsed < time(12, 0):
-            raise ValueError("Pick a time between 04:00 and 11:59")
-        return parsed.strftime("%H:%M")
-
-
-def _briefing_schedule(params: BaseModel) -> Schedule:
-    assert isinstance(params, BriefingParams)
-    at = time.fromisoformat(params.send_at)
-
-    def due(now: datetime, zone: ZoneInfo) -> str | None:
-        local = now.astimezone(zone)
-        return local.date().isoformat() if at <= local.time() < time(12, 0) else None
-
-    return due
+# ── 1. morning advice, for the morning summary (owner_digest) ───────────────
 
 
 def recent_alerts(ctx: RecipeContext, hours: int = 24) -> list[str]:
@@ -350,6 +325,7 @@ def recent_alerts(ctx: RecipeContext, hours: int = 24) -> list[str]:
             Notification.created_at >= ctx.now - timedelta(hours=hours),
             Notification.kind.like("automation.%"),
             Notification.kind.notlike("automation.ai\\_%"),
+            Notification.kind != "automation.owner_digest",
             Notification.dedupe_key.notlike("%:test:%"),
         )
         .group_by(Notification.title)
@@ -360,7 +336,10 @@ def recent_alerts(ctx: RecipeContext, hours: int = 24) -> list[str]:
     return [title for title, _ in rows]
 
 
-def _briefing(ctx: RecipeContext, params: BaseModel) -> list[Notice]:
+def morning_advice(ctx: RecipeContext, *, title: str, dedupe_key: str, figures: list[str]) -> Notice:
+    """The morning summary's AI advice: yesterday against a usual day, and the
+    three things to do first today, picked from what's due and the alerts. The
+    summary's own lines are the figures it rests on."""
     db, today = ctx.db, ctx.local_today
     yesterday = today - timedelta(days=1)
     y = week_totals(ctx, yesterday, yesterday)
@@ -462,14 +441,6 @@ def _briefing(ctx: RecipeContext, params: BaseModel) -> list[Notice]:
         },
         "alerts_in_the_last_24_hours": recent_alerts(ctx),
     }
-    figures = [
-        f"Yesterday: sales {peso(y['sales'])}, collected {peso(y['collected'])}, expenses {peso(y['expenses'])}",
-        f"Palay bought {kg(y['palay_kg'])} for {peso(y['palay_cost'])}; rice milled {kg(y['milled_kg'])}",
-        f"Overdue: {peso(sum(owed.values(), D0))} across {len(owed)} customer(s)",
-    ]
-    alerts = facts["alerts_in_the_last_24_hours"]
-    if isinstance(alerts, list) and alerts:
-        figures.append(f"Alerts in the last 24 hours: {len(alerts)}")
     task = (
         "Write the owner's morning briefing. Say how yesterday went against the usual day, in two or three "
         "sentences. Then pick up to three things to do first today from the 'today' facts and the alerts: "
@@ -487,37 +458,17 @@ def _briefing(ctx: RecipeContext, params: BaseModel) -> list[Notice]:
             max_items=3,
         ),
     )
-    return [
-        advise(
-            ctx,
-            title=f"Your morning briefing ({today:%a %d %b})",
-            dedupe_key=f"ai_briefing:{today.isoformat()}",
-            link="/automations",
-            task=task,
-            facts=facts,
-            figures=figures,
-            keys=keys,
-            render=_render(("summary", ""), ("today", "First today:")),
-        )
-    ]
-
-
-AI_BRIEFING = Recipe(
-    code="ai_briefing",
-    title="Morning briefing",
-    description=(
-        "Each morning, yesterday against a usual day in a few plain sentences, and the three things to do "
-        "first today, picked from what's due and from the alerts."
-    ),
-    group="advisor",
-    section="reports",
-    default_roles=("owner",),
-    params=BriefingParams,
-    fields=(Field("send_at", "Send at", "time", "Your mill's local time, before noon."), EMAIL_FIELD),
-    schedule=_briefing_schedule,
-    build=_briefing,
-    uses_ai=True,
-)
+    return advise(
+        ctx,
+        title=title,
+        dedupe_key=dedupe_key,
+        link="/reports",
+        task=task,
+        facts=facts,
+        figures=figures,
+        keys=keys,
+        render=_render(("summary", ""), ("today", "First today:")),
+    )
 
 
 # ── 2. payment reminder drafts ───────────────────────────────────────────────
@@ -1005,42 +956,66 @@ def _leakage_watch(ctx: RecipeContext, params: BaseModel) -> list[Notice]:
         ai.Key("patterns", "patterns worth checking, biggest peso effect first", limit=500, is_list=True, max_items=4),
         ai.Key("all_clear", "one sentence on what looks normal", limit=250),
     )
-    figures = []
-    for p in signals["palay_purchases_by_who_entered_and_supplier"][:3]:
-        figures.append(
-            f"Palay from {p['supplier']} entered by {p['entered_by']}: {p['price_vs_variety_average_pct']:+g}% "
-            f"against the variety average ({peso(p['paid_over_variety_average_php'])})"
-        )
-    for m in signals["milling_by_operator"]:
-        figures.append(
-            f"Milling by {m['operator']}: {m['recovery_pct']:g}% recovery, {m['expected_recovery_pct']:g}% expected"
-        )
-    for c in signals["customers_given_discounts_or_under_list_prices"][:2]:
-        figures.append(
-            f"{c['customer']}: {peso(c['discounts_php'])} in discounts, {peso(c['under_price_list_php'])} under the price list"
-        )
     return [
         advise(
             ctx,
-            title=f"Leakage watch: the last {LEAK_DAYS} days",
+            title=f"Unusual patterns to review: the last {LEAK_DAYS} days",
             dedupe_key=f"ai_leakage_watch:{ctx.local_today.isoformat()}",
             link="/reports",
             task=task,
             facts=signals,
-            figures=figures,
+            figures=pattern_records(signals),
             keys=keys,
             render=_render(("patterns", "Worth checking:"), ("all_clear", "")),
         )
     ]
 
 
+def pattern_records(signals: dict[str, Any]) -> list[str]:
+    """The records behind the patterns, so the owner can check each one in the
+    app before asking anyone about it. Who entered what, never a verdict."""
+    lines = []
+    for p in signals["palay_purchases_by_who_entered_and_supplier"][:5]:
+        if abs(p["price_vs_variety_average_pct"]) < 1:
+            continue
+        lines.append(
+            f"Palay: {p['purchases']} purchases from {p['supplier']} entered by {p['entered_by']}, "
+            f"{p['price_vs_variety_average_pct']:+g}% against the variety average "
+            f"({peso(p['paid_over_variety_average_php'])}), moisture {p['moisture_vs_variety_average_points']:+g} points"
+        )
+    for s in signals["sales_by_who_entered"]:
+        if s["discounts_php"] or s["under_price_list_php"]:
+            lines.append(
+                f"Sales entered by {s['entered_by']}: {peso(s['discounts_php'])} in discounts, "
+                f"{peso(s['under_price_list_php'])} under the price list on {plural(s['lines_under_price_list'], 'line')}"
+            )
+    for c in signals["customers_given_discounts_or_under_list_prices"][:3]:
+        lines.append(
+            f"Customer {c['customer']}: {peso(c['discounts_php'])} in discounts, "
+            f"{peso(c['under_price_list_php'])} under the price list"
+        )
+    for m in signals["milling_by_operator"]:
+        lines.append(
+            f"Milling by {m['operator']}: {plural(m['batches'], 'batch', 'batches')}, {m['recovery_pct']:g}% "
+            f"recovery against {m['expected_recovery_pct']:g}% expected"
+        )
+    for person, count in signals["edits_to_records_over_a_day_old_by_person"].items():
+        lines.append(f"Records over a day old changed by {person}: {count}")
+    for person, count in signals["stock_adjustments_by_person"].items():
+        lines.append(f"Stock adjustments by {person}: {count}")
+    for c in signals["cash"]["cash_received_by_person"]:
+        lines.append(f"Cash received by {c['person']}: {peso(c['php'])} in {plural(c['payments'], 'payment')}")
+    return lines
+
+
 AI_LEAKAGE_WATCH = Recipe(
     code="ai_leakage_watch",
-    title="Leakage watch",
+    title="Unusual patterns to review",
     description=(
-        "Monday mornings, patterns where money may be quietly leaking: palay bought dear from one supplier, "
-        "discounts clustered on one customer, an operator's batches yielding less, repeated stock adjustments. "
-        "Never an accusation: what to check, and how."
+        "Monday mornings, for the owner only: patterns worth a second look, such as palay bought dear from one "
+        "supplier, discounts clustered on one customer, an operator's batches yielding less, or repeated stock "
+        "adjustments, with the records behind each. Most have an innocent reason: it says what to check, "
+        "never who to blame."
     ),
     group="advisor",
     section="reports",
@@ -1050,6 +1025,7 @@ AI_LEAKAGE_WATCH = Recipe(
     schedule=lambda _p: weekly(MONDAY, time(8, 15)),
     build=_leakage_watch,
     uses_ai=True,
+    only_roles=("owner",),
 )
 
 
@@ -1253,10 +1229,18 @@ AI_DRYING_PLANNER = Recipe(
 )
 
 
-# ── 7. month in review ───────────────────────────────────────────────────────
+# ── 7. month in review (a report, with optional AI advice) ──────────────────
+
+
+class MonthReviewParams(BaseModel):
+    ai_advice: bool = False
+    email: bool = True
 
 
 def _month_in_review(ctx: RecipeContext, params: BaseModel) -> list[Notice]:
+    """Last month against the month before, with a spreadsheet. With AI advice
+    on, it opens with a two-paragraph review fit to hand to an accountant."""
+    assert isinstance(params, MonthReviewParams)
     start, end = last_month(ctx.local_today)
     before_start, before_end = last_month(start)
     reports = _reports(ctx)
@@ -1280,6 +1264,7 @@ def _month_in_review(ctx: RecipeContext, params: BaseModel) -> list[Notice]:
         .limit(5)
         .all()
     )
+    facts_owed = reports.ar_aging(today=end)
     pl_keys = ("revenue", "cost_of_goods", "gross_profit", "operating_expenses", "net_profit")
     facts = {
         "month": f"{start:%B %Y}",
@@ -1293,7 +1278,7 @@ def _month_in_review(ctx: RecipeContext, params: BaseModel) -> list[Notice]:
         "milling_recovery_pct": _n(volumes["recovery"], 1),
         "collected_php": _n(volumes["collected"]),
         "biggest_expense_categories_php": [{"category": n, "php": _n(a)} for n, a in categories],
-        "receivables_by_days_late_php": {k: _n(v) for k, v in reports.ar_aging(today=end).items()},
+        "receivables_by_days_late_php": {k: _n(v) for k, v in facts_owed.items()},
         "top_customers_php": [{"customer": n, "php": _n(a)} for n, a in top],
     }
     task = (
@@ -1317,15 +1302,31 @@ def _month_in_review(ctx: RecipeContext, params: BaseModel) -> list[Notice]:
             lines += ["", "Next month, watch:"] + [f"{i}. {w}" for i, w in enumerate(answer["watch"], start=1)]
         return lines
 
+    def line(label: str, key: str) -> str:
+        change = _change(this[key], before[key])
+        compared = f" ({change:+.0f}% on {before_start:%B})" if isinstance(change, float) else ""
+        return f"{label}: {peso(this[key])}{compared}"
+
     figures = [
-        f"Sales {peso(this['revenue'])}, palay cost {peso(this['cost_of_goods'])}, expenses {peso(this['operating_expenses'])}",
-        f"Net profit {peso(this['net_profit'])}; the month before {peso(before['net_profit'])}",
+        line("Sales", "revenue"),
+        line("Cost of palay", "cost_of_goods"),
+        line("Gross profit", "gross_profit"),
+        line("Expenses", "operating_expenses"),
+        line("Net profit", "net_profit"),
+        f"Palay bought {kg(volumes['palay_kg'])}; rice milled {kg(volumes['milled_kg'])}",
+        f"Collected {peso(volumes['collected'])}; owed to the mill {peso(sum(Decimal(str(v)) for v in facts_owed.values()))}",
     ]
-    return [
-        advise(
+    spreadsheet = csv_attachment(
+        f"month-in-review-{start:%Y-%m}.csv",
+        ("Item", f"{start:%B %Y} (PHP)", f"{before_start:%B %Y} (PHP)"),
+        [(k.replace("_", " ").capitalize(), this[k], before[k]) for k in pl_keys],
+    )
+    title, dedupe_key = f"{start:%B} in review", f"month_in_review:{start:%Y-%m}"
+    if params.ai_advice and ctx.ai:
+        notice = advise(
             ctx,
-            title=f"{start:%B} in review",
-            dedupe_key=f"ai_month_in_review:{start:%Y-%m}",
+            title=title,
+            dedupe_key=dedupe_key,
             link="/reports",
             task=task,
             facts=facts,
@@ -1333,30 +1334,33 @@ def _month_in_review(ctx: RecipeContext, params: BaseModel) -> list[Notice]:
             keys=keys,
             render=render,
         )
-    ]
+    else:
+        notice = Notice(title=title, body="\n".join(figures), link="/reports", dedupe_key=dedupe_key)
+    return [replace(notice, attachments=(spreadsheet,))]
 
 
-AI_MONTH_IN_REVIEW = Recipe(
-    code="ai_month_in_review",
+MONTH_IN_REVIEW = Recipe(
+    code="month_in_review",
     title="Month in review",
-    description="On the 1st, last month told in two short paragraphs, fit to share with your accountant or bank.",
-    group="advisor",
+    description=(
+        "On the 1st, last month's sales, costs and profit against the month before, with a spreadsheet. "
+        "With AI advice, it opens with two short paragraphs fit to share with your accountant or bank."
+    ),
+    group="reports",
     section="reports",
     default_roles=("owner", "accountant"),
-    params=_EmailOnly,
-    fields=(EMAIL_FIELD,),
+    params=MonthReviewParams,
+    fields=(AI_ADVICE_FIELD, EMAIL_FIELD),
     schedule=lambda _p: monthly(1, time(8, 0)),
     build=_month_in_review,
-    uses_ai=True,
+    ai_optional=True,
 )
 
 
 ADVISOR_RECIPES = (
-    AI_BRIEFING,
     AI_COLLECTION_DRAFTS,
     AI_BUYING_ADVISOR,
     AI_LEAKAGE_WATCH,
     AI_MARGIN_CHECK,
     AI_DRYING_PLANNER,
-    AI_MONTH_IN_REVIEW,
 )

@@ -14,7 +14,7 @@ from ...models.costs import Expense
 from ...models.milling import MillingBatch, MillingBatchOutput
 from ...models.paddy import PalayPurchase, PalayPurchaseItem
 from ...models.sales import Invoice, Payment, SalesOrder
-from ..base import Field, Notice, Recipe, RecipeContext
+from ..base import AI_ADVICE_FIELD, Field, Notice, Recipe, RecipeContext
 from ..format import KG_PER_CAVAN
 from ..format import kg as _kg
 from ..format import peso as _peso
@@ -26,6 +26,8 @@ LATEST_SEND = time(12, 0)
 
 class OwnerDigestParams(BaseModel):
     send_at: str = PydanticField("06:00", description="Local time, HH:MM, before noon")
+    # Open with AI advice: yesterday against a usual day, and what to do first.
+    ai_advice: bool = False
     email: bool = True
 
     @field_validator("send_at")
@@ -96,14 +98,14 @@ def _build(ctx: RecipeContext, params: BaseModel) -> list[Notice]:
     if overdue_count:
         noun = "invoice" if overdue_count == 1 else "invoices"
         lines.append(f"Needs attention: {overdue_count} overdue {noun}, {_peso(overdue_balance)} unpaid")
-    return [
-        Notice(
-            title=f"Yesterday at {ctx.company.name} ({day:%a %d %b})",
-            body="\n".join(lines),
-            link="/reports",
-            dedupe_key=f"owner_digest:{day.isoformat()}",
-        )
-    ]
+    title = f"Yesterday at {ctx.company.name} ({day:%a %d %b})"
+    dedupe_key = f"owner_digest:{day.isoformat()}"
+    assert isinstance(params, OwnerDigestParams)
+    if params.ai_advice and ctx.ai:
+        from .advisor import morning_advice  # advisor builds on the report recipes
+
+        return [morning_advice(ctx, title=title, dedupe_key=dedupe_key, figures=lines)]
+    return [Notice(title=title, body="\n".join(lines), link="/reports", dedupe_key=dedupe_key)]
 
 
 OWNER_DIGEST = Recipe(
@@ -111,7 +113,8 @@ OWNER_DIGEST = Recipe(
     title="Morning summary",
     description=(
         "Every morning, yesterday at a glance: palay bought, rice milled, sales, "
-        "collections and expenses, plus any overdue invoices."
+        "collections and expenses, plus any overdue invoices. With AI advice, it opens with "
+        "how yesterday compares with a usual day and the three things to do first today."
     ),
     group="reports",
     section="reports",
@@ -119,8 +122,10 @@ OWNER_DIGEST = Recipe(
     params=OwnerDigestParams,
     fields=(
         Field("send_at", "Send at", "time", "Your mill's local time, before noon."),
+        AI_ADVICE_FIELD,
         Field("email", "Also email it", "bool", "It always appears under the bell too."),
     ),
     schedule=_schedule,
     build=_build,
+    ai_optional=True,
 )
