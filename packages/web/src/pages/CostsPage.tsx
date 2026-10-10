@@ -1,14 +1,20 @@
 import { useState } from "react";
+import { useEscapeKey } from "../hooks/useEscapeKey";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { costsService } from "../services/CostsService";
 import { millingService } from "../services/MillingService";
-import { Plus } from "lucide-react";
+import { Plus, Receipt } from "lucide-react";
 import { format } from "date-fns";
 import QuickAdd from "../components/QuickAdd";
+import EmptyState from "../components/EmptyState";
+import { useAccess } from "../hooks/useAccess";
+import { useOpenOnArrival } from "../hooks/useOpenOnArrival";
 
 export default function CostsPage() {
   const qc = useQueryClient();
-  const [showForm, setShowForm] = useState(false);
+  const { canEdit } = useAccess();
+  const [showForm, setShowForm] = useOpenOnArrival();
+  useEscapeKey(() => setShowForm(false), showForm);
 
   const { data: expenses = [] } = useQuery({
     queryKey: ["expenses"],
@@ -236,8 +242,17 @@ export default function CostsPage() {
             ))}
             {expenses.length === 0 && (
               <tr>
-                <td colSpan={5} className="px-4 py-8 text-center text-gray-400">
-                  No expenses recorded
+                <td colSpan={5}>
+                  <EmptyState
+                    icon={Receipt}
+                    title="No expenses recorded"
+                    action={canEdit("expenses") ? "Add your first expense" : undefined}
+                    onAction={() => setShowForm(true)}
+                    next="Production costs can be linked to a milling batch to see what each batch really cost."
+                  >
+                    Fuel, electricity, labor, repairs: anything the mill pays for. Without them the
+                    profit on your dashboard only counts sales.
+                  </EmptyState>
                 </td>
               </tr>
             )}

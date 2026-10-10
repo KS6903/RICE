@@ -1,12 +1,16 @@
 import { useState } from "react";
+import { useEscapeKey } from "../hooks/useEscapeKey";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { millingService } from "../services/MillingService";
 import { MillingMapper } from "../mappers/MillingMapper";
 import { paddyService } from "../services/PaddyService";
-import { Plus } from "lucide-react";
+import { Factory, Plus } from "lucide-react";
 import { format } from "date-fns";
 import QuickAdd from "../components/QuickAdd";
 import { useAccess } from "../hooks/useAccess";
+import { useOpenOnArrival } from "../hooks/useOpenOnArrival";
+import EmptyState from "../components/EmptyState";
+import FieldCaption from "../components/FieldCaption";
 
 function StatusBadge({ status }: { status: string }) {
   const map: Record<string, string> = {
@@ -20,7 +24,8 @@ function StatusBadge({ status }: { status: string }) {
 export default function MillingPage() {
   const qc = useQueryClient();
   const { canEdit } = useAccess();
-  const [showForm, setShowForm] = useState(false);
+  const [showForm, setShowForm] = useOpenOnArrival();
+  useEscapeKey(() => setShowForm(false), showForm);
 
   const { data: batches = [] } = useQuery({
     queryKey: ["milling-batches"],
@@ -143,7 +148,12 @@ export default function MillingPage() {
 
           <div>
             <div className="flex items-center justify-between mb-2">
-              <p className="text-sm font-medium text-gray-700 dark:text-slate-200">Palay Inputs</p>
+              <div>
+                <p className="text-sm font-medium text-gray-700 dark:text-slate-200">
+                  Palay Inputs
+                </p>
+                <p className="text-xs text-muted">The palay you put into the mill.</p>
+              </div>
               <div className="flex items-center gap-3">
                 <QuickAdd
                   label="New variety"
@@ -201,51 +211,62 @@ export default function MillingPage() {
             </div>
             {form.inputs.map((inp, idx) => (
               <div key={idx} className="grid grid-cols-4 gap-2 mb-2">
-                <select
-                  className="input"
-                  value={inp.variety_id}
-                  onChange={(e) => {
-                    const inputs = [...form.inputs];
-                    inputs[idx].variety_id = e.target.value;
-                    setForm((f) => ({ ...f, inputs }));
-                  }}
-                >
-                  <option value="">Variety</option>
-                  {varieties.map((v: any) => (
-                    <option key={v.id} value={v.id}>
-                      {v.code}
-                    </option>
-                  ))}
-                </select>
-                <input
-                  className="input"
-                  placeholder="Weight kg"
-                  type="number"
-                  value={inp.input_weight_kg}
-                  onChange={(e) => {
-                    const inputs = [...form.inputs];
-                    inputs[idx].input_weight_kg = e.target.value;
-                    setForm((f) => ({ ...f, inputs }));
-                  }}
-                />
-                <input
-                  className="input"
-                  placeholder="Moisture %"
-                  type="number"
-                  value={inp.moisture_content_pct}
-                  onChange={(e) => {
-                    const inputs = [...form.inputs];
-                    inputs[idx].moisture_content_pct = e.target.value;
-                    setForm((f) => ({ ...f, inputs }));
-                  }}
-                />
+                <FieldCaption label="Variety">
+                  <select
+                    className="input"
+                    value={inp.variety_id}
+                    onChange={(e) => {
+                      const inputs = [...form.inputs];
+                      inputs[idx].variety_id = e.target.value;
+                      setForm((f) => ({ ...f, inputs }));
+                    }}
+                  >
+                    <option value="">Variety</option>
+                    {varieties.map((v: any) => (
+                      <option key={v.id} value={v.id}>
+                        {v.code}
+                      </option>
+                    ))}
+                  </select>
+                </FieldCaption>
+                <FieldCaption label="Palay weight (kg)">
+                  <input
+                    className="input"
+                    placeholder="Weight kg"
+                    type="number"
+                    value={inp.input_weight_kg}
+                    onChange={(e) => {
+                      const inputs = [...form.inputs];
+                      inputs[idx].input_weight_kg = e.target.value;
+                      setForm((f) => ({ ...f, inputs }));
+                    }}
+                  />
+                </FieldCaption>
+                <FieldCaption label="Moisture %">
+                  <input
+                    className="input"
+                    placeholder="Moisture %"
+                    type="number"
+                    value={inp.moisture_content_pct}
+                    onChange={(e) => {
+                      const inputs = [...form.inputs];
+                      inputs[idx].moisture_content_pct = e.target.value;
+                      setForm((f) => ({ ...f, inputs }));
+                    }}
+                  />
+                </FieldCaption>
               </div>
             ))}
           </div>
 
           <div>
             <div className="flex items-center justify-between mb-2">
-              <p className="text-sm font-medium text-gray-700 dark:text-slate-200">Outputs</p>
+              <div>
+                <p className="text-sm font-medium text-gray-700 dark:text-slate-200">Outputs</p>
+                <p className="text-xs text-muted">
+                  The rice that came out, plus hull, bran or broken rice (add a row for each).
+                </p>
+              </div>
               <button
                 onClick={() =>
                   setForm((f) => ({
@@ -269,43 +290,49 @@ export default function MillingPage() {
             </div>
             {form.outputs.map((out, idx) => (
               <div key={idx} className="grid grid-cols-4 gap-2 mb-2">
-                <select
-                  className="input"
-                  value={out.output_type}
-                  onChange={(e) => {
-                    const outputs = [...form.outputs];
-                    outputs[idx].output_type = e.target.value;
-                    setForm((f) => ({ ...f, outputs }));
-                  }}
-                >
-                  <option value="milled_rice">Milled Rice (Bigas)</option>
-                  <option value="ipa">Ipa (Rice Hull)</option>
-                  <option value="darak">Darak (Rice Bran)</option>
-                  <option value="binlid">Binlid (Broken Rice)</option>
-                </select>
-                <input
-                  className="input"
-                  placeholder="Weight kg"
-                  type="number"
-                  value={out.output_weight_kg}
-                  onChange={(e) => {
-                    const outputs = [...form.outputs];
-                    outputs[idx].output_weight_kg = e.target.value;
-                    setForm((f) => ({ ...f, outputs }));
-                  }}
-                />
-                {out.output_type === "milled_rice" && (
-                  <input
+                <FieldCaption label="What came out">
+                  <select
                     className="input"
-                    placeholder="Broken rice %"
-                    type="number"
-                    value={out.broken_rice_pct}
+                    value={out.output_type}
                     onChange={(e) => {
                       const outputs = [...form.outputs];
-                      outputs[idx].broken_rice_pct = e.target.value;
+                      outputs[idx].output_type = e.target.value;
+                      setForm((f) => ({ ...f, outputs }));
+                    }}
+                  >
+                    <option value="milled_rice">Milled Rice (Bigas)</option>
+                    <option value="ipa">Ipa (Rice Hull)</option>
+                    <option value="darak">Darak (Rice Bran)</option>
+                    <option value="binlid">Binlid (Broken Rice)</option>
+                  </select>
+                </FieldCaption>
+                <FieldCaption label="Weight (kg)">
+                  <input
+                    className="input"
+                    placeholder="Weight kg"
+                    type="number"
+                    value={out.output_weight_kg}
+                    onChange={(e) => {
+                      const outputs = [...form.outputs];
+                      outputs[idx].output_weight_kg = e.target.value;
                       setForm((f) => ({ ...f, outputs }));
                     }}
                   />
+                </FieldCaption>
+                {out.output_type === "milled_rice" && (
+                  <FieldCaption label="Broken rice %">
+                    <input
+                      className="input"
+                      placeholder="Broken rice %"
+                      type="number"
+                      value={out.broken_rice_pct}
+                      onChange={(e) => {
+                        const outputs = [...form.outputs];
+                        outputs[idx].broken_rice_pct = e.target.value;
+                        setForm((f) => ({ ...f, outputs }));
+                      }}
+                    />
+                  </FieldCaption>
                 )}
               </div>
             ))}
@@ -373,8 +400,17 @@ export default function MillingPage() {
             })}
             {batches.length === 0 && (
               <tr>
-                <td colSpan={6} className="px-4 py-8 text-center text-gray-400">
-                  No milling batches yet
+                <td colSpan={6}>
+                  <EmptyState
+                    icon={Factory}
+                    title="No milling batches yet"
+                    action={canEdit("milling") ? "Start your first batch" : undefined}
+                    onAction={() => setShowForm(true)}
+                    next="The rice and by-products you enter go straight into Inventory, ready to sell."
+                  >
+                    A batch records how much palay went into the mill and how much rice came out.
+                    Oryza works out the recovery rate for you.
+                  </EmptyState>
                 </td>
               </tr>
             )}

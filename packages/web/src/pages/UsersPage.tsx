@@ -1,4 +1,6 @@
 import { useState } from "react";
+import { useEscapeKey } from "../hooks/useEscapeKey";
+import { useOpenOnArrival } from "../hooks/useOpenOnArrival";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { usersService, type UserUpdate } from "../services/UsersService";
 import PasswordInput from "../components/PasswordInput";
@@ -20,8 +22,10 @@ export default function UsersPage() {
   const qc = useQueryClient();
   const me = useAuthStore((s) => s.user);
   const iAmBoss = me?.role === "owner";
-  const [showForm, setShowForm] = useState(false);
+  const [showForm, setShowForm] = useOpenOnArrival();
+  useEscapeKey(() => setShowForm(false), showForm);
   const [editing, setEditing] = useState<any | null>(null);
+  useEscapeKey(() => setEditing(null), !!editing);
   // Who the Boss is giving a temporary password to (a locked-out member of staff).
   const [tempFor, setTempFor] = useState<any | null>(null);
   const [editForm, setEditForm] = useState({ full_name: "", email: "", role_id: "" });
@@ -100,7 +104,10 @@ export default function UsersPage() {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-xl font-bold text-gray-900 dark:text-slate-100">Users</h2>
-          <p className="text-sm text-gray-500 dark:text-slate-400">Manage system users and roles</p>
+          <p className="text-sm text-gray-500 dark:text-slate-400">
+            Give each person their own login. Their role decides which pages they see and what they
+            can change.
+          </p>
         </div>
         <button
           onClick={() => {

@@ -1,10 +1,16 @@
 import { useState } from "react";
+import { useEscapeKey } from "../hooks/useEscapeKey";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { paddyService } from "../services/PaddyService";
-import { Plus } from "lucide-react";
+import { Plus, Wheat } from "lucide-react";
 import { format } from "date-fns";
+import { roleLabel } from "@rice-mill/shared";
 import QuickAdd from "../components/QuickAdd";
 import { useAccess } from "../hooks/useAccess";
+import { useOpenOnArrival } from "../hooks/useOpenOnArrival";
+import EmptyState from "../components/EmptyState";
+import FieldCaption from "../components/FieldCaption";
+import TruncatedText from "../components/TruncatedText";
 
 function StatusBadge({ status }: { status: string }) {
   const map: Record<string, string> = {
@@ -19,8 +25,8 @@ function StatusBadge({ status }: { status: string }) {
 export default function PaddyPage() {
   const qc = useQueryClient();
   const { canEdit } = useAccess();
-  const [showForm, setShowForm] = useState(false);
-  const [tab, setTab] = useState<"purchases" | "inventory">("purchases");
+  const [showForm, setShowForm] = useOpenOnArrival();
+  useEscapeKey(() => setShowForm(false), showForm);
 
   const { data: purchases = [] } = useQuery({
     queryKey: ["palay-purchases"],
@@ -177,82 +183,94 @@ export default function PaddyPage() {
                 key={idx}
                 className="grid grid-cols-2 sm:grid-cols-6 gap-2 p-3 bg-gray-50 dark:bg-slate-900/50 rounded-lg"
               >
-                <select
-                  className="input col-span-2 sm:col-span-1"
-                  value={item.variety_id}
-                  onChange={(e) => {
-                    const items = [...form.items];
-                    items[idx].variety_id = e.target.value;
-                    setForm((f) => ({ ...f, items }));
-                  }}
-                >
-                  <option value="">Variety</option>
-                  {varieties.map((v: any) => (
-                    <option key={v.id} value={v.id}>
-                      {v.code}
-                    </option>
-                  ))}
-                </select>
-                <select
-                  className="input"
-                  value={item.grade_id}
-                  onChange={(e) => {
-                    const items = [...form.items];
-                    items[idx].grade_id = e.target.value;
-                    setForm((f) => ({ ...f, items }));
-                  }}
-                >
-                  <option value="">Grade</option>
-                  {grades.map((g: any) => (
-                    <option key={g.id} value={g.id}>
-                      {g.code}
-                    </option>
-                  ))}
-                </select>
-                <input
-                  className="input"
-                  placeholder="Gross kg"
-                  type="number"
-                  value={item.gross_weight_kg}
-                  onChange={(e) => {
-                    const items = [...form.items];
-                    items[idx].gross_weight_kg = e.target.value;
-                    setForm((f) => ({ ...f, items }));
-                  }}
-                />
-                <input
-                  className="input"
-                  placeholder="Tare kg"
-                  type="number"
-                  value={item.tare_weight_kg}
-                  onChange={(e) => {
-                    const items = [...form.items];
-                    items[idx].tare_weight_kg = e.target.value;
-                    setForm((f) => ({ ...f, items }));
-                  }}
-                />
-                <input
-                  className="input"
-                  placeholder="Moisture %"
-                  type="number"
-                  value={item.moisture_content_pct}
-                  onChange={(e) => {
-                    const items = [...form.items];
-                    items[idx].moisture_content_pct = e.target.value;
-                    setForm((f) => ({ ...f, items }));
-                  }}
-                />
-                <input
-                  className="input"
-                  placeholder="₱/cavan"
-                  type="number"
-                  value={item.price_per_cavan}
-                  onChange={(e) => {
-                    const items = [...form.items];
-                    items[idx].price_per_cavan = e.target.value;
-                    setForm((f) => ({ ...f, items }));
-                  }}
-                />
+                <FieldCaption label="Variety" className="col-span-2 sm:col-span-1">
+                  <select
+                    className="input"
+                    value={item.variety_id}
+                    onChange={(e) => {
+                      const items = [...form.items];
+                      items[idx].variety_id = e.target.value;
+                      setForm((f) => ({ ...f, items }));
+                    }}
+                  >
+                    <option value="">Variety</option>
+                    {varieties.map((v: any) => (
+                      <option key={v.id} value={v.id}>
+                        {v.code}
+                      </option>
+                    ))}
+                  </select>
+                </FieldCaption>
+                <FieldCaption label="Grade">
+                  <select
+                    className="input"
+                    value={item.grade_id}
+                    onChange={(e) => {
+                      const items = [...form.items];
+                      items[idx].grade_id = e.target.value;
+                      setForm((f) => ({ ...f, items }));
+                    }}
+                  >
+                    <option value="">Grade</option>
+                    {grades.map((g: any) => (
+                      <option key={g.id} value={g.id}>
+                        {g.code}
+                      </option>
+                    ))}
+                  </select>
+                </FieldCaption>
+                <FieldCaption label="Gross weight (kg)">
+                  <input
+                    className="input"
+                    placeholder="Gross kg"
+                    type="number"
+                    value={item.gross_weight_kg}
+                    onChange={(e) => {
+                      const items = [...form.items];
+                      items[idx].gross_weight_kg = e.target.value;
+                      setForm((f) => ({ ...f, items }));
+                    }}
+                  />
+                </FieldCaption>
+                <FieldCaption label="Tare: sacks (kg)">
+                  <input
+                    className="input"
+                    placeholder="Tare kg"
+                    type="number"
+                    value={item.tare_weight_kg}
+                    onChange={(e) => {
+                      const items = [...form.items];
+                      items[idx].tare_weight_kg = e.target.value;
+                      setForm((f) => ({ ...f, items }));
+                    }}
+                  />
+                </FieldCaption>
+                <FieldCaption label="Moisture %">
+                  <input
+                    className="input"
+                    placeholder="Moisture %"
+                    type="number"
+                    value={item.moisture_content_pct}
+                    onChange={(e) => {
+                      const items = [...form.items];
+                      items[idx].moisture_content_pct = e.target.value;
+                      setForm((f) => ({ ...f, items }));
+                    }}
+                  />
+                </FieldCaption>
+                <FieldCaption label="Price per cavan (₱)">
+                  <input
+                    className="input"
+                    placeholder="₱/cavan"
+                    type="number"
+                    value={item.price_per_cavan}
+                    onChange={(e) => {
+                      const items = [...form.items];
+                      items[idx].price_per_cavan = e.target.value;
+                      setForm((f) => ({ ...f, items }));
+                    }}
+                  />
+                </FieldCaption>
               </div>
             ))}
           </div>
@@ -271,60 +289,9 @@ export default function PaddyPage() {
         </div>
       )}
 
-      <div className="flex gap-2 border-b border-gray-200 dark:border-slate-700">
-        {(["purchases", "inventory"] as const).map((t) => (
-          <button
-            key={t}
-            onClick={() => setTab(t)}
-            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors capitalize ${tab === t ? "border-brand-600 text-brand-600 dark:text-brand-400" : "border-transparent text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200"}`}
-          >
-            {t}
-          </button>
-        ))}
-      </div>
-
-      {tab === "purchases" && (
-        <div className="card overflow-hidden p-0">
-          <table className="w-full text-sm">
-            <thead className="bg-gray-50 dark:bg-slate-900/50 border-b border-gray-200 dark:border-slate-700">
-              <tr>
-                {["Reference", "Date", "Supplier", "Status", "Items"].map((h) => (
-                  <th
-                    key={h}
-                    className="px-4 py-3 text-left font-medium text-gray-600 dark:text-slate-300"
-                  >
-                    {h}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100 dark:divide-slate-700">
-              {purchases.map((p: any) => (
-                <tr key={p.id} className="hover:bg-gray-50 dark:hover:bg-slate-900/50">
-                  <td className="px-4 py-3 font-mono text-xs">{p.reference_no}</td>
-                  <td className="px-4 py-3">{p.purchase_date}</td>
-                  <td className="px-4 py-3">{p.supplier?.name || "—"}</td>
-                  <td className="px-4 py-3">
-                    <StatusBadge status={p.status} />
-                  </td>
-                  <td className="px-4 py-3 text-gray-500 dark:text-slate-400">
-                    {p.items?.length || 0} item(s)
-                  </td>
-                </tr>
-              ))}
-              {purchases.length === 0 && (
-                <tr>
-                  <td colSpan={5} className="px-4 py-8 text-center text-gray-400">
-                    No purchases yet
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      )}
-
-      {tab === "inventory" && (
+      {/* Stock index: what's on hand, always visible above the purchases */}
+      <section className="space-y-2" data-testid="palay-stock-index">
+        <h3 className="text-sm font-bold text-gray-900 dark:text-slate-100">Palay in stock</h3>
         <div className="card overflow-hidden p-0">
           <table className="w-full text-sm">
             <thead className="bg-gray-50 dark:bg-slate-900/50 border-b border-gray-200 dark:border-slate-700">
@@ -354,15 +321,90 @@ export default function PaddyPage() {
               ))}
               {inventory.length === 0 && (
                 <tr>
-                  <td colSpan={4} className="px-4 py-8 text-center text-gray-400">
-                    No palay in stock
+                  <td colSpan={4} className="px-4 py-8 text-center text-muted">
+                    No palay in stock. Purchases you record show up here by variety and grade.
                   </td>
                 </tr>
               )}
             </tbody>
           </table>
         </div>
-      )}
+      </section>
+
+      <section className="space-y-2" data-testid="palay-purchases">
+        <h3 className="text-sm font-bold text-gray-900 dark:text-slate-100">Purchases</h3>
+        <div className="card overflow-hidden p-0">
+          <table className="w-full text-sm">
+            <thead className="bg-gray-50 dark:bg-slate-900/50 border-b border-gray-200 dark:border-slate-700">
+              <tr>
+                {["Reference", "Date", "Supplier", "Status", "Items", "Added by"].map((h) => (
+                  <th
+                    key={h}
+                    className="px-4 py-3 text-left font-medium text-gray-600 dark:text-slate-300"
+                  >
+                    {h}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100 dark:divide-slate-700">
+              {purchases.map((p: any) => (
+                <tr key={p.id} className="hover:bg-gray-50 dark:hover:bg-slate-900/50">
+                  <td className="px-4 py-3 font-mono text-xs">{p.reference_no}</td>
+                  <td className="px-4 py-3">{p.purchase_date}</td>
+                  <td className="px-4 py-3">
+                    {p.supplier?.name ? (
+                      <TruncatedText
+                        text={p.supplier.name}
+                        className="max-w-[9rem] sm:max-w-[14rem]"
+                      />
+                    ) : (
+                      "—"
+                    )}
+                  </td>
+                  <td className="px-4 py-3">
+                    <StatusBadge status={p.status} />
+                  </td>
+                  <td className="px-4 py-3 text-gray-500 dark:text-slate-400">
+                    {p.item_count ?? 0} item(s)
+                  </td>
+                  <td className="px-4 py-3" data-testid="purchase-added-by">
+                    {p.created_by_name ? (
+                      <>
+                        <TruncatedText
+                          text={p.created_by_name}
+                          className="max-w-[9rem] sm:max-w-[14rem] text-gray-900 dark:text-slate-100"
+                        />
+                        <div className="text-xs text-gray-500 dark:text-slate-400">
+                          {roleLabel(p.created_by_role)}
+                        </div>
+                      </>
+                    ) : (
+                      "—"
+                    )}
+                  </td>
+                </tr>
+              ))}
+              {purchases.length === 0 && (
+                <tr>
+                  <td colSpan={6}>
+                    <EmptyState
+                      icon={Wheat}
+                      title="No palay bought yet"
+                      action={canEdit("paddy") ? "Record your first purchase" : undefined}
+                      onAction={() => setShowForm(true)}
+                      next="Next: mill it on the Milling page to turn it into rice."
+                    >
+                      Each time a farmer or trader delivers palay, record the weight, moisture and
+                      price here. It's added to your palay stock automatically.
+                    </EmptyState>
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </section>
     </div>
   );
 }
