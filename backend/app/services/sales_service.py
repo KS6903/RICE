@@ -28,6 +28,7 @@ from ..repositories.sales import (
 )
 from ..services.base import BaseService
 from ..services.canva_color import pick_unused_color
+from ..services.delivery_rules import check_can_unmark, has_courier
 from ..services.doc_numbers import mill_code
 
 
@@ -167,6 +168,15 @@ class SalesService(BaseService):
         order = self.orders.get_for_company(order_id, self.current_user.company_id)
         if not order:
             raise NotFoundError("Order not found")
+        new_status = body.model_dump(exclude_unset=True).get("status")
+        # Delivered needs a courier here as much as on the Dispatch page...
+        if new_status == "delivered" and not has_courier(order):
+            raise ConflictError(
+                "Choose who delivers it (the customer or the rice mill courier) before marking it delivered."
+            )
+        # ...and taking the mark back is the owner's, within the week, wherever it is done.
+        if order.status == "delivered" and new_status is not None and new_status != "delivered":
+            check_can_unmark(order, self.current_user)
         with self.transaction():
             # Typed OrderUpdate schema: only validated, allowlisted fields arrive
             # here; exclude_unset preserves the old "only touch sent fields" semantics.

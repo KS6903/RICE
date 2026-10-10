@@ -3,14 +3,22 @@
 from __future__ import annotations
 
 import uuid
+from datetime import datetime, timezone
 from typing import Any
 
 from sqlalchemy.orm import Session
 
-from ..core.exceptions import NotFoundError
+from ..core.exceptions import ConflictError, NotFoundError, PermissionDeniedError
 from ..models.fleet import DispatchTrip, Driver, Truck
 from ..repositories.fleet import DriverRepository, TripRepository, TruckRepository
 from .base import BaseService
+from .delivery_rules import (
+    TRIP_LOCKING,
+    check_can_unmark_trip,
+    check_trip_editable,
+    is_owner,
+    trip_edit_deadline,
+)
 from .doc_numbers import mill_code
 
 
@@ -76,6 +84,10 @@ class FleetService(BaseService):
             "destination": trip.destination,
             "notes": trip.notes,
             "status": trip.status,
+            "status_changed_at": trip.status_changed_at.isoformat() if trip.status_changed_at else None,
+            # Until when a departed or delivered trip can still be edited (null for
+            # a trip that has not left yet).
+            "edit_until": deadline.isoformat() if (deadline := trip_edit_deadline(trip)) else None,
             "created_by": str(trip.created_by) if trip.created_by else None,
         }
 
@@ -164,8 +176,41 @@ class FleetService(BaseService):
         trip = self.trips.get_for_company(id=trip_id, company_id=self.current_user.company_id)
         if not trip:
             raise NotFoundError("Trip not found")
+        changes = data.model_dump(exclude_none=True)
+
+        # Once it has left or arrived, a trip can be edited for a week, then it locks.
+        check_trip_editable(trip)
+
+        # Moving a trip back from departed or delivered is the owner's call (going
+        # on from departed to delivered is not "back").
+        new_status = changes.get("status")
+        going_back = (
+            trip.status in TRIP_LOCKING
+            and new_status is not None
+            and new_status != trip.status
+            and not (trip.status == "in_transit" and new_status == "completed")
+        )
+        if going_back:
+            check_can_unmark_trip(trip, self.current_user)
+
+        # So is renumbering.
+        new_no = changes.pop("trip_no", None)
+        if new_no is not None:
+            new_no = new_no.strip()
+            if not is_owner(self.current_user):
+                raise PermissionDeniedError("Only the owner can change a trip number.")
+            if not new_no:
+                raise ConflictError("A trip needs a number.")
+            if new_no != trip.trip_no and self.trips.trip_no_taken(new_no, except_id=trip.id):
+                raise ConflictError(f"{new_no} is already used by another trip.")
+
+        status_changed = new_status is not None and new_status != trip.status
         with self.transaction():
-            for field, val in data.model_dump(exclude_none=True).items():
+            for field, val in changes.items():
                 setattr(trip, field, val)
+            if new_no is not None:
+                trip.trip_no = new_no
+            if status_changed:
+                trip.status_changed_at = datetime.now(timezone.utc)
         self.db.refresh(trip)
         return self._ser_trip(trip)

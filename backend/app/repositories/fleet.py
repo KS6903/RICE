@@ -62,3 +62,9 @@ class TripRepository(BaseRepository[DispatchTrip]):
             .scalar()
         )
         return f"{code}-T{int(top or 0) + 1:04d}"
+
+    def trip_no_taken(self, trip_no: str, *, except_id: uuid.UUID | None = None) -> bool:
+        q = self.db.query(DispatchTrip.id).filter(DispatchTrip.trip_no == trip_no)
+        if except_id is not None:
+            q = q.filter(DispatchTrip.id != except_id)
+        return q.first() is not None

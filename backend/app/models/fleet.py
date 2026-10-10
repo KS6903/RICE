@@ -1,11 +1,11 @@
 """Fleet models — trucks, drivers, and dispatch trips."""
 
 import uuid
-from datetime import date
+from datetime import date, datetime
 from decimal import Decimal
 from typing import TYPE_CHECKING
 
-from sqlalchemy import Boolean, Date, ForeignKey, Numeric, String, Text
+from sqlalchemy import Boolean, Date, DateTime, ForeignKey, Numeric, String, Text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -73,6 +73,9 @@ class DispatchTrip(Base, TimestampMixin):
     destination: Mapped[str | None] = mapped_column(Text)
     notes: Mapped[str | None] = mapped_column(Text)
     status: Mapped[str] = mapped_column(String(20), default="planned", nullable=False)
+    # When the status last changed. A departed or delivered trip stays editable
+    # for a week from here, then locks.
+    status_changed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     created_by: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"))
 
     truck: Mapped["Truck"] = relationship("Truck", foreign_keys=[truck_id])

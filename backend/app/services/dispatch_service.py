@@ -13,12 +13,13 @@ from typing import Any
 
 from sqlalchemy.orm import Session
 
-from ..core.exceptions import BadRequestError, NotFoundError
+from ..core.exceptions import ConflictError, NotFoundError
 from ..models.dispatch import Agent, Miller
 from ..models.sales import SalesOrder
 from ..repositories.dispatch import AgentRepository, DispatchOrderRepository, MillerRepository
 from ..services.base import BaseService
 from ..services.canva_color import PALETTE, colors_in_use, pick_unused_color
+from ..services.delivery_rules import check_can_unmark, edit_deadline, has_courier
 
 
 class DispatchService(BaseService):
@@ -79,7 +80,12 @@ class DispatchService(BaseService):
             "status": o.status,
             "total_amount": float(o.total_amount) if o.total_amount is not None else None,
             "delivered_at": o.delivered_at.isoformat() if o.delivered_at else None,
+            # Until when the owner can still take the delivered mark off (null when
+            # the order isn't delivered).
+            "unmark_until": deadline.isoformat() if (deadline := edit_deadline(o)) else None,
             "customer": {"id": str(o.customer.id), "name": o.customer.name} if o.customer else None,
+            "courier_type": o.courier_type or ("mill" if (o.assigned_agent or o.assigned_miller) else None),
+            "courier_notes": o.courier_notes,
             "assigned_agent": self._serialize_agent(o.assigned_agent) if o.assigned_agent else None,
             "assigned_miller": self._serialize_miller(o.assigned_miller) if o.assigned_miller else None,
         }
@@ -117,6 +123,10 @@ class DispatchService(BaseService):
         with self.transaction():
             for f, v in updates.items():
                 setattr(a, f, v)
+            # The type is optional, so an explicit null clears it (exclude_none
+            # above would otherwise leave the old value in place).
+            if "agent_type" in data.model_fields_set and data.agent_type is None:
+                a.agent_type = None
             if "is_active" in updates:
                 if updates["is_active"]:
                     a.deactivated_at = None
@@ -199,34 +209,43 @@ class DispatchService(BaseService):
         return [self._serialize_order(o) for o in rows]
 
     def assign_courier(self, order_id: uuid.UUID, data) -> dict:
-        if data.agent_id and data.miller_id:
-            raise BadRequestError("Assign either an agent or a miller, not both.")
+        """Say who delivers the order: the customer, or the rice mill's courier
+        (None clears it). Notes are optional."""
         order = self.orders.get_for_company(order_id, self.current_user.company_id)
         if not order:
             raise NotFoundError("Order not found")
+        if data.courier_type is None and order.status == "delivered":
+            # A delivered order always says who delivered it.
+            raise ConflictError("A delivered order keeps its courier. Choose a different one instead.")
+        notes = (data.notes or "").strip() or None
         with self.transaction():
-            if data.agent_id:
-                agent = self.agents.get_for_company(data.agent_id, self.current_user.company_id)
-                if not agent:
-                    raise NotFoundError("Agent not found")
-                order.assigned_agent_id = data.agent_id
-                order.assigned_miller_id = None
-            elif data.miller_id:
-                miller = self.millers.get_for_company(data.miller_id, self.current_user.company_id)
-                if not miller:
-                    raise NotFoundError("Miller not found")
-                order.assigned_miller_id = data.miller_id
-                order.assigned_agent_id = None
-            else:
-                order.assigned_agent_id = None
-                order.assigned_miller_id = None
+            order.courier_type = data.courier_type
+            order.courier_notes = notes if data.courier_type else None
+            # Anyone assigned the old way is replaced by this choice.
+            order.assigned_agent_id = None
+            order.assigned_miller_id = None
         return self._serialize_order(self.orders.get_with_couriers(order_id))
 
     def mark_delivered(self, order_id: uuid.UUID) -> dict:
         order = self.orders.get_for_company(order_id, self.current_user.company_id)
         if not order:
             raise NotFoundError("Order not found")
+        if not has_courier(order):
+            raise ConflictError(
+                "Choose who delivers it (the customer or the rice mill courier) before marking it delivered."
+            )
         with self.transaction():
             order.status = "delivered"
             order.delivered_at = datetime.now(timezone.utc)
+        return self._serialize_order(self.orders.get_with_couriers(order_id))
+
+    def unmark_delivered(self, order_id: uuid.UUID) -> dict:
+        """The owner takes a delivered mark back, within a week of it being made."""
+        order = self.orders.get_for_company(order_id, self.current_user.company_id)
+        if not order:
+            raise NotFoundError("Order not found")
+        check_can_unmark(order, self.current_user)
+        with self.transaction():
+            order.status = "confirmed"
+            order.delivered_at = None
         return self._serialize_order(self.orders.get_with_couriers(order_id))

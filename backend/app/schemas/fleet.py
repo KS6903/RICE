@@ -4,7 +4,7 @@ import uuid
 from datetime import date
 from decimal import Decimal
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 # ── Drivers ──────────────────────────────────────────────────────────────────
 
@@ -60,6 +60,7 @@ class TripCreate(BaseModel):
 
 
 class TripUpdate(BaseModel):
+    trip_no: str | None = Field(None, min_length=1, max_length=30)
     driver_id: uuid.UUID | None = None
     dispatch_date: date | None = None
     fuel_used_l: Decimal | None = None

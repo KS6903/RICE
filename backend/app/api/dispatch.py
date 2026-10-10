@@ -116,3 +116,11 @@ def assign_courier(order_id: uuid.UUID, body: CourierAssign, svc: DispatchServic
 )
 def mark_delivered(order_id: uuid.UUID, svc: DispatchService = Depends(get_dispatch_service)):
     return svc.mark_delivered(order_id)
+
+
+@router.patch(
+    "/sales-orders/{order_id}/unmark-delivered", dependencies=[Depends(require_section_access("dispatch", write=True))]
+)
+def unmark_delivered(order_id: uuid.UUID, svc: DispatchService = Depends(get_dispatch_service)):
+    """Owner only, and only within a week of the order being marked delivered."""
+    return svc.unmark_delivered(order_id)

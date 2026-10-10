@@ -51,6 +51,11 @@ _extra_ddl: list[str] = [
     "ALTER TABLE automation_rules ADD COLUMN IF NOT EXISTS track BOOLEAN NOT NULL DEFAULT false",
     "ALTER TABLE automation_rules ADD COLUMN IF NOT EXISTS track_assignee UUID REFERENCES users(id) ON DELETE SET NULL",
     "ALTER TABLE automation_rules ADD COLUMN IF NOT EXISTS track_due_hours SMALLINT NOT NULL DEFAULT 24",
+    # Who delivers an order: the customer or the rice mill's courier, plus a note.
+    "ALTER TABLE sales_orders ADD COLUMN IF NOT EXISTS courier_type VARCHAR(20)",
+    "ALTER TABLE sales_orders ADD COLUMN IF NOT EXISTS courier_notes TEXT",
+    # When a trip's status last changed (a departed or delivered trip locks a week later).
+    "ALTER TABLE dispatch_trips ADD COLUMN IF NOT EXISTS status_changed_at TIMESTAMPTZ",
 ]
 
 

@@ -38,7 +38,10 @@ ORDER_KEYS = {
     "status",
     "total_amount",
     "delivered_at",
+    "unmark_until",
     "customer",
+    "courier_type",
+    "courier_notes",
     "assigned_agent",
     "assigned_miller",
 }
@@ -65,6 +68,19 @@ def test_agent_crud_and_soft_delete(auth_client):
     assert res.status_code == 200 and res.json() == {"ok": True}
     # Soft-deleted: gone from the default (active-only) list.
     assert all(x["id"] != a["id"] for x in auth_client.get("/api/agents").json())
+
+
+def test_agent_type_can_be_cleared(auth_client):
+    a = auth_client.post("/api/agents", json={"name": "Agent C", "agent_type": "broker"}).json()
+    assert a["agent_type"] == "broker"
+
+    # Leaving the type out of an update keeps it...
+    kept = auth_client.put(f"/api/agents/{a['id']}", json={"name": "Agent C2"})
+    assert kept.json()["agent_type"] == "broker"
+
+    # ...and sending it as null clears it.
+    cleared = auth_client.put(f"/api/agents/{a['id']}", json={"agent_type": None})
+    assert cleared.status_code == 200 and cleared.json()["agent_type"] is None
 
 
 def test_create_miller_serialized(auth_client):
@@ -97,22 +113,207 @@ def test_dispatch_orders_courier_and_delivery(auth_client):
     mine = next(o for o in orders if o["id"] == order["id"])
     assert set(mine.keys()) == ORDER_KEYS
 
-    agent = auth_client.post("/api/agents", json={"name": "Courier A"}).json()
-    assigned = auth_client.patch(f"/api/sales-orders/{order['id']}/assign-courier", json={"agent_id": agent["id"]})
+    assigned = auth_client.patch(
+        f"/api/sales-orders/{order['id']}/assign-courier",
+        json={"courier_type": "mill", "notes": "Truck leaves at 6am"},
+    )
     assert assigned.status_code == 200
-    assert assigned.json()["assigned_agent"]["id"] == agent["id"]
+    assert assigned.json()["courier_type"] == "mill"
+    assert assigned.json()["courier_notes"] == "Truck leaves at 6am"
+    assert assigned.json()["assigned_agent"] is None
     assert assigned.json()["assigned_miller"] is None
 
-    both = auth_client.patch(
-        f"/api/sales-orders/{order['id']}/assign-courier",
-        json={"agent_id": agent["id"], "miller_id": agent["id"]},
+    # The customer collecting it is the other choice; the notes are optional.
+    customer_pickup = auth_client.patch(
+        f"/api/sales-orders/{order['id']}/assign-courier", json={"courier_type": "customer"}
     )
-    assert both.status_code == 400
+    assert customer_pickup.status_code == 200
+    assert customer_pickup.json()["courier_type"] == "customer"
+    assert customer_pickup.json()["courier_notes"] is None
+
+    # Nothing else is a courier: an agent, a miller or any other kind is refused.
+    for body in (
+        {"agent_id": "00000000-0000-0000-0000-000000000000"},
+        {"miller_id": "00000000-0000-0000-0000-000000000000"},
+        {"courier_type": "agent"},
+    ):
+        refused = auth_client.patch(f"/api/sales-orders/{order['id']}/assign-courier", json=body)
+        assert refused.status_code == 422, body
 
     delivered = auth_client.patch(f"/api/sales-orders/{order['id']}/mark-delivered")
     assert delivered.status_code == 200
     assert delivered.json()["status"] == "delivered"
     assert delivered.json()["delivered_at"]
+
+
+def _confirmed_order(auth_client):
+    customer = auth_client.post("/api/sales/customers", json={"name": "Courier Co"}).json()
+    return auth_client.post(
+        "/api/sales/orders",
+        json={
+            "customer_id": customer["id"],
+            "order_date": "2026-06-05",
+            "items": [{"item_type": "milled_rice", "quantity_kg": "10", "unit_price_per_kg": "50"}],
+        },
+    ).json()
+
+
+def test_nothing_is_delivered_without_a_courier(auth_client):
+    order = _confirmed_order(auth_client)
+
+    # Neither the dispatch action nor a plain order update may skip the courier.
+    no_courier = auth_client.patch(f"/api/sales-orders/{order['id']}/mark-delivered")
+    assert no_courier.status_code == 409
+    assert "courier" in no_courier.json()["detail"].lower()
+    sneaky = auth_client.put(f"/api/sales/orders/{order['id']}", json={"status": "delivered"})
+    assert sneaky.status_code == 409
+
+    # The order is still confirmed and undelivered.
+    still = next(o for o in auth_client.get("/api/sales/orders").json() if o["id"] == order["id"])
+    assert still["status"] == "confirmed" and still["delivered_at"] is None
+
+    # With a courier it goes through, and the courier can't then be taken off.
+    auth_client.patch(f"/api/sales-orders/{order['id']}/assign-courier", json={"courier_type": "customer"})
+    done = auth_client.patch(f"/api/sales-orders/{order['id']}/mark-delivered")
+    assert done.status_code == 200 and done.json()["status"] == "delivered"
+    removed = auth_client.patch(f"/api/sales-orders/{order['id']}/assign-courier", json={})
+    assert removed.status_code == 409
+
+
+def test_a_courier_can_still_be_removed_before_delivery(auth_client):
+    order = _confirmed_order(auth_client)
+    auth_client.patch(f"/api/sales-orders/{order['id']}/assign-courier", json={"courier_type": "mill", "notes": "x"})
+    cleared = auth_client.patch(f"/api/sales-orders/{order['id']}/assign-courier", json={})
+    assert cleared.status_code == 200
+    assert cleared.json()["courier_type"] is None
+    assert cleared.json()["courier_notes"] is None
+
+
+def _delivered_order(auth_client):
+    order = _confirmed_order(auth_client)
+    auth_client.patch(f"/api/sales-orders/{order['id']}/assign-courier", json={"courier_type": "mill"})
+    done = auth_client.patch(f"/api/sales-orders/{order['id']}/mark-delivered")
+    assert done.status_code == 200, done.text
+    return order, done.json()
+
+
+def test_owner_can_unmark_a_delivery_within_a_week(auth_client):
+    order, done = _delivered_order(auth_client)
+    assert done["unmark_until"]  # the page uses this to show or hide the button
+
+    back = auth_client.patch(f"/api/sales-orders/{order['id']}/unmark-delivered")
+    assert back.status_code == 200, back.text
+    assert back.json()["status"] == "confirmed"
+    assert back.json()["delivered_at"] is None
+    assert back.json()["unmark_until"] is None
+
+    # And it can be marked again.
+    again = auth_client.patch(f"/api/sales-orders/{order['id']}/mark-delivered")
+    assert again.status_code == 200 and again.json()["status"] == "delivered"
+
+
+def test_a_delivery_cannot_be_unmarked_after_a_week(auth_client, db_session):
+    from datetime import datetime, timedelta, timezone
+
+    from app.models.sales import SalesOrder
+
+    order, _ = _delivered_order(auth_client)
+    row = db_session.query(SalesOrder).filter(SalesOrder.id == order["id"]).one()
+    row.delivered_at = datetime.now(timezone.utc) - timedelta(days=8)
+    db_session.flush()
+
+    late = auth_client.patch(f"/api/sales-orders/{order['id']}/unmark-delivered")
+    assert late.status_code == 409
+    assert "7 days" in late.json()["detail"]
+    # The plain order update can't get round it either.
+    sneaky = auth_client.put(f"/api/sales/orders/{order['id']}", json={"status": "confirmed"})
+    assert sneaky.status_code == 409
+
+
+def test_only_the_owner_can_take_a_delivery_or_trip_status_back():
+    from datetime import datetime, timedelta, timezone
+    from types import SimpleNamespace
+
+    import pytest
+
+    from app.core.exceptions import PermissionDeniedError
+    from app.services.delivery_rules import check_can_unmark, check_can_unmark_trip
+
+    now = datetime.now(timezone.utc)
+    order = SimpleNamespace(status="delivered", delivered_at=now, updated_at=now)
+    trip = SimpleNamespace(status="completed", status_changed_at=now, updated_at=now)
+    owner = SimpleNamespace(role=SimpleNamespace(name="owner"), is_platform_admin=False)
+    cashier = SimpleNamespace(role=SimpleNamespace(name="cashier"), is_platform_admin=False)
+
+    check_can_unmark(order, owner)
+    check_can_unmark_trip(trip, owner)
+    with pytest.raises(PermissionDeniedError):
+        check_can_unmark(order, cashier)
+    with pytest.raises(PermissionDeniedError):
+        check_can_unmark_trip(trip, cashier)
+    # Even the owner is out of time after a week.
+    with pytest.raises(Exception, match="7 days"):
+        check_can_unmark(order, owner, now=now + timedelta(days=8))
+
+
+def test_trip_numbers_carry_the_mill_code_and_the_owner_can_edit_them(auth_client):
+    truck = auth_client.post("/api/fleet/trucks", json={"plate_number": "ABC 123"}).json()
+    driver = auth_client.post("/api/fleet/drivers", json={"name": "Driver One"}).json()
+
+    def trip():
+        res = auth_client.post(
+            "/api/fleet/trips",
+            json={"truck_id": truck["id"], "driver_id": driver["id"], "dispatch_date": "2026-06-05"},
+        )
+        assert res.status_code == 201, res.text
+        return res.json()
+
+    first, second = trip(), trip()
+    assert (first["trip_no"], second["trip_no"]) == ("TM-T0001", "TM-T0002")
+
+    renamed = auth_client.put(f"/api/fleet/trips/{first['id']}", json={"trip_no": "TM-T0100"})
+    assert renamed.status_code == 200 and renamed.json()["trip_no"] == "TM-T0100"
+    # The count carries on from the highest.
+    assert trip()["trip_no"] == "TM-T0101"
+    # A number already used by another trip is refused.
+    clash = auth_client.put(f"/api/fleet/trips/{second['id']}", json={"trip_no": "TM-T0100"})
+    assert clash.status_code == 409
+
+
+def test_a_departed_or_delivered_trip_is_editable_for_a_week_then_locks(auth_client, db_session):
+    from datetime import datetime, timedelta, timezone
+
+    from app.models.fleet import DispatchTrip
+
+    truck = auth_client.post("/api/fleet/trucks", json={"plate_number": "XYZ 987"}).json()
+    driver = auth_client.post("/api/fleet/drivers", json={"name": "Driver Two"}).json()
+    trip = auth_client.post(
+        "/api/fleet/trips",
+        json={"truck_id": truck["id"], "driver_id": driver["id"], "dispatch_date": "2026-06-05"},
+    ).json()
+    url = f"/api/fleet/trips/{trip['id']}"
+    assert trip["edit_until"] is None  # a planned trip is open to edits
+
+    departed = auth_client.put(url, json={"status": "in_transit"}).json()
+    assert departed["status_changed_at"] and departed["edit_until"]
+    # Still editable while departed...
+    assert auth_client.put(url, json={"notes": "left at 6am"}).status_code == 200
+    # ...and going on to delivered is a normal step.
+    assert auth_client.put(url, json={"status": "completed"}).json()["status"] == "completed"
+    assert auth_client.put(url, json={"fuel_used_l": "42"}).status_code == 200
+
+    # The owner can take the delivered mark back within the week.
+    back = auth_client.put(url, json={"status": "in_transit"})
+    assert back.status_code == 200 and back.json()["status"] == "in_transit"
+
+    # After a week from the last status change, nothing can be edited.
+    row = db_session.query(DispatchTrip).filter(DispatchTrip.id == trip["id"]).one()
+    row.status_changed_at = datetime.now(timezone.utc) - timedelta(days=8)
+    db_session.flush()
+    for body in ({"notes": "too late"}, {"status": "completed"}, {"trip_no": "TM-T0999"}):
+        late = auth_client.put(url, json=body)
+        assert late.status_code == 409, body
+        assert "7 days" in late.json()["detail"]
 
 
 def test_a_tenant_schema_refuses_a_duplicate_party_colour(db_session, seed_owner):

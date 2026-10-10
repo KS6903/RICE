@@ -4,10 +4,10 @@ Note: canva_color_hex is intentionally omitted from create/update schemas — th
 color is system-assigned, so any client-supplied value is silently dropped.
 """
 
-import uuid
 from decimal import Decimal
+from typing import Literal
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class AgentCreate(BaseModel):
@@ -49,5 +49,11 @@ class MillerUpdate(BaseModel):
 
 
 class CourierAssign(BaseModel):
-    agent_id: uuid.UUID | None = None
-    miller_id: uuid.UUID | None = None
+    """Who delivers an order: the customer, or the rice mill's own courier. None
+    clears it. The note is optional. Nothing else is a courier, so an old client
+    still sending an agent or miller is refused rather than silently clearing it."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    courier_type: Literal["customer", "mill"] | None = None
+    notes: str | None = Field(None, max_length=500)
