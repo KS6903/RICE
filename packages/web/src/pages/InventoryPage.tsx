@@ -24,7 +24,16 @@ import WarehousePicker from "../components/inventory/WarehousePicker";
 import AddInventoryModal from "../components/inventory/AddInventoryModal";
 import { useAuthStore } from "../stores/authStore";
 import { inventoryService } from "../services/InventoryService";
-import { InventoryMapper, BYPRODUCT_NAMES, type UnifiedItem } from "../mappers/InventoryMapper";
+import {
+  InventoryMapper,
+  BYPRODUCT_NAMES,
+  INVENTORY_SORTS,
+  isInventorySort,
+  type UnifiedItem,
+} from "../mappers/InventoryMapper";
+import { useInventorySort } from "../hooks/useInventorySort";
+import { useReorderableTabs } from "../hooks/useReorderableTabs";
+import Select from "../components/Select";
 
 type ViewMode = "classic" | "spreadsheet" | "cards" | "bins" | "warehouse";
 
@@ -52,9 +61,27 @@ const TYPE_COLORS: Record<
   },
 };
 
+// The tabs as first shown; each account can drag them into its own order.
+const VIEWS: { key: ViewMode; label: string; icon: React.ElementType }[] = [
+  { key: "cards", label: "Cards", icon: LayoutGrid },
+  { key: "bins", label: "Bins", icon: BarChart3 },
+  { key: "warehouse", label: "Warehouse", icon: Warehouse },
+  { key: "classic", label: "Classic", icon: List },
+  { key: "spreadsheet", label: "Spreadsheet", icon: Table2 },
+];
+
 export default function InventoryPage() {
   const [branchFilter, setBranchFilter] = useState<string>("");
-  const [view, setView] = useState<ViewMode>("classic");
+  // The tabs can be dragged into any order, remembered per account. The page
+  // opens on whichever one is first.
+  const tabs = useReorderableTabs(
+    "rice-mill-inventory-tabs",
+    VIEWS.map((v) => v.key),
+  );
+  const orderedViews = tabs.order
+    .map((key) => VIEWS.find((v) => v.key === key))
+    .filter((v): v is (typeof VIEWS)[number] => !!v);
+  const [view, setView] = useState<ViewMode>(() => orderedViews[0]?.key ?? "cards");
   const [selected, setSelected] = useState<UnifiedItem | null>(null);
   const [showAdd, setShowAdd] = useState(false);
 
@@ -85,35 +112,47 @@ export default function InventoryPage() {
     queryFn: () => inventoryService.getSummary(branchFilter),
   });
 
+  // Every view lists stock in the order this account chose (remembered between
+  // visits, even after signing out).
+  const [sort, setSort] = useInventorySort();
   const items: UnifiedItem[] = useMemo(
-    () => InventoryMapper.toUnifiedItems(palay, milled, byproducts),
-    [palay, milled, byproducts],
+    () =>
+      InventoryMapper.toUnifiedItems(palay, milled, byproducts).sort(
+        InventoryMapper.comparator(sort),
+      ),
+    [palay, milled, byproducts, sort],
+  );
+  const palaySorted = useMemo(() => InventoryMapper.sortRows(palay, "palay", sort), [palay, sort]);
+  const milledSorted = useMemo(
+    () => InventoryMapper.sortRows(milled, "milled", sort),
+    [milled, sort],
+  );
+  const byproductsSorted = useMemo(
+    () => InventoryMapper.sortRows(byproducts, "byproduct", sort),
+    [byproducts, sort],
   );
 
   const totalKg = items.reduce((s, i) => s + i.quantity_kg, 0);
-
-  const views: { key: ViewMode; label: string; icon: React.ElementType }[] = [
-    { key: "classic", label: "Classic", icon: List },
-    { key: "spreadsheet", label: "Spreadsheet", icon: Table2 },
-    { key: "cards", label: "Cards", icon: LayoutGrid },
-    { key: "bins", label: "Bins", icon: BarChart3 },
-    { key: "warehouse", label: "Warehouse", icon: Warehouse },
-  ];
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h2 className="text-2xl font-bold tracking-tight text-primary">Inventory</h2>
-          <p className="text-sm text-secondary">
-            Stock of palay, milled rice, and by-products — 5 ways to view it
-          </p>
+          <p className="text-sm text-secondary">Stock of palay, milled rice, and by-products</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <WarehousePicker
             branches={branches as any[]}
             selectedId={branchFilter}
             onSelect={setBranchFilter}
+          />
+          <Select
+            className="!w-auto min-w-[13rem]"
+            aria-label="Sort inventory by"
+            value={sort}
+            onChange={(v) => isInventorySort(v) && setSort(v)}
+            options={INVENTORY_SORTS}
           />
           {canAddInventory && (
             <button
@@ -128,15 +167,25 @@ export default function InventoryPage() {
         </div>
       </div>
 
-      {/* View switcher */}
-      <div className="flex items-center gap-1 p-1 rounded-xl glass overflow-x-auto">
-        {views.map(({ key, label, icon: Icon }) => {
+      {/* View switcher: drag a tab to rearrange (press and hold on a touch screen) */}
+      <div
+        {...tabs.containerProps}
+        title="Drag a tab to rearrange. On a touch screen, press and hold first."
+        className="flex items-center gap-1 p-1 rounded-xl glass overflow-x-auto"
+      >
+        {orderedViews.map(({ key, label, icon: Icon }) => {
           const active = view === key;
+          const lifted = tabs.dragging === key;
           return (
             <button
               key={key}
-              onClick={() => setView(key)}
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold whitespace-nowrap transition-all ${
+              {...tabs.tabProps(key)}
+              onClick={() => {
+                if (!tabs.wasDragged()) setView(key);
+              }}
+              className={`flex select-none items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold whitespace-nowrap transition-all [-webkit-touch-callout:none] ${
+                lifted ? "scale-105 cursor-grabbing shadow-lg ring-2 ring-emerald-400" : ""
+              } ${
                 active
                   ? "bg-grad-brand text-white shadow-grad-glow"
                   : "text-secondary hover:text-primary hover:bg-slate-100/60 dark:hover:bg-slate-700/30"
@@ -151,14 +200,14 @@ export default function InventoryPage() {
 
       {view === "classic" && (
         <ClassicView
-          palay={palay}
-          milled={milled}
-          byproducts={byproducts}
+          palay={palaySorted}
+          milled={milledSorted}
+          byproducts={byproductsSorted}
           summary={summary}
           branchFilter={branchFilter}
         />
       )}
-      {view === "spreadsheet" && <SpreadsheetView items={items} />}
+      {view === "spreadsheet" && <SpreadsheetView key={sort} items={items} />}
       {view === "cards" && <CardsView items={items} totalKg={totalKg} onSelect={setSelected} />}
       {view === "bins" && <BinsView items={items} onSelect={setSelected} />}
       {view === "warehouse" && (
@@ -191,7 +240,13 @@ export default function InventoryPage() {
   );
 }
 
+/** Stock mostly follows from purchases and milling; what a new mill already
+ *  holds goes in once through "Add inventory". */
+const EMPTY_INVENTORY =
+  "Inventory is empty. Stock comes in as you record palay purchases and milling batches. Already have rice or palay in the warehouse? Enter it with Add inventory.";
+
 /* ─── 1. CLASSIC ─── the original 3-column card list */
+
 function ClassicView({ palay, milled, byproducts, summary, branchFilter }: any) {
   return (
     <>
@@ -230,21 +285,21 @@ function ClassicView({ palay, milled, byproducts, summary, branchFilter }: any) 
           title="Palay (Paddy) Stock"
           rows={palay}
           kind="palay"
-          emptyText="No palay in stock"
+          emptyText="No palay in stock. It arrives when you record a purchase on Paddy / Palay."
         />
         <ClassicCard
           icon={<Package size={18} className="text-emerald-500" />}
           title="Milled Rice (Bigas)"
           rows={milled}
           kind="milled"
-          emptyText="No milled rice in stock"
+          emptyText="No milled rice yet. It arrives when you record a milling batch."
         />
         <ClassicCard
           icon={<Package size={18} className="text-slate-500 dark:text-slate-400" />}
           title="By-products"
           rows={byproducts}
           kind="byproduct"
-          emptyText="No by-products yet"
+          emptyText="No by-products yet. Hull, bran and broken rice come from milling batches."
         />
       </div>
     </>
@@ -318,33 +373,37 @@ function ClassicCard({
 /* ─── 2. SPREADSHEET ─── flat sortable table */
 function SpreadsheetView({ items }: { items: UnifiedItem[] }) {
   const [search, setSearch] = useState("");
-  const [sortKey, setSortKey] = useState<"quantity_kg" | "typeLabel" | "variety" | "branchName">(
-    "quantity_kg",
-  );
-  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
+  // Opens in the order chosen at the top of the page (items arrive sorted that
+  // way); clicking a column header re-sorts on that column.
+  const [sortKey, setSortKey] = useState<
+    "grade" | "quantity_kg" | "typeLabel" | "variety" | "branchName" | null
+  >(null);
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
 
   const filtered = useMemo(() => {
     const q = search.toLowerCase();
-    return items
-      .filter(
-        (i) =>
-          !q ||
-          i.variety.toLowerCase().includes(q) ||
-          i.branchName.toLowerCase().includes(q) ||
-          i.typeLabel.toLowerCase().includes(q),
-      )
-      .sort((a, b) => {
-        const av = a[sortKey];
-        const bv = b[sortKey];
-        if (typeof av === "number" && typeof bv === "number")
-          return sortDir === "asc" ? av - bv : bv - av;
-        return sortDir === "asc"
-          ? String(av).localeCompare(String(bv))
-          : String(bv).localeCompare(String(av));
-      });
+    const rows = items.filter(
+      (i) =>
+        !q ||
+        i.variety.toLowerCase().includes(q) ||
+        i.branchName.toLowerCase().includes(q) ||
+        i.typeLabel.toLowerCase().includes(q),
+    );
+    if (!sortKey) return rows;
+    return rows.sort((a, b) => {
+      if (sortKey === "grade")
+        return sortDir === "asc" ? InventoryMapper.compare(a, b) : InventoryMapper.compare(b, a);
+      const av = a[sortKey];
+      const bv = b[sortKey];
+      if (typeof av === "number" && typeof bv === "number")
+        return sortDir === "asc" ? av - bv : bv - av;
+      return sortDir === "asc"
+        ? String(av).localeCompare(String(bv))
+        : String(bv).localeCompare(String(av));
+    });
   }, [items, search, sortKey, sortDir]);
 
-  const toggleSort = (k: typeof sortKey) => {
+  const toggleSort = (k: NonNullable<typeof sortKey>) => {
     if (sortKey === k) setSortDir((d) => (d === "asc" ? "desc" : "asc"));
     else {
       setSortKey(k);
@@ -352,7 +411,7 @@ function SpreadsheetView({ items }: { items: UnifiedItem[] }) {
     }
   };
 
-  const TH = (key: typeof sortKey, label: string) => (
+  const TH = (key: NonNullable<typeof sortKey>, label: string) => (
     <th
       onClick={() => toggleSort(key)}
       className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400 cursor-pointer select-none hover:text-primary"
@@ -384,9 +443,7 @@ function SpreadsheetView({ items }: { items: UnifiedItem[] }) {
             <tr>
               {TH("typeLabel", "Type")}
               {TH("variety", "Variety / Item")}
-              <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                Grade
-              </th>
+              {TH("grade", "Grade")}
               {TH("branchName", "Warehouse")}
               {TH("quantity_kg", "Quantity (kg)")}
               <th className="px-4 py-3 text-right text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
@@ -432,6 +489,21 @@ function SpreadsheetView({ items }: { items: UnifiedItem[] }) {
   );
 }
 
+// The three kinds of stock, in the order the Cards and Bins views list them.
+const INVENTORY_SECTIONS: { type: UnifiedItem["type"]; label: string; icon: React.ReactNode }[] = [
+  { type: "palay", label: "Palay (Paddy)", icon: <Wheat size={16} className="text-amber-500" /> },
+  {
+    type: "milled",
+    label: "Milled Rice (Bigas)",
+    icon: <Package size={16} className="text-emerald-500" />,
+  },
+  {
+    type: "byproduct",
+    label: "By-products",
+    icon: <Package size={16} className="text-slate-500 dark:text-slate-400" />,
+  },
+];
+
 /* ─── 3. CARDS ─── modern card grid with progress against total */
 const TYPE_ICON_BY_KIND: Record<UnifiedItem["type"], React.ElementType> = {
   palay: Wheat,
@@ -454,90 +526,141 @@ function CardsView({
   totalKg: number;
   onSelect: (item: UnifiedItem) => void;
 }) {
+  // Items arrive in the order chosen at the top of the page; grouping keeps it.
+  const grouped = useMemo(() => {
+    const g: Record<UnifiedItem["type"], UnifiedItem[]> = { palay: [], milled: [], byproduct: [] };
+    items.forEach((i) => g[i.type].push(i));
+    return g;
+  }, [items]);
+
   if (items.length === 0) {
-    return <div className="card text-sm text-secondary text-center py-10">Inventory is empty.</div>;
+    return <div className="card text-sm text-secondary text-center py-10">{EMPTY_INVENTORY}</div>;
   }
+
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-      {items.map((i, idx) => {
-        const c = TYPE_COLORS[i.type];
-        const Icon = TYPE_ICON_BY_KIND[i.type];
-        const grad = TYPE_BAR_GRAD[i.type];
-        const pct = totalKg > 0 ? (i.quantity_kg / totalKg) * 100 : 0;
-        const cavans = i.quantity_kg / 50;
-        const isStaggered = idx < 12;
+    <div className="space-y-5">
+      {INVENTORY_SECTIONS.map(({ type, label, icon }) => {
+        const list = grouped[type];
+        const c = TYPE_COLORS[type];
+        const Icon = TYPE_ICON_BY_KIND[type];
+        const grad = TYPE_BAR_GRAD[type];
+        const sectionTotal = list.reduce((s, x) => s + x.quantity_kg, 0);
+
         return (
-          <button
-            key={i.id}
-            type="button"
-            data-testid="inventory-card"
-            onClick={() => onSelect(i)}
-            className={`group card !p-5 ring-1 ${c.ring} text-left cursor-pointer transition-transform duration-150 hover:-translate-y-0.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 ${isStaggered ? "animate-grad-fade-up" : ""}`}
-            style={isStaggered ? { animationDelay: `${idx * 30}ms` } : undefined}
+          // Each kind is its own lane, so the three rows read as separate.
+          <section
+            key={type}
+            data-testid={`cards-section-${type}`}
+            className="rounded-2xl bg-slate-50/60 p-4 ring-1 ring-slate-200/80 dark:bg-slate-900/30 dark:ring-slate-700/60"
           >
-            {/* Header: dot + type label · pct chip */}
-            <div className="flex items-center justify-between mb-3.5">
-              <div className="flex items-center gap-2 min-w-0">
-                <span
-                  className={`shrink-0 w-2.5 h-2.5 rounded-full ${c.bar} shadow-[0_0_0_3px_rgba(255,255,255,0.4)]`}
-                  aria-hidden
-                />
-                <span
-                  className={`text-[10px] font-bold uppercase tracking-[0.08em] truncate ${c.text}`}
-                >
-                  {i.typeLabel}
-                </span>
-              </div>
-              <span className="shrink-0 text-[10px] font-semibold text-muted tabular-nums bg-slate-100/60 dark:bg-slate-700/40 px-1.5 py-0.5 rounded-md">
-                {pct.toFixed(1)}%
+            <div className="flex items-center gap-2 mb-1.5">
+              {icon}
+              <h3 className="font-semibold text-primary">{label}</h3>
+              <span className="ml-auto inline-flex items-center gap-1.5 text-[11px] font-semibold text-secondary bg-white dark:bg-slate-800/60 ring-1 ring-slate-200/80 dark:ring-slate-700 px-2 py-0.5 rounded-md tabular-nums">
+                {list.length} item{list.length === 1 ? "" : "s"}
+                {list.length > 0 && (
+                  <>
+                    <span className="text-muted">·</span>
+                    {sectionTotal.toLocaleString()} kg
+                  </>
+                )}
               </span>
             </div>
+            <div className={`h-px w-full ${SECTION_UNDERLINE[type]} opacity-60 mb-3`} aria-hidden />
 
-            {/* Title row: icon + variety */}
-            <div className="flex items-start gap-2">
-              <Icon size={18} className={`mt-0.5 shrink-0 ${c.text}`} />
-              <div className="min-w-0">
-                <p className="font-bold text-lg text-primary leading-tight truncate">{i.variety}</p>
-                <p className="text-xs text-muted mt-0.5">
-                  Grade <span className="font-semibold text-secondary">{i.grade}</span>
-                </p>
-              </div>
-            </div>
-
-            {/* Quantity hero */}
-            <div className="mt-4">
-              <p className="text-[26px] font-extrabold text-primary tabular-nums leading-none">
-                {i.quantity_kg.toLocaleString()}
-                <span className="text-sm font-medium text-muted ml-1">kg</span>
-              </p>
-              <p className="text-xs text-muted mt-1 tabular-nums">{cavans.toFixed(1)} cavans</p>
-            </div>
-
-            {/* Progress bar — track + fill */}
-            <div className="mt-3 h-1.5 w-full bg-slate-200/70 dark:bg-slate-700/60 rounded-full overflow-hidden">
+            {list.length === 0 ? (
+              <p className="text-sm text-muted italic py-3 px-1">{SECTION_EMPTY[type]}</p>
+            ) : (
+              // One row per kind: the cards sit side by side and the row scrolls sideways.
               <div
-                role="progressbar"
-                aria-valuenow={Math.round(pct)}
-                aria-valuemin={0}
-                aria-valuemax={100}
-                aria-label={`${pct.toFixed(1)}% of total stock`}
-                className={`h-full bg-gradient-to-r ${grad} transition-[width] duration-500`}
-                style={{ width: `${Math.max(pct, 1.5)}%` }}
-              />
-            </div>
+                data-testid={`cards-row-${type}`}
+                className="-mx-1 flex snap-x snap-proximity gap-4 overflow-x-auto px-1 pb-3 pt-1 [scrollbar-width:thin]"
+              >
+                {list.map((i, idx) => {
+                  const pct = totalKg > 0 ? (i.quantity_kg / totalKg) * 100 : 0;
+                  const cavans = i.quantity_kg / 50;
+                  const isStaggered = idx < 8;
+                  return (
+                    <button
+                      key={i.id}
+                      type="button"
+                      data-testid="inventory-card"
+                      onClick={() => onSelect(i)}
+                      className={`group card !p-5 w-64 shrink-0 snap-start ring-1 ${c.ring} text-left cursor-pointer transition-transform duration-150 hover:-translate-y-0.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 sm:w-72 ${isStaggered ? "animate-grad-fade-up" : ""}`}
+                      style={isStaggered ? { animationDelay: `${idx * 30}ms` } : undefined}
+                    >
+                      {/* Header: dot + type label, pct chip */}
+                      <div className="flex items-center justify-between mb-3.5">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span
+                            className={`shrink-0 w-2.5 h-2.5 rounded-full ${c.bar} shadow-[0_0_0_3px_rgba(255,255,255,0.4)]`}
+                            aria-hidden
+                          />
+                          <span
+                            className={`text-[10px] font-bold uppercase tracking-[0.08em] truncate ${c.text}`}
+                          >
+                            {i.typeLabel}
+                          </span>
+                        </div>
+                        <span className="shrink-0 text-[10px] font-semibold text-muted tabular-nums bg-slate-100/60 dark:bg-slate-700/40 px-1.5 py-0.5 rounded-md">
+                          {pct.toFixed(1)}%
+                        </span>
+                      </div>
 
-            {/* Footer: warehouse chip + drill-in hint */}
-            <div className="mt-3.5 flex items-center justify-between">
-              <span className="inline-flex items-center gap-1.5 text-xs font-medium text-secondary bg-slate-100/70 dark:bg-slate-800/50 px-2 py-1 rounded-md max-w-[78%] truncate">
-                <Building2 size={11} className="shrink-0 text-muted" />
-                <span className="truncate">{i.branchName}</span>
-              </span>
-              <ArrowRight
-                size={14}
-                className="text-muted opacity-0 -translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 transition-all"
-              />
-            </div>
-          </button>
+                      {/* Title row: icon + variety */}
+                      <div className="flex items-start gap-2">
+                        <Icon size={18} className={`mt-0.5 shrink-0 ${c.text}`} />
+                        <div className="min-w-0">
+                          <p className="font-bold text-lg text-primary leading-tight truncate">
+                            {i.variety}
+                          </p>
+                          <p className="text-xs text-muted mt-0.5">
+                            Grade <span className="font-semibold text-secondary">{i.grade}</span>
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Quantity hero */}
+                      <div className="mt-4">
+                        <p className="text-[26px] font-extrabold text-primary tabular-nums leading-none">
+                          {i.quantity_kg.toLocaleString()}
+                          <span className="text-sm font-medium text-muted ml-1">kg</span>
+                        </p>
+                        <p className="text-xs text-muted mt-1 tabular-nums">
+                          {cavans.toFixed(1)} cavans
+                        </p>
+                      </div>
+
+                      {/* Progress bar: track + fill */}
+                      <div className="mt-3 h-1.5 w-full bg-slate-200/70 dark:bg-slate-700/60 rounded-full overflow-hidden">
+                        <div
+                          role="progressbar"
+                          aria-valuenow={Math.round(pct)}
+                          aria-valuemin={0}
+                          aria-valuemax={100}
+                          aria-label={`${pct.toFixed(1)}% of total stock`}
+                          className={`h-full bg-gradient-to-r ${grad} transition-[width] duration-500`}
+                          style={{ width: `${Math.max(pct, 1.5)}%` }}
+                        />
+                      </div>
+
+                      {/* Footer: warehouse chip + drill-in hint */}
+                      <div className="mt-3.5 flex items-center justify-between">
+                        <span className="inline-flex items-center gap-1.5 text-xs font-medium text-secondary bg-slate-100/70 dark:bg-slate-800/50 px-2 py-1 rounded-md max-w-[78%] truncate">
+                          <Building2 size={11} className="shrink-0 text-muted" />
+                          <span className="truncate">{i.branchName}</span>
+                        </span>
+                        <ArrowRight
+                          size={14}
+                          className="text-muted opacity-0 -translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 transition-all"
+                        />
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </section>
         );
       })}
     </div>
@@ -567,31 +690,16 @@ function BinsView({
   const grouped = useMemo(() => {
     const g: Record<UnifiedItem["type"], UnifiedItem[]> = { palay: [], milled: [], byproduct: [] };
     items.forEach((i) => g[i.type].push(i));
-    Object.values(g).forEach((arr) => arr.sort((a, b) => b.quantity_kg - a.quantity_kg));
     return g;
   }, [items]);
 
   if (items.length === 0) {
-    return <div className="card text-sm text-secondary text-center py-10">Inventory is empty.</div>;
+    return <div className="card text-sm text-secondary text-center py-10">{EMPTY_INVENTORY}</div>;
   }
-
-  const sections: { type: UnifiedItem["type"]; label: string; icon: React.ReactNode }[] = [
-    { type: "palay", label: "Palay (Paddy)", icon: <Wheat size={16} className="text-amber-500" /> },
-    {
-      type: "milled",
-      label: "Milled Rice (Bigas)",
-      icon: <Package size={16} className="text-emerald-500" />,
-    },
-    {
-      type: "byproduct",
-      label: "By-products",
-      icon: <Package size={16} className="text-slate-500 dark:text-slate-400" />,
-    },
-  ];
 
   return (
     <div className="space-y-6">
-      {sections.map(({ type, label, icon }) => {
+      {INVENTORY_SECTIONS.map(({ type, label, icon }) => {
         const list = grouped[type];
         const c = TYPE_COLORS[type];
         const grad = TYPE_BAR_GRAD[type];

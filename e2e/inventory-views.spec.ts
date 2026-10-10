@@ -42,6 +42,25 @@ test.describe("Inventory — Cards & Bins polish", () => {
     expect(pageErrors, `page errors: ${pageErrors.join("\n")}`).toEqual([]);
   });
 
+  test("Cards view puts palay, milled rice and by-products in separate scrollable rows", async ({
+    page,
+  }) => {
+    await login(page);
+    await gotoCardsView(page);
+
+    for (const type of ["palay", "milled", "byproduct"]) {
+      await expect(page.getByTestId(`cards-section-${type}`)).toBeVisible({ timeout: 10_000 });
+    }
+    // A kind with stock lays its cards out in one row that scrolls sideways.
+    const row = page.getByTestId("cards-row-palay");
+    await expect(row).toBeVisible();
+    expect(await row.evaluate((el) => getComputedStyle(el).overflowX)).toBe("auto");
+    const tops = await row
+      .getByTestId("inventory-card")
+      .evaluateAll((els) => els.map((el) => Math.round(el.getBoundingClientRect().top)));
+    expect(new Set(tops).size).toBe(1);
+  });
+
   test("Clicking a card opens the detail drawer with full details", async ({ page }) => {
     await login(page);
     await gotoCardsView(page);
