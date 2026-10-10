@@ -5,6 +5,7 @@ from __future__ import annotations
 from ..base import Recipe
 from ..cash import RECIPE_DEF as CASH_COUNT
 from ..freshness import RECIPE_DEF as OFFLINE_DATA
+from ..stock_count import RECIPE_DEF as STOCK_COUNT
 from .advisor import ADVISOR_RECIPES, MONTH_IN_REVIEW
 from .deliveries import DELIVERY_RECIPES
 from .owner_digest import OWNER_DIGEST
@@ -27,6 +28,7 @@ RECIPES: dict[str, Recipe] = {
         *WATCH_RECIPES,
         *PRODUCTION_RECIPES,
         *STOCK_RECIPES,
+        STOCK_COUNT,
         *RECEIVABLES_RECIPES,
         *DELIVERY_RECIPES,
         *PEOPLE_RECIPES,

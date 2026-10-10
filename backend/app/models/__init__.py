@@ -25,6 +25,7 @@ from .paddy import DryingRecord, PalayInventory, PalayInventoryMovement, PalayPu
 from .password_reset import PasswordResetToken
 from .reference import ByproductType, QualityGrade, RiceVariety
 from .sales import Invoice, Payment, PriceList, SalesOrder, SalesOrderItem
+from .stock_count import StockCount, StockCountLine
 from .subscription import Subscription, SubscriptionPlan
 from .supplier_customer import Customer, Supplier
 from .sync import SyncConflict, SyncLog
@@ -40,6 +41,8 @@ __all__ = [
     "AutomationState",
     "CashCount",
     "CollectionFollowUp",
+    "StockCount",
+    "StockCountLine",
     "JobRun",
     "Notification",
     "NotificationAttachment",

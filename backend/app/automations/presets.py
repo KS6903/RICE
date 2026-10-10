@@ -49,6 +49,7 @@ GROWING = (
     "late_deliveries",
     "no_truck",
     "weekly_summary",
+    "stock_count",
 )
 LARGE = (
     *GROWING,

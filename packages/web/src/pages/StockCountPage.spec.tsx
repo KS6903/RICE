@@ -1,0 +1,100 @@
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { configure, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { MemoryRouter } from "react-router-dom";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import type { User } from "@rice-mill/shared";
+import StockCountPage from "./StockCountPage";
+import { useAuthStore } from "../stores/authStore";
+import { stockCountService, type StockCountPage as Page } from "../services/StockCountService";
+
+configure({ asyncUtilTimeout: 5000 });
+
+const owner: User = {
+  id: "u1",
+  username: "mill1",
+  full_name: "Mill Owner",
+  role: "owner",
+  company_id: "c1",
+};
+
+const page: Page = {
+  sheet: [
+    { kind: "byproduct", inventory_id: "b1", label: "By-product, darak" },
+    { kind: "milled_rice", inventory_id: "r1", label: "Milled rice, NSIC Rc222 (grade Premium)" },
+  ],
+  tolerance_pct: 2,
+  manager: true,
+  counts: [
+    {
+      id: "k1",
+      date: "2026-10-01",
+      note: null,
+      counted_by: "Ben",
+      needs_review: true,
+      reviewed_by: null,
+      review_note: null,
+      lines: [
+        {
+          label: "Milled rice, NSIC Rc222 (grade Premium)",
+          recorded_kg: 5000,
+          counted_kg: 4700,
+          difference_kg: -300,
+          out: true,
+        },
+      ],
+    },
+  ],
+};
+
+const draw = () =>
+  render(
+    <QueryClientProvider
+      client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}
+    >
+      <MemoryRouter>
+        <StockCountPage />
+      </MemoryRouter>
+    </QueryClientProvider>,
+  );
+
+describe("StockCountPage", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+    useAuthStore.setState({ user: null });
+  });
+
+  it("counts blind and sends only the lines filled in", async () => {
+    useAuthStore.setState({ user: owner });
+    vi.spyOn(stockCountService, "page").mockResolvedValue(page);
+    const record = vi.spyOn(stockCountService, "record").mockResolvedValue(page.counts[0]);
+    draw();
+    const sheet = await screen.findByRole("region", { name: "Count sheet" });
+    // No recorded quantities on the sheet.
+    expect(within(sheet).queryByText(/5,000/)).toBeNull();
+    fireEvent.change(within(sheet).getByLabelText("Milled rice, NSIC Rc222 (grade Premium)"), {
+      target: { value: "4,700" },
+    });
+    fireEvent.click(within(sheet).getByRole("button", { name: /Save the count \(1 of 2 lines\)/ }));
+    await waitFor(() =>
+      expect(record).toHaveBeenCalledWith({
+        lines: [{ kind: "milled_rice", inventory_id: "r1", counted_kg: "4700" }],
+        note: "",
+      }),
+    );
+  });
+
+  it("shows the lines out and lets the owner review them", async () => {
+    useAuthStore.setState({ user: owner });
+    vi.spyOn(stockCountService, "page").mockResolvedValue(page);
+    const review = vi.spyOn(stockCountService, "review").mockResolvedValue(page.counts[0]);
+    draw();
+    const card = await screen.findByRole("article", { name: /Count of/ });
+    expect(within(card).getByText("1 line out")).toBeInTheDocument();
+    expect(within(card).getByText("-300 kg")).toBeInTheDocument();
+    fireEvent.change(within(card).getByLabelText("What you found"), {
+      target: { value: "Spillage." },
+    });
+    fireEvent.click(within(card).getByRole("button", { name: "Mark reviewed" }));
+    await waitFor(() => expect(review).toHaveBeenCalledWith("k1", "Spillage."));
+  });
+});
