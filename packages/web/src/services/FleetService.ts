@@ -37,6 +37,9 @@ export type DispatchTrip = {
   destination: string | null;
   notes: string | null;
   status: string;
+  // When the status last changed, and until when a departed or delivered trip can still be edited.
+  status_changed_at?: string | null;
+  edit_until?: string | null;
 };
 
 export const TRUCK_TYPES = [

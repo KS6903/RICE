@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useEscapeKey } from "../hooks/useEscapeKey";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Truck,
@@ -13,14 +14,16 @@ import {
   ClipboardList,
   Car,
   Check,
+  User,
+  Undo2,
+  Lock,
 } from "lucide-react";
 import { format } from "date-fns";
 import { dispatchService } from "../services/DispatchService";
 import { fleetService, TRUCK_TYPES } from "../services/FleetService";
 import type { Driver, Truck as TruckType, DispatchTrip } from "../services/FleetService";
 import { employeesService } from "../services/EmployeesService";
-import ColorSwatch from "../components/dispatch/ColorSwatch";
-import CourierPicker, { CourierParty } from "../components/dispatch/CourierPicker";
+import { useAuthStore } from "../stores/authStore";
 import { useAccess } from "../hooks/useAccess";
 
 type Agent = {
@@ -54,9 +57,17 @@ type DispatchOrder = {
   total_amount: number | null;
   delivered_at: string | null;
   customer: { id: string; name: string } | null;
+  // Who delivers it: the customer, or the rice mill's own courier.
+  courier_type: "customer" | "mill" | null;
+  courier_notes: string | null;
+  // Until when the owner can still take the delivered mark off.
+  unmark_until: string | null;
   assigned_agent: Agent | null;
   assigned_miller: Miller | null;
 };
+
+const COURIER_LABEL = { customer: "Customer", mill: "Rice mill courier" } as const;
+const pastDeadline = (iso: string | null | undefined) => !!iso && Date.now() > Date.parse(iso);
 
 type PageTab = "orders" | "trips" | "fleet";
 type FleetTab = "trucks" | "drivers";
@@ -125,19 +136,28 @@ function OrdersTab() {
     queryKey: ["dispatch-orders"],
     queryFn: () => dispatchService.listOrders(),
   });
-  const { data: agents = [] } = useQuery<Agent[]>({
-    queryKey: ["dispatch-agents-active"],
-    queryFn: () => dispatchService.listAgents(),
-  });
-  const { data: millers = [] } = useQuery<Miller[]>({
-    queryKey: ["dispatch-millers-active"],
-    queryFn: () => dispatchService.listMillers(),
-  });
+  // Only the owner can take a delivered mark back (and only for a week).
+  const isOwner = useAuthStore((s) => s.user?.role) === "owner";
 
   const markDelivered = useMutation({
     mutationFn: (id: string) => dispatchService.markDelivered(id),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["dispatch-orders"] }),
+    // The list can be stale (a courier removed elsewhere): refresh it as well.
+    onError: () => qc.invalidateQueries({ queryKey: ["dispatch-orders"] }),
   });
+  const unmarkDelivered = useMutation({
+    mutationFn: (id: string) => dispatchService.unmarkDelivered(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["dispatch-orders"] }),
+    onError: () => qc.invalidateQueries({ queryKey: ["dispatch-orders"] }),
+  });
+  const detail = (e: unknown, fallback: string) =>
+    ((e as { response?: { data?: { detail?: unknown } } })?.response?.data?.detail as
+      string | undefined) ?? fallback;
+  const deliverError = markDelivered.isError
+    ? detail(markDelivered.error, "Couldn't mark the order delivered. Try again.")
+    : unmarkDelivered.isError
+      ? detail(unmarkDelivered.error, "Couldn't take the delivery back. Try again.")
+      : null;
 
   if (isLoading)
     return <div className="card text-sm text-secondary text-center py-10">Loading orders…</div>;
@@ -155,6 +175,15 @@ function OrdersTab() {
 
   return (
     <>
+      {deliverError && (
+        <div
+          role="alert"
+          className="mb-3 flex items-center gap-2 rounded-xl bg-rose-50 px-3 py-2.5 text-sm text-rose-900 ring-1 ring-rose-200 dark:bg-rose-950/30 dark:text-rose-100 dark:ring-rose-800/60"
+        >
+          <AlertCircle size={14} className="shrink-0 text-rose-600 dark:text-rose-400" />
+          {deliverError}
+        </div>
+      )}
       <div className="card !p-0 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm" data-testid="dispatch-orders-table">
@@ -172,31 +201,38 @@ function OrdersTab() {
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
               {orders.map((o) => {
-                const courier = o.assigned_agent ?? o.assigned_miller;
-                const courierKind = o.assigned_agent
-                  ? "Agent"
-                  : o.assigned_miller
-                    ? "Miller"
-                    : null;
+                const courier = o.courier_type;
+                const legacyName = o.assigned_agent?.name ?? o.assigned_miller?.name ?? null;
+                const canUndo = isOwner && o.status === "delivered";
+                const undoOpen = canUndo && !!o.unmark_until && !pastDeadline(o.unmark_until);
                 return (
                   <tr key={o.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/40">
                     <td className="px-4 py-3 font-mono text-xs text-primary">{o.order_no}</td>
                     <td className="px-4 py-3 text-secondary">{o.customer?.name ?? "—"}</td>
                     <td className="px-4 py-3">
                       {courier ? (
-                        <span className="inline-flex items-center gap-1.5">
-                          <ColorSwatch
-                            color={courier.canva_color_hex}
-                            label={courier.name}
-                            size={12}
-                          />
-                          <span className="text-primary font-medium">{courier.name}</span>
-                          <span className="text-[10px] font-semibold text-muted uppercase tracking-wide">
-                            {courierKind}
+                        <div className="min-w-0">
+                          <span className="inline-flex items-center gap-1.5">
+                            {courier === "customer" ? (
+                              <User size={12} className="text-muted" />
+                            ) : (
+                              <Truck size={12} className="text-muted" />
+                            )}
+                            <span className="text-primary font-medium">
+                              {COURIER_LABEL[courier]}
+                            </span>
                           </span>
-                        </span>
+                          {(o.courier_notes || legacyName) && (
+                            <p
+                              className="mt-0.5 max-w-[16rem] truncate text-xs text-muted"
+                              title={o.courier_notes ?? legacyName ?? undefined}
+                            >
+                              {o.courier_notes ?? legacyName}
+                            </p>
+                          )}
+                        </div>
                       ) : (
-                        <span className="text-muted italic">Unassigned</span>
+                        <span className="text-muted italic">Not chosen</span>
                       )}
                     </td>
                     <td className="px-4 py-3 text-secondary">
@@ -232,11 +268,33 @@ function OrdersTab() {
                             type="button"
                             data-testid={`mark-delivered-${o.id}`}
                             onClick={() => markDelivered.mutate(o.id)}
-                            disabled={markDelivered.isPending}
-                            className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-semibold text-emerald-700 dark:text-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-950/30"
+                            // Nothing is delivered until someone is assigned to deliver it.
+                            disabled={markDelivered.isPending || !courier}
+                            title={courier ? undefined : "Choose who delivers it first"}
+                            className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-semibold text-emerald-700 dark:text-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 disabled:cursor-not-allowed disabled:opacity-45 disabled:hover:bg-transparent"
                           >
                             <CheckCircle2 size={12} /> Mark delivered
                           </button>
+                        )}
+                        {undoOpen && (
+                          <button
+                            type="button"
+                            data-testid={`unmark-delivered-${o.id}`}
+                            onClick={() => unmarkDelivered.mutate(o.id)}
+                            disabled={unmarkDelivered.isPending}
+                            title="Take the delivered mark off. Possible for 7 days."
+                            className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-semibold text-amber-700 dark:text-amber-300 hover:bg-amber-50 dark:hover:bg-amber-950/30 disabled:opacity-50"
+                          >
+                            <Undo2 size={12} /> Unmark delivered
+                          </button>
+                        )}
+                        {canUndo && !undoOpen && (
+                          <span
+                            className="inline-flex items-center gap-1 text-xs text-muted"
+                            title="Marked delivered more than 7 days ago, so it can no longer be changed."
+                          >
+                            <Lock size={11} /> Locked
+                          </span>
                         )}
                       </div>
                     </td>
@@ -247,14 +305,7 @@ function OrdersTab() {
           </table>
         </div>
       </div>
-      {assigning && (
-        <AssignCourierModal
-          order={assigning}
-          agents={agents as CourierParty[]}
-          millers={millers as CourierParty[]}
-          onClose={() => setAssigning(null)}
-        />
-      )}
+      {assigning && <AssignCourierModal order={assigning} onClose={() => setAssigning(null)} />}
     </>
   );
 }
@@ -279,27 +330,30 @@ function StatusBadge({ status }: { status: string }) {
   );
 }
 
-function AssignCourierModal({
-  order,
-  agents,
-  millers,
-  onClose,
-}: {
-  order: DispatchOrder;
-  agents: CourierParty[];
-  millers: CourierParty[];
-  onClose: () => void;
-}) {
+const COURIER_OPTIONS = [
+  {
+    value: "customer",
+    label: "Customer",
+    hint: "The customer collects it, or sends their own courier.",
+    icon: User,
+  },
+  {
+    value: "mill",
+    label: "Rice mill courier",
+    hint: "The mill delivers it with its own courier.",
+    icon: Truck,
+  },
+] as const;
+
+function AssignCourierModal({ order, onClose }: { order: DispatchOrder; onClose: () => void }) {
+  useEscapeKey(onClose);
   const qc = useQueryClient();
-  const current = order.assigned_agent
-    ? { kind: "agent" as const, id: order.assigned_agent.id }
-    : order.assigned_miller
-      ? { kind: "miller" as const, id: order.assigned_miller.id }
-      : null;
-  const [pick, setPick] = useState<{ kind: "agent" | "miller"; id: string } | null>(current);
+  const [choice, setChoice] = useState<"customer" | "mill" | null>(order.courier_type);
+  const [notes, setNotes] = useState(order.courier_notes ?? "");
 
   const assign = useMutation({
-    mutationFn: (p: typeof pick) => dispatchService.assignCourier(order.id, p),
+    mutationFn: (c: { choice: "customer" | "mill" | null; notes: string }) =>
+      dispatchService.assignCourier(order.id, c.choice, c.notes),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["dispatch-orders"] });
       onClose();
@@ -311,6 +365,7 @@ function AssignCourierModal({
       className="fixed inset-0 z-50 flex items-center justify-center p-4"
       role="dialog"
       aria-modal="true"
+      aria-labelledby="assign-courier-title"
     >
       <button
         type="button"
@@ -324,9 +379,11 @@ function AssignCourierModal({
       >
         <div className="flex items-start justify-between mb-4">
           <div>
-            <h3 className="text-lg font-bold text-primary">Assign courier</h3>
+            <h3 id="assign-courier-title" className="text-lg font-bold text-primary">
+              Who delivers it
+            </h3>
             <p className="text-xs text-muted mt-0.5">
-              Order <span className="font-mono">{order.order_no}</span> —{" "}
+              Order <span className="font-mono">{order.order_no}</span>,{" "}
               {order.customer?.name ?? "no customer"}
             </p>
           </div>
@@ -334,26 +391,85 @@ function AssignCourierModal({
             <XIcon size={16} />
           </button>
         </div>
-        <CourierPicker agents={agents} millers={millers} current={pick} onPick={setPick} />
+
+        <div role="radiogroup" aria-label="Courier" className="grid grid-cols-1 gap-2">
+          {COURIER_OPTIONS.map(({ value, label, hint, icon: Icon }) => {
+            const on = choice === value;
+            return (
+              <button
+                key={value}
+                type="button"
+                role="radio"
+                aria-checked={on}
+                data-testid={`courier-${value}`}
+                onClick={() => setChoice(value)}
+                className={`flex items-start gap-3 rounded-xl px-3.5 py-3 text-left ring-1 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 ${
+                  on
+                    ? "bg-emerald-500/10 ring-emerald-400 shadow-sm"
+                    : "ring-soft hover:ring-emerald-300 hover:bg-slate-50/60 dark:hover:bg-slate-700/30"
+                }`}
+              >
+                <Icon
+                  size={18}
+                  className={`mt-0.5 shrink-0 ${on ? "text-emerald-600 dark:text-emerald-400" : "text-muted"}`}
+                />
+                <span className="min-w-0">
+                  <span className="block text-sm font-semibold text-primary">{label}</span>
+                  <span className="block text-xs text-muted mt-0.5">{hint}</span>
+                </span>
+              </button>
+            );
+          })}
+        </div>
+
+        <div className="mt-4">
+          <label htmlFor="courier-notes" className={LABEL}>
+            Notes (optional)
+          </label>
+          <textarea
+            id="courier-notes"
+            rows={3}
+            maxLength={500}
+            className="input"
+            placeholder="For example, the plate number or the pickup time"
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+          />
+        </div>
+
         {assign.isError && (
           <p className="text-xs text-rose-600 dark:text-rose-400 font-medium mt-3 flex items-center gap-1">
             <AlertCircle size={12} />{" "}
-            {(assign.error as any)?.response?.data?.detail ?? "Failed to assign courier."}
+            {(assign.error as any)?.response?.data?.detail ?? "Couldn't save who delivers it."}
           </p>
         )}
-        <div className="flex items-center justify-end gap-2 pt-4 mt-4 border-t border-soft">
-          <button type="button" onClick={onClose} className="btn-secondary !py-1.5 !px-3 text-sm">
-            Cancel
-          </button>
-          <button
-            type="button"
-            data-testid="confirm-courier"
-            onClick={() => assign.mutate(pick)}
-            disabled={assign.isPending}
-            className="btn-primary !py-1.5 !px-3 text-sm disabled:opacity-50"
-          >
-            {assign.isPending ? "Saving…" : "Save courier"}
-          </button>
+        <div className="flex items-center justify-between gap-2 pt-4 mt-4 border-t border-soft">
+          <div>
+            {order.courier_type && order.status !== "delivered" && (
+              <button
+                type="button"
+                onClick={() => assign.mutate({ choice: null, notes: "" })}
+                disabled={assign.isPending}
+                className="text-xs font-semibold text-rose-600 dark:text-rose-400 hover:underline"
+              >
+                Clear
+              </button>
+            )}
+          </div>
+          <div className="flex items-center gap-2">
+            <button type="button" onClick={onClose} className="btn-secondary !py-1.5 !px-3 text-sm">
+              Cancel
+            </button>
+            <button
+              type="button"
+              data-testid="confirm-courier"
+              onClick={() => assign.mutate({ choice, notes })}
+              disabled={assign.isPending || !choice}
+              className="btn-primary !py-1.5 !px-3 text-sm disabled:opacity-50"
+            >
+              {assign.isPending ? "Saving…" : "Save"}
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -373,11 +489,18 @@ function TripsTab() {
     queryFn: () => fleetService.listTrips(),
   });
 
+  // Only the owner can move a trip back from departed or delivered (and only for a week).
+  const isOwner = useAuthStore((s) => s.user?.role) === "owner";
   const updateStatus = useMutation({
     mutationFn: ({ id, status }: { id: string; status: string }) =>
       fleetService.updateTrip(id, { status }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["dispatch-trips"] }),
+    onError: () => qc.invalidateQueries({ queryKey: ["dispatch-trips"] }),
   });
+  const statusError = updateStatus.isError
+    ? (((updateStatus.error as { response?: { data?: { detail?: unknown } } })?.response?.data
+        ?.detail as string | undefined) ?? "Couldn't change the trip. Try again.")
+    : null;
 
   return (
     <div className="space-y-4">
@@ -393,6 +516,16 @@ function TripsTab() {
           >
             <Plus size={16} /> New Dispatch
           </button>
+        </div>
+      )}
+
+      {statusError && (
+        <div
+          role="alert"
+          className="flex items-center gap-2 rounded-xl bg-rose-50 px-3 py-2.5 text-sm text-rose-900 ring-1 ring-rose-200 dark:bg-rose-950/30 dark:text-rose-100 dark:ring-rose-800/60"
+        >
+          <AlertCircle size={14} className="shrink-0 text-rose-600 dark:text-rose-400" />
+          {statusError}
         </div>
       )}
 
@@ -445,63 +578,100 @@ function TripsTab() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-              {trips.map((t) => (
-                <tr key={t.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/40">
-                  <td className="px-4 py-3 font-mono text-xs text-primary">{t.trip_no}</td>
-                  <td className="px-4 py-3 text-secondary">{t.dispatch_date}</td>
-                  <td className="px-4 py-3">
-                    <span className="font-medium text-primary">{t.truck_plate ?? "—"}</span>
-                    {t.truck_type && (
-                      <span className="ml-1 text-[10px] text-muted uppercase">
-                        {t.truck_type.replace("_", " ")}
-                      </span>
-                    )}
-                  </td>
-                  <td className="px-4 py-3 text-secondary">{t.driver_name ?? "—"}</td>
-                  <td className="px-4 py-3 text-secondary tabular-nums">{t.fuel_used_l ?? "—"}</td>
-                  <td className="px-4 py-3 font-mono text-xs text-secondary">
-                    {t.order_no ?? "—"}
-                  </td>
-                  <td className="px-4 py-3 text-secondary">{t.destination ?? "—"}</td>
-                  <td className="px-4 py-3">
-                    <StatusBadge status={t.status} />
-                  </td>
-                  <td className="px-4 py-3 text-right">
-                    {canEdit("dispatch") && (
-                      <div className="flex items-center justify-end gap-1">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setShowForm(false);
-                            setEditing(t);
-                          }}
-                          className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-semibold text-secondary hover:text-primary hover:bg-slate-100 dark:hover:bg-slate-700/40"
+              {trips.map((t) => {
+                const locked = pastDeadline(t.edit_until);
+                return (
+                  <tr key={t.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/40">
+                    <td className="px-4 py-3 font-mono text-xs text-primary">{t.trip_no}</td>
+                    <td className="px-4 py-3 text-secondary">{t.dispatch_date}</td>
+                    <td className="px-4 py-3">
+                      <span className="font-medium text-primary">{t.truck_plate ?? "—"}</span>
+                      {t.truck_type && (
+                        <span className="ml-1 text-[10px] text-muted uppercase">
+                          {t.truck_type.replace("_", " ")}
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3 text-secondary">{t.driver_name ?? "—"}</td>
+                    <td className="px-4 py-3 text-secondary tabular-nums">
+                      {t.fuel_used_l ?? "—"}
+                    </td>
+                    <td className="px-4 py-3 font-mono text-xs text-secondary">
+                      {t.order_no ?? "—"}
+                    </td>
+                    <td className="px-4 py-3 text-secondary">{t.destination ?? "—"}</td>
+                    <td className="px-4 py-3">
+                      <StatusBadge status={t.status} />
+                    </td>
+                    <td className="px-4 py-3 text-right">
+                      {canEdit("dispatch") && locked && (
+                        <span
+                          className="inline-flex items-center gap-1 text-xs text-muted"
+                          title="This trip left or arrived more than 7 days ago, so it can no longer be edited."
                         >
-                          <Pencil size={12} /> Edit
-                        </button>
-                        {t.status === "planned" && (
+                          <Lock size={11} /> Locked
+                        </span>
+                      )}
+                      {canEdit("dispatch") && !locked && (
+                        <div className="flex items-center justify-end gap-1">
                           <button
                             type="button"
-                            onClick={() => updateStatus.mutate({ id: t.id, status: "in_transit" })}
-                            className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-semibold text-sky-700 dark:text-sky-300 hover:bg-sky-50 dark:hover:bg-sky-950/30"
+                            onClick={() => {
+                              setShowForm(false);
+                              setEditing(t);
+                            }}
+                            className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-semibold text-secondary hover:text-primary hover:bg-slate-100 dark:hover:bg-slate-700/40"
                           >
-                            <Truck size={12} /> Depart
+                            <Pencil size={12} /> Edit
                           </button>
-                        )}
-                        {t.status === "in_transit" && (
-                          <button
-                            type="button"
-                            onClick={() => updateStatus.mutate({ id: t.id, status: "completed" })}
-                            className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-semibold text-emerald-700 dark:text-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-950/30"
-                          >
-                            <Check size={12} /> Complete
-                          </button>
-                        )}
-                      </div>
-                    )}
-                  </td>
-                </tr>
-              ))}
+                          {t.status === "planned" && (
+                            <button
+                              type="button"
+                              onClick={() =>
+                                updateStatus.mutate({ id: t.id, status: "in_transit" })
+                              }
+                              className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-semibold text-sky-700 dark:text-sky-300 hover:bg-sky-50 dark:hover:bg-sky-950/30"
+                            >
+                              <Truck size={12} /> Depart
+                            </button>
+                          )}
+                          {t.status === "in_transit" && (
+                            <button
+                              type="button"
+                              onClick={() => updateStatus.mutate({ id: t.id, status: "completed" })}
+                              className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-semibold text-emerald-700 dark:text-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-950/30"
+                            >
+                              <Check size={12} /> Complete
+                            </button>
+                          )}
+                          {isOwner && t.status === "in_transit" && (
+                            <button
+                              type="button"
+                              onClick={() => updateStatus.mutate({ id: t.id, status: "planned" })}
+                              title="Take the departed mark off. Possible for 7 days."
+                              className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-semibold text-amber-700 dark:text-amber-300 hover:bg-amber-50 dark:hover:bg-amber-950/30"
+                            >
+                              <Undo2 size={12} /> Undo depart
+                            </button>
+                          )}
+                          {isOwner && t.status === "completed" && (
+                            <button
+                              type="button"
+                              onClick={() =>
+                                updateStatus.mutate({ id: t.id, status: "in_transit" })
+                              }
+                              title="Take the delivered mark off. Possible for 7 days."
+                              className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-semibold text-amber-700 dark:text-amber-300 hover:bg-amber-50 dark:hover:bg-amber-950/30"
+                            >
+                              <Undo2 size={12} /> Undo delivered
+                            </button>
+                          )}
+                        </div>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
@@ -519,6 +689,7 @@ function TripForm({
   onClose: () => void;
   onSaved: () => void;
 }) {
+  useEscapeKey(onClose);
   const { data: trucks = [] } = useQuery<TruckType[]>({
     queryKey: ["fleet-trucks"],
     queryFn: () => fleetService.listTrucks(),
@@ -541,6 +712,9 @@ function TripForm({
   const [orderId, setOrderId] = useState(initial?.order_id ?? "");
   const [destination, setDestination] = useState(initial?.destination ?? "");
   const [notes, setNotes] = useState(initial?.notes ?? "");
+  // The trip number can be changed by the owner, on an existing trip.
+  const isOwner = useAuthStore((s) => s.user?.role) === "owner";
+  const [tripNo, setTripNo] = useState(initial?.trip_no ?? "");
   const [error, setError] = useState<string | null>(null);
 
   const handleTruckChange = (id: string) => {
@@ -562,6 +736,9 @@ function TripForm({
         destination: destination || null,
         notes: notes || null,
       };
+      if (initial && isOwner && tripNo.trim() && tripNo.trim() !== initial.trip_no) {
+        body.trip_no = tripNo.trim();
+      }
       return initial ? fleetService.updateTrip(initial.id, body) : fleetService.createTrip(body);
     },
     onSuccess: () => onSaved(),
@@ -578,6 +755,24 @@ function TripForm({
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        {initial && (
+          <div className="sm:col-span-2">
+            <label htmlFor="trip-no" className={LABEL}>
+              Trip number
+            </label>
+            <input
+              id="trip-no"
+              className="input max-w-xs font-mono"
+              value={tripNo}
+              maxLength={30}
+              disabled={!isOwner}
+              onChange={(e) => setTripNo(e.target.value)}
+            />
+            {!isOwner && (
+              <p className="text-[10px] text-muted mt-1">Only the owner can change the number.</p>
+            )}
+          </div>
+        )}
         <div>
           <label className={LABEL}>Truck *</label>
           <select
@@ -884,6 +1079,7 @@ function TruckForm({
   onSaved: () => void;
   setError: (m: string | null) => void;
 }) {
+  useEscapeKey(onClose);
   const [plate, setPlate] = useState(initial?.plate_number ?? "");
   const [type, setType] = useState(initial?.truck_type ?? "");
   const [fuelRate, setFuelRate] = useState(
@@ -1150,6 +1346,7 @@ function DriverForm({
   onSaved: () => void;
   setError: (m: string | null) => void;
 }) {
+  useEscapeKey(onClose);
   const [name, setName] = useState(initial?.name ?? "");
   const [phone, setPhone] = useState(initial?.phone ?? "");
   const [licenseNo, setLicenseNo] = useState(initial?.license_no ?? "");

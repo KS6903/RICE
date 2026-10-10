@@ -4,7 +4,8 @@
 import api from "./api";
 
 export type OperatorKind = "agent" | "miller";
-export type CourierPick = { kind: OperatorKind; id: string } | null;
+// Who delivers an order: the customer, or the rice mill's own courier (null: nobody yet).
+export type CourierChoice = "customer" | "mill" | null;
 
 const resource = (kind: OperatorKind) => (kind === "agent" ? "agents" : "millers");
 
@@ -21,17 +22,23 @@ export class DispatchService {
     return this.http.patch(`/sales-orders/${orderId}/mark-delivered`).then((r) => r.data);
   }
 
-  /** Build the assign-courier body from a picked operator (or null = clear). Pure. */
-  static toCourierBody(pick: CourierPick) {
-    return {
-      agent_id: pick?.kind === "agent" ? pick.id : null,
-      miller_id: pick?.kind === "miller" ? pick.id : null,
-    };
+  /** Take the delivered mark off (owner only, within a week of it being made). */
+  unmarkDelivered(orderId: string): Promise<any> {
+    return this.http.patch(`/sales-orders/${orderId}/unmark-delivered`).then((r) => r.data);
   }
 
-  assignCourier(orderId: string, pick: CourierPick): Promise<any> {
+  /** The assign-courier body: who delivers, and an optional note. Pure. */
+  static toCourierBody(choice: CourierChoice, notes = "") {
+    const note = notes.trim();
+    return { courier_type: choice, notes: choice && note ? note : null };
+  }
+
+  assignCourier(orderId: string, choice: CourierChoice, notes = ""): Promise<any> {
     return this.http
-      .patch(`/sales-orders/${orderId}/assign-courier`, DispatchService.toCourierBody(pick))
+      .patch(
+        `/sales-orders/${orderId}/assign-courier`,
+        DispatchService.toCourierBody(choice, notes),
+      )
       .then((r) => r.data);
   }
 
