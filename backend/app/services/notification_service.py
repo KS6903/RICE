@@ -140,10 +140,24 @@ def mark_read(db: Session, user_id: uuid.UUID, ids: Sequence[uuid.UUID] | None =
     return db.execute(stmt.values(read_at=now_utc())).rowcount  # type: ignore[attr-defined]
 
 
+# How long a failed email waits before each retry. A mail server down for an
+# hour or a full mailbox shouldn't lose a collections reminder; after the last
+# retry the notice is marked failed (it's still under the bell).
+RETRY_AFTER = (timedelta(minutes=15), timedelta(hours=1), timedelta(hours=4))
+
+
+def _ready(now: datetime):
+    """Pending notices whose next try is due."""
+    return (Notification.email_status == "pending") & (
+        Notification.email_retry_at.is_(None) | (Notification.email_retry_at <= now)
+    )
+
+
 def deliver_pending_emails(db: Session, *, now: datetime | None = None) -> dict[str, int]:
     """Email the notices waiting for it, within the tenant's daily cap. Commits.
 
-    Returns counts by outcome: sent, failed, skipped (no address, or no SMTP in
+    Returns counts by outcome: sent, retrying (failed this time, tried again
+    later), failed (every retry used), skipped (no address, or no SMTP in
     development), deferred (over today's cap; they go out on a later run).
     """
     now = now or now_utc()
@@ -156,17 +170,15 @@ def deliver_pending_emails(db: Session, *, now: datetime | None = None) -> dict[
         or 0
     )
     budget = max(0, DAILY_EMAIL_CAP - sent_recently)
-    pending_total = (
-        db.scalar(select(func.count()).select_from(Notification).where(Notification.email_status == "pending")) or 0
-    )
+    ready_total = db.scalar(select(func.count()).select_from(Notification).where(_ready(now))) or 0
     rows = db.execute(
         select(Notification, User.email)
         .join(User, User.id == Notification.user_id)
-        .where(Notification.email_status == "pending")
+        .where(_ready(now))
         .order_by(Notification.created_at)
         .limit(budget)
     ).all()
-    outcome = {"sent": 0, "failed": 0, "skipped": 0, "deferred": pending_total - len(rows)}
+    outcome = {"sent": 0, "retrying": 0, "failed": 0, "skipped": 0, "deferred": ready_total - len(rows)}
     if not rows:
         return outcome
     files = _attachments_for(db, {notice.dedupe_key for notice, _ in rows})
@@ -174,21 +186,52 @@ def deliver_pending_emails(db: Session, *, now: datetime | None = None) -> dict[
         for notice, address in rows:
             if not address:
                 notice.email_status = "skipped"
-            else:
-                try:
-                    sent = mailer.send(
-                        to=address,
-                        subject=notice.title,
-                        text=_email_text(notice),
-                        attachments=files.get(notice.dedupe_key, ()),
-                    )
-                    notice.email_status = "sent" if sent else "skipped"
-                except Exception:
-                    logger.exception("notification email failed", extra={"notification_id": str(notice.id)})
-                    notice.email_status = "failed"
+                outcome["skipped"] += 1
+                continue
+            try:
+                sent = mailer.send(
+                    to=address,
+                    subject=notice.title,
+                    text=_email_text(notice),
+                    attachments=files.get(notice.dedupe_key, ()),
+                )
+            except Exception:
+                logger.exception("notification email failed", extra={"notification_id": str(notice.id)})
+                outcome[_failed(notice, now)] += 1
+                continue
+            notice.email_status = "sent" if sent else "skipped"
+            notice.email_retry_at = None
             outcome[notice.email_status] += 1
     db.commit()
     return outcome
+
+
+def _failed(notice: Notification, now: datetime) -> str:
+    """Count a failed send: schedule the next try, or give up. Returns the outcome."""
+    notice.email_attempts = (notice.email_attempts or 0) + 1
+    if notice.email_attempts <= len(RETRY_AFTER):
+        notice.email_retry_at = now + RETRY_AFTER[notice.email_attempts - 1]
+        return "retrying"
+    notice.email_status = "failed"
+    notice.email_retry_at = None
+    return "failed"
+
+
+def undelivered_emails(db: Session, *, kind_prefix: str, since: datetime) -> dict[str, int]:
+    """Emails of notices whose kind starts with ``kind_prefix``, created since
+    ``since``, that haven't reached anyone: given up on, or still retrying."""
+    rows = db.execute(
+        select(Notification.email_status, func.count())
+        .where(
+            Notification.kind.startswith(kind_prefix),
+            Notification.created_at >= since,
+            (Notification.email_status == "failed")
+            | ((Notification.email_status == "pending") & (Notification.email_attempts > 0)),
+        )
+        .group_by(Notification.email_status)
+    ).all()
+    counts: dict[str, int] = {status: count for status, count in rows}
+    return {"failed": counts.get("failed", 0), "retrying": counts.get("pending", 0)}
 
 
 def _email_text(notice: Notification) -> str:

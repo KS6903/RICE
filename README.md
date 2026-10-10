@@ -121,13 +121,15 @@ tests, the web build and Semgrep. `npm run ci:local -- --fast` runs the quick su
 
 Deploys are started by hand (`deploy.yml`, from `main` only) and pass the same checks, plus
 `backend/deploy_readiness.py`. That check fails until the `example.com` values in `wrangler.jsonc`
-and the placeholders in `legal/entity.json` are filled in.
+and the placeholders in `legal/entity.json` are filled in. A private test site for invited
+testers deploys separately, with `deploy-preview.yml`; see [PREVIEW_DEPLOY.md](PREVIEW_DEPLOY.md).
 
 ## More documentation
 
 - [SETUP.md](SETUP.md): local setup step by step, and how offline sync works
 - [PRODUCT.md](PRODUCT.md) and [DESIGN.md](DESIGN.md): who it's for, and the visual system
 - [CLOUDFLARE_DEPLOY.md](CLOUDFLARE_DEPLOY.md): what runs where in production, and how to deploy
+- [PREVIEW_DEPLOY.md](PREVIEW_DEPLOY.md): the private test site for invited testers, and its costs
 - [PRODUCTION_LAUNCH_CHECKLIST.md](PRODUCTION_LAUNCH_CHECKLIST.md): what's left before launch
 - [SECURITY_OPERATIONS.md](SECURITY_OPERATIONS.md): release gate, e2e databases, account recovery
 - [OUTSTANDING.md](OUTSTANDING.md): the roadmap of remaining work

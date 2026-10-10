@@ -1,6 +1,9 @@
+from .action import ActionItem
 from .activity import ActivityLog
 from .auth_session import AuthSession
 from .automation import AutomationRule, AutomationSettings, AutomationState
+from .cash import CashCount
+from .collections import CollectionFollowUp
 from .company import Branch, Company
 from .compliance import ComplianceReport
 from .costs import Expense, ExpenseCategory
@@ -9,6 +12,7 @@ from .employee import Employee
 from .fleet import DispatchTrip, Driver, Truck
 from .job_run import JobRun
 from .legal import LegalAcceptance
+from .maintenance import Equipment, MaintenanceLog
 from .milling import (
     ByproductInventory,
     MilledRiceInventory,
@@ -22,6 +26,7 @@ from .paddy import DryingRecord, PalayInventory, PalayInventoryMovement, PalayPu
 from .password_reset import PasswordResetToken
 from .reference import ByproductType, QualityGrade, RiceVariety
 from .sales import Invoice, Payment, PriceList, SalesOrder, SalesOrderItem
+from .stock_count import StockCount, StockCountLine
 from .subscription import Subscription, SubscriptionPlan
 from .supplier_customer import Customer, Supplier
 from .sync import SyncConflict, SyncLog
@@ -31,9 +36,16 @@ from .user_location import UserLocation
 from .warehouse import Pallet, PalletMovement, RiceBatch, WarehouseLayout, WarehouseZone
 
 __all__ = [
+    "ActionItem",
     "AutomationRule",
     "AutomationSettings",
     "AutomationState",
+    "CashCount",
+    "CollectionFollowUp",
+    "Equipment",
+    "MaintenanceLog",
+    "StockCount",
+    "StockCountLine",
     "JobRun",
     "Notification",
     "NotificationAttachment",

@@ -44,6 +44,13 @@ _extra_ddl: list[str] = [
         f"ON {table} (company_id, canva_color_hex) WHERE canva_color_hex IS NOT NULL"
         for table in ("suppliers", "customers", "agents", "millers")
     ),
+    # Failed notification emails are retried (notification_service.RETRY_AFTER).
+    "ALTER TABLE notifications ADD COLUMN IF NOT EXISTS email_attempts SMALLINT NOT NULL DEFAULT 0",
+    "ALTER TABLE notifications ADD COLUMN IF NOT EXISTS email_retry_at TIMESTAMPTZ",
+    # Alerts tracked as tasks until resolved (action_items, made by create_all).
+    "ALTER TABLE automation_rules ADD COLUMN IF NOT EXISTS track BOOLEAN NOT NULL DEFAULT false",
+    "ALTER TABLE automation_rules ADD COLUMN IF NOT EXISTS track_assignee UUID REFERENCES users(id) ON DELETE SET NULL",
+    "ALTER TABLE automation_rules ADD COLUMN IF NOT EXISTS track_due_hours SMALLINT NOT NULL DEFAULT 24",
 ]
 
 

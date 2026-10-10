@@ -42,6 +42,11 @@ AGREEMENT_VERSION = "2026.11.1"
 
 _PLACEHOLDER_RE = re.compile(r"\{\{\s*([a-z0-9_]+)\s*\}\}")
 _TODO_SENTINEL = "TODO:"
+# What a reader sees where an entity.json value is still a TODO: the note after
+# "TODO:" is for us, not for customers. The web Markdown renderer greys out
+# [[...]]. This changes only the display; unresolved_placeholders() reads
+# entity.json itself, so the production gate still refuses to boot.
+PENDING_MARKER = "[[To follow]]"
 
 
 @dataclass(frozen=True)
@@ -178,8 +183,19 @@ def render(key: str) -> str:
     # compares a stored hash against the live one and would otherwise read a
     # checkout difference as new terms. Keep this read in text mode.
     source = (_docs_dir() / doc.filename).read_text(encoding="utf-8")
-    tokens = _tokens_for(doc)
-    return _PLACEHOLDER_RE.sub(lambda m: tokens.get(m.group(1), m.group(0)), source)
+    return substitute(source, _tokens_for(doc))
+
+
+def substitute(source: str, tokens: dict[str, str]) -> str:
+    """Fill each ``{{token}}``: an unknown one stays verbatim, a TODO one reads To follow."""
+
+    def value(m: re.Match[str]) -> str:
+        token = m.group(1)
+        if token not in tokens:
+            return m.group(0)
+        return PENDING_MARKER if tokens[token].startswith(_TODO_SENTINEL) else tokens[token]
+
+    return _PLACEHOLDER_RE.sub(value, source)
 
 
 def content_hash(key: str) -> str:

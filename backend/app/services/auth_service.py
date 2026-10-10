@@ -780,9 +780,14 @@ class AuthService(BaseService):
             self.db.add(user)
             self.db.flush()
             # Production provisions the expensive tenant schema only after the
-            # email is proven. Development may opt out for local convenience.
+            # email is proven. Without verification (the preview, or development),
+            # production-mode deploys queue it for the provisioner, the only process
+            # whose role may run DDL; development provisions inline with its own role.
             if not settings.REQUIRE_EMAIL_VERIFICATION:
-                provision_tenant(company, db=self.db)
+                if settings.is_prod:
+                    self._request_tenant_provisioning(company)
+                else:
+                    provision_tenant(company, db=self.db)
             LegalService(self.db).record_acceptance(
                 user_id=user.id,
                 company_id=company.id,

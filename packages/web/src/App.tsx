@@ -22,6 +22,11 @@ import FieldOperatorsPage from "./pages/FieldOperatorsPage";
 import CostsPage from "./pages/CostsPage";
 import ReportsPage from "./pages/ReportsPage";
 import AutomationsPage from "./pages/AutomationsPage";
+import TasksPage from "./pages/TasksPage";
+import CollectionsPage from "./pages/CollectionsPage";
+import CashCountPage from "./pages/CashCountPage";
+import StockCountPage from "./pages/StockCountPage";
+import MaintenancePage from "./pages/MaintenancePage";
 import UsersPage from "./pages/UsersPage";
 import EmployeesPage from "./pages/EmployeesPage";
 import SettingsPage from "./pages/SettingsPage";
@@ -264,6 +269,56 @@ function AppRoutes() {
             <RoleGate section="automations">
               <FeatureGate code="automations" label="Automations" requires="Enterprise">
                 <AutomationsPage />
+              </FeatureGate>
+            </RoleGate>
+          }
+        />
+        <Route
+          path="maintenance"
+          element={
+            <RoleGate section="milling">
+              <FeatureGate code="automations" label="Maintenance" requires="Enterprise">
+                <MaintenancePage />
+              </FeatureGate>
+            </RoleGate>
+          }
+        />
+        <Route
+          path="stock-count"
+          element={
+            <RoleGate section="inventory">
+              <FeatureGate code="automations" label="Stock count" requires="Enterprise">
+                <StockCountPage />
+              </FeatureGate>
+            </RoleGate>
+          }
+        />
+        <Route
+          path="cash"
+          element={
+            <RoleGate section="sales">
+              <FeatureGate code="automations" label="Cash count" requires="Enterprise">
+                <CashCountPage />
+              </FeatureGate>
+            </RoleGate>
+          }
+        />
+        <Route
+          path="collections"
+          element={
+            <RoleGate section="sales">
+              <FeatureGate code="automations" label="Collections" requires="Enterprise">
+                <CollectionsPage />
+              </FeatureGate>
+            </RoleGate>
+          }
+        />
+        <Route
+          path="tasks"
+          element={
+            <RoleGate section="tasks">
+              <FeatureGate code="automations" label="To do" requires="Enterprise">
+                <TasksPage />
               </FeatureGate>
             </RoleGate>
           }

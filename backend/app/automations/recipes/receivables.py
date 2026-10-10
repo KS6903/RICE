@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from collections import defaultdict
 from datetime import date, time, timedelta
 from decimal import Decimal
 
@@ -15,6 +14,7 @@ from ...models.sales import Invoice, SalesOrder
 from ...models.supplier_customer import Customer
 from .. import credit
 from ..base import Field, Notice, Recipe, RecipeContext
+from ..collections import worklist
 from ..format import peso, plural
 from ..state import newly_true
 from .watch import EMAIL_FIELD
@@ -94,7 +94,7 @@ def _due_reminders(ctx: RecipeContext, params: BaseModel) -> list[Notice]:
         Notice(
             title="Collections: " + ", ".join(parts),
             body="\n".join(lines),
-            link="/sales",
+            link="/collections",
             dedupe_key=f"due_reminders:{today.isoformat()}",
         )
     ]
@@ -130,35 +130,29 @@ def _monday(_params: BaseModel) -> Schedule:
 
 def _call_list(ctx: RecipeContext, params: BaseModel) -> list[Notice]:
     today = ctx.local_today
-    overdue = (
-        ctx.db.query(Invoice)
-        .filter(Invoice.status.in_(credit.OPEN_INVOICE), func.coalesce(Invoice.due_date, Invoice.invoice_date) < today)
-        .all()
-    )
-    by_customer: dict = defaultdict(lambda: [Decimal(0), 0, None])
-    for inv in overdue:
-        balance = Decimal(inv.total_amount - inv.paid_amount)
-        if balance <= 0:
-            continue
-        entry = by_customer[inv.customer_id]
-        entry[0] += balance
-        entry[1] = max(entry[1], (today - _due(inv)).days)
-        entry[2] = inv.customer
-    if not by_customer:
+    # Overdue money only, in the collections list's order: promises not kept first.
+    debtors = [d for d in worklist(ctx.db, today, due_within_days=-1) if d.overdue > 0]
+    if not debtors:
         return []
-    ranked = sorted(by_customer.values(), key=lambda e: (-e[0], -e[1]))[:10]
     lines = []
-    for n, (balance, oldest, customer) in enumerate(ranked, start=1):
-        name = customer.name if customer else "Walk-in customers"
-        phone = f". {customer.phone}" if customer and customer.phone else ""
-        lines.append(f"{n}. {name}: {peso(balance)} overdue, oldest {plural(oldest, 'day')}{phone}")
-    total = sum((e[0] for e in by_customer.values()), Decimal(0))
+    for n, d in enumerate(debtors[:10], start=1):
+        phone = f". {d.customer.phone}" if d.customer.phone else ""
+        line = f"{n}. {d.customer.name}: {peso(d.overdue)} overdue, oldest {plural(d.oldest_days_late, 'day')}{phone}"
+        state = d.promise_state(today)
+        if state and d.last and d.last.promised_date:
+            line += (
+                f". Promised to pay by {d.last.promised_date:%a %d %b} and hasn't"
+                if state == "broken"
+                else f". Promised to pay by {d.last.promised_date:%a %d %b}"
+            )
+        lines.append(line)
+    total = sum((d.overdue for d in debtors), Decimal(0))
     year, week, _ = today.isocalendar()
     return [
         Notice(
             title=f"Who to call this week: {peso(total)} overdue",
             body="\n".join(lines),
-            link="/sales",
+            link="/collections",
             dedupe_key=f"call_list:{year}-W{week:02d}",
         )
     ]
@@ -167,7 +161,10 @@ def _call_list(ctx: RecipeContext, params: BaseModel) -> list[Notice]:
 CALL_LIST = Recipe(
     code="call_list",
     title="Who to call this week",
-    description="Monday mornings, the ten customers who owe you the most overdue money, with their numbers.",
+    description=(
+        "Monday mornings, the ten customers who owe you the most overdue money, with their numbers, "
+        "putting first anyone who promised to pay and hasn't."
+    ),
     group="receivables",
     section="sales",
     default_roles=("accountant", "owner"),

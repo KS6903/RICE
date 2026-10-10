@@ -34,6 +34,8 @@ SECTION_ACCESS: dict[str, dict[str, str]] = {
         "users": "full",
         "settings": "full",
         "automations": "full",
+        # Their own tasks for everyone; owners and admins see all (api/actions).
+        "tasks": "full",
     },
     "admin": {
         "dashboard": "full",
@@ -49,6 +51,8 @@ SECTION_ACCESS: dict[str, dict[str, str]] = {
         "users": "full",
         "settings": "full",
         "automations": "full",
+        # Their own tasks for everyone; owners and admins see all (api/actions).
+        "tasks": "full",
     },
     "accountant": {
         "dashboard": "full",
@@ -64,6 +68,8 @@ SECTION_ACCESS: dict[str, dict[str, str]] = {
         "users": "none",
         "settings": "full",
         "automations": "view",
+        # Their own tasks for everyone; owners and admins see all (api/actions).
+        "tasks": "full",
     },
     "cashier": {
         "dashboard": "full",
@@ -79,6 +85,8 @@ SECTION_ACCESS: dict[str, dict[str, str]] = {
         "users": "none",
         "settings": "full",
         "automations": "none",
+        # Their own tasks for everyone; owners and admins see all (api/actions).
+        "tasks": "full",
     },
     "mill_operator": {
         "dashboard": "full",
@@ -94,6 +102,8 @@ SECTION_ACCESS: dict[str, dict[str, str]] = {
         "users": "none",
         "settings": "full",
         "automations": "none",
+        # Their own tasks for everyone; owners and admins see all (api/actions).
+        "tasks": "full",
     },
     "encoder": {
         "dashboard": "full",
@@ -109,6 +119,8 @@ SECTION_ACCESS: dict[str, dict[str, str]] = {
         "users": "none",
         "settings": "full",
         "automations": "none",
+        # Their own tasks for everyone; owners and admins see all (api/actions).
+        "tasks": "full",
     },
 }
 

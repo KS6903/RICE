@@ -4,6 +4,7 @@ goes out only after the work commits, within a daily cap."""
 from __future__ import annotations
 
 import uuid
+from datetime import datetime, timedelta, timezone
 
 import pytest
 
@@ -107,6 +108,61 @@ def test_the_daily_cap_defers_the_rest(db_session, seed_owner, monkeypatch):
     db_session.commit()
     outcome = deliver_pending_emails(db_session)
     assert (outcome["sent"], outcome["deferred"]) == (1, 1)
+
+
+def test_a_failed_email_is_retried_later_and_then_given_up(db_session, seed_owner, monkeypatch):
+    company = _on_tenant(db_session, seed_owner)
+    attempts: list[str] = []
+
+    def refuse(self, **kw):
+        attempts.append(kw["to"])
+        raise OSError("mail server down")
+
+    monkeypatch.setattr("app.core.mailer.Mailer.send", refuse)
+    notify(db_session, company_id=company.id, user_ids=[seed_owner.id], kind="k", title="t", dedupe_key="r", email=True)
+    db_session.commit()
+    now = datetime(2026, 10, 10, 8, 0, tzinfo=timezone.utc)
+
+    assert deliver_pending_emails(db_session, now=now)["retrying"] == 1
+    # Not again until the wait is over.
+    assert deliver_pending_emails(db_session, now=now + timedelta(minutes=5))["retrying"] == 0
+    assert len(attempts) == 1
+    for _ in notification_service.RETRY_AFTER[1:]:
+        now += timedelta(days=1)
+        assert deliver_pending_emails(db_session, now=now)["retrying"] == 1
+    now += timedelta(days=1)
+    assert deliver_pending_emails(db_session, now=now)["failed"] == 1
+    assert len(attempts) == len(notification_service.RETRY_AFTER) + 1
+    assert deliver_pending_emails(db_session, now=now + timedelta(days=1))["failed"] == 0  # given up for good
+    since = datetime(2000, 1, 1, tzinfo=timezone.utc)
+    assert notification_service.undelivered_emails(db_session, kind_prefix="k", since=since) == {
+        "failed": 1,
+        "retrying": 0,
+    }
+
+
+def test_a_retry_that_succeeds_counts_as_sent(db_session, seed_owner, monkeypatch):
+    company = _on_tenant(db_session, seed_owner)
+    calls = iter([OSError("timeout"), True])
+
+    def flaky(self, **kw):
+        outcome = next(calls)
+        if isinstance(outcome, Exception):
+            raise outcome
+        return outcome
+
+    monkeypatch.setattr("app.core.mailer.Mailer.send", flaky)
+    notify(db_session, company_id=company.id, user_ids=[seed_owner.id], kind="k", title="t", dedupe_key="f", email=True)
+    db_session.commit()
+    now = datetime(2026, 10, 10, 8, 0, tzinfo=timezone.utc)
+    assert deliver_pending_emails(db_session, now=now)["retrying"] == 1
+    assert deliver_pending_emails(db_session, now=now + timedelta(hours=1))["sent"] == 1
+    assert notification_service.undelivered_emails(
+        db_session, kind_prefix="k", since=datetime(2000, 1, 1, tzinfo=timezone.utc)
+    ) == {
+        "failed": 0,
+        "retrying": 0,
+    }
 
 
 def test_without_smtp_in_development_emails_are_skipped_not_failed(db_session, seed_owner):

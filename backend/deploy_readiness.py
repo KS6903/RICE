@@ -131,10 +131,25 @@ def load_jsonc(path: Path) -> Any:
 # ── the environment each container boots with ─────────────────────────────────
 
 
+def target_constants(wrangler_vars: dict[str, Any], spec: dict[str, Any]) -> dict[str, str]:
+    """The DEPLOY_TARGET overrides (container-env.json "targets"), as the Worker applies them."""
+    target = wrangler_vars.get("DEPLOY_TARGET")
+    if not target:
+        return {}
+    targets = {k: v for k, v in spec.get("targets", {}).items() if not k.startswith("$")}
+    if target not in targets:
+        raise ValueError(f"DEPLOY_TARGET {target!r} is not defined in worker/container-env.json targets")
+    return dict(targets[target]["constants"])
+
+
 def container_env(role: str, wrangler_vars: dict[str, Any], spec: dict[str, Any]) -> dict[str, str]:
     """Mirror of containerEnvFor() in worker/index.ts, with dummy secrets."""
     shared, role_spec = spec["shared"], spec["roles"][role]
-    env: dict[str, str] = {**shared["constants"], **role_spec["constants"]}
+    env: dict[str, str] = {
+        **shared["constants"],
+        **target_constants(wrangler_vars, spec),
+        **role_spec["constants"],
+    }
     for key in shared["vars"]:
         if key in wrangler_vars:
             env[key] = str(wrangler_vars[key])
@@ -214,17 +229,31 @@ def settings_problems(env: dict[str, str]) -> list[str]:
             problems: list[str] = []
             for item in error.errors(include_input=False, include_url=False):
                 message = str(item["msg"]).removeprefix("Value error, ")
-                message = message.removeprefix("Insecure production configuration (ENV=prod): ")
+                message = re.sub(r"^Insecure production configuration \(ENV=\w+\): ", "", message)
                 problems.extend(part.strip() for part in message.split("; ") if part.strip())
             return problems
     return []
 
 
-def check(wrangler_path: Path = WRANGLER_CONFIG, container_env_path: Path = CONTAINER_ENV) -> list[str]:
+def check(
+    wrangler_path: Path = WRANGLER_CONFIG,
+    container_env_path: Path = CONTAINER_ENV,
+    env_name: str | None = None,
+) -> list[str]:
+    """Problems with the production config, or with wrangler.jsonc env.<env_name>."""
     config = load_jsonc(wrangler_path)
     spec = json.loads(container_env_path.read_text(encoding="utf-8"))
+    problems: list[str] = []
+    if env_name:
+        section = config.get("env", {}).get(env_name)
+        if section is None:
+            raise ValueError(f"wrangler.jsonc has no env.{env_name}")
+        config = section
     wrangler_vars = config.get("vars", {})
-    problems = [
+    if not env_name and wrangler_vars.get("DEPLOY_TARGET"):
+        # Production must never boot with a preview's relaxed constants.
+        problems.append("the production vars set DEPLOY_TARGET; only a wrangler.jsonc env may")
+    problems += [
         *template_value_problems(wrangler_vars),
         *missing_var_problems(wrangler_vars, spec),
         *instance_problems(config),
@@ -240,7 +269,13 @@ def check(wrangler_path: Path = WRANGLER_CONFIG, container_env_path: Path = CONT
     return problems
 
 
-def main() -> int:
+def main(argv: list[str] | None = None) -> int:
+    import argparse
+
+    parser = argparse.ArgumentParser(description="Would the containers boot with this configuration?")
+    parser.add_argument("--env", dest="env_name", help="check wrangler.jsonc env.<name> (e.g. preview)")
+    args = parser.parse_args(argv)
+    label = f"env.{args.env_name}" if args.env_name else "production"
     # app.core.config builds a module-level Settings() on import, from the
     # environment and a .env in the working directory. Import it from an empty
     # directory with throwaway values so a developer's .env cannot leak in.
@@ -252,7 +287,7 @@ def main() -> int:
     with tempfile.TemporaryDirectory() as empty:
         os.chdir(empty)
         try:
-            problems = check()
+            problems = check(env_name=args.env_name)
         except (OSError, ValueError, KeyError) as error:
             print(f"Deploy readiness: could not read the configuration: {error}")
             return 2
@@ -260,11 +295,11 @@ def main() -> int:
             # Windows cannot delete the directory it is standing in.
             os.chdir(original_cwd)
     if problems:
-        print(f"Deploy readiness: NOT READY ({len(problems)} problem(s))")
+        print(f"Deploy readiness ({label}): NOT READY ({len(problems)} problem(s))")
         for problem in problems:
             print(f"  - {problem}")
         return 1
-    print("Deploy readiness: ready (both container roles pass the production checks)")
+    print(f"Deploy readiness ({label}): ready (every container role passes the checks)")
     return 0
 
 

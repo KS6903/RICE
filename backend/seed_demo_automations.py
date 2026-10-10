@@ -35,15 +35,20 @@ from decimal import Decimal
 
 from sqlalchemy import delete, select
 
+from app.automations.cash import cash_received
 from app.automations.engine import entitled
 from app.core.database import SessionLocal
 from app.core.tenancy import set_search_path
 from app.core.timezones import tenant_zone
+from app.models.action import ActionItem
 from app.models.activity import ActivityLog
 from app.models.automation import AutomationRule
+from app.models.cash import CashCount
+from app.models.collections import CollectionFollowUp
 from app.models.company import Branch
 from app.models.costs import Expense, ExpenseCategory
 from app.models.fleet import DispatchTrip, Driver, Truck
+from app.models.maintenance import Equipment
 from app.models.milling import (
     ByproductInventory,
     MilledRiceInventory,
@@ -104,6 +109,10 @@ def _reset(db, cid: uuid.UUID) -> None:
         delete(MillingBatch).where(MillingBatch.batch_no.like("MB-AUTO-%")),
         delete(Expense).where(Expense.reference_no.like("EXP-AUTO-%")),
         delete(ActivityLog).where(ActivityLog.detail.like(f"%{MARKER}%")),
+        delete(ActionItem).where(ActionItem.source_key.like(f"{MARKER}:task:%")),
+        delete(CollectionFollowUp).where(CollectionFollowUp.note.like(f"%[{MARKER}]")),
+        delete(CashCount).where(CashCount.note.like(f"%[{MARKER}]")),
+        delete(Equipment).where(Equipment.notes.like(f"%[{MARKER}]")),
     ):
         db.execute(stmt)
     db.flush()
@@ -690,6 +699,113 @@ def seed(db, username: str, *, reset: bool) -> str:
         rule.enabled = True
         rule.params = {**recipe.params().model_dump(), **(rule.params or {}), "email": False}
         switched += 1
+
+    # ── follow-through: two automations tracked as tasks, and a few tasks ────
+    accountant = staff.get("accountant", owner)
+    for code, person, hours in (("due_reminders", accountant, 24), ("wet_palay", operator, 6)):
+        rule = db.query(AutomationRule).filter(AutomationRule.recipe == code).first()
+        if rule is not None:
+            rule.track, rule.track_assignee, rule.track_due_hours = True, person.id, hours
+    now = datetime.now(timezone.utc)
+    demo_tasks = (
+        ("wet_palay", "Wet palay not drying: PP-AUTO-DEMO", operator, now - timedelta(hours=3), "open"),
+        (
+            "due_reminders",
+            "Collections: call Aling Nena Store about 2 overdue invoices",
+            accountant,
+            now + timedelta(hours=20),
+            "acknowledged",
+        ),
+        ("negative_stock", "Stock below zero: Rc216 milled rice", None, now + timedelta(hours=4), "open"),
+    )
+    for source, title, person, due_at, state in demo_tasks:
+        key = f"{MARKER}:task:{source}"
+        if db.query(ActionItem).filter(ActionItem.source_key == key).first() is None:
+            db.add(
+                ActionItem(
+                    company_id=cid,
+                    source=source,
+                    source_key=key,
+                    title=title,
+                    body="Demo task: seeded so the To do page has something to show.",
+                    link="/automations",
+                    assignee_id=person.id if person else None,
+                    due_at=due_at,
+                    status=state,
+                    acknowledged_at=now if state == "acknowledged" else None,
+                )
+            )
+
+    # ── cash counts: a week of them, one short and not yet reviewed ──────────
+    cashier_user = staff.get("cashier", owner)
+    drawer = Decimal(5_000)
+    for back in range(7, 0, -1):
+        on = today - timedelta(days=back)
+        if db.query(CashCount).filter(CashCount.count_date == on).first() is not None:
+            continue
+        received = sum((amount for _, amount in cash_received(db, on)), Decimal(0))
+        paid_out = Decimal(rng.choice((0, 500, 1_200, 2_000)))
+        short = Decimal(650) if back == 2 else Decimal(0)
+        counted = drawer + received - paid_out - short
+        db.add(
+            CashCount(
+                company_id=cid,
+                count_date=on,
+                opening=drawer,
+                cash_in=received,
+                cash_out=paid_out,
+                counted=counted,
+                taken_out=max(Decimal(0), counted - Decimal(5_000)),
+                note=f"Demo count [{MARKER}]",
+                counted_by=cashier_user.id,
+            )
+        )
+        drawer = min(counted, Decimal(5_000))
+
+    # ── maintenance: a huller close to its service, a polisher fine ─────────
+    machines = (
+        Equipment(
+            name="Rubber-roll huller",
+            every_hours=120,
+            every_tonnes=Decimal(400),
+            last_service_on=today - timedelta(days=20),
+            notes="Replace the rubber rolls.",
+        ),
+        Equipment(
+            name="Polisher",
+            every_days=90,
+            last_service_on=today - timedelta(days=30),
+            notes="Check the screens and the bran blower.",
+        ),
+    )
+    for machine in machines:
+        if db.query(Equipment).filter(Equipment.name == machine.name).first() is None:
+            machine.company_id, machine.notes = cid, f"{machine.notes} [{MARKER}]"
+            db.add(machine)
+
+    # ── collections: a promise not kept, and one still to come ───────────────
+    from app.automations.collections import worklist
+
+    owing = [d for d in worklist(db, today) if d.overdue > 0][:2]
+    for d, promised_on, said in zip(
+        owing,
+        (today - timedelta(days=2), today + timedelta(days=3)),
+        ("Said they'd pay after their harvest sale.", "Paying when their buyer settles."),
+        strict=False,
+    ):
+        note = f"{said} [{MARKER}]"
+        if db.query(CollectionFollowUp).filter(CollectionFollowUp.note == note).first() is None:
+            db.add(
+                CollectionFollowUp(
+                    company_id=cid,
+                    customer_id=d.customer.id,
+                    outcome="promised",
+                    promised_date=promised_on,
+                    note=note,
+                    created_by=accountant.id,
+                    created_at=datetime.now(timezone.utc) - timedelta(days=5),
+                )
+            )
 
     db.commit()
     return (

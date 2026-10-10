@@ -9,8 +9,10 @@ import {
   type ReactNode,
 } from "react";
 import { createPortal } from "react-dom";
+import { Link } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
+  AlertTriangle,
   CheckCircle2,
   ChevronDown,
   Clock,
@@ -18,12 +20,12 @@ import {
   HandCoins,
   History,
   Info,
+  MailWarning,
   Send,
   ShieldAlert,
   Sparkles,
   Sunrise,
   Truck,
-  Users,
   Warehouse,
   XCircle,
   type LucideIcon,
@@ -37,6 +39,7 @@ import {
   type AutomationField,
   type AutomationGroup,
   type AutomationRun,
+  type AutomationsHealth,
 } from "../services/AutomationsService";
 
 type Params = Automation["params"];
@@ -45,15 +48,10 @@ type Params = Automation["params"];
 // page actually has, not the window's: the sidebar takes a varying share of it.
 const CARD_GRID = "group/grid grid grid-cols-[repeat(auto-fill,minmax(17rem,1fr))] gap-4";
 
-// Tab order. A group gets a tab only once it has recipes; the blurb is the tab's tooltip.
+// Tab order: everyday operations first, the AI advisor last. A group gets a tab
+// only once it has recipes; the blurb is the tab's tooltip. The people group's
+// one reminder (missing government numbers) is switched on the Employees page.
 const GROUPS: { key: AutomationGroup; title: string; blurb: string; icon: LucideIcon }[] = [
-  {
-    key: "advisor",
-    title: "AI advisor",
-    blurb:
-      "Advice written by AI from your own figures: what to do today, what to buy, where money leaks.",
-    icon: Sparkles,
-  },
   {
     key: "reports",
     title: "Reports and summaries",
@@ -61,10 +59,10 @@ const GROUPS: { key: AutomationGroup; title: string; blurb: string; icon: Lucide
     icon: Sunrise,
   },
   {
-    key: "watch",
-    title: "Owner watch",
-    blurb: "Entries worth a second look, within 15 minutes of being made.",
-    icon: ShieldAlert,
+    key: "receivables",
+    title: "Collections and credit",
+    blurb: "Who owes you, and who is buying beyond their limit.",
+    icon: HandCoins,
   },
   {
     key: "production",
@@ -79,18 +77,24 @@ const GROUPS: { key: AutomationGroup; title: string; blurb: string; icon: Lucide
     icon: Warehouse,
   },
   {
-    key: "receivables",
-    title: "Collections and credit",
-    blurb: "Who owes you, and who is buying beyond their limit.",
-    icon: HandCoins,
-  },
-  {
     key: "deliveries",
     title: "Deliveries",
     blurb: "Orders that are late or still need a truck.",
     icon: Truck,
   },
-  { key: "people", title: "People", blurb: "Your team's paperwork.", icon: Users },
+  {
+    key: "watch",
+    title: "Owner watch",
+    blurb: "Entries worth a second look, within 15 minutes of being made.",
+    icon: ShieldAlert,
+  },
+  {
+    key: "advisor",
+    title: "AI advisor",
+    blurb:
+      "Advice written by AI from your own figures: what to do today, what to buy, where money leaks.",
+    icon: Sparkles,
+  },
 ];
 
 const SECTION_NAMES: Record<string, string> = {
@@ -457,20 +461,125 @@ function FieldInput({
   );
 }
 
+type Tracking = { track: boolean; track_assignee: string | null; track_due_hours: number };
+
+function trackingOf(a: Automation): Tracking {
+  return {
+    track: Boolean(a.track),
+    track_assignee: a.track_assignee ?? null,
+    track_due_hours: a.track_due_hours ?? 24,
+  };
+}
+
+const DUE_WITHIN: { hours: number; label: string }[] = [
+  { hours: 2, label: "2 hours" },
+  { hours: 6, label: "6 hours" },
+  { hours: 24, label: "1 day" },
+  { hours: 48, label: "2 days" },
+  { hours: 72, label: "3 days" },
+  { hours: 168, label: "1 week" },
+];
+
+/** Follow-through: each alert becomes a task someone is given, due within a
+ *  time, until they mark it resolved; past due, it goes to the owner. */
+function TrackingFields({
+  code,
+  tracking,
+  candidates,
+  disabled,
+  onChange,
+}: {
+  code: string;
+  tracking: Tracking;
+  candidates: Automation["candidates"];
+  disabled: boolean;
+  onChange: (next: Tracking) => void;
+}) {
+  const set = (change: Partial<Tracking>) => onChange({ ...tracking, ...change });
+  return (
+    <fieldset className="space-y-3">
+      <legend className="form-label">Follow-through</legend>
+      <label htmlFor={`${code}-track`} className="flex items-start gap-3 cursor-pointer">
+        <input
+          id={`${code}-track`}
+          type="checkbox"
+          className="mt-1 h-5 w-5 accent-emerald-600"
+          checked={tracking.track}
+          disabled={disabled}
+          onChange={(e) => set({ track: e.target.checked })}
+        />
+        <span>
+          <span className="block text-sm font-semibold text-primary">
+            Make each alert a task until it's resolved
+          </span>
+          <span className="block text-xs text-secondary">
+            It goes on the To do page. Still open after its time, the owner hears about it.
+          </span>
+        </span>
+      </label>
+      {tracking.track && (
+        <div className="flex flex-wrap gap-4 pl-8">
+          <div>
+            <label htmlFor={`${code}-track-assignee`} className="form-label">
+              Give it to
+            </label>
+            <select
+              id={`${code}-track-assignee`}
+              className="input w-56 max-w-full"
+              value={tracking.track_assignee ?? ""}
+              disabled={disabled}
+              onChange={(e) => set({ track_assignee: e.target.value || null })}
+            >
+              <option value="">An owner or admin assigns it</option>
+              {candidates.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label htmlFor={`${code}-track-due`} className="form-label">
+              Due within
+            </label>
+            <select
+              id={`${code}-track-due`}
+              className="input w-36"
+              value={tracking.track_due_hours}
+              disabled={disabled}
+              onChange={(e) => set({ track_due_hours: Number(e.target.value) })}
+            >
+              {DUE_WITHIN.map((d) => (
+                <option key={d.hours} value={d.hours}>
+                  {d.label}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+      )}
+    </fieldset>
+  );
+}
+
 function AutomationCard({
   automation,
   readOnly,
   aiOff = false,
+  aiOn = false,
 }: {
   automation: Automation;
   readOnly: boolean;
   /** An AI recipe while the mill's AI switch is off: it can't be switched on. */
   aiOff?: boolean;
+  /** The mill's AI switch is on, so optional AI advice can be asked for. */
+  aiOn?: boolean;
 }) {
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
   const [params, setParams] = useState<Params>(automation.params);
   const [recipients, setRecipients] = useState<string[]>(automation.recipients);
+  const [tracking, setTracking] = useState(trackingOf(automation));
   const [showRuns, setShowRuns] = useState(false);
   const [testNote, setTestNote] = useState<string | null>(null);
 
@@ -478,18 +587,21 @@ function AutomationCard({
   useEffect(() => {
     setParams(automation.params);
     setRecipients(automation.recipients);
+    setTracking(trackingOf(automation));
   }, [automation]);
 
   const dirty = useMemo(
     () =>
       JSON.stringify(params) !== JSON.stringify(automation.params) ||
-      JSON.stringify([...recipients].sort()) !== JSON.stringify([...automation.recipients].sort()),
-    [params, recipients, automation],
+      JSON.stringify([...recipients].sort()) !==
+        JSON.stringify([...automation.recipients].sort()) ||
+      JSON.stringify(tracking) !== JSON.stringify(trackingOf(automation)),
+    [params, recipients, tracking, automation],
   );
 
   const save = useMutation({
     mutationFn: (enabled: boolean) =>
-      automationsService.update(automation.code, { enabled, params, recipients }),
+      automationsService.update(automation.code, { enabled, params, recipients, ...tracking }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["automations"] }),
   });
 
@@ -610,7 +722,8 @@ function AutomationCard({
                 field={field}
                 idPrefix={automation.code}
                 value={params[field.name]}
-                disabled={readOnly}
+                // Advice can't be asked for while AI is off, only taken away.
+                disabled={readOnly || (field.name === "ai_advice" && !aiOn && !params.ai_advice)}
                 onChange={(value) => setParams((p) => ({ ...p, [field.name]: value }))}
               />
             ))}
@@ -648,6 +761,14 @@ function AutomationCard({
               </p>
             )}
           </fieldset>
+
+          <TrackingFields
+            code={automation.code}
+            tracking={tracking}
+            candidates={automation.candidates}
+            disabled={readOnly}
+            onChange={setTracking}
+          />
 
           <div className="flex flex-wrap items-center gap-3">
             <button
@@ -813,11 +934,139 @@ function AISettingsCard({ ai, isOwner }: { ai: AISettings; isOwner: boolean }) {
   );
 }
 
+/** Where to start: the set of automations that fits the mill's size. */
+function StarterSets({ startOpen }: { startOpen: boolean }) {
+  const queryClient = useQueryClient();
+  const [open, setOpen] = useState(startOpen);
+  const sets = useQuery({
+    queryKey: ["automation-presets"],
+    queryFn: () => automationsService.presets(),
+    enabled: open,
+  });
+  const apply = useMutation({
+    mutationFn: (code: string) => automationsService.applyPreset(code),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["automations"] }),
+  });
+  const titles = new Map(
+    (sets.data?.presets ?? []).flatMap((p) => p.recipes.map((r) => [r.code, r.title] as const)),
+  );
+  return (
+    <section aria-label="Starter sets" className="card space-y-4">
+      <div className="flex items-start justify-between gap-3 flex-wrap">
+        <div>
+          <p className="font-semibold text-primary">Not sure where to start?</p>
+          <p className="text-sm text-secondary">
+            Switch on the set that fits your mill. It only switches things on: what you've set up
+            stays as it is.
+          </p>
+        </div>
+        <button
+          type="button"
+          className="btn-ghost -mr-2"
+          aria-expanded={open}
+          onClick={() => setOpen((o) => !o)}
+        >
+          <ChevronDown
+            size={16}
+            className={`transition-transform ${open ? "rotate-180" : ""}`}
+            aria-hidden
+          />
+          {open ? "Hide the sets" : "Show the sets"}
+        </button>
+      </div>
+      {open && (
+        <div className={CARD_GRID}>
+          {(sets.data?.presets ?? []).map((p) => (
+            <article
+              key={p.code}
+              aria-label={p.title}
+              className="rounded-xl ring-1 ring-soft p-4 space-y-3 flex flex-col"
+            >
+              <h3 className="font-bold text-primary">{p.title}</h3>
+              <p className="text-sm text-secondary">{p.description}</p>
+              <p className="text-xs text-muted">{p.recipes.length} automations</p>
+              <button
+                type="button"
+                className="btn-secondary mt-auto self-start"
+                disabled={apply.isPending}
+                onClick={() => apply.mutate(p.code)}
+              >
+                Switch these on
+              </button>
+            </article>
+          ))}
+        </div>
+      )}
+      {apply.isSuccess && (
+        <p className="text-sm text-emerald-700 dark:text-emerald-400" role="status">
+          {apply.data.switched_on.length === 0
+            ? "Everything in that set was already on."
+            : `Switched on: ${apply.data.switched_on.map((c) => titles.get(c) ?? c).join(", ")}.`}
+        </p>
+      )}
+      {apply.isError && (
+        <p className="text-sm text-rose-600 dark:text-rose-400" role="alert">
+          {errorText(apply.error, "Couldn't switch the set on. Try again.")}
+        </p>
+      )}
+    </section>
+  );
+}
+
+function HealthNotice({ health }: { health: AutomationsHealth }) {
+  const { failed, retrying } = health.emails;
+  if (health.scheduler_running && failed === 0 && retrying === 0) return null;
+  const emails = (n: number) => `${n} email${n === 1 ? "" : "s"}`;
+  return (
+    <section
+      aria-label="Automation problems"
+      className="card space-y-2 border border-amber-300 dark:border-amber-800/60"
+    >
+      {!health.scheduler_running && (
+        <p className="flex items-start gap-2 text-sm text-primary">
+          <AlertTriangle
+            size={16}
+            className="mt-0.5 shrink-0 text-amber-600 dark:text-amber-400"
+            aria-hidden
+          />
+          <span>
+            <strong>Automatic runs are paused on this server,</strong> so switched-on automations
+            won't send anything until they start again.
+            {health.last_tick
+              ? ` They last ran ${whenLabel(health.last_tick)}.`
+              : " They haven't run yet."}{" "}
+            "Send me a test" still works.
+          </span>
+        </p>
+      )}
+      {failed > 0 && (
+        <p className="flex items-start gap-2 text-sm text-primary">
+          <MailWarning size={16} className="mt-0.5 shrink-0 text-rose-500" aria-hidden />
+          <span>
+            {emails(failed)} from your automations couldn't be delivered this week, even after
+            trying again. They are still under the bell. Check the email addresses on the Users
+            page.
+          </span>
+        </p>
+      )}
+      {retrying > 0 && (
+        <p className="flex items-start gap-2 text-sm text-secondary">
+          <Clock size={16} className="mt-0.5 shrink-0 text-amber-500" aria-hidden />
+          <span>
+            {emails(retrying)} didn't go through the first time and will be tried again shortly.
+          </span>
+        </p>
+      )}
+    </section>
+  );
+}
+
 export default function AutomationsPage() {
-  const { isReadOnly, role } = useAccess();
+  const { isReadOnly, canEdit, role } = useAccess();
   const readOnly = isReadOnly("automations");
   const list = useQuery({ queryKey: ["automations"], queryFn: () => automationsService.list() });
-  const recipes = list.data?.recipes ?? [];
+  // Only the groups this page has tabs for.
+  const recipes = (list.data?.recipes ?? []).filter((r) => GROUPS.some((g) => g.key === r.group));
   const ai = list.data?.ai;
   const onCount = recipes.filter((r) => r.enabled).length;
 
@@ -886,8 +1135,8 @@ export default function AutomationsPage() {
         </div>
       ) : (
         <div className="space-y-5">
-          {/* Above the tabs, so it is on show whichever tab is open. */}
-          {ai && <AISettingsCard ai={ai} isOwner={role === "owner"} />}
+          {list.data?.health && <HealthNotice health={list.data.health} />}
+          {canEdit("automations") && <StarterSets startOpen={onCount === 0} />}
           {current && (
             <>
               <div
@@ -925,6 +1174,20 @@ export default function AutomationsPage() {
                 aria-labelledby={`tab-${current.key}`}
                 className="space-y-4"
               >
+                {/* In the AI tab, where the recipes it governs are: the everyday
+                    tabs come first, and stay about the mill's own work. */}
+                {current.key === "advisor" && ai && (
+                  <AISettingsCard ai={ai} isOwner={role === "owner"} />
+                )}
+                {current.key === "receivables" && (
+                  <p className="text-sm text-secondary">
+                    These alerts lead to the{" "}
+                    <Link to="/collections" className="link font-semibold">
+                      collections list
+                    </Link>
+                    : who to call first, a reminder to send, and what they promised.
+                  </p>
+                )}
                 <div className={CARD_GRID}>
                   {recipes
                     .filter((r) => r.group === current.key)
@@ -934,6 +1197,7 @@ export default function AutomationsPage() {
                         automation={automation}
                         readOnly={readOnly}
                         aiOff={Boolean(automation.uses_ai && !ai?.enabled)}
+                        aiOn={Boolean(ai?.enabled)}
                       />
                     ))}
                 </div>

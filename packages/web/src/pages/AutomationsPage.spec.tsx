@@ -58,12 +58,31 @@ const bigSale: Automation = {
   params: { sale_over: 100000, older_than: 24, mode: "warn" },
 };
 
+const smallSet = {
+  code: "small" as const,
+  title: "Small mill, run by the owner",
+  description: "The essentials, with nothing to set up.",
+  recipes: [
+    { code: "owner_digest", title: "Morning summary" },
+    { code: "cash_up", title: "End-of-day cash-up" },
+  ],
+};
+
 const owner: User = {
   id: "u1",
   username: "mill1",
   full_name: "Mill Owner",
   role: "owner",
   company_id: "c1",
+};
+
+const aiOffSettings = {
+  enabled: false,
+  language: "en",
+  languages: [{ value: "en", label: "English" }],
+  configured: true,
+  changed_by: null,
+  changed_at: null,
 };
 
 const draw = () =>
@@ -83,6 +102,7 @@ const tab = (name: string) => screen.getByRole("tab", { name });
 describe("AutomationsPage", () => {
   beforeEach(() => {
     vi.spyOn(automationsService, "list").mockResolvedValue({ recipes: [digest, bigSale] });
+    vi.spyOn(automationsService, "presets").mockResolvedValue({ presets: [smallSet] });
   });
 
   afterEach(() => {
@@ -107,6 +127,69 @@ describe("AutomationsPage", () => {
     expect(screen.queryByRole("heading", { name: "Morning summary" })).toBeNull();
     // Groups with nothing in them get no tab.
     expect(screen.queryByRole("tab", { name: "Deliveries" })).toBeNull();
+  });
+
+  it("says nothing about health when runs are ticking and every email arrived", async () => {
+    useAuthStore.setState({ user: owner });
+    vi.spyOn(automationsService, "list").mockResolvedValue({
+      recipes: [digest],
+      health: {
+        scheduler_running: true,
+        last_tick: "2026-10-10T00:00:00Z",
+        emails: { failed: 0, retrying: 0 },
+      },
+    });
+    draw();
+    await screen.findByRole("heading", { name: "Morning summary" });
+    expect(screen.queryByRole("region", { name: "Automation problems" })).toBeNull();
+  });
+
+  it("says plainly when runs are paused and emails didn't arrive", async () => {
+    useAuthStore.setState({ user: owner });
+    vi.spyOn(automationsService, "list").mockResolvedValue({
+      recipes: [digest],
+      health: { scheduler_running: false, last_tick: null, emails: { failed: 2, retrying: 1 } },
+    });
+    draw();
+    const box = await screen.findByRole("region", { name: "Automation problems" });
+    expect(box).toHaveTextContent(/Automatic runs are paused on this server/);
+    expect(box).toHaveTextContent(/haven't run yet/);
+    expect(box).toHaveTextContent(/2 emails from your automations couldn't be delivered/);
+    expect(box).toHaveTextContent(/1 email didn't go through the first time/);
+  });
+
+  it("offers the starter sets while nothing is on, and switches one on", async () => {
+    useAuthStore.setState({ user: owner });
+    const apply = vi
+      .spyOn(automationsService, "applyPreset")
+      .mockResolvedValue({ switched_on: ["owner_digest", "cash_up"] });
+    draw();
+    const sets = await screen.findByRole("region", { name: "Starter sets" });
+    const small = await within(sets).findByRole("article", {
+      name: "Small mill, run by the owner",
+    });
+    fireEvent.click(within(small).getByRole("button", { name: "Switch these on" }));
+    await waitFor(() => expect(apply).toHaveBeenCalledWith("small"));
+    expect(
+      await within(sets).findByText("Switched on: Morning summary, End-of-day cash-up."),
+    ).toBeInTheDocument();
+  });
+
+  it("keeps the starter sets folded once something is on, and away from read-only users", async () => {
+    useAuthStore.setState({ user: owner });
+    vi.mocked(automationsService.list).mockResolvedValue({
+      recipes: [{ ...digest, enabled: true }, bigSale],
+    });
+    const { unmount } = draw();
+    const sets = await screen.findByRole("region", { name: "Starter sets" });
+    expect(within(sets).getByRole("button", { name: "Show the sets" })).toBeInTheDocument();
+    expect(automationsService.presets).not.toHaveBeenCalled();
+    unmount();
+
+    useAuthStore.setState({ user: { ...owner, role: "accountant" } });
+    draw();
+    await screen.findByRole("heading", { name: "Morning summary" });
+    expect(screen.queryByRole("region", { name: "Starter sets" })).toBeNull();
   });
 
   it("moves between tabs with the arrow keys", async () => {
@@ -257,6 +340,66 @@ describe("AutomationsPage", () => {
     });
   });
 
+  it("offers AI advice on the morning summary only once AI is on", async () => {
+    useAuthStore.setState({ user: owner });
+    const advisable: Automation = {
+      ...digest,
+      ai_optional: true,
+      fields: [
+        digest.fields[0],
+        { name: "ai_advice", label: "Add AI advice", kind: "bool", help: "" },
+        digest.fields[1],
+      ],
+      params: { ...digest.params, ai_advice: false },
+    };
+    const list = vi
+      .spyOn(automationsService, "list")
+      .mockResolvedValue({ recipes: [advisable], ai: { ...aiOffSettings } });
+    const { unmount } = draw();
+    fireEvent.click(await screen.findByRole("button", { name: "Settings" }));
+    expect(screen.getByLabelText("Add AI advice")).toBeDisabled();
+    unmount();
+
+    list.mockResolvedValue({ recipes: [advisable], ai: { ...aiOffSettings, enabled: true } });
+    draw();
+    fireEvent.click(await screen.findByRole("button", { name: "Settings" }));
+    expect(screen.getByLabelText("Add AI advice")).toBeEnabled();
+  });
+
+  it("leaves the government-numbers reminder to the Employees page", async () => {
+    useAuthStore.setState({ user: owner });
+    vi.spyOn(automationsService, "list").mockResolvedValue({
+      recipes: [digest, { ...digest, code: "government_ids", title: "Missing", group: "people" }],
+    });
+    draw();
+    await screen.findByRole("heading", { name: "Morning summary" });
+    expect(screen.queryByRole("tab", { name: "People" })).toBeNull();
+    expect(screen.getByText(/0 of 1 switched on/)).toBeInTheDocument();
+  });
+
+  it("tracks each alert as a task for the person picked, due within the time picked", async () => {
+    useAuthStore.setState({ user: owner });
+    const update = vi.spyOn(automationsService, "update").mockResolvedValue(digest);
+    draw();
+    await screen.findByRole("heading", { name: "Morning summary" });
+    fireEvent.click(within(card("Morning summary")).getByRole("button", { name: "Settings" }));
+    expect(screen.queryByLabelText("Give it to")).toBeNull();
+    fireEvent.click(screen.getByLabelText(/Make each alert a task/));
+    fireEvent.change(screen.getByLabelText("Give it to"), { target: { value: "u2" } });
+    fireEvent.change(screen.getByLabelText("Due within"), { target: { value: "6" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    await waitFor(() =>
+      expect(update).toHaveBeenCalledWith("owner_digest", {
+        enabled: false,
+        params: { send_at: "06:00", email: true },
+        recipients: [],
+        track: true,
+        track_assignee: "u2",
+        track_due_hours: 6,
+      }),
+    );
+  });
+
   it("keeps settings folded away until asked for", async () => {
     useAuthStore.setState({ user: owner });
     draw();
@@ -280,6 +423,9 @@ describe("AutomationsPage", () => {
         enabled: true,
         params: { send_at: "06:00", email: true },
         recipients: [],
+        track: false,
+        track_assignee: null,
+        track_due_hours: 24,
       }),
     );
   });
@@ -307,6 +453,9 @@ describe("AutomationsPage", () => {
         enabled: false,
         params: { sale_over: "150000", older_than: 24, mode: "block" },
         recipients: [],
+        track: false,
+        track_assignee: null,
+        track_due_hours: 24,
       }),
     );
   });
@@ -360,6 +509,10 @@ const aiOff = {
 };
 
 describe("AutomationsPage AI advisor", () => {
+  beforeEach(() => {
+    vi.spyOn(automationsService, "presets").mockResolvedValue({ presets: [] });
+  });
+
   afterEach(() => {
     vi.restoreAllMocks();
     useAuthStore.setState({ user: null });
@@ -434,23 +587,25 @@ describe("AutomationsPage AI advisor", () => {
     expect(row).toHaveClass("flex", "items-end");
   });
 
-  it("sits above the tabs and stays on show whichever tab is open", async () => {
+  it("lives in the AI advisor tab, which comes after the everyday ones", async () => {
     useAuthStore.setState({ user: owner });
     vi.spyOn(automationsService, "list").mockResolvedValue({
       recipes: [briefing, digest],
       ai: aiOff,
     });
     draw();
-    const box = await aiBox();
-    const tabs = screen.getByRole("tablist");
-    expect(box.compareDocumentPosition(tabs) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    expect(box.closest('[role="tabpanel"]')).toBeNull();
+    // The everyday tab opens first, without the AI settings.
+    await screen.findByRole("article", { name: "Morning summary" });
+    expect(screen.getAllByRole("tab").map((t) => t.textContent)).toEqual([
+      "Reports and summaries",
+      "AI advisor",
+    ]);
+    expect(screen.queryByRole("region", { name: "AI settings" })).toBeNull();
 
-    for (const name of ["AI advisor", "Reports and summaries"]) {
-      fireEvent.click(screen.getByRole("tab", { name }));
-      expect(screen.getByRole("region", { name: "AI settings" })).toBe(box);
-      expect(within(box).getByRole("button", { name: "Turn AI on" })).toBeInTheDocument();
-    }
+    fireEvent.click(tab("AI advisor"));
+    const box = await aiBox();
+    expect(box.closest('[role="tabpanel"]')).toHaveAttribute("id", "panel-advisor");
+    expect(within(box).getByRole("button", { name: "Turn AI on" })).toBeInTheDocument();
   });
 
   it("explains what is sent behind a red (i), and names Oryza's AI", async () => {

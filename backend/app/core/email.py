@@ -15,7 +15,7 @@ from .exceptions import NotConfiguredError
 
 def send_account_email(*, to: str, subject: str, text: str) -> None:
     if not settings.SMTP_HOST or not settings.SMTP_FROM_EMAIL:
-        if settings.is_prod:
+        if settings.email_required:
             raise NotConfiguredError("Account email delivery is not configured")
         return
 

@@ -341,62 +341,12 @@ LATE_EDIT = Recipe(
 )
 
 
-# ── big discount ─────────────────────────────────────────────────────────────
+# ── discounts and low prices ─────────────────────────────────────────────────
 
 
-class BigDiscountParams(BaseModel):
-    percent: float = PydanticField(5, ge=0.5, le=100)
-    email: bool = True
-
-
-def _big_discount(ctx: RecipeContext, params: BaseModel) -> list[Notice]:
-    assert isinstance(params, BigDiscountParams)
-    db = ctx.db
-    orders = (
-        db.query(SalesOrder)
-        .filter(
-            SalesOrder.created_at >= _since(ctx),
-            SalesOrder.status != "cancelled",
-            SalesOrder.discount_pct >= params.percent,
-            SalesOrder.discount_amount > 0,
-        )
-        .order_by(SalesOrder.created_at)
-        .all()
-    )
-    users = _names(db, (o.created_by for o in orders))
-    return [
-        Notice(
-            title=f"{percent(o.discount_pct)} discount on {o.order_no}",
-            body=(
-                f"{o.customer.name if o.customer else 'A walk-in customer'}: {peso(o.discount_amount)} off "
-                f"{peso(o.subtotal)}.{_by(users, o.created_by)}"
-            ),
-            link="/sales",
-            dedupe_key=f"big_discount:{o.id}",
-        )
-        for o in orders
-    ]
-
-
-BIG_DISCOUNT = Recipe(
-    code="big_discount",
-    title="Big discount",
-    description="A sales order given a discount at or over your limit.",
-    group="watch",
-    section="reports",
-    default_roles=("owner",),
-    params=BigDiscountParams,
-    fields=(Field("percent", "Discounts of at least", "percent"), EMAIL_FIELD),
-    schedule=_every_tick,
-    build=_big_discount,
-)
-
-
-# ── sold below the price list ────────────────────────────────────────────────
-
-
-class BelowPriceParams(BaseModel):
-    percent: float = PydanticField(3, ge=0, le=50)
+class SalePricingParams(BaseModel):
+    discount_over: float = PydanticField(5, ge=0.5, le=100)
+    below_list_by: float = PydanticField(3, ge=0, le=50)
     email: bool = True
 
 
@@ -434,8 +384,29 @@ def list_price(
     return best[1] if best else None
 
 
-def _below_price_list(ctx: RecipeContext, params: BaseModel) -> list[Notice]:
-    assert isinstance(params, BelowPriceParams)
+def _under_list(db: Session, order: SalesOrder, prices: list[PriceList], varieties, allowance: Decimal) -> list[str]:
+    """The order's rice sold under the price list by more than the allowance."""
+    customer_type = order.customer.customer_type if order.customer else None
+    lines = []
+    for item in db.query(SalesOrderItem).filter(SalesOrderItem.order_id == order.id).all():
+        if item.item_type != "milled_rice" or item.variety_id is None:
+            continue
+        listed = list_price(prices, item.variety_id, item.grade_name, customer_type, order.order_date)
+        if listed is None or Decimal(item.unit_price_per_kg) >= listed * (1 - allowance / 100):
+            continue
+        under = (listed - Decimal(item.unit_price_per_kg)) / listed * 100
+        rice = rice_name(varieties.get(item.variety_id), item.grade_name)
+        lines.append(
+            f"{rice}, {kg(item.quantity_kg)}: {peso_exact(item.unit_price_per_kg)}/kg, "
+            f"list {peso_exact(listed)}/kg ({under:.0f}% under)"
+        )
+    return lines
+
+
+def _sale_pricing(ctx: RecipeContext, params: BaseModel) -> list[Notice]:
+    """One notice per order, with every reason it needs a look: a big discount,
+    rice under the price list, or both."""
+    assert isinstance(params, SalePricingParams)
     db = ctx.db
     orders = (
         db.query(SalesOrder)
@@ -446,54 +417,50 @@ def _below_price_list(ctx: RecipeContext, params: BaseModel) -> list[Notice]:
     if not orders:
         return []
     prices = db.query(PriceList).filter(PriceList.is_active.is_(True)).all()
-    if not prices:
-        return []
-    varieties = {v.id: v.name for v in db.query(RiceVariety).all()}
+    varieties = {v.id: v.name for v in db.query(RiceVariety).all()} if prices else {}
+    allowance = Decimal(str(params.below_list_by))
     users = _names(db, (o.created_by for o in orders))
-    threshold = 1 - Decimal(str(params.percent)) / 100
     notices: list[Notice] = []
     for order in orders:
-        customer_type = order.customer.customer_type if order.customer else None
-        lines = []
-        for item in db.query(SalesOrderItem).filter(SalesOrderItem.order_id == order.id).all():
-            if item.item_type != "milled_rice" or item.variety_id is None:
-                continue
-            listed = list_price(prices, item.variety_id, item.grade_name, customer_type, order.order_date)
-            if listed is None or Decimal(item.unit_price_per_kg) >= listed * threshold:
-                continue
-            under = (listed - Decimal(item.unit_price_per_kg)) / listed * 100
-            rice = rice_name(varieties.get(item.variety_id), item.grade_name)
-            lines.append(
-                f"{rice}, {kg(item.quantity_kg)}: {peso_exact(item.unit_price_per_kg)}/kg, "
-                f"list {peso_exact(listed)}/kg ({under:.0f}% under)"
-            )
-        if lines:
-            customer = order.customer.name if order.customer else "a walk-in customer"
-            notices.append(
-                Notice(
-                    title=f"{order.order_no} sold below your price list",
-                    body=f"To {customer}.{_by(users, order.created_by)}\n" + "\n".join(lines),
-                    link="/sales",
-                    dedupe_key=f"below_price_list:{order.id}",
-                )
-            )
+        discounted = bool(order.discount_amount) and Decimal(order.discount_pct or 0) >= Decimal(
+            str(params.discount_over)
+        )
+        under = _under_list(db, order, prices, varieties, allowance) if prices else []
+        if not discounted and not under:
+            continue
+        if discounted and under:
+            title = f"{order.order_no}: {percent(order.discount_pct)} discount and sold below your price list"
+        elif discounted:
+            title = f"{percent(order.discount_pct)} discount on {order.order_no}"
+        else:
+            title = f"{order.order_no} sold below your price list"
+        customer = order.customer.name if order.customer else "a walk-in customer"
+        lines = [f"To {customer}.{_by(users, order.created_by)}"]
+        if discounted:
+            lines.append(f"Discount: {peso(order.discount_amount)} off {peso(order.subtotal)}")
+        lines += under
+        notices.append(Notice(title=title, body="\n".join(lines), link="/sales", dedupe_key=f"sale_pricing:{order.id}"))
     return notices
 
 
-BELOW_PRICE_LIST = Recipe(
-    code="below_price_list",
-    title="Sold below price list",
-    description="Rice sold for less than your price list says, beyond a small allowance.",
+SALE_PRICING = Recipe(
+    code="sale_pricing",
+    title="Discounts and low prices",
+    description=(
+        "A sales order with a big discount, or rice sold under your price list, as soon as it's entered. "
+        "One message per order, with every reason it needs a look."
+    ),
     group="watch",
     section="reports",
     default_roles=("owner",),
-    params=BelowPriceParams,
+    params=SalePricingParams,
     fields=(
-        Field("percent", "Allow up to", "percent", "Sales this far under the list are fine."),
+        Field("discount_over", "Discounts of at least", "percent"),
+        Field("below_list_by", "Allow under the price list by up to", "percent", "Sales this far under are fine."),
         EMAIL_FIELD,
     ),
     schedule=_every_tick,
-    build=_below_price_list,
+    build=_sale_pricing,
 )
 
 
@@ -634,8 +601,7 @@ WATCH_RECIPES = (
     BIG_TRANSACTION,
     PALAY_PRICE_OUTLIER,
     LATE_EDIT,
-    BIG_DISCOUNT,
-    BELOW_PRICE_LIST,
+    SALE_PRICING,
     CANCELLATIONS,
     UNUSUAL_EXPENSE,
 )

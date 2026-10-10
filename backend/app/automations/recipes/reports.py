@@ -32,6 +32,7 @@ from .. import credit
 from ..base import Field, Notice, Recipe, RecipeContext
 from ..csvfile import csv_attachment
 from ..format import KG_PER_CAVAN, kg, peso, plural
+from ..freshness import offline_note
 from .watch import EMAIL_FIELD
 
 SEVEN = time(7, 0)
@@ -302,6 +303,9 @@ def _weekly_summary(ctx: RecipeContext, params: BaseModel) -> list[Notice]:
         f"Collected: {peso(this['collected'])}{_change(this['collected'], prev['collected'])}",
         f"Expenses: {peso(this['expenses'])}{_change(this['expenses'], prev['expenses'])}",
     ]
+    missing = offline_note(ctx.db, start, end)
+    if missing:
+        lines.append(missing)
     return [
         Notice(
             title=f"Last week at {ctx.company.name} ({_span(start, end)})",
@@ -365,7 +369,7 @@ def _cash_up(ctx: RecipeContext, params: BaseModel) -> list[Notice]:
             Notice(
                 title=f"Cash-up for {today:%a %d %b}: no payments",
                 body="No payments were recorded today.",
-                link="/sales",
+                link="/cash",
                 dedupe_key=f"cash_up:{today.isoformat()}",
             )
         ]
@@ -388,7 +392,7 @@ def _cash_up(ctx: RecipeContext, params: BaseModel) -> list[Notice]:
         Notice(
             title=f"Cash-up for {today:%a %d %b}: {peso(total)} received",
             body="\n".join(lines),
-            link="/sales",
+            link="/cash",
             dedupe_key=f"cash_up:{today.isoformat()}",
         )
     ]
@@ -397,7 +401,10 @@ def _cash_up(ctx: RecipeContext, params: BaseModel) -> list[Notice]:
 CASH_UP = Recipe(
     code="cash_up",
     title="End-of-day cash-up",
-    description="Each evening, today's payments by method and the cash each person took, to count the drawer against.",
+    description=(
+        "Each evening, today's payments by method and the cash each person took, to count the drawer "
+        "against on the Cash count page."
+    ),
     group="reports",
     section="sales",
     default_roles=("owner", "cashier"),

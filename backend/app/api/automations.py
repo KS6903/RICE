@@ -9,14 +9,14 @@ AI switch on (PUT /ai), which only an owner can flip.
 """
 
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field, ValidationError, field_validator
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from ..automations import ai, engine
+from ..automations import ai, engine, presets
 from ..automations.base import Field as RecipeField
 from ..automations.base import Recipe, RecipeProblem
 from ..automations.recipes import RECIPES
@@ -27,6 +27,7 @@ from ..core.timezones import tenant_zone
 from ..models.automation import AutomationRule, AutomationSettings
 from ..models.job_run import JobRun
 from ..models.user import User
+from ..services.notification_service import undelivered_emails
 
 router = APIRouter(
     dependencies=[Depends(require_feature("automations")), Depends(require_section_access("automations"))]
@@ -51,6 +52,11 @@ class RuleUpdate(BaseModel):
     params: dict = Field(default_factory=dict)
     # User ids; empty means "the recipe's default recipients".
     recipients: list[uuid.UUID] = Field(default_factory=list, max_length=50)
+    # Track each alert as a task until it's resolved (app/automations/actions).
+    # Each is left as it is when not sent.
+    track: bool | None = None
+    track_assignee: uuid.UUID | None = None
+    track_due_hours: int | None = Field(None, ge=1, le=24 * 14)
 
 
 def _recipe(code: str) -> Recipe:
@@ -121,6 +127,10 @@ def _serialize(db: Session, company_id: uuid.UUID, recipe: Recipe, rule: Automat
         ],
         "last_run": _last_run(db, company_id, recipe),
         "uses_ai": recipe.uses_ai,
+        "ai_optional": recipe.ai_optional,
+        "track": bool(rule and rule.track),
+        "track_assignee": str(rule.track_assignee) if rule and rule.track_assignee else None,
+        "track_due_hours": rule.track_due_hours if rule and rule.track_due_hours else 24,
     }
 
 
@@ -137,6 +147,30 @@ def _ai_out(db: Session, company_id: uuid.UUID) -> dict:
     }
 
 
+# The jobs tick every 15 minutes; three missed ticks means they aren't running
+# on this server (the private preview has no cron, for one).
+SCHEDULER_STALE_AFTER = timedelta(minutes=45)
+# How far back the page counts emails that never reached anyone.
+UNDELIVERED_WINDOW = timedelta(days=7)
+
+
+def _health(db: Session, company_id: uuid.UUID) -> dict:
+    """Is anything stopping the automations from reaching people? The page says
+    so plainly, instead of showing switches that look on but do nothing."""
+    now = datetime.now(timezone.utc)
+    last_tick = db.scalar(
+        select(JobRun.started_at)
+        .where(JobRun.job == "automations.run", JobRun.company_id == company_id)
+        .order_by(JobRun.started_at.desc())
+        .limit(1)
+    )
+    return {
+        "scheduler_running": bool(last_tick and now - last_tick <= SCHEDULER_STALE_AFTER),
+        "last_tick": last_tick.isoformat() if last_tick else None,
+        "emails": undelivered_emails(db, kind_prefix="automation.", since=now - UNDELIVERED_WINDOW),
+    }
+
+
 @router.get("/")
 def list_automations(current_user=Depends(get_current_user), db: Session = Depends(get_db)):
     rules = {r.recipe: r for r in db.query(AutomationRule).all()}
@@ -145,6 +179,7 @@ def list_automations(current_user=Depends(get_current_user), db: Session = Depen
             _serialize(db, current_user.company_id, recipe, rules.get(code)) for code, recipe in RECIPES.items()
         ],
         "ai": _ai_out(db, current_user.company_id),
+        "health": _health(db, current_user.company_id),
     }
 
 
@@ -169,6 +204,32 @@ def update_ai(body: AISettingsUpdate, current_user=Depends(get_current_user), db
     return _ai_out(db, current_user.company_id)
 
 
+@router.get("/presets")
+def list_presets():
+    return {
+        "presets": [
+            {
+                "code": p.code,
+                "title": p.title,
+                "description": p.description,
+                "recipes": [{"code": c, "title": RECIPES[c].title} for c in p.recipes],
+            }
+            for p in presets.PRESETS.values()
+        ]
+    }
+
+
+@router.post("/presets/{code}", dependencies=manage)
+def apply_preset(code: str, current_user=Depends(get_current_user), db: Session = Depends(get_db)):
+    """Switch on a starter set. Only switches on; what's set up stays as it is."""
+    preset = presets.PRESETS.get(code)
+    if preset is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No such starter set")
+    switched = presets.apply(db, current_user.company_id, preset, current_user.id)
+    db.commit()
+    return {"switched_on": switched}
+
+
 @router.put("/{code}", dependencies=manage)
 def update_automation(
     code: str, body: RuleUpdate, current_user=Depends(get_current_user), db: Session = Depends(get_db)
@@ -191,6 +252,11 @@ def update_automation(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"These people can't receive this automation: their role has no access to {recipe.section}.",
         )
+    if body.track_assignee is not None and body.track_assignee not in eligible:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"That person can't be given these tasks: their role has no access to {recipe.section}.",
+        )
     rule = db.query(AutomationRule).filter(AutomationRule.recipe == code).first()
     if rule is None:
         rule = AutomationRule(company_id=current_user.company_id, recipe=code)
@@ -198,6 +264,12 @@ def update_automation(
     rule.enabled = body.enabled
     rule.params = params.model_dump()
     rule.recipients = [str(i) for i in dict.fromkeys(body.recipients)]
+    if body.track is not None:
+        rule.track = body.track
+    if "track_assignee" in body.model_fields_set:
+        rule.track_assignee = body.track_assignee
+    if body.track_due_hours is not None:
+        rule.track_due_hours = body.track_due_hours
     rule.updated_by = current_user.id
     db.commit()
     db.refresh(rule)

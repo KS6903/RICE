@@ -216,9 +216,9 @@ def test_staff_changing_an_old_record_is_flagged(db_session, company, encoder, s
 def test_a_big_discount_is_flagged(db_session, company):
     _order(db_session, no="SO-D", total=9_200, subtotal=10_000, discount_pct=Decimal(8), discount_amount=Decimal(800))
     _order(db_session, no="SO-S", total=9_800, subtotal=10_000, discount_pct=Decimal(2), discount_amount=Decimal(200))
-    [notice] = _build(db_session, company, "big_discount", percent=5)
+    [notice] = _build(db_session, company, "sale_pricing", discount_over=5)
     assert notice.title == "8% discount on SO-D"
-    assert notice.body == "A walk-in customer: ₱800 off ₱10,000."
+    assert notice.body.splitlines() == ["To a walk-in customer.", "Discount: ₱800 off ₱10,000"]
 
 
 def _price(variety, *, per_kg=None, sack=None, grade=None, customer_type=None, since=date(2026, 9, 1)):
@@ -270,12 +270,37 @@ def test_rice_sold_under_the_price_list_is_flagged(db_session, company, variety)
         ]
     )
     db_session.flush()
-    [notice] = _build(db_session, company, "below_price_list", percent=3)
+    [notice] = _build(db_session, company, "sale_pricing", below_list_by=3)
     assert notice.title == "SO-CHEAP sold below your price list"
     assert notice.body.splitlines() == [
         "To a walk-in customer.",
         "RC222 (grade Premium), 500 kg: ₱44.00/kg, list ₱48.00/kg (8% under)",
     ]
+
+
+def test_a_discounted_sale_under_the_list_is_one_message_with_both_reasons(db_session, company, variety):
+    db_session.add(_price(variety, per_kg=Decimal(48)))
+    order = _order(
+        db_session, no="SO-BOTH", total=20_240, subtotal=22_000, discount_pct=Decimal(8), discount_amount=Decimal(1_760)
+    )
+    db_session.add(
+        SalesOrderItem(
+            order_id=order.id,
+            item_type="milled_rice",
+            variety_id=variety.id,
+            quantity_kg=Decimal(500),
+            unit_price_per_kg=Decimal(44),
+        )
+    )
+    db_session.flush()
+    [notice] = _build(db_session, company, "sale_pricing")
+    assert notice.title == "SO-BOTH: 8% discount and sold below your price list"
+    assert notice.body.splitlines() == [
+        "To a walk-in customer.",
+        "Discount: ₱1,760 off ₱22,000",
+        "RC222, 500 kg: ₱44.00/kg, list ₱48.00/kg (8% under)",
+    ]
+    assert notice.dedupe_key == f"sale_pricing:{order.id}"
 
 
 # ── cancellations and expenses ───────────────────────────────────────────────

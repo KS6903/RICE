@@ -47,6 +47,12 @@ export type Automation = {
   last_run: AutomationRun | null;
   /** Sends the mill's figures to the AI service; needs the owner's AI switch on. */
   uses_ai?: boolean;
+  /** Can add AI advice (its ai_advice setting) once the owner switches AI on. */
+  ai_optional?: boolean;
+  /** Each alert becomes a task (the To do page) until someone resolves it. */
+  track?: boolean;
+  track_assignee?: string | null;
+  track_due_hours?: number;
 };
 
 export type AISettings = {
@@ -59,17 +65,47 @@ export type AISettings = {
   changed_at: string | null;
 };
 
+/** What could stop the automations reaching people. */
+export type AutomationsHealth = {
+  /** False when scheduled runs haven't ticked lately (the private preview has none). */
+  scheduler_running: boolean;
+  last_tick: string | null;
+  /** This week's automation emails: given up on, or still being retried. */
+  emails: { failed: number; retrying: number };
+};
+
+/** A starter set: what a mill of one size should switch on first. */
+export type AutomationPreset = {
+  code: "small" | "growing" | "large";
+  title: string;
+  description: string;
+  recipes: { code: string; title: string }[];
+};
+
 export type AutomationUpdate = {
   enabled: boolean;
   params: Record<string, string | number | boolean>;
   recipients: string[];
+  /** Left as they are when not sent. */
+  track?: boolean;
+  track_assignee?: string | null;
+  track_due_hours?: number;
 };
 
 export class AutomationsService {
   constructor(private http = api) {}
 
-  list(): Promise<{ recipes: Automation[]; ai?: AISettings }> {
+  list(): Promise<{ recipes: Automation[]; ai?: AISettings; health?: AutomationsHealth }> {
     return this.http.get("/automations/").then((r) => r.data);
+  }
+
+  presets(): Promise<{ presets: AutomationPreset[] }> {
+    return this.http.get("/automations/presets").then((r) => r.data);
+  }
+
+  /** Switch a starter set on; what's already set up stays as it is. */
+  applyPreset(code: string): Promise<{ switched_on: string[] }> {
+    return this.http.post(`/automations/presets/${code}`).then((r) => r.data);
   }
 
   updateAI(body: { enabled: boolean; language: string }): Promise<AISettings> {

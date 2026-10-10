@@ -32,7 +32,8 @@ from ..models.subscription import Subscription
 from ..models.user import User
 from ..services.notification_service import attach, notify
 from ..services.subscription import is_active
-from .base import Notice, Recipe, RecipeContext, RecipeProblem
+from . import actions
+from .base import Notice, Recipe, RecipeContext, RecipeProblem, asks_ai
 from .recipes import RECIPES
 
 logger = logging.getLogger("ricemill.automations")
@@ -58,7 +59,13 @@ def eligible_users(db: Session, company_id: uuid.UUID, recipe: Recipe) -> list[U
         .order_by(User.full_name)
         .all()
     )
-    return [u for u in users if u.role and SECTION_ACCESS.get(u.role.name, {}).get(recipe.section, "none") != "none"]
+    return [
+        u
+        for u in users
+        if u.role
+        and SECTION_ACCESS.get(u.role.name, {}).get(recipe.section, "none") != "none"
+        and (not recipe.only_roles or u.role.name in recipe.only_roles)
+    ]
 
 
 def recipient_ids(db: Session, company_id: uuid.UUID, recipe: Recipe, chosen: Sequence[str]) -> list[uuid.UUID]:
@@ -127,28 +134,31 @@ def run_due_automations(ctx: JobContext, *, ai: bool = False) -> str:
     so they never hold up the rest."""
     company = ctx.company
     assert company is not None, "automations are a tenant job"
-    rules = [
-        rule
-        for rule in ctx.db.query(AutomationRule).filter(AutomationRule.enabled.is_(True)).all()
-        if rule.recipe in RECIPES and RECIPES[rule.recipe].uses_ai == ai
-    ]
-    if not rules:
-        return "no automations switched on"
-    if not entitled(ctx.db, company.id):
-        return f"{len(rules)} automation(s) paused: the plan doesn't include automations"
     settings = ai_settings(ctx.db, company.id)
-    if ai and not (settings and settings.ai_enabled):
-        return f"{len(rules)} AI automation(s) paused: AI is switched off"
-    language = settings.ai_language if settings else "en"
-
-    ran = failed = 0
-    for rule in rules:
-        recipe = RECIPES[rule.recipe]
+    ai_on = bool(settings and settings.ai_enabled)
+    rules: list[tuple[AutomationRule, Recipe, BaseModel]] = []
+    for rule in ctx.db.query(AutomationRule).filter(AutomationRule.enabled.is_(True)).all():
+        recipe = RECIPES.get(rule.recipe)
+        if recipe is None:
+            continue
         try:
             params = parse_params(recipe, rule.params)
         except ValidationError:
             logger.warning("automation has invalid settings", extra={"recipe": rule.recipe})
             continue
+        # A recipe whose advice is optional runs in the AI job only when it asks the AI.
+        if asks_ai(recipe, params, ai_on) == ai:
+            rules.append((rule, recipe, params))
+    if not rules:
+        return "no automations switched on"
+    if not entitled(ctx.db, company.id):
+        return f"{len(rules)} automation(s) paused: the plan doesn't include automations"
+    if ai and not ai_on:
+        return f"{len(rules)} AI automation(s) paused: AI is switched off"
+    language = settings.ai_language if settings else "en"
+
+    ran = failed = 0
+    for rule, recipe, params in rules:
         run_key = recipe.schedule(params)(ctx.now, ctx.zone)
         if run_key is None:
             continue
@@ -156,10 +166,11 @@ def run_due_automations(ctx: JobContext, *, ai: bool = False) -> str:
         if run_id is None:
             continue
         try:
-            context = RecipeContext(db=ctx.db, company=company, now=ctx.now, zone=ctx.zone, language=language)
+            context = RecipeContext(db=ctx.db, company=company, now=ctx.now, zone=ctx.zone, language=language, ai=ai_on)
             notices = recipe.build(context, params)
             user_ids = recipient_ids(ctx.db, company.id, recipe, rule.recipients or [])
             new = deliver(ctx.db, company, recipe, notices, user_ids, email=bool(getattr(params, "email", True)))
+            actions.track(ctx.db, company, rule, recipe, notices, now=ctx.now)
             ctx.db.commit()
             finish_run(ctx.db, run_id, "succeeded", f"{new} notice(s) to {len(user_ids)} recipient(s)")
             ran += 1
@@ -189,9 +200,10 @@ def send_test(db: Session, company: Company, recipe: Recipe, user: User, *, now:
     rule = db.query(AutomationRule).filter(AutomationRule.recipe == recipe.code).first()
     params = parse_params(recipe, rule.params if rule else None)
     settings = ai_settings(db, company.id)
-    if recipe.uses_ai:
-        if not (settings and settings.ai_enabled):
-            raise RecipeProblem("Switch on AI for your automations first, at the top of the AI advisor section.")
+    ai_on = bool(settings and settings.ai_enabled)
+    if recipe.uses_ai and not ai_on:
+        raise RecipeProblem("Switch on AI for your automations first, at the top of the AI advisor section.")
+    if asks_ai(recipe, params, ai_on):
         recent = (
             db.query(Notification.id)
             .filter(
@@ -204,7 +216,13 @@ def send_test(db: Session, company: Company, recipe: Recipe, user: User, *, now:
         if recent is not None:
             raise RecipeProblem("Each AI test costs a little. Try this one again in a few minutes.")
     context = RecipeContext(
-        db=db, company=company, now=now, zone=zone, test=True, language=settings.ai_language if settings else "en"
+        db=db,
+        company=company,
+        now=now,
+        zone=zone,
+        test=True,
+        language=settings.ai_language if settings else "en",
+        ai=ai_on,
     )
     notices = recipe.build(context, params)
     new = deliver(

@@ -8,6 +8,10 @@ export interface Env {
   JOBS_CONTAINER: DurableObjectNamespace<JobsContainer>;
 
   // Non-secret config (wrangler.jsonc "vars")
+  /** "preview" for the private test site (container-env.json "targets"); unset in production. */
+  DEPLOY_TARGET?: string;
+  /** How long an idle API container stays awake. Containers bill while awake. */
+  API_SLEEP_AFTER?: string;
   API_INSTANCES: string;
   ALLOWED_ORIGINS: string;
   TRUSTED_HOSTS: string;
@@ -41,6 +45,17 @@ export interface Env {
 }
 
 type ContainerRole = keyof typeof containerEnv.roles;
+type DeployTarget = Exclude<keyof typeof containerEnv.targets, "$comment">;
+
+function targetConstants(env: Env): Record<string, string> {
+  const target = env.DEPLOY_TARGET;
+  if (!target) return {};
+  if (!(target in containerEnv.targets) || target === "$comment") {
+    // A typo must not quietly boot the production defaults under another name.
+    throw new Error(`Unknown DEPLOY_TARGET: ${target}`);
+  }
+  return containerEnv.targets[target as DeployTarget].constants;
+}
 
 /** The env a container process boots with. The constants, which vars and
  *  secrets get forwarded, and the per-role additions all live in
@@ -52,7 +67,11 @@ function containerEnvFor(env: Env, role: ContainerRole): Record<string, string> 
   const source = env as unknown as Record<string, string | undefined>;
   const { shared } = containerEnv;
   const roleEnv = containerEnv.roles[role];
-  const vars: Record<string, string> = { ...shared.constants, ...roleEnv.constants };
+  const vars: Record<string, string> = {
+    ...shared.constants,
+    ...targetConstants(env),
+    ...roleEnv.constants,
+  };
   for (const key of [...shared.vars, ...shared.secrets, ...roleEnv.secrets]) {
     const value = source[key];
     if (value !== undefined) vars[key] = value;
@@ -76,6 +95,13 @@ export class ApiContainer extends Container<Env> {
   // Postgres, Upstash, SMTP and the Google/DeepSeek APIs are all outbound.
   enableInternet = true;
   pingEndpoint = "/api/health";
+
+  constructor(ctx: ConstructorParameters<typeof Container>[0], env: Env) {
+    super(ctx, env);
+    // The private preview sleeps sooner, to stay inside the plan's included hours.
+    // Read when the idle timer is next renewed, so overriding it here is enough.
+    if (env.API_SLEEP_AFTER) this.sleepAfter = env.API_SLEEP_AFTER;
+  }
 
   override async fetch(request: Request): Promise<Response> {
     await this.startAndWaitForPorts({

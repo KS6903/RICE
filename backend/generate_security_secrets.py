@@ -17,6 +17,7 @@ so running this twice can't quietly replace a live key.
 Usage, from backend/ (wrangler logged in, wrangler.jsonc naming the Worker):
     python generate_security_secrets.py                            # the missing ones
     python generate_security_secrets.py --only SIGNUP_INVITE_CODE  # rotate one
+    python generate_security_secrets.py --env preview              # the private preview's
     python generate_security_secrets.py --output FILE              # a new file instead,
                                                                    # for another secret manager
 """
@@ -56,8 +57,12 @@ def run_wrangler(args: Sequence[str], stdin: str | None) -> tuple[int, str]:
     return result.returncode, result.stdout
 
 
-def existing_secrets(runner: Runner) -> set[str]:
-    status, out = runner(["secret", "list", "--format", "json"], None)
+def _env_args(env: str | None) -> list[str]:
+    return ["--env", env] if env else []
+
+
+def existing_secrets(runner: Runner, env: str | None = None) -> set[str]:
+    status, out = runner(["secret", "list", "--format", "json", *_env_args(env)], None)
     if status != 0:
         raise SystemExit(
             "couldn't list the Worker's secrets: is wrangler logged in, and does wrangler.jsonc name the Worker?"
@@ -69,11 +74,11 @@ def existing_secrets(runner: Runner) -> set[str]:
         raise SystemExit("couldn't read wrangler's list of secrets") from None
 
 
-def put_secrets(names: Sequence[str], runner: Runner) -> list[str]:
+def put_secrets(names: Sequence[str], runner: Runner, env: str | None = None) -> list[str]:
     """Generate each named secret and hand it to the Worker. Returns what was set."""
     done: list[str] = []
     for name in names:
-        status, _ = runner(["secret", "put", name], GENERATORS[name]())
+        status, _ = runner(["secret", "put", name, *_env_args(env)], GENERATORS[name]())
         if status != 0:
             raise SystemExit(f"wrangler couldn't set {name}; set before it: {', '.join(done) or 'none'}")
         done.append(name)
@@ -97,6 +102,7 @@ def main(argv: Sequence[str] | None = None, runner: Runner = run_wrangler) -> in
     parser = argparse.ArgumentParser(description=(__doc__ or "").split("\n\n")[0])
     parser.add_argument("--only", nargs="+", choices=sorted(GENERATORS), help="set (or rotate) just these")
     parser.add_argument("--output", type=Path, help="write a new file instead of putting them into the Worker")
+    parser.add_argument("--env", help="a wrangler.jsonc environment, e.g. preview (its own Worker and secrets)")
     args = parser.parse_args(argv)
 
     if args.output:
@@ -106,7 +112,7 @@ def main(argv: Sequence[str] | None = None, runner: Runner = run_wrangler) -> in
         print(f"Created {args.output}. Move the values into your secret manager, then delete the file.")
         return 0
 
-    have = existing_secrets(runner)
+    have = existing_secrets(runner, args.env)
     if args.only:
         locked = sorted(NEVER_ROTATE & set(args.only) & have)
         if locked:
@@ -121,7 +127,7 @@ def main(argv: Sequence[str] | None = None, runner: Runner = run_wrangler) -> in
             print("Nothing to do: the Worker has all three.")
             return 0
 
-    done = put_secrets(names, runner)
+    done = put_secrets(names, runner, args.env)
     print(f"Set in the Worker: {', '.join(done)}. Nothing was written to disk.")
     return 0
 

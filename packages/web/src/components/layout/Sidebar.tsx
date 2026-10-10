@@ -14,6 +14,11 @@ import {
   Truck,
   HardHat,
   Workflow,
+  ListChecks,
+  HandCoins,
+  Wallet,
+  ClipboardList,
+  Wrench,
 } from "lucide-react";
 import riceLogo from "../../assets/Rice_Logo.svg";
 import { clsx } from "clsx";
@@ -41,13 +46,41 @@ const NAV: {
   { to: "/paddy", label: "Paddy / Palay", icon: Wheat, feature: "paddy", section: "paddy" },
   { to: "/milling", label: "Milling", icon: Factory, feature: "milling", section: "milling" },
   {
+    to: "/maintenance",
+    label: "Maintenance",
+    icon: Wrench,
+    feature: "automations",
+    section: "milling",
+  },
+  {
     to: "/inventory",
     label: "Inventory",
     icon: Package,
     feature: "inventory",
     section: "inventory",
   },
+  {
+    to: "/stock-count",
+    label: "Stock count",
+    icon: ClipboardList,
+    feature: "automations",
+    section: "inventory",
+  },
   { to: "/sales", label: "Sales", icon: ShoppingCart, feature: "sales", section: "sales" },
+  {
+    to: "/cash",
+    label: "Cash count",
+    icon: Wallet,
+    feature: "automations",
+    section: "sales",
+  },
+  {
+    to: "/collections",
+    label: "Collections",
+    icon: HandCoins,
+    feature: "automations",
+    section: "sales",
+  },
   { to: "/dispatch", label: "Dispatch", icon: Truck, feature: "sales", section: "dispatch" },
   {
     to: "/operators",
@@ -58,6 +91,13 @@ const NAV: {
   },
   { to: "/costs", label: "Expenses", icon: Receipt, feature: "expenses", section: "expenses" },
   { to: "/reports", label: "Reports", icon: BarChart3, feature: "dashboard", section: "reports" },
+  {
+    to: "/tasks",
+    label: "To do",
+    icon: ListChecks,
+    feature: "automations",
+    section: "tasks",
+  },
   {
     to: "/automations",
     label: "Automations",

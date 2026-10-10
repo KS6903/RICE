@@ -3,7 +3,11 @@
 from __future__ import annotations
 
 from ..base import Recipe
-from .advisor import ADVISOR_RECIPES
+from ..cash import RECIPE_DEF as CASH_COUNT
+from ..freshness import RECIPE_DEF as OFFLINE_DATA
+from ..maintenance import RECIPE_DEF as MAINTENANCE_DUE
+from ..stock_count import RECIPE_DEF as STOCK_COUNT
+from .advisor import ADVISOR_RECIPES, MONTH_IN_REVIEW
 from .deliveries import DELIVERY_RECIPES
 from .owner_digest import OWNER_DIGEST
 from .people import PEOPLE_RECIPES
@@ -19,9 +23,14 @@ RECIPES: dict[str, Recipe] = {
         *ADVISOR_RECIPES,
         OWNER_DIGEST,
         *REPORT_RECIPES,
+        CASH_COUNT,
+        OFFLINE_DATA,
+        MONTH_IN_REVIEW,
         *WATCH_RECIPES,
         *PRODUCTION_RECIPES,
+        MAINTENANCE_DUE,
         *STOCK_RECIPES,
+        STOCK_COUNT,
         *RECEIVABLES_RECIPES,
         *DELIVERY_RECIPES,
         *PEOPLE_RECIPES,

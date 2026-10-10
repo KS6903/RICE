@@ -38,7 +38,7 @@ def test_push_then_pull_roundtrips_only_sanitized_payload(make_auth_client):
         json={"client_id": "electron-12345678", "records": [rec]},
     )
     assert push.status_code == 200, push.text
-    assert push.json() == {"synced": 1, "conflicts": 0}
+    assert push.json() == {"synced": 1, "conflicts": 0, "for_review": 0}
 
     pull = client.get("/api/sync/pull", params={"since": "2020-01-01T00:00:00Z"})
     assert pull.status_code == 200, pull.text

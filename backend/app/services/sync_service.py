@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import uuid
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
@@ -19,6 +20,8 @@ from ..models.user import User
 from ..repositories.sync import SyncConflictRepository, SyncLogRepository
 from ..schemas.sync import ConflictResolutionValue, JsonScalar, SyncRecord
 from ..services.base import BaseService
+
+logger = logging.getLogger("ricemill.sync")
 
 ALL_SYNC_ROLES: FrozenSet[str] = frozenset(SECTION_ACCESS)
 MANAGE_ROLES: FrozenSet[str] = frozenset({"owner", "admin"})
@@ -354,7 +357,27 @@ class SyncService(BaseService):
                         synced_at=base_time + timedelta(microseconds=offset),
                     )
                 )
-        return {"synced": len(sanitized), "conflicts": 0}
+            for_review = self._check_offline_orders(sanitized)
+        return {"synced": len(sanitized), "conflicts": 0, "for_review": for_review}
+
+    def _check_offline_orders(self, sanitized: Sequence[tuple[SyncRecord, dict[str, JsonScalar]]]) -> int:
+        """New orders taken offline go past the credit-limit guard; send the ones
+        over a customer's limit to be reviewed. A problem here never holds up
+        the sync: each check runs in its own savepoint. Returns how many went."""
+        from ..automations import credit
+
+        orders = [(r, p) for r, p in sanitized if r.table_name == "sales_orders" and r.operation == "INSERT"]
+        if not orders:
+            return 0
+        company = self.current_user.company
+        flagged = 0
+        for record, payload in orders:
+            try:
+                with self.db.begin_nested():
+                    flagged += credit.check_offline(self.db, company, self.current_user, record.record_id, payload)
+            except Exception:
+                logger.exception("offline order credit check failed", extra={"record_id": str(record.record_id)})
+        return flagged
 
     def pull(self, since: datetime) -> dict:
         role = self._role()
