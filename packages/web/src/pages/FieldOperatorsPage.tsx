@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { useEscapeKey } from "../hooks/useEscapeKey";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   HardHat,
@@ -16,7 +17,8 @@ import {
 import { SUPPLIER_TYPES } from "@rice-mill/shared";
 import { dispatchService } from "../services/DispatchService";
 import { paddyService } from "../services/PaddyService";
-import ColorSwatch from "../components/dispatch/ColorSwatch";
+import Select from "../components/Select";
+import TruncatedText from "../components/TruncatedText";
 import { useAccess } from "../hooks/useAccess";
 import { useFeature } from "../hooks/useFeature";
 
@@ -64,10 +66,19 @@ type Supplier = {
 
 type OperatorKind = "agent" | "miller";
 type OperatorRow = ({ kind: "agent" } & Agent) | ({ kind: "miller" } & Miller);
-type TypeTab = "all" | "agent" | "miller" | "supplier";
+// "deactivated" is its own tab: every deactivated contact, whatever its type.
+type TypeTab = "all" | "agent" | "miller" | "supplier" | "deactivated";
 type StatusTab = "active" | "deactivated";
 
 const LABEL = "block text-xs font-bold uppercase tracking-wider text-muted mb-1";
+
+// The agent type is optional: the first option leaves it blank.
+const AGENT_TYPE_OPTIONS = [
+  { value: "", label: "None" },
+  { value: "broker", label: "Broker" },
+  { value: "freelancer", label: "Freelancer" },
+  { value: "logistics_co", label: "Logistics company" },
+];
 
 function formatDate(iso: string | null): string {
   if (!iso) return "—";
@@ -78,14 +89,18 @@ function formatDate(iso: string | null): string {
   });
 }
 
-function ColorReadOnlyHint() {
+/** Green when the contact is active, red once it is deactivated. */
+function StatusDot({ active, name }: { active: boolean; name: string }) {
+  const state = active ? "active" : "deactivated";
   return (
     <span
-      className="text-[9px] font-bold uppercase tracking-wider text-muted bg-slate-100 dark:bg-slate-800/60 px-1 py-0.5 rounded"
-      title="Auto-assigned by the system. Unique per contact, and never editable."
-    >
-      Auto
-    </span>
+      role="img"
+      aria-label={`${name} is ${state}`}
+      title={active ? "Active" : "Deactivated"}
+      data-testid="status-dot"
+      data-status={state}
+      className={`inline-block h-3.5 w-3.5 shrink-0 rounded-full ${active ? "bg-emerald-500" : "bg-rose-500"}`}
+    />
   );
 }
 
@@ -129,8 +144,7 @@ export default function FieldOperatorsPage() {
         <div>
           <h2 className="text-2xl font-bold tracking-tight text-primary">Field Operators</h2>
           <p className="text-sm text-secondary">
-            Manage delivery agents, third-party millers, and palay suppliers — each contact gets a
-            unique color for identification on the canvas.
+            Manage delivery agents, third-party millers, and palay suppliers.
           </p>
         </div>
       </div>
@@ -143,7 +157,7 @@ function FieldOperatorsContent() {
   const { canEdit } = useAccess();
   const hasPaddy = useFeature("paddy");
   const [typeTab, setTypeTab] = useState<TypeTab>("all");
-  const [statusTab, setStatusTab] = useState<StatusTab>("active");
+  const [search, setSearch] = useState("");
 
   const { data: agents = [] } = useQuery<Agent[]>({
     queryKey: ["dispatch-agents-all"],
@@ -159,39 +173,41 @@ function FieldOperatorsContent() {
     enabled: hasPaddy,
   });
 
-  // Outer type tabs. "All" spans agents + millers only — suppliers are their own tab.
-  const typeTabs = useMemo(() => {
+  // The type tabs count active contacts only; deactivated ones live in their own
+  // tab at the far end. "All" spans agents + millers, suppliers are their own tab.
+  const tabs = useMemo(() => {
+    const activeAgents = agents.filter((a) => a.is_active).length;
+    const activeMillers = millers.filter((m) => m.is_active).length;
     const base = [
-      { key: "all" as TypeTab, label: "All", count: agents.length + millers.length },
-      { key: "agent" as TypeTab, label: "Agents", count: agents.length },
-      { key: "miller" as TypeTab, label: "Millers", count: millers.length },
+      { key: "all" as TypeTab, label: "All", count: activeAgents + activeMillers },
+      { key: "agent" as TypeTab, label: "Agents", count: activeAgents },
+      { key: "miller" as TypeTab, label: "Millers", count: activeMillers },
     ];
-    if (hasPaddy)
-      base.push({ key: "supplier" as TypeTab, label: "Suppliers", count: suppliers.length });
-    return base;
+    if (hasPaddy) {
+      const count = suppliers.filter((s) => s.is_active).length;
+      base.push({ key: "supplier" as TypeTab, label: "Suppliers", count });
+    }
+    const deactivated =
+      agents.filter((a) => !a.is_active).length +
+      millers.filter((m) => !m.is_active).length +
+      (hasPaddy ? suppliers.filter((s) => !s.is_active).length : 0);
+    return { types: base, deactivated };
   }, [agents, millers, suppliers, hasPaddy]);
 
-  // Active/Deactivated counts for the inner toggle, scoped to the selected type.
-  const statusCounts = useMemo(() => {
-    if (typeTab === "supplier") {
-      return {
-        active: suppliers.filter((s) => s.is_active).length,
-        deactivated: suppliers.filter((s) => !s.is_active).length,
-      };
-    }
-    const pool: { is_active: boolean }[] =
-      typeTab === "agent" ? agents : typeTab === "miller" ? millers : [...agents, ...millers];
-    return {
-      active: pool.filter((x) => x.is_active).length,
-      deactivated: pool.filter((x) => !x.is_active).length,
-    };
-  }, [typeTab, agents, millers, suppliers]);
+  const tabClass = (active: boolean) =>
+    `flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold whitespace-nowrap transition-all ${
+      active
+        ? "bg-grad-brand text-white shadow-grad-glow"
+        : "text-secondary hover:text-primary hover:bg-slate-100/60 dark:hover:bg-slate-700/30"
+    }`;
+  const countClass = (active: boolean) =>
+    `text-xs font-bold tabular-nums ${active ? "text-white/75" : "text-muted"}`;
 
   return (
     <div className="space-y-4">
-      {/* Outer tab bar — by type */}
+      {/* Tab bar: by type, with Deactivated at the far end */}
       <div className="flex items-center gap-1 p-1 rounded-xl glass overflow-x-auto">
-        {typeTabs.map(({ key, label, count }) => {
+        {tabs.types.map(({ key, label, count }) => {
           const active = typeTab === key;
           return (
             <button
@@ -199,66 +215,87 @@ function FieldOperatorsContent() {
               type="button"
               onClick={() => setTypeTab(key)}
               data-testid={`operators-filter-${key}`}
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold whitespace-nowrap transition-all ${
-                active
-                  ? "bg-grad-brand text-white shadow-grad-glow"
-                  : "text-secondary hover:text-primary hover:bg-slate-100/60 dark:hover:bg-slate-700/30"
-              }`}
+              className={tabClass(active)}
             >
               {label}
-              <span
-                className={`text-xs font-bold tabular-nums ${active ? "text-white/75" : "text-muted"}`}
+              <span className={countClass(active)}>{count}</span>
+            </button>
+          );
+        })}
+        <button
+          type="button"
+          onClick={() => setTypeTab("deactivated")}
+          data-testid="operators-filter-deactivated"
+          className={`${tabClass(typeTab === "deactivated")} ml-auto`}
+        >
+          <span aria-hidden className="h-2 w-2 rounded-full bg-rose-500" />
+          Deactivated
+          <span className={countClass(typeTab === "deactivated")}>{tabs.deactivated}</span>
+        </button>
+      </div>
+
+      {typeTab === "deactivated" ? (
+        <div className="space-y-6">
+          <div className="relative max-w-sm">
+            <Search
+              size={14}
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-muted pointer-events-none"
+            />
+            <input
+              className="input !pl-8"
+              placeholder="Search by name…"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              data-testid="deactivated-search"
+            />
+            {search && (
+              <button
+                type="button"
+                onClick={() => setSearch("")}
+                aria-label="Clear search"
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted hover:text-primary"
               >
-                {count}
-              </span>
-            </button>
-          );
-        })}
-      </div>
+                <XIcon size={13} />
+              </button>
+            )}
+          </div>
 
-      {/* Inner toggle — by status */}
-      <div
-        className="inline-flex items-center gap-1 p-1 rounded-lg bg-slate-100 dark:bg-slate-800/60 ring-1 ring-soft"
-        role="tablist"
-      >
-        {(
-          [
-            { key: "active" as StatusTab, label: "Active", count: statusCounts.active },
-            {
-              key: "deactivated" as StatusTab,
-              label: "Deactivated",
-              count: statusCounts.deactivated,
-            },
-          ] as const
-        ).map(({ key, label, count }) => {
-          const isActive = statusTab === key;
-          return (
-            <button
-              key={key}
-              type="button"
-              role="tab"
-              aria-selected={isActive}
-              data-testid={`operators-status-${key}`}
-              onClick={() => setStatusTab(key)}
-              className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${
-                isActive
-                  ? "bg-white dark:bg-slate-900 text-primary shadow-sm"
-                  : "text-secondary hover:text-primary"
-              }`}
-            >
-              {label}
-              <span className="ml-1.5 text-[10px] font-bold text-muted tabular-nums">{count}</span>
-            </button>
-          );
-        })}
-      </div>
+          <div className="space-y-2">
+            {hasPaddy && <h3 className="text-sm font-bold text-primary">Agents and millers</h3>}
+            <OperatorsPanel
+              typeTab="all"
+              status="deactivated"
+              search={search}
+              agents={agents}
+              millers={millers}
+              canEdit={canEdit("operators")}
+            />
+          </div>
 
-      {typeTab === "supplier" ? (
-        <SuppliersPanel status={statusTab} suppliers={suppliers} canEdit={canEdit("paddy")} />
+          {hasPaddy && (
+            <div className="space-y-2">
+              <h3 className="text-sm font-bold text-primary">Suppliers</h3>
+              <SuppliersPanel
+                status="deactivated"
+                search={search}
+                suppliers={suppliers}
+                canEdit={canEdit("paddy")}
+              />
+            </div>
+          )}
+        </div>
+      ) : typeTab === "supplier" ? (
+        <SuppliersPanel
+          status="active"
+          search=""
+          suppliers={suppliers}
+          canEdit={canEdit("paddy")}
+        />
       ) : (
         <OperatorsPanel
           typeTab={typeTab}
-          status={statusTab}
+          status="active"
+          search=""
           agents={agents}
           millers={millers}
           canEdit={canEdit("operators")}
@@ -273,12 +310,15 @@ function FieldOperatorsContent() {
 function OperatorsPanel({
   typeTab,
   status,
+  search,
   agents,
   millers,
   canEdit,
 }: {
-  typeTab: Exclude<TypeTab, "supplier">;
+  typeTab: "all" | "agent" | "miller";
   status: StatusTab;
+  /** Name filter, used by the deactivated list. */
+  search: string;
   agents: Agent[];
   millers: Miller[];
   canEdit: boolean;
@@ -287,7 +327,6 @@ function OperatorsPanel({
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [search, setSearch] = useState("");
 
   const allRows: OperatorRow[] = useMemo(
     () => [
@@ -338,18 +377,8 @@ function OperatorsPanel({
   const colSpan = status === "active" ? 8 : 9;
   const headers =
     status === "active"
-      ? ["Color", "Name", "Type", "Contact", "Phone", "Details", "Status", ""]
-      : [
-          "Color",
-          "Name",
-          "Type",
-          "Contact",
-          "Phone",
-          "Details",
-          "Deactivated on",
-          "Deactivated by",
-          "",
-        ];
+      ? ["", "Name", "Type", "Contact", "Phone", "Details", "Status", ""]
+      : ["", "Name", "Type", "Contact", "Phone", "Details", "Deactivated on", "Deactivated by", ""];
 
   const renderRow = (row: OperatorRow) => {
     if (status === "deactivated") {
@@ -418,32 +447,6 @@ function OperatorsPanel({
     <div className="space-y-4">
       {/* toolbar */}
       <div className="flex items-center justify-between flex-wrap gap-3">
-        {status === "deactivated" ? (
-          <div className="relative flex-1 min-w-[200px] max-w-sm">
-            <Search
-              size={14}
-              className="absolute left-3 top-1/2 -translate-y-1/2 text-muted pointer-events-none"
-            />
-            <input
-              className="input !pl-8"
-              placeholder="Search by name…"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              data-testid="deactivated-search"
-            />
-            {search && (
-              <button
-                type="button"
-                onClick={() => setSearch("")}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted hover:text-primary"
-              >
-                <XIcon size={13} />
-              </button>
-            )}
-          </div>
-        ) : (
-          <p className="text-xs text-muted">system reserves a unique color per operator</p>
-        )}
         {status === "active" && canEdit && (
           <button
             onClick={() => {
@@ -451,7 +454,7 @@ function OperatorsPanel({
               setEditingId(null);
               setError(null);
             }}
-            className="btn-primary"
+            className="btn-primary ml-auto"
             data-testid="add-operator"
           >
             <Plus size={16} /> Add field operator
@@ -500,7 +503,7 @@ function OperatorsPanel({
               <tr>
                 <td colSpan={colSpan} className="px-4 py-8 text-center text-muted font-medium">
                   {status === "active"
-                    ? `No active ${typeTab === "all" ? "operators" : typeTab + "s"} yet${canEdit ? " — add one above." : "."}`
+                    ? `No active ${typeTab === "all" ? "operators" : typeTab + "s"} yet${canEdit ? ". Add one above." : "."}`
                     : search
                       ? "No deactivated operators match your search."
                       : "No deactivated operators."}
@@ -564,10 +567,7 @@ function ViewOperatorRow({
       data-testid={`operator-row-${row.id}`}
     >
       <td className="px-4 py-3">
-        <div className="inline-flex items-center gap-1.5">
-          <ColorSwatch color={row.canva_color_hex} label={row.name} size={16} />
-          <ColorReadOnlyHint />
-        </div>
+        <StatusDot active name={row.name} />
       </td>
       <td className="px-4 py-3 font-semibold text-primary">{row.name}</td>
       <td className="px-4 py-3">
@@ -629,9 +629,7 @@ function DeactivatedOperatorRow({
       data-testid={`operator-row-${row.id}`}
     >
       <td className="px-4 py-3">
-        <div className="inline-flex items-center gap-1.5">
-          <ColorSwatch color={row.canva_color_hex} label={row.name} size={16} />
-        </div>
+        <StatusDot active={false} name={row.name} />
       </td>
       <td className="px-4 py-3 font-semibold text-primary">{row.name}</td>
       <td className="px-4 py-3">
@@ -643,7 +641,13 @@ function DeactivatedOperatorRow({
       <td className="px-4 py-3 text-secondary tabular-nums text-xs">
         {formatDate(row.deactivated_at)}
       </td>
-      <td className="px-4 py-3 text-secondary text-xs">{row.deactivated_by ?? "—"}</td>
+      <td className="px-4 py-3 text-secondary text-xs">
+        {row.deactivated_by ? (
+          <TruncatedText text={row.deactivated_by} className="max-w-[9rem] sm:max-w-[14rem]" />
+        ) : (
+          "—"
+        )}
+      </td>
       <td className="px-4 py-3 text-right">
         {canEdit && (
           <button
@@ -671,13 +675,12 @@ function EditOperatorRow({
   onSaved: () => void;
   setError: (msg: string | null) => void;
 }) {
+  useEscapeKey(onCancel);
   const [name, setName] = useState(row.name);
   const [contact, setContact] = useState(row.contact_person ?? "");
   const [phone, setPhone] = useState(row.phone ?? "");
   const address = row.address ?? "";
-  const [agentType, setAgentType] = useState(
-    row.kind === "agent" ? (row.agent_type ?? "broker") : "broker",
-  );
+  const [agentType, setAgentType] = useState(row.kind === "agent" ? (row.agent_type ?? "") : "");
   const [commission, setCommission] = useState(
     row.kind === "agent" ? String(row.commission_pct ?? "") : "",
   );
@@ -715,10 +718,7 @@ function EditOperatorRow({
   return (
     <tr className="bg-emerald-50/40 dark:bg-emerald-950/15" data-testid={`operator-edit-${row.id}`}>
       <td className="px-4 py-3">
-        <div className="inline-flex items-center gap-1.5">
-          <ColorSwatch color={row.canva_color_hex} label={row.name} size={16} />
-          <ColorReadOnlyHint />
-        </div>
+        <StatusDot active name={row.name} />
       </td>
       <td className="px-3 py-2">
         <input
@@ -750,15 +750,13 @@ function EditOperatorRow({
       <td className="px-3 py-2">
         {row.kind === "agent" ? (
           <div className="flex items-center gap-1.5">
-            <select
-              className="input !py-1 text-sm !w-auto"
+            <Select
+              className="!py-1 text-sm !w-auto min-w-[10rem]"
+              aria-label="Agent type"
               value={agentType}
-              onChange={(e) => setAgentType(e.target.value)}
-            >
-              <option value="broker">Broker</option>
-              <option value="freelancer">Freelancer</option>
-              <option value="logistics_co">Logistics</option>
-            </select>
+              onChange={setAgentType}
+              options={AGENT_TYPE_OPTIONS}
+            />
             <input
               className="input !py-1 text-sm w-16"
               type="number"
@@ -826,12 +824,13 @@ function NewOperatorForm({
   onSaved: () => void;
   setError: (msg: string | null) => void;
 }) {
+  useEscapeKey(onClose);
   const [kind, setKind] = useState<OperatorKind>("agent");
   const [name, setName] = useState("");
   const [contact, setContact] = useState("");
   const [phone, setPhone] = useState("");
   const [address, setAddress] = useState("");
-  const [agentType, setAgentType] = useState("broker");
+  const [agentType, setAgentType] = useState("");
   const [commission, setCommission] = useState("");
   const [capacity, setCapacity] = useState("");
   const [fee, setFee] = useState("");
@@ -920,16 +919,15 @@ function NewOperatorForm({
         {kind === "agent" ? (
           <>
             <div>
-              <label className={LABEL}>Agent type</label>
-              <select
-                className="input"
+              <label className={LABEL} htmlFor="new-operator-agent-type">
+                Agent type
+              </label>
+              <Select
+                id="new-operator-agent-type"
                 value={agentType}
-                onChange={(e) => setAgentType(e.target.value)}
-              >
-                <option value="broker">Broker</option>
-                <option value="freelancer">Freelancer</option>
-                <option value="logistics_co">Logistics company</option>
-              </select>
+                onChange={setAgentType}
+                options={AGENT_TYPE_OPTIONS}
+              />
             </div>
             <div>
               <label className={LABEL}>Commission %</label>
@@ -968,10 +966,6 @@ function NewOperatorForm({
         )}
       </div>
 
-      <p className="text-xs text-muted">
-        A unique color will be assigned by the system — it can't be picked or changed by anyone.
-      </p>
-
       <div className="flex gap-2 justify-end">
         <button onClick={onClose} className="btn-secondary">
           Cancel
@@ -993,10 +987,13 @@ function NewOperatorForm({
 
 function SuppliersPanel({
   status,
+  search,
   suppliers,
   canEdit,
 }: {
   status: StatusTab;
+  /** Name filter, used by the deactivated list. */
+  search: string;
   suppliers: Supplier[];
   canEdit: boolean;
 }) {
@@ -1004,7 +1001,6 @@ function SuppliersPanel({
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<Supplier | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [search, setSearch] = useState("");
 
   const rows = useMemo(() => {
     if (status === "active") {
@@ -1032,39 +1028,13 @@ function SuppliersPanel({
   const colSpan = status === "active" ? 9 : 8;
   const headers =
     status === "active"
-      ? ["Color", "Name", "Type", "Municipality", "Province", "Phone", "Farmer ID", "Status", ""]
-      : ["Color", "Name", "Type", "Municipality", "Province", "Phone", "Farmer ID", ""];
+      ? ["", "Name", "Type", "Municipality", "Province", "Phone", "Farmer ID", "Status", ""]
+      : ["", "Name", "Type", "Municipality", "Province", "Phone", "Farmer ID", ""];
 
   return (
     <div className="space-y-4">
       {/* toolbar */}
       <div className="flex items-center justify-between flex-wrap gap-3">
-        {status === "deactivated" ? (
-          <div className="relative flex-1 min-w-[200px] max-w-sm">
-            <Search
-              size={14}
-              className="absolute left-3 top-1/2 -translate-y-1/2 text-muted pointer-events-none"
-            />
-            <input
-              className="input !pl-8"
-              placeholder="Search by name…"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              data-testid="deactivated-supplier-search"
-            />
-            {search && (
-              <button
-                type="button"
-                onClick={() => setSearch("")}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted hover:text-primary"
-              >
-                <XIcon size={13} />
-              </button>
-            )}
-          </div>
-        ) : (
-          <p className="text-xs text-muted">system reserves a unique color per supplier</p>
-        )}
         {status === "active" && canEdit && (
           <button
             onClick={() => {
@@ -1072,7 +1042,7 @@ function SuppliersPanel({
               setShowForm((s) => !s);
               setError(null);
             }}
-            className="btn-primary"
+            className="btn-primary ml-auto"
             data-testid="add-supplier"
           >
             <Plus size={16} /> Add supplier
@@ -1126,7 +1096,7 @@ function SuppliersPanel({
               <tr>
                 <td colSpan={colSpan} className="px-4 py-8 text-center text-muted font-medium">
                   {status === "active"
-                    ? `No active suppliers yet${canEdit ? " — add one above." : "."}`
+                    ? `No active suppliers yet${canEdit ? ". Add one above." : "."}`
                     : search
                       ? "No deactivated suppliers match your search."
                       : "No deactivated suppliers."}
@@ -1175,10 +1145,7 @@ function SupplierRow({
       data-testid={`supplier-row-${supplier.id}`}
     >
       <td className="px-4 py-3">
-        <div className="inline-flex items-center gap-1.5">
-          <ColorSwatch color={supplier.canva_color_hex} label={supplier.name} size={16} />
-          {!deactivated && <ColorReadOnlyHint />}
-        </div>
+        <StatusDot active={!deactivated} name={supplier.name} />
       </td>
       <td className="px-4 py-3 font-semibold text-primary">{supplier.name}</td>
       <td className="px-4 py-3">
@@ -1241,6 +1208,7 @@ function SupplierForm({
   onSaved: () => void;
   setError: (msg: string | null) => void;
 }) {
+  useEscapeKey(onClose);
   const [name, setName] = useState(initial?.name ?? "");
   const [supplierType, setSupplierType] = useState(initial?.supplier_type ?? "farmer");
   const [contact, setContact] = useState(initial?.contact_person ?? "");
@@ -1334,10 +1302,6 @@ function SupplierForm({
           <input className="input" value={address} onChange={(e) => setAddress(e.target.value)} />
         </div>
       </div>
-
-      <p className="text-xs text-muted">
-        A unique color will be assigned by the system — it can't be picked or changed by anyone.
-      </p>
 
       <div className="flex gap-2 justify-end">
         <button onClick={onClose} className="btn-secondary">

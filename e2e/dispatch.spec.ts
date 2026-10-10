@@ -22,8 +22,8 @@ async function apiToken(request: APIRequestContext): Promise<string> {
   return (await res.json()).access_token;
 }
 
-/** Navigate to /operators, create an operator, and return its reserved color hex. */
-async function createOperator(page: Page, kind: "agent" | "miller", name: string): Promise<string> {
+/** Navigate to /operators and create an operator. */
+async function createOperator(page: Page, kind: "agent" | "miller", name: string): Promise<void> {
   await page.goto("/operators");
   await page.getByTestId("add-operator").click();
   await page.getByTestId(`new-operator-kind-${kind}`).click();
@@ -31,12 +31,9 @@ async function createOperator(page: Page, kind: "agent" | "miller", name: string
   await page.getByTestId("save-new-operator").click();
   const row = page.getByRole("row", { name: new RegExp(name, "i") }).first();
   await expect(row).toBeVisible({ timeout: 10_000 });
-  const color = await row.getByTestId("color-swatch").first().getAttribute("data-color");
-  if (!color) throw new Error(`${kind} row has no color swatch`);
-  return color;
 }
 
-test.describe("Dispatch & Field Operators — color reservation, edit flow", () => {
+test.describe("Dispatch & Field Operators — status dot, color rules, edit flow", () => {
   test("Dispatch page renders delivery content and Field Operators page renders operator table", async ({
     page,
   }) => {
@@ -60,35 +57,34 @@ test.describe("Dispatch & Field Operators — color reservation, edit flow", () 
     await expect(page.getByTestId("dispatch-tab-millers")).toHaveCount(0);
   });
 
-  test("Adding an operator auto-assigns a unique color that persists across reload", async ({
+  test("An active operator shows a green status dot that persists across reload", async ({
     page,
   }) => {
     await login(page);
     const name = `E2E Op ${Date.now()}`;
-    const color = await createOperator(page, "agent", name);
-    expect(color).toMatch(/^#[0-9a-f]{6}$/);
+    await createOperator(page, "agent", name);
 
     await page.reload();
     const row = page.getByRole("row", { name: new RegExp(name, "i") }).first();
     await expect(row).toBeVisible({ timeout: 10_000 });
-    const still = await row.getByTestId("color-swatch").first().getAttribute("data-color");
-    expect(still).toBe(color);
+    await expect(row.getByTestId("status-dot")).toHaveAttribute("data-status", "active");
   });
 
-  test("Agent and miller in the same tenant get different system-assigned colors (swatch is read-only)", async ({
+  test("Operator rows show a status dot only, with no per-contact color or picker", async ({
     page,
   }) => {
     await login(page);
     const stamp = Date.now();
-    const agentColor = await createOperator(page, "agent", `E2E A ${stamp}`);
-    const millerColor = await createOperator(page, "miller", `E2E M ${stamp}`);
-    expect(agentColor).not.toBe(millerColor);
+    await createOperator(page, "agent", `E2E A ${stamp}`);
+    await createOperator(page, "miller", `E2E M ${stamp}`);
 
-    // No editable picker anywhere in the miller row.
-    const millerRow = page.getByRole("row", { name: new RegExp(`E2E M ${stamp}`, "i") }).first();
-    await expect(millerRow.getByTestId("palette-popover")).toHaveCount(0);
-    await expect(millerRow.locator('input[type="color"]')).toHaveCount(0);
-    await expect(millerRow.getByText(/^Auto$/)).toBeVisible();
+    for (const name of [`E2E A ${stamp}`, `E2E M ${stamp}`]) {
+      const row = page.getByRole("row", { name: new RegExp(name, "i") }).first();
+      await expect(row.getByTestId("status-dot")).toBeVisible();
+      await expect(row.getByTestId("color-swatch")).toHaveCount(0);
+      await expect(row.getByTestId("palette-popover")).toHaveCount(0);
+      await expect(row.locator('input[type="color"]')).toHaveCount(0);
+    }
   });
 
   test("Backend silently drops any client-supplied canva_color_hex on agent create/update", async ({
@@ -116,13 +112,11 @@ test.describe("Dispatch & Field Operators — color reservation, edit flow", () 
     expect(after.contact_person).toBe("Edited");
   });
 
-  test("User can edit an agent's contact info inline (but the color stays put)", async ({
-    page,
-  }) => {
+  test("User can edit an agent's contact info inline", async ({ page }) => {
     await login(page);
     const stamp = Date.now();
     const name = `E2E Edit ${stamp}`;
-    const originalColor = await createOperator(page, "agent", name);
+    await createOperator(page, "agent", name);
 
     const row = page.getByRole("row", { name: new RegExp(name, "i") }).first();
     await row.getByRole("button", { name: /^Edit$/ }).click();
@@ -135,12 +129,6 @@ test.describe("Dispatch & Field Operators — color reservation, edit flow", () 
     const refreshedRow = page.getByRole("row", { name: new RegExp(name, "i") }).first();
     await expect(refreshedRow.getByText("Juan dela Cruz")).toBeVisible({ timeout: 6_000 });
     await expect(refreshedRow.getByText("0917-555-1234")).toBeVisible();
-
-    const stillColor = await refreshedRow
-      .getByTestId("color-swatch")
-      .first()
-      .getAttribute("data-color");
-    expect(stillColor).toBe(originalColor);
   });
 
   test("Type filter pills narrow the operator list to a single kind", async ({ page }) => {
@@ -165,6 +153,33 @@ test.describe("Dispatch & Field Operators — color reservation, edit flow", () 
     await page.getByTestId("operators-filter-all").click();
     await expect(page.getByRole("row", { name: new RegExp(aName, "i") })).toBeVisible();
     await expect(page.getByRole("row", { name: new RegExp(mName, "i") })).toBeVisible();
+  });
+
+  test("A deactivated operator moves to the Deactivated tab, with a red dot, and can be activated again", async ({
+    page,
+  }) => {
+    await login(page);
+    const name = `E2E Deact ${Date.now()}`;
+    await createOperator(page, "agent", name);
+    const rowOf = () => page.getByRole("row", { name: new RegExp(name, "i") }).first();
+
+    await rowOf()
+      .getByRole("button", { name: /Deactivate/ })
+      .click();
+    // Gone from the active tabs...
+    await expect(page.getByRole("row", { name: new RegExp(name, "i") })).toHaveCount(0);
+
+    // ...and listed under the Deactivated tab, marked red.
+    await page.getByTestId("operators-filter-deactivated").click();
+    await expect(rowOf()).toBeVisible({ timeout: 10_000 });
+    await expect(rowOf().getByTestId("status-dot")).toHaveAttribute("data-status", "deactivated");
+
+    await rowOf()
+      .getByRole("button", { name: /Activate/ })
+      .click();
+    await expect(page.getByRole("row", { name: new RegExp(name, "i") })).toHaveCount(0);
+    await page.getByTestId("operators-filter-all").click();
+    await expect(rowOf().getByTestId("status-dot")).toHaveAttribute("data-status", "active");
   });
 
   test("Order Delivery page renders the orders table or an empty-state", async ({ page }) => {
