@@ -36,7 +36,7 @@ def test_a_set_switches_on_and_keeps_what_was_set_up(auth_client, db_session, se
     db_session.commit()
     res = auth_client.post("/api/automations/presets/small")
     assert res.status_code == 200, res.text
-    assert res.json()["switched_on"] == ["due_reminders", "cash_up", "low_stock", "wet_palay"]
+    assert res.json()["switched_on"] == ["due_reminders", "cash_up", "cash_count", "low_stock", "wet_palay"]
     db_session.expire_all()
     digest = db_session.query(AutomationRule).filter(AutomationRule.recipe == "owner_digest").one()
     assert digest.params == {"send_at": "05:00", "email": False}

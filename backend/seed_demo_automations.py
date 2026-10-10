@@ -35,6 +35,7 @@ from decimal import Decimal
 
 from sqlalchemy import delete, select
 
+from app.automations.cash import cash_received
 from app.automations.engine import entitled
 from app.core.database import SessionLocal
 from app.core.tenancy import set_search_path
@@ -42,6 +43,7 @@ from app.core.timezones import tenant_zone
 from app.models.action import ActionItem
 from app.models.activity import ActivityLog
 from app.models.automation import AutomationRule
+from app.models.cash import CashCount
 from app.models.collections import CollectionFollowUp
 from app.models.company import Branch
 from app.models.costs import Expense, ExpenseCategory
@@ -108,6 +110,7 @@ def _reset(db, cid: uuid.UUID) -> None:
         delete(ActivityLog).where(ActivityLog.detail.like(f"%{MARKER}%")),
         delete(ActionItem).where(ActionItem.source_key.like(f"{MARKER}:task:%")),
         delete(CollectionFollowUp).where(CollectionFollowUp.note.like(f"%[{MARKER}]")),
+        delete(CashCount).where(CashCount.note.like(f"%[{MARKER}]")),
     ):
         db.execute(stmt)
     db.flush()
@@ -730,6 +733,32 @@ def seed(db, username: str, *, reset: bool) -> str:
                     acknowledged_at=now if state == "acknowledged" else None,
                 )
             )
+
+    # ── cash counts: a week of them, one short and not yet reviewed ──────────
+    cashier_user = staff.get("cashier", owner)
+    drawer = Decimal(5_000)
+    for back in range(7, 0, -1):
+        on = today - timedelta(days=back)
+        if db.query(CashCount).filter(CashCount.count_date == on).first() is not None:
+            continue
+        received = sum((amount for _, amount in cash_received(db, on)), Decimal(0))
+        paid_out = Decimal(rng.choice((0, 500, 1_200, 2_000)))
+        short = Decimal(650) if back == 2 else Decimal(0)
+        counted = drawer + received - paid_out - short
+        db.add(
+            CashCount(
+                company_id=cid,
+                count_date=on,
+                opening=drawer,
+                cash_in=received,
+                cash_out=paid_out,
+                counted=counted,
+                taken_out=max(Decimal(0), counted - Decimal(5_000)),
+                note=f"Demo count [{MARKER}]",
+                counted_by=cashier_user.id,
+            )
+        )
+        drawer = min(counted, Decimal(5_000))
 
     # ── collections: a promise not kept, and one still to come ───────────────
     from app.automations.collections import worklist

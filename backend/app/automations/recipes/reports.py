@@ -365,7 +365,7 @@ def _cash_up(ctx: RecipeContext, params: BaseModel) -> list[Notice]:
             Notice(
                 title=f"Cash-up for {today:%a %d %b}: no payments",
                 body="No payments were recorded today.",
-                link="/sales",
+                link="/cash",
                 dedupe_key=f"cash_up:{today.isoformat()}",
             )
         ]
@@ -388,7 +388,7 @@ def _cash_up(ctx: RecipeContext, params: BaseModel) -> list[Notice]:
         Notice(
             title=f"Cash-up for {today:%a %d %b}: {peso(total)} received",
             body="\n".join(lines),
-            link="/sales",
+            link="/cash",
             dedupe_key=f"cash_up:{today.isoformat()}",
         )
     ]
@@ -397,7 +397,10 @@ def _cash_up(ctx: RecipeContext, params: BaseModel) -> list[Notice]:
 CASH_UP = Recipe(
     code="cash_up",
     title="End-of-day cash-up",
-    description="Each evening, today's payments by method and the cash each person took, to count the drawer against.",
+    description=(
+        "Each evening, today's payments by method and the cash each person took, to count the drawer "
+        "against on the Cash count page."
+    ),
     group="reports",
     section="sales",
     default_roles=("owner", "cashier"),

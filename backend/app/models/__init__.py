@@ -2,6 +2,7 @@ from .action import ActionItem
 from .activity import ActivityLog
 from .auth_session import AuthSession
 from .automation import AutomationRule, AutomationSettings, AutomationState
+from .cash import CashCount
 from .collections import CollectionFollowUp
 from .company import Branch, Company
 from .compliance import ComplianceReport
@@ -37,6 +38,7 @@ __all__ = [
     "AutomationRule",
     "AutomationSettings",
     "AutomationState",
+    "CashCount",
     "CollectionFollowUp",
     "JobRun",
     "Notification",

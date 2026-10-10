@@ -33,6 +33,7 @@ SMALL = (
     "owner_digest",
     "due_reminders",
     "cash_up",
+    "cash_count",
     "low_stock",
     "wet_palay",
 )
@@ -69,7 +70,7 @@ PRESETS: dict[str, Preset] = {
             "small",
             "Small mill, run by the owner",
             "The essentials, with nothing to set up: yesterday's figures each morning, who owes you, "
-            "the day's cash, rice running low, and wet palay waiting to dry.",
+            "the day's cash and the drawer count, rice running low, and wet palay waiting to dry.",
             SMALL,
         ),
         Preset(
