@@ -3,12 +3,11 @@ something on every page the automations lead to."""
 
 from __future__ import annotations
 
-from seed_demo_automations import seed
-
 from app.models.action import ActionItem
 from app.models.automation import AutomationRule
 from app.models.cash import CashCount
 from app.models.maintenance import Equipment
+from seed_demo_automations import seed
 
 
 def test_the_demo_fills_the_new_pages(db_session, seed_owner):
