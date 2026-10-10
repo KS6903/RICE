@@ -1,119 +1,11 @@
 import { NavLink } from "react-router-dom";
-import {
-  LayoutDashboard,
-  Wheat,
-  Factory,
-  Package,
-  ShoppingCart,
-  Receipt,
-  BarChart3,
-  Users,
-  Settings,
-  IdCard,
-  Lock,
-  Truck,
-  HardHat,
-  Workflow,
-  ListChecks,
-  HandCoins,
-  Wallet,
-  ClipboardList,
-  Wrench,
-} from "lucide-react";
+import { Settings, Lock } from "lucide-react";
 import riceLogo from "../../assets/Rice_Logo.svg";
 import { clsx } from "clsx";
 import { useFeature } from "../../hooks/useFeature";
 import { useAccess } from "../../hooks/useAccess";
 import { useSubLock } from "../SubscriptionGuard";
-import type { AppSection } from "@rice-mill/shared";
-
-const NAV: {
-  to: string;
-  label: string;
-  icon: React.ElementType;
-  end?: boolean;
-  feature: string | null;
-  section: AppSection;
-}[] = [
-  {
-    to: "/",
-    label: "Dashboard",
-    icon: LayoutDashboard,
-    end: true,
-    feature: "dashboard",
-    section: "dashboard",
-  },
-  { to: "/paddy", label: "Paddy / Palay", icon: Wheat, feature: "paddy", section: "paddy" },
-  { to: "/milling", label: "Milling", icon: Factory, feature: "milling", section: "milling" },
-  {
-    to: "/maintenance",
-    label: "Maintenance",
-    icon: Wrench,
-    feature: "automations",
-    section: "milling",
-  },
-  {
-    to: "/inventory",
-    label: "Inventory",
-    icon: Package,
-    feature: "inventory",
-    section: "inventory",
-  },
-  {
-    to: "/stock-count",
-    label: "Stock count",
-    icon: ClipboardList,
-    feature: "automations",
-    section: "inventory",
-  },
-  { to: "/sales", label: "Sales", icon: ShoppingCart, feature: "sales", section: "sales" },
-  {
-    to: "/cash",
-    label: "Cash count",
-    icon: Wallet,
-    feature: "automations",
-    section: "sales",
-  },
-  {
-    to: "/collections",
-    label: "Collections",
-    icon: HandCoins,
-    feature: "automations",
-    section: "sales",
-  },
-  { to: "/dispatch", label: "Dispatch", icon: Truck, feature: "sales", section: "dispatch" },
-  {
-    to: "/operators",
-    label: "Field Operators",
-    icon: HardHat,
-    feature: "sales",
-    section: "operators",
-  },
-  { to: "/costs", label: "Expenses", icon: Receipt, feature: "expenses", section: "expenses" },
-  { to: "/reports", label: "Reports", icon: BarChart3, feature: "dashboard", section: "reports" },
-  {
-    to: "/tasks",
-    label: "To do",
-    icon: ListChecks,
-    feature: "automations",
-    section: "tasks",
-  },
-  {
-    to: "/automations",
-    label: "Automations",
-    icon: Workflow,
-    feature: "automations",
-    section: "automations",
-  },
-  {
-    to: "/employees",
-    label: "Employees",
-    icon: IdCard,
-    feature: "employees",
-    section: "employees",
-  },
-  { to: "/users", label: "Users", icon: Users, feature: "users", section: "users" },
-];
+import { NAV_GROUPS } from "./navigation";
 
 function NavItem({
   to,
@@ -123,6 +15,7 @@ function NavItem({
   feature,
   locked,
   readOnly,
+  hint,
 }: {
   to: string;
   label: string;
@@ -131,6 +24,7 @@ function NavItem({
   feature: string | null;
   locked?: boolean;
   readOnly?: boolean;
+  hint?: string;
 }) {
   const has = useFeature(feature || "dashboard");
   const allowed = has && !locked;
@@ -139,6 +33,7 @@ function NavItem({
     <NavLink
       key={to}
       to={target}
+      data-tour={`nav:${to}`}
       end={allowed ? end : false}
       className={({ isActive }) =>
         clsx("nav-link", allowed && isActive && "is-active", !allowed && "opacity-60")
@@ -146,8 +41,8 @@ function NavItem({
       title={
         allowed
           ? readOnly
-            ? "View only — your role can't make changes here"
-            : undefined
+            ? `${hint ?? label}. View only: your role can't make changes here.`
+            : hint
           : locked
             ? "Subscription required — click to view billing"
             : "Upgrade required — click to view billing"
@@ -181,8 +76,12 @@ export default function Sidebar() {
   const subLock = useSubLock();
   const locked = subLock !== null;
   const { canView, isReadOnly } = useAccess();
-  // Hide sections the user's role can't see at all; mark view-only ones.
-  const visibleNav = NAV.filter((item) => canView(item.section));
+  // Hide sections the user's role can't see at all (and headings left with
+  // nothing under them); mark view-only ones.
+  const visibleGroups = NAV_GROUPS.map((g) => ({
+    ...g,
+    items: g.items.filter((item) => canView(item.section)),
+  })).filter((g) => g.items.length > 0);
   return (
     <aside className="relative w-64 shrink-0 flex flex-col glass border-r border-soft">
       <div className="pointer-events-none absolute -top-10 -left-10 h-40 w-40 rounded-full bg-grad-brand opacity-20 blur-3xl" />
@@ -204,18 +103,30 @@ export default function Sidebar() {
         </div>
       </div>
 
-      <nav className="relative flex-1 px-3 py-4 space-y-1 overflow-y-auto">
-        <p className="px-3 pb-2 text-[11px] font-bold uppercase tracking-[0.1em] text-muted">
-          Operations
-        </p>
-        {visibleNav.map((item) => (
-          <NavItem key={item.to} {...item} locked={locked} readOnly={isReadOnly(item.section)} />
+      <nav className="relative flex-1 px-3 py-4 space-y-4 overflow-y-auto">
+        {visibleGroups.map((group) => (
+          <div key={group.title ?? "home"} className="space-y-1">
+            {group.title && (
+              <p className="px-3 pb-1 text-[11px] font-bold uppercase tracking-[0.1em] text-muted">
+                {group.title}
+              </p>
+            )}
+            {group.items.map((item) => (
+              <NavItem
+                key={item.to}
+                {...item}
+                locked={locked}
+                readOnly={isReadOnly(item.section)}
+              />
+            ))}
+          </div>
         ))}
       </nav>
 
       <div className="relative px-3 py-3 border-t border-soft">
         <NavLink
           to="/settings"
+          data-tour="nav:/settings"
           className={({ isActive }) =>
             clsx("nav-link", isActive && "is-active", locked && "ring-2 ring-amber-400/60")
           }

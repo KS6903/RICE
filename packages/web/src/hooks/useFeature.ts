@@ -1,3 +1,4 @@
+import type { User } from "@rice-mill/shared";
 import { useAuthStore } from "../stores/authStore";
 
 /**
@@ -6,6 +7,11 @@ import { useAuthStore } from "../stores/authStore";
  */
 export function useFeature(code: string): boolean {
   const user = useAuthStore((s) => s.user);
+  return planHas(user, code);
+}
+
+/** The same check outside a hook, for lists that test several codes at once. */
+export function planHas(user: User | null | undefined, code: string): boolean {
   if (!user) return false;
   if (user.is_platform_admin) return true;
   const features = user.features;
