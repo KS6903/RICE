@@ -9,6 +9,7 @@ import {
   type ReactNode,
 } from "react";
 import { createPortal } from "react-dom";
+import { Link } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   AlertTriangle,
@@ -1097,6 +1098,15 @@ export default function AutomationsPage() {
                     tabs come first, and stay about the mill's own work. */}
                 {current.key === "advisor" && ai && (
                   <AISettingsCard ai={ai} isOwner={role === "owner"} />
+                )}
+                {current.key === "receivables" && (
+                  <p className="text-sm text-secondary">
+                    These alerts lead to the{" "}
+                    <Link to="/collections" className="link font-semibold">
+                      collections list
+                    </Link>
+                    : who to call first, a reminder to send, and what they promised.
+                  </p>
                 )}
                 <div className={CARD_GRID}>
                   {recipes

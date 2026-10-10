@@ -42,6 +42,7 @@ from app.core.timezones import tenant_zone
 from app.models.action import ActionItem
 from app.models.activity import ActivityLog
 from app.models.automation import AutomationRule
+from app.models.collections import CollectionFollowUp
 from app.models.company import Branch
 from app.models.costs import Expense, ExpenseCategory
 from app.models.fleet import DispatchTrip, Driver, Truck
@@ -106,6 +107,7 @@ def _reset(db, cid: uuid.UUID) -> None:
         delete(Expense).where(Expense.reference_no.like("EXP-AUTO-%")),
         delete(ActivityLog).where(ActivityLog.detail.like(f"%{MARKER}%")),
         delete(ActionItem).where(ActionItem.source_key.like(f"{MARKER}:task:%")),
+        delete(CollectionFollowUp).where(CollectionFollowUp.note.like(f"%[{MARKER}]")),
     ):
         db.execute(stmt)
     db.flush()
@@ -726,6 +728,30 @@ def seed(db, username: str, *, reset: bool) -> str:
                     due_at=due_at,
                     status=state,
                     acknowledged_at=now if state == "acknowledged" else None,
+                )
+            )
+
+    # ── collections: a promise not kept, and one still to come ───────────────
+    from app.automations.collections import worklist
+
+    owing = [d for d in worklist(db, today) if d.overdue > 0][:2]
+    for d, promised_on, said in zip(
+        owing,
+        (today - timedelta(days=2), today + timedelta(days=3)),
+        ("Said they'd pay after their harvest sale.", "Paying when their buyer settles."),
+        strict=False,
+    ):
+        note = f"{said} [{MARKER}]"
+        if db.query(CollectionFollowUp).filter(CollectionFollowUp.note == note).first() is None:
+            db.add(
+                CollectionFollowUp(
+                    company_id=cid,
+                    customer_id=d.customer.id,
+                    outcome="promised",
+                    promised_date=promised_on,
+                    note=note,
+                    created_by=accountant.id,
+                    created_at=datetime.now(timezone.utc) - timedelta(days=5),
                 )
             )
 

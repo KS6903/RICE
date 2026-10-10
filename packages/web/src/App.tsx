@@ -23,6 +23,7 @@ import CostsPage from "./pages/CostsPage";
 import ReportsPage from "./pages/ReportsPage";
 import AutomationsPage from "./pages/AutomationsPage";
 import TasksPage from "./pages/TasksPage";
+import CollectionsPage from "./pages/CollectionsPage";
 import UsersPage from "./pages/UsersPage";
 import EmployeesPage from "./pages/EmployeesPage";
 import SettingsPage from "./pages/SettingsPage";
@@ -265,6 +266,16 @@ function AppRoutes() {
             <RoleGate section="automations">
               <FeatureGate code="automations" label="Automations" requires="Enterprise">
                 <AutomationsPage />
+              </FeatureGate>
+            </RoleGate>
+          }
+        />
+        <Route
+          path="collections"
+          element={
+            <RoleGate section="sales">
+              <FeatureGate code="automations" label="Collections" requires="Enterprise">
+                <CollectionsPage />
               </FeatureGate>
             </RoleGate>
           }

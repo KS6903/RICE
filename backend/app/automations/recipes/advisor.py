@@ -555,7 +555,7 @@ def _collection_drafts(ctx: RecipeContext, params: BaseModel) -> list[Notice]:
             ctx,
             title=f"Payment reminders ready to send: {len(customers)}",
             dedupe_key=f"ai_collection_drafts:{today.isoformat()}",
-            link="/sales",
+            link="/collections",
             task=task,
             facts={"overdue_customers": customers},
             figures=[

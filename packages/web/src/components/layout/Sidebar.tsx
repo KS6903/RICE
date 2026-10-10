@@ -15,6 +15,7 @@ import {
   HardHat,
   Workflow,
   ListChecks,
+  HandCoins,
 } from "lucide-react";
 import riceLogo from "../../assets/Rice_Logo.svg";
 import { clsx } from "clsx";
@@ -49,6 +50,13 @@ const NAV: {
     section: "inventory",
   },
   { to: "/sales", label: "Sales", icon: ShoppingCart, feature: "sales", section: "sales" },
+  {
+    to: "/collections",
+    label: "Collections",
+    icon: HandCoins,
+    feature: "automations",
+    section: "sales",
+  },
   { to: "/dispatch", label: "Dispatch", icon: Truck, feature: "sales", section: "dispatch" },
   {
     to: "/operators",

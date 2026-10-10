@@ -17,6 +17,7 @@ from .api import (
     billing,
     branches,
     canva,
+    collections,
     costs,
     data_export,
     dispatch,
@@ -144,6 +145,7 @@ app.include_router(activity.router, prefix="/api/activity", tags=["Activity Log"
 app.include_router(notifications.router, prefix="/api/notifications", tags=["Notifications"], dependencies=mfa_gate)
 app.include_router(automations.router, prefix="/api/automations", tags=["Automations"], dependencies=mfa_gate)
 app.include_router(actions.router, prefix="/api/actions", tags=["Tasks"], dependencies=mfa_gate)
+app.include_router(collections.router, prefix="/api/collections", tags=["Collections"], dependencies=mfa_gate)
 app.include_router(fleet.router, prefix="/api", tags=["Fleet"], dependencies=mfa_gate)
 app.include_router(data_export.router, prefix="/api/export", tags=["Data Export"], dependencies=mfa_gate)
 
