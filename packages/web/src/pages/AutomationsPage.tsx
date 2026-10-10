@@ -934,6 +934,85 @@ function AISettingsCard({ ai, isOwner }: { ai: AISettings; isOwner: boolean }) {
   );
 }
 
+/** Where to start: the set of automations that fits the mill's size. */
+function StarterSets({ startOpen }: { startOpen: boolean }) {
+  const queryClient = useQueryClient();
+  const [open, setOpen] = useState(startOpen);
+  const sets = useQuery({
+    queryKey: ["automation-presets"],
+    queryFn: () => automationsService.presets(),
+    enabled: open,
+  });
+  const apply = useMutation({
+    mutationFn: (code: string) => automationsService.applyPreset(code),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["automations"] }),
+  });
+  const titles = new Map(
+    (sets.data?.presets ?? []).flatMap((p) => p.recipes.map((r) => [r.code, r.title] as const)),
+  );
+  return (
+    <section aria-label="Starter sets" className="card space-y-4">
+      <div className="flex items-start justify-between gap-3 flex-wrap">
+        <div>
+          <p className="font-semibold text-primary">Not sure where to start?</p>
+          <p className="text-sm text-secondary">
+            Switch on the set that fits your mill. It only switches things on: what you've set up
+            stays as it is.
+          </p>
+        </div>
+        <button
+          type="button"
+          className="btn-ghost -mr-2"
+          aria-expanded={open}
+          onClick={() => setOpen((o) => !o)}
+        >
+          <ChevronDown
+            size={16}
+            className={`transition-transform ${open ? "rotate-180" : ""}`}
+            aria-hidden
+          />
+          {open ? "Hide the sets" : "Show the sets"}
+        </button>
+      </div>
+      {open && (
+        <div className={CARD_GRID}>
+          {(sets.data?.presets ?? []).map((p) => (
+            <article
+              key={p.code}
+              aria-label={p.title}
+              className="rounded-xl ring-1 ring-soft p-4 space-y-3 flex flex-col"
+            >
+              <h3 className="font-bold text-primary">{p.title}</h3>
+              <p className="text-sm text-secondary">{p.description}</p>
+              <p className="text-xs text-muted">{p.recipes.length} automations</p>
+              <button
+                type="button"
+                className="btn-secondary mt-auto self-start"
+                disabled={apply.isPending}
+                onClick={() => apply.mutate(p.code)}
+              >
+                Switch these on
+              </button>
+            </article>
+          ))}
+        </div>
+      )}
+      {apply.isSuccess && (
+        <p className="text-sm text-emerald-700 dark:text-emerald-400" role="status">
+          {apply.data.switched_on.length === 0
+            ? "Everything in that set was already on."
+            : `Switched on: ${apply.data.switched_on.map((c) => titles.get(c) ?? c).join(", ")}.`}
+        </p>
+      )}
+      {apply.isError && (
+        <p className="text-sm text-rose-600 dark:text-rose-400" role="alert">
+          {errorText(apply.error, "Couldn't switch the set on. Try again.")}
+        </p>
+      )}
+    </section>
+  );
+}
+
 function HealthNotice({ health }: { health: AutomationsHealth }) {
   const { failed, retrying } = health.emails;
   if (health.scheduler_running && failed === 0 && retrying === 0) return null;
@@ -983,7 +1062,7 @@ function HealthNotice({ health }: { health: AutomationsHealth }) {
 }
 
 export default function AutomationsPage() {
-  const { isReadOnly, role } = useAccess();
+  const { isReadOnly, canEdit, role } = useAccess();
   const readOnly = isReadOnly("automations");
   const list = useQuery({ queryKey: ["automations"], queryFn: () => automationsService.list() });
   // Only the groups this page has tabs for.
@@ -1057,6 +1136,7 @@ export default function AutomationsPage() {
       ) : (
         <div className="space-y-5">
           {list.data?.health && <HealthNotice health={list.data.health} />}
+          {canEdit("automations") && <StarterSets startOpen={onCount === 0} />}
           {current && (
             <>
               <div

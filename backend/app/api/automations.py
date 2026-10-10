@@ -16,7 +16,7 @@ from pydantic import BaseModel, Field, ValidationError, field_validator
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from ..automations import ai, engine
+from ..automations import ai, engine, presets
 from ..automations.base import Field as RecipeField
 from ..automations.base import Recipe, RecipeProblem
 from ..automations.recipes import RECIPES
@@ -202,6 +202,32 @@ def update_ai(body: AISettingsUpdate, current_user=Depends(get_current_user), db
     settings.ai_language = body.language
     db.commit()
     return _ai_out(db, current_user.company_id)
+
+
+@router.get("/presets")
+def list_presets():
+    return {
+        "presets": [
+            {
+                "code": p.code,
+                "title": p.title,
+                "description": p.description,
+                "recipes": [{"code": c, "title": RECIPES[c].title} for c in p.recipes],
+            }
+            for p in presets.PRESETS.values()
+        ]
+    }
+
+
+@router.post("/presets/{code}", dependencies=manage)
+def apply_preset(code: str, current_user=Depends(get_current_user), db: Session = Depends(get_db)):
+    """Switch on a starter set. Only switches on; what's set up stays as it is."""
+    preset = presets.PRESETS.get(code)
+    if preset is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No such starter set")
+    switched = presets.apply(db, current_user.company_id, preset, current_user.id)
+    db.commit()
+    return {"switched_on": switched}
 
 
 @router.put("/{code}", dependencies=manage)

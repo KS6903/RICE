@@ -74,6 +74,14 @@ export type AutomationsHealth = {
   emails: { failed: number; retrying: number };
 };
 
+/** A starter set: what a mill of one size should switch on first. */
+export type AutomationPreset = {
+  code: "small" | "growing" | "large";
+  title: string;
+  description: string;
+  recipes: { code: string; title: string }[];
+};
+
 export type AutomationUpdate = {
   enabled: boolean;
   params: Record<string, string | number | boolean>;
@@ -89,6 +97,15 @@ export class AutomationsService {
 
   list(): Promise<{ recipes: Automation[]; ai?: AISettings; health?: AutomationsHealth }> {
     return this.http.get("/automations/").then((r) => r.data);
+  }
+
+  presets(): Promise<{ presets: AutomationPreset[] }> {
+    return this.http.get("/automations/presets").then((r) => r.data);
+  }
+
+  /** Switch a starter set on; what's already set up stays as it is. */
+  applyPreset(code: string): Promise<{ switched_on: string[] }> {
+    return this.http.post(`/automations/presets/${code}`).then((r) => r.data);
   }
 
   updateAI(body: { enabled: boolean; language: string }): Promise<AISettings> {

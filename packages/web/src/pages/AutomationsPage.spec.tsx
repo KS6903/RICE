@@ -58,6 +58,16 @@ const bigSale: Automation = {
   params: { sale_over: 100000, older_than: 24, mode: "warn" },
 };
 
+const smallSet = {
+  code: "small" as const,
+  title: "Small mill, run by the owner",
+  description: "The essentials, with nothing to set up.",
+  recipes: [
+    { code: "owner_digest", title: "Morning summary" },
+    { code: "cash_up", title: "End-of-day cash-up" },
+  ],
+};
+
 const owner: User = {
   id: "u1",
   username: "mill1",
@@ -92,6 +102,7 @@ const tab = (name: string) => screen.getByRole("tab", { name });
 describe("AutomationsPage", () => {
   beforeEach(() => {
     vi.spyOn(automationsService, "list").mockResolvedValue({ recipes: [digest, bigSale] });
+    vi.spyOn(automationsService, "presets").mockResolvedValue({ presets: [smallSet] });
   });
 
   afterEach(() => {
@@ -145,6 +156,40 @@ describe("AutomationsPage", () => {
     expect(box).toHaveTextContent(/haven't run yet/);
     expect(box).toHaveTextContent(/2 emails from your automations couldn't be delivered/);
     expect(box).toHaveTextContent(/1 email didn't go through the first time/);
+  });
+
+  it("offers the starter sets while nothing is on, and switches one on", async () => {
+    useAuthStore.setState({ user: owner });
+    const apply = vi
+      .spyOn(automationsService, "applyPreset")
+      .mockResolvedValue({ switched_on: ["owner_digest", "cash_up"] });
+    draw();
+    const sets = await screen.findByRole("region", { name: "Starter sets" });
+    const small = await within(sets).findByRole("article", {
+      name: "Small mill, run by the owner",
+    });
+    fireEvent.click(within(small).getByRole("button", { name: "Switch these on" }));
+    await waitFor(() => expect(apply).toHaveBeenCalledWith("small"));
+    expect(
+      await within(sets).findByText("Switched on: Morning summary, End-of-day cash-up."),
+    ).toBeInTheDocument();
+  });
+
+  it("keeps the starter sets folded once something is on, and away from read-only users", async () => {
+    useAuthStore.setState({ user: owner });
+    vi.mocked(automationsService.list).mockResolvedValue({
+      recipes: [{ ...digest, enabled: true }, bigSale],
+    });
+    const { unmount } = draw();
+    const sets = await screen.findByRole("region", { name: "Starter sets" });
+    expect(within(sets).getByRole("button", { name: "Show the sets" })).toBeInTheDocument();
+    expect(automationsService.presets).not.toHaveBeenCalled();
+    unmount();
+
+    useAuthStore.setState({ user: { ...owner, role: "accountant" } });
+    draw();
+    await screen.findByRole("heading", { name: "Morning summary" });
+    expect(screen.queryByRole("region", { name: "Starter sets" })).toBeNull();
   });
 
   it("moves between tabs with the arrow keys", async () => {
@@ -464,6 +509,10 @@ const aiOff = {
 };
 
 describe("AutomationsPage AI advisor", () => {
+  beforeEach(() => {
+    vi.spyOn(automationsService, "presets").mockResolvedValue({ presets: [] });
+  });
+
   afterEach(() => {
     vi.restoreAllMocks();
     useAuthStore.setState({ user: null });
