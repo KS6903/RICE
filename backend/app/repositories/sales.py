@@ -5,11 +5,12 @@ from __future__ import annotations
 import uuid
 from typing import Sequence
 
-from sqlalchemy import select
+from sqlalchemy import Integer, cast, func, select
 from sqlalchemy.orm import joinedload, selectinload
 
 from ..models.sales import Invoice, PriceList, SalesOrder, SalesOrderItem
 from ..models.supplier_customer import Customer
+from ..services.doc_numbers import order_pattern
 from .base import BaseRepository
 
 
@@ -54,6 +55,16 @@ class SalesOrderRepository(BaseRepository[SalesOrder]):
 
     def count(self) -> int:
         return self.db.query(SalesOrder).count()
+
+    def last_number(self, code: str) -> int:
+        """The highest n among orders numbered <code>-n (0 when there are none).
+        Older orders, numbered SO-<date>-<n>, are not part of this sequence."""
+        top = (
+            self.db.query(func.max(cast(func.substr(SalesOrder.order_no, len(code) + 2), Integer)))
+            .filter(SalesOrder.order_no.op("~")(order_pattern(code)))
+            .scalar()
+        )
+        return int(top or 0)
 
 
 class InvoiceRepository(BaseRepository[Invoice]):

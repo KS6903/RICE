@@ -30,7 +30,7 @@ def test_order_invoice_payment_flow(auth_client):
     )
     assert order.status_code == 201, order.text
     o = order.json()
-    assert re.match(r"^SO-\d{8}-\d{4}$", o["order_no"]), o["order_no"]
+    assert re.match(r"^TM-\d{4,}$", o["order_no"]), o["order_no"]
     assert o["status"] == "confirmed"
     assert float(o["subtotal"]) == 5000.0
     assert float(o["total_amount"]) == 4500.0
@@ -127,6 +127,25 @@ def test_order_rejects_negative_price_quantity_and_discount(auth_client):
     # A free item (price 0) and a 100% discount are still allowed.
     assert order({"unit_price_per_kg": "0"}).status_code == 201
     assert order(discount_pct="100").status_code == 201
+
+
+def test_order_numbers_are_short_and_keep_counting(auth_client):
+    customer = auth_client.post("/api/sales/customers", json={"name": "Numbers Co"}).json()
+
+    def place():
+        res = auth_client.post(
+            "/api/sales/orders",
+            json={
+                "customer_id": customer["id"],
+                "order_date": "2026-06-05",
+                "items": [{"item_type": "milled_rice", "quantity_kg": "1", "unit_price_per_kg": "1"}],
+            },
+        )
+        assert res.status_code == 201, res.text
+        return res.json()["order_no"]
+
+    # "Test Mill" is TM: the number carries the rice mill's own code.
+    assert [place(), place(), place()] == ["TM-0001", "TM-0002", "TM-0003"]
 
 
 def test_invoice_for_unknown_order_404(auth_client):

@@ -28,6 +28,7 @@ from ..repositories.sales import (
 )
 from ..services.base import BaseService
 from ..services.canva_color import pick_unused_color
+from ..services.doc_numbers import mill_code
 
 
 class SalesService(BaseService):
@@ -142,7 +143,7 @@ class SalesService(BaseService):
                 SalesOrder(
                     company_id=self.current_user.company_id,
                     branch_id=self.current_user.branch_id,
-                    order_no=self._next_no("SO", self.orders.count()),
+                    order_no=self._next_order_no(),
                     customer_id=data.customer_id,
                     order_date=data.order_date,
                     delivery_date=data.delivery_date,
@@ -233,6 +234,12 @@ class SalesService(BaseService):
         return payment
 
     # ── helpers ───────────────────────────────────────────────────────────────
+
+    def _next_order_no(self) -> str:
+        """RM1-0042: the mill's own code, then one more than its highest so far."""
+        company = self.current_user.company
+        code = mill_code(company.name if company else None)
+        return f"{code}-{self.orders.last_number(code) + 1:04d}"
 
     @staticmethod
     def _next_no(prefix: str, existing_count: int) -> str:

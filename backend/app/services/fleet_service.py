@@ -11,6 +11,7 @@ from ..core.exceptions import NotFoundError
 from ..models.fleet import DispatchTrip, Driver, Truck
 from ..repositories.fleet import DriverRepository, TripRepository, TruckRepository
 from .base import BaseService
+from .doc_numbers import mill_code
 
 
 class FleetService(BaseService):
@@ -148,7 +149,9 @@ class FleetService(BaseService):
         trip = DispatchTrip(
             company_id=self.current_user.company_id,
             branch_id=self.current_user.branch_id,
-            trip_no=self.trips.next_trip_no(),
+            trip_no=self.trips.next_trip_no(
+                mill_code(self.current_user.company.name if self.current_user.company else None)
+            ),
             created_by=self.current_user.id,
             **data.model_dump(),
         )

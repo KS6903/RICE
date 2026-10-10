@@ -3,7 +3,10 @@
 import uuid
 from typing import Sequence
 
+from sqlalchemy import Integer, cast, func
+
 from ..models.fleet import DispatchTrip, Driver, Truck
+from ..services.doc_numbers import trip_pattern
 from .base import BaseRepository
 
 
@@ -50,8 +53,12 @@ class TripRepository(BaseRepository[DispatchTrip]):
     ) -> DispatchTrip | None:  # type: ignore[override]
         return self.db.query(DispatchTrip).filter(DispatchTrip.id == id, DispatchTrip.company_id == company_id).first()
 
-    def next_trip_no(self) -> str:
-        # trip_no is globally unique, so the counter must be global too —
-        # a per-company counter would collide across tenants on DT-00001.
-        count = self.db.query(DispatchTrip).count()
-        return f"DT-{count + 1:05d}"
+    def next_trip_no(self, code: str) -> str:
+        """RM1-T0001, RM1-T0002, ...: the mill's code, then one more than its
+        highest trip number so far, so a number is never handed out twice."""
+        top = (
+            self.db.query(func.max(cast(func.substr(DispatchTrip.trip_no, len(code) + 3), Integer)))
+            .filter(DispatchTrip.trip_no.op("~")(trip_pattern(code)))
+            .scalar()
+        )
+        return f"{code}-T{int(top or 0) + 1:04d}"

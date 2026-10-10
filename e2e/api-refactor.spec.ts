@@ -207,7 +207,8 @@ test.describe("Refactored API contract (paddy / inventory / activity)", () => {
     });
     expect(orderRes.status()).toBe(201);
     const order = await orderRes.json();
-    expect(order.order_no).toMatch(/^SO-\d{8}-\d{4}$/);
+    // Orders carry the mill's own code: "Disposable E2E Mill" is DEEM2.
+    expect(order.order_no).toMatch(/^DEEM2-\d{4}$/);
     expect(Number(order.total_amount)).toBe(4500); // 5000 - 10%
 
     const invRes = await api.post("/api/sales/invoices", {

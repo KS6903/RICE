@@ -180,7 +180,7 @@ def test_the_guard_blocks_an_order_over_the_limit_until_the_owner_approves(
     assert res.status_code == 201, res.text
     db_session.expire_all()
     [notice] = db_session.query(Notification).filter(Notification.user_id == seed_owner.id).all()
-    assert notice.title.startswith("Order over credit limit: SO-")
+    assert notice.title.startswith("Order over credit limit: TM-")
     assert notice.body.endswith("Approved over the limit by Test Owner.")
 
 
