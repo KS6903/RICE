@@ -70,7 +70,7 @@ export default function MfaEnrollmentGate() {
           <div className="space-y-4">
             <BackupCodes codes={backupCodes} />
             <button onClick={finish} className="btn-primary w-full">
-              I&apos;ve saved my codes — sign in again
+              I&apos;ve saved my codes, sign in again
             </button>
           </div>
         ) : !enroll ? (

@@ -65,7 +65,7 @@ describe("MfaCard: two-factor is optional, and can be switched off and back on",
       .mockResolvedValue({ message: "MFA enabled", backup_codes: ["AAAA-1111", "BBBB-2222"] });
     draw();
     expect(
-      await screen.findByText("Off — your earlier authenticator is still on file."),
+      await screen.findByText("Off. Your earlier authenticator is still on file."),
     ).toBeTruthy();
     fireEvent.click(
       screen.getByRole("button", { name: "Switch back on with my earlier authenticator" }),

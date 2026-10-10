@@ -2232,9 +2232,9 @@ export function MfaCard() {
           <h3 className="text-lg font-bold text-primary">Two-factor authentication</h3>
           <p className="text-sm text-secondary">
             {mfaEnabled
-              ? "Enabled — codes required at sign-in."
+              ? "Enabled. Codes are required at sign-in."
               : previous
-                ? "Off — your earlier authenticator is still on file."
+                ? "Off. Your earlier authenticator is still on file."
                 : "Add a 6-digit authenticator code to sign-in."}
           </p>
         </div>
@@ -2243,10 +2243,7 @@ export function MfaCard() {
       {recommended && !enroll && !reuse && (
         <div className="flex items-start gap-2 px-3 py-2.5 rounded-xl bg-amber-500/15 ring-1 ring-inset ring-amber-500/40 text-sm font-medium text-amber-700 dark:text-amber-300">
           <AlertCircle size={16} className="mt-0.5 shrink-0" />
-          <span>
-            As an owner/admin account, turning on two-factor authentication is recommended. It is
-            your choice, and you can switch it off and on again later.
-          </span>
+          <span>As a Boss account, turning on two-factor authentication is recommended.</span>
         </div>
       )}
 
@@ -2254,7 +2251,7 @@ export function MfaCard() {
         <div className="space-y-4">
           <BackupCodes codes={backupCodes} />
           <button onClick={() => void logout()} className="btn-primary w-full">
-            I&apos;ve saved my codes — sign in again
+            I&apos;ve saved my codes, sign in again
           </button>
         </div>
       )}
