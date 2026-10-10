@@ -46,6 +46,7 @@ GROWING = (
     "big_transaction",
     "milling_quality",
     "left_open",
+    "maintenance_due",
     "late_deliveries",
     "no_truck",
     "weekly_summary",

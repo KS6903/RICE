@@ -18,6 +18,7 @@ import {
   HandCoins,
   Wallet,
   ClipboardList,
+  Wrench,
 } from "lucide-react";
 import riceLogo from "../../assets/Rice_Logo.svg";
 import { clsx } from "clsx";
@@ -44,6 +45,13 @@ const NAV: {
   },
   { to: "/paddy", label: "Paddy / Palay", icon: Wheat, feature: "paddy", section: "paddy" },
   { to: "/milling", label: "Milling", icon: Factory, feature: "milling", section: "milling" },
+  {
+    to: "/maintenance",
+    label: "Maintenance",
+    icon: Wrench,
+    feature: "automations",
+    section: "milling",
+  },
   {
     to: "/inventory",
     label: "Inventory",

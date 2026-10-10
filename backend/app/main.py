@@ -28,6 +28,7 @@ from .api import (
     inventory,
     legal,
     locations,
+    maintenance,
     milling,
     notifications,
     paddy,
@@ -150,6 +151,7 @@ app.include_router(actions.router, prefix="/api/actions", tags=["Tasks"], depend
 app.include_router(collections.router, prefix="/api/collections", tags=["Collections"], dependencies=mfa_gate)
 app.include_router(cash.router, prefix="/api/cash", tags=["Cash count"], dependencies=mfa_gate)
 app.include_router(stock_counts.router, prefix="/api/stock-counts", tags=["Stock count"], dependencies=mfa_gate)
+app.include_router(maintenance.router, prefix="/api/equipment", tags=["Maintenance"], dependencies=mfa_gate)
 app.include_router(fleet.router, prefix="/api", tags=["Fleet"], dependencies=mfa_gate)
 app.include_router(data_export.router, prefix="/api/export", tags=["Data Export"], dependencies=mfa_gate)
 

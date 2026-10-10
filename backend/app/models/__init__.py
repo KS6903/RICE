@@ -12,6 +12,7 @@ from .employee import Employee
 from .fleet import DispatchTrip, Driver, Truck
 from .job_run import JobRun
 from .legal import LegalAcceptance
+from .maintenance import Equipment, MaintenanceLog
 from .milling import (
     ByproductInventory,
     MilledRiceInventory,
@@ -41,6 +42,8 @@ __all__ = [
     "AutomationState",
     "CashCount",
     "CollectionFollowUp",
+    "Equipment",
+    "MaintenanceLog",
     "StockCount",
     "StockCountLine",
     "JobRun",
