@@ -1,0 +1,29 @@
+// What each page is for, in a sentence or two. The walkthrough shows it for
+// each stop. Keep it short, and true to what the app does.
+
+export const PAGE_WHAT: Record<string, string> = {
+  "/": "Your home screen: this month's profit, your palay and rice stock, and the weather for drying.",
+  "/paddy":
+    "Record each delivery of palay you buy: variety, weight, moisture and price. It's added to your palay stock.",
+  "/milling":
+    "Record what went into the mill and what came out. Palay leaves your stock; the rice and by-products go into Inventory.",
+  "/maintenance": "When each machine is due for service, counted from the milling it has done.",
+  "/inventory":
+    "Everything in your warehouses, by branch. Already had stock before Oryza? Enter it once with Add inventory.",
+  "/stock-count":
+    "Count what's really on hand. You see what the records say only after saving, so the count stays honest.",
+  "/sales": "Customer orders, then invoices once they're confirmed, plus your customer list.",
+  "/dispatch": "Delivery trips, and your trucks and drivers.",
+  "/operators": "Delivery agents, third-party millers and palay suppliers.",
+  "/collections": "Who owes you money, who to chase first, and a reminder ready to send.",
+  "/cash": "Count the cash drawer at closing. Oryza works out what should be there.",
+  "/costs":
+    "Fuel, power, labor, repairs: everything the mill pays for. With costs in, your profit is real.",
+  "/reports": "Profit and loss for any dates you pick, and more reports on higher plans.",
+  "/tasks": "Problems someone is fixing: who, by when, and what was done.",
+  "/automations": "Reports and alerts that run by themselves. Switch on the ones you want.",
+  "/employees": "Staff records: positions, branches and hire dates. A record here isn't a login.",
+  "/users": "Logins for your staff. Each person's role decides what they can see and change.",
+  "/settings":
+    "Company details, branches, rice varieties, equipment and billing, plus your own password and devices.",
+};

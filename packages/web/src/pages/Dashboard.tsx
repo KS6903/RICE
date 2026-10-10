@@ -13,6 +13,7 @@ import {
   Calendar,
 } from "lucide-react";
 import WeatherWidget from "../components/WeatherWidget";
+import GettingStarted from "../components/GettingStarted";
 import WeatherForecast from "../components/WeatherForecast";
 import {
   Area,
@@ -126,6 +127,9 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-7">
+      {/* First-run checklist; renders nothing once the mill is up and running. */}
+      <GettingStarted />
+
       {/* Hero ribbon — slim financial banner so the business KPIs and charts
           below it sit above the fold. */}
       {canViewReports && (
@@ -285,9 +289,14 @@ export default function Dashboard() {
                 </AreaChart>
               </ResponsiveContainer>
             ) : (
-              <div className="flex items-center justify-center h-56 text-secondary font-medium">
-                <AlertCircle size={16} className="mr-2" />
-                No data yet
+              <div className="flex flex-col items-center justify-center h-56 text-center">
+                <p className="flex items-center text-secondary font-medium">
+                  <AlertCircle size={16} className="mr-2" />
+                  Nothing to chart yet this month
+                </p>
+                <p className="mt-1 text-sm text-muted max-w-xs">
+                  Sales and expenses you record show up here as revenue, costs and profit.
+                </p>
               </div>
             )}
           </div>
@@ -341,9 +350,14 @@ export default function Dashboard() {
               })}
             </div>
           ) : (
-            <div className="flex items-center gap-2 text-secondary font-medium">
-              <AlertCircle size={16} />
-              No inventory data
+            <div className="text-sm">
+              <p className="flex items-center gap-2 text-secondary font-medium">
+                <AlertCircle size={16} />
+                No by-products yet
+              </p>
+              <p className="mt-1 text-muted">
+                Rice hull, bran and broken rice appear here after you mill a batch.
+              </p>
             </div>
           )}
         </div>

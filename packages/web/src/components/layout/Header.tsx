@@ -5,6 +5,7 @@ import { useState, useEffect } from "react";
 import { useCurrentPlan } from "../../hooks/useFeature";
 import LocationPicker from "../LocationPicker";
 import NotificationBell from "./NotificationBell";
+import TourButton from "../help/TourButton";
 import UserAvatar from "../UserAvatar";
 import { roleLabel } from "@rice-mill/shared";
 
@@ -115,6 +116,8 @@ export default function Header() {
         </span>
 
         <PlanBadge />
+
+        <TourButton />
 
         <NotificationBell />
 

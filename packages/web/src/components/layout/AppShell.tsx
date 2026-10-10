@@ -4,6 +4,7 @@ import Header from "./Header";
 import BillingNoticeBanner from "../BillingNoticeBanner";
 import VerifyEmailBanner from "../VerifyEmailBanner";
 import SubscriptionGuard from "../SubscriptionGuard";
+import Tour from "../help/Tour";
 import { useAccountTheme } from "../../hooks/useAccountTheme";
 
 export default function AppShell() {
@@ -23,6 +24,7 @@ export default function AppShell() {
           </div>
         </main>
       </div>
+      <Tour />
     </div>
   );
 }
