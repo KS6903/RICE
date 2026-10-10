@@ -36,6 +36,8 @@ SMALL = (
     "cash_count",
     "low_stock",
     "wet_palay",
+    # Says nothing unless work entered on a desktop app is missing from the figures.
+    "offline_data",
 )
 GROWING = (
     *SMALL,

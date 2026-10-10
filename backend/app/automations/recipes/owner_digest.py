@@ -18,6 +18,7 @@ from ..base import AI_ADVICE_FIELD, Field, Notice, Recipe, RecipeContext
 from ..format import KG_PER_CAVAN
 from ..format import kg as _kg
 from ..format import peso as _peso
+from ..freshness import offline_note
 
 # A summary of yesterday is only useful in the morning. If the jobs runner was
 # down until after this, the day's digest is skipped rather than sent late.
@@ -98,6 +99,9 @@ def _build(ctx: RecipeContext, params: BaseModel) -> list[Notice]:
     if overdue_count:
         noun = "invoice" if overdue_count == 1 else "invoices"
         lines.append(f"Needs attention: {overdue_count} overdue {noun}, {_peso(overdue_balance)} unpaid")
+    missing = offline_note(db, day, day)
+    if missing:
+        lines.append(missing)
     title = f"Yesterday at {ctx.company.name} ({day:%a %d %b})"
     dedupe_key = f"owner_digest:{day.isoformat()}"
     assert isinstance(params, OwnerDigestParams)
