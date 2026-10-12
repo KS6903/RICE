@@ -15,14 +15,17 @@ type Props = {
   disabled?: boolean;
   className?: string;
   placeholder?: string;
+  title?: string;
   "aria-label"?: string;
+  "data-testid"?: string;
 };
 
 const GAP = 6;
 const ROW = 42;
 const MAX_HEIGHT = 288; // max-h-72
+const MAX_WIDTH = 448; // max-w-md
 
-type Place = { left: number; width: number; top?: number; bottom?: number };
+type Place = { left: number; minWidth: number; maxWidth: number; top?: number; bottom?: number };
 
 /**
  * A dropdown in the app's own menu style (the look of the warehouse and
@@ -62,10 +65,14 @@ export default function Select({
     const menuHeight = Math.min(MAX_HEIGHT, options.length * ROW + 8);
     const roomBelow = window.innerHeight - r.bottom;
     const up = roomBelow < menuHeight + GAP && r.top > roomBelow;
+    // As wide as the field, or wider to fit a long choice, but never off screen.
+    const base = {
+      left: r.left,
+      minWidth: r.width,
+      maxWidth: Math.min(MAX_WIDTH, Math.max(r.width, window.innerWidth - r.left - 8)),
+    };
     setPlace(
-      up
-        ? { left: r.left, width: r.width, bottom: window.innerHeight - r.top + GAP }
-        : { left: r.left, width: r.width, top: r.bottom + GAP },
+      up ? { ...base, bottom: window.innerHeight - r.top + GAP } : { ...base, top: r.bottom + GAP },
     );
   };
 
@@ -114,10 +121,19 @@ export default function Select({
     if (open) listRef.current?.focus();
   }, [open]);
 
-  // Keep the highlighted option in view as the arrows move through a long list.
+  // Bring the chosen option to the middle of a long list as it opens, then keep
+  // the highlighted one in view as the arrows move through it.
+  const justOpened = useRef(false);
   useEffect(() => {
-    if (open)
-      document.getElementById(`${listId}-${active}`)?.scrollIntoView?.({ block: "nearest" });
+    if (!open) {
+      justOpened.current = false;
+      return;
+    }
+    const first = !justOpened.current;
+    justOpened.current = true;
+    document
+      .getElementById(`${listId}-${active}`)
+      ?.scrollIntoView?.({ block: first ? "center" : "nearest" });
   }, [open, active, listId]);
 
   const onTriggerKeyDown = (e: ReactKeyboardEvent) => {
@@ -152,7 +168,9 @@ export default function Select({
         choose(active);
         break;
       case "Escape":
+        // Not passed on: a dialog around the field must stay open behind it.
         e.preventDefault();
+        e.stopPropagation();
         close();
         break;
       case "Tab":
@@ -215,6 +233,7 @@ export default function Select({
             role="listbox"
             tabIndex={-1}
             aria-labelledby={id}
+            aria-label={id ? undefined : aria["aria-label"]}
             aria-activedescendant={`${listId}-${active}`}
             onKeyDown={onListKeyDown}
             className="fixed z-[70] max-h-72 overflow-y-auto rounded-xl bg-white p-1 shadow-2xl ring-1 ring-soft outline-none animate-panel-in dark:bg-slate-900"
