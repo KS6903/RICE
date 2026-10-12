@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AlertTriangle, CheckCircle2, ClipboardCheck, Hand, UserRound } from "lucide-react";
 import { notificationService } from "../services/NotificationService";
 import { tasksService, type Task } from "../services/TasksService";
+import Select from "../components/Select";
 
 type Tab = "mine" | "all" | "done";
 
@@ -108,37 +109,31 @@ function NewTaskFromAlert({
           <label htmlFor="task-assignee" className="form-label">
             Who will fix it
           </label>
-          <select
+          <Select
             id="task-assignee"
-            className="input w-64 max-w-full"
+            className="w-64 max-w-full"
             value={assignee}
-            onChange={(e) => setAssignee(e.target.value)}
-          >
-            <option value="">Me</option>
-            {options.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.name}
-                {p.role ? ` (${p.role.replace("_", " ")})` : ""}
-              </option>
-            ))}
-          </select>
+            onChange={setAssignee}
+            options={[
+              { value: "", label: "Me" },
+              ...options.map((p) => ({
+                value: p.id,
+                label: `${p.name}${p.role ? ` (${p.role.replace("_", " ")})` : ""}`,
+              })),
+            ]}
+          />
         </div>
         <div>
           <label htmlFor="task-due" className="form-label">
             By when
           </label>
-          <select
+          <Select
             id="task-due"
-            className="input w-48"
+            className="w-48"
             value={due}
-            onChange={(e) => setDue(e.target.value)}
-          >
-            {choices.map((c) => (
-              <option key={c.iso} value={c.iso}>
-                {c.label}
-              </option>
-            ))}
-          </select>
+            onChange={setDue}
+            options={choices.map((c) => ({ value: c.iso, label: c.label }))}
+          />
         </div>
         <div className="flex gap-2">
           <button
@@ -286,21 +281,14 @@ function TaskCard({ task, manager }: { task: Task; manager: boolean }) {
             <label htmlFor={`assign-${task.id}`} className="form-label">
               Give it to
             </label>
-            <select
+            <Select
               id={`assign-${task.id}`}
-              className="input w-64 max-w-full"
+              className="w-64 max-w-full"
+              placeholder="Pick someone"
               value={assignee}
-              onChange={(e) => setAssignee(e.target.value)}
-            >
-              <option value="" disabled>
-                Pick someone
-              </option>
-              {(people.data?.people ?? []).map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name}
-                </option>
-              ))}
-            </select>
+              onChange={setAssignee}
+              options={(people.data?.people ?? []).map((p) => ({ value: p.id, label: p.name }))}
+            />
           </div>
           <button
             type="button"

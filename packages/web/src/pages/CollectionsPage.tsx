@@ -5,6 +5,7 @@ import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AlertTriangle, Clock, Copy, MessageSquare, Phone } from "lucide-react";
 import { useAccess } from "../hooks/useAccess";
+import DatePicker from "../components/DatePicker";
 import { collectionsService, type Debtor, type Outcome } from "../services/CollectionsService";
 
 const OUTCOMES: { value: Outcome; label: string }[] = [
@@ -176,12 +177,11 @@ function DebtorDetail({ debtor, canRecord }: { debtor: Debtor; canRecord: boolea
                   <label htmlFor="promised-date" className="form-label">
                     Pay by
                   </label>
-                  <input
+                  <DatePicker
                     id="promised-date"
-                    type="date"
-                    className="input w-44"
+                    className="w-44"
                     value={promisedDate}
-                    onChange={(e) => setPromisedDate(e.target.value)}
+                    onChange={setPromisedDate}
                   />
                 </div>
                 <div>

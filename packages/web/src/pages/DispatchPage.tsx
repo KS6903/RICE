@@ -23,6 +23,8 @@ import { dispatchService } from "../services/DispatchService";
 import { fleetService, TRUCK_TYPES } from "../services/FleetService";
 import type { Driver, Truck as TruckType, DispatchTrip } from "../services/FleetService";
 import { employeesService } from "../services/EmployeesService";
+import Select from "../components/Select";
+import DatePicker from "../components/DatePicker";
 import { useAuthStore } from "../stores/authStore";
 import { useAccess } from "../hooks/useAccess";
 
@@ -775,31 +777,29 @@ function TripForm({
         )}
         <div>
           <label className={LABEL}>Truck *</label>
-          <select
-            className="input"
+          <Select
+            aria-label="Truck"
+            placeholder="Select truck…"
             value={truckId}
-            onChange={(e) => handleTruckChange(e.target.value)}
-          >
-            <option value="">Select truck…</option>
-            {trucks.map((t) => (
-              <option key={t.id} value={t.id}>
-                {t.plate_number}
-                {t.truck_type ? ` — ${t.truck_type.replace("_", " ")}` : ""}
-              </option>
-            ))}
-          </select>
+            onChange={handleTruckChange}
+            options={trucks.map((t) => ({
+              value: t.id,
+              label: `${t.plate_number}${t.truck_type ? ` (${t.truck_type.replace("_", " ")})` : ""}`,
+            }))}
+          />
         </div>
         <div>
           <label className={LABEL}>Driver *</label>
-          <select className="input" value={driverId} onChange={(e) => setDriverId(e.target.value)}>
-            <option value="">Select driver…</option>
-            {drivers.map((d) => (
-              <option key={d.id} value={d.id}>
-                {d.name}
-                {d.is_payroll ? " (payroll)" : ""}
-              </option>
-            ))}
-          </select>
+          <Select
+            aria-label="Driver"
+            placeholder="Select driver…"
+            value={driverId}
+            onChange={setDriverId}
+            options={drivers.map((d) => ({
+              value: d.id,
+              label: `${d.name}${d.is_payroll ? " (payroll)" : ""}`,
+            }))}
+          />
           {truckId && trucks.find((t) => t.id === truckId)?.default_driver_name && (
             <p className="text-[10px] text-muted mt-1">
               Default: {trucks.find((t) => t.id === truckId)?.default_driver_name}
@@ -811,12 +811,7 @@ function TripForm({
         </div>
         <div>
           <label className={LABEL}>Dispatch date *</label>
-          <input
-            type="date"
-            className="input"
-            value={date}
-            onChange={(e) => setDate(e.target.value)}
-          />
+          <DatePicker aria-label="Dispatch date" value={date} onChange={setDate} />
         </div>
         <div>
           <label className={LABEL}>Fuel used (L)</label>
@@ -837,15 +832,18 @@ function TripForm({
         </div>
         <div>
           <label className={LABEL}>Linked order</label>
-          <select className="input" value={orderId} onChange={(e) => setOrderId(e.target.value)}>
-            <option value="">None</option>
-            {orders.map((o) => (
-              <option key={o.id} value={o.id}>
-                {o.order_no}
-                {o.customer ? ` — ${o.customer.name}` : ""}
-              </option>
-            ))}
-          </select>
+          <Select
+            aria-label="Linked order"
+            value={orderId}
+            onChange={setOrderId}
+            options={[
+              { value: "", label: "None" },
+              ...orders.map((o) => ({
+                value: o.id,
+                label: `${o.order_no}${o.customer ? `, ${o.customer.name}` : ""}`,
+              })),
+            ]}
+          />
         </div>
         <div>
           <label className={LABEL}>Destination</label>
@@ -1125,14 +1123,13 @@ function TruckForm({
         </div>
         <div>
           <label className={LABEL}>Truck type</label>
-          <select className="input" value={type} onChange={(e) => setType(e.target.value)}>
-            <option value="">— select —</option>
-            {TRUCK_TYPES.map((t) => (
-              <option key={t.value} value={t.value}>
-                {t.label}
-              </option>
-            ))}
-          </select>
+          <Select
+            aria-label="Truck type"
+            placeholder="Select type…"
+            value={type}
+            onChange={setType}
+            options={TRUCK_TYPES.map((t) => ({ value: t.value, label: t.label }))}
+          />
         </div>
         <div>
           <label className={LABEL}>Fuel consumption (L/100 km)</label>
@@ -1147,18 +1144,15 @@ function TruckForm({
         </div>
         <div>
           <label className={LABEL}>Default driver</label>
-          <select
-            className="input"
+          <Select
+            aria-label="Default driver"
             value={defaultDriverId}
-            onChange={(e) => setDefaultDriverId(e.target.value)}
-          >
-            <option value="">— none —</option>
-            {drivers.map((d) => (
-              <option key={d.id} value={d.id}>
-                {d.name}
-              </option>
-            ))}
-          </select>
+            onChange={setDefaultDriverId}
+            options={[
+              { value: "", label: "None" },
+              ...drivers.map((d) => ({ value: d.id, label: d.name })),
+            ]}
+          />
         </div>
         <div className="sm:col-span-2">
           <label className={LABEL}>Notes</label>
@@ -1432,20 +1426,18 @@ function DriverForm({
         {isPayroll && (
           <div>
             <label className={LABEL}>Link to employee</label>
-            <select
-              className="input"
+            <Select
+              aria-label="Link to employee"
+              placeholder="Choose an employee…"
               value={employeeId}
-              onChange={(e) => setEmployeeId(e.target.value)}
-            >
-              <option value="">— search employees —</option>
-              {employees.map((e: any) => (
-                <option key={e.id} value={e.id}>
-                  {e.full_name}
-                </option>
-              ))}
-            </select>
+              onChange={setEmployeeId}
+              options={[
+                { value: "", label: "No employee" },
+                ...employees.map((e: any) => ({ value: e.id, label: e.full_name })),
+              ]}
+            />
             <p className="text-[10px] text-muted mt-1">
-              Optional — links payroll records to this driver.
+              Optional. Links payroll records to this driver.
             </p>
           </div>
         )}

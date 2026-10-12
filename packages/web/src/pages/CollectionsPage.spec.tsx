@@ -6,6 +6,7 @@ import type { User } from "@rice-mill/shared";
 import CollectionsPage from "./CollectionsPage";
 import { useAuthStore } from "../stores/authStore";
 import { collectionsService, type Debtor } from "../services/CollectionsService";
+import { chooseDate } from "../test/pickers";
 
 configure({ asyncUtilTimeout: 5000 });
 
@@ -81,7 +82,7 @@ describe("CollectionsPage", () => {
       `sms:09175550101?body=${encodeURIComponent(nena.reminder)}`,
     );
 
-    fireEvent.change(within(detail).getByLabelText("Pay by"), { target: { value: "2026-10-02" } });
+    chooseDate("Pay by", "2026-10-02", within(detail));
     fireEvent.change(within(detail).getByLabelText(/How much/), { target: { value: "5,000" } });
     fireEvent.click(within(detail).getByRole("button", { name: "Save what happened" }));
     await waitFor(() =>

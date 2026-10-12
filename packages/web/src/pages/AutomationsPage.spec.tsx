@@ -6,6 +6,7 @@ import type { User } from "@rice-mill/shared";
 import AutomationsPage from "./AutomationsPage";
 import { useAuthStore } from "../stores/authStore";
 import { automationsService, type Automation } from "../services/AutomationsService";
+import { chooseOption } from "../test/pickers";
 
 // The first render in a file pays for a cold start, which on a busy machine takes
 // longer than the default second: the page was still showing its loading state and
@@ -385,8 +386,8 @@ describe("AutomationsPage", () => {
     fireEvent.click(within(card("Morning summary")).getByRole("button", { name: "Settings" }));
     expect(screen.queryByLabelText("Give it to")).toBeNull();
     fireEvent.click(screen.getByLabelText(/Make each alert a task/));
-    fireEvent.change(screen.getByLabelText("Give it to"), { target: { value: "u2" } });
-    fireEvent.change(screen.getByLabelText("Due within"), { target: { value: "6" } });
+    await chooseOption("Give it to", "Ana Books");
+    await chooseOption("Due within", "6 hours");
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
     await waitFor(() =>
       expect(update).toHaveBeenCalledWith("owner_digest", {
@@ -406,7 +407,7 @@ describe("AutomationsPage", () => {
     await screen.findByRole("heading", { name: "Morning summary" });
     expect(screen.queryByLabelText("Send at")).toBeNull();
     fireEvent.click(within(card("Morning summary")).getByRole("button", { name: "Settings" }));
-    expect(screen.getByLabelText("Send at")).toHaveValue("06:00");
+    expect(screen.getByLabelText("Send at")).toHaveTextContent("6:00 AM");
     expect(screen.getByText(/goes to the owner: Mill Owner/)).toBeInTheDocument();
   });
 
@@ -443,9 +444,7 @@ describe("AutomationsPage", () => {
     expect(within(big).getByText("₱")).toBeInTheDocument();
     expect(within(big).getByText("hours")).toBeInTheDocument();
     fireEvent.change(within(big).getByLabelText("Sales over"), { target: { value: "150,000" } });
-    fireEvent.change(within(big).getByLabelText("When over the limit"), {
-      target: { value: "block" },
-    });
+    await chooseOption("When over the limit", "Stop the order", within(big));
     expect(save).toBeEnabled();
     fireEvent.click(save);
     await waitFor(() =>

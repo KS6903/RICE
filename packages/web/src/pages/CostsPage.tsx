@@ -9,6 +9,8 @@ import QuickAdd from "../components/QuickAdd";
 import EmptyState from "../components/EmptyState";
 import { useAccess } from "../hooks/useAccess";
 import { useOpenOnArrival } from "../hooks/useOpenOnArrival";
+import Select from "../components/Select";
+import DatePicker from "../components/DatePicker";
 
 export default function CostsPage() {
   const qc = useQueryClient();
@@ -120,28 +122,22 @@ export default function CostsPage() {
                   onCreated={(c) => setForm((f) => ({ ...f, category_id: c.id }))}
                 />
               </div>
-              <select
-                className="input"
+              <Select
+                aria-label="Category"
+                placeholder="Select category…"
                 value={form.category_id}
-                onChange={(e) => setForm((f) => ({ ...f, category_id: e.target.value }))}
-              >
-                <option value="">Select category…</option>
-                {categories.map((c: any) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
-                  </option>
-                ))}
-              </select>
+                onChange={(v) => setForm((f) => ({ ...f, category_id: v }))}
+                options={categories.map((c: any) => ({ value: c.id, label: c.name }))}
+              />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-slate-200 mb-1">
                 Date
               </label>
-              <input
-                type="date"
-                className="input"
+              <DatePicker
+                aria-label="Expense date"
                 value={form.expense_date}
-                onChange={(e) => setForm((f) => ({ ...f, expense_date: e.target.value }))}
+                onChange={(v) => setForm((f) => ({ ...f, expense_date: v }))}
               />
             </div>
             <div>
@@ -159,18 +155,15 @@ export default function CostsPage() {
               <label className="block text-sm font-medium text-gray-700 dark:text-slate-200 mb-1">
                 Milling Batch (optional)
               </label>
-              <select
-                className="input"
+              <Select
+                aria-label="Milling batch"
                 value={form.batch_id}
-                onChange={(e) => setForm((f) => ({ ...f, batch_id: e.target.value }))}
-              >
-                <option value="">Not batch-specific</option>
-                {batches.map((b: any) => (
-                  <option key={b.id} value={b.id}>
-                    {b.batch_no}
-                  </option>
-                ))}
-              </select>
+                onChange={(v) => setForm((f) => ({ ...f, batch_id: v }))}
+                options={[
+                  { value: "", label: "Not batch-specific" },
+                  ...batches.map((b: any) => ({ value: b.id, label: b.batch_no })),
+                ]}
+              />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-slate-200 mb-1">

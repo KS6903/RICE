@@ -22,6 +22,7 @@ import { canvaService } from "../../services/CanvaService";
 import { useFeature } from "../../hooks/useFeature";
 import { CanvaUpsellCard } from "../../pages/InventoryPage";
 import { encodeCsvRow } from "../../utils/csv";
+import Select from "../Select";
 import {
   useRackView,
   type Rack,
@@ -251,43 +252,45 @@ export default function NewWarehouseView({
             data-testid="new-warehouse-search"
           />
         </div>
-        <select
-          className="input !py-2 !w-auto"
+        <Select
+          aria-label="Variety"
+          className="!py-2 !w-auto min-w-[9rem]"
           value={variety}
-          onChange={(e) => setVariety(e.target.value)}
+          onChange={setVariety}
           data-testid="new-warehouse-variety"
-        >
-          <option value="all">All varieties</option>
-          {varieties.map((v) => (
-            <option key={v} value={v}>
-              {v}
-            </option>
-          ))}
-        </select>
-        <select
-          className="input !py-2 !w-auto"
+          options={[
+            { value: "all", label: "All varieties" },
+            ...varieties.map((v) => ({ value: v, label: v })),
+          ]}
+        />
+        <Select
+          aria-label="Age"
+          className="!py-2 !w-auto min-w-[9rem]"
           value={aging}
-          onChange={(e) => setAging(e.target.value as AgingFilter)}
+          onChange={(v) => setAging(v as AgingFilter)}
           data-testid="new-warehouse-aging"
-        >
-          <option value="all">All ages</option>
-          <option value="fresh">Fresh</option>
-          <option value="warning">Warning</option>
-          <option value="critical">Critical</option>
-          <option value="expired">Expired</option>
-        </select>
-        <select
-          className="input !py-2 !w-auto"
+          options={[
+            { value: "all", label: "All ages" },
+            { value: "fresh", label: "Fresh" },
+            { value: "warning", label: "Warning" },
+            { value: "critical", label: "Critical" },
+            { value: "expired", label: "Expired" },
+          ]}
+        />
+        <Select
+          aria-label="Sort"
+          className="!py-2 !w-auto min-w-[9rem]"
           value={sort}
-          onChange={(e) => setSort(e.target.value as SortKey)}
+          onChange={(v) => setSort(v as SortKey)}
           data-testid="new-warehouse-sort"
           title="Sort"
-        >
-          <option value="oldest">Oldest first</option>
-          <option value="newest">Newest first</option>
-          <option value="heaviest">Heaviest first</option>
-          <option value="fullest">Fullest rack</option>
-        </select>
+          options={[
+            { value: "oldest", label: "Oldest first" },
+            { value: "newest", label: "Newest first" },
+            { value: "heaviest", label: "Heaviest first" },
+            { value: "fullest", label: "Fullest rack" },
+          ]}
+        />
         <button
           type="button"
           onClick={() => setShowFifo(true)}
@@ -735,18 +738,15 @@ function FifoPanel({
             <label className="block text-xs font-bold uppercase tracking-wide text-muted mb-1">
               Variety
             </label>
-            <select
-              className="input"
+            <Select
+              aria-label="Variety"
               value={varietyId}
-              onChange={(e) => setVarietyId(e.target.value)}
-            >
-              <option value="">Any variety</option>
-              {varieties.map((v) => (
-                <option key={v.id} value={v.id}>
-                  {v.code} — {v.name}
-                </option>
-              ))}
-            </select>
+              onChange={setVarietyId}
+              options={[
+                { value: "", label: "Any variety" },
+                ...varieties.map((v) => ({ value: v.id, label: `${v.code}: ${v.name}` })),
+              ]}
+            />
           </div>
           <div>
             <label className="block text-xs font-bold uppercase tracking-wide text-muted mb-1">

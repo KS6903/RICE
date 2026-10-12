@@ -6,6 +6,8 @@ import { adminService } from "../../services/AdminService";
 import { format } from "date-fns";
 import { roleLabel } from "@rice-mill/shared";
 import ActivityLogList from "../../components/activity/ActivityLogList";
+import Select from "../../components/Select";
+import DatePicker from "../../components/DatePicker";
 import type { ActivityRow } from "../../components/activity/format";
 import {
   ArrowLeft,
@@ -498,17 +500,12 @@ function SubscriptionManager({ tenantId, tenantName }: { tenantId: string; tenan
             <label className="block text-xs font-semibold text-muted uppercase tracking-wide mb-2">
               Subscription tier
             </label>
-            <select
+            <Select
+              aria-label="Subscription tier"
               value={tier}
-              onChange={(e) => handleTierChange(e.target.value)}
-              className="input"
-            >
-              {TIER_OPTIONS.map((opt) => (
-                <option key={opt.value} value={opt.value}>
-                  {opt.label}
-                </option>
-              ))}
-            </select>
+              onChange={handleTierChange}
+              options={TIER_OPTIONS.map((opt) => ({ value: opt.value, label: opt.label }))}
+            />
             <p className="text-xs text-muted mt-1">
               Picking a tier activates it for this tenant.{" "}
               <span className="font-medium">Trial</span> defaults to {DEFAULT_TRIAL_DAYS} days
@@ -521,20 +518,19 @@ function SubscriptionManager({ tenantId, tenantName }: { tenantId: string; tenan
               <label className="block text-xs font-semibold text-muted uppercase tracking-wide mb-1">
                 Trial of which plan?
               </label>
-              <select
+              <Select
+                aria-label="Trial of which plan?"
                 value={trialOfCode}
-                onChange={(e) => setTrialOfCode(e.target.value)}
-                className="input"
-              >
-                {plans
+                onChange={setTrialOfCode}
+                options={plans
                   .filter((p: any) => p.is_active && p.code !== "free")
-                  .map((p: any) => (
-                    <option key={p.id} value={p.code}>
-                      {p.name} (
-                      {p.monthly_price === 0 ? "Free" : `₱${p.monthly_price.toLocaleString()}/mo`})
-                    </option>
-                  ))}
-              </select>
+                  .map((p: any) => ({
+                    value: p.code,
+                    label: `${p.name} (${
+                      p.monthly_price === 0 ? "Free" : `₱${p.monthly_price.toLocaleString()}/mo`
+                    })`,
+                  }))}
+              />
               <p className="text-xs text-muted mt-1">
                 Tenant gets all of this plan's features for the trial duration.
               </p>
@@ -610,12 +606,11 @@ function SubscriptionManager({ tenantId, tenantName }: { tenantId: string; tenan
                     ? "Expires at (disabled — permanent)"
                     : "Expires at"}
               </label>
-              <input
-                type="date"
+              <DatePicker
+                aria-label={tier === "trial" ? "Trial ends at" : "Expires at"}
                 value={expiresAt}
-                onChange={(e) => setExpiresAt(e.target.value)}
+                onChange={setExpiresAt}
                 disabled={tier !== "trial" && isPermanent}
-                className="input disabled:bg-surface-muted disabled:text-muted disabled:cursor-not-allowed"
               />
               {tier === "trial" && (
                 <p className="text-xs text-muted mt-1">

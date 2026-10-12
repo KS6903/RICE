@@ -31,6 +31,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import Select from "../components/Select";
+import TimePicker from "../components/TimePicker";
 import { useAccess } from "../hooks/useAccess";
 import {
   automationsService,
@@ -397,19 +398,14 @@ function FieldInput({
         <label htmlFor={id} className="form-label">
           {field.label}
         </label>
-        <select
+        <Select
           id={id}
-          className="input max-w-[16rem]"
+          className="max-w-[16rem]"
           value={String(value ?? "")}
           disabled={disabled}
-          onChange={(e) => onChange(e.target.value)}
-        >
-          {(field.options ?? []).map((o) => (
-            <option key={o.value} value={o.value}>
-              {o.label}
-            </option>
-          ))}
-        </select>
+          onChange={onChange}
+          options={(field.options ?? []).map((o) => ({ value: o.value, label: o.label }))}
+        />
         {help}
       </div>
     );
@@ -421,13 +417,12 @@ function FieldInput({
         <label htmlFor={id} className="form-label">
           {field.label}
         </label>
-        <input
+        <TimePicker
           id={id}
-          type="time"
-          className="input max-w-[10rem]"
+          className="max-w-[10rem]"
           value={String(value ?? "")}
           disabled={disabled}
-          onChange={(e) => onChange(e.target.value)}
+          onChange={onChange}
         />
         {help}
       </div>
@@ -523,38 +518,30 @@ function TrackingFields({
             <label htmlFor={`${code}-track-assignee`} className="form-label">
               Give it to
             </label>
-            <select
+            <Select
               id={`${code}-track-assignee`}
-              className="input w-56 max-w-full"
+              className="w-56 max-w-full"
               value={tracking.track_assignee ?? ""}
               disabled={disabled}
-              onChange={(e) => set({ track_assignee: e.target.value || null })}
-            >
-              <option value="">An owner or admin assigns it</option>
-              {candidates.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
-            </select>
+              onChange={(v) => set({ track_assignee: v || null })}
+              options={[
+                { value: "", label: "An owner or admin assigns it" },
+                ...candidates.map((c) => ({ value: c.id, label: c.name })),
+              ]}
+            />
           </div>
           <div>
             <label htmlFor={`${code}-track-due`} className="form-label">
               Due within
             </label>
-            <select
+            <Select
               id={`${code}-track-due`}
-              className="input w-36"
-              value={tracking.track_due_hours}
+              className="w-36"
+              value={String(tracking.track_due_hours)}
               disabled={disabled}
-              onChange={(e) => set({ track_due_hours: Number(e.target.value) })}
-            >
-              {DUE_WITHIN.map((d) => (
-                <option key={d.hours} value={d.hours}>
-                  {d.label}
-                </option>
-              ))}
-            </select>
+              onChange={(v) => set({ track_due_hours: Number(v) })}
+              options={DUE_WITHIN.map((d) => ({ value: String(d.hours), label: d.label }))}
+            />
           </div>
         </div>
       )}

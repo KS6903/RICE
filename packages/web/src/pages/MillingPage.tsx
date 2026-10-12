@@ -11,6 +11,8 @@ import { useAccess } from "../hooks/useAccess";
 import { useOpenOnArrival } from "../hooks/useOpenOnArrival";
 import EmptyState from "../components/EmptyState";
 import FieldCaption from "../components/FieldCaption";
+import Select from "../components/Select";
+import DateTimePicker from "../components/DateTimePicker";
 
 function StatusBadge({ status }: { status: string }) {
   const map: Record<string, string> = {
@@ -120,28 +122,22 @@ export default function MillingPage() {
                   onCreated={(eq) => setForm((f) => ({ ...f, equipment_id: eq.id }))}
                 />
               </div>
-              <select
-                className="input"
+              <Select
+                aria-label="Equipment"
+                placeholder="Select equipment…"
                 value={form.equipment_id}
-                onChange={(e) => setForm((f) => ({ ...f, equipment_id: e.target.value }))}
-              >
-                <option value="">Select equipment…</option>
-                {equipment.map((eq: any) => (
-                  <option key={eq.id} value={eq.id}>
-                    {eq.name}
-                  </option>
-                ))}
-              </select>
+                onChange={(v) => setForm((f) => ({ ...f, equipment_id: v }))}
+                options={equipment.map((eq: any) => ({ value: eq.id, label: eq.name }))}
+              />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-slate-200 mb-1">
                 Start Date/Time
               </label>
-              <input
-                type="datetime-local"
-                className="input"
+              <DateTimePicker
+                label="Start"
                 value={form.start_datetime}
-                onChange={(e) => setForm((f) => ({ ...f, start_datetime: e.target.value }))}
+                onChange={(v) => setForm((f) => ({ ...f, start_datetime: v }))}
               />
             </div>
           </div>
@@ -212,22 +208,17 @@ export default function MillingPage() {
             {form.inputs.map((inp, idx) => (
               <div key={idx} className="grid grid-cols-4 gap-2 mb-2">
                 <FieldCaption label="Variety">
-                  <select
-                    className="input"
+                  <Select
+                    aria-label="Variety"
+                    placeholder="Variety"
                     value={inp.variety_id}
-                    onChange={(e) => {
+                    onChange={(v) => {
                       const inputs = [...form.inputs];
-                      inputs[idx].variety_id = e.target.value;
+                      inputs[idx].variety_id = v;
                       setForm((f) => ({ ...f, inputs }));
                     }}
-                  >
-                    <option value="">Variety</option>
-                    {varieties.map((v: any) => (
-                      <option key={v.id} value={v.id}>
-                        {v.code}
-                      </option>
-                    ))}
-                  </select>
+                    options={varieties.map((v: any) => ({ value: v.id, label: v.code }))}
+                  />
                 </FieldCaption>
                 <FieldCaption label="Palay weight (kg)">
                   <input
@@ -291,20 +282,21 @@ export default function MillingPage() {
             {form.outputs.map((out, idx) => (
               <div key={idx} className="grid grid-cols-4 gap-2 mb-2">
                 <FieldCaption label="What came out">
-                  <select
-                    className="input"
+                  <Select
+                    aria-label="What came out"
                     value={out.output_type}
-                    onChange={(e) => {
+                    onChange={(v) => {
                       const outputs = [...form.outputs];
-                      outputs[idx].output_type = e.target.value;
+                      outputs[idx].output_type = v;
                       setForm((f) => ({ ...f, outputs }));
                     }}
-                  >
-                    <option value="milled_rice">Milled Rice (Bigas)</option>
-                    <option value="ipa">Ipa (Rice Hull)</option>
-                    <option value="darak">Darak (Rice Bran)</option>
-                    <option value="binlid">Binlid (Broken Rice)</option>
-                  </select>
+                    options={[
+                      { value: "milled_rice", label: "Milled Rice (Bigas)" },
+                      { value: "ipa", label: "Ipa (Rice Hull)" },
+                      { value: "darak", label: "Darak (Rice Bran)" },
+                      { value: "binlid", label: "Binlid (Broken Rice)" },
+                    ]}
+                  />
                 </FieldCaption>
                 <FieldCaption label="Weight (kg)">
                   <input

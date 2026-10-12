@@ -54,6 +54,8 @@ import { roleLabel, type SubscriptionPlan, type UpgradeRequest } from "@rice-mil
 import ActivityLogList from "../components/activity/ActivityLogList";
 import BackupCodes from "../components/BackupCodes";
 import DataExport from "../components/DataExport";
+import Select from "../components/Select";
+import ConfirmDialog from "../components/ConfirmDialog";
 import type { ActivityRow } from "../components/activity/format";
 import { Trash2, RotateCcw } from "lucide-react";
 
@@ -816,15 +818,16 @@ function VarietiesTab() {
             </div>
             <div>
               <label className={LABEL}>Category</label>
-              <select
-                className="input"
+              <Select
+                aria-label="Category"
                 value={form.category}
-                onChange={(e) => setForm((f) => ({ ...f, category: e.target.value }))}
-              >
-                <option value="inbred">Inbred</option>
-                <option value="hybrid">Hybrid</option>
-                <option value="local">Local</option>
-              </select>
+                onChange={(v) => setForm((f) => ({ ...f, category: v }))}
+                options={[
+                  { value: "inbred", label: "Inbred" },
+                  { value: "hybrid", label: "Hybrid" },
+                  { value: "local", label: "Local" },
+                ]}
+              />
             </div>
             <div>
               <label className={LABEL}>Typical recovery %</label>
@@ -1337,6 +1340,9 @@ function BranchesTab() {
   const [editValues, setEditValues] = useState({ name: "", address: "" });
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [showTrash, setShowTrash] = useState(false);
+  const [confirmingBulk, setConfirmingBulk] = useState(false);
+  // Why some of the selected warehouses were left out of the last bulk delete.
+  const [skippedReasons, setSkippedReasons] = useState<string[]>([]);
 
   const create = useMutation({
     mutationFn: (body: typeof form) => branchesService.create(body),
@@ -1367,9 +1373,7 @@ function BranchesTab() {
       qc.invalidateQueries({ queryKey: ["activity"] });
       setSelected(new Set());
       const skipped = res?.skipped ?? [];
-      if (skipped.length) {
-        alert(skipped.map((s: any) => s.reason).join("\n"));
-      }
+      setSkippedReasons(skipped.map((s: any) => String(s.reason)));
     },
   });
 
@@ -1390,15 +1394,7 @@ function BranchesTab() {
     );
   }
   function confirmBulkDelete() {
-    const ids = [...selected];
-    if (!ids.length) return;
-    if (
-      confirm(
-        `Move ${ids.length} warehouse${ids.length === 1 ? "" : "s"} to trash? You can restore within 30 days.`,
-      )
-    ) {
-      bulkDelete.mutate(ids);
-    }
+    if (selected.size) setConfirmingBulk(true);
   }
 
   function startEdit(b: any) {
@@ -1444,6 +1440,42 @@ function BranchesTab() {
           </div>
         </div>
       )}
+
+      {skippedReasons.length > 0 && (
+        <div
+          role="alert"
+          className="flex items-start justify-between gap-3 rounded-xl px-4 py-2.5 bg-amber-50 dark:bg-amber-950/30 ring-1 ring-amber-200 dark:ring-amber-800/60"
+        >
+          <ul className="space-y-0.5 text-sm font-medium text-amber-800 dark:text-amber-200">
+            {skippedReasons.map((reason, i) => (
+              <li key={i}>{reason}</li>
+            ))}
+          </ul>
+          <button
+            type="button"
+            aria-label="Dismiss"
+            onClick={() => setSkippedReasons([])}
+            className="btn-ghost !p-1.5 shrink-0"
+          >
+            <XIcon size={14} />
+          </button>
+        </div>
+      )}
+
+      <ConfirmDialog
+        open={confirmingBulk}
+        danger
+        busy={bulkDelete.isPending}
+        title={`Move ${selected.size} warehouse${selected.size === 1 ? "" : "s"} to trash?`}
+        confirmLabel="Move to trash"
+        onCancel={() => setConfirmingBulk(false)}
+        onConfirm={() => {
+          bulkDelete.mutate([...selected]);
+          setConfirmingBulk(false);
+        }}
+      >
+        You can restore {selected.size === 1 ? "it" : "them"} within 30 days.
+      </ConfirmDialog>
 
       {showTrash && <BranchTrashPanel />}
 

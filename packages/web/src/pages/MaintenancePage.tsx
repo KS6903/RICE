@@ -5,6 +5,7 @@ import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Plus, Wrench } from "lucide-react";
 import { useAccess } from "../hooks/useAccess";
+import DatePicker from "../components/DatePicker";
 import { maintenanceService, type Machine } from "../services/MaintenanceService";
 
 const isoToday = () => new Date().toLocaleDateString("en-CA");
@@ -80,13 +81,12 @@ function MachineCard({ machine, canEdit }: { machine: Machine; canEdit: boolean 
             <label htmlFor={`done-${machine.id}`} className="form-label">
               Done on
             </label>
-            <input
+            <DatePicker
               id={`done-${machine.id}`}
-              type="date"
-              className="input w-44"
+              className="w-44"
               max={isoToday()}
               value={doneOn}
-              onChange={(e) => setDoneOn(e.target.value)}
+              onChange={setDoneOn}
             />
           </div>
           <div className="flex-1 min-w-[12rem]">
@@ -179,14 +179,7 @@ function AddMachine({ onDone }: { onDone: () => void }) {
           <label htmlFor="machine-last" className="form-label">
             Last serviced on
           </label>
-          <input
-            id="machine-last"
-            type="date"
-            className="input"
-            max={isoToday()}
-            value={last}
-            onChange={(e) => setLast(e.target.value)}
-          />
+          <DatePicker id="machine-last" max={isoToday()} value={last} onChange={setLast} />
         </div>
         <div>
           <label htmlFor="machine-hours" className="form-label">

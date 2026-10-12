@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import TasksPage from "./TasksPage";
 import { tasksService, type Task } from "../services/TasksService";
 import { notificationService } from "../services/NotificationService";
+import { chooseOption } from "../test/pickers";
 
 configure({ asyncUtilTimeout: 5000 });
 
@@ -83,8 +84,7 @@ describe("TasksPage", () => {
     await waitFor(() => expect(list).toHaveBeenCalledWith("all", false));
     const card = await screen.findByRole("article", { name: "Wet palay not drying: PP-1" });
     fireEvent.click(within(card).getByRole("button", { name: "Reassign" }));
-    await within(card).findByRole("option", { name: "Ben" });
-    fireEvent.change(within(card).getByLabelText("Give it to"), { target: { value: "u3" } });
+    await chooseOption("Give it to", "Ben", within(card));
     fireEvent.click(within(card).getByRole("button", { name: "Save" }));
     await waitFor(() => expect(assign).toHaveBeenCalledWith("t1", { assignee_id: "u3" }));
   });
@@ -112,8 +112,7 @@ describe("TasksPage", () => {
     draw("/tasks?from=n1");
     const form = await screen.findByRole("region", { name: "New task" });
     expect(within(form).getByText("Collections: 1 overdue invoice")).toBeInTheDocument();
-    await within(form).findByRole("option", { name: "Ana Books (accountant)" });
-    fireEvent.change(within(form).getByLabelText("Who will fix it"), { target: { value: "u2" } });
+    await chooseOption("Who will fix it", "Ana Books (accountant)", within(form));
     fireEvent.click(within(form).getByRole("button", { name: "Make it a task" }));
     await waitFor(() =>
       expect(create).toHaveBeenCalledWith(

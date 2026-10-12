@@ -6,6 +6,7 @@ import type { User } from "@rice-mill/shared";
 import MaintenancePage from "./MaintenancePage";
 import { useAuthStore } from "../stores/authStore";
 import { maintenanceService, type Machine } from "../services/MaintenanceService";
+import { chooseDate } from "../test/pickers";
 
 configure({ asyncUtilTimeout: 5000 });
 
@@ -59,7 +60,7 @@ describe("MaintenancePage", () => {
     expect(within(card).getByText("Service due")).toBeInTheDocument();
     expect(within(card).getByText(/22 of 20 running hours/)).toBeInTheDocument();
     fireEvent.click(within(card).getByRole("button", { name: /Record a service/ }));
-    fireEvent.change(within(card).getByLabelText("Done on"), { target: { value: "2026-09-28" } });
+    chooseDate("Done on", "2026-09-28", within(card));
     fireEvent.change(within(card).getByLabelText("What was done"), {
       target: { value: "New rolls." },
     });
@@ -78,9 +79,7 @@ describe("MaintenancePage", () => {
     fireEvent.click(screen.getByRole("button", { name: /Add a machine/ }));
     const form = screen.getByRole("region", { name: "Add a machine" });
     fireEvent.change(within(form).getByLabelText("Machine"), { target: { value: "Polisher" } });
-    fireEvent.change(within(form).getByLabelText("Last serviced on"), {
-      target: { value: "2026-09-01" },
-    });
+    chooseDate("Last serviced on", "2026-09-01", within(form));
     fireEvent.change(within(form).getByLabelText(/tonnes/), { target: { value: "500" } });
     fireEvent.click(within(form).getByRole("button", { name: "Add the machine" }));
     await waitFor(() =>

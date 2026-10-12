@@ -9,6 +9,7 @@ import TemporaryPasswordDialog from "../components/TemporaryPasswordDialog";
 import { ROLES, roleLabel } from "@rice-mill/shared";
 import { useAuthStore } from "../stores/authStore";
 import Select from "../components/Select";
+import ConfirmDialog from "../components/ConfirmDialog";
 
 const FIELD_LABEL = "block text-sm font-medium text-gray-700 dark:text-slate-200 mb-1";
 const ERROR_TEXT = "text-sm font-medium text-rose-600 dark:text-rose-400";
@@ -28,6 +29,7 @@ export default function UsersPage() {
   useEscapeKey(() => setEditing(null), !!editing);
   // Who the Boss is giving a temporary password to (a locked-out member of staff).
   const [tempFor, setTempFor] = useState<any | null>(null);
+  const [removing, setRemoving] = useState<any | null>(null);
   const [editForm, setEditForm] = useState({ full_name: "", email: "", role_id: "" });
   const [actionError, setActionError] = useState("");
 
@@ -91,13 +93,7 @@ export default function UsersPage() {
     });
   };
 
-  const remove = (u: any) => {
-    const ok = window.confirm(
-      `Remove ${u.full_name || u.username}?\n\nThey won't be able to sign in any more. ` +
-        "Their past records stay, and you can restore them later.",
-    );
-    if (ok) updateUser.mutate({ id: u.id, body: { is_active: false } });
-  };
+  const remove = (u: any) => setRemoving(u);
 
   return (
     <div className="space-y-6">
@@ -357,6 +353,21 @@ export default function UsersPage() {
           onClose={() => setTempFor(null)}
         />
       )}
+
+      <ConfirmDialog
+        open={!!removing}
+        danger
+        title={`Remove ${removing?.full_name || removing?.username}?`}
+        confirmLabel="Remove"
+        onCancel={() => setRemoving(null)}
+        onConfirm={() => {
+          if (removing) updateUser.mutate({ id: removing.id, body: { is_active: false } });
+          setRemoving(null);
+        }}
+      >
+        They won't be able to sign in any more. Their past records stay, and you can restore them
+        later.
+      </ConfirmDialog>
     </div>
   );
 }

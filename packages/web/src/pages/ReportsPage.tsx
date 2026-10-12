@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { reportsService } from "../services/ReportsService";
 import LegalNotice from "../components/LegalNotice";
+import DatePicker from "../components/DatePicker";
 import { format, startOfMonth, endOfMonth } from "date-fns";
 import {
   BarChart,
@@ -87,18 +88,18 @@ export default function ReportsPage() {
       <div className="card space-y-4">
         <div className="flex items-center gap-4 flex-wrap">
           <h3 className="font-semibold text-gray-900 dark:text-slate-100">Profit & Loss</h3>
-          <input
-            type="date"
-            className="input w-40"
+          <DatePicker
+            aria-label="From date"
+            className="!w-44"
             value={dateRange.start}
-            onChange={(e) => setDateRange((r) => ({ ...r, start: e.target.value }))}
+            onChange={(v) => setDateRange((r) => ({ ...r, start: v }))}
           />
           <span className="text-gray-400">to</span>
-          <input
-            type="date"
-            className="input w-40"
+          <DatePicker
+            aria-label="To date"
+            className="!w-44"
             value={dateRange.end}
-            onChange={(e) => setDateRange((r) => ({ ...r, end: e.target.value }))}
+            onChange={(v) => setDateRange((r) => ({ ...r, end: v }))}
           />
         </div>
 

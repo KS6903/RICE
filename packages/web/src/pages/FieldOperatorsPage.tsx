@@ -1261,17 +1261,12 @@ function SupplierForm({
         </div>
         <div>
           <label className={LABEL}>Type</label>
-          <select
-            className="input"
+          <Select
+            aria-label="Type"
             value={supplierType}
-            onChange={(e) => setSupplierType(e.target.value)}
-          >
-            {SUPPLIER_TYPES.map((t) => (
-              <option key={t.value} value={t.value}>
-                {t.label}
-              </option>
-            ))}
-          </select>
+            onChange={setSupplierType}
+            options={SUPPLIER_TYPES.map((t) => ({ value: t.value, label: t.label }))}
+          />
         </div>
         <div>
           <label className={LABEL}>Contact person</label>

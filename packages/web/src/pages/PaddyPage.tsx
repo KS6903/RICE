@@ -11,6 +11,8 @@ import { useOpenOnArrival } from "../hooks/useOpenOnArrival";
 import EmptyState from "../components/EmptyState";
 import FieldCaption from "../components/FieldCaption";
 import TruncatedText from "../components/TruncatedText";
+import Select from "../components/Select";
+import DatePicker from "../components/DatePicker";
 
 function StatusBadge({ status }: { status: string }) {
   const map: Record<string, string> = {
@@ -110,25 +112,25 @@ export default function PaddyPage() {
               <label className="block text-sm font-medium text-gray-700 dark:text-slate-200 mb-1">
                 Purchase Date
               </label>
-              <input
-                type="date"
-                className="input"
+              <DatePicker
+                aria-label="Purchase date"
                 value={form.purchase_date}
-                onChange={(e) => setForm((f) => ({ ...f, purchase_date: e.target.value }))}
+                onChange={(v) => setForm((f) => ({ ...f, purchase_date: v }))}
               />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-slate-200 mb-1">
                 Delivery Type
               </label>
-              <select
-                className="input"
+              <Select
+                aria-label="Delivery type"
                 value={form.delivery_type}
-                onChange={(e) => setForm((f) => ({ ...f, delivery_type: e.target.value }))}
-              >
-                <option value="delivered">Delivered</option>
-                <option value="farm_gate">Farm Gate</option>
-              </select>
+                onChange={(v) => setForm((f) => ({ ...f, delivery_type: v }))}
+                options={[
+                  { value: "delivered", label: "Delivered" },
+                  { value: "farm_gate", label: "Farm Gate" },
+                ]}
+              />
             </div>
           </div>
           <div className="space-y-3">
@@ -184,40 +186,30 @@ export default function PaddyPage() {
                 className="grid grid-cols-2 sm:grid-cols-6 gap-2 p-3 bg-gray-50 dark:bg-slate-900/50 rounded-lg"
               >
                 <FieldCaption label="Variety" className="col-span-2 sm:col-span-1">
-                  <select
-                    className="input"
+                  <Select
+                    aria-label="Variety"
+                    placeholder="Variety"
                     value={item.variety_id}
-                    onChange={(e) => {
+                    onChange={(v) => {
                       const items = [...form.items];
-                      items[idx].variety_id = e.target.value;
+                      items[idx].variety_id = v;
                       setForm((f) => ({ ...f, items }));
                     }}
-                  >
-                    <option value="">Variety</option>
-                    {varieties.map((v: any) => (
-                      <option key={v.id} value={v.id}>
-                        {v.code}
-                      </option>
-                    ))}
-                  </select>
+                    options={varieties.map((v: any) => ({ value: v.id, label: v.code }))}
+                  />
                 </FieldCaption>
                 <FieldCaption label="Grade">
-                  <select
-                    className="input"
+                  <Select
+                    aria-label="Grade"
+                    placeholder="Grade"
                     value={item.grade_id}
-                    onChange={(e) => {
+                    onChange={(v) => {
                       const items = [...form.items];
-                      items[idx].grade_id = e.target.value;
+                      items[idx].grade_id = v;
                       setForm((f) => ({ ...f, items }));
                     }}
-                  >
-                    <option value="">Grade</option>
-                    {grades.map((g: any) => (
-                      <option key={g.id} value={g.id}>
-                        {g.code}
-                      </option>
-                    ))}
-                  </select>
+                    options={grades.map((g: any) => ({ value: g.id, label: g.code }))}
+                  />
                 </FieldCaption>
                 <FieldCaption label="Gross weight (kg)">
                   <input

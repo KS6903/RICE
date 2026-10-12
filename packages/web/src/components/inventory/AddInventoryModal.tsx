@@ -5,6 +5,7 @@ import { paddyService } from "../../services/PaddyService";
 import { branchesService } from "../../services/BranchesService";
 import { inventoryService } from "../../services/InventoryService";
 import { allUnits, saveCustomUnit, type QuantityUnit, slugify } from "./inventoryExtras";
+import Select from "../Select";
 
 type StockType = "palay" | "milled_rice" | "byproduct";
 
@@ -112,18 +113,17 @@ function InlineCreateSelect({
         </div>
       ) : (
         <div className="flex items-center gap-1.5">
-          <select
-            className="input w-full text-sm"
+          <Select
+            aria-label={label}
+            className="w-full text-sm"
+            placeholder={placeholder}
             value={value}
-            onChange={(e) => onChange(e.target.value)}
-          >
-            {placeholder !== undefined && <option value="">{placeholder}</option>}
-            {options.map((o) => (
-              <option key={o.value} value={o.value}>
-                {o.label}
-              </option>
-            ))}
-          </select>
+            onChange={onChange}
+            // With a placeholder, the field can be cleared again by choosing it.
+            options={
+              placeholder === undefined ? options : [{ value: "", label: placeholder }, ...options]
+            }
+          />
           <button
             type="button"
             onClick={() => {
@@ -383,17 +383,13 @@ export default function AddInventoryModal({
               <label className="block text-[10px] font-bold uppercase tracking-wider text-muted mb-1">
                 Grade
               </label>
-              <select
-                className="input w-full text-sm capitalize"
+              <Select
+                aria-label="Grade"
+                className="w-full text-sm capitalize"
                 value={gradeName}
-                onChange={(e) => setGradeName(e.target.value)}
-              >
-                {MILLED_GRADES.map((g) => (
-                  <option key={g} value={g}>
-                    {g}
-                  </option>
-                ))}
-              </select>
+                onChange={setGradeName}
+                options={MILLED_GRADES.map((g) => ({ value: g, label: g }))}
+              />
             </div>
           )}
 
@@ -425,17 +421,13 @@ export default function AddInventoryModal({
                 value={quantity}
                 onChange={(e) => setQuantity(e.target.value)}
               />
-              <select
-                className="input text-sm shrink-0 max-w-[44%]"
+              <Select
+                aria-label="Unit"
+                className="text-sm shrink-0 max-w-[44%]"
                 value={unitCode}
-                onChange={(e) => setUnitCode(e.target.value)}
-              >
-                {units.map((u) => (
-                  <option key={u.code} value={u.code}>
-                    {u.label}
-                  </option>
-                ))}
-              </select>
+                onChange={setUnitCode}
+                options={units.map((u) => ({ value: u.code, label: u.label }))}
+              />
               <button
                 type="button"
                 title="Add a unit"
