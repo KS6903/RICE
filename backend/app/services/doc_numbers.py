@@ -38,3 +38,30 @@ def order_pattern(code: str) -> str:
 
 def trip_pattern(code: str) -> str:
     return rf"^{re.escape(code)}-T[0-9]{{1,9}}$"
+
+
+# An employee's number leads with the kind of employment: REG-0001, MON-0001,
+# CON-0001. Each prefix counts on its own, per mill.
+EMPLOYEE_PREFIXES = {
+    "regular": "REG",
+    "monthly": "MON",
+    "daily": "DLY",
+    "casual": "CAS",
+    "biweekly": "BWK",
+    "weekly": "WKL",
+    "piece_rate": "PRC",
+    "commission": "COM",
+    "hourly": "HRL",
+    "probationary": "PRB",
+    "contractual": "CON",
+}
+EMPLOYEE_FALLBACK_PREFIX = "EMP"
+
+
+def employee_prefix(employment_type: str | None) -> str:
+    """The number prefix for an employment type; EMP when it is blank or unknown."""
+    return EMPLOYEE_PREFIXES.get((employment_type or "").strip().lower(), EMPLOYEE_FALLBACK_PREFIX)
+
+
+def employee_pattern(prefix: str) -> str:
+    return rf"^{re.escape(prefix)}-[0-9]{{1,9}}$"

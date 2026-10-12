@@ -4,7 +4,7 @@ import uuid
 from datetime import date
 from decimal import Decimal
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class EmployeeIn(BaseModel):
@@ -21,6 +21,11 @@ class EmployeeIn(BaseModel):
     date_terminated: date | None = None
     daily_rate: Decimal | None = None
     monthly_salary: Decimal | None = None
+
+    pay_method: str | None = Field(None, max_length=20)
+    pay_provider: str | None = Field(None, max_length=100)
+    pay_account_name: str | None = Field(None, max_length=150)
+    pay_account_no: str | None = Field(None, max_length=40)
 
     phone: str | None = None
     email: str | None = None
@@ -54,6 +59,10 @@ class EmployeeUpdate(BaseModel):
     date_terminated: date | None = None
     daily_rate: Decimal | None = None
     monthly_salary: Decimal | None = None
+    pay_method: str | None = Field(None, max_length=20)
+    pay_provider: str | None = Field(None, max_length=100)
+    pay_account_name: str | None = Field(None, max_length=150)
+    pay_account_no: str | None = Field(None, max_length=40)
     phone: str | None = None
     email: str | None = None
     address: str | None = None

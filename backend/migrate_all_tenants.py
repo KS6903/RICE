@@ -56,6 +56,11 @@ _extra_ddl: list[str] = [
     "ALTER TABLE sales_orders ADD COLUMN IF NOT EXISTS courier_notes TEXT",
     # When a trip's status last changed (a departed or delivered trip locks a week later).
     "ALTER TABLE dispatch_trips ADD COLUMN IF NOT EXISTS status_changed_at TIMESTAMPTZ",
+    # How an employee's salary is paid, and the details that method needs.
+    "ALTER TABLE employees ADD COLUMN IF NOT EXISTS pay_method VARCHAR(20)",
+    "ALTER TABLE employees ADD COLUMN IF NOT EXISTS pay_provider VARCHAR(100)",
+    "ALTER TABLE employees ADD COLUMN IF NOT EXISTS pay_account_name VARCHAR(150)",
+    "ALTER TABLE employees ADD COLUMN IF NOT EXISTS pay_account_no VARCHAR(40)",
 ]
 
 

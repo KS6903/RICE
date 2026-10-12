@@ -36,6 +36,15 @@ def list_employees(
     return svc.list_employees(include_inactive=include_inactive, branch_id=branch_id)
 
 
+@router.get("/next-number")
+def next_employee_number(
+    employment_type: str | None = Query(None),
+    svc: EmployeeService = Depends(get_employee_service),
+):
+    """The number the next employee of this employment type would get."""
+    return {"employee_no": svc.next_employee_no(employment_type)}
+
+
 @router.get("/{employee_id}")
 def get_employee(employee_id: uuid.UUID, svc: EmployeeService = Depends(get_employee_service)):
     return svc.get_employee(employee_id)

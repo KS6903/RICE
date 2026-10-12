@@ -30,8 +30,19 @@ class Employee(Base, TimestampMixin):
     employment_type: Mapped[str | None] = mapped_column(String(30))  # regular, contractual, casual, probationary
     date_hired: Mapped[date | None] = mapped_column(Date)
     date_terminated: Mapped[date | None] = mapped_column(Date)
+    # What the employment type pays per day, week, hour... (the monthly figure
+    # below is worked out from it). The column keeps its old name.
     daily_rate: Mapped[Decimal | None] = mapped_column(Numeric(10, 2))
     monthly_salary: Mapped[Decimal | None] = mapped_column(Numeric(12, 2))
+
+    # How the salary is paid: cash, check, bank_transfer, e_wallet, payroll_card.
+    # The three detail columns mean what the method needs: the bank, e-wallet
+    # provider or card issuer; the account holder (or the check's payee); and the
+    # account, mobile or card number.
+    pay_method: Mapped[str | None] = mapped_column(String(20))
+    pay_provider: Mapped[str | None] = mapped_column(String(100))
+    pay_account_name: Mapped[str | None] = mapped_column(String(150))
+    pay_account_no: Mapped[str | None] = mapped_column(String(40))
 
     phone: Mapped[str | None] = mapped_column(String(20))
     email: Mapped[str | None] = mapped_column(String(100))
