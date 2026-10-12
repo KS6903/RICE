@@ -75,6 +75,7 @@ def advise(
     dedupe_key: str,
     link: str,
     task: str,
+    model: ai.Model,
     facts: dict[str, Any],
     figures: list[str],
     keys: tuple[ai.Key, ...],
@@ -83,7 +84,7 @@ def advise(
     """One notice: the model's advice, then the figures it was given."""
     facts = {"mill": ctx.company.name, "today": f"{ctx.local_today:%A %d %B %Y}", **facts}
     try:
-        lines = [line for line in render(ai.ask(facts, keys, task=task, language=ctx.language)) if line]
+        lines = [line for line in render(ai.ask(facts, keys, task=task, model=model, language=ctx.language)) if line]
     except ai.AIUnavailable:
         lines = []
     if not lines:
@@ -336,7 +337,7 @@ def recent_alerts(ctx: RecipeContext, hours: int = 24) -> list[str]:
     return [title for title, _ in rows]
 
 
-def morning_advice(ctx: RecipeContext, *, title: str, dedupe_key: str, figures: list[str]) -> Notice:
+def morning_advice(ctx: RecipeContext, *, title: str, dedupe_key: str, figures: list[str], model: ai.Model) -> Notice:
     """The morning summary's AI advice: yesterday against a usual day, and the
     three things to do first today, picked from what's due and the alerts. The
     summary's own lines are the figures it rests on."""
@@ -434,6 +435,9 @@ def morning_advice(ctx: RecipeContext, *, title: str, dedupe_key: str, figures: 
                 }
                 for i, p in wet
             ],
+            "wet_palay_not_yet_drying_total_kg": _n(
+                sum((Decimal(i.gross_weight_kg) - Decimal(i.tare_weight_kg) for i, _ in wet), D0)
+            ),
             "milling_batches_left_open": [
                 {"batch": b.batch_no, "hours_open": int((ctx.now - b.start_datetime).total_seconds() // 3600)}
                 for b in open_batches
@@ -464,6 +468,7 @@ def morning_advice(ctx: RecipeContext, *, title: str, dedupe_key: str, figures: 
         dedupe_key=dedupe_key,
         link="/reports",
         task=task,
+        model=model,
         facts=facts,
         figures=figures,
         keys=keys,
@@ -557,6 +562,7 @@ def _collection_drafts(ctx: RecipeContext, params: BaseModel) -> list[Notice]:
             dedupe_key=f"ai_collection_drafts:{today.isoformat()}",
             link="/collections",
             task=task,
+            model=AI_COLLECTION_DRAFTS.model,
             facts={"overdue_customers": customers},
             figures=[
                 f"{invoices[0].customer.name}: {peso(sum(i.total_amount - i.paid_amount for i in invoices))} overdue"
@@ -583,6 +589,7 @@ AI_COLLECTION_DRAFTS = Recipe(
     schedule=lambda _p: daily(time(8, 30), days=frozenset({0, 3})),
     build=_collection_drafts,
     uses_ai=True,
+    ai_model="flash",
 )
 
 
@@ -672,6 +679,7 @@ def _buying_advisor(ctx: RecipeContext, params: BaseModel) -> list[Notice]:
             dedupe_key=f"ai_buying_advisor:{ctx.local_today.isoformat()}",
             link="/paddy",
             task=task,
+            model=AI_BUYING_ADVISOR.model,
             facts=facts,
             figures=figures,
             keys=keys,
@@ -695,6 +703,7 @@ AI_BUYING_ADVISOR = Recipe(
     schedule=lambda _p: weekly(MONDAY, time(6, 30)),
     build=_buying_advisor,
     uses_ai=True,
+    ai_model="flash",
 )
 
 
@@ -801,6 +810,7 @@ def leakage_signals(ctx: RecipeContext, days: int = LEAK_DAYS) -> dict[str, Any]
             "discounts_php": _n(s[1]),
             "under_price_list_php": _n(s[2]),
             "lines_under_price_list": int(s[3]),
+            "given_away_php": _n(s[1] + s[2]),
             "given_away_pct_of_sales": _n((s[1] + s[2]) / s[0] * 100, 1) if s[0] else None,
         }
         for name, s in staff.items()
@@ -811,6 +821,7 @@ def leakage_signals(ctx: RecipeContext, days: int = LEAK_DAYS) -> dict[str, Any]
             "sales_php": _n(b[0]),
             "discounts_php": _n(b[1]),
             "under_price_list_php": _n(b[2]),
+            "given_away_php": _n(b[1] + b[2]),
             "given_away_pct_of_sales": _n((b[1] + b[2]) / b[0] * 100, 1) if b[0] else None,
             "mostly_entered_by": max(buyer_staff[customer].items(), key=lambda kv: kv[1])[0]
             if buyer_staff[customer]
@@ -963,6 +974,7 @@ def _leakage_watch(ctx: RecipeContext, params: BaseModel) -> list[Notice]:
             dedupe_key=f"ai_leakage_watch:{ctx.local_today.isoformat()}",
             link="/reports",
             task=task,
+            model=AI_LEAKAGE_WATCH.model,
             facts=signals,
             figures=pattern_records(signals),
             keys=keys,
@@ -1025,6 +1037,7 @@ AI_LEAKAGE_WATCH = Recipe(
     schedule=lambda _p: weekly(MONDAY, time(8, 15)),
     build=_leakage_watch,
     uses_ai=True,
+    ai_model="flash",
     only_roles=("owner",),
 )
 
@@ -1076,6 +1089,7 @@ def _margin_check(ctx: RecipeContext, params: BaseModel) -> list[Notice]:
             dedupe_key=f"ai_margin_check:{ctx.local_today.isoformat()}",
             link="/reports",
             task=task,
+            model=AI_MARGIN_CHECK.model,
             facts=facts,
             figures=figures,
             keys=keys,
@@ -1099,6 +1113,7 @@ AI_MARGIN_CHECK = Recipe(
     schedule=lambda _p: weekly(MONDAY, time(7, 30)),
     build=_margin_check,
     uses_ai=True,
+    ai_model="flash",
 )
 
 
@@ -1193,6 +1208,7 @@ def _drying_planner(ctx: RecipeContext, params: BaseModel) -> list[Notice]:
             dedupe_key=f"ai_drying_planner:{ctx.local_today.isoformat()}",
             link="/paddy",
             task=task,
+            model=AI_DRYING_PLANNER.model,
             facts={"place": loc.label, "safe_storage_moisture_pct": 14, "wet_palay_lots": lots, "forecast": weather},
             figures=figures,
             keys=keys,
@@ -1226,6 +1242,7 @@ AI_DRYING_PLANNER = Recipe(
     schedule=_drying_schedule,
     build=_drying_planner,
     uses_ai=True,
+    ai_model="flash",
 )
 
 
@@ -1329,6 +1346,7 @@ def _month_in_review(ctx: RecipeContext, params: BaseModel) -> list[Notice]:
             dedupe_key=dedupe_key,
             link="/reports",
             task=task,
+            model=MONTH_IN_REVIEW.model,
             facts=facts,
             figures=figures,
             keys=keys,
@@ -1354,6 +1372,7 @@ MONTH_IN_REVIEW = Recipe(
     schedule=lambda _p: monthly(1, time(8, 0)),
     build=_month_in_review,
     ai_optional=True,
+    ai_model="flash",
 )
 
 

@@ -13,6 +13,7 @@ from sqlalchemy.orm import Session
 
 from ..core.mailer import Attachment
 from ..jobs.schedule import Schedule
+from .ai import Model
 
 if TYPE_CHECKING:
     from ..models.company import Company
@@ -114,6 +115,21 @@ class Recipe:
     # and the owner has switched AI on; then it runs as an AI recipe would.
     # With AI off it still runs, without the advice.
     ai_optional: bool = False
+    # The DeepSeek model its AI calls use, "pro" or "flash" (automations.ai.Model);
+    # set on every recipe that calls the AI, and only on those.
+    ai_model: Model | None = None
+
+    def __post_init__(self) -> None:
+        if (self.uses_ai or self.ai_optional) != (self.ai_model is not None):
+            raise ValueError(f"{self.code}: a recipe names a model exactly when it calls the AI")
+
+    @property
+    def model(self) -> Model:
+        """The model its AI calls use."""
+        if self.ai_model is None:
+            raise ValueError(f"{self.code} doesn't call the AI")
+        return self.ai_model
+
     # Only these roles may receive it, whatever their section access: what it
     # says about named staff is for the owner alone.
     only_roles: tuple[str, ...] = ()

@@ -4,6 +4,7 @@ a failed call still sends the figures, and nothing private reaches the model."""
 from __future__ import annotations
 
 import json
+from dataclasses import replace
 from datetime import date, datetime, timedelta
 from decimal import Decimal
 from zoneinfo import ZoneInfo
@@ -76,14 +77,30 @@ def test_an_answer_is_read_tidied_and_checked_against_the_facts(key, monkeypatch
         "ignored": "anything else the model adds",
     }
     _reply(monkeypatch, content=json.dumps(answer), calls=calls)
-    out = ai.ask({"overdue_php": 120038}, KEYS, task="Chase money.", language="taglish")
+    out = ai.ask({"overdue_php": 120038}, KEYS, task="Chase money.", model="flash", language="taglish")
     assert out == {"headline": "Collect ₱120,038 from Aling Nena, today.", "steps": ["Call Aling Nena about ₱120,038."]}
     [request] = calls
-    assert request["model"] == "deepseek-v4-pro"
+    assert request["model"] == "deepseek-flash"
     assert request["response_format"] == {"type": "json_object"}
     assert "Taglish" in request["messages"][0]["content"]
     assert "Chase money." in request["messages"][0]["content"]
     assert json.loads(request["messages"][1]["content"]) == {"overdue_php": 120038}
+
+
+@pytest.mark.parametrize(("model", "model_id"), [("pro", "deepseek-v4-pro"), ("flash", "deepseek-flash")])
+def test_each_model_maps_to_its_model_id(key, monkeypatch, model, model_id):
+    calls = []
+    _reply(monkeypatch, content=json.dumps({"headline": "Collect today."}), calls=calls)
+    ai.ask({}, KEYS, task="t", model=model)
+    assert calls[0]["model"] == model_id
+
+
+def test_every_recipe_that_calls_the_ai_names_its_model():
+    for code, recipe in RECIPES.items():
+        calls_ai = recipe.uses_ai or recipe.ai_optional
+        assert (recipe.ai_model in ("pro", "flash")) if calls_ai else recipe.ai_model is None, code
+    with pytest.raises(ValueError, match="names a model exactly when it calls the AI"):
+        replace(RECIPES[AI_CODES[0]], ai_model=None)
 
 
 @pytest.mark.parametrize(
@@ -98,14 +115,14 @@ def test_an_answer_is_read_tidied_and_checked_against_the_facts(key, monkeypatch
 def test_anything_short_of_a_usable_answer_is_unavailable(key, monkeypatch, reply):
     _reply(monkeypatch, **reply)
     with pytest.raises(ai.AIUnavailable):
-        ai.ask({}, KEYS, task="t")
+        ai.ask({}, KEYS, task="t", model="flash")
 
 
 def test_without_a_key_nothing_is_sent(monkeypatch):
     monkeypatch.setattr(cfg.settings, "DEEPSEEK_AUTOMATIONS_API_KEY", None, raising=False)
     monkeypatch.setattr(cfg.settings, "DEEPSEEK_API_KEY", None, raising=False)
     with pytest.raises(ai.AIUnavailable):
-        ai.ask({}, KEYS, task="t")
+        ai.ask({}, KEYS, task="t", model="flash")
 
 
 # ── languages ────────────────────────────────────────────────────────────────
@@ -154,7 +171,7 @@ def test_only_the_sentence_with_the_invented_figure_is_dropped_from_a_chinese_an
 ):
     calls = []
     _reply(monkeypatch, content=json.dumps({"headline": answer, "steps": []}), calls=calls)
-    out = ai.ask({"overdue_php": 120038}, KEYS, task="Chase money.", language=language)
+    out = ai.ask({"overdue_php": 120038}, KEYS, task="Chase money.", model="flash", language=language)
     assert out == {"headline": kept, "steps": []}
     system = calls[0]["messages"][0]["content"]
     assert script in system and "digits 0-9" in system
@@ -184,7 +201,7 @@ def test_each_hokkien_region_is_asked_for_in_its_own_script_and_not_as_mandarin(
     calls = []
     answer = {"headline": "應收款項₱120,038元。", "steps": []}
     _reply(monkeypatch, content=json.dumps(answer), calls=calls)
-    out = ai.ask({"overdue_php": 120038}, KEYS, task="Chase money.", language=code)
+    out = ai.ask({"overdue_php": 120038}, KEYS, task="Chase money.", model="flash", language=code)
     assert out["headline"] == "應收款項₱120,038元。"
     assert description in calls[0]["messages"][0]["content"]
 
@@ -493,9 +510,11 @@ def mill(db_session, company, seed_owner):
 
 def test_every_ai_recipe_runs_and_sends_nothing_private(db_session, company, mill, key, monkeypatch):
     sent: list[dict] = []
+    models: list[str] = []
 
-    def fake_ask(facts, keys, *, task, language="en"):
+    def fake_ask(facts, keys, *, task, model, language="en"):
         sent.append(facts)
+        models.append(model)
         return {k.name: ([f"{k.name} one"] if k.is_list else f"{k.name} text") for k in keys}
 
     monkeypatch.setattr(ai, "ask", fake_ask)
@@ -509,6 +528,7 @@ def test_every_ai_recipe_runs_and_sends_nothing_private(db_session, company, mil
         recipe = RECIPES[code]
         notices = recipe.build(ctx, recipe.params(ai_advice=True) if recipe.ai_optional else recipe.params())
         assert notices, f"{code} had nothing to say about a busy mill"
+        assert models[-1] == recipe.ai_model, f"{code} asked a model other than its own"
         assert "The figures:" in notices[0].body, code
     assert len(sent) == len(AI_CODES) + len(ADVICE_CODES)
     payload = json.dumps(sent, ensure_ascii=False, default=str)

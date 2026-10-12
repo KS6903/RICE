@@ -108,7 +108,7 @@ def _build(ctx: RecipeContext, params: BaseModel) -> list[Notice]:
     if params.ai_advice and ctx.ai:
         from .advisor import morning_advice  # advisor builds on the report recipes
 
-        return [morning_advice(ctx, title=title, dedupe_key=dedupe_key, figures=lines)]
+        return [morning_advice(ctx, title=title, dedupe_key=dedupe_key, figures=lines, model=OWNER_DIGEST.model)]
     return [Notice(title=title, body="\n".join(lines), link="/reports", dedupe_key=dedupe_key)]
 
 
@@ -132,4 +132,5 @@ OWNER_DIGEST = Recipe(
     schedule=_schedule,
     build=_build,
     ai_optional=True,
+    ai_model="flash",
 )

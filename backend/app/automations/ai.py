@@ -25,7 +25,7 @@ import logging
 import re
 from dataclasses import dataclass
 from decimal import Decimal
-from typing import Any
+from typing import Any, Literal
 
 import httpx
 
@@ -33,7 +33,19 @@ from ..core.config import settings
 
 logger = logging.getLogger("ricemill.automations.ai")
 
-# deepseek-v4-pro thinks before it answers, and the thinking spends completion
+# Which DeepSeek model a recipe's AI calls use. Every AI recipe names one
+# (Recipe.ai_model), and the server settings map each to a model id:
+# "pro" to DEEPSEEK_AUTOMATIONS_MODEL, "flash" to DEEPSEEK_MODEL.
+#
+# All of them are "flash" today. On 2026-10-12 every AI recipe was run on mill1's
+# seeded data with both models, in English, Taglish and Philippine Hokkien.
+# DeepSeek-V4.1-Flash read the figures as well as V4-Pro or better in each recipe,
+# kept to Traditional characters in Hokkien more reliably, and answered 2-3 times
+# sooner at about a quarter of the price. DeepSeek is also phasing V4-Pro out. A
+# recipe moves to "pro" only when a side-by-side run shows Flash falling short on it.
+Model = Literal["pro", "flash"]
+
+# Both models think before they answer, and the thinking spends completion
 # tokens. Generous room for both; the answers themselves are short.
 MAX_TOKENS = 12_000
 TIMEOUT_SECONDS = 150.0
@@ -135,6 +147,10 @@ class Key:
     max_items: int = 5
 
 
+def model_id(model: Model) -> str:
+    return settings.DEEPSEEK_AUTOMATIONS_MODEL if model == "pro" else settings.DEEPSEEK_MODEL
+
+
 def configured() -> bool:
     return api_key() is not None
 
@@ -165,7 +181,9 @@ def _clean(value: Any, limit: int) -> str:
     return text.strip()
 
 
-def ask(facts: dict[str, Any], keys: tuple[Key, ...], *, task: str, language: str = "en") -> dict[str, Any]:
+def ask(
+    facts: dict[str, Any], keys: tuple[Key, ...], *, task: str, model: Model, language: str = "en"
+) -> dict[str, Any]:
     """Send the facts, get back the answer's keys (strings, or lists of strings).
 
     Raises AIUnavailable for anything short of a well-formed answer."""
@@ -174,7 +192,7 @@ def ask(facts: dict[str, Any], keys: tuple[Key, ...], *, task: str, language: st
         raise AIUnavailable("DeepSeek isn't configured on this server")
     system = _RULES.format(task=task, language=LANGUAGES.get(language, LANGUAGES["en"]), schema=_schema(keys))
     body = {
-        "model": settings.DEEPSEEK_AUTOMATIONS_MODEL,
+        "model": model_id(model),
         "messages": [
             {"role": "system", "content": system},
             {"role": "user", "content": json.dumps(facts, ensure_ascii=False, default=str)},
