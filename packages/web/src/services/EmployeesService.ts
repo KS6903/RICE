@@ -9,6 +9,13 @@ export class EmployeesService {
     return this.http.get(`/employees/${q}`).then((r) => r.data);
   }
 
+  /** The number the next employee of this employment type would get. */
+  nextNumber(employmentType: string): Promise<{ employee_no: string }> {
+    return this.http
+      .get("/employees/next-number", { params: { employment_type: employmentType } })
+      .then((r) => r.data);
+  }
+
   /** Coerce empty date/number strings to null and parse rates. Pure. */
   static toCreatePayload(form: Record<string, any>) {
     return {

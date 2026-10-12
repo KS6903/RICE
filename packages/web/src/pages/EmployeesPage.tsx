@@ -11,31 +11,158 @@ import LegalNotice from "../components/LegalNotice";
 import UserAvatar from "../components/UserAvatar";
 import { useAccess } from "../hooks/useAccess";
 import GovernmentIdsNotice from "../components/GovernmentIdsNotice";
+import Select from "../components/Select";
+import DatePicker from "../components/DatePicker";
+import ComboInput from "../components/ComboInput";
+import { isVariablePay, monthlyForForm, rateBasis } from "../utils/employeePay";
 
-const EMPLOYMENT_TYPES = [
-  { value: "regular", label: "Regular" },
-  { value: "probationary", label: "Probationary" },
-  { value: "contractual", label: "Contractual" },
-  { value: "casual", label: "Casual / Daily" },
-];
-const GENDERS = [
-  { value: "male", label: "Male" },
-  { value: "female", label: "Female" },
-  { value: "other", label: "Other" },
-];
+/** A dropdown list in alphabetical order. The labels named in `last` go at the
+ *  end, in that order ("Other" after the rest, say). */
+const alphabetical = <T extends { label: string }>(options: T[], last: string[] = []): T[] => {
+  const rank = (o: T) => {
+    const i = last.indexOf(o.label);
+    return i < 0 ? 0 : i + 1;
+  };
+  return [...options].sort((a, b) => rank(a) - rank(b) || a.label.localeCompare(b.label));
+};
+/** A choice list whose values are their own labels, as the free text it replaces. */
+const choices = (labels: string[], last: string[] = []) =>
+  alphabetical(
+    labels.map((l) => ({ value: l, label: l })),
+    last,
+  );
+// How the person is paid and engaged. Probationary and contractual come last.
+const EMPLOYMENT_TYPES = alphabetical(
+  [
+    { value: "regular", label: "Regular" },
+    { value: "casual", label: "Casual" },
+    { value: "monthly", label: "Monthly" },
+    { value: "daily", label: "Daily" },
+    { value: "biweekly", label: "Bi-weekly" },
+    { value: "weekly", label: "Weekly" },
+    { value: "piece_rate", label: "Piece-rate" },
+    { value: "commission", label: "Commission-based" },
+    { value: "hourly", label: "Hourly" },
+    { value: "probationary", label: "Probationary" },
+    { value: "contractual", label: "Contractual" },
+  ],
+  ["Probationary", "Contractual"],
+);
+const DEPARTMENTS = choices([
+  "Operations",
+  "Milling",
+  "Drying",
+  "Warehouse",
+  "Logistics",
+  "Maintenance",
+  "Sales",
+  "Accounting",
+  "Office",
+  "Management",
+]);
+const RELATIONS = choices(
+  ["Spouse", "Parent", "Child", "Sibling", "Other relative", "Partner", "Friend", "Other"],
+  ["Other"],
+);
+const PAY_METHODS = alphabetical([
+  { value: "cash", label: "Cash" },
+  { value: "check", label: "Check" },
+  { value: "bank_transfer", label: "Bank transfer" },
+  { value: "e_wallet", label: "E-wallet (GCash, Maya)" },
+  { value: "payroll_card", label: "Payroll ATM card" },
+]);
+const BANKS = [
+  "BDO Unibank",
+  "BPI",
+  "Metrobank",
+  "Landbank",
+  "PNB",
+  "Security Bank",
+  "UnionBank",
+  "China Bank",
+  "RCBC",
+  "DBP",
+  "PSBank",
+  "EastWest",
+  "Maybank",
+].sort((a, b) => a.localeCompare(b));
+/** What each way of paying needs, named as the person would. A check goes to a
+ *  payee only; the others need the provider and the account, mobile or card
+ *  number. The account holder is the employee unless another is given. */
+const PAY_DETAILS: Record<
+  string,
+  { provider?: string; holder: string; number?: string; suggestions?: string[] }
+> = {
+  check: { holder: "Payee name" },
+  bank_transfer: {
+    provider: "Bank name",
+    holder: "Account name",
+    number: "Account number",
+    suggestions: BANKS,
+  },
+  e_wallet: {
+    provider: "E-wallet provider",
+    holder: "Account name",
+    number: "Mobile number",
+    suggestions: ["GCash", "Maya"],
+  },
+  payroll_card: {
+    provider: "Bank or card issuer",
+    holder: "Cardholder name",
+    number: "Card or account number",
+    suggestions: BANKS,
+  },
+};
+const HOLDER_PLACEHOLDER = "Defaults to the employee's name";
+/** The options, plus the stored value when it isn't one of them: older records
+ *  hold free text, and an unlisted value must not read as blank. */
+const withCurrent = (options: { value: string; label: string }[], current: string) =>
+  current && !options.some((o) => o.value === current)
+    ? [...options, { value: current, label: current }]
+    : options;
+/** Whether a way of paying is missing a detail it needs. */
+const payIncomplete = (f: { pay_method: string; pay_provider: string; pay_account_no: string }) => {
+  const d = PAY_DETAILS[f.pay_method];
+  return !!d?.provider && (!f.pay_provider.trim() || !f.pay_account_no.trim());
+};
+const GENDERS = alphabetical(
+  [
+    { value: "male", label: "Male" },
+    { value: "female", label: "Female" },
+    { value: "other", label: "Other" },
+  ],
+  ["Other"],
+);
 const CIVIL_STATUSES = ["single", "married", "widowed", "separated"];
-const COMMON_POSITIONS = [
-  "Mill Operator",
-  "Assistant Operator",
-  "Driver",
-  "Laborer",
-  "Foreman",
-  "Cashier",
-  "Bookkeeper",
-  "Warehouse Keeper",
-  "Office Staff",
-  "Mechanic",
-];
+// The job positions, grouped by the kind of work: management, office,
+// production, logistics, maintenance.
+const POSITIONS = choices(
+  [
+    "Manager",
+    "Supervisor",
+    "Foreman",
+    "Bookkeeper",
+    "Accountant",
+    "Cashier",
+    "Encoder",
+    "Office Staff",
+    "Mill Operator",
+    "Assistant Operator",
+    "Dryer Operator",
+    "Machine Helper",
+    "Laborer",
+    "Packer",
+    "Weigher",
+    "Warehouse Keeper",
+    "Driver",
+    "Truck Helper",
+    "Mechanic",
+    "Electrician",
+    "Security Guard",
+    "Other",
+  ],
+  ["Other"],
+);
 
 const COLS = ["Name", "Position", "Department", "Branch", "Type", "Hired", "Status", ""];
 
@@ -52,6 +179,10 @@ const EMPTY_FORM = {
   date_terminated: "",
   daily_rate: "",
   monthly_salary: "",
+  pay_method: "cash",
+  pay_provider: "",
+  pay_account_name: "",
+  pay_account_no: "",
   phone: "",
   email: "",
   address: "",
@@ -93,7 +224,10 @@ function EmployeeRow({
       <td className="px-4 py-3">{e.position || "—"}</td>
       <td className="px-4 py-3 text-gray-600 dark:text-slate-300">{e.department || "—"}</td>
       <td className="px-4 py-3 text-gray-600 dark:text-slate-300">{e.branch?.name || "—"}</td>
-      <td className="px-4 py-3 capitalize">{e.employment_type || "—"}</td>
+      <td className="px-4 py-3">
+        {EMPLOYMENT_TYPES.find((t) => t.value === e.employment_type)?.label ??
+          (e.employment_type || "—")}
+      </td>
       <td className="px-4 py-3 text-gray-500 dark:text-slate-400 text-xs">
         {e.date_hired ? format(new Date(e.date_hired), "MMM d, yyyy") : "—"}
       </td>
@@ -172,6 +306,18 @@ function EmployeesPageInner() {
   });
 
   const upd = (k: keyof typeof form, v: string) => setForm((f) => ({ ...f, [k]: v }));
+  // A new way of paying starts without the old one's provider and number.
+  const changePayMethod = (v: string) =>
+    setForm((f) => ({ ...f, pay_method: v, pay_provider: "", pay_account_no: "" }));
+
+  // The number is set from the employment type; the form only shows it.
+  const { data: nextNo } = useQuery({
+    queryKey: ["employees", "next-no", form.employment_type],
+    queryFn: () => employeesService.nextNumber(form.employment_type),
+    enabled: showForm,
+  });
+  // The monthly figure is worked out from the rate, never typed in.
+  const monthly = monthlyForForm(form, false);
 
   return (
     <div className="space-y-6">
@@ -192,18 +338,16 @@ function EmployeesPageInner() {
               onChange={(e) => setSearch(e.target.value)}
             />
           </div>
-          <select
-            className="input w-auto"
+          <Select
+            aria-label="Branch"
+            className="!w-auto min-w-[10rem]"
             value={branchFilter}
-            onChange={(e) => setBranchFilter(e.target.value)}
-          >
-            <option value="">All branches</option>
-            {branches.map((b: any) => (
-              <option key={b.id} value={b.id}>
-                {b.name}
-              </option>
-            ))}
-          </select>
+            onChange={setBranchFilter}
+            options={[
+              { value: "", label: "All branches" },
+              ...branches.map((b: any) => ({ value: b.id, label: b.name })),
+            ]}
+          />
           <button onClick={() => setShowForm(!showForm)} className="btn-primary">
             <Plus size={16} /> Add employee
           </button>
@@ -220,21 +364,30 @@ function EmployeesPageInner() {
             <p className="text-sm font-medium text-gray-700 dark:text-slate-200 mb-2">Identity</p>
             <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
               <div>
-                <label className="block text-xs text-gray-600 dark:text-slate-300 mb-1">
+                <label
+                  htmlFor="new-employee-no"
+                  className="block text-xs text-gray-600 dark:text-slate-300 mb-1"
+                >
                   Employee #
                 </label>
                 <input
-                  className="input"
-                  placeholder="auto / EMP-001"
-                  value={form.employee_no}
-                  onChange={(e) => upd("employee_no", e.target.value)}
+                  id="new-employee-no"
+                  readOnly
+                  className="input cursor-default font-mono text-sm"
+                  placeholder="Set when saved"
+                  value={nextNo?.employee_no ?? ""}
                 />
+                <p className="text-[10px] text-muted mt-1">Set from the employment type.</p>
               </div>
               <div>
-                <label className="block text-xs text-gray-600 dark:text-slate-300 mb-1">
+                <label
+                  htmlFor="new-employee-first"
+                  className="block text-xs text-gray-600 dark:text-slate-300 mb-1"
+                >
                   First name *
                 </label>
                 <input
+                  id="new-employee-first"
                   className="input"
                   value={form.first_name}
                   onChange={(e) => upd("first_name", e.target.value)}
@@ -251,10 +404,14 @@ function EmployeesPageInner() {
                 />
               </div>
               <div>
-                <label className="block text-xs text-gray-600 dark:text-slate-300 mb-1">
+                <label
+                  htmlFor="new-employee-last"
+                  className="block text-xs text-gray-600 dark:text-slate-300 mb-1"
+                >
                   Last name *
                 </label>
                 <input
+                  id="new-employee-last"
                   className="input"
                   value={form.last_name}
                   onChange={(e) => upd("last_name", e.target.value)}
@@ -270,98 +427,167 @@ function EmployeesPageInner() {
                 <label className="block text-xs text-gray-600 dark:text-slate-300 mb-1">
                   Position
                 </label>
-                <input
-                  className="input"
-                  list="positions"
-                  placeholder="e.g. Mill Operator"
+                <Select
+                  aria-label="Position"
+                  placeholder="Choose a position"
                   value={form.position}
-                  onChange={(e) => upd("position", e.target.value)}
+                  onChange={(v) => upd("position", v)}
+                  options={withCurrent(POSITIONS, form.position)}
                 />
-                <datalist id="positions">
-                  {COMMON_POSITIONS.map((p) => (
-                    <option key={p} value={p} />
-                  ))}
-                </datalist>
               </div>
               <div>
                 <label className="block text-xs text-gray-600 dark:text-slate-300 mb-1">
                   Department
                 </label>
-                <input
-                  className="input"
-                  placeholder="Operations / Office / Drying"
+                <Select
+                  aria-label="Department"
+                  placeholder="Choose a department"
                   value={form.department}
-                  onChange={(e) => upd("department", e.target.value)}
+                  onChange={(v) => upd("department", v)}
+                  options={withCurrent(DEPARTMENTS, form.department)}
                 />
               </div>
               <div>
                 <label className="block text-xs text-gray-600 dark:text-slate-300 mb-1">
                   Employment type
                 </label>
-                <select
-                  className="input"
+                <Select
+                  aria-label="Employment type"
                   value={form.employment_type}
-                  onChange={(e) => upd("employment_type", e.target.value)}
-                >
-                  {EMPLOYMENT_TYPES.map((t) => (
-                    <option key={t.value} value={t.value}>
-                      {t.label}
-                    </option>
-                  ))}
-                </select>
+                  onChange={(v) => upd("employment_type", v)}
+                  options={EMPLOYMENT_TYPES}
+                />
               </div>
               <div>
                 <label className="block text-xs text-gray-600 dark:text-slate-300 mb-1">
                   Branch
                 </label>
-                <select
-                  className="input"
+                <Select
+                  aria-label="Branch"
                   value={form.branch_id}
-                  onChange={(e) => upd("branch_id", e.target.value)}
-                >
-                  <option value="">— Default —</option>
-                  {branches.map((b: any) => (
-                    <option key={b.id} value={b.id}>
-                      {b.name}
-                    </option>
-                  ))}
-                </select>
+                  onChange={(v) => upd("branch_id", v)}
+                  options={[
+                    { value: "", label: "Default" },
+                    ...branches.map((b: any) => ({ value: b.id, label: b.name })),
+                  ]}
+                />
               </div>
               <div>
                 <label className="block text-xs text-gray-600 dark:text-slate-300 mb-1">
                   Date hired
                 </label>
-                <input
-                  type="date"
-                  className="input"
+                <DatePicker
+                  aria-label="Date hired"
+                  clearable
                   value={form.date_hired}
-                  onChange={(e) => upd("date_hired", e.target.value)}
+                  onChange={(v) => upd("date_hired", v)}
                 />
               </div>
               <div>
-                <label className="block text-xs text-gray-600 dark:text-slate-300 mb-1">
-                  Daily rate (₱)
+                <label
+                  htmlFor="new-employee-rate"
+                  className="block text-xs text-gray-600 dark:text-slate-300 mb-1"
+                >
+                  Rate (₱)
                 </label>
                 <input
+                  id="new-employee-rate"
                   type="number"
                   className="input"
                   placeholder="500"
                   value={form.daily_rate}
                   onChange={(e) => upd("daily_rate", e.target.value)}
                 />
+                <p className="text-[10px] text-muted mt-1">
+                  Paid {rateBasis(form.employment_type)}.
+                </p>
               </div>
               <div>
-                <label className="block text-xs text-gray-600 dark:text-slate-300 mb-1">
+                <label
+                  htmlFor="new-employee-monthly"
+                  className="block text-xs text-gray-600 dark:text-slate-300 mb-1"
+                >
                   Monthly salary (₱)
                 </label>
                 <input
-                  type="number"
-                  className="input"
-                  placeholder="15000"
-                  value={form.monthly_salary}
-                  onChange={(e) => upd("monthly_salary", e.target.value)}
+                  id="new-employee-monthly"
+                  readOnly
+                  className="input cursor-default"
+                  placeholder={isVariablePay(form.employment_type) ? "Varies" : "From the rate"}
+                  value={monthly}
+                />
+                <p className="text-[10px] text-muted mt-1">
+                  {isVariablePay(form.employment_type)
+                    ? "Pay follows output, so there is no fixed monthly figure."
+                    : "Worked out from the rate."}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <p className="text-sm font-medium text-gray-700 dark:text-slate-200 mb-2">
+              Salary payment
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div>
+                <label className="block text-xs text-gray-600 dark:text-slate-300 mb-1">
+                  Paid by
+                </label>
+                <Select
+                  aria-label="Paid by"
+                  value={form.pay_method}
+                  onChange={changePayMethod}
+                  options={PAY_METHODS}
                 />
               </div>
+              {PAY_DETAILS[form.pay_method]?.provider && (
+                <div>
+                  <label className="block text-xs text-gray-600 dark:text-slate-300 mb-1">
+                    {PAY_DETAILS[form.pay_method].provider} *
+                  </label>
+                  <ComboInput
+                    aria-label={PAY_DETAILS[form.pay_method].provider}
+                    suggestions={PAY_DETAILS[form.pay_method].suggestions ?? []}
+                    value={form.pay_provider}
+                    onChange={(v) => upd("pay_provider", v)}
+                  />
+                </div>
+              )}
+              {PAY_DETAILS[form.pay_method] && (
+                <div>
+                  <label
+                    htmlFor="new-employee-holder"
+                    className="block text-xs text-gray-600 dark:text-slate-300 mb-1"
+                  >
+                    {PAY_DETAILS[form.pay_method].holder}
+                  </label>
+                  <input
+                    id="new-employee-holder"
+                    className="input"
+                    placeholder={HOLDER_PLACEHOLDER}
+                    value={form.pay_account_name}
+                    onChange={(e) => upd("pay_account_name", e.target.value)}
+                  />
+                </div>
+              )}
+              {PAY_DETAILS[form.pay_method]?.number && (
+                <div>
+                  <label
+                    htmlFor="new-employee-account"
+                    className="block text-xs text-gray-600 dark:text-slate-300 mb-1"
+                  >
+                    {PAY_DETAILS[form.pay_method].number} *
+                  </label>
+                  <input
+                    id="new-employee-account"
+                    inputMode="numeric"
+                    className="input font-mono text-sm"
+                    value={form.pay_account_no}
+                    onChange={(e) => upd("pay_account_no", e.target.value)}
+                  />
+                </div>
+              )}
             </div>
           </div>
 
@@ -396,46 +622,35 @@ function EmployeesPageInner() {
                 <label className="block text-xs text-gray-600 dark:text-slate-300 mb-1">
                   Birthdate
                 </label>
-                <input
-                  type="date"
-                  className="input"
+                <DatePicker
+                  aria-label="Birthdate"
+                  clearable
+                  max={format(new Date(), "yyyy-MM-dd")}
                   value={form.birthdate}
-                  onChange={(e) => upd("birthdate", e.target.value)}
+                  onChange={(v) => upd("birthdate", v)}
                 />
               </div>
               <div>
                 <label className="block text-xs text-gray-600 dark:text-slate-300 mb-1">
                   Gender
                 </label>
-                <select
-                  className="input"
+                <Select
+                  aria-label="Gender"
                   value={form.gender}
-                  onChange={(e) => upd("gender", e.target.value)}
-                >
-                  <option value="">—</option>
-                  {GENDERS.map((g) => (
-                    <option key={g.value} value={g.value}>
-                      {g.label}
-                    </option>
-                  ))}
-                </select>
+                  onChange={(v) => upd("gender", v)}
+                  options={[{ value: "", label: "Not set" }, ...GENDERS]}
+                />
               </div>
               <div>
                 <label className="block text-xs text-gray-600 dark:text-slate-300 mb-1">
                   Civil status
                 </label>
-                <select
-                  className="input capitalize"
+                <Select
+                  aria-label="Civil status"
                   value={form.civil_status}
-                  onChange={(e) => upd("civil_status", e.target.value)}
-                >
-                  <option value="">—</option>
-                  {CIVIL_STATUSES.map((s) => (
-                    <option key={s} value={s} className="capitalize">
-                      {s}
-                    </option>
-                  ))}
-                </select>
+                  onChange={(v) => upd("civil_status", v)}
+                  options={[{ value: "", label: "Not set" }, ...CIVIL_OPTIONS]}
+                />
               </div>
               <div className="sm:col-span-3">
                 <label className="block text-xs text-gray-600 dark:text-slate-300 mb-1">
@@ -522,11 +737,12 @@ function EmployeesPageInner() {
                 <label className="block text-xs text-gray-600 dark:text-slate-300 mb-1">
                   Relation
                 </label>
-                <input
-                  className="input"
-                  placeholder="Spouse, Parent…"
+                <Select
+                  aria-label="Relation"
+                  placeholder="Choose a relation"
                   value={form.emergency_contact_relation}
-                  onChange={(e) => upd("emergency_contact_relation", e.target.value)}
+                  onChange={(v) => upd("emergency_contact_relation", v)}
+                  options={withCurrent(RELATIONS, form.emergency_contact_relation)}
                 />
               </div>
             </div>
@@ -549,9 +765,11 @@ function EmployeesPageInner() {
               Cancel
             </button>
             <button
-              onClick={() => create.mutate(form)}
+              onClick={() => create.mutate({ ...form, monthly_salary: monthly })}
               className="btn-primary"
-              disabled={create.isPending || !form.first_name || !form.last_name}
+              disabled={
+                create.isPending || !form.first_name || !form.last_name || payIncomplete(form)
+              }
             >
               {create.isPending ? "Saving…" : "Save employee"}
             </button>
@@ -649,16 +867,22 @@ type FieldSpec = {
   label: string;
   kind?: "text" | "email" | "date" | "money" | "select" | "textarea";
   options?: { value: string; label: string }[];
+  /** Typed freely, with these offered as it is typed. */
+  suggestions?: string[];
+  /** Worked out, not typed: shown but not edited. */
+  computed?: boolean;
   mono?: boolean;
   /** Spans both columns. */
   wide?: boolean;
   placeholder?: string;
 };
 
-const CIVIL_OPTIONS = CIVIL_STATUSES.map((s) => ({
-  value: s,
-  label: s.charAt(0).toUpperCase() + s.slice(1),
-}));
+const CIVIL_OPTIONS = alphabetical(
+  CIVIL_STATUSES.map((s) => ({
+    value: s,
+    label: s.charAt(0).toUpperCase() + s.slice(1),
+  })),
+);
 
 /** The profile, section by section. The same list draws the read-only view and
  *  the edit form, so the two always line up. */
@@ -668,6 +892,8 @@ const PROFILE_SECTIONS: {
   /** Only shown while editing (the header already shows these). */
   editOnly?: boolean;
   notice?: boolean;
+  /** Fields come from the way of paying, not from `fields`. */
+  pay?: boolean;
 }[] = [
   {
     title: "Name",
@@ -676,14 +902,14 @@ const PROFILE_SECTIONS: {
       { key: "first_name", label: "First name *" },
       { key: "last_name", label: "Last name *" },
       { key: "middle_name", label: "Middle name" },
-      { key: "employee_no", label: "Employee #", mono: true, placeholder: "EMP-001" },
+      { key: "employee_no", label: "Employee #", mono: true, placeholder: "REG-0001" },
     ],
   },
   {
     title: "Employment",
     fields: [
-      { key: "position", label: "Position", placeholder: "e.g. Mill Operator" },
-      { key: "department", label: "Department", placeholder: "Operations / Office" },
+      { key: "position", label: "Position", kind: "select", options: POSITIONS },
+      { key: "department", label: "Department", kind: "select", options: DEPARTMENTS },
       {
         key: "employment_type",
         label: "Employment type",
@@ -693,10 +919,12 @@ const PROFILE_SECTIONS: {
       { key: "branch_id", label: "Branch", kind: "select" },
       { key: "date_hired", label: "Date hired", kind: "date" },
       { key: "date_terminated", label: "Date terminated", kind: "date" },
-      { key: "daily_rate", label: "Daily rate", kind: "money", placeholder: "500" },
-      { key: "monthly_salary", label: "Monthly salary", kind: "money", placeholder: "15000" },
+      { key: "daily_rate", label: "Rate", kind: "money", placeholder: "500" },
+      { key: "monthly_salary", label: "Monthly salary", kind: "money", computed: true },
     ],
   },
+  // Its fields depend on the way of paying: see payFields.
+  { title: "Salary payment", pay: true, fields: [] },
   {
     title: "Contact",
     fields: [
@@ -728,7 +956,12 @@ const PROFILE_SECTIONS: {
     fields: [
       { key: "emergency_contact_name", label: "Name" },
       { key: "emergency_contact_phone", label: "Phone" },
-      { key: "emergency_contact_relation", label: "Relation", placeholder: "Spouse, Parent…" },
+      {
+        key: "emergency_contact_relation",
+        label: "Relation",
+        kind: "select",
+        options: RELATIONS,
+      },
     ],
   },
   {
@@ -736,6 +969,26 @@ const PROFILE_SECTIONS: {
     fields: [{ key: "notes", label: "Notes", kind: "textarea", wide: true }],
   },
 ];
+
+/** The salary payment fields for a way of paying: the method itself, then
+ *  what it needs. */
+function payFields(method: string): FieldSpec[] {
+  const fields: FieldSpec[] = [
+    { key: "pay_method", label: "Paid by", kind: "select", options: PAY_METHODS },
+  ];
+  const d = PAY_DETAILS[method];
+  if (!d) return fields;
+  if (d.provider) {
+    fields.push({
+      key: "pay_provider",
+      label: `${d.provider} *`,
+      suggestions: d.suggestions ?? [],
+    });
+  }
+  fields.push({ key: "pay_account_name", label: d.holder, placeholder: HOLDER_PLACEHOLDER });
+  if (d.number) fields.push({ key: "pay_account_no", label: `${d.number} *`, mono: true });
+  return fields;
+}
 
 /** An employee record as form values: every field a string, never null. */
 function toForm(e: any): typeof EMPTY_FORM {
@@ -749,7 +1002,7 @@ function toForm(e: any): typeof EMPTY_FORM {
 const peso = (v: string) => `₱${Number(v).toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
 
 const inputType = (kind: FieldSpec["kind"]) =>
-  kind === "date" ? "date" : kind === "email" ? "email" : kind === "money" ? "number" : "text";
+  kind === "email" ? "email" : kind === "money" ? "number" : "text";
 
 /** The employee's profile in a centred window: read it, and, for roles that
  *  manage employees (the Boss included), edit it in place. */
@@ -771,7 +1024,12 @@ function EmployeeProfile({
   const qc = useQueryClient();
 
   const save = useMutation({
-    mutationFn: () => employeesService.update(e.id, form),
+    // The monthly figure is worked out from the rate, not typed.
+    mutationFn: () =>
+      employeesService.update(e.id, {
+        ...form,
+        monthly_salary: monthlyForForm(form, e.daily_rate != null),
+      }),
     onSuccess: (updated) => {
       qc.invalidateQueries({ queryKey: ["employees"] });
       onSaved(updated);
@@ -806,9 +1064,15 @@ function EmployeeProfile({
     if (f.kind === "select")
       return optionsFor(f).find((o) => o.value === raw)?.label ?? String(raw);
     if (f.kind === "date") return format(new Date(raw), "MMM d, yyyy");
+    if (f.key === "daily_rate") return `${peso(raw)} ${rateBasis(e.employment_type ?? "")}`;
     if (f.kind === "money") return peso(raw);
     return String(raw);
   };
+
+  const fieldsFor = (section: (typeof PROFILE_SECTIONS)[number]) =>
+    section.pay
+      ? payFields(String((editing ? form.pay_method : e.pay_method) ?? ""))
+      : section.fields;
 
   const input = (f: FieldSpec) => {
     const common = {
@@ -819,27 +1083,55 @@ function EmployeeProfile({
         ev: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>,
       ) => setForm((cur) => ({ ...cur, [f.key]: ev.target.value })),
     };
+    const set = (v: string) =>
+      setForm((cur) => ({
+        ...cur,
+        [f.key]: v,
+        // A new way of paying starts without the old one's provider and number.
+        ...(f.key === "pay_method" ? { pay_provider: "", pay_account_no: "" } : {}),
+      }));
+    if (f.computed) {
+      return (
+        <input
+          id={common.id}
+          readOnly
+          className="input cursor-default"
+          placeholder={isVariablePay(form.employment_type) ? "Varies" : "From the rate"}
+          value={monthlyForForm(form, e.daily_rate != null)}
+        />
+      );
+    }
     if (f.kind === "select") {
       return (
-        <select {...common}>
-          <option value="">{f.key === "branch_id" ? "— Default —" : "—"}</option>
-          {optionsFor(f).map((o) => (
-            <option key={o.value} value={o.value}>
-              {o.label}
-            </option>
-          ))}
-        </select>
+        <Select
+          id={common.id}
+          value={String(form[f.key] ?? "")}
+          onChange={set}
+          options={[
+            { value: "", label: f.key === "branch_id" ? "Default" : "Not set" },
+            ...withCurrent(optionsFor(f), String(form[f.key] ?? "")),
+          ]}
+        />
+      );
+    }
+    if (f.kind === "date") {
+      return (
+        <DatePicker id={common.id} clearable value={String(form[f.key] ?? "")} onChange={set} />
       );
     }
     if (f.kind === "textarea") return <textarea rows={3} {...common} />;
-    return (
-      <input
-        {...common}
-        type={inputType(f.kind)}
-        placeholder={f.placeholder}
-        list={f.key === "position" ? "positions" : undefined}
-      />
-    );
+    if (f.suggestions) {
+      return (
+        <ComboInput
+          id={common.id}
+          suggestions={f.suggestions}
+          placeholder={f.placeholder}
+          value={String(form[f.key] ?? "")}
+          onChange={set}
+        />
+      );
+    }
+    return <input {...common} type={inputType(f.kind)} placeholder={f.placeholder} />;
   };
 
   // Rendered into <body>: the page content sits in an animated (transformed)
@@ -910,7 +1202,7 @@ function EmployeeProfile({
               {editing && section.notice && <LegalNotice kind="employeeData" className="mb-3" />}
               {editing ? (
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                  {section.fields.map((f) => (
+                  {fieldsFor(section).map((f) => (
                     <div key={f.key} className={f.wide ? "sm:col-span-2" : ""}>
                       <label
                         htmlFor={`emp-${f.key}`}
@@ -924,7 +1216,7 @@ function EmployeeProfile({
                 </div>
               ) : (
                 <dl className="grid grid-cols-1 gap-x-6 gap-y-3 sm:grid-cols-2">
-                  {section.fields.map((f) => (
+                  {fieldsFor(section).map((f) => (
                     <div key={f.key} className={f.wide ? "sm:col-span-2" : ""}>
                       <dt className="text-xs font-medium text-muted">{f.label}</dt>
                       <dd
@@ -957,7 +1249,12 @@ function EmployeeProfile({
               type="button"
               onClick={() => save.mutate()}
               className="btn-primary"
-              disabled={save.isPending || !form.first_name.trim() || !form.last_name.trim()}
+              disabled={
+                save.isPending ||
+                !form.first_name.trim() ||
+                !form.last_name.trim() ||
+                payIncomplete(form)
+              }
             >
               {save.isPending ? "Saving…" : "Save changes"}
             </button>
