@@ -1,7 +1,5 @@
 import { test, expect } from "@playwright/test";
-
-const ADMIN = { username: "admin", password: "admin1234" };
-const TENANT = { username: "mill1", password: "password123" };
+import { ADMIN, TENANT, login } from "./support/session";
 
 test.describe("Authentication", () => {
   test.beforeEach(async ({ context }) => {
@@ -20,40 +18,34 @@ test.describe("Authentication", () => {
   });
 
   test("platform admin logs in and lands on /admin", async ({ page }) => {
-    await page.goto("/login");
-    await page.getByPlaceholder("your.username").fill(ADMIN.username);
-    await page.getByPlaceholder("••••••••").fill(ADMIN.password);
-    await page.getByRole("button", { name: "Sign in", exact: true }).click();
-
-    await expect(page).toHaveURL(/\/admin/, { timeout: 10_000 });
+    await login(page, ADMIN);
+    await expect(page).toHaveURL(/\/admin/);
   });
 
-  test("tenant owner logs in and lands on dashboard", async ({ page }) => {
-    await page.goto("/login");
-    await page.getByPlaceholder("your.username").fill(TENANT.username);
-    await page.getByPlaceholder("••••••••").fill(TENANT.password);
-    await page.getByRole("button", { name: "Sign in", exact: true }).click();
-
-    await expect(page).not.toHaveURL(/\/login/, { timeout: 10_000 });
-    await expect(page).not.toHaveURL(/\/admin/);
+  test("tenant owner logs in and lands on the dashboard", async ({ page }) => {
+    await login(page, TENANT);
+    await expect(page).toHaveURL(/\/$/);
+    await expect(page.getByRole("link", { name: "Dashboard" })).toBeVisible();
   });
 
-  test("auth token persists across reload", async ({ page }) => {
-    await page.goto("/login");
-    await page.getByPlaceholder("your.username").fill(TENANT.username);
-    await page.getByPlaceholder("••••••••").fill(TENANT.password);
-    await page.getByRole("button", { name: "Sign in", exact: true }).click();
-
-    await expect(page).not.toHaveURL(/\/login/, { timeout: 10_000 });
+  test("the session survives a reload", async ({ page }) => {
+    await login(page, TENANT);
     const urlAfterLogin = page.url();
 
     await page.reload();
     await expect(page).toHaveURL(urlAfterLogin);
-    await expect(page).not.toHaveURL(/\/login/);
+    await expect(page.getByRole("link", { name: "Dashboard" })).toBeVisible();
   });
 
-  test("unauthenticated visit to / redirects to /login", async ({ page }) => {
+  test("a logged-out visitor to / sees the public homepage", async ({ page }) => {
     await page.goto("/");
-    await expect(page).toHaveURL(/\/login/, { timeout: 5_000 });
+    await expect(page).toHaveURL(/\/$/);
+    await expect(page.getByRole("link", { name: "Log in" }).first()).toBeVisible();
+  });
+
+  test("a logged-out deep link goes to the homepage, not the page", async ({ page }) => {
+    await page.goto("/inventory");
+    await expect(page).toHaveURL(/\/$/);
+    await expect(page.getByRole("link", { name: "Log in" }).first()).toBeVisible();
   });
 });

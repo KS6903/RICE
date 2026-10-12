@@ -112,12 +112,17 @@ accountant, mill operator.
 `npm install` turns on `.githooks/pre-push`. On any push to `main` it runs
 `scripts/ci_local.mjs`, a local copy of the GitHub checks (`.github/workflows/checks.yml`), and
 blocks the push if a required check fails. A full run takes about 25 minutes, mostly the backend
-tests, the web build and Semgrep. `npm run ci:local -- --fast` runs the quick subset by hand.
+tests, the web build and Semgrep, plus the two end-to-end suites: the API one takes a few minutes,
+the browser one up to half an hour on a busy Windows machine. `npm run ci:local -- --fast` runs the
+quick subset by hand.
 
 - The tree must be clean, and `gitleaks` must be installed (`winget install Gitleaks.Gitleaks`)
   or named in `GITLEAKS_BIN`.
 - Don't bypass the hook with `--no-verify`; fix what it reports.
 - All backend test runs share one test database, so run one pytest session at a time.
+- The end-to-end suites start their own disposable backend (:8001) and, for the browser suite, a
+  second web dev server (:8449), on a database whose name must contain `e2e`. They never touch the
+  everyday :8448/:8000 stack. The browser suite needs `npx playwright install chromium` once.
 
 Deploys are started by hand (`deploy.yml`, from `main` only) and pass the same checks, plus
 `backend/deploy_readiness.py`. That check fails until the `example.com` values in `wrangler.jsonc`

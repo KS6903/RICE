@@ -50,15 +50,7 @@ class GeocodingClient:
         cleaned = self._validate_query(q)
 
         params: dict[str, Any] = {"name": cleaned, "count": 10, "language": "en", "format": "json"}
-        try:
-            with httpx.Client(timeout=6.0) as client:
-                r = client.get(self.UPSTREAM, params=params)
-        except httpx.HTTPError as e:
-            raise _UpstreamError(f"Geocoding request failed: {e}")
-        if r.status_code >= 400:
-            raise _UpstreamError(f"Geocoding returned {r.status_code}")
-
-        results = (r.json().get("results")) or []
+        results = self._fetch_upstream(params)
         out: list[dict[str, Any]] = []
         for row in results[:10]:
             lat = row.get("latitude")
@@ -80,6 +72,18 @@ class GeocodingClient:
                 }
             )
         return out
+
+    def _fetch_upstream(self, params: dict[str, Any]) -> list[Any]:
+        """The one outbound call: Open-Meteo's raw result rows. Kept apart so the
+        disposable e2e backend can answer from fixtures instead of the internet."""
+        try:
+            with httpx.Client(timeout=6.0) as client:
+                r = client.get(self.UPSTREAM, params=params)
+        except httpx.HTTPError as e:
+            raise _UpstreamError(f"Geocoding request failed: {e}")
+        if r.status_code >= 400:
+            raise _UpstreamError(f"Geocoding returned {r.status_code}")
+        return (r.json().get("results")) or []
 
     # ── internals (verbatim security logic) ───────────────────────────────────
 

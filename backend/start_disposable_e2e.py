@@ -13,6 +13,7 @@ import subprocess
 import sys
 import threading
 from pathlib import Path
+from typing import Any
 from urllib.parse import urlparse, urlunparse
 
 import psycopg
@@ -20,21 +21,9 @@ import uvicorn
 from psycopg import sql
 
 BACKEND_DIR = Path(__file__).resolve().parent
-ALL_FEATURES = [
-    "paddy",
-    "milling",
-    "inventory",
-    "sales",
-    "expenses",
-    "employees",
-    "users",
-    "canva_inventory",
-    "reports_advanced",
-    "compliance_reports",
-    "drying_advisor",
-    "offline_sync",
-    "automations",
-]
+# The e2e mill is on the real Enterprise plan, so it has every feature the
+# migrations grant, including ones added after this file was last touched.
+E2E_PLAN = "enterprise"
 
 
 def _validated_target() -> tuple[str, str]:
@@ -101,15 +90,9 @@ def _seed_accounts() -> None:
     seed()
     with SessionLocal() as db:
         owner_role = db.query(Role).filter(Role.name == "owner").one()
-        plan = SubscriptionPlan(
-            code="e2e",
-            name="E2E Plan",
-            features=ALL_FEATURES,
-            max_users=None,
-            max_branches=None,
-        )
+        plan = db.query(SubscriptionPlan).filter(SubscriptionPlan.code == E2E_PLAN).one()
         company = Company(name="Disposable E2E Mill")
-        db.add_all([plan, company])
+        db.add(company)
         db.flush()
         provision_tenant(company, db=db)
         set_search_path(db, company.schema_name)
@@ -145,26 +128,56 @@ def _seed_accounts() -> None:
         db.commit()
 
 
-def _seed_offline_weather() -> None:
-    """Keep the E2E contract deterministic and independent of public APIs."""
+# Places the browser suite searches for, with Open-Meteo's field names.
+_E2E_PLACES: list[dict[str, Any]] = [
+    {"name": "Manila", "admin1": "Metro Manila", "country": "Philippines", "latitude": 14.6, "longitude": 120.98},
+    {
+        "name": "Cebu City",
+        "admin1": "Central Visayas",
+        "country": "Philippines",
+        "latitude": 10.32,
+        "longitude": 123.89,
+    },
+    {"name": "Tokyo", "admin1": "Tokyo", "country": "Japan", "latitude": 35.69, "longitude": 139.69},
+]
+
+
+def _offline_weather_and_places() -> None:
+    """Keep the E2E contract deterministic and independent of public APIs:
+    weather for the default spot and every fixture place comes from the cache,
+    and place search answers from the fixtures (validation and rate limiting
+    still run; only the outbound call is replaced)."""
     import time
     from datetime import datetime, timezone
 
+    from app.services.geocoding import GeocodingClient
     from app.services.weather import WeatherService
 
-    payload = {
-        "provider": "e2e-fixture",
-        "temp_c": 30.0,
-        "feels_like_c": 33.0,
-        "humidity_pct": 70,
-        "wind_kph": 8.0,
-        "condition": "Partly cloudy",
-        "condition_code": "partly_cloudy",
-        "is_daytime": True,
-        "location": {"lat": 14.6, "lon": 121.0, "label": None},
-        "fetched_at": datetime.now(timezone.utc).isoformat(),
-    }
-    WeatherService._CACHE[(14.6, 121.0)] = (time.time() + 3600, payload)
+    # Long enough for a slow full run of the browser suite.
+    expires = time.time() + 6 * 3600
+    spots = [(14.6, 121.0)] + [(p["latitude"], p["longitude"]) for p in _E2E_PLACES]
+    for lat, lon in spots:
+        WeatherService._CACHE[WeatherService._cache_key(lat, lon)] = (
+            expires,
+            {
+                "provider": "e2e-fixture",
+                "temp_c": 30.0,
+                "feels_like_c": 33.0,
+                "humidity_pct": 70,
+                "wind_kph": 8.0,
+                "condition": "Partly cloudy",
+                "condition_code": "partly_cloudy",
+                "is_daytime": True,
+                "location": {"lat": lat, "lon": lon, "label": None},
+                "fetched_at": datetime.now(timezone.utc).isoformat(),
+            },
+        )
+
+    def fixture_places(self: GeocodingClient, params: dict) -> list[dict]:
+        q = str(params.get("name", "")).lower()
+        return [p for p in _E2E_PLACES if p["name"].lower().startswith(q)]
+
+    GeocodingClient._fetch_upstream = fixture_places  # type: ignore[method-assign]
 
 
 def _build_e2e_app():
@@ -185,7 +198,7 @@ def main() -> None:
     _reset_database(url, maintenance_url)
     _migrate()
     _seed_accounts()
-    _seed_offline_weather()
+    _offline_weather_and_places()
     uvicorn.run(_build_e2e_app(), host="127.0.0.1", port=8001, access_log=False)
 
 

@@ -244,5 +244,6 @@ Full context, including what is still open, is in
 
 - Account recovery: `recover_mfa.py <username> --operator <id> --ticket <id>` (typed confirmation,
   clears MFA, revokes sessions, writes an audit event) — run only after identity verification.
-- Disposable API E2E: set `E2E_DATABASE_URL` (name must contain `e2e`) then `npm run test:e2e:api`.
+- Disposable E2E: set `E2E_DATABASE_URL` (name must contain `e2e`) then `npm run test:e2e:api`
+  (API) and `npm run test:e2e` (browser).
 - Exact command context lives in [SECURITY_OPERATIONS.md](SECURITY_OPERATIONS.md).

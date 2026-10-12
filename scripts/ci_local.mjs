@@ -6,15 +6,18 @@
 // Deliberate differences from CI:
 //   - pytest uses backend/.env (conftest's "<db> Test" sibling database),
 //     never CI's DATABASE_URL.
-//   - The API e2e suite runs against "ricemill_e2e" on the server named in
-//     backend/.env. The launcher drops and recreates only databases whose
-//     name contains "e2e".
+//   - The API and browser e2e suites run against "ricemill_e2e" on the server
+//     named in backend/.env (one after the other; each starts from a fresh
+//     copy). The launcher drops and recreates only databases whose name
+//     contains "e2e". The browser suite needs Playwright's Chromium:
+//     `npx playwright install chromium` once.
 //   - Semgrep runs from a local install, or through uv when that's present.
 //     Docker runs only when it's running. CI always runs both.
 //     gitleaks is required: a leaked secret must never leave this machine.
 //
 // Flags:
-//   --fast        skip the slow steps (pytest, e2e, production build, Docker)
+//   --fast        skip the slow steps (pytest, both e2e suites, production
+//                 build, Docker)
 //   --sha <sha>   refuse to run unless HEAD is that commit (the hook passes the
 //                 commit being pushed, so what is checked is what is pushed)
 import { spawnSync } from "node:child_process";
@@ -207,6 +210,7 @@ step("desktop: type-check", () =>
   run("npx", ["tsc", "-p", "packages/desktop/tsconfig.json", "--noEmit"], { shell: isWindows }),
 );
 step("format check (Prettier)", npm("format:check"));
+step("e2e: type-check the suites", npm("test:e2e:typecheck"));
 
 // ── Security (checks.yml: security, semgrep) ─────────────────────────────────
 
@@ -298,14 +302,19 @@ else {
   });
 }
 
-// ── API end-to-end (checks.yml: e2e-api) ─────────────────────────────────────
+// ── End-to-end (checks.yml: e2e-api, e2e-browser) ────────────────────────────
 
-if (fast) skip("e2e: API suite", "--fast");
-else {
+if (fast) {
+  skip("e2e: API suite", "--fast");
+  skip("e2e: browser suite", "--fast");
+} else {
   const url = e2eDatabaseUrl();
   if (!url) fail("could not derive the e2e database from DATABASE_URL in backend/.env.");
   step("e2e: API suite", () =>
     run("npm", ["run", "test:e2e:api"], { shell: isWindows, env: { E2E_DATABASE_URL: url } }),
+  );
+  step("e2e: browser suite", () =>
+    run("npm", ["run", "test:e2e"], { shell: isWindows, env: { E2E_DATABASE_URL: url } }),
   );
 }
 

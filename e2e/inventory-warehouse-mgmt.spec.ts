@@ -1,14 +1,5 @@
 import { test, expect } from "@playwright/test";
-
-const TENANT = { username: "mill1", password: "password123" };
-
-async function login(page: import("@playwright/test").Page) {
-  await page.goto("/login");
-  await page.getByPlaceholder("your.username").fill(TENANT.username);
-  await page.getByPlaceholder("••••••••").fill(TENANT.password);
-  await page.getByRole("button", { name: "Sign in", exact: true }).click();
-  await expect(page).not.toHaveURL(/\/login/, { timeout: 10_000 });
-}
+import { login } from "./support/session";
 
 test.describe("Inventory — warehouse picker and pack-out", () => {
   test("WarehousePicker opens with Add + rename affordances", async ({ page }) => {

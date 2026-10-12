@@ -1,26 +1,5 @@
-import { test, expect, Page, APIRequestContext } from "@playwright/test";
-
-const TENANT = { username: "mill1", password: "password123" };
-const BACKEND = "http://localhost:8000";
-
-async function login(page: Page) {
-  await page.goto("/login");
-  await page.getByPlaceholder("your.username").fill(TENANT.username);
-  await page.getByPlaceholder("••••••••").fill(TENANT.password);
-  await page.getByRole("button", { name: "Sign in", exact: true }).click();
-  await expect(page).not.toHaveURL(/\/login/, { timeout: 10_000 });
-}
-
-/** Bearer token via a direct API login. Session tokens live in httpOnly cookies
- *  now (not localStorage), so direct-API tests fetch their own token here. */
-async function apiToken(request: APIRequestContext): Promise<string> {
-  const res = await request.post(`${BACKEND}/api/auth/login`, {
-    form: { username: TENANT.username, password: TENANT.password },
-    headers: { "X-Client-Type": "bearer" },
-  });
-  expect(res.ok(), `api login failed (${res.status()})`).toBeTruthy();
-  return (await res.json()).access_token;
-}
+import { test, expect, Page } from "@playwright/test";
+import { apiToken, login } from "./support/session";
 
 /** Navigate to /operators and create an operator. */
 async function createOperator(page: Page, kind: "agent" | "miller", name: string): Promise<void> {
@@ -93,7 +72,7 @@ test.describe("Dispatch & Field Operators — status dot, color rules, edit flow
     const token = await apiToken(request);
 
     const stamp = Date.now();
-    const created = await request.post("http://localhost:8000/api/agents", {
+    const created = await request.post("/api/agents", {
       headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
       data: { name: `E2E NoUserColor ${stamp}`, canva_color_hex: "#000000" },
     });
@@ -102,7 +81,7 @@ test.describe("Dispatch & Field Operators — status dot, color rules, edit flow
     expect(body.canva_color_hex).not.toBe("#000000");
     expect(body.canva_color_hex).toMatch(/^#[0-9a-f]{6}$/);
 
-    const updated = await request.put(`http://localhost:8000/api/agents/${body.id}`, {
+    const updated = await request.put(`/api/agents/${body.id}`, {
       headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
       data: { canva_color_hex: "#000000", contact_person: "Edited" },
     });

@@ -37,6 +37,8 @@ export default defineConfig({
     cwd: "backend",
     url: "http://127.0.0.1:8001/api/health",
     reuseExistingServer: false,
-    timeout: 120_000,
+    // Migrating and provisioning the tenant from scratch takes a while on a
+    // cold machine (minutes on a slow Windows disk).
+    timeout: 300_000,
   },
 });

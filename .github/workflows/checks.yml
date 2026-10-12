@@ -153,6 +153,8 @@ jobs:
         run: npx tsc -p packages/desktop/tsconfig.json --noEmit
       - name: Format check (Prettier)
         run: npm run format:check
+      - name: Type-check the end-to-end suites
+        run: npm run test:e2e:typecheck
 
   security:
     runs-on: ubuntu-latest
@@ -276,3 +278,59 @@ jobs:
       - name: API end-to-end tests
         # Request-level tests only, so no browser download is needed.
         run: npm run test:e2e:api
+
+  e2e-browser:
+    name: Browser end-to-end
+    # The app in a real browser: sign-in and the terms screen, the first-run
+    # checklist and guided tour, buying, milling, selling and invoicing,
+    # inventory, dispatch and weather. playwright.config.ts starts a disposable
+    # backend and a web dev server in front of it; nothing else is touched.
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      E2E_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/rice_e2e
+      E2E_PYTHON: python
+      SECRET_KEY: ci-test-secret-key
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: backend/requirements-dev.txt
+      - name: Install backend dependencies
+        run: python -m pip install --require-hashes -r backend/requirements-dev.txt
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "24"
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Install Chromium for Playwright
+        run: npx playwright install --with-deps chromium
+      - name: Browser end-to-end tests
+        run: npm run test:e2e
+      - name: Keep the report, traces and videos of a failed run
+        if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: playwright-report
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 7

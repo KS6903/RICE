@@ -6,6 +6,12 @@ import { fileURLToPath } from "node:url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
+// The dev server's port and the backend its /api proxy forwards to. Defaults
+// are the everyday local stack; the browser e2e suite runs its own pair (a
+// second dev server in front of a disposable backend) beside it.
+const devPort = Number(process.env.WEB_DEV_PORT ?? 8448);
+const apiProxyTarget = process.env.API_PROXY_TARGET ?? "http://localhost:8000";
+
 // ── Content-Security-Policy ──────────────────────────────────────────────────
 // The browser-side XSS defence (the backend's CSP only covers API responses).
 // The production build emits only EXTERNAL scripts, so script-src stays strict
@@ -46,7 +52,7 @@ function cspDirectives(dev: boolean, forHeader: boolean): Record<string, string[
       "ws://localhost:8000",
       "ws://127.0.0.1:8000",
       ...desktopSocket,
-      ...(dev ? ["ws://localhost:8448", "ws://127.0.0.1:8448"] : []),
+      ...(dev ? [`ws://localhost:${devPort}`, `ws://127.0.0.1:${devPort}`] : []),
     ],
     "frame-src": ["https://accounts.google.com"],
     "child-src": ["'none'"],
@@ -118,7 +124,7 @@ export default defineConfig({
     },
   },
   server: {
-    port: 8448,
+    port: devPort,
     strictPort: true,
     // Dev gets a (looser) CSP too, so HMR works and the e2e suite exercises the
     // policy against real flows (login, canvas WS, Google button, fonts).
@@ -126,7 +132,7 @@ export default defineConfig({
       "Content-Security-Policy": cspString(true, true),
     },
     proxy: {
-      "/api": "http://localhost:8000",
+      "/api": apiProxyTarget,
     },
   },
 });

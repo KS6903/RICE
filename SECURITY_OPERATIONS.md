@@ -74,16 +74,22 @@ dump, SQLite file, log, or recovery artifact.
    CI blocks on pytest, type checking, dependency audits, Bandit, gitleaks, npm
    audit, and CodeQL. GitHub Actions are pinned to full commit hashes.
 
-## Disposable API E2E tests
+## Disposable E2E tests (API and browser)
 
 Never point Playwright at a development or production database. The launcher
 refuses any target whose database name does not contain `e2e`, drops/recreates
-that target, migrates it, seeds fixed test accounts, and then starts the API.
+that target, migrates it, seeds fixed test accounts (on the Enterprise plan),
+and then starts the API on :8001.
 
 ```powershell
 $env:E2E_DATABASE_URL='postgresql://postgres:<password>@127.0.0.1:5432/ricemill_e2e'
-npm run test:e2e:api
+npm run test:e2e:api   # request-level suite
+npm run test:e2e       # browser suite: also starts a web dev server on :8449
 ```
+
+The browser suite needs Playwright's Chromium once (`npx playwright install chromium`).
+It runs beside the everyday :8448/:8000 stack without touching it. Run the two
+suites one after the other: both use :8001.
 
 ## Account recovery
 

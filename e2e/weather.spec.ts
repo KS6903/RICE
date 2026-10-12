@@ -1,28 +1,5 @@
 import { test, expect, request, Page, APIRequestContext } from "@playwright/test";
-
-const TENANT = { username: "mill1", password: "password123" };
-const BACKEND = "http://localhost:8000";
-
-async function login(page: Page) {
-  await page.goto("/login");
-  await page.getByPlaceholder("your.username").fill(TENANT.username);
-  await page.getByPlaceholder("••••••••").fill(TENANT.password);
-  await page.getByRole("button", { name: "Sign in", exact: true }).click();
-  await expect(page).not.toHaveURL(/\/login/, { timeout: 10_000 });
-}
-
-/** Bearer token via a direct API login. Session tokens are no longer persisted
- *  to localStorage (they live in httpOnly cookies now), so tests that need to
- *  call the API directly fetch their own bearer token here instead of scraping
- *  the auth store. */
-async function apiToken(request: APIRequestContext): Promise<string> {
-  const res = await request.post(`${BACKEND}/api/auth/login`, {
-    form: { username: TENANT.username, password: TENANT.password },
-    headers: { "X-Client-Type": "bearer" },
-  });
-  expect(res.ok(), `api login failed (${res.status()})`).toBeTruthy();
-  return (await res.json()).access_token;
-}
+import { apiToken, login } from "./support/session";
 
 /** Open the topbar location picker and add the first search result for `query`.
  *  Returns the label the backend persisted. */
@@ -42,14 +19,14 @@ async function addFavorite(page: Page, query: string): Promise<string> {
 
 /** Wipe any leftover favorites for the test user so each spec starts clean. */
 async function purgeFavorites(request: APIRequestContext, token: string) {
-  const res = await request.get(`${BACKEND}/api/locations`, {
+  const res = await request.get(`/api/locations`, {
     headers: { Authorization: `Bearer ${token}` },
   });
   if (!res.ok()) return;
   const list: { id: string }[] = await res.json();
   await Promise.all(
     list.map((l) =>
-      request.delete(`${BACKEND}/api/locations/${l.id}`, {
+      request.delete(`/api/locations/${l.id}`, {
         headers: { Authorization: `Bearer ${token}` },
       }),
     ),
@@ -150,8 +127,7 @@ test.describe("Weather + saved locations — header dropdown, search, favorites"
     const token = await apiToken(request);
 
     const r = await request.get(
-      "http://localhost:8000/api/locations/search?q=" +
-        encodeURIComponent("<script>alert(1)</script>"),
+      "/api/locations/search?q=" + encodeURIComponent("<script>alert(1)</script>"),
       { headers: { Authorization: `Bearer ${token}` } },
     );
     expect(r.status()).toBe(400);
@@ -163,7 +139,7 @@ test.describe("Weather + saved locations — header dropdown, search, favorites"
     const token = await apiToken(request);
     await purgeFavorites(request, token);
 
-    const r = await request.get(`${BACKEND}/api/weather`, {
+    const r = await request.get(`/api/weather`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     expect(r.ok()).toBeTruthy();
@@ -178,7 +154,7 @@ test.describe("Weather + saved locations — header dropdown, search, favorites"
     // cookie behind — a cookie the API would honour, defeating the "anonymous"
     // premise. A clean context sends no credentials at all.
     const anon = await request.newContext();
-    const r = await anon.get(`${BACKEND}/api/locations/search?q=Manila`);
+    const r = await anon.get(`/api/locations/search?q=Manila`);
     // Either 401 (token missing) or 403 — anything but 200.
     expect(r.ok()).toBeFalsy();
     expect([401, 403]).toContain(r.status());
