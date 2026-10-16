@@ -36,8 +36,8 @@
   },
   "devDependencies": {
     "@cloudflare/containers": "^0.3.7",
-    "@cloudflare/workers-types": "^5.20260930.2",
-    "@playwright/test": "^1.60.0",
+    "@cloudflare/workers-types": "^5.20261013.1",
+    "@playwright/test": "^1.64.0",
     "concurrently": "^10.0.6",
     "prettier": "^3.9.10",
     "wrangler": "^4.149.0"
