@@ -2,12 +2,13 @@
 // contributions and taxes under. The list is plain data, shown on every plan; the
 // monthly reminder is an automation, offered to Enterprise mills only, and switched
 // here rather than on the Automations page, beside the people it is about.
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { BellRing, ChevronDown, IdCard } from "lucide-react";
+import { BellRing, ChevronDown, IdCard, Minus, Plus } from "lucide-react";
 import { useFeature } from "../hooks/useFeature";
 import { useAccess } from "../hooks/useAccess";
 import { automationsService } from "../services/AutomationsService";
+import { useAuthStore } from "../stores/authStore";
 
 export const GOVERNMENT_IDS = [
   ["sss_no", "SSS"],
@@ -28,6 +29,44 @@ export function missingIds(e: Employee): string[] {
 }
 
 const RECIPE = "government_ids";
+
+// Whether this account has the notice minimized, kept under its own key like the
+// theme and the inventory order, so a box that has been put away stays put on
+// this browser.
+const minimizedKey = (userId: string) => `rice-mill-government-ids-minimized:${userId}`;
+
+function readMinimized(userId: string | undefined): boolean {
+  if (!userId) return false;
+  try {
+    return localStorage.getItem(minimizedKey(userId)) === "1";
+  } catch {
+    return false;
+  }
+}
+
+function useMinimized(): [boolean, (minimized: boolean) => void] {
+  const userId = useAuthStore((s) => s.user?.id);
+  const [minimized, setMinimized] = useState(() => readMinimized(userId));
+
+  // Another account signing in on this browser gets its own choice.
+  useEffect(() => setMinimized(readMinimized(userId)), [userId]);
+
+  const update = useCallback(
+    (next: boolean) => {
+      setMinimized(next);
+      if (!userId) return;
+      try {
+        if (next) localStorage.setItem(minimizedKey(userId), "1");
+        else localStorage.removeItem(minimizedKey(userId));
+      } catch {
+        // Storage blocked (private mode): it stays minimized until the page reloads.
+      }
+    },
+    [userId],
+  );
+
+  return [minimized, update];
+}
 
 function MonthlyReminder() {
   const queryClient = useQueryClient();
@@ -78,6 +117,7 @@ export default function GovernmentIdsNotice({
   onOpen: (employee: Employee) => void;
 }) {
   const [open, setOpen] = useState(false);
+  const [minimized, setMinimized] = useMinimized();
   const hasAutomations = useFeature("automations");
   const { canEdit } = useAccess();
   const missing = employees
@@ -86,39 +126,79 @@ export default function GovernmentIdsNotice({
     .filter((m) => m.ids.length > 0);
   if (missing.length === 0) return null;
 
+  const headline = (
+    <strong>
+      {missing.length} active {missing.length === 1 ? "employee is" : "employees are"} missing
+      government numbers.
+    </strong>
+  );
+
+  // Minimized: one slim row, still saying how many, with a way back.
+  if (minimized) {
+    return (
+      <section
+        aria-label="Missing government numbers"
+        className="card !py-2 flex items-center justify-between gap-3 border border-amber-300 dark:border-amber-800/60"
+      >
+        <p className="flex items-center gap-2 text-sm text-primary">
+          <IdCard size={16} className="shrink-0 text-amber-600 dark:text-amber-400" aria-hidden />
+          {headline}
+        </p>
+        <button
+          type="button"
+          className="btn-ghost !p-1.5 -mr-1.5 shrink-0"
+          aria-label="Expand"
+          title="Expand"
+          aria-expanded={false}
+          onClick={() => setMinimized(false)}
+        >
+          <Plus size={16} aria-hidden />
+        </button>
+      </section>
+    );
+  }
+
   return (
     <section
       aria-label="Missing government numbers"
       className="card space-y-3 border border-amber-300 dark:border-amber-800/60"
     >
-      <div className="flex items-start justify-between gap-3 flex-wrap">
-        <p className="flex items-start gap-2 text-sm text-primary">
-          <IdCard
-            size={16}
-            className="mt-0.5 shrink-0 text-amber-600 dark:text-amber-400"
-            aria-hidden
-          />
-          <span>
-            <strong>
-              {missing.length} active {missing.length === 1 ? "employee is" : "employees are"}{" "}
-              missing government numbers.
-            </strong>{" "}
-            You need SSS, PhilHealth, Pag-IBIG and TIN numbers to remit contributions and
-            withholding tax.
-          </span>
-        </p>
+      <div className="flex items-start gap-3">
+        <div className="flex min-w-0 flex-1 flex-wrap items-start justify-between gap-x-3 gap-y-1">
+          <p className="flex items-start gap-2 text-sm text-primary">
+            <IdCard
+              size={16}
+              className="mt-0.5 shrink-0 text-amber-600 dark:text-amber-400"
+              aria-hidden
+            />
+            <span>
+              {headline} You need SSS, PhilHealth, Pag-IBIG and TIN numbers to remit contributions
+              and withholding tax.
+            </span>
+          </p>
+          <button
+            type="button"
+            className="btn-ghost"
+            aria-expanded={open}
+            onClick={() => setOpen((o) => !o)}
+          >
+            <ChevronDown
+              size={16}
+              className={`transition-transform ${open ? "rotate-180" : ""}`}
+              aria-hidden
+            />
+            {open ? "Hide who" : "Show who"}
+          </button>
+        </div>
+        {/* The top right corner, whatever the width. */}
         <button
           type="button"
-          className="btn-ghost -mr-2"
-          aria-expanded={open}
-          onClick={() => setOpen((o) => !o)}
+          className="btn-ghost !p-1.5 -mr-1.5 -mt-1.5 shrink-0"
+          aria-label="Minimize"
+          title="Minimize"
+          onClick={() => setMinimized(true)}
         >
-          <ChevronDown
-            size={16}
-            className={`transition-transform ${open ? "rotate-180" : ""}`}
-            aria-hidden
-          />
-          {open ? "Hide who" : "Show who"}
+          <Minus size={16} aria-hidden />
         </button>
       </div>
       {open && (

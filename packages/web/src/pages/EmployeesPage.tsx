@@ -15,11 +15,19 @@ import Select from "../components/Select";
 import DatePicker from "../components/DatePicker";
 import ComboInput from "../components/ComboInput";
 import { isVariablePay, monthlyForForm, rateBasis } from "../utils/employeePay";
+import { PH_BANKS, PH_EWALLETS } from "../utils/phPaymentProviders";
 
 /** A dropdown list in alphabetical order. The labels named in `last` go at the
- *  end, in that order ("Other" after the rest, say). */
-const alphabetical = <T extends { label: string }>(options: T[], last: string[] = []): T[] => {
+ *  end, in that order ("Other" after the rest, say); those in `first` go at the
+ *  top, in that order. */
+const alphabetical = <T extends { label: string }>(
+  options: T[],
+  last: string[] = [],
+  first: string[] = [],
+): T[] => {
   const rank = (o: T) => {
+    const top = first.indexOf(o.label);
+    if (top >= 0) return top - first.length;
     const i = last.indexOf(o.label);
     return i < 0 ? 0 : i + 1;
   };
@@ -31,7 +39,8 @@ const choices = (labels: string[], last: string[] = []) =>
     labels.map((l) => ({ value: l, label: l })),
     last,
   );
-// How the person is paid and engaged. Probationary and contractual come last.
+// How the person is paid and engaged. Regular comes first, probationary and
+// contractual last.
 const EMPLOYMENT_TYPES = alphabetical(
   [
     { value: "regular", label: "Regular" },
@@ -47,6 +56,7 @@ const EMPLOYMENT_TYPES = alphabetical(
     { value: "contractual", label: "Contractual" },
   ],
   ["Probationary", "Contractual"],
+  ["Regular"],
 );
 const DEPARTMENTS = choices([
   "Operations",
@@ -71,24 +81,9 @@ const PAY_METHODS = alphabetical([
   { value: "e_wallet", label: "E-wallet (GCash, Maya)" },
   { value: "payroll_card", label: "Payroll ATM card" },
 ]);
-const BANKS = [
-  "BDO Unibank",
-  "BPI",
-  "Metrobank",
-  "Landbank",
-  "PNB",
-  "Security Bank",
-  "UnionBank",
-  "China Bank",
-  "RCBC",
-  "DBP",
-  "PSBank",
-  "EastWest",
-  "Maybank",
-].sort((a, b) => a.localeCompare(b));
 /** What each way of paying needs, named as the person would. A check goes to a
- *  payee only; the others need the provider and the account, mobile or card
- *  number. The account holder is the employee unless another is given. */
+ *  payee only; the others need the provider and the account (or card) number.
+ *  The account holder is the employee unless another is given. */
 const PAY_DETAILS: Record<
   string,
   { provider?: string; holder: string; number?: string; suggestions?: string[] }
@@ -98,19 +93,19 @@ const PAY_DETAILS: Record<
     provider: "Bank name",
     holder: "Account name",
     number: "Account number",
-    suggestions: BANKS,
+    suggestions: PH_BANKS,
   },
   e_wallet: {
     provider: "E-wallet provider",
     holder: "Account name",
-    number: "Mobile number",
-    suggestions: ["GCash", "Maya"],
+    number: "Account number",
+    suggestions: PH_EWALLETS,
   },
   payroll_card: {
     provider: "Bank or card issuer",
     holder: "Cardholder name",
     number: "Card or account number",
-    suggestions: BANKS,
+    suggestions: PH_BANKS,
   },
 };
 const HOLDER_PLACEHOLDER = "Defaults to the employee's name";
@@ -163,6 +158,15 @@ const POSITIONS = choices(
   ],
   ["Other"],
 );
+const OTHER_POSITION = "Other";
+/** The position to store: what was typed beside "Other", or "Other" itself when
+ *  nothing was. Any other choice is stored as it is. */
+const positionToStore = (choice: string, typed: string) =>
+  choice === OTHER_POSITION ? typed.trim() || OTHER_POSITION : choice;
+/** The text of a stored position that isn't on the list (typed beside "Other",
+ *  or free text from before the list), or "" when it is on the list. */
+const customPosition = (stored: string) =>
+  stored && !POSITIONS.some((p) => p.value === stored) ? stored : "";
 
 const COLS = ["Name", "Position", "Department", "Branch", "Type", "Hired", "Status", ""];
 
@@ -267,6 +271,8 @@ function EmployeesPageInner() {
   const [showForm, setShowForm] = useState(false);
   const [viewing, setViewing] = useState<any | null>(null);
   const [form, setForm] = useState({ ...EMPTY_FORM });
+  // What was typed beside "Other" in Position; blank keeps it as "Other".
+  const [otherPosition, setOtherPosition] = useState("");
 
   const { data: employees = [], isLoading } = useQuery({
     queryKey: ["employees", branchFilter],
@@ -296,6 +302,7 @@ function EmployeesPageInner() {
       qc.invalidateQueries({ queryKey: ["employees"] });
       setShowForm(false);
       setForm({ ...EMPTY_FORM });
+      setOtherPosition("");
     },
   });
 
@@ -310,11 +317,14 @@ function EmployeesPageInner() {
   const changePayMethod = (v: string) =>
     setForm((f) => ({ ...f, pay_method: v, pay_provider: "", pay_account_no: "" }));
 
-  // The number is set from the employment type; the form only shows it.
-  const { data: nextNo } = useQuery({
+  // The number is set from the employment type; the form only previews it. It
+  // is fetched fresh each time the form opens (never from the 5-minute cache),
+  // since another person may have taken the number in the meantime.
+  const { data: nextNo, isError: nextNoFailed } = useQuery({
     queryKey: ["employees", "next-no", form.employment_type],
     queryFn: () => employeesService.nextNumber(form.employment_type),
     enabled: showForm,
+    staleTime: 0,
   });
   // The monthly figure is worked out from the rate, never typed in.
   const monthly = monthlyForForm(form, false);
@@ -374,10 +384,14 @@ function EmployeesPageInner() {
                   id="new-employee-no"
                   readOnly
                   className="input cursor-default font-mono text-sm"
-                  placeholder="Set when saved"
+                  placeholder={nextNoFailed ? "Set when saved" : "Working it out…"}
                   value={nextNo?.employee_no ?? ""}
                 />
-                <p className="text-[10px] text-muted mt-1">Set from the employment type.</p>
+                <p className="text-[10px] text-muted mt-1">
+                  {nextNoFailed
+                    ? "Couldn't load the preview. The number is still set when saved."
+                    : "Preview, set from the employment type."}
+                </p>
               </div>
               <div>
                 <label
@@ -431,9 +445,30 @@ function EmployeesPageInner() {
                   aria-label="Position"
                   placeholder="Choose a position"
                   value={form.position}
-                  onChange={(v) => upd("position", v)}
+                  onChange={(v) => {
+                    upd("position", v);
+                    if (v !== OTHER_POSITION) setOtherPosition("");
+                  }}
                   options={withCurrent(POSITIONS, form.position)}
                 />
+                {form.position === OTHER_POSITION && (
+                  <div className="mt-2">
+                    <label
+                      htmlFor="new-employee-position-other"
+                      className="block text-xs text-gray-600 dark:text-slate-300 mb-1"
+                    >
+                      Specify the position (optional)
+                    </label>
+                    <input
+                      id="new-employee-position-other"
+                      className="input"
+                      maxLength={100}
+                      placeholder='Leave blank to keep "Other"'
+                      value={otherPosition}
+                      onChange={(e) => setOtherPosition(e.target.value)}
+                    />
+                  </div>
+                )}
               </div>
               <div>
                 <label className="block text-xs text-gray-600 dark:text-slate-300 mb-1">
@@ -759,13 +794,20 @@ function EmployeesPageInner() {
               onClick={() => {
                 setShowForm(false);
                 setForm({ ...EMPTY_FORM });
+                setOtherPosition("");
               }}
               className="btn-secondary"
             >
               Cancel
             </button>
             <button
-              onClick={() => create.mutate({ ...form, monthly_salary: monthly })}
+              onClick={() =>
+                create.mutate({
+                  ...form,
+                  position: positionToStore(form.position, otherPosition),
+                  monthly_salary: monthly,
+                })
+              }
               className="btn-primary"
               disabled={
                 create.isPending || !form.first_name || !form.last_name || payIncomplete(form)
@@ -990,12 +1032,14 @@ function payFields(method: string): FieldSpec[] {
   return fields;
 }
 
-/** An employee record as form values: every field a string, never null. */
+/** An employee record as form values: every field a string, never null. A
+ *  position that isn't on the list reads as "Other" (its text goes beside it). */
 function toForm(e: any): typeof EMPTY_FORM {
   const form = { ...EMPTY_FORM };
   for (const key of Object.keys(EMPTY_FORM) as (keyof typeof EMPTY_FORM)[]) {
     form[key] = e[key] == null ? "" : String(e[key]);
   }
+  if (customPosition(form.position)) form.position = OTHER_POSITION;
   return form;
 }
 
@@ -1021,6 +1065,8 @@ function EmployeeProfile({
   const mayEdit = canEdit("employees");
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState(() => toForm(e));
+  // What sits beside "Other" in Position; blank keeps it as "Other".
+  const [otherPosition, setOtherPosition] = useState(() => customPosition(e.position ?? ""));
   const qc = useQueryClient();
 
   const save = useMutation({
@@ -1028,6 +1074,7 @@ function EmployeeProfile({
     mutationFn: () =>
       employeesService.update(e.id, {
         ...form,
+        position: positionToStore(form.position, otherPosition),
         monthly_salary: monthlyForForm(form, e.daily_rate != null),
       }),
     onSuccess: (updated) => {
@@ -1039,6 +1086,7 @@ function EmployeeProfile({
 
   const startEdit = () => {
     setForm(toForm(e));
+    setOtherPosition(customPosition(e.position ?? ""));
     save.reset();
     setEditing(true);
   };
@@ -1083,13 +1131,15 @@ function EmployeeProfile({
         ev: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>,
       ) => setForm((cur) => ({ ...cur, [f.key]: ev.target.value })),
     };
-    const set = (v: string) =>
+    const set = (v: string) => {
+      if (f.key === "position" && v !== OTHER_POSITION) setOtherPosition("");
       setForm((cur) => ({
         ...cur,
         [f.key]: v,
         // A new way of paying starts without the old one's provider and number.
         ...(f.key === "pay_method" ? { pay_provider: "", pay_account_no: "" } : {}),
       }));
+    };
     if (f.computed) {
       return (
         <input
@@ -1102,7 +1152,7 @@ function EmployeeProfile({
       );
     }
     if (f.kind === "select") {
-      return (
+      const select = (
         <Select
           id={common.id}
           value={String(form[f.key] ?? "")}
@@ -1112,6 +1162,21 @@ function EmployeeProfile({
             ...withCurrent(optionsFor(f), String(form[f.key] ?? "")),
           ]}
         />
+      );
+      if (f.key !== "position" || form.position !== OTHER_POSITION) return select;
+      return (
+        <>
+          {select}
+          <input
+            id="emp-position-other"
+            aria-label="Specify the position (optional)"
+            className="input mt-2"
+            maxLength={100}
+            placeholder='Specify the position (optional). Blank keeps "Other"'
+            value={otherPosition}
+            onChange={(ev) => setOtherPosition(ev.target.value)}
+          />
+        </>
       );
     }
     if (f.kind === "date") {
