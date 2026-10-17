@@ -13,6 +13,10 @@ class UserCreate(BaseModel):
     full_name: str
     role_id: int
     branch_id: uuid.UUID | None = None
+    # The signed-in person's own password and, with two-factor on, a current
+    # authenticator code: asked for when the role is Boss or Admin.
+    current_password: str | None = None
+    mfa_code: str | None = None
 
 
 class UserUpdate(BaseModel):
@@ -21,6 +25,9 @@ class UserUpdate(BaseModel):
     role_id: int | None = None
     is_active: bool | None = None
     branch_id: uuid.UUID | None = None
+    # As on UserCreate: asked for when someone is made a Boss or an Admin.
+    current_password: str | None = None
+    mfa_code: str | None = None
 
 
 class RoleResponse(BaseModel):

@@ -549,6 +549,45 @@ class AuthService(BaseService):
             self._log_security_event(user, "auth.mfa_backup_regenerated")
         return {"backup_codes": raw_codes}
 
+    def confirm_identity(self, password: str | None, code: str | None, *, reason: str) -> None:
+        """Re-check the signed-in person before a sensitive act, such as making
+        someone a Boss or an Admin: their own password, and a current authenticator
+        code when they have two-factor on.
+
+        A wrong password or code counts toward the same progressive lockout as a
+        bad login, so a session left open can't be used to guess either one. The
+        authenticator step is recorded, so one code can't confirm twice. This does
+        not commit: the step goes in with the caller's transaction."""
+        user = self.db.query(User).filter(User.id == self.current_user.id).with_for_update().one()
+        lock = login_lockout(user.username)
+        if lock.locked:
+            raise _lockout_error(lock)
+        # code="confirm_failed" lets the page ask again, in its popup.
+        if not password:
+            raise BadRequestError("Enter your password to confirm.", code="confirm_failed")
+        needs_code = bool(user.mfa_enabled)
+        if needs_code and not (code or "").strip():
+            raise BadRequestError("Enter the code from your authenticator app to confirm.", code="confirm_failed")
+        password_ok = verify_password(password, user.password_hash)
+        totp_step = self._matching_totp_step(user, code or "") if needs_code else None
+        if not password_ok or (needs_code and totp_step is None):
+            state = register_login_failure(user.username)
+            with self.transaction():
+                self._log_security_event(
+                    user,
+                    "auth.confirm_failed",
+                    f"{reason}: " + ("wrong password." if not password_ok else "invalid code."),
+                )
+            if state.locked:
+                raise _lockout_error(state)
+            raise BadRequestError(
+                "Your password is incorrect." if not password_ok else "Invalid authentication code.",
+                code="confirm_failed",
+            )
+        clear_login_failures(user.username)
+        if totp_step is not None:
+            user.mfa_last_used_step = totp_step
+
     def mfa_disable(self, code: str, password: str) -> dict:
         """Turn MFA off. It takes both the account password and a current
         authenticator code, and an account that must use MFA can't.

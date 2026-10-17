@@ -3,7 +3,7 @@ from datetime import datetime
 from typing import TYPE_CHECKING
 
 from sqlalchemy import Boolean, DateTime, ForeignKey, Index, Integer, String, Text, text
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from ..core.database import Base
@@ -47,6 +47,10 @@ class Company(Base, TimestampMixin):
     timezone: Mapped[str] = mapped_column(String(50), default="Asia/Manila")
     is_multi_branch: Mapped[bool] = mapped_column(Boolean, default=False)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    # Changes this mill's Boss has made to what each staff role can open, as
+    # {role: {page: "full" | "view" | "none"}}: only the cells that differ from
+    # the default matrix (core/access_policy.py). NULL when nothing was changed.
+    role_access: Mapped[dict | None] = mapped_column(JSONB)
     provisioning_requested_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     provisioned_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     provisioning_error: Mapped[str | None] = mapped_column(String(120))

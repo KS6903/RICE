@@ -22,7 +22,7 @@ from datetime import datetime, timedelta
 from pydantic import BaseModel, ValidationError
 from sqlalchemy.orm import Session
 
-from ..core.security import SECTION_ACCESS
+from ..core.access_policy import section_level
 from ..jobs.registry import JobContext
 from ..jobs.runner import claim_run, finish_run
 from ..models.automation import AutomationRule, AutomationSettings
@@ -59,11 +59,14 @@ def eligible_users(db: Session, company_id: uuid.UUID, recipe: Recipe) -> list[U
         .order_by(User.full_name)
         .all()
     )
+    # What each role can open in this mill, as its Boss has set it: a role that
+    # was shut out of a page isn't told what is on it.
+    overrides = db.query(Company.role_access).filter(Company.id == company_id).scalar()
     return [
         u
         for u in users
         if u.role
-        and SECTION_ACCESS.get(u.role.name, {}).get(recipe.section, "none") != "none"
+        and section_level(u.role.name, recipe.section, overrides) != "none"
         and (not recipe.only_roles or u.role.name in recipe.only_roles)
     ]
 

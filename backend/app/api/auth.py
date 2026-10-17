@@ -12,6 +12,7 @@ from fastapi import APIRouter, Depends, Request, Response, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 
+from ..core.access_policy import access_for_user
 from ..core.config import settings
 from ..core.cookies import (
     ACCESS_COOKIE,
@@ -392,7 +393,12 @@ def logout(
 @router.get("/me")
 @limiter.exempt
 def me(svc: AuthService = Depends(get_auth_service)):
-    return svc.me()
+    result = svc.me()
+    # Every page's level for this person, with the changes their mill's Boss has
+    # made to the role matrix. Polled with the rest, so a change reaches an open
+    # tab without a sign-in.
+    result["access"] = access_for_user(svc.current_user)
+    return result
 
 
 @router.post("/change-password")

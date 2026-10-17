@@ -13,6 +13,7 @@ from fastapi import HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from ..core.access_policy import company_overrides, section_level
 from ..core.security import SECTION_ACCESS
 from ..models.company import Branch
 from ..models.sync import SyncConflict, SyncLog
@@ -33,12 +34,25 @@ MANAGE_ROLES: FrozenSet[str] = frozenset({"owner", "admin"})
 REJECTION_HEADER = "X-Sync-Rejection"
 
 
-def _section_roles(section: str, *, write: bool) -> FrozenSet[str]:
-    return frozenset(
+class SectionRoles(frozenset):
+    """The roles that have a kind of access to one page by default, remembering
+    which page and which kind: a mill's Boss may have changed who has it
+    (core/access_policy.py), so the roles named here are only the default and
+    ``SyncService._allowed`` settles it by the mill's own matrix."""
+
+    section: str
+    write: bool
+
+
+def _section_roles(section: str, *, write: bool) -> SectionRoles:
+    roles = SectionRoles(
         role
         for role, access in SECTION_ACCESS.items()
         if (access.get(section) == "full" if write else access.get(section) in {"view", "full"})
     )
+    roles.section = section
+    roles.write = write
+    return roles
 
 
 PADDY_READ = _section_roles("paddy", write=False)
@@ -212,6 +226,16 @@ class SyncService(BaseService):
             )
         return role
 
+    def _allowed(self, role: str, roles: FrozenSet[str]) -> bool:
+        """Whether ``role`` is among a table's roles. When they are a page's
+        access, that is settled by this mill's matrix, which its Boss may have
+        changed (a page opened to a role, or shut to it); otherwise by the list."""
+        section = getattr(roles, "section", None)
+        if section is None:
+            return role in roles
+        level = section_level(role, section, company_overrides(self.current_user))
+        return level == "full" if getattr(roles, "write", False) else level in {"view", "full"}
+
     @staticmethod
     def _reject(status_code: int, detail: str) -> HTTPException:
         """A refusal of this one record (see REJECTION_HEADER)."""
@@ -276,7 +300,7 @@ class SyncService(BaseService):
 
     def _sanitize_record(self, record: SyncRecord, role: str) -> dict[str, JsonScalar]:
         policy = TABLE_POLICIES[record.table_name]
-        if role not in policy.write_roles:
+        if not self._allowed(role, policy.write_roles):
             raise self._reject(
                 status.HTTP_403_FORBIDDEN, f"Role '{role}' cannot write offline records for {record.table_name}"
             )
@@ -381,7 +405,9 @@ class SyncService(BaseService):
 
     def pull(self, since: datetime) -> dict:
         role = self._role()
-        readable_tables = tuple(name for name, policy in TABLE_POLICIES.items() if role in policy.read_roles)
+        readable_tables = tuple(
+            name for name, policy in TABLE_POLICIES.items() if self._allowed(role, policy.read_roles)
+        )
         watermark = datetime.now(timezone.utc)
         logs = list(
             self.logs.pull_since(

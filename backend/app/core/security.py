@@ -9,122 +9,14 @@ from fastapi.security import OAuth2PasswordBearer
 from jwt import InvalidTokenError
 from sqlalchemy.orm import Session
 
+# The default role/section matrix, and what a mill's Boss may change about it,
+# are in access_policy; this module is where they are enforced.
+from .access_policy import APP_SECTIONS, SECTION_ACCESS, company_overrides, section_level  # noqa: F401
 from .cache import TTL_FEATURES, cache
 from .config import settings
 from .cookies import ACCESS_COOKIE
 from .csrf import enforce_csrf
 from .database import get_db
-
-# Server-side mirror of ``packages/shared/src/constants/access.ts``.  The UI
-# matrix is an ergonomics layer; this policy is the actual authorization
-# boundary.  Keep it explicit and fail-closed so a newly introduced/typoed role
-# never inherits access accidentally.
-SECTION_ACCESS: dict[str, dict[str, str]] = {
-    "owner": {
-        "dashboard": "full",
-        "paddy": "full",
-        "milling": "full",
-        "inventory": "full",
-        "sales": "full",
-        "dispatch": "full",
-        "operators": "full",
-        "expenses": "full",
-        "reports": "full",
-        "employees": "full",
-        "users": "full",
-        "settings": "full",
-        "automations": "full",
-        # Their own tasks for everyone; owners and admins see all (api/actions).
-        "tasks": "full",
-    },
-    "admin": {
-        "dashboard": "full",
-        "paddy": "full",
-        "milling": "full",
-        "inventory": "full",
-        "sales": "full",
-        "dispatch": "full",
-        "operators": "full",
-        "expenses": "full",
-        "reports": "full",
-        "employees": "full",
-        "users": "full",
-        "settings": "full",
-        "automations": "full",
-        # Their own tasks for everyone; owners and admins see all (api/actions).
-        "tasks": "full",
-    },
-    "accountant": {
-        "dashboard": "full",
-        "paddy": "view",
-        "milling": "view",
-        "inventory": "view",
-        "sales": "full",
-        "dispatch": "view",
-        "operators": "view",
-        "expenses": "full",
-        "reports": "full",
-        "employees": "full",
-        "users": "none",
-        "settings": "full",
-        "automations": "view",
-        # Their own tasks for everyone; owners and admins see all (api/actions).
-        "tasks": "full",
-    },
-    "cashier": {
-        "dashboard": "full",
-        "paddy": "none",
-        "milling": "none",
-        "inventory": "view",
-        "sales": "full",
-        "dispatch": "view",
-        "operators": "view",
-        "expenses": "none",
-        "reports": "none",
-        "employees": "none",
-        "users": "none",
-        "settings": "full",
-        "automations": "none",
-        # Their own tasks for everyone; owners and admins see all (api/actions).
-        "tasks": "full",
-    },
-    "mill_operator": {
-        "dashboard": "full",
-        "paddy": "full",
-        "milling": "full",
-        "inventory": "full",
-        "sales": "none",
-        "dispatch": "full",
-        "operators": "full",
-        "expenses": "none",
-        "reports": "none",
-        "employees": "none",
-        "users": "none",
-        "settings": "full",
-        "automations": "none",
-        # Their own tasks for everyone; owners and admins see all (api/actions).
-        "tasks": "full",
-    },
-    "encoder": {
-        "dashboard": "full",
-        "paddy": "full",
-        "milling": "view",
-        "inventory": "view",
-        "sales": "full",
-        "dispatch": "none",
-        "operators": "none",
-        "expenses": "none",
-        "reports": "none",
-        "employees": "none",
-        "users": "none",
-        "settings": "full",
-        "automations": "none",
-        # Their own tasks for everyone; owners and admins see all (api/actions).
-        "tasks": "full",
-    },
-}
-
-APP_SECTIONS = frozenset(next(iter(SECTION_ACCESS.values())))
 
 # auto_error=False: a missing Authorization header falls through to the session
 # cookie (web client) inside get_token, instead of an immediate 401.
@@ -420,7 +312,8 @@ def require_roles(*roles: str):
 
 
 def require_section_access(section: str, *, write: bool = False):
-    """Require the role-matrix access level for one tenant application section.
+    """Require the role-matrix access level for one tenant application section,
+    as the company's Boss has set it (see core/access_policy.py).
 
     Reads accept either ``view`` or ``full``.  Mutations require ``full``.
     Missing and unknown roles are denied.  Platform administrators retain their
@@ -435,7 +328,8 @@ def require_section_access(section: str, *, write: bool = False):
             return current_user
         role = getattr(current_user, "role", None)
         role_name = getattr(role, "name", None)
-        level = SECTION_ACCESS.get(role_name or "", {}).get(section, "none")
+        # The default for the role, as this mill's Boss may have changed it.
+        level = section_level(role_name, section, company_overrides(current_user))
         allowed = level == "full" if write else level in {"view", "full"}
         if not allowed:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Insufficient permissions")

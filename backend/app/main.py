@@ -33,6 +33,7 @@ from .api import (
     notifications,
     paddy,
     reports,
+    role_access,
     sales,
     stock_counts,
     sync,
@@ -127,6 +128,7 @@ app.include_router(auth.router, prefix="/api/auth", tags=["Auth"])
 # agreeing are weak terms. Acceptance endpoints inside still require auth.
 app.include_router(legal.router, prefix="/api/legal", tags=["Legal"])
 app.include_router(users.router, prefix="/api/users", tags=["Users"], dependencies=mfa_gate)
+app.include_router(role_access.router, prefix="/api/role-access", tags=["Role access"], dependencies=mfa_gate)
 app.include_router(branches.router, prefix="/api/branches", tags=["Branches"], dependencies=mfa_gate)
 app.include_router(paddy.router, prefix="/api/paddy", tags=["Paddy"], dependencies=mfa_gate)
 app.include_router(milling.router, prefix="/api/milling", tags=["Milling"], dependencies=mfa_gate)

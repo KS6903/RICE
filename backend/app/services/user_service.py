@@ -21,6 +21,11 @@ from ..schemas.users import UserResponse
 from ..services.activity import log_activity
 from ..services.base import BaseService
 
+# Making someone a Boss or an Admin hands over control of the mill, so it asks
+# the person doing it to confirm: their own password, and an authenticator code
+# if they use one.
+CONFIRMED_ROLES = {"owner", "admin"}
+
 
 class UserService(BaseService):
     def __init__(self, db: Session, current_user: Any, *, users: UserRepository) -> None:
@@ -51,6 +56,8 @@ class UserService(BaseService):
             raise PermissionDeniedError("Only the Boss can make someone a Boss.")
 
         self._assert_seat_free()
+        if role is not None and role.name in CONFIRMED_ROLES:
+            self._confirm_actor(data, f"Made {data.username} a {role.name}")
 
         user = User(
             company_id=self.current_user.company_id,
@@ -67,6 +74,11 @@ class UserService(BaseService):
             self._log(user, "user.create", f"Role: {role.name}" if role else None)
         self.db.refresh(user)
         return self._safe(user)
+
+    def _confirm_actor(self, data, reason: str) -> None:
+        from .auth_service import AuthService
+
+        AuthService(self.db, self.current_user).confirm_identity(data.current_password, data.mfa_code, reason=reason)
 
     def _editor_is_owner(self) -> bool:
         return bool(self.current_user.role and self.current_user.role.name == "owner")
@@ -155,8 +167,13 @@ class UserService(BaseService):
         self.assert_company_fk(Branch, data.branch_id, label="Branch")
         old_role = user.role.name if user.role else None
         was_active = user.is_active
+        # Becoming a Boss or an Admin is confirmed like creating one. An unchanged
+        # role (the edit form always sends it) is not.
+        if new_role is not None and new_role.name in CONFIRMED_ROLES and new_role.name != old_role:
+            self._confirm_actor(data, f"Made {user.username} a {new_role.name}")
         with self.transaction():
-            for field, val in data.model_dump(exclude_none=True).items():
+            # The confirmation fields are not account fields.
+            for field, val in data.model_dump(exclude_none=True, exclude={"current_password", "mfa_code"}).items():
                 setattr(user, field, val)
             if was_active and data.is_active is False:
                 self._log(user, "user.remove")

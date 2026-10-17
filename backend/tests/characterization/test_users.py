@@ -6,6 +6,10 @@ from app.models.activity import ActivityLog
 from app.models.subscription import Subscription
 from app.models.user import User
 
+# Making someone a Boss or an Admin asks the signed-in person to confirm with
+# their own password (the seeded owner's, and _add_user's, is this one).
+CONFIRM = {"current_password": "Password123"}
+
 SAFE_USER_FIELDS = {
     "id",
     "company_id",
@@ -57,6 +61,7 @@ def test_create_user_201(auth_client):
             "password": "secret123",
             "full_name": "New User",
             "role_id": 2,
+            **CONFIRM,
         },
     )
     assert res.status_code == 201, res.text
@@ -73,6 +78,7 @@ def test_create_user_duplicate_username_400(auth_client):
             "password": "secret123",
             "full_name": "Dupe",
             "role_id": 2,
+            **CONFIRM,
         },
     )
     dup = auth_client.post(
@@ -82,6 +88,7 @@ def test_create_user_duplicate_username_400(auth_client):
             "password": "secret123",
             "full_name": "Dupe",
             "role_id": 2,
+            **CONFIRM,
         },
     )
     assert dup.status_code == 400
@@ -167,7 +174,7 @@ def test_removing_a_user_frees_their_seat(auth_client, db_session, seed_owner):
     sub.plan.max_users = 2
     db_session.flush()
     other = _add_user(db_session, seed_owner, "clerk")  # owner + clerk: the plan is full
-    new = {"username": "newhire", "password": "secret123", "full_name": "New Hire", "role_id": 2}
+    new = {"username": "newhire", "password": "secret123", "full_name": "New Hire", "role_id": 2, **CONFIRM}
 
     assert auth_client.post("/api/users/", json=new).status_code == 402
     assert auth_client.put(f"/api/users/{other.id}", json={"is_active": False}).status_code == 200
@@ -199,7 +206,7 @@ def test_an_admin_cannot_create_a_boss_either(client, db_session, seed_owner):
         res = client.post("/api/users/", json={**body, "role_id": 1})
         assert res.status_code == 403
         assert "Only the Boss" in res.json()["detail"]
-        assert client.post("/api/users/", json={**body, "role_id": 2}).status_code == 201
+        assert client.post("/api/users/", json={**body, "role_id": 2, **CONFIRM}).status_code == 201
     finally:
         app.dependency_overrides.pop(get_current_user, None)
 
@@ -209,11 +216,11 @@ def test_account_changes_go_in_the_activity_log(auth_client, db_session, seed_ow
     Settings and the platform admin's records."""
     created = auth_client.post(
         "/api/users/",
-        json={"username": "logged", "password": "secret123", "full_name": "Logged", "role_id": 2},
+        json={"username": "logged", "password": "secret123", "full_name": "Logged", "role_id": 2, **CONFIRM},
     ).json()
     uid = created["id"]
     auth_client.put(f"/api/users/{uid}", json={"full_name": "Renamed"})  # not logged
-    auth_client.put(f"/api/users/{uid}", json={"role_id": 1})
+    auth_client.put(f"/api/users/{uid}", json={"role_id": 1, **CONFIRM})
     auth_client.put(f"/api/users/{uid}", json={"is_active": False})
     auth_client.put(f"/api/users/{uid}", json={"is_active": True})
 
