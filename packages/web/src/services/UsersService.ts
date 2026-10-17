@@ -7,6 +7,10 @@ export type UserForm = {
   email: string;
   password: string;
   role_id: string;
+  /** The signed-in person's own password and, with two-factor on, a current
+   *  authenticator code. The server asks for them when the role is Boss or Admin. */
+  current_password?: string;
+  mfa_code?: string;
 };
 
 export type UserUpdate = {
@@ -14,6 +18,9 @@ export type UserUpdate = {
   email?: string;
   role_id?: number;
   is_active?: boolean;
+  /** As on UserForm: asked for when someone is made a Boss or an Admin. */
+  current_password?: string;
+  mfa_code?: string;
 };
 
 /** What giving someone a temporary password returns. The password is shown once and

@@ -4,12 +4,14 @@ import { useOpenOnArrival } from "../hooks/useOpenOnArrival";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { usersService, type UserUpdate } from "../services/UsersService";
 import PasswordInput from "../components/PasswordInput";
-import { KeyRound, Pencil, Plus, RotateCcw, Trash2 } from "lucide-react";
+import { KeyRound, Pencil, Plus, RotateCcw, ShieldCheck, Trash2 } from "lucide-react";
+import ConfirmItsYou, { type Proof } from "../components/ConfirmItsYou";
 import TemporaryPasswordDialog from "../components/TemporaryPasswordDialog";
 import { ROLES, roleLabel } from "@rice-mill/shared";
 import { useAuthStore } from "../stores/authStore";
 import Select from "../components/Select";
 import ConfirmDialog from "../components/ConfirmDialog";
+import RoleAccessPanel from "../components/RoleAccessPanel";
 
 const FIELD_LABEL = "block text-sm font-medium text-gray-700 dark:text-slate-200 mb-1";
 const ERROR_TEXT = "text-sm font-medium text-rose-600 dark:text-rose-400";
@@ -18,6 +20,34 @@ const errorText = (e: any, fallback: string) => e?.response?.data?.detail || fal
 
 const roleOptions = (roles: readonly { id: number; label: string }[]) =>
   roles.map((r) => ({ value: String(r.id), label: r.label }));
+
+// Making someone a Boss or an Admin hands over control of the mill, so the
+// person doing it confirms with their own password (and an authenticator code,
+// if they use one). The server asks for the same.
+const CONFIRMED_ROLES: Record<string, string> = { owner: "a Boss", admin: "an Admin" };
+const EMPTY_PROOF: Proof = { password: "", code: "" };
+/** A new user starts with no role: "-- Select Role --" until one is chosen. */
+const EMPTY_USER_FORM = { username: "", full_name: "", email: "", password: "", role_id: "" };
+
+/** Which form is asking to be confirmed, and why the last try was refused when
+ *  it is being asked a second time. */
+type Asking = { form: "create" | "edit"; error?: string };
+
+/** Under the role: that it is confirmed, or a way to be asked again. */
+function ConfirmedNote({ proven, onAsk }: { proven: boolean; onAsk: () => void }) {
+  return proven ? (
+    <p className="mt-1 inline-flex items-center gap-1 text-xs font-medium text-emerald-600 dark:text-emerald-400">
+      <ShieldCheck size={13} aria-hidden /> You confirmed it is you.
+    </p>
+  ) : (
+    <p className="mt-1 text-xs text-secondary">
+      This role needs your confirmation.{" "}
+      <button type="button" onClick={onAsk} className="font-semibold text-emerald-600 underline">
+        Confirm now
+      </button>
+    </p>
+  );
+}
 
 export default function UsersPage() {
   const qc = useQueryClient();
@@ -32,26 +62,40 @@ export default function UsersPage() {
   const [removing, setRemoving] = useState<any | null>(null);
   const [editForm, setEditForm] = useState({ full_name: "", email: "", role_id: "" });
   const [actionError, setActionError] = useState("");
+  // Your own password and code, typed in the popup that opens when a role that
+  // needs it (see CONFIRMED_ROLES) is chosen.
+  const [proof, setProof] = useState<Proof>(EMPTY_PROOF);
+  const [asking, setAsking] = useState<Asking | null>(null);
 
   const { data: users = [] } = useQuery({
     queryKey: ["users"],
     queryFn: () => usersService.list(),
   });
 
-  const [form, setForm] = useState({
-    username: "",
-    full_name: "",
-    email: "",
-    password: "",
-    role_id: "3",
-  });
+  const [form, setForm] = useState({ ...EMPTY_USER_FORM });
+
+  // A confirmation the server turned down: ask for it again in the popup, with
+  // why. Returns whether that was the problem (so the caller has no more to say).
+  const askAgain = (e: any, formName: "create" | "edit") => {
+    if (e?.response?.data?.code !== "confirm_failed") return false;
+    setProof(EMPTY_PROOF);
+    setAsking({ form: formName, error: errorText(e, "That didn't work.") });
+    return true;
+  };
 
   const createUser = useMutation({
-    mutationFn: (body: typeof form) => usersService.create(body),
+    mutationFn: (body: typeof form & { current_password?: string; mfa_code?: string }) =>
+      usersService.create(body),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["users"] });
       setShowForm(false);
+      // The next person starts from a blank form, role included.
+      setForm({ ...EMPTY_USER_FORM });
+      setProof(EMPTY_PROOF);
     },
+    // A turned-down confirmation (a wrong password, or a code that ran out while
+    // the form was being filled in) is asked for again in the popup.
+    onError: (e: any) => askAgain(e, "create"),
   });
 
   const updateUser = useMutation({
@@ -60,8 +104,11 @@ export default function UsersPage() {
       qc.invalidateQueries({ queryKey: ["users"] });
       setEditing(null);
       setActionError("");
+      setProof(EMPTY_PROOF);
     },
-    onError: (e) => setActionError(errorText(e, "Couldn't save that change.")),
+    onError: (e) => {
+      if (!askAgain(e, "edit")) setActionError(errorText(e, "Couldn't save that change."));
+    },
   });
 
   // Only the Boss can change a Boss account or make someone a Boss (the server
@@ -69,9 +116,27 @@ export default function UsersPage() {
   const canManage = (u: any) => iAmBoss || u.role?.name !== "owner";
   const roleChoices = ROLES.filter((r) => iAmBoss || r.name !== "owner");
 
+  // Whether the role chosen in a form is one that asks you to confirm, and for
+  // the edit form, only when it is a change: the form always sends the role.
+  const roleNameOf = (id: string) => ROLES.find((r) => String(r.id) === id)?.name ?? "";
+  const usesCode = !!me?.mfa_enabled;
+  const createWhat = CONFIRMED_ROLES[roleNameOf(form.role_id)];
+  // The role the person being edited has now, which the form starts on.
+  const ownRoleId = String(editing?.role_id ?? editing?.role?.id ?? "");
+  const editWhat =
+    editing && editing.id !== me?.id && editForm.role_id !== ownRoleId
+      ? CONFIRMED_ROLES[roleNameOf(editForm.role_id)]
+      : undefined;
+  const proven = proof.password !== "" && (!usesCode || /^\d{6}$/.test(proof.code));
+  const proofFields = {
+    current_password: proof.password,
+    ...(usesCode ? { mfa_code: proof.code } : {}),
+  };
+
   const startEdit = (u: any) => {
     setShowForm(false);
     setActionError("");
+    setProof(EMPTY_PROOF);
     setEditing(u);
     setEditForm({
       full_name: u.full_name ?? "",
@@ -81,6 +146,8 @@ export default function UsersPage() {
   };
 
   const saveEdit = () => {
+    // The popup opens first when the new role needs confirming and hasn't been.
+    if (editWhat && !proven) return setAsking({ form: "edit" });
     const isMe = editing.id === me?.id;
     updateUser.mutate({
       id: editing.id,
@@ -89,8 +156,37 @@ export default function UsersPage() {
         email: editForm.email,
         // Your own role is locked; don't send it.
         ...(isMe ? {} : { role_id: Number(editForm.role_id) }),
+        ...(editWhat ? proofFields : {}),
       },
     });
+  };
+
+  const createNow = () => {
+    if (createWhat && !proven) return setAsking({ form: "create" });
+    createUser.mutate({ ...form, ...(createWhat ? proofFields : {}) });
+  };
+
+  // Choosing a role that needs confirming opens the popup at once.
+  const pickCreateRole = (role_id: string) => {
+    setForm((f) => ({ ...f, role_id }));
+    setProof(EMPTY_PROOF);
+    if (CONFIRMED_ROLES[roleNameOf(role_id)]) setAsking({ form: "create" });
+  };
+  const pickEditRole = (role_id: string) => {
+    setEditForm((f) => ({ ...f, role_id }));
+    setProof(EMPTY_PROOF);
+    if (role_id !== ownRoleId && CONFIRMED_ROLES[roleNameOf(role_id)]) {
+      setAsking({ form: "edit" });
+    }
+  };
+  // Turning the popup down takes the role back: a new person is left with no
+  // role chosen ("Select a role"), and someone already on the staff goes back
+  // to the role they have.
+  const turnedDown = () => {
+    if (asking?.form === "create") setForm((f) => ({ ...f, role_id: "" }));
+    else setEditForm((f) => ({ ...f, role_id: ownRoleId }));
+    setProof(EMPTY_PROOF);
+    setAsking(null);
   };
 
   const remove = (u: any) => setRemoving(u);
@@ -108,6 +204,7 @@ export default function UsersPage() {
         <button
           onClick={() => {
             setEditing(null);
+            setProof(EMPTY_PROOF);
             setShowForm(!showForm);
           }}
           className="btn-primary"
@@ -152,9 +249,12 @@ export default function UsersPage() {
               <Select
                 id="new-user-role"
                 value={form.role_id}
-                onChange={(role_id) => setForm((f) => ({ ...f, role_id }))}
-                options={roleOptions(roleChoices)}
+                onChange={pickCreateRole}
+                options={[{ value: "", label: "-- Select Role --" }, ...roleOptions(roleChoices)]}
               />
+              {createWhat && (
+                <ConfirmedNote proven={proven} onAsk={() => setAsking({ form: "create" })} />
+              )}
             </div>
           </div>
           {createUser.isError && (
@@ -163,13 +263,19 @@ export default function UsersPage() {
             </p>
           )}
           <div className="flex gap-2 justify-end">
-            <button onClick={() => setShowForm(false)} className="btn-secondary">
+            <button
+              onClick={() => {
+                setShowForm(false);
+                setProof(EMPTY_PROOF);
+              }}
+              className="btn-secondary"
+            >
               Cancel
             </button>
             <button
-              onClick={() => createUser.mutate(form)}
+              onClick={createNow}
               className="btn-primary"
-              disabled={createUser.isPending}
+              disabled={createUser.isPending || form.role_id === ""}
             >
               {createUser.isPending ? "Creating…" : "Create User"}
             </button>
@@ -209,17 +315,26 @@ export default function UsersPage() {
                 id="edit-user-role"
                 value={editForm.role_id}
                 disabled={editing.id === me?.id}
-                onChange={(role_id) => setEditForm((f) => ({ ...f, role_id }))}
+                onChange={pickEditRole}
                 options={roleOptions(editing.id === me?.id ? ROLES : roleChoices)}
               />
               {editing.id === me?.id && (
                 <p className="text-xs text-muted mt-1">You can't change your own role.</p>
               )}
+              {editWhat && (
+                <ConfirmedNote proven={proven} onAsk={() => setAsking({ form: "edit" })} />
+              )}
             </div>
           </div>
           {actionError && <p className={ERROR_TEXT}>{actionError}</p>}
           <div className="flex gap-2 justify-end">
-            <button onClick={() => setEditing(null)} className="btn-secondary">
+            <button
+              onClick={() => {
+                setEditing(null);
+                setProof(EMPTY_PROOF);
+              }}
+              className="btn-secondary"
+            >
               Cancel
             </button>
             <button onClick={saveEdit} className="btn-primary" disabled={updateUser.isPending}>
@@ -346,6 +461,9 @@ export default function UsersPage() {
         </table>
       </div>
 
+      {/* Only the Boss decides which pages each role can open. */}
+      {iAmBoss && <RoleAccessPanel />}
+
       {tempFor && (
         <TemporaryPasswordDialog
           name={tempFor.full_name || tempFor.username}
@@ -353,6 +471,21 @@ export default function UsersPage() {
           onClose={() => setTempFor(null)}
         />
       )}
+
+      <ConfirmItsYou
+        open={!!asking}
+        what={
+          CONFIRMED_ROLES[roleNameOf(asking?.form === "edit" ? editForm.role_id : form.role_id)] ??
+          "a Boss"
+        }
+        usesCode={usesCode}
+        error={asking?.error}
+        onConfirm={(p) => {
+          setProof({ password: p.password, code: p.code });
+          setAsking(null);
+        }}
+        onCancel={turnedDown}
+      />
 
       <ConfirmDialog
         open={!!removing}
