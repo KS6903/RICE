@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session
 
 from ..core.database import get_db
 from ..core.security import get_current_user, require_feature, require_section_access
+from ..repositories.inventory import ByproductInventoryRepository, MilledRiceInventoryRepository
 from ..repositories.paddy import (
     PalayInventoryRepository,
     PalayPurchaseRepository,
@@ -19,6 +20,7 @@ from ..repositories.paddy import (
     RiceVarietyRepository,
     SupplierRepository,
 )
+from ..schemas.buying import ByproductPurchaseCreate, RicePurchaseCreate
 from ..schemas.paddy import (
     GradeCreate,
     PurchaseCreate,
@@ -28,7 +30,10 @@ from ..schemas.paddy import (
     VarietyCreate,
     VarietyUpdate,
 )
+from ..services.buying_service import BuyingService
+from ..services.inventory_service import InventoryService
 from ..services.paddy_service import PaddyService
+from .inventory import get_inventory_service
 
 router = APIRouter(
     dependencies=[
@@ -165,3 +170,60 @@ def get_palay_inventory(
     svc: PaddyService = Depends(get_paddy_service),
 ):
     return svc.get_palay_inventory(branch_id=branch_id)
+
+
+# ── Rice (bigas) and by-product purchases ──────────────────────────────────────
+# Bought in the same way as palay, so they sit behind the same plan feature and
+# the same "paddy" (buying) section; each has its own page in the web app.
+
+
+def get_buying_service(
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+) -> BuyingService:
+    return BuyingService(
+        db,
+        current_user,
+        milled=MilledRiceInventoryRepository(db),
+        byproducts=ByproductInventoryRepository(db),
+    )
+
+
+@router.get("/rice-purchases")
+def list_rice_purchases(skip: int = 0, limit: int = 50, svc: BuyingService = Depends(get_buying_service)):
+    return svc.list_rice_purchases(skip=skip, limit=limit)
+
+
+@router.post(
+    "/rice-purchases",
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(require_section_access("paddy", write=True))],
+)
+def create_rice_purchase(body: RicePurchaseCreate, svc: BuyingService = Depends(get_buying_service)):
+    return svc.create_rice_purchase(body)
+
+
+@router.get("/rice-stock")
+def get_rice_stock(svc: InventoryService = Depends(get_inventory_service)):
+    """Milled rice on hand, for the Rice page (same rows as Inventory shows)."""
+    return svc.get_milled_rice()
+
+
+@router.get("/byproduct-purchases")
+def list_byproduct_purchases(skip: int = 0, limit: int = 50, svc: BuyingService = Depends(get_buying_service)):
+    return svc.list_byproduct_purchases(skip=skip, limit=limit)
+
+
+@router.post(
+    "/byproduct-purchases",
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(require_section_access("paddy", write=True))],
+)
+def create_byproduct_purchase(body: ByproductPurchaseCreate, svc: BuyingService = Depends(get_buying_service)):
+    return svc.create_byproduct_purchase(body)
+
+
+@router.get("/byproduct-stock")
+def get_byproduct_stock(svc: InventoryService = Depends(get_inventory_service)):
+    """By-products on hand, for the By-products page (rows with stock only)."""
+    return [r for r in svc.get_byproducts() if r["quantity_kg"] > 0]

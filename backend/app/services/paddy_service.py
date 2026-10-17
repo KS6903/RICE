@@ -150,11 +150,28 @@ class PaddyService(BaseService):
 
     @staticmethod
     def serialize_purchase(p: PalayPurchase) -> dict:
-        """The purchase's columns, plus its supplier, how many items it has, and
-        who recorded it and in what role."""
+        """The purchase's columns, plus its supplier, warehouse, its lines and what
+        they come to, and who recorded it and in what role."""
         data = {c.name: getattr(p, c.name) for c in p.__table__.columns}
         data["supplier"] = {"id": p.supplier.id, "name": p.supplier.name} if p.supplier else None
+        data["branch"] = {"id": str(p.branch.id), "name": p.branch.name} if p.branch else None
         data["item_count"] = len(p.items)
+        data["items"] = [
+            {
+                "id": i.id,
+                "variety_code": i.variety.code if i.variety else None,
+                "grade_code": i.grade.code if i.grade else None,
+                "gross_weight_kg": i.gross_weight_kg,
+                "tare_weight_kg": i.tare_weight_kg,
+                "net_weight_kg": i.net_weight_kg,
+                "moisture_content_pct": i.moisture_content_pct,
+                "price_per_cavan": i.price_per_cavan,
+                "line_total": i.total_amount,
+            }
+            for i in p.items
+        ]
+        data["total_kg"] = float(sum((i.net_weight_kg for i in p.items), Decimal("0")))
+        data["total_amount"] = float(sum((i.total_amount for i in p.items), Decimal("0")))
         creator = p.creator
         data["created_by_name"] = creator.full_name if creator else None
         data["created_by_role"] = creator.role.name if creator and creator.role else None
@@ -174,11 +191,12 @@ class PaddyService(BaseService):
         for item_data in data.items:
             self.assert_company_fk(RiceVariety, item_data.variety_id, label="Variety", allow_shared=True)
             self.assert_company_fk(QualityGrade, item_data.grade_id, label="Grade", allow_shared=True)
+        branch_id = self._purchase_warehouse(data.branch_id)
         with self.transaction():
             purchase = self.purchases.add(
                 PalayPurchase(
                     company_id=self.current_user.company_id,
-                    branch_id=self.current_user.branch_id,
+                    branch_id=branch_id,
                     reference_no=self._next_reference_no(),
                     supplier_id=data.supplier_id,
                     purchase_date=data.purchase_date,
@@ -193,7 +211,7 @@ class PaddyService(BaseService):
                 item.cavan_count = (item.gross_weight_kg - item.tare_weight_kg) / 50
                 self.db.add(item)
                 self.db.flush()
-                self._apply_inventory_movement(item, "in", str(purchase.id))
+                self._apply_inventory_movement(item, "in", str(purchase.id), branch_id)
         self.db.refresh(purchase)
         return purchase
 
@@ -237,15 +255,18 @@ class PaddyService(BaseService):
         count = self.db.query(PalayInventoryMovement).count() + 1
         return f"PP-{today}-{count:04d}"
 
-    def _apply_inventory_movement(self, item: PalayPurchaseItem, direction: str, source_id: str) -> None:
-        inv = self.inventory.find_bucket(
-            self.current_user.company_id, self.current_user.branch_id, item.variety_id, item.grade_id
-        )
+    def _purchase_warehouse(self, branch_id: uuid.UUID | None) -> uuid.UUID | None:
+        return purchase_warehouse(self.db, self.current_user, branch_id)
+
+    def _apply_inventory_movement(
+        self, item: PalayPurchaseItem, direction: str, source_id: str, branch_id: uuid.UUID | None
+    ) -> None:
+        inv = self.inventory.find_bucket(self.current_user.company_id, branch_id, item.variety_id, item.grade_id)
         qty = item.net_weight_kg if direction == "in" else -item.net_weight_kg
         if not inv:
             inv = PalayInventory(
                 company_id=self.current_user.company_id,
-                branch_id=self.current_user.branch_id,
+                branch_id=branch_id,
                 variety_id=item.variety_id,
                 grade_id=item.grade_id,
                 quantity_kg=max(Decimal("0"), qty),
@@ -270,6 +291,24 @@ class PaddyService(BaseService):
 
 
 # ── module-level helpers ──────────────────────────────────────────────────────
+
+
+def purchase_warehouse(db: Session, current_user: Any, branch_id: uuid.UUID | None) -> uuid.UUID | None:
+    """The warehouse a purchase (palay, rice or by-products) goes into: the
+    recorder's own unless an owner or admin picked another of the company's live
+    warehouses."""
+    own = current_user.branch_id
+    if branch_id is None or branch_id == own:
+        return own
+    role = getattr(getattr(current_user, "role", None), "name", None)
+    if role not in ("owner", "admin") and not getattr(current_user, "is_platform_admin", False):
+        raise PermissionDeniedError("Only an owner or admin can store a purchase in another warehouse.")
+    branch = db.get(Branch, branch_id)
+    # Another company's warehouse reads as missing, never as forbidden; a
+    # warehouse in the trash takes no new stock.
+    if not branch or branch.company_id != current_user.company_id or branch.deleted_at is not None:
+        raise NotFoundError("Warehouse not found.")
+    return branch.id
 
 
 def purge_stale_varieties(db: Session, *, days: int = 30) -> int:

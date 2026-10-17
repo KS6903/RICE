@@ -36,7 +36,13 @@ class SalesOrderRepository(BaseRepository[SalesOrder]):
     model = SalesOrder
 
     def list_for_company(
-        self, company_id: uuid.UUID, *, status: str | None = None, skip: int = 0, limit: int = 50
+        self,
+        company_id: uuid.UUID,
+        *,
+        status: str | None = None,
+        item_type: str | None = None,
+        skip: int = 0,
+        limit: int = 50,
     ) -> Sequence[SalesOrder]:
         # The list shows each order's customer and, in the invoice preview, its
         # line items: load them with it rather than one query per row.
@@ -50,6 +56,9 @@ class SalesOrderRepository(BaseRepository[SalesOrder]):
         )
         if status:
             stmt = stmt.where(SalesOrder.status == status)
+        if item_type:
+            # Orders that sell this kind of goods (palay, milled rice, a by-product).
+            stmt = stmt.where(SalesOrder.items.any(SalesOrderItem.item_type == item_type))
         stmt = stmt.order_by(SalesOrder.order_date.desc()).offset(skip).limit(limit)
         return self.db.execute(stmt).scalars().all()
 

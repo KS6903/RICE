@@ -7,8 +7,11 @@ inventory + movements, and the exact serialized shape of GET /paddy/inventory.
 """
 
 import re
+import uuid
 
-from app.models.paddy import PalayInventory, PalayInventoryMovement
+from app.models.company import Branch
+from app.models.paddy import PalayInventory, PalayInventoryMovement, PalayPurchase
+from app.models.user import User
 
 
 def _make_variety(c, code="NSIC", name="NSIC Rc222"):
@@ -155,6 +158,118 @@ def test_purchase_list_says_who_recorded_it(auth_client):
     one = auth_client.get(f"/api/paddy/purchases/{rows[0]['id']}").json()
     assert one["created_by_name"] == "Test Owner"
     assert one["created_by_role"] == "owner"
+
+
+# ── purchases: which warehouse the palay is stored in ────────────────────────
+
+_ITEM = {"gross_weight_kg": "1000", "tare_weight_kg": "0", "price_per_cavan": "1200"}
+
+
+def _second_warehouse(db_session, company_id, name="2nd Branch"):
+    branch = Branch(company_id=company_id, name=name, is_main_branch=False)
+    db_session.add(branch)
+    db_session.flush()
+    return branch
+
+
+def test_purchase_goes_to_the_warehouse_the_owner_picks(auth_client, db_session, seed_owner):
+    second = _second_warehouse(db_session, seed_owner.company_id)
+    variety = _make_variety(auth_client).json()
+    res = auth_client.post(
+        "/api/paddy/purchases",
+        json={
+            "purchase_date": "2026-10-17",
+            "branch_id": str(second.id),
+            "items": [{**_ITEM, "variety_id": variety["id"]}],
+        },
+    )
+    assert res.status_code == 201, res.text
+    purchase = db_session.get(PalayPurchase, uuid.UUID(res.json()["id"]))
+    assert purchase.branch_id == second.id
+    stock = db_session.query(PalayInventory).filter(PalayInventory.variety_id == variety["id"]).one()
+    assert stock.branch_id == second.id
+    assert float(stock.quantity_kg) == 1000.0
+
+
+def test_purchase_without_a_warehouse_goes_to_the_recorders_own(auth_client, db_session, seed_owner):
+    _second_warehouse(db_session, seed_owner.company_id)
+    variety = _make_variety(auth_client).json()
+    res = auth_client.post(
+        "/api/paddy/purchases",
+        json={"purchase_date": "2026-10-17", "items": [{**_ITEM, "variety_id": variety["id"]}]},
+    )
+    assert res.status_code == 201, res.text
+    stock = db_session.query(PalayInventory).filter(PalayInventory.variety_id == variety["id"]).one()
+    assert stock.branch_id == seed_owner.branch_id
+
+
+def test_purchase_into_an_unknown_or_trashed_warehouse_is_refused(auth_client, db_session, seed_owner):
+    from datetime import datetime, timezone
+
+    trashed = _second_warehouse(db_session, seed_owner.company_id, name="Old shed")
+    trashed.deleted_at = datetime.now(timezone.utc)
+    db_session.flush()
+    for branch_id in (str(uuid.uuid4()), str(trashed.id)):
+        res = auth_client.post(
+            "/api/paddy/purchases",
+            json={"purchase_date": "2026-10-17", "branch_id": branch_id, "items": [_ITEM]},
+        )
+        assert res.status_code == 404, res.text
+        assert res.json()["detail"] == "Warehouse not found."
+    # Refused before anything is written.
+    assert db_session.query(PalayPurchase).count() == 0
+
+
+def test_only_an_owner_or_admin_picks_another_warehouse(make_auth_client, db_session):
+    """An encoder may record purchases, but they land in the encoder's own warehouse."""
+    client = make_auth_client(features=["paddy", "inventory"], username="enc", role_name="encoder")
+    encoder = db_session.query(User).filter(User.username == "enc1").one()
+    second = _second_warehouse(db_session, encoder.company_id)
+
+    refused = client.post(
+        "/api/paddy/purchases",
+        json={"purchase_date": "2026-10-17", "branch_id": str(second.id), "items": [_ITEM]},
+    )
+    assert refused.status_code == 403, refused.text
+    assert "another warehouse" in refused.json()["detail"]
+
+    # Naming their own warehouse is fine.
+    own = client.post(
+        "/api/paddy/purchases",
+        json={"purchase_date": "2026-10-17", "branch_id": str(encoder.branch_id), "items": [_ITEM]},
+    )
+    assert own.status_code == 201, own.text
+
+
+def test_purchase_detail_carries_its_lines_and_what_they_come_to(auth_client):
+    variety = _make_variety(auth_client).json()
+    grade = _make_grade(auth_client).json()
+    res = auth_client.post(
+        "/api/paddy/purchases",
+        json={
+            "purchase_date": "2026-10-17",
+            "items": [
+                {
+                    "variety_id": variety["id"],
+                    "grade_id": grade["id"],
+                    "gross_weight_kg": "1050",
+                    "tare_weight_kg": "50",
+                    "moisture_content_pct": "14",
+                    "price_per_cavan": "1200",
+                }
+            ],
+        },
+    )
+    assert res.status_code == 201, res.text
+    row = auth_client.get("/api/paddy/purchases").json()[0]
+    assert row["branch"]["name"] == "Main Branch"
+    assert row["total_kg"] == 1000.0
+    assert row["total_amount"] == 24000.0  # 1000 kg = 20 cavans x 1,200
+    [line] = row["items"]
+    assert line["variety_code"] == "NSIC"
+    assert line["grade_code"] == "A"
+    assert float(line["net_weight_kg"]) == 1000.0
+    assert float(line["moisture_content_pct"]) == 14.0
 
 
 def test_purchase_is_atomic_on_item_failure(auth_client, db_session):

@@ -88,7 +88,7 @@ class LayoutBulkDelete(BaseModel):
 class DispatchRecommendRequest(BaseModel):
     variety_id: uuid.UUID | None = None
     variety_code: str | None = None  # convenience: lets callers use "Rc222"
-    weight_kg: float  # how many kg needed
+    weight_kg: float | None = None  # how many kg needed; None = every pickable pallet
     branch_id: uuid.UUID | None = None  # restrict to one branch's layout
 
 

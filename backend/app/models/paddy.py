@@ -11,6 +11,7 @@ from ..core.database import Base
 from .base import TimestampMixin
 
 if TYPE_CHECKING:
+    from .company import Branch
     from .reference import QualityGrade, RiceVariety
     from .supplier_customer import Supplier
     from .user import User
@@ -35,6 +36,7 @@ class PalayPurchase(Base, TimestampMixin):
     )
     supplier: Mapped["Supplier"] = relationship("Supplier")
     creator: Mapped["User"] = relationship("User", foreign_keys=[created_by])
+    branch: Mapped["Branch | None"] = relationship("Branch")
 
 
 class PalayPurchaseItem(Base):

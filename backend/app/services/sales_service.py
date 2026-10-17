@@ -105,6 +105,8 @@ class SalesService(BaseService):
             {
                 "id": i.id,
                 "item_type": i.item_type,
+                "variety_id": i.variety_id,
+                "variety_code": i.variety.code if i.variety else None,
                 "variety_name": i.variety.name if i.variety else None,
                 "grade_name": i.grade_name,
                 "byproduct_type": i.byproduct_type,
@@ -114,10 +116,28 @@ class SalesService(BaseService):
             }
             for i in o.items
         ]
+        # The latest invoice, if the order has been billed: what the detail popup
+        # on the Buy & mill pages shows about payment.
+        inv = max(o.invoices, key=lambda v: (v.invoice_date, v.created_at), default=None)
+        data["invoice"] = (
+            {
+                "invoice_no": inv.invoice_no,
+                "status": inv.status,
+                "total_amount": inv.total_amount,
+                "paid_amount": inv.paid_amount,
+                "due_date": inv.due_date,
+            }
+            if inv
+            else None
+        )
         return data
 
-    def list_orders(self, *, skip: int = 0, limit: int = 50, status: str | None = None) -> Sequence[SalesOrder]:
-        return self.orders.list_for_company(self.current_user.company_id, status=status, skip=skip, limit=limit)
+    def list_orders(
+        self, *, skip: int = 0, limit: int = 50, status: str | None = None, item_type: str | None = None
+    ) -> Sequence[SalesOrder]:
+        return self.orders.list_for_company(
+            self.current_user.company_id, status=status, item_type=item_type, skip=skip, limit=limit
+        )
 
     def create_order(self, data) -> SalesOrder:
         # IDOR guards: the customer must be ours; item varieties must be ours or

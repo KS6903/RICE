@@ -157,3 +157,84 @@ def test_invoice_for_unknown_order_404(auth_client):
         },
     )
     assert res.status_code == 404
+
+
+# ── what an order sells: rice, by-products and palay (the Buy & mill pages) ──
+
+
+def _order(c, customer_id, *items, day="2026-10-17"):
+    res = c.post(
+        "/api/sales/orders",
+        json={"customer_id": customer_id, "order_date": day, "items": list(items)},
+    )
+    assert res.status_code == 201, res.text
+    return res.json()
+
+
+def test_orders_sell_palay_too_and_list_by_what_they_sell(auth_client):
+    customer = auth_client.post("/api/sales/customers", json={"name": "Trader Co"}).json()
+    variety = auth_client.post("/api/paddy/varieties", json={"code": "RC222", "name": "NSIC Rc222"}).json()
+    palay = _order(
+        auth_client,
+        customer["id"],
+        {
+            "item_type": "palay",
+            "variety_id": variety["id"],
+            "grade_name": "A",
+            "quantity_kg": "1000",
+            "unit_price_per_kg": "22",
+        },
+    )
+    rice = _order(
+        auth_client, customer["id"], {"item_type": "milled_rice", "quantity_kg": "50", "unit_price_per_kg": "48"}
+    )
+    mixed = _order(
+        auth_client,
+        customer["id"],
+        {"item_type": "milled_rice", "quantity_kg": "50", "unit_price_per_kg": "48"},
+        {"item_type": "byproduct", "byproduct_type": "darak", "quantity_kg": "100", "unit_price_per_kg": "14"},
+    )
+
+    def listed(item_type):
+        return {o["id"] for o in auth_client.get("/api/sales/orders", params={"item_type": item_type}).json()}
+
+    assert listed("palay") == {palay["id"]}
+    assert listed("milled_rice") == {rice["id"], mixed["id"]}
+    assert listed("byproduct") == {mixed["id"]}
+    assert len(auth_client.get("/api/sales/orders").json()) == 3
+
+    line = auth_client.get("/api/sales/orders", params={"item_type": "palay"}).json()[0]["items"][0]
+    assert line["variety_code"] == "RC222"
+    assert line["grade_name"] == "A"
+    assert float(line["line_total"]) == 22000.0
+
+
+def test_order_lines_sell_rice_byproducts_or_palay_only(auth_client):
+    customer = auth_client.post("/api/sales/customers", json={"name": "Odd Co"}).json()
+    res = auth_client.post(
+        "/api/sales/orders",
+        json={
+            "customer_id": customer["id"],
+            "order_date": "2026-10-17",
+            "items": [{"item_type": "sugar", "quantity_kg": "1", "unit_price_per_kg": "1"}],
+        },
+    )
+    assert res.status_code == 422
+
+
+def test_order_says_whether_it_was_billed_and_paid(auth_client):
+    customer = auth_client.post("/api/sales/customers", json={"name": "Billed Co"}).json()
+    order = _order(
+        auth_client, customer["id"], {"item_type": "milled_rice", "quantity_kg": "10", "unit_price_per_kg": "50"}
+    )
+    assert auth_client.get("/api/sales/orders").json()[0]["invoice"] is None
+
+    inv = auth_client.post("/api/sales/invoices", json={"order_id": order["id"], "invoice_date": "2026-10-17"}).json()
+    auth_client.post(
+        "/api/sales/payments",
+        json={"invoice_id": inv["id"], "payment_date": "2026-10-17", "amount": "200", "method": "cash"},
+    )
+    billed = auth_client.get("/api/sales/orders").json()[0]["invoice"]
+    assert billed["invoice_no"] == inv["invoice_no"]
+    assert billed["status"] == "partial"
+    assert float(billed["paid_amount"]) == 200.0

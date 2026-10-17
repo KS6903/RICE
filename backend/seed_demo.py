@@ -13,6 +13,8 @@ tenant it has already seeded, so running this twice changes nothing:
   inventory    palay, milled rice and by-product stock (seed_demo_inventory.py)
   sales        this year's sales and expenses, a different profile per mill
                (seed_demo_sales.py)
+  buying       rice (bigas) and by-product purchases, some in the 2nd Branch
+               warehouse where a mill has one (seed_demo_buying.py)
   automations  sixty days of activity for the Enterprise recipes, mill1 only
                (seed_demo_automations.py; --reset replaces it)
 
@@ -69,6 +71,12 @@ def _sales(username: str, reset: bool) -> str:
     return _with_session(lambda db: seed_demo_sales.seed_tenant(db, username, number))
 
 
+def _buying(username: str, reset: bool) -> str:
+    import seed_demo_buying
+
+    return _with_session(lambda db: seed_demo_buying.seed(db, username))
+
+
 def _automations(username: str, reset: bool) -> str:
     if username not in ENTERPRISE:
         return f"{username}: Enterprise demo, mill1 only — skipped"
@@ -82,6 +90,7 @@ PARTS: dict[str, Callable[[str, bool], str]] = {
     "staff": _staff,
     "inventory": _inventory,
     "sales": _sales,
+    "buying": _buying,
     "automations": _automations,
 }
 

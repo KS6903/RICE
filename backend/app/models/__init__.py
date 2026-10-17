@@ -2,6 +2,7 @@ from .action import ActionItem
 from .activity import ActivityLog
 from .auth_session import AuthSession
 from .automation import AutomationRule, AutomationSettings, AutomationState
+from .buying import ByproductPurchase, ByproductPurchaseItem, RicePurchase, RicePurchaseItem
 from .cash import CashCount
 from .collections import CollectionFollowUp
 from .company import Branch, Company
@@ -40,6 +41,8 @@ __all__ = [
     "AutomationRule",
     "AutomationSettings",
     "AutomationState",
+    "ByproductPurchase",
+    "ByproductPurchaseItem",
     "CashCount",
     "CollectionFollowUp",
     "Equipment",
@@ -55,6 +58,8 @@ __all__ = [
     "Role",
     "AuthSession",
     "PasswordResetToken",
+    "RicePurchase",
+    "RicePurchaseItem",
     "RiceVariety",
     "QualityGrade",
     "ByproductType",

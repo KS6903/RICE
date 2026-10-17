@@ -3,6 +3,7 @@
 import uuid
 from datetime import date
 from decimal import Decimal
+from typing import Literal
 
 from pydantic import BaseModel, Field
 
@@ -31,7 +32,9 @@ class CustomerUpdate(BaseModel):
 
 
 class OrderItemIn(BaseModel):
-    item_type: str  # milled_rice, byproduct
+    # What the line sells: milled rice, a by-product, or palay (each has its own
+    # page in Buy & mill, where it is bought on the left and sold on the right).
+    item_type: Literal["milled_rice", "byproduct", "palay"]
     variety_id: uuid.UUID | None = None
     grade_name: str | None = None
     byproduct_type: str | None = None

@@ -48,7 +48,12 @@ class CanvaDispatchService(BaseService):
         return None
 
     def recommend_fifo(self, body) -> dict:
-        """Ordered list of pallets to pull (oldest milling_date first) covering ``weight_kg``."""
+        """Ordered list of pallets to pull (oldest milling_date first) covering ``weight_kg``.
+
+        With no ``weight_kg`` (or 0 or less, treated as blank) every pickable pallet is
+        listed and there is no shortfall.
+        """
+        weight_kg = body.weight_kg if body.weight_kg and body.weight_kg > 0 else None
         company_id = self.current_user.company_id
         variety_id = self._resolve_variety_id(body)
 
@@ -77,14 +82,14 @@ class CanvaDispatchService(BaseService):
                 continue
             chosen.append((p, b))
             total += float(p.weight_kg)
-            if total >= body.weight_kg:
+            if weight_kg is not None and total >= weight_kg:
                 break
 
         today = date.today()
         return {
-            "requested_kg": body.weight_kg,
+            "requested_kg": weight_kg,
             "total_kg": total,
-            "shortfall_kg": max(0.0, body.weight_kg - total),
+            "shortfall_kg": max(0.0, weight_kg - total) if weight_kg is not None else 0.0,
             "variety_id": str(variety_id) if variety_id else None,
             "pallet_ids": [str(p.id) for p, _ in chosen],
             "pallets": [
