@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { createPortal } from "react-dom";
 import { useEscapeKey } from "../hooks/useEscapeKey";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
@@ -362,7 +363,7 @@ function AssignCourierModal({ order, onClose }: { order: DispatchOrder; onClose:
     },
   });
 
-  return (
+  return createPortal(
     <div
       className="fixed inset-0 z-50 flex items-center justify-center p-4"
       role="dialog"
@@ -376,7 +377,7 @@ function AssignCourierModal({ order, onClose }: { order: DispatchOrder; onClose:
         onClick={onClose}
       />
       <div
-        className="relative w-full max-w-[460px] glass-strong rounded-2xl shadow-2xl ring-1 ring-soft p-5 animate-grad-fade-up"
+        className="relative w-full max-w-[460px] max-h-[calc(100dvh-2rem)] overflow-y-auto glass-strong rounded-2xl shadow-2xl ring-1 ring-soft p-5 animate-grad-fade-up"
         data-testid="assign-courier-modal"
       >
         <div className="flex items-start justify-between mb-4">
@@ -474,7 +475,8 @@ function AssignCourierModal({ order, onClose }: { order: DispatchOrder; onClose:
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
 

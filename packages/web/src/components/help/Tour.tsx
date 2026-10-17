@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useLocation, useNavigate } from "react-router-dom";
 import { X } from "lucide-react";
 import { useAuthStore } from "../../stores/authStore";
@@ -130,7 +131,9 @@ function TourRun() {
     ? { left: place.left, top: place.top }
     : { left: "50%", top: "50%", transform: "translate(-50%, -50%)" };
 
-  return (
+  // Portalled so the overlay and the measured (viewport) coordinates line up
+  // even when an ancestor is transformed.
+  return createPortal(
     <div className="fixed inset-0 z-[70]">
       {/* Swallows clicks so a stray one doesn't wander off mid-tour. */}
       <div className="absolute inset-0" aria-hidden />
@@ -231,6 +234,7 @@ function TourRun() {
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

@@ -1,5 +1,5 @@
 import { useAuthStore } from "../../stores/authStore";
-import { LogOut, Wifi, WifiOff, Crown, Zap, Rocket, Star, AlertCircle, Search } from "lucide-react";
+import { LogOut, Wifi, WifiOff, Crown, Zap, Rocket, Star, AlertCircle } from "lucide-react";
 import { useNavigate, Link } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { useCurrentPlan } from "../../hooks/useFeature";
@@ -84,27 +84,6 @@ export default function Header() {
 
   return (
     <header className="h-16 glass-strong border-b border-soft flex items-center justify-between px-6 shrink-0 relative z-10">
-      <div className="hidden md:flex items-center gap-2 flex-1 max-w-md">
-        <div className="relative w-full">
-          <Search
-            size={15}
-            className="absolute left-3 top-1/2 -translate-y-1/2 text-muted pointer-events-none"
-          />
-          <input
-            type="text"
-            placeholder="Search transactions, batches, customers…"
-            className="input pl-9 pr-14"
-            style={{ paddingTop: "0.5rem", paddingBottom: "0.5rem" }}
-          />
-          <kbd
-            className="absolute right-2 top-1/2 -translate-y-1/2 hidden sm:inline-flex items-center px-1.5 py-0.5 rounded-md bg-slate-200/70 dark:bg-slate-700/70 text-[11px] font-semibold text-secondary pointer-events-none"
-            aria-hidden
-          >
-            ⌘K
-          </kbd>
-        </div>
-      </div>
-
       <div className="flex items-center gap-3 ml-auto">
         {/* Weather + location picker — saved favorites follow the user across
             every page and every login. */}
