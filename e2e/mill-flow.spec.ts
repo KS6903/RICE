@@ -14,7 +14,11 @@ test.describe("Buy and sell through the forms", () => {
 
   test("record a palay purchase on the labelled form", async ({ page }) => {
     await page.goto("/paddy");
-    const rows = page.locator("tbody tr");
+    // The purchases list, not the "Palay in stock" table above it: a purchase of
+    // a variety and grade already in stock adds to that row instead of a new one.
+    const rows = page.getByRole("region", { name: "Purchases" }).getByRole("listitem");
+    // stock.setup.ts bought palay, so wait for the list to load before counting.
+    await expect(rows.first()).toBeVisible();
     const before = await rows.count();
 
     await page.getByRole("button", { name: "New Purchase" }).click();
