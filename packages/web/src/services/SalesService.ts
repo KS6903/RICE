@@ -11,8 +11,12 @@ export class SalesService {
 
   // ── reads ──────────────────────────────────────────────────────────────────
 
-  listOrders(): Promise<any[]> {
-    return this.http.get("/sales/orders").then((r) => r.data);
+  /** Orders, newest first; with `itemType`, only those that sell it (palay,
+   *  milled_rice, byproduct), as the Buy & mill pages list them. */
+  listOrders(itemType?: string): Promise<any[]> {
+    return this.http
+      .get("/sales/orders", itemType ? { params: { item_type: itemType } } : undefined)
+      .then((r) => r.data);
   }
 
   listInvoices(): Promise<any[]> {

@@ -63,4 +63,15 @@ describe("PaddyService (DI-mocked http)", () => {
       "/paddy/suppliers?include_inactive=false",
     ]);
   });
+
+  it("passes the chosen warehouse through", () => {
+    const payload = PaddyService.toPurchasePayload({
+      branch_id: "b2",
+      purchase_date: "2026-10-17",
+      delivery_type: "delivered",
+      remarks: "",
+      items: [],
+    });
+    expect(payload.branch_id).toBe("b2");
+  });
 });

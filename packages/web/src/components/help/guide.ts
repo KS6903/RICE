@@ -5,6 +5,10 @@ export const PAGE_WHAT: Record<string, string> = {
   "/": "Your home screen: this month's profit, your palay and rice stock, and the weather for drying.",
   "/paddy":
     "Record each delivery of palay you buy: variety, weight, moisture and price. It's added to your palay stock.",
+  "/rice":
+    "Record the milled rice you buy from other mills and traders: variety, grade, sacks and price. It's added to your rice stock.",
+  "/byproducts":
+    "Record the ipa, darak and binlid you buy: weight and price per kg. It's added to your by-product stock.",
   "/milling":
     "Record what went into the mill and what came out. Palay leaves your stock; the rice and by-products go into Inventory.",
   "/maintenance": "When each machine is due for service, counted from the milling it has done.",

@@ -14,6 +14,8 @@ export type PurchaseItemForm = {
 };
 
 export type PurchaseForm = {
+  /** The warehouse to store the palay in; left out, the recorder's own. */
+  branch_id?: string | null;
   purchase_date: string;
   delivery_type: string;
   remarks: string;

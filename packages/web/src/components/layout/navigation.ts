@@ -18,6 +18,8 @@ import {
   Wallet,
   ClipboardList,
   Wrench,
+  ShoppingBasket,
+  Boxes,
 } from "lucide-react";
 import type { AppSection } from "@rice-mill/shared";
 
@@ -60,6 +62,22 @@ export const NAV_GROUPS: { title: string | null; items: NavEntry[] }[] = [
         feature: "paddy",
         section: "paddy",
         hint: "Record the palay you buy from farmers and traders",
+      },
+      {
+        to: "/rice",
+        label: "Rice / Bigas",
+        icon: ShoppingBasket,
+        feature: "paddy",
+        section: "paddy",
+        hint: "Record the milled rice you buy from other mills and traders",
+      },
+      {
+        to: "/byproducts",
+        label: "By-products",
+        icon: Boxes,
+        feature: "paddy",
+        section: "paddy",
+        hint: "Record the ipa, darak and binlid you buy",
       },
       {
         to: "/milling",

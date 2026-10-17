@@ -24,7 +24,13 @@ describe("tourStops", () => {
   it("walks the owner through every page, from a welcome to the help button", () => {
     const t = titles(owner);
     expect(t[0]).toBe("Welcome to Oryza");
-    expect(t.slice(1, 4)).toEqual(["Dashboard", "Paddy / Palay", "Milling"]);
+    expect(t.slice(1, 6)).toEqual([
+      "Dashboard",
+      "Paddy / Palay",
+      "Rice / Bigas",
+      "By-products",
+      "Milling",
+    ]);
     expect(t).toContain("Users");
     expect(t.slice(-2)).toEqual(["Settings", "That's the tour"]);
   });

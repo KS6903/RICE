@@ -14,6 +14,8 @@ import ResetPasswordPage from "./pages/ResetPasswordPage";
 import VerifyEmailPage from "./pages/VerifyEmailPage";
 import Dashboard from "./pages/Dashboard";
 import PaddyPage from "./pages/PaddyPage";
+import RicePurchasesPage from "./pages/RicePurchasesPage";
+import ByproductPurchasesPage from "./pages/ByproductPurchasesPage";
 import MillingPage from "./pages/MillingPage";
 import InventoryPage from "./pages/InventoryPage";
 import SalesPage from "./pages/SalesPage";
@@ -169,6 +171,26 @@ function AppRoutes() {
             <RoleGate section="paddy">
               <FeatureGate code="paddy" label="Paddy procurement">
                 <PaddyPage />
+              </FeatureGate>
+            </RoleGate>
+          }
+        />
+        <Route
+          path="rice"
+          element={
+            <RoleGate section="paddy">
+              <FeatureGate code="paddy" label="Rice purchases">
+                <RicePurchasesPage />
+              </FeatureGate>
+            </RoleGate>
+          }
+        />
+        <Route
+          path="byproducts"
+          element={
+            <RoleGate section="paddy">
+              <FeatureGate code="paddy" label="By-product purchases">
+                <ByproductPurchasesPage />
               </FeatureGate>
             </RoleGate>
           }
