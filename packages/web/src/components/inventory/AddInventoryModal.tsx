@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { createPortal } from "react-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Wheat, Package, Boxes, X as XIcon, Plus, Check } from "lucide-react";
 import { paddyService } from "../../services/PaddyService";
@@ -6,6 +7,7 @@ import { branchesService } from "../../services/BranchesService";
 import { inventoryService } from "../../services/InventoryService";
 import { allUnits, saveCustomUnit, type QuantityUnit, slugify } from "./inventoryExtras";
 import Select from "../Select";
+import { MILLED_GRADES } from "../../mappers/InventoryMapper";
 
 type StockType = "palay" | "milled_rice" | "byproduct";
 
@@ -14,8 +16,6 @@ const BUILTIN_TABS: { key: StockType; label: string; icon: React.ElementType }[]
   { key: "milled_rice", label: "Milled Rice", icon: Package },
   { key: "byproduct", label: "By-product", icon: Boxes },
 ];
-
-const MILLED_GRADES = ["premium", "regular", "broken"];
 
 const DEFAULT_BYPRODUCTS: { value: string; label: string }[] = [
   { value: "ipa", label: "Ipa (Rice Hull)" },
@@ -269,7 +269,7 @@ export default function AddInventoryModal({
     return `Server returned ${err?.response?.status ?? "an error"}.`;
   }, [mutation.isError, mutation.error]);
 
-  return (
+  return createPortal(
     <div
       className="fixed inset-0 z-50 flex items-center justify-center p-4"
       role="dialog"
@@ -494,6 +494,7 @@ export default function AddInventoryModal({
           </div>
         </form>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

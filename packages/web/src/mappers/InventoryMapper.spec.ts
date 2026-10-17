@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { InventoryMapper } from "./InventoryMapper";
+import { InventoryMapper, type UnifiedItem } from "./InventoryMapper";
 
 describe("InventoryMapper.toUnifiedItems", () => {
   it("normalizes palay / milled / byproduct rows into one list", () => {
@@ -148,5 +148,79 @@ describe("inventory order: grade, then the most stock, top to bottom", () => {
     );
     const ids = items.sort(InventoryMapper.compare).map((i) => i.id);
     expect(ids).toEqual(["palay-p-a", "palay-p-b", "milled-m-big", "milled-m-small", "bp-bp"]);
+  });
+});
+
+describe("InventoryMapper.combineAcrossWarehouses", () => {
+  const item = (
+    id: string,
+    branchId: string | null,
+    branchName: string,
+    quantity_kg: number,
+    over: Partial<UnifiedItem> = {},
+  ): UnifiedItem => ({
+    id,
+    type: "milled",
+    typeLabel: "Milled Rice (Bigas)",
+    variety: "Rc222",
+    grade: "A",
+    branchId,
+    branchName,
+    quantity_kg,
+    color: "bg-emerald-500",
+    ...over,
+  });
+
+  it("adds up the same variety and grade across warehouses and keeps each warehouse's share", () => {
+    const [one] = InventoryMapper.combineAcrossWarehouses([
+      item("milled-1", "b1", "Main Branch", 800),
+      item("milled-2", "b2", "2nd Branch", 1200),
+    ]);
+    expect(one).toMatchObject({
+      quantity_kg: 2000,
+      branchId: null,
+      branchName: "2 warehouses",
+      locations: [
+        { branchId: "b2", branchName: "2nd Branch", quantity_kg: 1200 },
+        { branchId: "b1", branchName: "Main Branch", quantity_kg: 800 },
+      ],
+    });
+  });
+
+  it("adds up any number of warehouses, not just two or three", () => {
+    const rows = Array.from({ length: 7 }, (_, n) =>
+      item(`milled-${n}`, `b${n}`, `Warehouse ${n}`, (n + 1) * 10),
+    );
+    const [one] = InventoryMapper.combineAcrossWarehouses(rows);
+    expect(one.quantity_kg).toBe(280);
+    expect(one.branchName).toBe("7 warehouses");
+    expect(one.locations).toHaveLength(7);
+    expect(one.locations![0]).toMatchObject({ branchName: "Warehouse 6", quantity_kg: 70 });
+  });
+
+  it("keeps different grades, varieties and kinds apart", () => {
+    const out = InventoryMapper.combineAcrossWarehouses([
+      item("milled-1", "b1", "Main Branch", 800),
+      item("milled-2", "b2", "2nd Branch", 100, { grade: "B" }),
+      item("milled-3", "b2", "2nd Branch", 100, { variety: "Rc216" }),
+      item("palay-4", "b2", "2nd Branch", 100, { type: "palay" }),
+    ]);
+    expect(out).toHaveLength(4);
+    expect(out.every((i) => i.locations?.length === 1)).toBe(true);
+  });
+
+  it("leaves a single-warehouse item as it was, with its one location", () => {
+    const [one] = InventoryMapper.combineAcrossWarehouses([item("milled-1", "b1", "Main", 5)]);
+    expect(one).toMatchObject({ id: "milled-1", branchId: "b1", branchName: "Main" });
+    expect(one.locations).toEqual([{ branchId: "b1", branchName: "Main", quantity_kg: 5 }]);
+  });
+
+  it("merges two rows of one variant in the same warehouse into one location", () => {
+    const [one] = InventoryMapper.combineAcrossWarehouses([
+      item("milled-1", "b1", "Main", 5),
+      item("milled-2", "b1", "Main", 7),
+    ]);
+    expect(one).toMatchObject({ quantity_kg: 12, branchId: "b1", branchName: "Main" });
+    expect(one.locations).toEqual([{ branchId: "b1", branchName: "Main", quantity_kg: 12 }]);
   });
 });

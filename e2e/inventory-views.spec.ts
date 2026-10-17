@@ -87,8 +87,11 @@ test.describe("Inventory — Cards & Bins polish", () => {
     await page.getByTestId("inventory-card").first().click();
     await expect(page.getByTestId("inventory-drawer")).toBeVisible();
 
-    // The backdrop is the first button inside the role=dialog with aria-label "Close drawer"
-    await page.getByRole("button", { name: /close drawer/i }).click();
+    // The backdrop is a full-screen button labelled "Close details"; the details
+    // window sits centred on top of it, so click a corner the window doesn't cover.
+    await page
+      .getByRole("button", { name: /close details/i })
+      .click({ position: { x: 10, y: 10 } });
     await expect(page.getByTestId("inventory-drawer")).toBeHidden();
   });
 

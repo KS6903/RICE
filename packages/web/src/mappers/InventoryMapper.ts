@@ -13,7 +13,16 @@ export type UnifiedItem = {
   branchName: string;
   quantity_kg: number;
   color: string;
+  /** Where this stock sits, biggest share first. Set by combineAcrossWarehouses;
+   *  more than one entry means the item adds up stock from several warehouses. */
+  locations?: ItemLocation[];
 };
+
+/** One warehouse's share of a combined item. */
+export type ItemLocation = { branchId: string | null; branchName: string; quantity_kg: number };
+
+/** The grades milled rice is stocked under (milling output, Add inventory, rice purchases). */
+export const MILLED_GRADES = ["premium", "regular", "broken"] as const;
 
 export const BYPRODUCT_NAMES: Record<string, string> = {
   ipa: "Ipa (Rice Hull)",
@@ -113,6 +122,46 @@ export class InventoryMapper {
       quantity_kg: Number(r.quantity_kg),
     });
     return [...rows].sort((a, b) => compareBy(sort, fields(a), fields(b)));
+  }
+
+  /** For the "All warehouses" view: one item per kind + variety + grade, adding
+   *  up the stock every warehouse holds of it. Each item keeps the per-warehouse
+   *  split in `locations` so the views can still show what sits where. Grade is
+   *  part of the match: Rc222 grade A and grade B are different stock. */
+  static combineAcrossWarehouses(items: UnifiedItem[]): UnifiedItem[] {
+    const groups = new Map<string, UnifiedItem[]>();
+    for (const i of items) {
+      const key = `${i.type}|${i.variety}|${i.grade}`;
+      const list = groups.get(key);
+      if (list) list.push(i);
+      else groups.set(key, [i]);
+    }
+    return [...groups.values()].map((list) => {
+      const byBranch = new Map<string, ItemLocation>();
+      for (const i of list) {
+        const key = i.branchId ?? "";
+        const loc = byBranch.get(key);
+        if (loc) loc.quantity_kg += i.quantity_kg;
+        else
+          byBranch.set(key, {
+            branchId: i.branchId,
+            branchName: i.branchName,
+            quantity_kg: i.quantity_kg,
+          });
+      }
+      const locations = [...byBranch.values()].sort((a, b) => b.quantity_kg - a.quantity_kg);
+      const first = list[0];
+      if (list.length === 1) return { ...first, locations };
+      const several = locations.length > 1;
+      return {
+        ...first,
+        id: `all-${first.type}-${first.variety}-${first.grade}`,
+        branchId: several ? null : locations[0].branchId,
+        branchName: several ? `${locations.length} warehouses` : locations[0].branchName,
+        quantity_kg: list.reduce((s, i) => s + i.quantity_kg, 0),
+        locations,
+      };
+    });
   }
 
   static toUnifiedItems(palay: any[], milled: any[], byproducts: any[]): UnifiedItem[] {

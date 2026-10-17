@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import {
   Boxes,
@@ -539,7 +540,7 @@ function PalletRow({
   );
 }
 
-/* ── Pallet detail slide-in panel ───────────────────────────────────────── */
+/* ── Pallet detail popup (centred) ──────────────────────────────────────── */
 function PalletDetailPanel({
   pallet,
   rackName,
@@ -559,13 +560,19 @@ function PalletDetailPanel({
 
   const meta = AGING_META[pallet.aging_status];
   const batches = pallet.batches ?? [];
-  return (
-    <div className="fixed inset-0 z-50 flex" data-testid="pallet-detail-panel">
+  // Portalled and centred, like the FIFO panel below.
+  return createPortal(
+    <div
+      className="fixed inset-0 z-50 grid place-items-center p-4"
+      role="dialog"
+      aria-modal="true"
+      data-testid="pallet-detail-panel"
+    >
       <div
-        className="flex-1 bg-slate-900/40 backdrop-blur-sm animate-grad-fade-up"
+        className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm animate-grad-fade-up"
         onClick={onClose}
       />
-      <div className="relative ml-auto h-full w-full max-w-md glass-strong shadow-2xl flex flex-col animate-panel-in">
+      <div className="relative w-full max-w-md max-h-[calc(100dvh-2rem)] glass-strong rounded-2xl ring-1 ring-soft shadow-2xl flex flex-col overflow-hidden animate-grad-fade-up">
         <div className="flex items-start justify-between gap-3 p-5 border-b border-soft">
           <div className="min-w-0">
             <div className="flex items-center gap-2">
@@ -612,7 +619,8 @@ function PalletDetailPanel({
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
 
@@ -663,7 +671,7 @@ function BatchRow({ b }: { b: RackBatch }) {
 /* ── FIFO dispatch helper ───────────────────────────────────────────────── */
 type Variety = { id: string; code: string; name: string };
 type Recommendation = {
-  requested_kg: number;
+  requested_kg: number | null;
   total_kg: number;
   shortfall_kg: number;
   pallet_ids: string[];
@@ -688,7 +696,8 @@ function FifoPanel({
   onApply: (ids: string[]) => void;
 }) {
   const [varietyId, setVarietyId] = useState("");
-  const [weight, setWeight] = useState("1000");
+  // Optional: left blank, every pickable pallet is listed oldest-first.
+  const [weight, setWeight] = useState("");
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -707,18 +716,20 @@ function FifoPanel({
     mutationFn: (): Promise<Recommendation> =>
       canvaService.recommendFifo({
         variety_id: varietyId || null,
-        weight_kg: Number(weight) || 0,
+        weight_kg: Number(weight) > 0 ? Number(weight) : null,
         branch_id: branchId,
       }),
   });
   const result = recommend.data;
 
-  return (
+  // Portalled to <body> so a transformed/filtered ancestor can't become the
+  // containing block and pull the panel off the centre of the viewport.
+  return createPortal(
     <div
       className="fixed inset-0 z-50 grid place-items-center bg-slate-900/60 backdrop-blur-sm p-4"
       data-testid="fifo-panel"
     >
-      <div className="glass-strong rounded-2xl shadow-2xl ring-1 ring-soft p-6 w-[520px] max-w-full animate-grad-fade-up">
+      <div className="glass-strong rounded-2xl shadow-2xl ring-1 ring-soft p-6 w-[520px] max-w-full max-h-[calc(100dvh-2rem)] overflow-y-auto animate-grad-fade-up">
         <div className="flex items-center justify-between mb-1">
           <div className="flex items-center gap-2">
             <Zap size={18} className="text-amber-500" />
@@ -729,8 +740,8 @@ function FifoPanel({
           </button>
         </div>
         <p className="text-sm text-secondary mb-5">
-          Picks pallets oldest-first by milling date until the requested weight is covered, then
-          highlights them in the list.
+          Picks pallets oldest-first by milling date until the weight you enter is covered, then
+          highlights them in the list. Leave the weight blank to list every pallet.
         </p>
 
         <div className="grid grid-cols-2 gap-3 mb-4">
@@ -750,21 +761,28 @@ function FifoPanel({
           </div>
           <div>
             <label className="block text-xs font-bold uppercase tracking-wide text-muted mb-1">
-              Weight needed (kg)
+              Weight needed (kg){" "}
+              <span className="font-normal normal-case tracking-normal">(optional)</span>
             </label>
             <input
               type="number"
               min="1"
               className="input"
+              aria-label="Weight needed (kg)"
+              placeholder="Any weight"
               value={weight}
               onChange={(e) => setWeight(e.target.value)}
+              // 0 (or less) means "no weight": show it as blank once the user leaves the box.
+              onBlur={() => {
+                if (weight !== "" && !(Number(weight) > 0)) setWeight("");
+              }}
             />
           </div>
         </div>
 
         <button
           onClick={() => recommend.mutate()}
-          disabled={recommend.isPending || !weight}
+          disabled={recommend.isPending}
           className="w-full flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-grad-brand text-white text-sm font-semibold shadow-grad-glow hover:opacity-90 disabled:opacity-50"
         >
           {recommend.isPending ? (
@@ -778,11 +796,23 @@ function FifoPanel({
         {result && (
           <div className="mt-5 space-y-3">
             <div className="rounded-xl bg-slate-50 dark:bg-slate-800/50 ring-1 ring-soft p-3 text-sm flex items-baseline gap-3 flex-wrap">
-              <span className="text-muted">Requested:</span>
-              <span className="font-bold text-primary tabular-nums">
-                {result.requested_kg.toLocaleString()} kg
-              </span>
-              <span className="text-muted">· Covered:</span>
+              {result.requested_kg != null ? (
+                <>
+                  <span className="text-muted">Requested:</span>
+                  <span className="font-bold text-primary tabular-nums">
+                    {result.requested_kg.toLocaleString()} kg
+                  </span>
+                  <span className="text-muted">· Covered:</span>
+                </>
+              ) : (
+                <>
+                  <span className="text-muted">Pallets:</span>
+                  <span className="font-bold text-primary tabular-nums">
+                    {result.pallets.length.toLocaleString()}
+                  </span>
+                  <span className="text-muted">· Total:</span>
+                </>
+              )}
               <span className="font-bold text-emerald-600 dark:text-emerald-400 tabular-nums">
                 {result.total_kg.toLocaleString()} kg
               </span>
@@ -838,6 +868,7 @@ function FifoPanel({
           </div>
         )}
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

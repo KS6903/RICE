@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 import {
   X as XIcon,
   Wheat,
@@ -10,6 +11,8 @@ import {
   Layers,
   Percent,
 } from "lucide-react";
+import type { ItemLocation } from "../../mappers/InventoryMapper";
+import { LocationSegments, WarehouseDot, isSplit, useWarehouseColor } from "./locationShades";
 
 export type DrawerItem = {
   id: string;
@@ -20,6 +23,8 @@ export type DrawerItem = {
   branchId: string | null;
   branchName: string;
   quantity_kg: number;
+  /** Per-warehouse split when "All warehouses" added this stock up. */
+  locations?: ItemLocation[];
 };
 
 type Props = {
@@ -66,6 +71,7 @@ export default function InventoryDetailDrawer({
   onViewInWarehouse,
 }: Props) {
   const closeBtnRef = useRef<HTMLButtonElement>(null);
+  const colorOf = useWarehouseColor();
 
   useEffect(() => {
     if (!item) return;
@@ -88,10 +94,15 @@ export default function InventoryDetailDrawer({
   const Icon = TYPE_ICON[item.type];
   const pct = totalKg > 0 ? (item.quantity_kg / totalKg) * 100 : 0;
   const cavans = item.quantity_kg / 50;
+  const split = isSplit(item);
+  // A split item has no one warehouse; the footer button opens the one holding the most.
+  const warehouseId = item.branchId ?? item.locations?.[0]?.branchId ?? null;
 
-  return (
+  // Portalled to <body> and centred in the viewport, so page scroll and any
+  // transformed ancestor leave it where the user expects it.
+  return createPortal(
     <div
-      className="fixed inset-0 z-50 flex"
+      className="fixed inset-0 z-50 grid place-items-center p-4"
       role="dialog"
       aria-modal="true"
       aria-labelledby="inventory-drawer-title"
@@ -99,15 +110,15 @@ export default function InventoryDetailDrawer({
       {/* Backdrop */}
       <button
         type="button"
-        aria-label="Close drawer"
+        aria-label="Close details"
         onClick={onClose}
         className="absolute inset-0 bg-slate-900/45 backdrop-blur-sm animate-grad-fade-up"
         style={{ animationDuration: "180ms" }}
       />
 
-      {/* Panel — right-anchored */}
+      {/* Panel — centred */}
       <aside
-        className="relative ml-auto h-full w-full max-w-md glass-strong shadow-2xl flex flex-col animate-panel-in"
+        className="relative w-full max-w-md max-h-[calc(100dvh-2rem)] glass-strong rounded-2xl ring-1 ring-soft shadow-2xl flex flex-col overflow-hidden animate-grad-fade-up"
         data-testid="inventory-drawer"
       >
         {/* Header */}
@@ -161,9 +172,11 @@ export default function InventoryDetailDrawer({
                 aria-valuenow={Math.round(pct)}
                 aria-valuemin={0}
                 aria-valuemax={100}
-                className={`h-full bg-gradient-to-r ${theme.bar} transition-[width] duration-500`}
+                className={`h-full transition-[width] duration-500 ${split ? "" : `bg-gradient-to-r ${theme.bar}`}`}
                 style={{ width: `${Math.max(pct, 1.5)}%` }}
-              />
+              >
+                {split && <LocationSegments item={item} />}
+              </div>
             </div>
             <div className="mt-3 grid grid-cols-2 gap-3 text-xs">
               <div className="flex items-center gap-1.5 text-muted">
@@ -180,6 +193,55 @@ export default function InventoryDetailDrawer({
               </div>
             </div>
           </div>
+
+          {/* Held in several warehouses: how the total splits, and a way into each */}
+          {split && (
+            <div
+              data-testid="inventory-locations"
+              className="rounded-2xl ring-1 ring-soft overflow-hidden"
+            >
+              <div className="px-4 py-2.5 bg-slate-50 dark:bg-slate-800/40 border-b border-soft">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-muted">
+                  Stored in {item.locations!.length} warehouses
+                </p>
+              </div>
+              <ul className="divide-y divide-soft">
+                {item.locations!.map((l, idx) => {
+                  const share = item.quantity_kg > 0 ? (l.quantity_kg / item.quantity_kg) * 100 : 0;
+                  return (
+                    <li
+                      key={l.branchId ?? `none-${idx}`}
+                      className="flex items-center gap-3 px-4 py-2.5 bg-white/30 dark:bg-slate-800/30 text-sm"
+                    >
+                      <WarehouseDot color={colorOf(item.type, l, idx)} className="h-2.5 w-2.5" />
+                      <span className="min-w-0 flex-1 truncate font-semibold text-primary">
+                        {l.branchName}
+                      </span>
+                      <span className="shrink-0 text-right tabular-nums">
+                        <span className="font-semibold text-primary">
+                          {l.quantity_kg.toLocaleString()} kg
+                        </span>
+                        <span className="block text-[11px] text-muted">
+                          {share.toFixed(0)}% of this stock
+                        </span>
+                      </span>
+                      {onViewInWarehouse && l.branchId && (
+                        <button
+                          type="button"
+                          onClick={() => onViewInWarehouse(l.branchId)}
+                          className="btn-ghost !p-1.5 shrink-0"
+                          aria-label={`Show ${l.branchName} in Warehouse`}
+                          title={`Show ${l.branchName} in Warehouse`}
+                        >
+                          <ArrowRight size={14} />
+                        </button>
+                      )}
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          )}
 
           {/* Pack-out calculator — only meaningful for sackable stock (palay + milled) */}
           {item.type !== "byproduct" && (
@@ -251,10 +313,13 @@ export default function InventoryDetailDrawer({
 
         {/* Footer actions */}
         <footer className="p-4 border-t border-soft flex items-center gap-2">
-          {onViewInWarehouse && item.branchId && (
+          {onViewInWarehouse && warehouseId && (
             <button
               type="button"
-              onClick={() => onViewInWarehouse(item.branchId)}
+              onClick={() => onViewInWarehouse(warehouseId)}
+              title={
+                split ? `Opens ${item.locations![0].branchName}, which holds the most` : undefined
+              }
               className="btn-primary flex-1 !py-2"
             >
               <Warehouse size={15} />
@@ -267,6 +332,7 @@ export default function InventoryDetailDrawer({
           </button>
         </footer>
       </aside>
-    </div>
+    </div>,
+    document.body,
   );
 }

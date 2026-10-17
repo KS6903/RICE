@@ -22,6 +22,13 @@ import NewWarehouseView from "../components/warehouse/NewWarehouseView";
 import InventoryDetailDrawer from "../components/inventory/InventoryDetailDrawer";
 import WarehousePicker from "../components/inventory/WarehousePicker";
 import AddInventoryModal from "../components/inventory/AddInventoryModal";
+import {
+  LocationKey,
+  LocationSegments,
+  WarehouseColorProvider,
+  WarehouseLegend,
+  isSplit,
+} from "../components/inventory/locationShades";
 import { useAuthStore } from "../stores/authStore";
 import { inventoryService } from "../services/InventoryService";
 import {
@@ -113,15 +120,15 @@ export default function InventoryPage() {
   });
 
   // Every view lists stock in the order this account chose (remembered between
-  // visits, even after signing out).
+  // visits, even after signing out). With "All warehouses" picked, one variety
+  // and grade held in several warehouses shows once, with its total; each view
+  // still shows how that total splits between the warehouses.
   const [sort, setSort] = useInventorySort();
-  const items: UnifiedItem[] = useMemo(
-    () =>
-      InventoryMapper.toUnifiedItems(palay, milled, byproducts).sort(
-        InventoryMapper.comparator(sort),
-      ),
-    [palay, milled, byproducts, sort],
-  );
+  const items: UnifiedItem[] = useMemo(() => {
+    const unified = InventoryMapper.toUnifiedItems(palay, milled, byproducts);
+    const shown = branchFilter ? unified : InventoryMapper.combineAcrossWarehouses(unified);
+    return shown.sort(InventoryMapper.comparator(sort));
+  }, [palay, milled, byproducts, sort, branchFilter]);
   const palaySorted = useMemo(() => InventoryMapper.sortRows(palay, "palay", sort), [palay, sort]);
   const milledSorted = useMemo(
     () => InventoryMapper.sortRows(milled, "milled", sort),
@@ -135,108 +142,116 @@ export default function InventoryPage() {
   const totalKg = items.reduce((s, i) => s + i.quantity_kg, 0);
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between flex-wrap gap-3">
-        <div>
-          <h2 className="text-2xl font-bold tracking-tight text-primary">Inventory</h2>
-          <p className="text-sm text-secondary">Stock of palay, milled rice, and by-products</p>
+    // Each warehouse keeps one colour on every view and in the detail window.
+    <WarehouseColorProvider branches={branches}>
+      <div className="space-y-6">
+        <div className="flex items-center justify-between flex-wrap gap-3">
+          <div>
+            <h2 className="text-2xl font-bold tracking-tight text-primary">Inventory</h2>
+            <p className="text-sm text-secondary">Stock of palay, milled rice, and by-products</p>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <WarehousePicker
+              branches={branches as any[]}
+              selectedId={branchFilter}
+              onSelect={setBranchFilter}
+            />
+            <Select
+              className="!w-auto min-w-[13rem]"
+              aria-label="Sort inventory by"
+              value={sort}
+              onChange={(v) => isInventorySort(v) && setSort(v)}
+              options={INVENTORY_SORTS}
+            />
+            {canAddInventory && (
+              <button
+                type="button"
+                data-testid="add-inventory-btn"
+                onClick={() => setShowAdd(true)}
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-grad-brand text-white text-sm font-semibold shadow-grad-glow hover:opacity-90 transition-opacity whitespace-nowrap"
+              >
+                <Plus size={15} /> Add inventory
+              </button>
+            )}
+          </div>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <WarehousePicker
+
+        {/* View switcher: drag a tab to rearrange (press and hold on a touch screen) */}
+        <div
+          {...tabs.containerProps}
+          title="Drag a tab to rearrange. On a touch screen, press and hold first."
+          className="flex items-center gap-1 p-1 rounded-xl glass overflow-x-auto"
+        >
+          {orderedViews.map(({ key, label, icon: Icon }) => {
+            const active = view === key;
+            const lifted = tabs.dragging === key;
+            return (
+              <button
+                key={key}
+                {...tabs.tabProps(key)}
+                onClick={() => {
+                  if (!tabs.wasDragged()) setView(key);
+                }}
+                className={`flex select-none items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold whitespace-nowrap transition-all [-webkit-touch-callout:none] ${
+                  lifted ? "scale-105 cursor-grabbing shadow-lg ring-2 ring-emerald-400" : ""
+                } ${
+                  active
+                    ? "bg-grad-brand text-white shadow-grad-glow"
+                    : "text-secondary hover:text-primary hover:bg-slate-100/60 dark:hover:bg-slate-700/30"
+                }`}
+              >
+                <Icon size={15} />
+                {label}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* All warehouses: which colour is which warehouse; a click narrows to one */}
+        {!branchFilter && (view === "cards" || view === "bins" || view === "spreadsheet") && (
+          <WarehouseLegend items={items} onPick={setBranchFilter} />
+        )}
+
+        {view === "classic" && (
+          <ClassicView
+            palay={palaySorted}
+            milled={milledSorted}
+            byproducts={byproductsSorted}
+            summary={summary}
+            branchFilter={branchFilter}
+          />
+        )}
+        {view === "spreadsheet" && <SpreadsheetView key={sort} items={items} />}
+        {view === "cards" && <CardsView items={items} totalKg={totalKg} onSelect={setSelected} />}
+        {view === "bins" && <BinsView items={items} onSelect={setSelected} />}
+        {view === "warehouse" && (
+          <NewWarehouseView
+            branches={branches}
+            branchFilter={branchFilter}
+            setBranchFilter={setBranchFilter}
+          />
+        )}
+
+        <InventoryDetailDrawer
+          item={selected}
+          totalKg={totalKg}
+          onClose={() => setSelected(null)}
+          onViewInWarehouse={(branchId) => {
+            if (branchId) setBranchFilter(branchId);
+            setView("warehouse");
+            setSelected(null);
+          }}
+        />
+
+        {showAdd && (
+          <AddInventoryModal
             branches={branches as any[]}
-            selectedId={branchFilter}
-            onSelect={setBranchFilter}
+            defaultBranchId={branchFilter}
+            onClose={() => setShowAdd(false)}
           />
-          <Select
-            className="!w-auto min-w-[13rem]"
-            aria-label="Sort inventory by"
-            value={sort}
-            onChange={(v) => isInventorySort(v) && setSort(v)}
-            options={INVENTORY_SORTS}
-          />
-          {canAddInventory && (
-            <button
-              type="button"
-              data-testid="add-inventory-btn"
-              onClick={() => setShowAdd(true)}
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-grad-brand text-white text-sm font-semibold shadow-grad-glow hover:opacity-90 transition-opacity whitespace-nowrap"
-            >
-              <Plus size={15} /> Add inventory
-            </button>
-          )}
-        </div>
+        )}
       </div>
-
-      {/* View switcher: drag a tab to rearrange (press and hold on a touch screen) */}
-      <div
-        {...tabs.containerProps}
-        title="Drag a tab to rearrange. On a touch screen, press and hold first."
-        className="flex items-center gap-1 p-1 rounded-xl glass overflow-x-auto"
-      >
-        {orderedViews.map(({ key, label, icon: Icon }) => {
-          const active = view === key;
-          const lifted = tabs.dragging === key;
-          return (
-            <button
-              key={key}
-              {...tabs.tabProps(key)}
-              onClick={() => {
-                if (!tabs.wasDragged()) setView(key);
-              }}
-              className={`flex select-none items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold whitespace-nowrap transition-all [-webkit-touch-callout:none] ${
-                lifted ? "scale-105 cursor-grabbing shadow-lg ring-2 ring-emerald-400" : ""
-              } ${
-                active
-                  ? "bg-grad-brand text-white shadow-grad-glow"
-                  : "text-secondary hover:text-primary hover:bg-slate-100/60 dark:hover:bg-slate-700/30"
-              }`}
-            >
-              <Icon size={15} />
-              {label}
-            </button>
-          );
-        })}
-      </div>
-
-      {view === "classic" && (
-        <ClassicView
-          palay={palaySorted}
-          milled={milledSorted}
-          byproducts={byproductsSorted}
-          summary={summary}
-          branchFilter={branchFilter}
-        />
-      )}
-      {view === "spreadsheet" && <SpreadsheetView key={sort} items={items} />}
-      {view === "cards" && <CardsView items={items} totalKg={totalKg} onSelect={setSelected} />}
-      {view === "bins" && <BinsView items={items} onSelect={setSelected} />}
-      {view === "warehouse" && (
-        <NewWarehouseView
-          branches={branches}
-          branchFilter={branchFilter}
-          setBranchFilter={setBranchFilter}
-        />
-      )}
-
-      <InventoryDetailDrawer
-        item={selected}
-        totalKg={totalKg}
-        onClose={() => setSelected(null)}
-        onViewInWarehouse={(branchId) => {
-          if (branchId) setBranchFilter(branchId);
-          setView("warehouse");
-          setSelected(null);
-        }}
-      />
-
-      {showAdd && (
-        <AddInventoryModal
-          branches={branches as any[]}
-          defaultBranchId={branchFilter}
-          onClose={() => setShowAdd(false)}
-        />
-      )}
-    </div>
+    </WarehouseColorProvider>
   );
 }
 
@@ -387,6 +402,7 @@ function SpreadsheetView({ items }: { items: UnifiedItem[] }) {
         !q ||
         i.variety.toLowerCase().includes(q) ||
         i.branchName.toLowerCase().includes(q) ||
+        (i.locations ?? []).some((l) => l.branchName.toLowerCase().includes(q)) ||
         i.typeLabel.toLowerCase().includes(q),
     );
     if (!sortKey) return rows;
@@ -465,7 +481,9 @@ function SpreadsheetView({ items }: { items: UnifiedItem[] }) {
                   </td>
                   <td className="px-4 py-2.5 font-medium text-primary">{i.variety}</td>
                   <td className="px-4 py-2.5 text-secondary">{i.grade}</td>
-                  <td className="px-4 py-2.5 text-secondary">{i.branchName}</td>
+                  <td className="px-4 py-2.5 text-secondary">
+                    {isSplit(i) ? <LocationKey item={i} all /> : i.branchName}
+                  </td>
                   <td className="px-4 py-2.5 font-semibold text-primary">
                     {i.quantity_kg.toLocaleString()}
                   </td>
@@ -639,10 +657,15 @@ function CardsView({
                           aria-valuemin={0}
                           aria-valuemax={100}
                           aria-label={`${pct.toFixed(1)}% of total stock`}
-                          className={`h-full bg-gradient-to-r ${grad} transition-[width] duration-500`}
+                          className={`h-full transition-[width] duration-500 ${isSplit(i) ? "" : `bg-gradient-to-r ${grad}`}`}
                           style={{ width: `${Math.max(pct, 1.5)}%` }}
-                        />
+                        >
+                          {isSplit(i) && <LocationSegments item={i} />}
+                        </div>
                       </div>
+
+                      {/* Held in several warehouses: which one holds how much */}
+                      {isSplit(i) && <LocationKey item={i} className="mt-3" />}
 
                       {/* Footer: warehouse chip + drill-in hint */}
                       <div className="mt-3.5 flex items-center justify-between">
@@ -770,10 +793,13 @@ function BinsView({
                           aria-valuenow={Math.round(sectionPct)}
                           aria-valuemin={0}
                           aria-valuemax={100}
-                          className={`h-full bg-gradient-to-r ${grad} transition-[width,filter] duration-500 group-hover:brightness-110`}
+                          className={`h-full transition-[width,filter] duration-500 group-hover:brightness-110 ${isSplit(i) ? "" : `bg-gradient-to-r ${grad}`}`}
                           style={{ width: `${Math.max(w, 2)}%` }}
-                        />
+                        >
+                          {isSplit(i) && <LocationSegments item={i} />}
+                        </div>
                       </div>
+                      {isSplit(i) && <LocationKey item={i} max={6} inline className="mt-1.5" />}
                     </button>
                   );
                 })}
