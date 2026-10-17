@@ -59,7 +59,7 @@ PAY_FIELDS = ("pay_method", "pay_provider", "pay_account_name", "pay_account_no"
 # call the method, the provider, and the number.
 _ACCOUNT_METHODS = {
     "bank_transfer": ("bank transfer", "bank name", "account number"),
-    "e_wallet": ("e-wallet", "e-wallet provider", "mobile number"),
+    "e_wallet": ("e-wallet", "e-wallet provider", "account number"),
     "payroll_card": ("payroll card", "bank or card issuer", "card or account number"),
 }
 _ACCOUNT_NO = re.compile(r"^\+?[0-9][0-9 \-]{3,38}$")

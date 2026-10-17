@@ -57,7 +57,7 @@ def test_an_e_wallet_needs_the_provider_and_the_mobile_number(auth_client):
 
     missing = _post(auth_client, pay_method="e_wallet", pay_provider="GCash")
     assert missing.status_code == 400
-    assert "mobile number" in missing.json()["detail"]
+    assert "account number" in missing.json()["detail"]
 
 
 def test_a_payroll_card_needs_the_issuer_and_the_card_number(auth_client):
