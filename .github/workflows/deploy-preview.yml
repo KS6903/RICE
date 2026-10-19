@@ -1,6 +1,6 @@
 name: Deploy preview (Cloudflare)
 
-# The private test site: app.<subdomain>.workers.dev behind Cloudflare
+# The private test site: app.oraiza.workers.dev behind Cloudflare
 # Access, built from wrangler.jsonc env.preview (ENV=preview: production checks,
 # except the legal "To follow" details and email are allowed to be missing). See
 # PREVIEW_DEPLOY.md for the one-time setup.
