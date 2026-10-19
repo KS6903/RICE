@@ -168,18 +168,11 @@ def test_production_vars_may_not_name_a_deploy_target(tmp_path):
     assert "the production vars set DEPLOY_TARGET; only a wrangler.jsonc env may" in problems
 
 
-def test_the_real_preview_config_waits_only_for_the_account_subdomain(monkeypatch):
-    """The checked-in env.preview passes everything but the subdomain placeholder,
-    and the legal "To follow" details don't block it (they still block production)."""
+def test_the_real_preview_config_is_ready(monkeypatch):
+    """The checked-in env.preview passes the gate, and the legal "To follow" details
+    don't block it (they still block production)."""
     monkeypatch.setattr(legal, "unresolved_placeholders", lambda: ["terms-of-service.md: provider_legal_name"])
-    problems = gate.check(gate.WRANGLER_CONFIG, gate.CONTAINER_ENV, env_name="preview")
-    assert problems
-    assert all("__ACCOUNT_SUBDOMAIN__" in p and "template value" in p for p in problems), problems
-    assert {p.split(" var ")[1].split(" ")[0] for p in problems} == {
-        "ALLOWED_ORIGINS",
-        "TRUSTED_HOSTS",
-        "FRONTEND_BASE_URL",
-    }
+    assert gate.check(gate.WRANGLER_CONFIG, gate.CONTAINER_ENV, env_name="preview") == []
 
 
 def test_an_env_that_does_not_exist_is_an_error(tmp_path):

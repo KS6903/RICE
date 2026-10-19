@@ -1,7 +1,7 @@
 # Private preview on Cloudflare
 
 A private test copy of Oryza for invited testers, at
-`https://app.<subdomain>.workers.dev`, behind Cloudflare Access so only the people you
+`https://app.oraiza.workers.dev`, behind Cloudflare Access so only the people you
 list can open it. It runs the same code with the production security settings, except in two
 places (`ENV=preview`):
 
@@ -37,12 +37,12 @@ Do these in order. Billing starts at step 1.
 ### 1. Cloudflare
 
 1. In the project's Cloudflare account, subscribe to **Workers Paid** (Workers & Pages → Plans).
-2. Find the account's `workers.dev` subdomain (Workers & Pages overview, right-hand side). In
-   `wrangler.jsonc`, under `env.preview.vars`, replace the three `__ACCOUNT_SUBDOMAIN__` with it,
-   and commit. The readiness gate refuses to deploy until you do.
-3. Create an API token (My Profile → API Tokens) from the **Edit Cloudflare Workers** template.
-   If the first deploy reports a missing Containers permission, add it to the token. Note the
-   token and the account ID.
+2. The account's `workers.dev` subdomain is `oraiza` (Workers & Pages overview, right-hand side),
+   and `wrangler.jsonc` `env.preview.vars` already uses it. If you ever change the subdomain,
+   change those three hosts too.
+3. Create an API token (My Profile → API Tokens) from the **Edit Cloudflare Workers** template,
+   for the project's account only, and add **Containers: Edit**. Note the token and the
+   account ID.
 
 ### 2. Database (Neon)
 
