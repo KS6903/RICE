@@ -1,7 +1,7 @@
 # Private preview on Cloudflare
 
 A private test copy of Oryza for invited testers, at
-`https://oryza-preview.<subdomain>.workers.dev`, behind Cloudflare Access so only the people you
+`https://app.<subdomain>.workers.dev`, behind Cloudflare Access so only the people you
 list can open it. It runs the same code with the production security settings, except in two
 places (`ENV=preview`):
 
@@ -99,7 +99,7 @@ set them before anyone opens the site.
 
 ### 7. Lock it to your testers
 
-Workers & Pages → **oryza-preview** → Settings → Domains & Routes → `workers.dev` →
+Workers & Pages → **app** → Settings → Domains & Routes → `workers.dev` →
 **Enable Cloudflare Access**, then **Manage Cloudflare Access** and add each tester's email.
 Anyone else gets Cloudflare's sign-in page and goes no further.
 

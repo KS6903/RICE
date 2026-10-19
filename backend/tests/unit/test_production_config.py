@@ -115,9 +115,9 @@ def _preview(**overrides):
         "SMTP_HOST": None,
         "SMTP_FROM_EMAIL": None,
         "REQUIRE_EMAIL_VERIFICATION": False,
-        "ALLOWED_ORIGINS": "https://oryza-preview.example.workers.dev",
-        "TRUSTED_HOSTS": "oryza-preview.example.workers.dev",
-        "FRONTEND_BASE_URL": "https://oryza-preview.example.workers.dev",
+        "ALLOWED_ORIGINS": "https://app.example.workers.dev",
+        "TRUSTED_HOSTS": "app.example.workers.dev",
+        "FRONTEND_BASE_URL": "https://app.example.workers.dev",
     }
     values.update(overrides)
     return _valid_prod(**values)

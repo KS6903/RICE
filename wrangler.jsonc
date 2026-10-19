@@ -95,7 +95,7 @@
   },
 
   // ── The private preview (`wrangler deploy --env preview`) ──────────────────
-  // A test site for invited testers on oryza-preview.<subdomain>.workers.dev,
+  // A test site for invited testers on app.<subdomain>.workers.dev,
   // behind Cloudflare Access. Trimmed to stay near the Workers Paid plan's
   // included container hours: one small API container that sleeps after 10
   // minutes, and no 15-minute cron (it would wake the provisioner and the jobs
@@ -104,6 +104,8 @@
   // Every binding is spelled out rather than inherited. See PREVIEW_DEPLOY.md.
   "env": {
     "preview": {
+      // The Worker is "app", so the site is app.<subdomain>.workers.dev.
+      "name": "app",
       "containers": [
         {
           "class_name": "ApiContainer",
@@ -159,9 +161,9 @@
         // __ACCOUNT_SUBDOMAIN__: the account's workers.dev subdomain (Workers &
         // Pages, right-hand side of the overview). The readiness gate refuses to
         // deploy until it is filled in.
-        "ALLOWED_ORIGINS": "https://oryza-preview.__ACCOUNT_SUBDOMAIN__.workers.dev",
-        "TRUSTED_HOSTS": "oryza-preview.__ACCOUNT_SUBDOMAIN__.workers.dev",
-        "FRONTEND_BASE_URL": "https://oryza-preview.__ACCOUNT_SUBDOMAIN__.workers.dev",
+        "ALLOWED_ORIGINS": "https://app.__ACCOUNT_SUBDOMAIN__.workers.dev",
+        "TRUSTED_HOSTS": "app.__ACCOUNT_SUBDOMAIN__.workers.dev",
+        "FRONTEND_BASE_URL": "https://app.__ACCOUNT_SUBDOMAIN__.workers.dev",
         "COOKIE_DOMAIN": "",
         "MFA_REQUIRED_ROLES": "owner,admin",
         // Email is optional here. Leave these empty for none (links are not sent,
