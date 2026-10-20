@@ -145,10 +145,10 @@ _E2E_PLACES: list[dict[str, Any]] = [
 def _offline_weather_and_places() -> None:
     """Keep the E2E contract deterministic and independent of public APIs:
     weather for the default spot and every fixture place comes from the cache,
-    and place search answers from the fixtures (validation and rate limiting
-    still run; only the outbound call is replaced)."""
+    and place search and the forecast answer from fixtures (validation, rate
+    limiting and caching still run; only the outbound call is replaced)."""
     import time
-    from datetime import datetime, timezone
+    from datetime import datetime, timedelta, timezone
 
     from app.services.geocoding import GeocodingClient
     from app.services.weather import WeatherService
@@ -178,6 +178,40 @@ def _offline_weather_and_places() -> None:
         return [p for p in _E2E_PLACES if p["name"].lower().startswith(q)]
 
     GeocodingClient._fetch_upstream = fixture_places  # type: ignore[method-assign]
+
+    # Every page's header asks for the forecast too. Left live, a slow
+    # Open-Meteo held each page for its 8 s timeout and pushed whole tests past
+    # their limit.
+    def fixture_forecast(self: WeatherService, lat: float, lon: float) -> dict:
+        hour = datetime.now(timezone.utc).replace(minute=0, second=0, microsecond=0)
+        sky = {"condition": "Partly cloudy", "condition_code": "partly_cloudy"}
+        return {
+            "provider": "e2e-fixture",
+            "location": {"lat": lat, "lon": lon, "label": None},
+            "hourly": [
+                {
+                    "time": (hour + timedelta(hours=i)).strftime("%Y-%m-%dT%H:%M"),
+                    "temp_c": 30.0,
+                    **sky,
+                    "precip_pct": 10,
+                    "is_daytime": True,
+                }
+                for i in range(24)
+            ],
+            "daily": [
+                {
+                    "date": (hour + timedelta(days=i)).strftime("%Y-%m-%d"),
+                    "temp_max_c": 32.0,
+                    "temp_min_c": 25.0,
+                    **sky,
+                    "precip_pct": 20,
+                }
+                for i in range(7)
+            ],
+            "fetched_at": datetime.now(timezone.utc).isoformat(),
+        }
+
+    WeatherService._fetch_open_meteo_forecast = fixture_forecast  # type: ignore[method-assign]
 
 
 def _build_e2e_app():
