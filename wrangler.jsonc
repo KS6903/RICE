@@ -165,13 +165,14 @@
         "FRONTEND_BASE_URL": "https://app.oraiza.workers.dev",
         "COOKIE_DOMAIN": "",
         "MFA_REQUIRED_ROLES": "owner,admin",
-        // Email is optional here. Leave these empty for none (links are not sent,
-        // and verification is off), or fill in a Gmail address with an app
-        // password (SMTP_PASSWORD as a secret).
-        "SMTP_HOST": "",
+        // Email goes out through Gmail: this address, with an app password as the
+        // SMTP_PASSWORD Worker secret. Verification of new sign-ups stays off here
+        // until REQUIRE_EMAIL_VERIFICATION is set under targets.preview in
+        // worker/container-env.json.
+        "SMTP_HOST": "smtp.gmail.com",
         "SMTP_PORT": "587",
-        "SMTP_FROM_EMAIL": "",
-        "SMTP_USERNAME": ""
+        "SMTP_FROM_EMAIL": "oraiza88888@gmail.com",
+        "SMTP_USERNAME": "oraiza88888@gmail.com"
       }
     }
   }
