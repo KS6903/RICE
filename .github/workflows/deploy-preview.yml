@@ -37,12 +37,16 @@ env:
 jobs:
   main-only:
     name: Deploys run from main only
-    # After CI: only a green run for a push to main of this repository, never a
-    # pull request (a fork's branch can be called main too).
+    # After CI: only a green run on main of this repository, never a pull request
+    # (a fork's branch can be called main too). A push, or the re-test CI's
+    # automerge dispatches after merging a Dependabot PR: that merge is made with
+    # the workflow token, which starts no push run, and the dispatch then cancels
+    # the push run of anything merged just before it.
     if: >-
       github.event_name == 'workflow_dispatch' ||
       (github.event.workflow_run.conclusion == 'success' &&
-       github.event.workflow_run.event == 'push' &&
+       (github.event.workflow_run.event == 'push' ||
+        github.event.workflow_run.event == 'workflow_dispatch') &&
        github.event.workflow_run.head_branch == 'main' &&
        github.event.workflow_run.head_repository.full_name == github.repository)
     runs-on: ubuntu-latest
