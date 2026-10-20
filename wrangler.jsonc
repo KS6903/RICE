@@ -11,7 +11,7 @@
     "directory": "packages/web/dist",
     "binding": "ASSETS",
     "not_found_handling": "single-page-application",
-    "run_worker_first": ["/api/*", "/ws/*"],
+    "run_worker_first": ["/api/*", "/ws/*"]
   },
 
   "containers": [
@@ -23,14 +23,14 @@
       "image_build_context": "./",
       "instance_type": "standard-1",
       // Keep in step with the API_INSTANCES var the Worker balances across.
-      "max_instances": 3,
+      "max_instances": 3
     },
     {
       "class_name": "ProvisionerContainer",
       "image": "./backend/Dockerfile",
       "image_build_context": "./",
       "instance_type": "basic",
-      "max_instances": 1,
+      "max_instances": 1
     },
     {
       // Scheduled jobs (backend/app/jobs), started by the cron trigger below.
@@ -38,37 +38,37 @@
       "image": "./backend/Dockerfile",
       "image_build_context": "./",
       "instance_type": "basic",
-      "max_instances": 1,
-    },
+      "max_instances": 1
+    }
   ],
 
   "durable_objects": {
     "bindings": [
       { "name": "API_CONTAINER", "class_name": "ApiContainer" },
       { "name": "PROVISIONER_CONTAINER", "class_name": "ProvisionerContainer" },
-      { "name": "JOBS_CONTAINER", "class_name": "JobsContainer" },
-    ],
+      { "name": "JOBS_CONTAINER", "class_name": "JobsContainer" }
+    ]
   },
 
   "migrations": [
     {
       "tag": "v1",
-      "new_sqlite_classes": ["ApiContainer", "ProvisionerContainer"],
+      "new_sqlite_classes": ["ApiContainer", "ProvisionerContainer"]
     },
     {
       "tag": "v2",
-      "new_sqlite_classes": ["JobsContainer"],
-    },
+      "new_sqlite_classes": ["JobsContainer"]
+    }
   ],
 
   // Every 15 minutes: the provisioner drains queued tenant schemas, and the
   // jobs runner runs whatever scheduled work is due (worker/index.ts).
   "triggers": {
-    "crons": ["*/15 * * * *"],
+    "crons": ["*/15 * * * *"]
   },
 
   "observability": {
-    "enabled": true,
+    "enabled": true
   },
 
   // Non-secret configuration. Replace example.com with the real domain before
@@ -91,7 +91,7 @@
     "SMTP_HOST": "smtp.example.com",
     "SMTP_PORT": "587",
     "SMTP_FROM_EMAIL": "no-reply@example.com",
-    "SMTP_USERNAME": "no-reply@example.com",
+    "SMTP_USERNAME": "no-reply@example.com"
   },
 
   // ── The private preview (`wrangler deploy --env preview`) ──────────────────
@@ -116,7 +116,7 @@
           "image_build_context": "./",
           "instance_type": "basic",
           "max_instances": 1,
-          "constraints": { "regions": ["APAC"] },
+          "constraints": { "regions": ["APAC"] }
         },
         {
           "class_name": "ProvisionerContainer",
@@ -124,7 +124,7 @@
           "image_build_context": "./",
           "instance_type": "basic",
           "max_instances": 1,
-          "constraints": { "regions": ["APAC"] },
+          "constraints": { "regions": ["APAC"] }
         },
         {
           "class_name": "JobsContainer",
@@ -132,31 +132,31 @@
           "image_build_context": "./",
           "instance_type": "basic",
           "max_instances": 1,
-          "constraints": { "regions": ["APAC"] },
-        },
+          "constraints": { "regions": ["APAC"] }
+        }
       ],
       "durable_objects": {
         "bindings": [
           { "name": "API_CONTAINER", "class_name": "ApiContainer" },
           { "name": "PROVISIONER_CONTAINER", "class_name": "ProvisionerContainer" },
-          { "name": "JOBS_CONTAINER", "class_name": "JobsContainer" },
-        ],
+          { "name": "JOBS_CONTAINER", "class_name": "JobsContainer" }
+        ]
       },
       "migrations": [
         {
           "tag": "v1",
-          "new_sqlite_classes": ["ApiContainer", "ProvisionerContainer"],
+          "new_sqlite_classes": ["ApiContainer", "ProvisionerContainer"]
         },
         {
           "tag": "v2",
-          "new_sqlite_classes": ["JobsContainer"],
-        },
+          "new_sqlite_classes": ["JobsContainer"]
+        }
       ],
       "triggers": {
-        "crons": [],
+        "crons": []
       },
       "observability": {
-        "enabled": true,
+        "enabled": true
       },
       "vars": {
         // ENV=preview for every container (worker/container-env.json "targets").
@@ -177,8 +177,8 @@
         "SMTP_HOST": "",
         "SMTP_PORT": "587",
         "SMTP_FROM_EMAIL": "",
-        "SMTP_USERNAME": "",
-      },
-    },
-  },
+        "SMTP_USERNAME": ""
+      }
+    }
+  }
 }
