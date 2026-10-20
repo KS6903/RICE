@@ -121,7 +121,7 @@ export default function SignupPage() {
     // scrolling so the on-screen keyboard can't hide the field being typed in.
     <div className="min-h-screen w-full grid lg:grid-cols-2 lg:h-screen lg:grid-rows-[minmax(0,1fr)] relative overflow-hidden">
       {/* Back — shares LoginPage's .btn-back component (index.css). Positioned
-          just right of the seam on desktop, level with the Oryza logo (p-12 +
+          just right of the seam on desktop, level with the Oraiza logo (p-12 +
           a 44px logo, the same height as this pill, so top-12 lines them up);
           this button isn't nested in the scrollable form column the way
           LoginPage's is — nesting it would scroll it away in a short window. */}
@@ -160,11 +160,11 @@ export default function SignupPage() {
             <div className="h-11 w-11 rounded-xl bg-white/15 backdrop-blur-md grid place-items-center ring-1 ring-white/30">
               <img
                 src={riceLogo}
-                alt="Oryza"
+                alt="Oraiza"
                 className="h-full w-full object-contain brightness-0 invert"
               />
             </div>
-            <p className="text-lg font-bold tracking-tight">Oryza</p>
+            <p className="text-lg font-bold tracking-tight">Oraiza</p>
           </Link>
         </div>
 
@@ -199,7 +199,7 @@ export default function SignupPage() {
         </div>
 
         <p className="relative text-sm text-white/75">
-          © {new Date().getFullYear()} Oryza by K Systematics
+          © {new Date().getFullYear()} Oraiza by K Systematics
         </p>
       </div>
 
@@ -215,11 +215,11 @@ export default function SignupPage() {
             <div className="h-11 w-11 rounded-xl bg-grad-brand grid place-items-center shadow-grad-glow">
               <img
                 src={riceLogo}
-                alt="Oryza"
+                alt="Oraiza"
                 className="h-full w-full object-contain brightness-0 invert"
               />
             </div>
-            <p className="text-lg font-bold tracking-tight text-primary">Oryza</p>
+            <p className="text-lg font-bold tracking-tight text-primary">Oraiza</p>
           </Link>
 
           <h1 className="text-3xl font-bold tracking-tight text-primary">Create your account</h1>

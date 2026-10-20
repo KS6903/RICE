@@ -862,11 +862,11 @@ function AISettingsCard({ ai, isOwner }: { ai: AISettings; isOwner: boolean }) {
           <p className="flex items-center gap-2 font-semibold text-primary">
             {ai.enabled ? "AI is on for your automations." : "AI is off."}
             <InfoTip label="What the AI sends and what it doesn't" tone="alert" width={384}>
-              When it's on, the AI recipes below send your mill's figures to Oryza's AI, a
+              When it's on, the AI recipes below send your mill's figures to Oraiza's AI, a
               third-party AI service hosted outside the Philippines, to write their advice: sales,
               purchases, stock, and the names of customers, suppliers and staff. Phone numbers,
               addresses, TINs, government ID numbers and anything typed into notes are never sent.
-              Oryza works out every number itself, and each message shows those figures so you can
+              Oraiza works out every number itself, and each message shows those figures so you can
               check the advice. AI can still be wrong: check before you act.
             </InfoTip>
           </p>

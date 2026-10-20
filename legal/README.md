@@ -1,6 +1,6 @@
 # legal/
 
-The published agreements for Oryza, and the machinery that serves them.
+The published agreements for Oraiza, and the machinery that serves them.
 
 **None of this is legal advice, and none of it was written by a lawyer.** These are drafts built
 from the actual behaviour of this codebase, so that a Philippine lawyer can review something

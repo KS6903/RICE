@@ -3,7 +3,7 @@ import { Info } from "lucide-react";
 
 /** Point-of-use disclaimers.
  *
- *  Section 5 of the Terms says what Oryza is not. A disclaimer buried only in
+ *  Section 5 of the Terms says what Oraiza is not. A disclaimer buried only in
  *  the Terms is easy to argue around; one shown next to the output it applies
  *  to is much harder to. These are deliberately quiet so they can stay visible
  *  permanently rather than being dismissed and forgotten.
@@ -20,7 +20,7 @@ const NOTICES = {
   /** Anything the app calls an invoice, receipt or payment. */
   invoice:
     "Internal sales record. This is not a BIR-registered Official Receipt or Sales Invoice, and " +
-    "Oryza is not a BIR-accredited invoicing or accounting system. Issue your BIR-compliant " +
+    "Oraiza is not a BIR-accredited invoicing or accounting system. Issue your BIR-compliant " +
     "documents through your accredited means.",
   /** Weather forecasts and anything derived from them. */
   forecast:

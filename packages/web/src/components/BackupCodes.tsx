@@ -18,7 +18,7 @@ export default function BackupCodes({ codes }: { codes: string[] }) {
   };
 
   const download = () => {
-    const blob = new Blob([`Oryza by K Systematics — backup codes\n\n${text}\n`], {
+    const blob = new Blob([`Oraiza by K Systematics — backup codes\n\n${text}\n`], {
       type: "text/plain",
     });
     const url = URL.createObjectURL(blob);

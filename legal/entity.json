@@ -1,7 +1,7 @@
 {
   "_comment": "Single source of truth for every legal document. Fill each TODO in once; all documents render from these values. backend/app/core/legal.py refuses to serve a document while a TODO remains, and check_production_config.py fails the prod gate.",
 
-  "product_name": "Oryza",
+  "product_name": "Oraiza",
   "provider_name": "K Systematics",
   "provider_legal_name": "TODO: registered business/corporate name exactly as on the SEC or DTI certificate",
   "provider_registration": "TODO: SEC/DTI registration number",

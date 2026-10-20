@@ -1,6 +1,6 @@
 # Liability exposure review
 
-A review of where Oryza could realistically be sued, what has been built in response, and what is
+A review of where Oraiza could realistically be sued, what has been built in response, and what is
 still open. Written 2026-09-24 against branch `feat/schema-per-client`.
 
 **Not legal advice, and not written by a lawyer.** It is an engineer's map of the risk surface, so
@@ -84,7 +84,7 @@ prompt injection and a claim that the model was fed something misleading.
 ### 5. BIR exposure through the word "invoice"
 
 `Invoice`, `invoice_no`, `Payment`, and reports typed `NFA_monthly` and `DA_quarterly` all imply
-records of a kind Philippine tax law regulates. Oryza is not a BIR-accredited Computerized
+records of a kind Philippine tax law regulates. Oraiza is not a BIR-accredited Computerized
 Accounting System, and a customer who treats its output as registered books is heading for an
 assessment they will look for someone to blame for.
 

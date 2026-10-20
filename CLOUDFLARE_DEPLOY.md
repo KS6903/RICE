@@ -1,6 +1,6 @@
 # Cloudflare deployment
 
-How Oryza runs on Cloudflare, and the steps to deploy it. Companion to
+How Oraiza runs on Cloudflare, and the steps to deploy it. Companion to
 [PRODUCTION_LAUNCH_CHECKLIST.md](PRODUCTION_LAUNCH_CHECKLIST.md) — the database-role,
 secret-generation and monitoring phases there still apply.
 

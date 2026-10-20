@@ -23,7 +23,7 @@ const titles = (user: User) =>
 describe("tourStops", () => {
   it("walks the owner through every page, from a welcome to the help button", () => {
     const t = titles(owner);
-    expect(t[0]).toBe("Welcome to Oryza");
+    expect(t[0]).toBe("Welcome to Oraiza");
     expect(t.slice(1, 6)).toEqual([
       "Dashboard",
       "Paddy / Palay",
@@ -81,7 +81,7 @@ describe("Tour", () => {
   it("opens each page in turn and, at the end, returns to where it started", () => {
     draw("/costs");
     act(() => useHelpStore.getState().startTour());
-    expect(screen.getByRole("dialog", { name: "Welcome to Oryza" })).toBeInTheDocument();
+    expect(screen.getByRole("dialog", { name: "Welcome to Oraiza" })).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "Start tour" }));
     expect(screen.getByRole("dialog", { name: "Dashboard" })).toBeInTheDocument();
@@ -118,7 +118,7 @@ describe("Tour", () => {
   it("starts when the ? button is clicked", () => {
     draw();
     fireEvent.click(screen.getByRole("button", { name: "Take the tour" }));
-    expect(screen.getByRole("dialog", { name: "Welcome to Oryza" })).toBeInTheDocument();
+    expect(screen.getByRole("dialog", { name: "Welcome to Oraiza" })).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Not now" }));
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });

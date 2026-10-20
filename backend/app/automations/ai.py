@@ -102,7 +102,7 @@ LANGUAGES = {
     "ur": "Urdu (اردو): Urdu in Arabic script, written right to left",
 }
 
-_RULES = """You write for the owner of a rice mill in the Philippines, inside the Oryza \
+_RULES = """You write for the owner of a rice mill in the Philippines, inside the Oraiza \
 mill management app. The owner is busy and not technical.
 
 The user message is a JSON document of facts computed from the mill's own \

@@ -607,7 +607,7 @@ describe("AutomationsPage AI advisor", () => {
     expect(within(box).getByRole("button", { name: "Turn AI on" })).toBeInTheDocument();
   });
 
-  it("explains what is sent behind a red (i), and names Oryza's AI", async () => {
+  it("explains what is sent behind a red (i), and names Oraiza's AI", async () => {
     useAuthStore.setState({ user: owner });
     vi.spyOn(automationsService, "list").mockResolvedValue({ recipes: [briefing], ai: aiOff });
     draw();
@@ -620,7 +620,7 @@ describe("AutomationsPage AI advisor", () => {
     fireEvent.click(info);
     const note = screen.getByRole("tooltip");
     expect(note).toHaveTextContent(/never sent/);
-    expect(note).toHaveTextContent(/Oryza's AI/);
+    expect(note).toHaveTextContent(/Oraiza's AI/);
     expect(note).not.toHaveTextContent(/DeepSeek/);
   });
 

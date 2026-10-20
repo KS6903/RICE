@@ -53,8 +53,8 @@ export default function LegalAcceptanceGate() {
         </div>
 
         <p className="text-sm text-secondary leading-relaxed">
-          Take a moment to read these before you accept. They cover what Oryza is and is not, how we
-          handle personal information, and the limit on our liability.
+          Take a moment to read these before you accept. They cover what Oraiza is and is not, how
+          we handle personal information, and the limit on our liability.
         </p>
 
         <Link

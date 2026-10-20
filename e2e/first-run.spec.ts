@@ -63,7 +63,7 @@ test.describe("First run", () => {
     await page.getByRole("button", { name: "Take the tour" }).click();
 
     const tour = page.getByRole("dialog");
-    await expect(tour).toHaveAccessibleName("Welcome to Oryza");
+    await expect(tour).toHaveAccessibleName("Welcome to Oraiza");
     await tour.getByRole("button", { name: "Start tour" }).click();
 
     await expect(tour).toHaveAccessibleName("Dashboard");
