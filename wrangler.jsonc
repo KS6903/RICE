@@ -106,27 +106,33 @@
     "preview": {
       // The Worker is "app", so the site is app.oraiza.workers.dev.
       "name": "app",
+      // Every container stays in Asia-Pacific, next to the Neon database and
+      // Upstash Redis in Singapore. Unpinned, one can start far away, and then
+      // each query crosses an ocean.
       "containers": [
         {
           "class_name": "ApiContainer",
           "image": "./backend/Dockerfile",
           "image_build_context": "./",
           "instance_type": "basic",
-          "max_instances": 1
+          "max_instances": 1,
+          "constraints": { "regions": ["APAC"] }
         },
         {
           "class_name": "ProvisionerContainer",
           "image": "./backend/Dockerfile",
           "image_build_context": "./",
           "instance_type": "basic",
-          "max_instances": 1
+          "max_instances": 1,
+          "constraints": { "regions": ["APAC"] }
         },
         {
           "class_name": "JobsContainer",
           "image": "./backend/Dockerfile",
           "image_build_context": "./",
           "instance_type": "basic",
-          "max_instances": 1
+          "max_instances": 1,
+          "constraints": { "regions": ["APAC"] }
         }
       ],
       "durable_objects": {
