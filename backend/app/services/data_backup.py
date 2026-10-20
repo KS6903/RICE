@@ -417,7 +417,8 @@ def _manifest(manifest: Any, email: str) -> dict:
     branches = manifest.get("branches")
     if not isinstance(branches, list):
         raise BackupError(DAMAGED)
-    name = _as_str(Branch.__table__.c.name.type.length)
+    name_type = Branch.__table__.c.name.type
+    name = _as_str(name_type.length if isinstance(name_type, String) else None)
     for branch in branches:
         if not isinstance(branch, dict):
             raise BackupError(DAMAGED)
@@ -769,8 +770,8 @@ class _TableLoad:
                 column.nullable or column.default is not None or column.server_default is not None
             ):
                 raise BackupError(TOO_OLD, "backup_too_old")
-        self.outside = [(column, outside_reference(column)) for _, column, _ in self.kept]
-        self.outside = [(column, target) for column, target in self.outside if target]
+        references = [(column, outside_reference(column)) for _, column, _ in self.kept]
+        self.outside = [(column, target) for column, target in references if target]
         self.user_lists = [column for _, column, _ in self.kept if (table.name, column.name) in _USER_ID_LISTS]
         self.self_refs = [
             column for _, column, _ in self.kept if any(fk.column.table is table for fk in column.foreign_keys)
@@ -800,8 +801,9 @@ class _TableLoad:
         for column in self.user_lists:
             ids = row[column.name]
             if isinstance(ids, list):
-                moved = (self.maps["users"].get(_maybe_uuid(raw)) for raw in ids)
-                row[column.name] = [str(user_id) for user_id in moved if user_id is not None]
+                users = self.maps["users"]
+                known = (users.get(old) for old in map(_maybe_uuid, ids) if old is not None)
+                row[column.name] = [str(user_id) for user_id in known if user_id is not None]
         for column in self.self_refs:
             # Rows can come before the row they point to: link them up at the end.
             if row[column.name] is not None:
@@ -884,7 +886,7 @@ def restore(db: Session, company: Company, owner: User, file: IO[bytes], *, pass
     live = db.scalar(
         select(func.count()).select_from(Branch).where(Branch.company_id == company.id, Branch.deleted_at.is_(None))
     )
-    if live > 1:
+    if (live or 0) > 1:
         company.is_multi_branch = True
 
     old_company = uuid.UUID(manifest["company_id"])
