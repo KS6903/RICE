@@ -165,6 +165,13 @@
         "FRONTEND_BASE_URL": "https://app.oraiza.workers.dev",
         "COOKIE_DOMAIN": "",
         "MFA_REQUIRED_ROLES": "owner,admin",
+        // Anyone may sign up, without the invite code, behind Cloudflare Turnstile
+        // (backend/app/core/turnstile.py). The site key is public; the widget's
+        // secret is the TURNSTILE_SECRET Worker secret. Add the real domain to
+        // TURNSTILE_HOSTNAMES, and to the widget, once it is bought.
+        "SIGNUP_OPEN": "true",
+        "TURNSTILE_SITE_KEY": "0x4AAAAAAFdiZBoUmlWegHDE",
+        "TURNSTILE_HOSTNAMES": "app.oraiza.workers.dev",
         // Email is optional here. Leave these empty for none (links are not sent,
         // and verification is off), or fill in a Gmail address with an app
         // password (SMTP_PASSWORD as a secret).
