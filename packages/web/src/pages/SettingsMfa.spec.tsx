@@ -91,7 +91,11 @@ describe("MfaCard: two-factor is optional, and can be switched off and back on",
     expect(await screen.findByText(/replaces the earlier one/)).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Set up a new authenticator" }));
     await waitFor(() => expect(newSecret).toHaveBeenCalled());
-    expect(await screen.findByText("JBSWY3DPEHPK3PXP")).toBeInTheDocument();
+    // The new key, in groups of four, with its QR code.
+    expect(await screen.findByText("JBSW Y3DP EHPK 3PXP")).toBeInTheDocument();
+    expect(
+      screen.getByRole("img", { name: "QR code for your authenticator app" }),
+    ).toBeInTheDocument();
   });
 
   it("can go back from either way of switching on", async () => {

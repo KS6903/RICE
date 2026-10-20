@@ -3,6 +3,7 @@ import { authService } from "../services/AuthService";
 import { useAuthStore } from "../stores/authStore";
 import { ShieldCheck, AlertCircle, Check, LogOut } from "lucide-react";
 import BackupCodes from "./BackupCodes";
+import TotpSetup from "./TotpSetup";
 
 /** Full-screen mandatory MFA enrollment.
  *
@@ -79,13 +80,7 @@ export default function MfaEnrollmentGate() {
           </button>
         ) : (
           <div className="space-y-4">
-            <p className="text-sm text-secondary">
-              Add this key to your authenticator app (Google Authenticator, Authy, 1Password…), then
-              enter the 6-digit code it shows.
-            </p>
-            <div className="px-3 py-2.5 rounded-xl bg-slate-500/10 ring-1 ring-inset ring-slate-500/30 font-mono text-sm break-all select-all">
-              {enroll.secret}
-            </div>
+            <TotpSetup secret={enroll.secret} otpauthUri={enroll.otpauth_uri} />
             <input
               className="input text-center tracking-[0.4em]"
               value={code}
