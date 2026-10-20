@@ -123,8 +123,10 @@ jobs:
         run: npm ci
       - name: Build the SPA
         run: npm run build:web
+      # Not `inputs.containers && '' || ...`: '' is falsy in an expression, so that
+      # form always picked --containers-rollout=none and never built the images.
       - name: Deploy
-        run: npx wrangler deploy --env preview ${{ inputs.containers && '' || '--containers-rollout=none' }}
+        run: npx wrangler deploy --env preview ${{ !inputs.containers && '--containers-rollout=none' || '' }}
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.PREVIEW_CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.PREVIEW_CLOUDFLARE_ACCOUNT_ID }}
