@@ -53,6 +53,7 @@ import { useCurrentPlan } from "../hooks/useFeature";
 import { roleLabel, type SubscriptionPlan, type UpgradeRequest } from "@rice-mill/shared";
 import ActivityLogList from "../components/activity/ActivityLogList";
 import BackupCodes from "../components/BackupCodes";
+import TotpSetup from "../components/TotpSetup";
 import DataExport from "../components/DataExport";
 import Select from "../components/Select";
 import ConfirmDialog from "../components/ConfirmDialog";
@@ -2349,13 +2350,7 @@ export function MfaCard() {
 
       {enroll && (
         <div className="space-y-4">
-          <p className="text-sm text-secondary">
-            Add this key to your authenticator app (Google Authenticator, Authy, 1Password…), then
-            enter the 6-digit code it shows to confirm.
-          </p>
-          <div className="px-3 py-2.5 rounded-xl bg-slate-500/10 ring-1 ring-inset ring-slate-500/30 font-mono text-sm break-all select-all">
-            {enroll.secret}
-          </div>
+          <TotpSetup secret={enroll.secret} otpauthUri={enroll.otpauth_uri} />
           {codeInput}
           <div className="flex gap-2">
             <button
