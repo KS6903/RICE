@@ -39,6 +39,8 @@ def _app_link(path: str) -> str:
 def account_locked(user: User, state: LockoutState) -> bool:
     """Tell the account holder their sign-in is locked: either it was them, and
     they know how long to wait, or it wasn't, and someone is guessing."""
+    from ..core.platform_admin import is_managed
+
     if state.permanent:
         wait = "It stays locked until the password is reset."
         action = f"Reset your password here: {_app_link('/forgot-password')}"
@@ -46,6 +48,9 @@ def account_locked(user: User, state: LockoutState) -> bool:
         minutes = max(1, round(state.retry_after / 60))
         wait = f"You can try again in about {minutes} minute{'s' if minutes != 1 else ''}."
         action = f"If you've forgotten your password, reset it here: {_app_link('/forgot-password')}"
+    if is_managed(user):
+        # No reset link for this one: its password is a Cloudflare secret.
+        action = "Its password is set in Cloudflare: a new PLATFORM_ADMIN_PASSWORD_HASH there resets it."
     text = (
         f"Hello {user.full_name or user.username},\n\n"
         f"Sign-in to your {settings.APP_NAME} account ({user.username}) was locked after too many wrong "
@@ -86,6 +91,21 @@ def temporary_password_issued(user: User, *, by: str) -> bool:
         "If you did not expect this, tell your mill's Boss.\n"
     )
     return _send(user.email, f"A temporary password was set for your {settings.APP_NAME} account", text)
+
+
+def platform_admin_password_changed(user: User, *, to: str | None) -> bool:
+    """The password of the admin managed in Cloudflare was replaced. Sent to the
+    address the account had before the change, so whoever swapped the secret can't
+    redirect the warning by swapping the email too."""
+    text = (
+        f"Hello {user.full_name or user.username},\n\n"
+        f"The password of the {settings.APP_NAME} platform admin account ({user.username}) was just replaced "
+        "with the PLATFORM_ADMIN_PASSWORD_HASH secret in Cloudflare, and every device was signed out.\n\n"
+        "If you changed it, there's nothing to do. If you didn't, someone with edit access to the Worker in "
+        "Cloudflare did: check Cloudflare's audit log for who changed the secret, remove their access, and set "
+        "a new one. They still need your two-factor code to get in.\n"
+    )
+    return _send(to, f"The {settings.APP_NAME} platform admin password was changed", text)
 
 
 def data_exported(user: User, *, company: str, files: int, rows: int) -> bool:

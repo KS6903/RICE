@@ -105,13 +105,20 @@ Anyone else gets Cloudflare's sign-in page and goes no further.
 
 ### 8. First accounts
 
-1. Create the platform admin against Neon, from `backend/`:
+1. The platform admin's password lives in Cloudflare, not the database. From `backend/`, make a
+   hash of the password (`.\.venv\Scripts\python.exe create_platform_admin.py --hash`), then put
+   it in the Worker's secrets with the username:
 
    ```powershell
-   $env:DATABASE_URL = "<the ricemill_app connection string>"
-   .\.venv\Scripts\python.exe create_platform_admin.py
-   Remove-Item Env:DATABASE_URL
+   npx wrangler secret put PLATFORM_ADMIN_USERNAME --env preview
+   npx wrangler secret put PLATFORM_ADMIN_PASSWORD_HASH --env preview   # the hash, never the password
+   npx wrangler secret put PLATFORM_ADMIN_EMAIL --env preview           # optional, for the warnings
    ```
+
+   The API makes that account when it starts. To change the password, put a new hash there: the
+   admin is signed out everywhere and the old email address is warned. Anyone who can edit the
+   Worker can do the same, so keep that right to yourself; they'd still need your two-factor code.
+   (`create_platform_admin.py` without `--hash` still makes an ordinary admin in the database.)
 
 2. Each tester signs up their mill on the preview with the invite code. Owners and admins set
    up two-factor sign-in on their first visit, as in production.
