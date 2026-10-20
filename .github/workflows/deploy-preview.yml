@@ -1,14 +1,16 @@
 name: Deploy preview (Cloudflare)
 
-# The private test site: app.oraiza.workers.dev behind Cloudflare
-# Access, built from wrangler.jsonc env.preview (ENV=preview: production checks,
-# except the legal "To follow" details and email are allowed to be missing). See
-# PREVIEW_DEPLOY.md for the one-time setup.
+# The preview site: app.oraiza.workers.dev, built from wrangler.jsonc
+# env.preview (ENV=preview: production checks, except the legal "To follow"
+# details and email are allowed to be missing). See PREVIEW_DEPLOY.md for the
+# one-time setup.
 #
-# Same gates as the production deploy: main only, the full CI (checks.yml), and
-# the readiness gate, here for env.preview. It uses repository secrets prefixed
-# PREVIEW_, not a GitHub environment: environments aren't available to this
-# private repository's plan, and the preview must never pick up production's.
+# It deploys itself after every push to main whose CI passed, using that CI run
+# as the check instead of running checks.yml again; the button runs the full
+# checks first. Either way: main only, then the readiness gate for env.preview.
+# It uses repository secrets prefixed PREVIEW_, not a GitHub environment:
+# environments aren't available to this private repository's plan, and the
+# preview must never pick up production's.
 on:
   workflow_dispatch:
     inputs:
@@ -16,6 +18,10 @@ on:
         description: "Also roll out the container images (uncheck for a Worker-only change)"
         type: boolean
         default: true
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
 
 permissions:
   contents: read
@@ -24,9 +30,21 @@ concurrency:
   group: deploy-preview
   cancel-in-progress: false
 
+env:
+  # After CI, the commit that CI tested, not whatever main is by now.
+  DEPLOY_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
+
 jobs:
   main-only:
     name: Deploys run from main only
+    # After CI: only a green run for a push to main of this repository, never a
+    # pull request (a fork's branch can be called main too).
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.event == 'push' &&
+       github.event.workflow_run.head_branch == 'main' &&
+       github.event.workflow_run.head_repository.full_name == github.repository)
     runs-on: ubuntu-latest
     steps:
       - name: Refuse any other branch
@@ -36,9 +54,11 @@ jobs:
           exit 1
       - name: On main
         if: github.ref == 'refs/heads/main'
-        run: echo "Deploying ${GITHUB_SHA} from main to the preview."
+        run: echo "Deploying ${DEPLOY_SHA} from main to the preview."
 
   verify:
+    # After CI the checks have just passed for this commit; the button runs them.
+    if: github.event_name == 'workflow_dispatch'
     needs: main-only
     uses: ./.github/workflows/checks.yml
 
@@ -49,6 +69,7 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
         with:
+          ref: ${{ env.DEPLOY_SHA }}
           persist-credentials: false
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
@@ -64,6 +85,10 @@ jobs:
     name: Migrate the preview database
     # Schema first, code second, with the preview's provisioner (DDL) credential.
     needs: [verify, readiness]
+    # verify is skipped after CI, which would skip this job too without a condition.
+    if: >-
+      !cancelled() && needs.readiness.result == 'success' &&
+      (needs.verify.result == 'success' || needs.verify.result == 'skipped')
     runs-on: ubuntu-latest
     env:
       PROCESS_ROLE: provisioner
@@ -78,6 +103,7 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
         with:
+          ref: ${{ env.DEPLOY_SHA }}
           persist-credentials: false
       # After the checkout: the job's steps run in backend/, which doesn't exist
       # until the repository is checked out.
@@ -101,6 +127,9 @@ jobs:
 
   deploy:
     needs: [verify, readiness, migrate]
+    if: >-
+      !cancelled() && needs.migrate.result == 'success' &&
+      (needs.verify.result == 'success' || needs.verify.result == 'skipped')
     runs-on: ubuntu-latest
     steps:
       - name: The Cloudflare credentials are set
@@ -114,6 +143,7 @@ jobs:
           fi
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
         with:
+          ref: ${{ env.DEPLOY_SHA }}
           persist-credentials: false
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
@@ -125,8 +155,9 @@ jobs:
         run: npm run build:web
       # Not `inputs.containers && '' || ...`: '' is falsy in an expression, so that
       # form always picked --containers-rollout=none and never built the images.
+      # After CI there are no inputs: the images always roll out.
       - name: Deploy
-        run: npx wrangler deploy --env preview ${{ !inputs.containers && '--containers-rollout=none' || '' }}
+        run: npx wrangler deploy --env preview ${{ github.event_name == 'workflow_dispatch' && !inputs.containers && '--containers-rollout=none' || '' }}
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.PREVIEW_CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.PREVIEW_CLOUDFLARE_ACCOUNT_ID }}
