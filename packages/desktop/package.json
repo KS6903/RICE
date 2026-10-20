@@ -20,10 +20,10 @@
   "devDependencies": {
     "@types/node": "^22.10.2",
     "concurrently": "^10.0.6",
-    "electron": "44.5.1",
+    "electron": "44.9.0",
     "electron-builder": "^26.15.3",
     "typescript": "^5.7.2",
-    "vitest": "^5.0.3",
+    "vitest": "^5.0.5",
     "wait-on": "^8.0.1"
   },
   "build": {
