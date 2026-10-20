@@ -25,7 +25,7 @@ export function tourStops(
     {
       key: "welcome",
       target: null,
-      title: "Welcome to Oryza",
+      title: "Welcome to Oraiza",
       body: "Let's take a quick look around. We'll open each part of the app and say what it's for. It takes about two minutes.",
     },
   ];

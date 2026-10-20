@@ -590,11 +590,11 @@ export default function HomePage() {
             <div className="h-9 w-9 rounded-xl bg-grad-brand grid place-items-center shadow-grad-glow">
               <img
                 src={riceLogo}
-                alt="Oryza"
+                alt="Oraiza"
                 className="h-full w-full object-contain brightness-0 invert"
               />
             </div>
-            <span className="text-lg font-bold tracking-tight text-primary">Oryza</span>
+            <span className="text-lg font-bold tracking-tight text-primary">Oraiza</span>
           </div>
           <div className="flex items-center gap-2">
             <Link to="/login" className="btn-secondary !py-2">
@@ -681,7 +681,7 @@ export default function HomePage() {
       {/* Footer */}
       <footer className="border-t border-soft py-6">
         <div className="mx-auto max-w-6xl px-4 sm:px-6 flex flex-col sm:flex-row items-center justify-between gap-3 text-sm text-muted">
-          <span>© {new Date().getFullYear()} Oryza by K Systematics</span>
+          <span>© {new Date().getFullYear()} Oraiza by K Systematics</span>
           {/* Login/Signup already have prominent buttons in the nav and the
               CTA sections above; this slot is more useful as the agreements a
               visitor is about to be bound by, reachable before they ever

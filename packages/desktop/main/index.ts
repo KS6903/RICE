@@ -144,7 +144,7 @@ function tellToUpdate(): void {
   void dialog.showMessageBox({
     type: "warning",
     title: "Update needed",
-    message: "This version of Oryza is too old to sync.",
+    message: "This version of Oraiza is too old to sync.",
     detail: updates?.enabled
       ? "The update is downloading. You'll be asked to restart when it's ready."
       : "Install the latest version to keep working. Ask your mill's owner for the installer.",
@@ -227,7 +227,7 @@ app.whenReady().then(() => {
     config = loadConfig({ packaged: app.isPackaged, dir: __dirname });
   } catch (error) {
     dialog.showErrorBox(
-      "Oryza can't start",
+      "Oraiza can't start",
       `This build is misconfigured: ${error instanceof Error ? error.message : "unknown error"}.`,
     );
     app.quit();

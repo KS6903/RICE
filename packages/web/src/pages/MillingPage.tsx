@@ -401,7 +401,7 @@ export default function MillingPage() {
                     next="The rice and by-products you enter go straight into Inventory, ready to sell."
                   >
                     A batch records how much palay went into the mill and how much rice came out.
-                    Oryza works out the recovery rate for you.
+                    Oraiza works out the recovery rate for you.
                   </EmptyState>
                 </td>
               </tr>

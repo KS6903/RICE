@@ -11,7 +11,7 @@ def test_health_returns_ok(client):
     assert res.status_code == 200
     body = res.json()
     assert body["status"] == "ok"
-    assert body["app"] == "Oryza by K Systematics"
+    assert body["app"] == "Oraiza by K Systematics"
     assert body["cache"] in ("up", "down")
 
 

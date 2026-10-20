@@ -58,10 +58,10 @@ describe("LegalPage", () => {
     expect(container.querySelector("section#aup")).toBeTruthy();
   });
 
-  it("shows the Oryza product logo in the header", async () => {
+  it("shows the Oraiza product logo in the header", async () => {
     const { container } = draw("/legal");
     await screen.findByText("Terms body.");
-    expect(container.querySelector('header img[alt="Oryza"]')).toBeTruthy();
+    expect(container.querySelector('header img[alt="Oraiza"]')).toBeTruthy();
   });
 
   it("keeps heading ids unique across documents", async () => {

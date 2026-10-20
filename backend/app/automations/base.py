@@ -86,7 +86,7 @@ AI_ADVICE_FIELD = Field(
     "ai_advice",
     "Add AI advice",
     "bool",
-    "Written by Oryza's AI from your figures, once the owner switches AI on in the AI advisor tab.",
+    "Written by Oraiza's AI from your figures, once the owner switches AI on in the AI advisor tab.",
 )
 
 

@@ -239,6 +239,6 @@ def _email_text(notice: Notification) -> str:
     if notice.link:
         from ..core.config import settings
 
-        parts.append(f"Open it in Oryza: {settings.FRONTEND_BASE_URL.rstrip('/')}{notice.link}")
-    parts.append("You're receiving this because you use Oryza at your rice mill.")
+        parts.append(f"Open it in Oraiza: {settings.FRONTEND_BASE_URL.rstrip('/')}{notice.link}")
+    parts.append("You're receiving this because you use Oraiza at your rice mill.")
     return "\n\n".join(parts)

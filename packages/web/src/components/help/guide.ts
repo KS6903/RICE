@@ -13,14 +13,14 @@ export const PAGE_WHAT: Record<string, string> = {
     "Record what went into the mill and what came out. Palay leaves your stock; the rice and by-products go into Inventory.",
   "/maintenance": "When each machine is due for service, counted from the milling it has done.",
   "/inventory":
-    "Everything in your warehouses, by branch. Already had stock before Oryza? Enter it once with Add inventory.",
+    "Everything in your warehouses, by branch. Already had stock before Oraiza? Enter it once with Add inventory.",
   "/stock-count":
     "Count what's really on hand. You see what the records say only after saving, so the count stays honest.",
   "/sales": "Customer orders, then invoices once they're confirmed, plus your customer list.",
   "/dispatch": "Delivery trips, and your trucks and drivers.",
   "/operators": "Delivery agents, third-party millers and palay suppliers.",
   "/collections": "Who owes you money, who to chase first, and a reminder ready to send.",
-  "/cash": "Count the cash drawer at closing. Oryza works out what should be there.",
+  "/cash": "Count the cash drawer at closing. Oraiza works out what should be there.",
   "/costs":
     "Fuel, power, labor, repairs: everything the mill pays for. With costs in, your profit is real.",
   "/reports": "Profit and loss for any dates you pick, and more reports on higher plans.",

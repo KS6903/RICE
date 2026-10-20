@@ -37,7 +37,7 @@ const STEPS: Step[] = [
     section: "milling",
     feature: "milling",
     title: "Mill a batch",
-    why: "Say how much palay went in and how much rice came out. Oryza works out the recovery rate.",
+    why: "Say how much palay went in and how much rice came out. Oraiza works out the recovery rate.",
     to: "/milling?new=1",
     cta: "Start a batch",
   },

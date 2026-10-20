@@ -91,13 +91,13 @@ export default function Sidebar() {
           <div className="h-10 w-10 rounded-xl bg-grad-brand grid place-items-center shadow-grad-glow">
             <img
               src={riceLogo}
-              alt="Oryza"
+              alt="Oraiza"
               className="h-full w-full object-contain brightness-0 invert"
             />
           </div>
           <div className="min-w-0">
             <h1 className="text-base font-bold tracking-tight text-primary leading-tight truncate">
-              Oryza
+              Oraiza
             </h1>
           </div>
         </div>

@@ -155,11 +155,11 @@ export default function LoginPage() {
             <div className="h-12 w-12 rounded-xl bg-white/15 backdrop-blur-md grid place-items-center ring-1 ring-white/30">
               <img
                 src={riceLogo}
-                alt="Oryza"
+                alt="Oraiza"
                 className="h-full w-full object-contain brightness-0 invert"
               />
             </div>
-            <p className="text-lg font-bold tracking-tight">Oryza</p>
+            <p className="text-lg font-bold tracking-tight">Oraiza</p>
           </Link>
         </div>
 
@@ -193,14 +193,14 @@ export default function LoginPage() {
         </div>
 
         <p className="relative text-sm text-white/75">
-          © {new Date().getFullYear()} Oryza by K Systematics
+          © {new Date().getFullYear()} Oraiza by K Systematics
         </p>
       </div>
 
       {/* RIGHT — form */}
       <div className="relative flex items-center justify-center p-6 lg:p-12">
         {/* Back — anchored to the form (white) side.
-            On desktop it sits level with the Oryza logo: the logo row's centre is
+            On desktop it sits level with the Oraiza logo: the logo row's centre is
             72px down (p-12 + a 48px logo), so this 44px pill starts at 50px. */}
         <button
           type="button"
@@ -222,11 +222,11 @@ export default function LoginPage() {
             >
               <img
                 src={riceLogo}
-                alt="Oryza"
+                alt="Oraiza"
                 className="h-full w-full object-contain brightness-0 invert"
               />
             </Link>
-            <p className="text-lg font-bold tracking-tight text-primary">Oryza</p>
+            <p className="text-lg font-bold tracking-tight text-primary">Oraiza</p>
           </div>
 
           <h1 className="text-3xl font-bold tracking-tight text-primary">
@@ -475,7 +475,7 @@ export default function LoginPage() {
           )}
 
           <p className="mt-8 text-center text-base text-secondary">
-            New to Oryza?{" "}
+            New to Oraiza?{" "}
             <Link
               to="/signup"
               className="font-semibold text-grad-brand hover:opacity-80 transition-opacity"

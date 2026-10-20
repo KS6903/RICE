@@ -46,7 +46,7 @@ class Settings(BaseSettings):
     # reset it. Set MFA_TRUST_ENABLED=false for MFA on every login.
     MFA_TRUST_ENABLED: bool = True
     ALLOWED_ORIGINS: str = "http://localhost:8448,http://localhost:3000"
-    APP_NAME: str = "Oryza by K Systematics"
+    APP_NAME: str = "Oraiza by K Systematics"
     DEBUG: bool = False
     # Deployment environment. "prod" turns on fail-closed config checks (see the
     # model validator below) and enables HSTS. "preview" is the private test site

@@ -27,7 +27,7 @@ export default function DataExport() {
       <div>
         <h3 className="text-lg font-bold text-primary">Your data</h3>
         <p className="text-sm text-secondary">
-          Download everything your mill keeps in Oryza, as spreadsheet files you can open in Excel
+          Download everything your mill keeps in Oraiza, as spreadsheet files you can open in Excel
           or Google Sheets.
         </p>
       </div>

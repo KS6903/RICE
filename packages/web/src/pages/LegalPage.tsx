@@ -92,15 +92,15 @@ export default function LegalPage() {
     <div className="min-h-screen bg-[rgb(var(--surface))]">
       <header className="sticky top-0 z-10 border-b border-soft bg-[rgb(var(--surface))]">
         <div className="mx-auto max-w-3xl px-6 py-4 flex items-center justify-between gap-4">
-          <Link to="/" className="flex items-center gap-2.5" aria-label="Back to Oryza">
+          <Link to="/" className="flex items-center gap-2.5" aria-label="Back to Oraiza">
             <div className="h-9 w-9 rounded-xl bg-grad-brand grid place-items-center shadow-grad-glow">
               <img
                 src={riceLogo}
-                alt="Oryza"
+                alt="Oraiza"
                 className="h-full w-full object-contain brightness-0 invert"
               />
             </div>
-            <span className="text-lg font-bold tracking-tight text-primary">Oryza</span>
+            <span className="text-lg font-bold tracking-tight text-primary">Oraiza</span>
           </Link>
           <Link to="/" className="btn-ghost text-sm">
             <ArrowLeft size={16} />
@@ -122,7 +122,7 @@ export default function LegalPage() {
           <>
             <h1 className="text-2xl font-bold text-primary">Legal</h1>
             <p className="mt-2 text-secondary">
-              The agreements that govern your use of Oryza. Current agreement version{" "}
+              The agreements that govern your use of Oraiza. Current agreement version{" "}
               <span className="font-semibold text-primary">{index.agreement_version}</span>.
             </p>
 

@@ -1,6 +1,6 @@
 # Private preview on Cloudflare
 
-A private test copy of Oryza for invited testers, at
+A private test copy of Oraiza for invited testers, at
 `https://app.oraiza.workers.dev`, behind Cloudflare Access so only the people you
 list can open it. It runs the same code with the production security settings, except in two
 places (`ENV=preview`):
