@@ -45,6 +45,7 @@ import PasswordChangeGate from "./components/PasswordChangeGate";
 import EmailVerificationGate from "./components/EmailVerificationGate";
 import LegalAcceptanceGate from "./components/LegalAcceptanceGate";
 import LegalPage from "./pages/LegalPage";
+import RetrieveDataPage from "./pages/RetrieveDataPage";
 
 function AuthSessionSync() {
   const hasAccessToken = useAuthStore((s) => !!s.accessToken);
@@ -139,6 +140,9 @@ function AppRoutes() {
       <Route path="/verify-email" element={<VerifyEmailPage />} />
       <Route path="/legal" element={<LegalPage />} />
       <Route path="/legal/:key" element={<LegalPage />} />
+      {/* Open to anyone: it explains the steps, or takes the backup once the
+          owner of a new, empty account is signed in. */}
+      <Route path="/retrieve-data" element={<RetrieveDataPage />} />
 
       <Route
         path="/admin"

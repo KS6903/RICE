@@ -93,7 +93,7 @@ Create an Upstash Redis database and copy its `rediss://` URL.
 The app's own three secrets (`SECRET_KEY`, `MFA_ENCRYPTION_KEY`, `SIGNUP_INVITE_CODE`) are
 generated straight into the Worker. Nothing is printed, and nothing is written to disk. It sets
 only the ones the Worker doesn't have yet, and it never rotates `MFA_ENCRYPTION_KEY` (every
-user's two-factor seed is encrypted with it):
+user's two-factor seed, and every backup file a mill has downloaded, is encrypted with it):
 
 ```bash
 cd backend && .venv/Scripts/python.exe generate_security_secrets.py

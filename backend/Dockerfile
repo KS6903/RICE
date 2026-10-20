@@ -34,9 +34,9 @@ COPY backend/provision_pending_tenants.py backend/migrate_all_tenants.py ./
 COPY legal ./legal
 ENV LEGAL_DOCS_DIR=/app/legal
 
-RUN useradd --system --uid 10001 --no-create-home oryza \
-    && chown -R oryza:oryza /app
-USER oryza
+RUN useradd --system --uid 10001 --no-create-home oraiza \
+    && chown -R oraiza:oraiza /app
+USER oraiza
 
 EXPOSE 8000
 

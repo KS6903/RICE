@@ -20,6 +20,7 @@ from .api import (
     cash,
     collections,
     costs,
+    data_backup,
     data_export,
     dispatch,
     drying_advisor,
@@ -156,6 +157,7 @@ app.include_router(stock_counts.router, prefix="/api/stock-counts", tags=["Stock
 app.include_router(maintenance.router, prefix="/api/equipment", tags=["Maintenance"], dependencies=mfa_gate)
 app.include_router(fleet.router, prefix="/api", tags=["Fleet"], dependencies=mfa_gate)
 app.include_router(data_export.router, prefix="/api/export", tags=["Data Export"], dependencies=mfa_gate)
+app.include_router(data_backup.router, prefix="/api/backup", tags=["Data Backup"], dependencies=mfa_gate)
 
 
 @app.on_event("startup")

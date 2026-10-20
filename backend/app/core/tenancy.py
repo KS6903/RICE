@@ -98,7 +98,7 @@ def public_tables() -> list:
 
 
 # Where a session keeps the schema set_search_path chose for it.
-_SEARCH_PATH_KEY = "oryza.search_path"
+_SEARCH_PATH_KEY = "oraiza.search_path"
 
 
 def _search_path_sql(schema_name: str | None) -> str:

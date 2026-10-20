@@ -158,7 +158,7 @@ Start from the templates — they already list every required key:
   - [ ] Set up the monthly restore drill (`.github/workflows/restore-drill.yml`): a runner beside the
     database, a read-only `BACKUP_SOURCE_DATABASE_URL`, a scratch `RESTORE_DRILL_TARGET_URL`. Run it
     once by hand; it must pass. It never runs on GitHub's runners unless GitHub is in the
-    sub-processor register.
+    service-provider list (section 4.1 of the Privacy Policy).
 - [ ] Configure SMTP and Google OAuth production origins/redirects; rotate any credential ever shared, logged, or committed.
 
 ## Phase 7 — Desktop devices  ·  Runs `[DEVICES]`  ·  Supervision **A**
@@ -168,12 +168,12 @@ Start from the templates — they already list every required key:
   (`SMOKE_API` picks the API; it defaults to the local one). It fails on any refused request,
   console error or escaped path.
 - [ ] Build the installer for the production API:
-  `ORYZA_API_ORIGIN=https://<domain> npm run build --workspace=packages/desktop`
+  `ORAIZA_API_ORIGIN=https://<domain> npm run build --workspace=packages/desktop`
   (packages/desktop/scripts/build-desktop.mjs). A build without it refuses to package.
 - [ ] Buy a Windows code-signing certificate (OV or EV) and set `CSC_LINK`/`CSC_KEY_PASSWORD`.
   Without one, Windows SmartScreen warns on install and auto-update stays off.
-- [ ] With the certificate: host the update feed over https and build with `ORYZA_UPDATE_URL`
-  and `ORYZA_PUBLISHER` (the certificate's subject name). Upload `latest.yml` and the installer
+- [ ] With the certificate: host the update feed over https and build with `ORAIZA_UPDATE_URL`
+  and `ORAIZA_PUBLISHER` (the certificate's subject name). Upload `latest.yml` and the installer
   from `packages/desktop/dist/` to that URL for each release.
 - [ ] Before a release that changes the sync contract, set `DESKTOP_MIN_VERSION` in the Worker's
   vars: older builds then get 426 and are told to update instead of misreading the server.
@@ -211,7 +211,7 @@ Full context, including what is still open, is in
 
 - [ ] Fill in every `TODO:` in [legal/entity.json](legal/entity.json) — registered entity name,
       SEC/DTI number, address, contact and DPO details, venue city, and the hosting/email
-      providers named in the sub-processor register. Each fact is entered once and every
+      providers named in section 4.1 of the Privacy Policy. Each fact is entered once and every
       document renders from it.
 - [ ] Verify (expect no output):
   ```powershell
@@ -220,8 +220,8 @@ Full context, including what is still open, is in
   ```
   The `ENV=prod` config validator runs this too, so **the API refuses to boot while any
   placeholder remains**. Treat a failure here as a release blocker, not a warning.
-- [ ] Have a Philippine lawyer review the Terms of Service, Privacy Policy, Data Processing
-      Addendum and Acceptable Use Policy, and apply their edits to the markdown. These are
+- [ ] Have a Philippine lawyer review the Terms of Service and the Privacy Policy (with the
+      employee notice template), and apply their edits to the markdown. These are
       engineer-written drafts, not legal advice.
 - [ ] Appoint a Data Protection Officer and decide whether NPC registration is required
       (generally yes at 1,000+ individuals whose sensitive personal information you process;
@@ -234,7 +234,7 @@ Full context, including what is still open, is in
       sensitive personal information, and that notice is what puts the duty on the mill, which
       is the actual Controller.
 - [ ] Tell the `mill1`-`mill8` testers they are on a beta covered by section 4 and the capped
-      liability in section 12.3 of the Terms.
+      liability in section 14.3 of the Terms.
 - [ ] Write the incident response runbook for the clocks now committed to: 24 hours to notify an
       affected tenant, 72 hours to notify the NPC and data subjects.
 

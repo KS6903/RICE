@@ -171,10 +171,18 @@ class UserService(BaseService):
         # role (the edit form always sends it) is not.
         if new_role is not None and new_role.name in CONFIRMED_ROLES and new_role.name != old_role:
             self._confirm_actor(data, f"Made {user.username} a {new_role.name}")
+        email_changed = data.email is not None and str(data.email).strip().lower() != (user.email or "").strip().lower()
         with self.transaction():
             # The confirmation fields are not account fields.
             for field, val in data.model_dump(exclude_none=True, exclude={"current_password", "mfa_code"}).items():
                 setattr(user, field, val)
+            if email_changed:
+                # A new address is unproven until its owner confirms it, here as
+                # on the profile page: a verified email is what lets an owner load
+                # a backup into a new account (services/data_backup.py).
+                user.email_verified = False
+                user.email_verification_hash = None
+                user.email_verification_expires = None
             if was_active and data.is_active is False:
                 self._log(user, "user.remove")
             elif not was_active and data.is_active is True:

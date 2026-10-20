@@ -15,7 +15,8 @@ dump, SQLite file, log, or recovery artifact.
 
    No value is printed or written to disk, and a secret the Worker already has is
    left alone. `--only SIGNUP_INVITE_CODE` rotates one; `MFA_ENCRYPTION_KEY` is
-   never rotated, because it decrypts every user's two-factor seed. For another
+   never rotated, because it decrypts every user's two-factor seed and every
+   mill's backup file (`.oraiza`). For another
    host, `--output FILE` writes a new mode-600 file; move the values into that
    secret manager and delete the file.
 

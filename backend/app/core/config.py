@@ -35,8 +35,8 @@ class Settings(BaseSettings):
     PROCESS_ROLE: Literal["api", "provisioner", "jobs"] = "api"
     SECRET_KEY: str
     ALGORITHM: Literal["HS256"] = "HS256"
-    JWT_ISSUER: str = "oryza-api"
-    JWT_AUDIENCE: str = "oryza-clients"
+    JWT_ISSUER: str = "oraiza-api"
+    JWT_AUDIENCE: str = "oraiza-clients"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 15
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
     # "Remember this device" for MFA: after a successful TOTP/backup-code verify,
@@ -152,7 +152,14 @@ class Settings(BaseSettings):
     # also cached server-side for hours per location/day (see TTL_DRYING_ADVISORY).
     RATE_LIMIT_DRYING_ADVISOR: str = "10/hour"
     # A full data export reads every table the mill has; a few an hour is plenty.
+    # The backup file (services/data_backup.py) shares it.
     RATE_LIMIT_DATA_EXPORT: str = "3/hour"
+    # Checking or restoring an uploaded backup reads the whole file, and a
+    # restore rewrites every table: each route gets a few an hour.
+    RATE_LIMIT_DATA_RESTORE: str = "5/hour"
+    # The largest backup file accepted for upload. The Workers plan caps a
+    # request body at 100 MB; a real mill's backup is a few MB.
+    DATA_BACKUP_MAX_MB: int = 50
     # The oldest desktop app served (app/core/client_version.py); older builds get
     # 426 and are told to update. Empty: every version is served.
     DESKTOP_MIN_VERSION: str = ""
@@ -164,6 +171,8 @@ class Settings(BaseSettings):
     SMTP_PASSWORD: SecretStr | None = None
     SMTP_FROM_EMAIL: str | None = None
     SMTP_STARTTLS: bool = True
+    # The root key for data at rest: two-factor seeds, and the mills' backup
+    # files (core/crypto.py). Never rotated: a new one leaves both unreadable.
     MFA_ENCRYPTION_KEY: SecretStr | None = None
     SIGNUP_INVITE_CODE: SecretStr | None = None
     # Anyone may create a mill, without the invite code. Production and the

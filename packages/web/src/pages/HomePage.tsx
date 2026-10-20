@@ -693,15 +693,6 @@ export default function HomePage() {
             <Link to="/legal/privacy" className="hover:text-primary transition-colors">
               Privacy
             </Link>
-            <Link to="/legal/dpa" className="hover:text-primary transition-colors">
-              Data processing
-            </Link>
-            <Link to="/legal/aup" className="hover:text-primary transition-colors">
-              Acceptable use
-            </Link>
-            <Link to="/legal/subprocessors" className="hover:text-primary transition-colors">
-              Sub-processors
-            </Link>
           </div>
         </div>
       </footer>

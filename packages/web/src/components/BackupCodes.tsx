@@ -24,7 +24,7 @@ export default function BackupCodes({ codes }: { codes: string[] }) {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = "oryza-backup-codes.txt";
+    a.download = "oraiza-backup-codes.txt";
     a.click();
     URL.revokeObjectURL(url);
   };

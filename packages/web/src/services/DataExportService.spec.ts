@@ -21,6 +21,48 @@ describe("DataExportService.download", () => {
   it("names it by date when the header isn't readable", async () => {
     const { service } = serviceReturning({});
     const { filename } = await service.download();
-    expect(filename).toMatch(/^oryza-data-\d{4}-\d{2}-\d{2}\.zip$/);
+    expect(filename).toMatch(/^oraiza-data-\d{4}-\d{2}-\d{2}\.zip$/);
+  });
+});
+
+describe("DataExportService backups", () => {
+  it("keeps the backup's file name, or names it by date", async () => {
+    const { service } = serviceReturning({
+      "content-disposition": 'attachment; filename="rice-mill-1-backup-2026-10-20.oraiza"',
+    });
+    expect((await service.downloadBackup()).filename).toBe("rice-mill-1-backup-2026-10-20.oraiza");
+    const { filename } = await serviceReturning({}).service.downloadBackup();
+    expect(filename).toMatch(/^oraiza-backup-\d{4}-\d{2}-\d{2}\.oraiza$/);
+  });
+
+  function posting() {
+    const calls: { url: string; form: FormData; config: any }[] = [];
+    const http = {
+      post: async (url: string, form: FormData, config: any) => {
+        calls.push({ url, form, config });
+        return { data: { rows: 1 } };
+      },
+    };
+    return { calls, service: new DataExportService(http as never) };
+  }
+
+  it("sends the file as a form, not JSON, to be checked", async () => {
+    const { calls, service } = posting();
+    const file = new File(["sealed"], "mill.oraiza");
+    await service.inspectBackup(file);
+    expect(calls[0].url).toBe("/backup/inspect");
+    expect(calls[0].form.get("file")).toBeInstanceOf(File);
+    expect(calls[0].config.headers["Content-Type"]).toBe("multipart/form-data");
+  });
+
+  it("sends the password, and the code only when there is one, to restore", async () => {
+    const { calls, service } = posting();
+    const file = new File(["sealed"], "mill.oraiza");
+    await service.restoreBackup(file, { password: "secret" });
+    await service.restoreBackup(file, { password: "secret", code: "123456" });
+    expect(calls[0].url).toBe("/backup/restore");
+    expect(calls[0].form.get("current_password")).toBe("secret");
+    expect(calls[0].form.has("mfa_code")).toBe(false);
+    expect(calls[1].form.get("mfa_code")).toBe("123456");
   });
 });

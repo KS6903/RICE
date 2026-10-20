@@ -32,7 +32,7 @@ information**. Unauthorised or negligent processing of SPI carries imprisonment 
 exposure in the system that can reach a person rather than a balance sheet.
 
 **Built:** Privacy Policy stating the two roles (Controller for accounts, Processor for mill
-records); a Data Processing Addendum that is the written outsourcing contract §21 requires; an
+records); §9 of the Terms, which is the written outsourcing contract §21 requires; an
 employee privacy notice template that puts the notice duty on the mill, which is the actual
 Controller; a point-of-use notice on the Government IDs section of the employee form.
 
@@ -44,16 +44,16 @@ are read; masking them in the UI by default. See *Remaining work*.
 With no Terms, every default applies: no liability cap, no warranty disclaimer, no venue, no
 limitation period, and no answer to a customer who says the software lost them a harvest.
 
-**Built:** a Terms of Service with an as-is warranty disclaimer (§11), an excluded-loss list written
-against this specific business (§12.1: spoilage, moisture damage, quality downgrade, lost drying
+**Built:** a Terms of Service with an as-is warranty disclaimer (§13), an excluded-loss list written
+against this specific business (§14.1: spoilage, moisture damage, quality downgrade, lost drying
 window, regulatory fines, claims by the customer's own workers and farmers), a cap at the greater of
-12 months' fees or ₱50,000 (§12.2), a ₱50,000 flat cap for free and beta use (§12.3), a 12-month
-limitation period (§12.6), a customer indemnity (§13), Philippine governing law and a single venue
-(§17).
+12 months' fees or ₱50,000 (§14.2), a ₱50,000 flat cap for free and beta use (§14.3), a 12-month
+limitation period (§14.6), a customer indemnity (§15), Philippine governing law and a single venue
+(§19).
 
-The carve-out in §12.4 is load-bearing. Articles 1170 and 2201 of the Civil Code do not permit
+The carve-out in §14.4 is load-bearing. Articles 1170 and 2201 of the Civil Code do not permit
 waiving liability for fraud, bad faith or gross negligence, and a clause that tries to is at risk of
-being struck down in full. Excluding those explicitly is what keeps the rest of §12 standing.
+being struck down in full. Excluding those explicitly is what keeps the rest of §14 standing.
 
 ### 3. No record that anyone ever agreed
 
@@ -73,8 +73,8 @@ before an afternoon shower ruins a batch. Damages are concrete, foreseeable and 
 which is exactly the profile of a claim that gets filed.
 
 **Built:** §5.4 of the Terms; a disclaimer permanently visible with the verdict in the compact card,
-not hidden behind the hover; a fuller disclaimer in the popover linking to the Terms; §5.1 and §5.2
-of the Acceptable Use Policy forbidding customers from presenting the output as certified or from
+not hidden behind the hover; a fuller disclaimer in the popover linking to the Terms; §7.5 of the
+Terms forbidding customers from presenting the output as certified or from
 building safety-critical controls on it.
 
 The pre-existing design helps here more than any wording: no user free text reaches the model, the
@@ -89,7 +89,7 @@ Accounting System, and a customer who treats its output as registered books is h
 assessment they will look for someone to blame for.
 
 **Built:** §5.2 and §5.3 of the Terms; a permanent notice on the invoices tab and on the reports
-page; §1.2 and §1.4 of the Acceptable Use Policy.
+page; §7.1(b) and §7.1(d) of the Terms.
 
 **Still open:** the strongest version of this fix is product, not wording. Renaming the entity to
 "Sales record" in the UI, and adding a visible "not an Official Receipt" line to any printed or
@@ -101,8 +101,8 @@ Traffic leaves the Philippines to DeepSeek, Google, Open-Meteo, ipapi.co and Clo
 was disclosed. §21 of the Data Privacy Act keeps a Controller accountable for information
 transferred to a third party.
 
-**Built:** a sub-processor register naming each provider, what it receives and where; §4.2 of the
-Privacy Policy and §7 of the DPA. The register makes the real point: **no personal information
+**Built:** a list of service providers naming each one, what it receives and where (§4.1 of the
+Privacy Policy); §4.2 of the Privacy Policy and §9.6 of the Terms. The list makes the real point: **no personal information
 reaches DeepSeek or the weather providers.** Forecast conditions are reduced to a closed vocabulary
 on our own servers first. That is verifiable in
 [`drying_advisor_service.py`](../backend/app/services/drying_advisor_service.py), and a property of
@@ -134,15 +134,16 @@ at once.
 
 **Nothing needed.** Schema-per-tenant, a DML-only runtime database role that cannot run DDL, a
 separate provisioner credential in a separate process, and a fail-closed production config validator
-were already in place. §5 of the DPA documents them, which is what turns existing engineering into a
+were already in place. §6 of the Privacy Policy documents them, which is what turns existing engineering into a
 contractual position.
 
 ---
 
 ## What was built
 
-**Documents** (`legal/`): Terms of Service, Privacy Policy, Data Processing Addendum, Acceptable Use
-Policy, sub-processor register, and an employee privacy notice template for tenants to issue. All
+**Documents** (`legal/`): Terms of Service and Privacy Policy, the way Google publishes its own (the
+data processing terms are §9 of the Terms, acceptable use is §7, and the sub-processor list is §4.1
+of the Privacy Policy), and an employee privacy notice template for tenants to issue. All
 render from one `entity.json`, so each company fact is filled in once.
 
 **Backend**
@@ -175,7 +176,7 @@ Ordered by how much exposure each removes.
 
 1. **Fill in `entity.json`.** 22 values are still `TODO`. Production will not boot until they are
    filled.
-2. **Have a Philippine lawyer review every document.** Particularly §12 of the Terms, because the
+2. **Have a Philippine lawyer review every document.** Particularly §14 of the Terms, because the
    enforceability of a liability cap is a judgement call about Civil Code Articles 1170, 1173 and
    2201 that this review cannot make.
 3. **Appoint a Data Protection Officer and decide on NPC registration.** Registration is generally
@@ -193,14 +194,14 @@ Ordered by how much exposure each removes.
    an SPI breach into a much smaller incident.
 6. **Log reads of employee SPI, and mask it in the UI by default** behind a "reveal" action. Both
    deter internal misuse and give an audit trail if it happens anyway.
-7. **Data subject request endpoints**: export and deletion, per §16 of the Data Privacy Act and §9
-   of the DPA. Export is built: the owner downloads every record from Settings → Your data, on any
+7. **Data subject request endpoints**: export and deletion, per §16 of the Data Privacy Act and
+   §17.4 of the Terms. Export is built: the owner downloads every record from Settings → Your data, on any
    plan and after a plan ends, which covers the 30-day window. Deletion is still a manual database
    job.
 8. **Rename "invoice" in the UI** to "Sales record", and print a "not an Official Receipt" line on
    any exported or printed document. Removing the misunderstanding beats disclaiming it.
 9. **A written incident response runbook** with the 24-hour processor-to-controller and 72-hour
-   NPC clocks that the DPA and Privacy Policy now commit to. Committing to a deadline without a
+   NPC clocks that the Terms and Privacy Policy now commit to. Committing to a deadline without a
    procedure to meet it creates a breach of contract on top of the breach.
 10. **Retention enforcement.** The Privacy Policy publishes a retention table; nothing currently
     deletes anything on that schedule. A published retention period that is not honoured is worse
@@ -212,6 +213,6 @@ Ordered by how much exposure each removes.
     signup, and an Authorised User added later is caught by the re-acceptance gate only when the
     bundle version moves. They should accept on first sign-in.
 12. **Tell the `mill1`-`mill8` testers** they are on a beta covered by §4 and the ₱50,000 cap in
-    §12.3. A tester who was never told they were testing is a plaintiff with a story.
+    §14.3. A tester who was never told they were testing is a plaintiff with a story.
 13. **Seed and verify the flow on `mill1`-`mill3` first**, per the project's tiering rule, before
     exposing it to `mill4`-`mill8`.

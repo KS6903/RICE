@@ -1,9 +1,9 @@
-// The packaged app runs at app://oryza, not file://.
+// The packaged app runs at app://oraiza, not file://.
 //
 // file:// gave the web app nowhere to send "/api" requests, and an opaque
 // origin the API could only accept by trusting every sandboxed page on the
 // web. Instead the main process serves the bundle on its own secure scheme and
-// forwards app://oryza/api/... to the configured API itself: the renderer stays
+// forwards app://oraiza/api/... to the configured API itself: the renderer stays
 // same-origin, the API address lives in one build-time setting, and the API
 // sees an ordinary client carrying this build's version.
 import { net, protocol } from "electron";

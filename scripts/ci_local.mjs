@@ -190,7 +190,7 @@ step("worker: type-check", npm("cf:typecheck"));
 if (fast) skip("worker: bundle (dry run)", "--fast (needs the production build)");
 else {
   step("worker: bundle (dry run)", () => {
-    const outdir = mkdtempSync(path.join(tmpdir(), "oryza-worker-"));
+    const outdir = mkdtempSync(path.join(tmpdir(), "oraiza-worker-"));
     try {
       return run(
         "npx",
@@ -269,8 +269,8 @@ else if (!capture("docker", ["info"]).ok)
   skip("docker: build + boot", "Docker is not running; CI runs it");
 else {
   step("docker: build + boot + /api/health", () => {
-    const tag = "oryza-api:ci-local";
-    const name = "oryza-api-ci-local";
+    const tag = "oraiza-api:ci-local";
+    const name = "oraiza-api-ci-local";
     if (!run("docker", ["build", "-f", "backend/Dockerfile", "-t", tag, "."])) return false;
     capture("docker", ["rm", "-f", name]);
     const started = run("docker", [

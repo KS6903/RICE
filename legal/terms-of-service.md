@@ -10,8 +10,7 @@ organisation they act for ("you", "the Customer") agree to these Terms. If you a
 behalf of an organisation, you confirm you are authorised to bind it. If you do not agree, do not
 use the Service.
 
-The [Privacy Policy](/legal/privacy), the [Data Processing Addendum](/legal/dpa) and the
-[Acceptable Use Policy](/legal/aup) form part of these Terms.
+The [Privacy Policy](/legal/privacy) forms part of these Terms.
 
 ## 1. Definitions
 
@@ -64,7 +63,7 @@ your next renewal. You may decline by cancelling before that renewal.
 evaluation. They may be changed, limited or withdrawn at any time without notice.
 
 4.2 For those plans and features we give no warranty and no service level commitment of any kind,
-and our liability is limited as set out in section 12.
+and our liability is limited as set out in section 14.
 
 ## 5. What the Service is not
 
@@ -95,7 +94,7 @@ a guarantee that conditions will be suitable for drying, storing, milling, trans
 palay or rice. Do not rely on them alone. Always apply your own judgement and observation before
 laying out, moving, treating or holding any stock. We are not liable for spoilage, moisture damage,
 germination, quality downgrade, rejected deliveries, lost harvest or any other loss arising from
-reliance on these features. Section 12 applies in full.
+reliance on these features. Section 14 applies in full.
 
 5.5 **Your data, your accuracy.** The Service computes from what you enter. Weights, moisture
 readings, recovery rates, prices, stock levels, payables and receivables are only as correct as the
@@ -110,8 +109,7 @@ copy of anything you are obliged to retain.
 
 You represent, warrant and undertake that:
 
-6.1 You will use the Service only for lawful business purposes and in accordance with the
-Acceptable Use Policy.
+6.1 You will use the Service only for lawful business purposes and in accordance with section 7.
 
 6.2 You are the Personal Information Controller for all Personal Information in your Customer Data,
 including information about your employees, suppliers, farmers, customers, drivers and contacts.
@@ -120,56 +118,237 @@ you have given the notices that law requires, and you have obtained any consent 
 This applies with particular force to Sensitive Personal Information such as government identifier
 numbers (SSS, PhilHealth, Pag-IBIG, TIN), birthdates and salary details.
 
-6.3 You will not enter Personal Information into free-text fields where the Service does not ask
-for it, and you will not enter Sensitive Personal Information beyond what the relevant fields are
-designed for.
+6.3 You will keep your own backups and exports of anything you cannot afford to lose.
 
-6.4 You will keep your own backups and exports of anything you cannot afford to lose.
-
-6.5 You will comply with all laws that apply to your milling, trading, employment, transport and
+6.4 You will comply with all laws that apply to your milling, trading, employment, transport and
 tax activities. Compliance is yours, not ours.
 
-## 7. Our commitments
+## 7. Acceptable use
 
-7.1 We will provide the Service with reasonable care and skill, consistent with the security
-measures described in the Data Processing Addendum.
+This section applies to you and to every Authorised User under your account. Breaching it is a
+material breach of these Terms, and may lead to suspension or termination under sections 16 and 17.
 
-7.2 We may modify, improve or discontinue features. Where a change materially reduces core
+7.1 **Lawful use.** You must not use the Service to:
+
+- (a) break any law of the {{provider_country}} or any other law that applies to you, including
+  tax, labour, food safety, weights and measures, grains trading, transport and data privacy law;
+- (b) create, alter or destroy records in order to defraud any person or to mislead the Bureau of
+  Internal Revenue, the National Food Authority, the Department of Agriculture, the Department of
+  Labor and Employment, a lender, an insurer, a buyer or a farmer. Note that the Service keeps an
+  append-only activity log and audits state-changing requests;
+- (c) launder money, evade sanctions, or finance terrorism;
+- (d) misrepresent the Service as an accredited BIR system, as a certified government filing
+  channel, or as carrying any government approval it does not have (see section 5);
+- (e) infringe anyone's intellectual property, privacy or other rights.
+
+7.2 **Personal information.** You must not:
+
+- (a) upload personal information you have no lawful basis to process under the Data Privacy Act;
+- (b) enter personal information the Service does not ask for, or enter Sensitive Personal
+  Information into fields not designed for it, including notes, remarks, labels and descriptions;
+- (c) enter special categories the Service is not built to hold, such as health records, biometric
+  data, racial or ethnic origin, religious or political affiliation, or information about offences
+  and proceedings;
+- (d) record information about a person under the legal minimum working age as an employee;
+- (e) give your credentials to anyone else, or create an account for a person who has not agreed to
+  these Terms. Each Authorised User must have their own account, so the activity log stays
+  truthful.
+
+7.3 **Security.** You must not:
+
+- (a) probe, scan or test the vulnerability of the Service, or breach or circumvent any security or
+  authentication measure, without our prior written authorisation. If you find a vulnerability,
+  report it to {{contact_email}} and give us a reasonable time to fix it before disclosing it;
+- (b) attempt to access another customer's data, another branch's data you are not authorised for,
+  or any account, system or network without permission;
+- (c) upload malware, or anything designed to disrupt, damage or gain unauthorised access;
+- (d) interfere with or overload the Service, including through denial of service, excessive
+  automated requests, or deliberate evasion of rate limits;
+- (e) remove, obscure or alter any notice, disclaimer, watermark or attribution the Service
+  displays, including the disclaimers on advisories, forecasts, reports and invoices.
+
+7.4 **Fair use of the platform.** You must not:
+
+- (a) resell, sublicense, rent, timeshare, or operate a service bureau on the Service, or give
+  access to a third party, unless we agree in writing;
+- (b) reverse engineer, decompile or disassemble the Service, or copy its look and feel or source,
+  to build a competing product;
+- (c) scrape, spider or bulk-extract the Service by automated means outside the documented API and
+  export features;
+- (d) use the Service to benchmark or publish performance comparisons without our written consent;
+- (e) circumvent plan limits, feature gates, quotas or billing, including by creating multiple
+  accounts to obtain repeated free trials.
+
+7.5 **Automated features.** Do not present output of the Drying Advisor, the AI advisor, weather
+forecasts or any report as certified, guaranteed, or as professional advice, to anyone, including
+your own staff, buyers, lenders or insurers. Do not build any safety-critical, life-critical or
+legally-required control on top of automated advisories. Respect the terms of the data providers
+listed in section 4.1 of the Privacy Policy, and do not redistribute their data as a standalone
+product.
+
+7.6 **Reporting and enforcement.** Report suspected abuse to {{contact_email}}. We may investigate
+suspected breaches of this section, and may remove content, restrict features, or suspend or
+terminate access under sections 16 and 17. Where a breach creates an immediate risk to the Service,
+to other customers or to any person, we may act without prior notice, and will tell you the reason
+afterwards unless law forbids it. Where we are required to, we will report unlawful activity to the
+competent authorities.
+
+## 8. Our commitments
+
+8.1 We will provide the Service with reasonable care and skill, consistent with the security
+measures described in section 6 of the Privacy Policy.
+
+8.2 We may modify, improve or discontinue features. Where a change materially reduces core
 functionality on a paid plan, we will give at least {{terms_change_notice_days}} days' notice where
 practicable, and you may cancel and receive a pro-rata refund of prepaid, unused fees for the
 affected period.
 
-7.3 We may perform maintenance. We will try to schedule disruptive maintenance outside Philippine
+8.3 We may perform maintenance. We will try to schedule disruptive maintenance outside Philippine
 business hours and to give advance notice, but we do not promise uninterrupted availability except
 where a separate written service level agreement says so.
 
-## 8. Third-party services
+## 9. Personal information we process for you
+
+This section is the written outsourcing agreement required by section 21 of the Data Privacy Act,
+Rule X of its Implementing Rules and Regulations, and NPC Circulars 16-01 and 16-03. Where it
+conflicts with any other part of these Terms on the handling of personal information, this section
+prevails.
+
+9.1 **Roles.** You are the **Personal Information Controller** for all personal information in your
+Customer Data: you decide what is collected, why, and for how long. We are the **Personal
+Information Processor**: we process that information only to provide the Service, and only on your
+documented instructions. Your use of the Service, these Terms, and any written instruction you give
+us through support channels are your documented instructions. If we believe an instruction breaches
+the Data Privacy Act, we will tell you and may decline to act on it. We remain the Personal
+Information Controller for account, authentication, security and billing information about your
+Authorised Users, as the Privacy Policy describes.
+
+9.2 **Scope of processing.**
+
+- **Subject matter:** provision of the {{product_name}} rice mill management service.
+- **Duration:** for as long as your account is active, plus the periods in section 17.4.
+- **Nature and purpose:** storage, structuring, retrieval, display, computation, reporting, backup,
+  transmission between your devices and our servers, and deletion, all in order to run the Service.
+- **Data subjects:** your employees and workers; your Authorised Users; farmers, suppliers and their
+  representatives; customers and their representatives; drivers and fleet personnel; emergency
+  contacts.
+- **Personal information:** identity and contact details (name, address, telephone number, email
+  address, photograph if uploaded); employment details (position, branch, hire date, employment
+  status, salary, attendance and payroll data); commercial records (supplier and customer records,
+  transaction history, balances, credit terms); and operational records (entries attributed to a
+  named user, recorded times and locations of operations).
+- **Sensitive Personal Information:** government identifier numbers (SSS, PhilHealth, Pag-IBIG,
+  TIN), birthdate and age, and marital or family details if you enter them.
+
+9.3 **Your duties as Controller.** In addition to section 6.2:
+
+- (a) for employee records your lawful basis will usually be section 12(a) or 12(b) of the Data
+  Privacy Act and, for Sensitive Personal Information, section 13(b), which permits processing
+  necessary to comply with laws governing employment, social security, health insurance and
+  taxation;
+- (b) you must give your data subjects the privacy notice the law requires. A notice you can adapt
+  for your workers is published at [Employee privacy notice template](/legal/employee-notice);
+- (c) you are responsible for the accuracy, quality and legality of your Customer Data, and for
+  deciding who in your organisation may see it. Configure roles and branch access accordingly;
+- (d) if you process the personal information of 1,000 or more individuals, you may be required to
+  register your data processing systems with the National Privacy Commission and to designate your
+  own Data Protection Officer. That obligation is yours, not ours.
+
+9.4 **Our duties as Processor.** We will:
+
+- (a) process personal information only on your documented instructions, including for any transfer
+  outside the Philippines, unless a law we are subject to requires otherwise, in which case we will
+  tell you first unless that law forbids it;
+- (b) ensure that every person we authorise to process personal information is bound by an
+  obligation of confidentiality that survives the end of their engagement, and is trained on their
+  duties;
+- (c) implement and maintain the security measures in section 6 of the Privacy Policy;
+- (d) assist you, by appropriate technical and organisational measures and taking account of the
+  nature of processing, to respond to requests from data subjects exercising their rights;
+- (e) assist you with security, breach notification, privacy impact assessments and consultation
+  with the National Privacy Commission, taking account of the information available to us;
+- (f) at your choice, delete or return personal information at the end of the Service, as section
+  17.4 provides;
+- (g) make available the information reasonably necessary to demonstrate compliance with this
+  section, and allow and contribute to audits as section 9.7 provides;
+- (h) not use your Customer Data for our own purposes, not disclose it except as these Terms permit,
+  and **not use it to develop, train, fine-tune or evaluate any machine learning or artificial
+  intelligence model**.
+
+9.5 **Sub-processors.** You give general authorisation for us to engage the service providers listed
+in section 4.1 of the Privacy Policy. We impose data protection obligations on each that are no less
+protective than this section, and we remain fully liable to you for their performance. We will give
+at least 30 days' notice before adding or replacing a provider that handles personal information, by
+updating that list and notifying account administrators. If you reasonably object on data
+protection grounds within that period, we will work with you in good faith; if we cannot resolve
+it, you may terminate the affected part of the Service and receive a pro-rata refund of prepaid,
+unused fees.
+
+9.6 **Cross-border processing.** Some providers process outside the Philippines, and the Privacy
+Policy states where. Section 21(b) of the Data Privacy Act keeps us accountable for personal
+information transferred to a third party; we contractually require protections at least equivalent
+to this section, and we minimise what crosses a border. In particular:
+
+- (a) the Drying Advisor transmits **only weather data**: coordinates, place name and forecast values
+  already reduced to a fixed vocabulary of condition labels on our servers. No personal information
+  and no Customer Data are transmitted to the language model provider, and there is no chat
+  interface or free-text input path to it;
+- (b) the AI advisor (Enterprise plan) transmits Customer Data to the language model provider,
+  DeepSeek, in the People's Republic of China, **only after your account's owner switches it on**,
+  which is your documented instruction to do so; switching it off withdraws that instruction for
+  all later processing. While it is on, we transmit figures computed from your records and the
+  names of your customers, suppliers and staff, and never telephone numbers, addresses, tax
+  identification numbers, government identifier numbers, or text your users typed into notes,
+  remarks or descriptions. We record who switched it on or off and when.
+  {{deepseek_training_optout}}
+
+9.7 **Audit.** On reasonable written notice, not more than once in any 12 months unless a breach has
+occurred or a regulator requires it, we will provide documentation about our security measures and
+answer a reasonable security questionnaire. Where that is insufficient for you to demonstrate
+compliance, we will permit an audit by you or an independent auditor bound by confidentiality,
+during business hours, without unreasonable disruption, and excluding access to other customers'
+data, our commercially sensitive information, and any multi-tenant infrastructure we do not
+control. You bear the cost unless the audit reveals a material breach of this section by us.
+
+9.8 **Personal data breach.** We will notify you without undue delay, and in any event **within 24
+hours** of becoming aware of a personal data breach affecting your Customer Data. The notification
+will describe, to the extent known, the nature of the breach; the categories and approximate number
+of data subjects and records; the likely consequences; the measures taken or proposed; and a
+contact point. We will supply further information as it becomes available, take reasonable steps to
+contain and remediate the breach, preserve evidence, and assist you in meeting your own 72-hour
+notification duty to the National Privacy Commission and to affected data subjects under NPC
+Circular 16-03. We will not make any public statement identifying you as affected without your
+prior written consent, unless a law or regulator requires it.
+
+9.9 **Liability.** Sections 13 and 14 apply to this section, except where the Data Privacy Act does
+not permit them to.
+
+## 10. Third-party services
 
 The Service uses third-party providers for weather data, geolocation, automated advisory
-generation, authentication, hosting and email. They are listed in the
-[Sub-processor register](/legal/subprocessors). Those services are provided on their own terms, may
-change or fail, and we do not control them. We are not liable for their acts, omissions,
-inaccuracies, outages or discontinuation, except to the extent we are liable for our own choice of
-sub-processor under the Data Processing Addendum.
+generation, authentication, hosting and email. They are listed in section 4.1 of the Privacy
+Policy. Those services are provided on their own terms, may change or fail, and we do not control
+them. We are not liable for their acts, omissions, inaccuracies, outages or discontinuation, except
+to the extent we are liable for our own choice of sub-processor under section 9.5.
 
-## 9. Intellectual property
+## 11. Intellectual property
 
-9.1 We own the Service, its software, design, documentation and all intellectual property in them.
+11.1 We own the Service, its software, design, documentation and all intellectual property in them.
 We grant you a non-exclusive, non-transferable, revocable right to use the Service during your
 subscription, for your internal business purposes.
 
-9.2 You own your Customer Data. You grant us a limited licence to host, copy, transmit, display and
-process it only as needed to provide, secure, support and improve the Service for you, and as the
-Data Processing Addendum permits.
+11.2 You own your Customer Data. You grant us a limited licence to host, copy, transmit, display and
+process it only as needed to provide, secure, support and improve the Service for you, and as
+section 9 permits.
 
-9.3 You may not copy, modify, translate, reverse engineer, decompile, create derivative works of,
+11.3 You may not copy, modify, translate, reverse engineer, decompile, create derivative works of,
 resell, sublicense, rent, timeshare or make the Service available to any third party, except as
 Philippine law expressly permits despite this clause.
 
-9.4 If you send us feedback or suggestions, we may use them without restriction or payment. We will
+11.4 If you send us feedback or suggestions, we may use them without restriction or payment. We will
 not identify you as the source without your permission.
 
-## 10. Confidentiality
+## 12. Confidentiality
 
 Each party will protect the other's non-public information with at least reasonable care, use it
 only for the purposes of these Terms, and disclose it only to people who need it and are bound by
@@ -177,28 +356,28 @@ equivalent obligations. This does not cover information that is public through n
 already known, is independently developed, or must be disclosed by law or court order, provided the
 disclosing party is told first where it is lawful to do so.
 
-## 11. Disclaimer of warranties
+## 13. Disclaimer of warranties
 
-11.1 To the fullest extent Philippine law permits, the Service is provided **"as is" and "as
+13.1 To the fullest extent Philippine law permits, the Service is provided **"as is" and "as
 available"**, with all faults, and we disclaim all warranties, conditions and representations of
 any kind, whether express, implied or statutory. This includes any implied warranty of
 merchantability, fitness for a particular purpose, quality, accuracy, title, non-infringement, and
 any warranty arising from course of dealing or usage of trade.
 
-11.2 We do not warrant that the Service will be uninterrupted, timely, secure, error-free, free of
+13.2 We do not warrant that the Service will be uninterrupted, timely, secure, error-free, free of
 harmful components, or that defects will be corrected. We do not warrant that any output,
 calculation, report, forecast or advisory will be accurate, complete, current or fit for any
 purpose.
 
-11.3 No advice or information, oral or written, obtained from us or through the Service creates any
+13.3 No advice or information, oral or written, obtained from us or through the Service creates any
 warranty not expressly stated here.
 
-11.4 Nothing in this section limits any liability that Philippine law does not allow to be limited
+13.4 Nothing in this section limits any liability that Philippine law does not allow to be limited
 or excluded.
 
-## 12. Limitation of liability
+## 14. Limitation of liability
 
-12.1 **Excluded losses.** To the fullest extent Philippine law permits, we are not liable for any
+14.1 **Excluded losses.** To the fullest extent Philippine law permits, we are not liable for any
 indirect, incidental, special, consequential, exemplary or punitive damages, nor for any of the
 following however arising, whether in contract, quasi-delict, negligence, strict liability or
 otherwise, and whether or not we were advised of the possibility:
@@ -216,7 +395,7 @@ otherwise, and whether or not we were advised of the possibility:
 - claims made against you by your own employees, suppliers, farmers, customers, lenders or
   contractors.
 
-12.2 **Cap.** To the fullest extent Philippine law permits, our total aggregate liability for all
+14.2 **Cap.** To the fullest extent Philippine law permits, our total aggregate liability for all
 claims arising out of or relating to the Service or these Terms, in any {{claim_window_months}}
 month period, will not exceed the greater of:
 
@@ -225,92 +404,94 @@ month period, will not exceed the greater of:
 
   (b) PHP {{liability_floor_php}}.
 
-12.3 **Free and beta use.** Where you use the Service on a free plan, trial, beta or preview, our
+14.3 **Free and beta use.** Where you use the Service on a free plan, trial, beta or preview, our
 total aggregate liability will not exceed PHP {{liability_floor_php}}.
 
-12.4 **Carve-outs.** Sections 12.1 to 12.3 do not limit liability for fraud, willful misconduct,
+14.4 **Carve-outs.** Sections 14.1 to 14.3 do not limit liability for fraud, willful misconduct,
 gross negligence, death or personal injury caused by negligence, or any other liability that
 Philippine law does not permit to be excluded or limited. Under Articles 1170 and 2201 of the Civil
 Code, a party guilty of fraud, bad faith, malice or wanton attitude remains liable for all damages
 reasonably attributable to the breach, and nothing here purports to change that.
 
-12.5 **Allocation of risk.** You acknowledge that the fees reflect this allocation of risk, that
+14.5 **Allocation of risk.** You acknowledge that the fees reflect this allocation of risk, that
 these limits are an essential basis of the bargain, and that they apply even if a limited remedy
 fails of its essential purpose.
 
-12.6 **Time limit.** Any claim arising out of or relating to the Service or these Terms must be
+14.6 **Time limit.** Any claim arising out of or relating to the Service or these Terms must be
 brought within {{claim_window_months}} months after the claimant knew or ought reasonably to have
 known of the facts giving rise to it, to the extent Philippine law permits the parties to agree a
 period shorter than the statutory one.
 
-## 13. Indemnity
+## 15. Indemnity
 
 You will defend, indemnify and hold harmless {{provider_legal_name}}, its officers, directors,
 employees and agents against any claim, demand, proceeding, loss, liability, damage, fine, cost and
 expense, including reasonable legal fees, arising out of or relating to:
 
-13.1 your Customer Data, including any claim that it infringes a right, is unlawful, or was
+15.1 your Customer Data, including any claim that it infringes a right, is unlawful, or was
 collected or used without a lawful basis under the Data Privacy Act;
 
-13.2 your use of the Service, including any decision you took in reliance on its output;
+15.2 your use of the Service, including any decision you took in reliance on its output;
 
-13.3 your breach of these Terms, the Acceptable Use Policy or any applicable law;
+15.3 your breach of these Terms (including section 7) or any applicable law;
 
-13.4 any claim by your employee, supplier, farmer, customer, lender, contractor or any government
+15.4 any claim by your employee, supplier, farmer, customer, lender, contractor or any government
 agency that relates to your records, your filings, your employment practices or your trading; and
 
-13.5 any act or omission of your Authorised Users.
+15.5 any act or omission of your Authorised Users.
 
 We will notify you of the claim, give you control of the defence (except that we may participate
 with our own counsel at our cost), and reasonably cooperate. You may not settle in a way that
 admits our liability or imposes an obligation on us without our written consent.
 
-## 14. Suspension
+## 16. Suspension
 
 We may suspend your access, in whole or in part, immediately and without liability, if we
 reasonably believe it is necessary to protect the Service, our other customers or any person; if
-you materially breach the Acceptable Use Policy; if required by law or a lawful order; or if fees
-remain unpaid after notice. We will restore access once the cause is resolved and will tell you the
-reason unless law forbids it.
+you materially breach section 7; if required by law or a lawful order; or if fees remain unpaid
+after notice. We will restore access once the cause is resolved and will tell you the reason unless
+law forbids it.
 
-## 15. Term, termination and your data
+## 17. Term, termination and your data
 
-15.1 These Terms run until your account is closed.
+17.1 These Terms run until your account is closed.
 
-15.2 You may cancel at any time from your account settings or by writing to {{contact_email}}.
+17.2 You may cancel at any time from your account settings or by writing to {{contact_email}}.
 
-15.3 Either party may terminate for material breach that is not cured within 30 days of written
+17.3 Either party may terminate for material breach that is not cured within 30 days of written
 notice. We may terminate immediately for a breach that cannot be cured or that exposes us or others
 to serious risk.
 
-15.4 On termination your right to use the Service ends. For {{data_export_window_days}} days
-afterwards you may request an export of your Customer Data in a machine-readable format. After that
-window we will delete or irreversibly anonymise Customer Data within {{data_deletion_days}} days,
-except for copies in routine encrypted backups (which expire on their normal cycle) and records we
-must keep by law.
+17.4 During your subscription you may export your Customer Data at any time. On termination your
+right to use the Service ends. For {{data_export_window_days}} days afterwards you may request an
+export of your Customer Data in a structured, machine-readable format. After that window we will
+delete or irreversibly anonymise Customer Data within {{data_deletion_days}} days, except for copies
+in routine encrypted backups, which are deleted on their normal rotation cycle and remain subject to
+section 9 until then, and records we must keep by law. On request we will confirm deletion in
+writing.
 
-15.5 Sections 5, 6, 9, 10, 11, 12, 13, 15.4, 16 and 17 survive termination.
+17.5 Sections 5, 6, 9, 11, 12, 13, 14, 15, 17.4, 18 and 19 survive termination.
 
-## 16. Force majeure
+## 18. Force majeure
 
 Neither party is liable for delay or failure caused by events beyond its reasonable control,
 including typhoon, flood, earthquake, volcanic activity, fire, epidemic, war, civil disturbance,
 strike, act of government, and failure of electrical power, internet, telecommunications, cloud
 hosting or third-party services. Payment obligations already accrued are not excused.
 
-## 17. Governing law and venue
+## 19. Governing law and venue
 
-17.1 These Terms are governed by the laws of the {{governing_law}}, without regard to conflict of
+19.1 These Terms are governed by the laws of the {{governing_law}}, without regard to conflict of
 law rules.
 
-17.2 The parties submit to the exclusive jurisdiction of the proper courts of {{venue_city}},
+19.2 The parties submit to the exclusive jurisdiction of the proper courts of {{venue_city}},
 Philippines, to the exclusion of all other venues.
 
-17.3 Before filing suit, the parties will attempt in good faith to resolve the dispute by
+19.3 Before filing suit, the parties will attempt in good faith to resolve the dispute by
 negotiation for 30 days after written notice of the dispute. This does not prevent either party
 from seeking urgent injunctive relief.
 
-## 18. Changes to these Terms
+## 20. Changes to these Terms
 
 We may update these Terms. Each version has a version number and an effective date. For material
 changes we will give at least {{terms_change_notice_days}} days' notice by email or in-app notice,
@@ -318,33 +499,35 @@ and we will ask you to accept the new version when you next sign in. If you do n
 cancel before the effective date. Continued use after the effective date means you accept the new
 version. We keep a record of which version each account accepted, when, and from what address.
 
-## 19. General
+## 21. General
 
-19.1 **Entire agreement.** These Terms, with the documents they incorporate, are the whole agreement
-between us on this subject and replace any earlier proposal or understanding.
+21.1 **Entire agreement.** These Terms, with the Privacy Policy, are the whole agreement between us
+on this subject and replace any earlier proposal or understanding, including the separate Data
+Processing Addendum and Acceptable Use Policy that earlier versions referred to, whose provisions
+are now sections 9 and 7.
 
-19.2 **Severability.** If a provision is held unenforceable, it is modified to the minimum extent
+21.2 **Severability.** If a provision is held unenforceable, it is modified to the minimum extent
 needed to make it enforceable, or severed, and the rest stands.
 
-19.3 **No waiver.** A failure to enforce a provision is not a waiver of it.
+21.3 **No waiver.** A failure to enforce a provision is not a waiver of it.
 
-19.4 **Assignment.** You may not assign these Terms without our written consent. We may assign them
+21.4 **Assignment.** You may not assign these Terms without our written consent. We may assign them
 to an affiliate or in connection with a merger or sale of substantially all our assets.
 
-19.5 **Independent parties.** Nothing here creates a partnership, joint venture, agency or
+21.5 **Independent parties.** Nothing here creates a partnership, joint venture, agency or
 employment relationship.
 
-19.6 **No third-party beneficiaries**, except that section 13 benefits the indemnified persons named
+21.6 **No third-party beneficiaries**, except that section 15 benefits the indemnified persons named
 in it.
 
-19.7 **Notices.** We give notice by email to your registered address or by in-app notice. You give
+21.7 **Notices.** We give notice by email to your registered address or by in-app notice. You give
 notice to {{legal_email}}. Notice is effective when sent, unless the sender receives a delivery
 failure.
 
-19.8 **Language.** These Terms are written in English. Any translation is for convenience and the
+21.8 **Language.** These Terms are written in English. Any translation is for convenience and the
 English version governs.
 
-## 20. Contact
+## 22. Contact
 
 {{provider_legal_name}}
 

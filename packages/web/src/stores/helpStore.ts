@@ -20,7 +20,7 @@ export const useHelpStore = create<HelpState>((set) => ({
   checklistRevision: 0,
 }));
 
-const hiddenKey = (userId: string) => `oryza:getting-started-hidden:${userId}`;
+const hiddenKey = (userId: string) => `oraiza:getting-started-hidden:${userId}`;
 // Where browser storage is blocked (private windows, strict settings), the
 // choice still holds for this visit.
 const hiddenThisVisit = new Set<string>();

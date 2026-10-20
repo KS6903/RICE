@@ -16,7 +16,7 @@ product is for.
 | `packages/desktop/` | Electron app that works offline on local SQLite and syncs back |
 | `worker/` | Cloudflare Worker: serves the web app and routes `/api` to the API container |
 | `e2e/` | Playwright tests (API suite and browser suite) |
-| `legal/` | Terms of service, privacy policy, data processing addendum and the entity details |
+| `legal/` | Terms of service, privacy policy, the employee notice template and the entity details |
 | `scripts/` | `ci_local.mjs` (the local CI mirror) and git hook setup |
 
 ## Running it locally

@@ -123,6 +123,34 @@ def data_exported(user: User, *, company: str, files: int, rows: int) -> bool:
     return _send(user.email, f"{company}'s data was downloaded", text)
 
 
+def backup_downloaded(user: User, *, company: str, rows: int) -> bool:
+    """A receipt for a backup file, like the one for a data export."""
+    text = (
+        f"Hello {user.full_name or user.username},\n\n"
+        f"A backup file of {company}'s records ({rows:,} records) was just downloaded from "
+        f"{settings.APP_NAME} by your account ({user.username}).\n\n"
+        "If that was you, there's nothing to do. Only this app can open the file, and only for a new "
+        f"account made with this email address: {_app_link('/retrieve-data')}\n\n"
+        "If it wasn't you, change your password now and sign out your other devices: "
+        f"{_app_link('/settings')}\n"
+    )
+    return _send(user.email, f"A backup of {company} was downloaded", text)
+
+
+def backup_restored(user: User, *, company: str, source: str, rows: int, made_at: str) -> bool:
+    """Tell the owner a backup was loaded into their new account."""
+    text = (
+        f"Hello {user.full_name or user.username},\n\n"
+        f"A backup of {source} made on {made_at} ({rows:,} records) was just loaded into {company} "
+        f"by your account ({user.username}).\n\n"
+        "If that was you, there's nothing to do. Add your staff again under Users: their logins "
+        "aren't part of a backup.\n\n"
+        "If it wasn't you, change your password now and sign out your other devices: "
+        f"{_app_link('/settings')}\n"
+    )
+    return _send(user.email, f"Your records were loaded into {company}", text)
+
+
 def redis_budget(db: Session, *, used: int, limit: int, level: int) -> int:
     """Warn platform admins that Redis is through ``level``% of the month's quota."""
     admins = db.query(User).filter(User.is_platform_admin.is_(True), User.is_active.is_(True)).all()

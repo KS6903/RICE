@@ -11,7 +11,7 @@ from app.services.doc_numbers import mill_code
         ("Rice Mill 1", "RM1"),
         ("Rice Mill 10", "RM10"),
         ("San Isidro Rice Mill", "SIRM"),
-        ("Oryza", "ORY"),
+        ("Oraiza", "ORA"),
         ("Test Mill", "TM"),
         ("Golden Harvest Rice Mill and Trading", "GHRMT"),
         ("  ", "MILL"),

@@ -22,7 +22,8 @@ you want to see, correct or delete your information, contact that mill first. We
 respond, but we cannot act on that information without their instruction, except where law requires
 us to.
 
-Our processing duties to mills are set out in the [Data Processing Addendum](/legal/dpa).
+Our duties to mills as their Processor are set out in section 9 of the
+[Terms of Service](/legal/terms).
 
 ## 2. What we collect
 
@@ -95,11 +96,54 @@ models.
 
 ## 4. Who we share it with
 
-### 4.1 Sub-processors
+### 4.1 Service providers (sub-processors)
 
-We use the service providers listed in the [Sub-processor register](/legal/subprocessors). Each is
-bound to process information only on our instructions and to protect it. The register names each
-provider, what it receives, why, and where it processes.
+These are the third parties that process data for {{product_name}} on our behalf. Each is bound to
+process information only on our instructions and to protect it. We give at least 30 days' notice
+before adding or replacing a provider that handles personal information, as section 9.5 of the
+Terms of Service provides.
+
+**Infrastructure**
+
+| Provider | Purpose | Data it can access | Location |
+|---|---|---|---|
+| Cloudflare, Inc. | Application hosting, edge network, TLS termination, DDoS and WAF protection | All traffic in transit, including account and Customer Data | Global edge; United States entity |
+| {{db_host_provider}} | Managed PostgreSQL database | All account data and Customer Data at rest | {{db_host_region}} |
+| {{redis_provider}} | Managed Redis for rate-limit, lockout and cache state | IP addresses, usernames attempted, session identifiers, cached forecasts | {{redis_region}} |
+| {{smtp_provider}} | Transactional email delivery | Recipient name and email address, and the contents of verification, reset, security and billing messages | {{smtp_region}} |
+
+**Product features**
+
+| Provider | Purpose | Data it receives | Location |
+|---|---|---|---|
+| DeepSeek | Generates the Drying Advisor verdict from forecast data | **Weather data only**: coordinates, place name, and forecast values already reduced to a fixed vocabulary of condition labels on our servers. No personal information, no account information, no Customer Data. No chat or free-text path exists. | People's Republic of China |
+| DeepSeek | Writes the AI advisor's advice (Enterprise plan; **only while the mill's owner has switched it on**) | Figures computed from the mill's records (purchases, milling, stock, sales, invoices, payments, expenses) and the names of the mill's customers, suppliers and staff. **Never** telephone numbers, addresses, TINs, government identifier numbers, or text users typed into notes, remarks or descriptions. No chat or free-text path exists. | People's Republic of China |
+| Open-Meteo | Weather forecast and place-name geocoding | Coordinates or a place-name search string. No personal information. | Germany / European Union |
+| Google LLC (Weather API) | Alternative weather forecast source | Coordinates. No personal information. | United States |
+| Google LLC (Sign in with Google) | Optional federated sign-in | Authentication exchange only. Google returns the account identifier, email address and name to us; we do not send Google your {{product_name}} data. | United States |
+| ipapi.co | Coarse location fallback, used only to pick a default weather location when no coordinates are given | The requesting IP address | United States |
+| Have I Been Pwned (Pwned Passwords) | Checks new passwords against known-breached corpora | **The first 5 characters of the SHA-1 hash of the password only**, using the k-anonymity range API. The password, its full hash, and your identity are never sent. | Cloudflare edge |
+
+We do not use advertising networks, third-party analytics or tracking cookies, session-replay
+tools, data brokers, or any provider that receives Customer Data for its own purposes.
+
+Weather and the Drying Advisor are built so that **no personal information leaves our systems**.
+Forecast conditions are mapped to a closed vocabulary on our servers before any request is made, and
+the advisory endpoint accepts no user-supplied free text. This is a design property, not a policy
+promise: there is no code path that sends an account record, an employee record or a mill record to
+those providers. The AI advisor is the exception, and it is off until a mill's owner switches it on.
+Its recipes compute every figure on our servers and send DeepSeek those figures and the names
+involved; the queries that gather them never select telephone numbers, addresses, TINs, government
+identifier numbers or free text, and an automated test plants each of those in the data and fails if
+any reaches the model. The `ipapi.co` fallback is the one feature that sends an IP address
+off-platform. It only runs when no coordinates are supplied; if you supply or save a location, it is
+not called.
+
+| Date | Change to this list |
+|---|---|
+| 2026-09-24 | First published, as a separate sub-processor register. |
+| {{ai_advisor_effective_date}} | DeepSeek added for the AI advisor: mill figures and names, only for mills whose owner switches it on. Location corrected to the People's Republic of China, as DeepSeek's policy states. |
+| {{effective_date}} | Moved into this Privacy Policy. No provider added or removed. |
 
 ### 4.2 DeepSeek, the AI language model provider, and cross-border processing
 
@@ -142,7 +186,7 @@ of the Data Privacy Act, and we require contractual protections at least equival
 | Information | Retention |
 |---|---|
 | Account records | For the life of the account, then {{data_deletion_days}} days |
-| Mill records (as Processor) | Per the mill's instruction; on termination, per the Data Processing Addendum |
+| Mill records (as Processor) | Per the mill's instruction; on termination, per section 17.4 of the Terms of Service |
 | Security and audit logs | Up to 24 months, then deleted or anonymised |
 | Sign-in and session records | Up to 12 months |
 | Billing and tax records | 10 years, as Philippine tax and accounting rules require |
@@ -151,23 +195,48 @@ of the Data Privacy Act, and we require contractual protections at least equival
 
 ## 6. How we protect it
 
-- Transport encryption (TLS) for all traffic, and HTTP Strict Transport Security in production.
-- Passwords hashed, multi-factor secrets encrypted at rest, and enforced multi-factor
-  authentication for privileged roles.
-- Each mill's operational data is held in its own database schema, isolating tenants from one
-  another.
-- The application connects with a least-privilege database role that cannot alter database
-  structure. Schema changes use a separate credential held by a separate process.
-- Role-based access control, so a cashier or encoder sees only what their role needs.
-- Fail-closed production configuration: the service refuses to start if a required security setting
-  is missing or weak.
-- Security headers, CSRF protection, rate limiting on authentication endpoints, and a check of new
-  passwords against known-breached password lists.
-- An append-only activity log of notable actions.
-- Encrypted backups, with restores tested.
+We maintain organisational, physical and technical measures appropriate to the risk. They currently
+include:
 
-No system is perfectly secure. We do not guarantee absolute security, and section 11 of the Terms
-of Service applies.
+**Organisational**
+
+- A designated Data Protection Officer and a documented incident response procedure.
+- Access on a need-to-know basis, reviewed periodically; separate credentials per environment.
+- Confidentiality undertakings from personnel and from sub-processors.
+- Change control through version-controlled code, code review and automated security checks in the
+  build pipeline.
+- Fail-closed production configuration: the service refuses to start if a required security setting
+  is missing, default or weak.
+
+**Technical**
+
+- Transport encryption (TLS) for all traffic, HTTP Strict Transport Security in production, and a
+  restrictive set of security headers.
+- Passwords stored as salted hashes; new and changed passwords checked against known-breached
+  password lists using a privacy-preserving range query.
+- Multi-factor authentication, enforced for privileged roles, with encrypted seeds, single-use codes
+  and hashed recovery codes.
+- Short-lived session tokens in HTTP-only cookies, CSRF protection on state-changing requests,
+  server-side session revocation, and rate limiting and lockout on authentication endpoints.
+- Each mill's operational data is held in its own database schema, so one customer's queries cannot
+  reach another customer's tables.
+- The application connects with a least-privilege database role that cannot alter database
+  structure. Schema changes and tenant provisioning use a separate credential held by a separate
+  process.
+- Role-based access control, so a cashier or encoder sees only what their role needs.
+- An append-only activity log of notable actions, with the actor, time and affected record, and
+  automated auditing of state-changing requests.
+- Encrypted backups, with restores tested.
+- Full-disk encryption required on any device holding an offline copy of customer data.
+
+**Physical**
+
+- Hosting in the facilities of the infrastructure providers listed in section 4.1, each operating
+  under recognised security certifications.
+
+We may change these measures, provided the overall level of protection is not reduced. No system is
+perfectly secure. We do not guarantee absolute security, and section 13 of the Terms of Service
+applies.
 
 ## 7. Your rights
 

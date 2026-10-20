@@ -2,11 +2,10 @@
 
 **For the mill to issue, not for {{provider_name}} to issue.**
 
-You, the mill, are the Personal Information Controller for your workers' records. Section 6.2 of
-the [Terms of Service](/legal/terms) and section 3.2 of the
-[Data Processing Addendum](/legal/dpa) make giving this notice your responsibility. Issuing it, and
-keeping a dated record that you did, is the single cheapest protection you have against a data
-privacy complaint from a worker.
+You, the mill, are the Personal Information Controller for your workers' records. Sections 6.2
+and 9.3 of the [Terms of Service](/legal/terms) make giving this notice your responsibility.
+Issuing it, and keeping a dated record that you did, is the single cheapest protection you have
+against a data privacy complaint from a worker.
 
 Copy the text below onto your letterhead, fill in every `[ ]`, translate it into the language your
 workers actually read (a Tagalog, Cebuano or Ilocano version is usually the right call), hand a copy

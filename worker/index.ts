@@ -255,7 +255,9 @@ export default {
       try {
         const container = await getRandom(env.API_CONTAINER, instances);
         // Clone per attempt: a failed attempt may already have consumed the body.
-        const response = await container.fetch(proxied.clone());
+        // With one attempt there is nothing to replay, and a clone would hold a
+        // copy of the whole body (a backup upload) in the Worker's memory.
+        const response = await container.fetch(attempts > 1 ? proxied.clone() : proxied);
         return startProvisioningIfQueued(response, env, ctx);
       } catch (error) {
         lastError = error;

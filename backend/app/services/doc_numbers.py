@@ -18,7 +18,7 @@ FALLBACK = "MILL"
 def mill_code(name: str | None) -> str:
     """A short upper-case code from a mill's name: the initials of its words with
     any number kept whole ("Rice Mill 1" is RM1, "San Isidro Rice Mill" is SIRM),
-    or the first three letters of a one-word name ("Oryza" is ORY)."""
+    or the first three letters of a one-word name ("Oraiza" is ORA)."""
     tokens = re.findall(r"[A-Za-z]+|\d+", name or "")
     words = [t for t in tokens if t.isalpha() and t.lower() not in _SKIP]
     numbers = [t for t in tokens if t.isdigit()]

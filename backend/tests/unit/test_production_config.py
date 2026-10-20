@@ -159,7 +159,7 @@ def test_preview_keeps_every_other_production_check(override, message):
 
 def test_preview_with_email_may_require_verification():
     settings = _preview(
-        SMTP_HOST="smtp.gmail.com", SMTP_FROM_EMAIL="oryza.preview@gmail.com", REQUIRE_EMAIL_VERIFICATION=True
+        SMTP_HOST="smtp.gmail.com", SMTP_FROM_EMAIL="oraiza.preview@gmail.com", REQUIRE_EMAIL_VERIFICATION=True
     )
     assert settings.REQUIRE_EMAIL_VERIFICATION
 

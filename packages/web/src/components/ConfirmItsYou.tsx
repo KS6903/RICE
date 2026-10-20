@@ -10,7 +10,10 @@ export type Proof = { password: string; code: string };
 type Props = {
   open: boolean;
   /** What is being handed over, as a phrase: "a Boss", "an Admin". */
-  what: string;
+  what?: string;
+  /** Why it needs confirming, as a sentence, for anything other than handing
+   *  over a role: "Restoring replaces every record your mill keeps." */
+  reason?: string;
   /** The person uses two-factor, so a current authenticator code is asked for too. */
   usesCode: boolean;
   /** Why the last try was refused, when this is a second asking. */
@@ -34,7 +37,7 @@ export default function ConfirmItsYou(props: Props) {
   return props.open ? <Asking {...props} /> : null;
 }
 
-function Asking({ what, usesCode, error, onConfirm, onCancel }: Props) {
+function Asking({ what, reason, usesCode, error, onConfirm, onCancel }: Props) {
   const titleId = `confirm-you-${useId().replace(/[^a-zA-Z0-9_-]/g, "")}`;
   const [password, setPassword] = useState("");
   const [code, setCode] = useState("");
@@ -76,7 +79,8 @@ function Asking({ what, usesCode, error, onConfirm, onCancel }: Props) {
                 Confirm it is you
               </h3>
               <p className="text-sm text-secondary">
-                Making someone {what} gives them control of the mill. Enter your own password
+                {reason ?? `Making someone ${what ?? "a Boss"} gives them control of the mill.`}{" "}
+                Enter your own password
                 {usesCode ? " and the code from your authenticator app" : ""} to continue.
               </p>
             </div>

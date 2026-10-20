@@ -21,7 +21,7 @@ from datetime import datetime, timezone
 _RECORD_ATTRS = frozenset(
     vars(logging.LogRecord("", logging.INFO, "", 0, "", None, None)).keys() | {"message", "asctime", "taskName"}
 )
-_HANDLER_NAME = "oryza"
+_HANDLER_NAME = "oraiza"
 
 
 class JsonFormatter(logging.Formatter):

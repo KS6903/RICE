@@ -25,17 +25,17 @@ registerAppScheme();
 // All app data in a temporary folder, set before the app starts, so the smoke
 // test never touches the user's own. Chromium holds files there until exit, so
 // earlier runs' folders are swept here instead.
-for (const old of fs.readdirSync(os.tmpdir()).filter((name) => name.startsWith("oryza-smoke-"))) {
+for (const old of fs.readdirSync(os.tmpdir()).filter((name) => name.startsWith("oraiza-smoke-"))) {
   fs.rmSync(path.join(os.tmpdir(), old), { recursive: true, force: true, maxRetries: 2 });
 }
-const scratch = fs.mkdtempSync(path.join(os.tmpdir(), "oryza-smoke-"));
+const scratch = fs.mkdtempSync(path.join(os.tmpdir(), "oraiza-smoke-"));
 app.setPath("userData", scratch);
 let upgrades = 0;
 const consoleErrors = [];
 
 function verdict(result) {
   const problems = [];
-  if (result.url !== "app://oryza/") problems.push(`loaded ${result.url}`);
+  if (result.url !== "app://oraiza/") problems.push(`loaded ${result.url}`);
   if (!result.reactMounted) problems.push("React didn't mount");
   if (result.health !== 200) problems.push(`/api/health gave ${result.health}`);
   if (![401, 426].includes(result.authMe)) problems.push(`/api/auth/me gave ${result.authMe}`);
@@ -73,7 +73,7 @@ app.whenReady().then(async () => {
       const msg = event && event.message !== undefined ? event.message : message;
       if (lvl === "error" || lvl === 3) consoleErrors.push(String(msg).slice(0, 200));
     });
-    await win.loadURL("app://oryza/");
+    await win.loadURL("app://oraiza/");
     await new Promise((resolve) => setTimeout(resolve, 3000)); // let React mount
     const result = await win.webContents.executeJavaScript(`(async () => {
       const out = { url: location.href, title: document.title };

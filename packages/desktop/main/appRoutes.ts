@@ -1,17 +1,17 @@
-// What app://oryza/<path> means: the web bundle's files, the SPA's routes, or
+// What app://oraiza/<path> means: the web bundle's files, the SPA's routes, or
 // the API. No Electron imports, so the rules are testable on their own.
 import fs from "fs";
 import path from "path";
 
 export const APP_SCHEME = "app";
-export const APP_HOST = "oryza";
+export const APP_HOST = "oraiza";
 export const APP_ORIGIN = `${APP_SCHEME}://${APP_HOST}`;
 export const CLIENT_VERSION_HEADER = "X-Client-Version";
 
 /**
  * Whether a URL is the app's own. Compares scheme and host, never `.origin`:
  * by the URL standard a custom scheme's origin is opaque, so in the main
- * process `new URL("app://oryza/").origin` is the string "null". Comparing
+ * process `new URL("app://oraiza/").origin` is the string "null". Comparing
  * origins refused every request the app made.
  */
 export function isAppUrl(url: URL): boolean {
@@ -48,7 +48,7 @@ export function staticFile(webRoot: string, pathname: string): string {
   }
 }
 
-/** Where an app://oryza/api/... request goes. */
+/** Where an app://oraiza/api/... request goes. */
 export function apiTarget(apiOrigin: string, url: URL): string {
   return new URL(`${url.pathname}${url.search}`, apiOrigin).toString();
 }

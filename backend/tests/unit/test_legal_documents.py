@@ -20,10 +20,25 @@ def test_every_registered_document_renders():
 
 
 def test_bundle_covers_the_agreements_a_customer_clicks_once():
-    # The sub-processor register changes on its own 30-day notice cycle and
-    # must not drag every tenant back through the acceptance gate.
-    assert set(legal.BUNDLE_KEYS) == {"terms", "privacy", "dpa", "aup"}
-    assert "subprocessors" not in legal.BUNDLE_KEYS
+    # Two documents, like Google's: the DPA, the acceptable use rules and the
+    # sub-processor list are sections of these two, not documents of their own.
+    assert legal.BUNDLE_KEYS == ("terms", "privacy")
+    assert [d["key"] for d in legal.index()] == ["terms", "privacy"]
+
+
+def test_the_employee_notice_is_served_but_not_listed():
+    # It is the mill's to issue, linked from section 9.3 of the Terms, so it
+    # stays reachable at its key without sitting beside the agreements.
+    assert "employee-notice" in legal.BY_KEY
+    assert "employee-notice" not in legal.BUNDLE_KEYS
+    assert "employee-notice" not in {d["key"] for d in legal.index()}
+
+
+def test_no_document_links_to_a_retired_one():
+    for doc in legal.DOCUMENTS:
+        text = legal.render(doc.key)
+        for retired in ("/legal/dpa", "/legal/aup", "/legal/subprocessors"):
+            assert retired not in text, f"{doc.filename} still links to {retired}"
 
 
 def test_bundle_hash_changes_when_a_document_changes(monkeypatch):
@@ -106,17 +121,24 @@ def test_key_clauses_survive_edits():
     assert "Limitation of liability" in terms
     assert "as is" in terms.lower() and "as available" in terms.lower()
     assert "BIR-accredited" in terms
-    assert "gross negligence" in terms  # the carve-out that keeps 12.2 enforceable
+    assert "gross negligence" in terms  # the carve-out that keeps 14.2 enforceable
     assert "Drying Advisor" in terms
+
+    assert "Acceptable use" in terms  # was the Acceptable Use Policy
+    assert "remove, obscure or alter any notice, disclaimer" in terms  # LegalNotice relies on it
 
     privacy = flat("privacy")
     assert "10173" in privacy
     assert "National Privacy Commission" in privacy
     assert "72 hours" in privacy
+    assert "Service providers (sub-processors)" in privacy  # was the sub-processor register
+    assert "Have I Been Pwned" in privacy
 
-    dpa = flat("dpa")
-    assert "Personal Information Processor" in dpa
-    assert "24 hours" in dpa  # processor-to-controller breach clock
+    # Section 9 of the Terms was the Data Processing Addendum: the written
+    # outsourcing agreement section 21 of the Data Privacy Act requires.
+    assert "written outsourcing agreement" in terms
+    assert "Personal Information Processor" in terms
+    assert "24 hours" in terms  # processor-to-controller breach clock
 
 
 @pytest.mark.skipif(

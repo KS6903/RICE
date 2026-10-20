@@ -43,8 +43,8 @@ def _dummy_secrets(runtime_role: str) -> dict[str, str]:
     """Stand-ins that satisfy every secret-shaped check, so only real
     (non-secret) configuration problems surface."""
     return {
-        "DATABASE_URL": f"postgresql://{runtime_role}:dummy@db.invalid:5432/oryza?sslmode=require",
-        "PROVISIONER_DATABASE_URL": "postgresql://oryza_owner:dummy@db.invalid:5432/oryza?sslmode=require",
+        "DATABASE_URL": f"postgresql://{runtime_role}:dummy@db.invalid:5432/oraiza?sslmode=require",
+        "PROVISIONER_DATABASE_URL": "postgresql://oraiza_owner:dummy@db.invalid:5432/oraiza?sslmode=require",
         "SECRET_KEY": "readiness-gate-dummy-0123456789abcdefghijklmnopqrstuvwxyz",
         "MFA_ENCRYPTION_KEY": "readiness-gate-mfa-0123456789abcdefghijklmnopqrstuvwxyz",
         "SIGNUP_INVITE_CODE": "readiness-gate-invite-0123456789",

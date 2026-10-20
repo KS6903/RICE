@@ -46,7 +46,7 @@ describe("staticFile", () => {
 
 describe("isAppUrl", () => {
   it('knows the app\'s own URLs, though their origin reads as "null"', () => {
-    const url = new URL("app://oryza/settings?tab=data");
+    const url = new URL("app://oraiza/settings?tab=data");
     expect(url.origin).toBe("null"); // why origins can't be compared here
     expect(isAppUrl(url)).toBe(true);
   });
@@ -54,9 +54,9 @@ describe("isAppUrl", () => {
   it("refuses everything else", () => {
     for (const raw of [
       "app://evil/",
-      "app://user:pw@oryza/",
-      "https://oryza/",
-      "file:///C:/oryza/index.html",
+      "app://user:pw@oraiza/",
+      "https://oraiza/",
+      "file:///C:/oraiza/index.html",
       "http://localhost:8448/",
     ]) {
       expect(isAppUrl(new URL(raw))).toBe(false);
@@ -73,7 +73,7 @@ describe("the API route", () => {
   });
 
   it("goes to the configured origin with its query", () => {
-    const url = new URL("app://oryza/api/sync/pull?since=2026-01-01T00:00:00Z");
+    const url = new URL("app://oraiza/api/sync/pull?since=2026-01-01T00:00:00Z");
     expect(apiTarget("https://app.example.com", url)).toBe(
       "https://app.example.com/api/sync/pull?since=2026-01-01T00:00:00Z",
     );
@@ -83,8 +83,8 @@ describe("the API route", () => {
     const headers = forwardedHeaders(
       new Headers({
         Authorization: "Bearer t",
-        Origin: "app://oryza",
-        Referer: "app://oryza/settings",
+        Origin: "app://oraiza",
+        Referer: "app://oraiza/settings",
         Cookie: "a=b",
         "Content-Type": "application/json",
       }),

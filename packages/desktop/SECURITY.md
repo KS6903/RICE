@@ -16,10 +16,10 @@ only after the new partition has synced and the retention policy permits destruc
 
 ## Where the app runs, and what it talks to
 
-The packaged renderer loads from `app://oryza`, a privileged scheme the main process serves
+The packaged renderer loads from `app://oraiza`, a privileged scheme the main process serves
 (`main/appProtocol.ts`): the web bundle's files, `index.html` for the app's routes, and nothing
-outside the bundle. Requests to `app://oryza/api/...` are forwarded by the main process to the API
-fixed at build time (`ORYZA_API_ORIGIN`, https only), with the page's own `Origin`, `Referer` and
+outside the bundle. Requests to `app://oraiza/api/...` are forwarded by the main process to the API
+fixed at build time (`ORAIZA_API_ORIGIN`, https only), with the page's own `Origin`, `Referer` and
 `Cookie` removed and the app's version added (`X-Client-Version`). The renderer is same-origin with
 its API, so the API never has to accept the opaque `null` origin a `file://` page sends, which
 would also admit every sandboxed page on the web. Only the warehouse WebSocket connects to the API

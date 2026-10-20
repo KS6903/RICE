@@ -12,7 +12,7 @@ import { useAuthStore } from "../stores/authStore";
  *  or the published agreement bundle is newer than the version they accepted.
  *
  *  Two things make this worth a blocking screen rather than a banner. Continued
- *  use is a weak form of consent, and section 18 of the Terms promises an
+ *  use is a weak form of consent, and section 20 of the Terms promises an
  *  explicit re-acceptance, so the promise has to be kept. Logging out stays
  *  available, because a gate with no exit is coercion, not consent.
  */
@@ -78,8 +78,8 @@ export default function LegalAcceptanceGate() {
             data-testid="legal-gate-checkbox"
           />
           <span className="text-sm text-secondary leading-snug">
-            I have read and accept the Terms of Service, Privacy Policy, Data Processing Addendum
-            and Acceptable Use Policy, and I am authorised to accept them for my company.
+            I have read and accept the Terms of Service and Privacy Policy, and I am authorised to
+            accept them for my company.
           </span>
         </label>
 

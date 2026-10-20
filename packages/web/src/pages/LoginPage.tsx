@@ -15,6 +15,7 @@ import {
 import { GoogleLogin } from "@react-oauth/google";
 import { googleSignInEnabled } from "../utils/googleSignIn";
 import riceLogo from "../assets/Rice_Logo.svg";
+import { safeNext, withNext } from "../utils/next";
 
 export default function LoginPage() {
   const [username, setUsername] = useState("");
@@ -41,6 +42,8 @@ export default function LoginPage() {
   const [searchParams] = useSearchParams();
   // Set by useIdleLogout when it signs the user out for inactivity.
   const idleSignedOut = searchParams.get("reason") === "idle";
+  // Where to go once signed in, if it's a page that may ask (/retrieve-data).
+  const next = safeNext(searchParams);
   // Prefer real history so the user lands where they came from; fall back to the
   // marketing home when login was opened directly (deep link, new tab).
   const handleBack = () => {
@@ -52,7 +55,7 @@ export default function LoginPage() {
     setTokens(data?.access_token, data?.refresh_token);
     const me = await authService.me();
     setUser(me);
-    navigate(me.is_platform_admin ? "/admin" : "/");
+    navigate(me.is_platform_admin ? "/admin" : (next ?? "/"));
   };
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -477,7 +480,7 @@ export default function LoginPage() {
           <p className="mt-8 text-center text-base text-secondary">
             New to Oraiza?{" "}
             <Link
-              to="/signup"
+              to={withNext("/signup", next)}
               className="font-semibold text-grad-brand hover:opacity-80 transition-opacity"
             >
               Create an account →
@@ -490,12 +493,6 @@ export default function LoginPage() {
             </Link>
             <Link to="/legal/privacy" className="link">
               Privacy
-            </Link>
-            <Link to="/legal/dpa" className="link">
-              Data processing
-            </Link>
-            <Link to="/legal/subprocessors" className="link">
-              Sub-processors
             </Link>
           </nav>
         </div>

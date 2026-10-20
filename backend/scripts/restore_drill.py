@@ -13,7 +13,7 @@
 Nothing is kept: the dump lives in a temporary directory removed at the end.
 It holds every mill's data, so run this only where that data is allowed to be:
 the database's own region, on infrastructure listed in the sub-processor
-register (legal/subprocessors.md).
+list (section 4.1 of legal/privacy-policy.md).
 
 The source role needs read access to everything (PostgreSQL 14+:
 ``GRANT pg_read_all_data TO <role>``) and a direct connection: a transaction-mode

@@ -4,7 +4,7 @@ import { MemoryRouter, Route, Routes } from "react-router-dom";
 import LegalPage from "./LegalPage";
 import { legalService, type LegalDocument } from "../services/LegalService";
 
-const doc = (key: string, title: string, body: string): LegalDocument => ({
+const doc = (key: string, title: string, body: string, more = ""): LegalDocument => ({
   key,
   title,
   version: "1.0",
@@ -12,13 +12,16 @@ const doc = (key: string, title: string, body: string): LegalDocument => ({
   summary: `${title} summary`,
   in_bundle: true,
   sha256: `hash-${key}`,
-  markdown: `# ${title}\n\n## 1. Definitions\n\n${body}\n`,
+  markdown: `# ${title}\n\n## 1. Definitions\n\n${body}\n${more}`,
 });
 
 const DOCS = [
-  doc("terms", "Terms of Service", "Terms body."),
-  doc("aup", "Acceptable Use Policy", "AUP body."),
+  doc("terms", "Terms of Service", "Terms body.", "\n## 7. Acceptable use\n\nUse body.\n"),
+  doc("privacy", "Privacy Policy", "Privacy body."),
 ];
+
+// Served at its own key, but not in the index: it is the mill's to issue.
+const UNLISTED = { ...doc("employee-notice", "Employee notice", "Notice body."), in_bundle: false };
 
 function draw(path: string) {
   // jsdom implements neither; the page calls both to jump between documents.
@@ -30,7 +33,7 @@ function draw(path: string) {
     documents: DOCS,
   });
   vi.spyOn(legalService, "document").mockImplementation(async (key) => {
-    const found = DOCS.find((d) => d.key === key);
+    const found = [...DOCS, UNLISTED].find((d) => d.key === key);
     if (!found) throw new Error("not found");
     return found;
   });
@@ -53,9 +56,10 @@ describe("LegalPage", () => {
   it("shows every document on one page", async () => {
     const { container } = draw("/legal");
     expect(await screen.findByText("Terms body.")).toBeInTheDocument();
-    expect(screen.getByText("AUP body.")).toBeInTheDocument();
+    expect(screen.getByText("Privacy body.")).toBeInTheDocument();
     expect(container.querySelector("section#terms")).toBeTruthy();
-    expect(container.querySelector("section#aup")).toBeTruthy();
+    expect(container.querySelector("section#privacy")).toBeTruthy();
+    expect(screen.queryByText("Notice body.")).toBeNull();
   });
 
   it("shows the Oraiza product logo in the header", async () => {
@@ -69,17 +73,35 @@ describe("LegalPage", () => {
     const { container } = draw("/legal");
     await screen.findByText("Terms body.");
     expect(container.querySelector("#terms-1-definitions")).toBeTruthy();
-    expect(container.querySelector("#aup-1-definitions")).toBeTruthy();
+    expect(container.querySelector("#privacy-1-definitions")).toBeTruthy();
   });
 
   it("renders the whole page for a per-document link, scrolled to that document", async () => {
-    // /legal/aup is linked from signup and emails; it must still work.
-    draw("/legal/aup");
-    expect(await screen.findByText("AUP body.")).toBeInTheDocument();
+    // /legal/privacy is linked from signup and emails; it must still work.
+    draw("/legal/privacy");
+    expect(await screen.findByText("Privacy body.")).toBeInTheDocument();
     expect(screen.getByText("Terms body.")).toBeInTheDocument();
     const scroll = vi.mocked(Element.prototype.scrollIntoView);
     expect(scroll).toHaveBeenCalled();
-    expect((scroll.mock.contexts.at(-1) as Element).id).toBe("aup");
+    expect((scroll.mock.contexts.at(-1) as Element).id).toBe("privacy");
+  });
+
+  it("sends a link to a retired document to the section it became", async () => {
+    // The Acceptable Use Policy is now section 7 of the Terms.
+    draw("/legal/aup");
+    expect(await screen.findByText("Use body.")).toBeInTheDocument();
+    const scroll = vi.mocked(Element.prototype.scrollIntoView);
+    expect((scroll.mock.contexts.at(-1) as Element).id).toBe("terms-7-acceptable-use");
+    expect(vi.mocked(legalService.document)).not.toHaveBeenCalledWith("aup");
+  });
+
+  it("shows an unlisted document only when a link opens it", async () => {
+    const { container } = draw("/legal/employee-notice");
+    expect(await screen.findByText("Notice body.")).toBeInTheDocument();
+    expect(screen.getByText("Terms body.")).toBeInTheDocument();
+    expect(container.querySelector("section#employee-notice")).toBeTruthy();
+    const scroll = vi.mocked(Element.prototype.scrollIntoView);
+    expect((scroll.mock.contexts.at(-1) as Element).id).toBe("employee-notice");
   });
 
   it("uses no animated or glass surfaces", async () => {

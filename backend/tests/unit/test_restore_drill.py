@@ -17,7 +17,7 @@ restore_drill = importlib.util.module_from_spec(_SPEC)
 sys.modules["restore_drill"] = restore_drill  # its dataclasses look themselves up there
 _SPEC.loader.exec_module(restore_drill)
 
-SOURCE = "postgresql+psycopg://reader:s3cret@db.example.org:5432/oryza?sslmode=require"
+SOURCE = "postgresql+psycopg://reader:s3cret@db.example.org:5432/oraiza?sslmode=require"
 
 
 def _main(monkeypatch, source: str, target: str) -> None:
@@ -29,7 +29,7 @@ def _main(monkeypatch, source: str, target: str) -> None:
 
 def test_a_target_not_named_for_the_drill_is_refused(monkeypatch, capsys):
     with pytest.raises(SystemExit):
-        _main(monkeypatch, SOURCE, "postgresql://u:p@localhost/oryza")
+        _main(monkeypatch, SOURCE, "postgresql://u:p@localhost/oraiza")
     assert "must contain 'restore_drill'" in capsys.readouterr().err
 
 
@@ -52,7 +52,7 @@ def test_without_urls_it_says_what_to_set(monkeypatch, capsys):
 def test_the_password_goes_in_the_environment_not_the_command_line():
     url, env = restore_drill._libpq(restore_drill._plain(SOURCE))
     assert "s3cret" not in url
-    assert url == "postgresql://reader@db.example.org:5432/oryza?sslmode=require"
+    assert url == "postgresql://reader@db.example.org:5432/oraiza?sslmode=require"
     assert env["PGPASSWORD"] == "s3cret"
 
 

@@ -7,8 +7,9 @@ no file to forget to delete. (A leftover ``.env.production.secrets`` sat on
 disk for weeks before this.)
 
   SECRET_KEY           signs sessions. Rotating it signs everyone out.
-  MFA_ENCRYPTION_KEY   encrypts every two-factor seed. Never rotated here once
-                       set: a new key would leave every user's 2FA unreadable.
+  MFA_ENCRYPTION_KEY   encrypts every two-factor seed and every mill's backup
+                       file. Never rotated here once set: a new key would leave
+                       every user's 2FA and every backup unreadable.
   SIGNUP_INVITE_CODE   gates sign-up. Safe to rotate.
 
 A secret the Worker already has is left alone unless it's named with --only,
@@ -116,7 +117,10 @@ def main(argv: Sequence[str] | None = None, runner: Runner = run_wrangler) -> in
     if args.only:
         locked = sorted(NEVER_ROTATE & set(args.only) & have)
         if locked:
-            parser.error(f"refusing to rotate {', '.join(locked)}: every user's two-factor seed is encrypted with it")
+            parser.error(
+                f"refusing to rotate {', '.join(locked)}: every user's two-factor seed "
+                "and every mill's backup file is encrypted with it"
+            )
         names = list(args.only)
     else:
         names = [name for name in GENERATORS if name not in have]

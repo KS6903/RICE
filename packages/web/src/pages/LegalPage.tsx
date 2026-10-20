@@ -20,6 +20,17 @@ function stripLeadingTitle(markdown: string): string {
   return lines.slice(i).join("\n");
 }
 
+/** The documents folded into the Terms and the Privacy Policy, and the heading
+ *  id (from Markdown) of the section each became, so an old link still lands on
+ *  the right clause. */
+const RETIRED: Record<string, string> = {
+  dpa: "terms-9-personal-information-we-process-for-you",
+  aup: "terms-7-acceptable-use",
+  subprocessors: "privacy-4-1-service-providers-sub-processors",
+};
+
+const isRetired = (key: string) => Object.prototype.hasOwnProperty.call(RETIRED, key);
+
 /** Public legal surface: every document on one page.
  *
  *  Reachable without a session on purpose. A term nobody could read before
@@ -36,6 +47,9 @@ export default function LegalPage() {
   const [docs, setDocs] = useState<LegalDocument[]>([]);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
+  // The key the page was opened at, kept once: moving between the contents
+  // links afterwards scrolls, it doesn't refetch.
+  const [linkedKey] = useState(key);
 
   useEffect(() => {
     let cancelled = false;
@@ -43,6 +57,13 @@ export default function LegalPage() {
       .index()
       .then(async (idx) => {
         const all = await Promise.all(idx.documents.map((d) => legalService.document(d.key)));
+        // An unlisted document (the employee notice template) is served at its
+        // own key but isn't one of the agreements: it joins the page only when
+        // a link opened it.
+        if (linkedKey && !isRetired(linkedKey) && !all.some((d) => d.key === linkedKey)) {
+          const linked = await legalService.document(linkedKey).catch(() => null);
+          if (linked) all.push(linked);
+        }
         if (cancelled) return;
         setIndex(idx);
         setDocs(all);
@@ -56,13 +77,13 @@ export default function LegalPage() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [linkedKey]);
 
   // Jump to the requested document once it is on the page. Keyed on
   // location.key too, so clicking the same contents link twice still jumps.
   useEffect(() => {
     if (loading) return;
-    if (key) document.getElementById(key)?.scrollIntoView?.();
+    if (key) document.getElementById(isRetired(key) ? RETIRED[key] : key)?.scrollIntoView?.();
     else window.scrollTo?.(0, 0);
   }, [key, location.key, loading]);
 

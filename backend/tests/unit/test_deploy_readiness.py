@@ -13,15 +13,15 @@ from app.core import legal
 READY_VARS = {
     "API_INSTANCES": "3",
     "RUNTIME_DATABASE_ROLE": "ricemill_app",
-    "ALLOWED_ORIGINS": "https://app.oryza.ph",
-    "TRUSTED_HOSTS": "app.oryza.ph",
-    "FRONTEND_BASE_URL": "https://app.oryza.ph",
+    "ALLOWED_ORIGINS": "https://app.oraiza.ph",
+    "TRUSTED_HOSTS": "app.oraiza.ph",
+    "FRONTEND_BASE_URL": "https://app.oraiza.ph",
     "COOKIE_DOMAIN": "",
     "MFA_REQUIRED_ROLES": "owner,admin",
     "SMTP_HOST": "smtp.mailprovider.net",
     "SMTP_PORT": "587",
-    "SMTP_FROM_EMAIL": "no-reply@oryza.ph",
-    "SMTP_USERNAME": "no-reply@oryza.ph",
+    "SMTP_FROM_EMAIL": "no-reply@oraiza.ph",
+    "SMTP_USERNAME": "no-reply@oraiza.ph",
 }
 
 
@@ -41,7 +41,7 @@ def _wrangler(tmp_path: Path, overrides=None, *, max_instances=3, drop=()) -> Pa
     path.write_text(
         "{\n"
         "  // TODO(deploy): comments never count as template values.\n"
-        '  "name": "oryza",\n'
+        '  "name": "oraiza",\n'
         '  "containers": [\n'
         f'    {{ "class_name": "ApiContainer", "max_instances": {max_instances} }}, /* inline */\n'
         '    { "class_name": "ProvisionerContainer", "max_instances": 1 },\n'
@@ -111,7 +111,7 @@ def test_a_problem_in_one_role_names_that_role(tmp_path, monkeypatch):
 
     def provisioner_without_tls(runtime_role: str) -> dict[str, str]:
         secrets = original(runtime_role)
-        secrets["PROVISIONER_DATABASE_URL"] = "postgresql://owner:x@db.invalid:5432/oryza"
+        secrets["PROVISIONER_DATABASE_URL"] = "postgresql://owner:x@db.invalid:5432/oraiza"
         return secrets
 
     monkeypatch.setattr(gate, "_dummy_secrets", provisioner_without_tls)
@@ -121,7 +121,7 @@ def test_a_problem_in_one_role_names_that_role(tmp_path, monkeypatch):
 def test_ambient_environment_cannot_mask_a_missing_value(tmp_path, monkeypatch):
     # A developer shell exporting a good value must not make a broken deploy
     # config look valid: the container would not have that variable.
-    monkeypatch.setenv("FRONTEND_BASE_URL", "https://app.oryza.ph")
+    monkeypatch.setenv("FRONTEND_BASE_URL", "https://app.oraiza.ph")
     problems = _check(_wrangler(tmp_path, drop=("FRONTEND_BASE_URL",)))
     assert "FRONTEND_BASE_URL must use HTTPS" in problems
 

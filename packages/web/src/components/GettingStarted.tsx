@@ -195,6 +195,19 @@ export default function GettingStarted() {
           </li>
         ))}
       </ol>
+
+      {/* A fresh mill's Boss may be starting over with a backup of the old one. */}
+      {doneCount === 0 && user?.role === "owner" && (
+        <p className="mt-2 border-t border-slate-200/70 dark:border-slate-700/70 pt-3 text-sm text-secondary">
+          Starting over from an old account?{" "}
+          <Link
+            to="/retrieve-data"
+            className="font-semibold text-emerald-700 hover:text-emerald-800 dark:text-emerald-400"
+          >
+            Retrieve your data from a backup
+          </Link>
+        </p>
+      )}
     </section>
   );
 }

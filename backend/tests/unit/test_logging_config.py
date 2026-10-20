@@ -50,7 +50,7 @@ def test_exceptions_are_included():
 def test_configure_logging_passes_info_lines_and_is_idempotent(restore_root_logger):
     configure_logging(json_output=True)
     configure_logging(json_output=True)
-    ours = [h for h in restore_root_logger.handlers if h.get_name() == "oryza"]
+    ours = [h for h in restore_root_logger.handlers if h.get_name() == "oraiza"]
     assert len(ours) == 1 and isinstance(ours[0].formatter, JsonFormatter)
 
     stream = io.StringIO()
@@ -62,5 +62,5 @@ def test_configure_logging_passes_info_lines_and_is_idempotent(restore_root_logg
 
 def test_development_output_is_readable_text(restore_root_logger):
     configure_logging(json_output=False)
-    [ours] = [h for h in restore_root_logger.handlers if h.get_name() == "oryza"]
+    [ours] = [h for h in restore_root_logger.handlers if h.get_name() == "oraiza"]
     assert not isinstance(ours.formatter, JsonFormatter)

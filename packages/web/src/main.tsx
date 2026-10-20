@@ -10,7 +10,7 @@ import { queryClient } from "./services/queryClient";
 import { googleClientId, googleSignInEnabled } from "./utils/googleSignIn";
 import { registerSW } from "virtual:pwa-register";
 
-// The offline cache is for the browser. The desktop app (app://oryza) has its
+// The offline cache is for the browser. The desktop app (app://oraiza) has its
 // own offline store, and its scheme can't host a service worker anyway.
 if ("serviceWorker" in navigator && location.protocol.startsWith("http")) {
   registerSW({ immediate: true });

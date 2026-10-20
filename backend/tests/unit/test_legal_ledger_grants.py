@@ -45,7 +45,7 @@ def _has(conn, role: str, privilege: str) -> bool:
 
 
 def test_migration_007_revokes_rewrite_rights_where_006_skipped_it(connection, monkeypatch):
-    role = f"oryza_test_{uuid.uuid4().hex[:12]}"
+    role = f"oraiza_test_{uuid.uuid4().hex[:12]}"
     connection.execute(text(f'CREATE ROLE "{role}" NOLOGIN'))
     # A fresh database: the table exists before 006 runs, so 006 returned early,
     # and db_least_privilege.sql had granted the runtime role full DML.
@@ -64,7 +64,7 @@ def test_migration_007_revokes_rewrite_rights_where_006_skipped_it(connection, m
 
 def test_migration_007_is_safe_where_the_role_does_not_exist(connection, monkeypatch):
     # Dev and CI databases have no runtime role; the migration must not fail there.
-    monkeypatch.setattr(settings, "RUNTIME_DATABASE_ROLE", f"oryza_absent_{uuid.uuid4().hex[:12]}")
+    monkeypatch.setattr(settings, "RUNTIME_DATABASE_ROLE", f"oraiza_absent_{uuid.uuid4().hex[:12]}")
     with Operations.context(MigrationContext.configure(connection)):
         _migration_007().upgrade()
 

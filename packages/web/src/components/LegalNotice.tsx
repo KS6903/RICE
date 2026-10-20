@@ -8,7 +8,7 @@ import { Info } from "lucide-react";
  *  to is much harder to. These are deliberately quiet so they can stay visible
  *  permanently rather than being dismissed and forgotten.
  *
- *  Section 3.5 of the Acceptable Use Policy forbids removing them.
+ *  Section 7.3(e) of the Terms forbids removing them.
  */
 
 const NOTICES = {
@@ -45,7 +45,9 @@ const DEFAULT_LINK: Record<keyof typeof NOTICES, string> = {
   report: "/legal/terms",
   invoice: "/legal/terms",
   forecast: "/legal/terms",
-  employeeData: "/legal/dpa",
+  // The notice tells the mill to give its workers a privacy notice; this is
+  // the one it can adapt, and it points back to sections 6.2 and 9.3 of the Terms.
+  employeeData: "/legal/employee-notice",
 };
 
 export default function LegalNotice({ kind, className = "", to }: Props) {

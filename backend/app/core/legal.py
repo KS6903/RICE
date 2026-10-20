@@ -38,7 +38,7 @@ from pathlib import Path
 # Bump when any document in the bundle changes materially. This forces every
 # account back through the acceptance gate, so treat it as a product decision:
 # a typo fix does not warrant it, a new limitation of liability does.
-AGREEMENT_VERSION = "2026.11.1"
+AGREEMENT_VERSION = "2026.11.2"
 
 _PLACEHOLDER_RE = re.compile(r"\{\{\s*([a-z0-9_]+)\s*\}\}")
 _TODO_SENTINEL = "TODO:"
@@ -59,56 +59,37 @@ class LegalDocument:
     summary: str
     # Documents in the bundle are covered by the single signup acceptance.
     in_bundle: bool = True
+    # Listed on the public /legal page. An unlisted document is still served at
+    # its own key, for whoever is linked to it.
+    listed: bool = True
     # Extra substitutions that are not company-wide entity values.
     extra_tokens: dict[str, str] = field(default_factory=dict)
 
 
+# Two documents, the way Google publishes its own: Terms and Privacy. What used
+# to be a separate Data Processing Addendum is section 9 of the Terms, the
+# Acceptable Use Policy is section 7, and the sub-processor register is section
+# 4.1 of the Privacy Policy. A new sub-processor therefore moves the bundle
+# hash, and every tenant re-accepts; the 30 days' notice still comes first.
 DOCUMENTS: tuple[LegalDocument, ...] = (
     LegalDocument(
         key="terms",
         title="Terms of Service",
-        version="1.0",
-        effective_date=date(2026, 9, 24),
+        version="2.0",
+        effective_date=date(2026, 11, 3),
         filename="terms-of-service.md",
-        summary="The contract between your mill and us, including what the Service is not, the "
-        "warranty disclaimer, and the limit on our liability.",
+        summary="The contract between your mill and us: what the Service is not, acceptable use, "
+        "how we process your records for you, the warranty disclaimer, and the limit on our "
+        "liability.",
     ),
     LegalDocument(
         key="privacy",
         title="Privacy Policy",
-        version="1.1",
+        version="2.0",
         effective_date=date(2026, 11, 3),
         filename="privacy-policy.md",
-        summary="How we handle personal information under the Data Privacy Act of 2012, and the "
-        "rights you have over it.",
-    ),
-    LegalDocument(
-        key="dpa",
-        title="Data Processing Addendum",
-        version="1.1",
-        effective_date=date(2026, 11, 3),
-        filename="data-processing-addendum.md",
-        summary="The written outsourcing contract required by section 21 of the Data Privacy Act, "
-        "covering security measures, sub-processors, audit and breach notification.",
-    ),
-    LegalDocument(
-        key="aup",
-        title="Acceptable Use Policy",
-        version="1.0",
-        effective_date=date(2026, 9, 24),
-        filename="acceptable-use-policy.md",
-        summary="What you may not do with the Service.",
-    ),
-    LegalDocument(
-        key="subprocessors",
-        title="Sub-processor register",
-        version="1.1",
-        effective_date=date(2026, 11, 3),
-        filename="subprocessors.md",
-        summary="Every third party that processes data for us, what it receives, and where.",
-        # Informational: it changes on its own 30-day notice cycle and must not
-        # drag every tenant back through the acceptance gate when it does.
-        in_bundle=False,
+        summary="How we handle personal information under the Data Privacy Act of 2012, who we "
+        "share it with, how we protect it, and the rights you have over it.",
     ),
     LegalDocument(
         key="employee-notice",
@@ -120,8 +101,10 @@ DOCUMENTS: tuple[LegalDocument, ...] = (
         "Information Controller for their records, so giving this notice is your duty, not ours.",
         # Published so tenants can copy a rendered version with our details
         # already filled in, rather than retyping them. Not part of the
-        # agreement they accept: it is theirs to issue, not ours.
+        # agreement they accept: it is theirs to issue, not ours. Linked from
+        # section 9.3 of the Terms rather than listed beside them.
         in_bundle=False,
+        listed=False,
     ),
 )
 
@@ -233,6 +216,7 @@ def index() -> list[dict]:
             "in_bundle": d.in_bundle,
         }
         for d in DOCUMENTS
+        if d.listed
     ]
 
 

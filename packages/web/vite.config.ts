@@ -21,10 +21,10 @@ const apiProxyTarget = process.env.API_PROXY_TARGET ?? "http://localhost:8000";
 //
 // Allowances: Google Fonts (googleapis/gstatic), Google login (accounts.google.com),
 // the canvas WebSocket (ws:/wss:), and the dev backend on :8000. A desktop build
-// (ORYZA_API_ORIGIN, set by packages/desktop/scripts/build-desktop.mjs) adds its
-// API's socket: its renderer runs at app://oryza and opens the socket there.
-const desktopSocket = process.env.ORYZA_API_ORIGIN
-  ? [new URL(process.env.ORYZA_API_ORIGIN).origin.replace(/^http/, "ws")]
+// (ORAIZA_API_ORIGIN, set by packages/desktop/scripts/build-desktop.mjs) adds its
+// API's socket: its renderer runs at app://oraiza and opens the socket there.
+const desktopSocket = process.env.ORAIZA_API_ORIGIN
+  ? [new URL(process.env.ORAIZA_API_ORIGIN).origin.replace(/^http/, "ws")]
   : [];
 
 function cspDirectives(dev: boolean, forHeader: boolean): Record<string, string[]> {
@@ -97,7 +97,7 @@ export default defineConfig({
     VitePWA({
       registerType: "autoUpdate",
       // Registered from src/main.tsx, on http(s) pages only: the desktop app runs
-      // at app://oryza, where a service worker can't register (the injected
+      // at app://oraiza, where a service worker can't register (the injected
       // script's rejection went uncaught) and isn't wanted (it syncs via SQLite).
       injectRegister: false,
       manifest: {

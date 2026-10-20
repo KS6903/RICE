@@ -41,7 +41,14 @@ def test_documents_are_readable_without_a_session(client):
     assert res.status_code == 200, res.text
     body = res.json()
     assert body["agreement_version"] == legal.AGREEMENT_VERSION
-    assert {d["key"] for d in body["documents"]} >= {"terms", "privacy", "dpa", "aup"}
+    assert [d["key"] for d in body["documents"]] == ["terms", "privacy"]
+
+
+def test_retired_documents_404_and_the_employee_notice_still_serves(client):
+    """The DPA, AUP and sub-processor register live inside Terms and Privacy now."""
+    for key in ("dpa", "aup", "subprocessors"):
+        assert client.get(f"/api/legal/documents/{key}").status_code == 404
+    assert client.get("/api/legal/documents/employee-notice").status_code == 200
 
 
 def test_document_body_is_served_with_its_hash(client):

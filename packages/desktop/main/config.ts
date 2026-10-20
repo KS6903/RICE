@@ -1,6 +1,6 @@
 // Where this build talks to, fixed when it's packaged.
 //
-// scripts/build-desktop.mjs writes main/build-config.json from ORYZA_API_ORIGIN
+// scripts/build-desktop.mjs writes main/build-config.json from ORAIZA_API_ORIGIN
 // (and whether this build updates itself). A development run has no such file
 // and talks to the local API. Nothing here imports Electron, so it's testable.
 import fs from "fs";

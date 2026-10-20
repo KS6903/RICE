@@ -4,7 +4,7 @@ import userEvent from "@testing-library/user-event";
 import TotpSetup from "./TotpSetup";
 
 const SECRET = "JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP";
-const URI = `otpauth://totp/Oryza:mill1?secret=${SECRET}&issuer=Oryza`;
+const URI = `otpauth://totp/Oraiza:mill1?secret=${SECRET}&issuer=Oraiza`;
 
 describe("TotpSetup", () => {
   it("draws the QR code in the page instead of loading it as an image", () => {

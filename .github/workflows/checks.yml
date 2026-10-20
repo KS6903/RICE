@@ -240,14 +240,14 @@ jobs:
       - name: Remove an API container an interrupted run left behind
         run: docker rm --force api >/dev/null 2>&1 || true
       - name: Build the image (repository-root context, as wrangler.jsonc builds it)
-        run: docker build -f backend/Dockerfile -t oryza-api:ci .
+        run: docker build -f backend/Dockerfile -t oraiza-api:ci .
       - name: Boot it and hit /api/health
         run: |
           docker run -d --name api -p 127.0.0.1:8000:8000 \
             -e DATABASE_URL=postgresql://ci:ci@127.0.0.1:5432/unused \
             -e SECRET_KEY=ci-test-secret-key \
             -e REDIS_URL= \
-            oryza-api:ci
+            oraiza-api:ci
           for attempt in $(seq 1 30); do
             if curl -fsS http://127.0.0.1:8000/api/health; then echo; exit 0; fi
             sleep 1

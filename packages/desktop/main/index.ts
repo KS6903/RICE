@@ -35,7 +35,7 @@ const WEB_ROOT = app.isPackaged
   ? path.join(process.resourcesPath, "web")
   : path.resolve(__dirname, "../../web/dist");
 
-// Before ready: the packaged app runs at app://oryza (see appProtocol.ts).
+// Before ready: the packaged app runs at app://oraiza (see appProtocol.ts).
 registerAppScheme();
 
 interface StoredSession {
@@ -115,7 +115,7 @@ function isAllowedAppUrl(rawUrl: string): boolean {
   try {
     const parsed = new URL(rawUrl);
     if (parsed.username || parsed.password) return false;
-    // The app's own origin only. app://oryza serves nothing but the web bundle
+    // The app's own origin only. app://oraiza serves nothing but the web bundle
     // (and its SPA routes), so any path on it is the app; a list of routes here
     // went stale as pages were added, and locked those pages out of IPC.
     return isDev ? parsed.origin === DEV_ORIGIN : isAppUrl(parsed);
@@ -167,7 +167,7 @@ function createWindow(config: DesktopConfig): void {
       spellcheck: false,
       // The renderer opens the warehouse WebSocket to the API itself (a
       // protocol handler can't carry one); the preload hands it the origin.
-      additionalArguments: [`--oryza-api-origin=${config.apiOrigin}`],
+      additionalArguments: [`--oraiza-api-origin=${config.apiOrigin}`],
     },
     titleBarStyle: "hiddenInset",
     title: "Rice Mill System",

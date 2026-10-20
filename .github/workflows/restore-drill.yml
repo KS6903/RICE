@@ -6,7 +6,8 @@ name: Restore drill
 #
 # The dump holds every mill's data, so the drill runs only on a runner you
 # name, never on GitHub's by default: GitHub isn't in the sub-processor
-# register (legal/subprocessors.md), and adding it needs 30 days' notice.
+# list (section 4.1 of legal/privacy-policy.md), and adding it needs 30
+# days' notice.
 #
 # To set it up:
 #   - vars.RESTORE_DRILL_RUNNER: the runner's label, e.g. a self-hosted runner
@@ -76,7 +77,7 @@ jobs:
         if: runner.environment == 'github-hosted' && vars.RESTORE_DRILL_ALLOW_GITHUB_HOSTED != 'true'
         working-directory: .
         run: |
-          echo "::error::This runner is GitHub-hosted, and GitHub isn't in the sub-processor register. Use a self-hosted runner, or list GitHub first and set vars.RESTORE_DRILL_ALLOW_GITHUB_HOSTED to true."
+          echo "::error::This runner is GitHub-hosted, and GitHub isn't in the sub-processor list. Use a self-hosted runner, or list GitHub first and set vars.RESTORE_DRILL_ALLOW_GITHUB_HOSTED to true."
           exit 1
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
         with:

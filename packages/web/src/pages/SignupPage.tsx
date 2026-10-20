@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { useNavigate, useLocation, Link } from "react-router-dom";
+import { useNavigate, useLocation, useSearchParams, Link } from "react-router-dom";
 import { authService } from "../services/AuthService";
 import { useAuthStore } from "../stores/authStore";
 import PasswordInput from "../components/PasswordInput";
@@ -9,12 +9,16 @@ import { googleSignInEnabled } from "../utils/googleSignIn";
 import riceLogo from "../assets/Rice_Logo.svg";
 import { legalService } from "../services/LegalService";
 import TurnstileWidget, { type TurnstileHandle } from "../components/TurnstileWidget";
+import { safeNext, withNext } from "../utils/next";
 
 const TICK_TERMS = "Tick the box to accept the Terms of Service and policies first.";
 
 export default function SignupPage() {
   const navigate = useNavigate();
   const location = useLocation();
+  // Where to go once the account exists, if it's a page that may ask (/retrieve-data).
+  const [searchParams] = useSearchParams();
+  const next = safeNext(searchParams);
   const { setTokens, setUser } = useAuthStore();
   const [step, setStep] = useState<1 | 2>(1);
   const [form, setForm] = useState({
@@ -108,7 +112,7 @@ export default function SignupPage() {
       setTokens(data?.access_token, data?.refresh_token);
       const me = await authService.me();
       setUser(me);
-      navigate("/");
+      navigate(next ?? "/");
     } catch (e: any) {
       setError(e.response?.data?.detail || "Signup failed. Please try again.");
       // A Turnstile token works once: get a fresh one for the next try.
@@ -133,7 +137,7 @@ export default function SignupPage() {
       setTokens(data?.access_token, data?.refresh_token);
       const me = await authService.me();
       setUser(me);
-      navigate("/");
+      navigate(next ?? "/");
     } catch (err: any) {
       setError(err.response?.data?.detail || "Google signup failed.");
     } finally {
@@ -342,7 +346,7 @@ export default function SignupPage() {
               <p className="text-center text-base text-secondary">
                 Already have an account?{" "}
                 <Link
-                  to="/login"
+                  to={withNext("/login", next)}
                   className="font-semibold text-grad-brand hover:opacity-80 transition-opacity"
                 >
                   Sign in
@@ -433,8 +437,8 @@ export default function SignupPage() {
                     className="link"
                   >
                     Terms of Service
-                  </Link>
-                  ,{" "}
+                  </Link>{" "}
+                  and{" "}
                   <Link
                     to="/legal/privacy"
                     target="_blank"
@@ -442,14 +446,6 @@ export default function SignupPage() {
                     className="link"
                   >
                     Privacy Policy
-                  </Link>
-                  ,{" "}
-                  <Link to="/legal/dpa" target="_blank" rel="noopener noreferrer" className="link">
-                    Data Processing Addendum
-                  </Link>{" "}
-                  and{" "}
-                  <Link to="/legal/aup" target="_blank" rel="noopener noreferrer" className="link">
-                    Acceptable Use Policy
                   </Link>
                   , and I am authorised to accept them for my company.
                 </span>
