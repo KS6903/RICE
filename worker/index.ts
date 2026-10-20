@@ -42,6 +42,10 @@ export interface Env {
   UPSTASH_DATABASE_ID?: string;
   UPSTASH_MONTHLY_REQUEST_LIMIT?: string;
   DESKTOP_MIN_VERSION?: string;
+  /** The platform admin whose password is this bcrypt hash (backend/app/core/platform_admin.py). */
+  PLATFORM_ADMIN_USERNAME?: string;
+  PLATFORM_ADMIN_PASSWORD_HASH?: string;
+  PLATFORM_ADMIN_EMAIL?: string;
 }
 
 type ContainerRole = keyof typeof containerEnv.roles;

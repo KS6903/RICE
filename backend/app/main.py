@@ -184,6 +184,21 @@ async def _verify_runtime_database_role() -> None:
     verify_runtime_database_role(engine, settings.RUNTIME_DATABASE_ROLE)
 
 
+@app.on_event("startup")
+async def _sync_cloudflare_platform_admin() -> None:
+    """Create or update the platform admin whose password is a Cloudflare secret."""
+    if not settings.PLATFORM_ADMIN_USERNAME:
+        return
+    from .core.database import SessionLocal
+    from .core.platform_admin import sync
+
+    db = SessionLocal()
+    try:
+        sync(db)
+    finally:
+        db.close()
+
+
 @app.get("/api/health/ready")
 @limiter.exempt
 def readiness_check(db: Session = Depends(get_db)):

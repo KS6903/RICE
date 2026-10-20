@@ -40,6 +40,8 @@ from ..core.exceptions import (
 )
 from ..core.mfa_trust import local_zone, next_reset_at
 from ..core.passwords import generate_temporary_password, validate_password_strength
+from ..core.platform_admin import is_managed as is_cloudflare_admin
+from ..core.platform_admin import password_hash_for
 from ..core.ratelimit import (
     LockoutState,
     clear_login_failures,
@@ -304,7 +306,7 @@ class AuthService(BaseService):
         user = self.db.query(User).filter(User.username == username).first()
         password_matches = verify_password(
             password,
-            user.password_hash if user is not None else _DUMMY_PASSWORD_HASH,
+            password_hash_for(user) if user is not None else _DUMMY_PASSWORD_HASH,
         )
         if not user or not password_matches:
             state = register_login_failure(username)
@@ -568,7 +570,7 @@ class AuthService(BaseService):
         needs_code = bool(user.mfa_enabled)
         if needs_code and not (code or "").strip():
             raise BadRequestError("Enter the code from your authenticator app to confirm.", code="confirm_failed")
-        password_ok = verify_password(password, user.password_hash)
+        password_ok = verify_password(password, password_hash_for(user))
         totp_step = self._matching_totp_step(user, code or "") if needs_code else None
         if not password_ok or (needs_code and totp_step is None):
             state = register_login_failure(user.username)
@@ -607,7 +609,7 @@ class AuthService(BaseService):
         lock = login_lockout(user.username)
         if lock.locked:
             raise _lockout_error(lock)
-        password_ok = verify_password(password, user.password_hash)
+        password_ok = verify_password(password, password_hash_for(user))
         totp_step = self._matching_totp_step(user, code)
         if not password_ok or totp_step is None:
             state = register_login_failure(user.username)
@@ -924,13 +926,16 @@ class AuthService(BaseService):
             if step is None:
                 raise PermissionDeniedError("A current MFA code is required.")
             return step
-        if not data.current_password or not verify_password(data.current_password, user.password_hash):
+        if not data.current_password or not verify_password(data.current_password, password_hash_for(user)):
             raise PermissionDeniedError("Your current password is required.")
         return None
 
     def link_google_identity(self, data) -> dict:
         email, _name, subject, issuer = self._verified_google_identity(data.credential)
         user = self.db.query(User).filter(User.id == self.current_user.id).with_for_update().one()
+        if is_cloudflare_admin(user):
+            # Google would be a way in that goes around the Cloudflare password.
+            raise BadRequestError("This account signs in only with its password from Cloudflare.")
         step = self._authorize_sensitive_identity_change(user, data)
         if not user.email_verified or (user.email or "").strip().lower() != email:
             raise PermissionDeniedError("Google must use the same verified email as this account.")
@@ -1169,7 +1174,8 @@ class AuthService(BaseService):
         ident = identifier.strip()
         user = self.db.query(User).filter((User.username == ident) | (User.email == ident)).first()
         exposed_token: str | None = None
-        if user is not None:
+        # The Cloudflare admin's password is a Worker secret: there's nothing to reset.
+        if user is not None and not is_cloudflare_admin(user):
             raw = secrets.token_urlsafe(32)
             with self.transaction():
                 # Invalidate any outstanding tokens for this user first.
@@ -1218,7 +1224,7 @@ class AuthService(BaseService):
         if row is None or row.used_at is not None or row.expires_at <= now_utc():
             raise BadRequestError("This reset link is invalid or has expired.")
         user = self.db.get(User, row.user_id)
-        if user is None:
+        if user is None or is_cloudflare_admin(user):
             raise BadRequestError("This reset link is invalid or has expired.")
         with self.transaction():
             user.password_hash = hash_password(new_password)
@@ -1244,6 +1250,8 @@ class AuthService(BaseService):
         and makes them choose their own password at first sign-in; the temporary one
         also expires. The password is returned once, to be handed over directly: it
         is never emailed, and never stored in the clear."""
+        if is_cloudflare_admin(target):
+            raise BadRequestError("This account's password is set in Cloudflare (PLATFORM_ADMIN_PASSWORD_HASH).")
         password = generate_temporary_password()
         expires = now_utc() + timedelta(hours=settings.TEMP_PASSWORD_HOURS)
         who = issued_by.full_name or issued_by.username
@@ -1290,6 +1298,8 @@ class AuthService(BaseService):
         return answer
 
     def change_password(self, data) -> dict:
+        if is_cloudflare_admin(self.current_user):
+            raise BadRequestError("This account's password is set in Cloudflare (PLATFORM_ADMIN_PASSWORD_HASH).")
         if not verify_password(data.current_password, self.current_user.password_hash):
             raise BadRequestError("Current password is incorrect")
         validate_password_strength(data.new_password)
@@ -1321,7 +1331,7 @@ class AuthService(BaseService):
                 accepted_totp_step = self._matching_totp_step(user, data.mfa_code) if data.mfa_code else None
                 if accepted_totp_step is None:
                     raise PermissionDeniedError("A current MFA code is required to change your email address.")
-            elif not data.current_password or not verify_password(data.current_password, user.password_hash):
+            elif not data.current_password or not verify_password(data.current_password, password_hash_for(user)):
                 raise PermissionDeniedError("Your current password is required to change your email address.")
 
         with self.transaction():

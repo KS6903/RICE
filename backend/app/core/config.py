@@ -20,6 +20,8 @@ _PLACEHOLDER_SECRET_MARKERS = (
     "generate_a_long_random",
 )
 _MIN_SECRET_LEN = 32
+# What core/security.hash_password makes: $2b$, a two-digit cost, 53 characters of salt and hash.
+_BCRYPT_HASH = re.compile(r"\$2[aby]\$\d{2}\$[./A-Za-z0-9]{53}")
 
 
 class Settings(BaseSettings):
@@ -164,6 +166,12 @@ class Settings(BaseSettings):
     SMTP_STARTTLS: bool = True
     MFA_ENCRYPTION_KEY: SecretStr | None = None
     SIGNUP_INVITE_CODE: SecretStr | None = None
+    # Optional: the platform admin whose password lives in Cloudflare rather than
+    # the database (core/platform_admin.py). A username and a bcrypt hash, made with
+    # `create_platform_admin.py --hash`; both or neither. The email is optional.
+    PLATFORM_ADMIN_USERNAME: str | None = None
+    PLATFORM_ADMIN_PASSWORD_HASH: SecretStr | None = None
+    PLATFORM_ADMIN_EMAIL: str | None = None
     # Optional Redis cache. When unset (or unreachable), the app runs without
     # caching and reads straight from PostgreSQL — Redis is never required.
     REDIS_URL: str | None = None
@@ -219,6 +227,30 @@ class Settings(BaseSettings):
                 _MIN_SECRET_LEN,
             )
         return v
+
+    @model_validator(mode="after")
+    def _platform_admin_from_secrets(self) -> "Settings":
+        """In every environment: a half-set or malformed Cloudflare admin would
+        leave the platform with no way in, so refuse to boot instead."""
+        name = (self.PLATFORM_ADMIN_USERNAME or "").strip() or None
+        hashed = (
+            self.PLATFORM_ADMIN_PASSWORD_HASH.get_secret_value().strip() if self.PLATFORM_ADMIN_PASSWORD_HASH else ""
+        )
+        self.PLATFORM_ADMIN_USERNAME = name
+        self.PLATFORM_ADMIN_PASSWORD_HASH = SecretStr(hashed) if hashed else None
+        self.PLATFORM_ADMIN_EMAIL = (self.PLATFORM_ADMIN_EMAIL or "").strip() or None
+        if bool(name) != bool(hashed):
+            raise ValueError(
+                "PLATFORM_ADMIN_USERNAME and PLATFORM_ADMIN_PASSWORD_HASH go together: set both or neither"
+            )
+        if name and len(name) > 50:
+            raise ValueError("PLATFORM_ADMIN_USERNAME must be at most 50 characters")
+        if hashed and not _BCRYPT_HASH.fullmatch(hashed):
+            raise ValueError(
+                "PLATFORM_ADMIN_PASSWORD_HASH must be a bcrypt hash (create_platform_admin.py --hash), "
+                "never the password itself"
+            )
+        return self
 
     @model_validator(mode="after")
     def _fail_closed_in_prod(self) -> "Settings":
