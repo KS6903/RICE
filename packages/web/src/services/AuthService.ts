@@ -48,6 +48,11 @@ export class AuthService {
     return this.http.post("/auth/google/unlink", proof).then((r) => r.data);
   }
 
+  /** Whether sign-up needs an invite code, and the Turnstile site key (null when off). */
+  signupConfig(): Promise<{ invite_required: boolean; turnstile_site_key: string | null }> {
+    return this.http.get("/auth/signup-config").then((r) => r.data);
+  }
+
   signup(body: Record<string, unknown>): Promise<any> {
     return this.http.post("/auth/signup", body).then((r) => r.data);
   }

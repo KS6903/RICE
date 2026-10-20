@@ -98,6 +98,18 @@ def get_auth_service(
 # ── Unauthenticated ──────────────────────────────────────────────────────────
 
 
+@router.get("/signup-config")
+def signup_config():
+    """What the sign-up form needs: whether to ask for an invite code, and the
+    public Turnstile site key to render (null when Turnstile is off)."""
+    from ..core import turnstile
+
+    return {
+        "invite_required": not settings.SIGNUP_OPEN,
+        "turnstile_site_key": settings.TURNSTILE_SITE_KEY if turnstile.required() else None,
+    }
+
+
 @router.post("/signup", response_model=None, status_code=status.HTTP_201_CREATED)
 @limiter.limit(AUTH_RATE_LIMIT)
 def signup(

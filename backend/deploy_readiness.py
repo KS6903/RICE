@@ -50,6 +50,7 @@ def _dummy_secrets(runtime_role: str) -> dict[str, str]:
         "SIGNUP_INVITE_CODE": "readiness-gate-invite-0123456789",
         "REDIS_URL": "rediss://default:dummy@cache.invalid:6379",
         "SMTP_PASSWORD": "readiness-gate-smtp",
+        "TURNSTILE_SECRET": "readiness-gate-turnstile",
     }
 
 

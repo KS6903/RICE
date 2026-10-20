@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate, useLocation, Link } from "react-router-dom";
 import { authService } from "../services/AuthService";
 import { useAuthStore } from "../stores/authStore";
@@ -8,6 +8,7 @@ import { GoogleLogin } from "@react-oauth/google";
 import { googleSignInEnabled } from "../utils/googleSignIn";
 import riceLogo from "../assets/Rice_Logo.svg";
 import { legalService } from "../services/LegalService";
+import TurnstileWidget, { type TurnstileHandle } from "../components/TurnstileWidget";
 
 const TICK_TERMS = "Tick the box to accept the Terms of Service and policies first.";
 
@@ -33,6 +34,28 @@ export default function SignupPage() {
   // while this tab is open the server rejects the stale version rather than
   // silently binding the user to text they never saw.
   const [agreementVersion, setAgreementVersion] = useState<string | null>(null);
+  // Until the server says otherwise, ask for the invite code and show no bot check.
+  const [config, setConfig] = useState<{
+    invite_required: boolean;
+    turnstile_site_key: string | null;
+  }>({ invite_required: true, turnstile_site_key: null });
+  const [turnstileToken, setTurnstileToken] = useState("");
+  const turnstile = useRef<TurnstileHandle>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    authService
+      .signupConfig()
+      .then((c) => {
+        if (!cancelled) setConfig(c);
+      })
+      .catch(() => {
+        /* Keep the invite field: the server decides either way. */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -80,6 +103,7 @@ export default function SignupPage() {
         // with no acceptance on record.
         accepted_terms: acceptedTerms,
         ...(agreementVersion ? { agreement_version: agreementVersion } : {}),
+        ...(turnstileToken ? { turnstile_token: turnstileToken } : {}),
       });
       setTokens(data?.access_token, data?.refresh_token);
       const me = await authService.me();
@@ -87,6 +111,8 @@ export default function SignupPage() {
       navigate("/");
     } catch (e: any) {
       setError(e.response?.data?.detail || "Signup failed. Please try again.");
+      // A Turnstile token works once: get a fresh one for the next try.
+      turnstile.current?.reset();
     } finally {
       setLoading(false);
     }
@@ -255,20 +281,22 @@ export default function SignupPage() {
                 />
               </div>
 
-              <div>
-                <label className="form-label">Invite code</label>
-                <input
-                  className="input font-mono"
-                  value={form.invite_code}
-                  onChange={(e) => update("invite_code", e.target.value)}
-                  autoComplete="off"
-                  spellCheck={false}
-                  placeholder="Enter the code from your invitation"
-                />
-                <p className="mt-1.5 text-xs text-muted">
-                  Required when public signup is restricted by your deployment.
-                </p>
-              </div>
+              {config.invite_required && (
+                <div>
+                  <label className="form-label">Invite code</label>
+                  <input
+                    className="input font-mono"
+                    value={form.invite_code}
+                    onChange={(e) => update("invite_code", e.target.value)}
+                    autoComplete="off"
+                    spellCheck={false}
+                    placeholder="Enter the code from your invitation"
+                  />
+                  <p className="mt-1.5 text-xs text-muted">
+                    Required when public signup is restricted by your deployment.
+                  </p>
+                </div>
+              )}
 
               <div>
                 <label className="form-label">Branch configuration</label>
@@ -427,12 +455,26 @@ export default function SignupPage() {
                 </span>
               </label>
 
+              {config.turnstile_site_key && (
+                <TurnstileWidget
+                  ref={turnstile}
+                  siteKey={config.turnstile_site_key}
+                  action="signup"
+                  onToken={setTurnstileToken}
+                />
+              )}
+
               <div className="pt-1">
                 <button
                   onClick={submit}
                   className="btn-primary w-full"
                   disabled={
-                    loading || !form.full_name || !form.username || !form.email || !form.password
+                    loading ||
+                    !form.full_name ||
+                    !form.username ||
+                    !form.email ||
+                    !form.password ||
+                    (!!config.turnstile_site_key && !turnstileToken)
                   }
                 >
                   {loading ? "Creating…" : "Create account"}

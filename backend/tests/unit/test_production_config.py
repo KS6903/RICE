@@ -162,3 +162,25 @@ def test_preview_with_email_may_require_verification():
         SMTP_HOST="smtp.gmail.com", SMTP_FROM_EMAIL="oryza.preview@gmail.com", REQUIRE_EMAIL_VERIFICATION=True
     )
     assert settings.REQUIRE_EMAIL_VERIFICATION
+
+
+def test_open_signup_needs_turnstile_instead_of_an_invite_code():
+    with pytest.raises(ValidationError, match="SIGNUP_OPEN needs Turnstile"):
+        _valid_prod(SIGNUP_OPEN=True, TURNSTILE_HOSTNAMES="app.example.com")
+    with pytest.raises(ValidationError, match="SIGNUP_OPEN needs TURNSTILE_HOSTNAMES"):
+        _valid_prod(SIGNUP_OPEN=True, TURNSTILE_SECRET="t-secret", TURNSTILE_SITE_KEY="0x4AAA")
+    with pytest.raises(ValidationError, match="must not include localhost"):
+        _valid_prod(
+            SIGNUP_OPEN=True,
+            TURNSTILE_SECRET="t-secret",
+            TURNSTILE_SITE_KEY="0x4AAA",
+            TURNSTILE_HOSTNAMES="app.example.com,localhost",
+        )
+    ok = _valid_prod(
+        SIGNUP_OPEN=True,
+        SIGNUP_INVITE_CODE=None,
+        TURNSTILE_SECRET="t-secret",
+        TURNSTILE_SITE_KEY="0x4AAA",
+        TURNSTILE_HOSTNAMES="app.example.com",
+    )
+    assert ok.SIGNUP_OPEN and ok.SIGNUP_INVITE_CODE is None

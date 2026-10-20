@@ -33,6 +33,8 @@ export interface Env {
   SIGNUP_INVITE_CODE: string;
   REDIS_URL: string;
   SMTP_PASSWORD: string;
+  /** Cloudflare Turnstile's secret for the sign-up form (backend/app/core/turnstile.py). */
+  TURNSTILE_SECRET?: string;
   GOOGLE_CLIENT_ID?: string;
   GOOGLE_WEATHER_API_KEY?: string;
   DEEPSEEK_API_KEY?: string;
@@ -46,6 +48,10 @@ export interface Env {
   PLATFORM_ADMIN_USERNAME?: string;
   PLATFORM_ADMIN_PASSWORD_HASH?: string;
   PLATFORM_ADMIN_EMAIL?: string;
+  /** "true": anyone may sign up, behind Turnstile, without the invite code. */
+  SIGNUP_OPEN?: string;
+  TURNSTILE_SITE_KEY?: string;
+  TURNSTILE_HOSTNAMES?: string;
 }
 
 type ContainerRole = keyof typeof containerEnv.roles;

@@ -29,7 +29,8 @@
       "MFA_ENCRYPTION_KEY",
       "SIGNUP_INVITE_CODE",
       "REDIS_URL",
-      "SMTP_PASSWORD"
+      "SMTP_PASSWORD",
+      "TURNSTILE_SECRET"
     ],
     "optional": [
       "COOKIE_DOMAIN",
@@ -44,7 +45,10 @@
       "DESKTOP_MIN_VERSION",
       "PLATFORM_ADMIN_USERNAME",
       "PLATFORM_ADMIN_PASSWORD_HASH",
-      "PLATFORM_ADMIN_EMAIL"
+      "PLATFORM_ADMIN_EMAIL",
+      "SIGNUP_OPEN",
+      "TURNSTILE_SITE_KEY",
+      "TURNSTILE_HOSTNAMES"
     ]
   },
   "targets": {
