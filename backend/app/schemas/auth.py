@@ -29,6 +29,8 @@ class SignupRequest(BaseModel):
     password: str = Field(min_length=8, max_length=72)
     is_multi_branch: bool = False
     invite_code: str | None = Field(default=None, max_length=255)
+    # Cloudflare Turnstile's cf-turnstile-response, required when Turnstile is on.
+    turnstile_token: str | None = Field(default=None, max_length=2048)
     # Click-through consent. The server re-checks this rather than trusting the
     # UI to have shown the checkbox, so an account cannot exist without a
     # matching row in legal_acceptances.

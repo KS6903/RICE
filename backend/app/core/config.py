@@ -166,6 +166,14 @@ class Settings(BaseSettings):
     SMTP_STARTTLS: bool = True
     MFA_ENCRYPTION_KEY: SecretStr | None = None
     SIGNUP_INVITE_CODE: SecretStr | None = None
+    # Anyone may create a mill, without the invite code. Production and the
+    # preview then insist on Turnstile on the sign-up form (core/turnstile.py):
+    # TURNSTILE_SECRET (a Worker secret), the public TURNSTILE_SITE_KEY the form
+    # shows, and TURNSTILE_HOSTNAMES, the site's own hostnames, comma-separated.
+    SIGNUP_OPEN: bool = False
+    TURNSTILE_SECRET: SecretStr | None = None
+    TURNSTILE_SITE_KEY: str | None = None
+    TURNSTILE_HOSTNAMES: str = ""
     # Optional: the platform admin whose password lives in Cloudflare rather than
     # the database (core/platform_admin.py). A username and a bcrypt hash, made with
     # `create_platform_admin.py --hash`; both or neither. The email is optional.
@@ -291,7 +299,16 @@ class Settings(BaseSettings):
             problems.append("REQUIRE_EMAIL_VERIFICATION needs SMTP_HOST and SMTP_FROM_EMAIL to send the links")
         if self.MFA_ENCRYPTION_KEY is None or len(self.MFA_ENCRYPTION_KEY.get_secret_value()) < _MIN_SECRET_LEN:
             problems.append("MFA_ENCRYPTION_KEY must be a separate 32+ character secret")
-        if self.SIGNUP_INVITE_CODE is None or len(self.SIGNUP_INVITE_CODE.get_secret_value()) < 16:
+        if self.SIGNUP_OPEN:
+            # Open to anyone means open to bots, and every sign-up provisions a schema.
+            if self.TURNSTILE_SECRET is None or not self.TURNSTILE_SITE_KEY:
+                problems.append("SIGNUP_OPEN needs Turnstile: set TURNSTILE_SECRET and TURNSTILE_SITE_KEY")
+            hostnames = [h.strip() for h in self.TURNSTILE_HOSTNAMES.split(",") if h.strip()]
+            if not hostnames:
+                problems.append("SIGNUP_OPEN needs TURNSTILE_HOSTNAMES, the site's hostnames")
+            if any(h in ("localhost", "127.0.0.1") for h in hostnames):
+                problems.append("TURNSTILE_HOSTNAMES must not include localhost in production")
+        elif self.SIGNUP_INVITE_CODE is None or len(self.SIGNUP_INVITE_CODE.get_secret_value()) < 16:
             problems.append("SIGNUP_INVITE_CODE must be a 16+ character secret")
         if self.email_required and not self.REQUIRE_EMAIL_VERIFICATION:
             problems.append("REQUIRE_EMAIL_VERIFICATION must be true")

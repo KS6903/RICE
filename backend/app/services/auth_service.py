@@ -23,7 +23,7 @@ import pyotp
 from sqlalchemy.orm import Session
 
 from ..core import legal as legal_docs
-from ..core import provisioning
+from ..core import provisioning, turnstile
 from ..core.config import settings
 from ..core.crypto import decrypt_str, encrypt_str
 from ..core.email import send_account_email
@@ -45,6 +45,7 @@ from ..core.platform_admin import password_hash_for
 from ..core.ratelimit import (
     LockoutState,
     clear_login_failures,
+    client_ip,
     first_lockout_help_request,
     login_lockout,
     register_login_failure,
@@ -201,6 +202,8 @@ class AuthService(BaseService):
 
     @staticmethod
     def _validate_signup_invite(invite_code: str | None) -> None:
+        if settings.SIGNUP_OPEN:
+            return
         required = settings.SIGNUP_INVITE_CODE
         if required is None:
             if settings.is_prod:
@@ -788,6 +791,11 @@ class AuthService(BaseService):
 
     def signup(self, data, request=None) -> TokenResponse:
         self._validate_signup_invite(data.invite_code)
+        turnstile.verify(
+            data.turnstile_token,
+            action=turnstile.SIGNUP_ACTION,
+            remote_ip=client_ip(request) if request is not None else None,
+        )
         self._require_agreement_acceptance(data)
         validate_password_strength(data.password)
         normalized_email = str(data.email).strip().lower()
