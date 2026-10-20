@@ -29,7 +29,7 @@ concurrency:
 jobs:
   main-only:
     name: Deploys run from main only
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.CI_RUNNER || 'rice-ci' }}
     steps:
       - name: Refuse any other branch
         if: github.ref != 'refs/heads/main'
@@ -47,7 +47,7 @@ jobs:
   readiness:
     name: Production readiness
     needs: main-only
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.CI_RUNNER || 'rice-ci' }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
         with:
@@ -57,6 +57,10 @@ jobs:
           python-version: "3.11"
           cache: pip
           cache-dependency-path: backend/requirements.txt
+      - name: Fresh virtualenv (a self-hosted runner reuses its Python)
+        run: |
+          python -m venv "$RUNNER_TEMP/venv"
+          echo "$RUNNER_TEMP/venv/bin" >> "$GITHUB_PATH"
       - name: Install backend dependencies
         run: python -m pip install --require-hashes -r backend/requirements.txt
       - name: Would the containers boot with this configuration?
@@ -67,9 +71,9 @@ jobs:
     # Schema first, code second: the API checks at /api/health/ready that the
     # database is at this code's migrations. Uses the provisioner (DDL)
     # credential, which only this job and the provisioner container hold; the
-    # database must accept connections from GitHub's runners.
+    # database must accept connections from the CI runner.
     needs: [verify, readiness]
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.CI_RUNNER || 'rice-ci' }}
     environment: production
     env:
       PROCESS_ROLE: provisioner
@@ -98,6 +102,10 @@ jobs:
           python-version: "3.11"
           cache: pip
           cache-dependency-path: backend/requirements.txt
+      - name: Fresh virtualenv (a self-hosted runner reuses its Python)
+        run: |
+          python -m venv "$RUNNER_TEMP/venv"
+          echo "$RUNNER_TEMP/venv/bin" >> "$GITHUB_PATH"
       - name: Install backend dependencies
         run: python -m pip install --require-hashes -r requirements.txt
       - name: Public schema (alembic upgrade head)
@@ -107,7 +115,7 @@ jobs:
 
   deploy:
     needs: [verify, readiness, migrate]
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.CI_RUNNER || 'rice-ci' }}
     environment: production
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6

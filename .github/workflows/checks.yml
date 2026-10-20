@@ -4,6 +4,12 @@ name: Checks
 # main and each pull request; deploy.yml calls it as the gate in front of a
 # deploy, so a deploy runs exactly what CI runs. Callers own the triggers and
 # the concurrency. scripts/ci_local.mjs mirrors these steps for the pre-push hook.
+#
+# Every job in every workflow runs on the self-hosted runner labelled rice-ci,
+# where GitHub charges no Actions minutes (scripts/self-hosted-runner/README.md).
+# It is reused between jobs, unlike GitHub's runners, hence the fresh virtualenvs
+# and the API container clean-up. To run on GitHub's own runners instead, which
+# bills minutes, set the repository variable CI_RUNNER to ubuntu-latest.
 on:
   workflow_call:
 
@@ -12,7 +18,7 @@ permissions:
 
 jobs:
   backend:
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.CI_RUNNER || 'rice-ci' }}
     services:
       postgres:
         image: postgres:16
@@ -47,6 +53,10 @@ jobs:
           python-version: "3.11"
           cache: pip
           cache-dependency-path: backend/requirements-dev.txt
+      - name: Fresh virtualenv (a self-hosted runner reuses its Python)
+        run: |
+          python -m venv "$RUNNER_TEMP/venv"
+          echo "$RUNNER_TEMP/venv/bin" >> "$GITHUB_PATH"
       - name: Install dependencies
         run: python -m pip install --require-hashes -r requirements-dev.txt
       - name: Verify Postgres is reachable
@@ -78,7 +88,7 @@ jobs:
     # migrations (what production goes through), and every migration from
     # empty (a new environment). Each ends with `alembic check`, which fails
     # when the models describe something the migrations don't build.
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.CI_RUNNER || 'rice-ci' }}
     services:
       postgres:
         image: postgres:16
@@ -112,6 +122,10 @@ jobs:
           python-version: "3.11"
           cache: pip
           cache-dependency-path: backend/requirements.txt
+      - name: Fresh virtualenv (a self-hosted runner reuses its Python)
+        run: |
+          python -m venv "$RUNNER_TEMP/venv"
+          echo "$RUNNER_TEMP/venv/bin" >> "$GITHUB_PATH"
       - name: Install dependencies
         run: python -m pip install --require-hashes -r requirements.txt
       - name: Upgrade path and fresh path
@@ -124,7 +138,7 @@ jobs:
           python scripts/check_migrations.py --database-url "$DATABASE_URL" $base
 
   frontend:
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.CI_RUNNER || 'rice-ci' }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
         with:
@@ -157,7 +171,7 @@ jobs:
         run: npm run test:e2e:typecheck
 
   security:
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.CI_RUNNER || 'rice-ci' }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
         with:
@@ -168,6 +182,10 @@ jobs:
           python-version: "3.11"
           cache: pip
           cache-dependency-path: backend/requirements-dev.txt
+      - name: Fresh virtualenv (a self-hosted runner reuses its Python)
+        run: |
+          python -m venv "$RUNNER_TEMP/venv"
+          echo "$RUNNER_TEMP/venv/bin" >> "$GITHUB_PATH"
       - name: Install locked security tools
         run: python -m pip install --require-hashes -r backend/requirements-dev.txt
       - name: pip-audit (backend dependency CVEs)
@@ -200,7 +218,7 @@ jobs:
     # Replaces CodeQL, whose code scanning isn't available on this private repo's
     # plan. Findings fail the job; reviewed exceptions carry a `nosemgrep` comment
     # with the reason, and .semgrepignore scopes what is scanned.
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.CI_RUNNER || 'rice-ci' }}
     container:
       image: semgrep/semgrep:1.177.0@sha256:acaac22ffc7b7cc5926de0751b223bce0b2491c33d18422fa72f632c78d81198
     steps:
@@ -214,11 +232,13 @@ jobs:
     name: API image
     # wrangler builds this image only at deploy time, so without this job a
     # broken Dockerfile or build context would surface mid-deploy.
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.CI_RUNNER || 'rice-ci' }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
         with:
           persist-credentials: false
+      - name: Remove an API container an interrupted run left behind
+        run: docker rm --force api >/dev/null 2>&1 || true
       - name: Build the image (repository-root context, as wrangler.jsonc builds it)
         run: docker build -f backend/Dockerfile -t oryza-api:ci .
       - name: Boot it and hit /api/health
@@ -237,7 +257,7 @@ jobs:
 
   e2e-api:
     name: API end-to-end
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.CI_RUNNER || 'rice-ci' }}
     services:
       postgres:
         image: postgres:16
@@ -267,6 +287,10 @@ jobs:
           python-version: "3.11"
           cache: pip
           cache-dependency-path: backend/requirements-dev.txt
+      - name: Fresh virtualenv (a self-hosted runner reuses its Python)
+        run: |
+          python -m venv "$RUNNER_TEMP/venv"
+          echo "$RUNNER_TEMP/venv/bin" >> "$GITHUB_PATH"
       - name: Install backend dependencies
         run: python -m pip install --require-hashes -r backend/requirements-dev.txt
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
@@ -285,7 +309,7 @@ jobs:
     # checklist and guided tour, buying, milling, selling and invoicing,
     # inventory, dispatch and weather. playwright.config.ts starts a disposable
     # backend and a web dev server in front of it; nothing else is touched.
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.CI_RUNNER || 'rice-ci' }}
     services:
       postgres:
         image: postgres:16
@@ -313,6 +337,10 @@ jobs:
           python-version: "3.11"
           cache: pip
           cache-dependency-path: backend/requirements-dev.txt
+      - name: Fresh virtualenv (a self-hosted runner reuses its Python)
+        run: |
+          python -m venv "$RUNNER_TEMP/venv"
+          echo "$RUNNER_TEMP/venv/bin" >> "$GITHUB_PATH"
       - name: Install backend dependencies
         run: python -m pip install --require-hashes -r backend/requirements-dev.txt
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
