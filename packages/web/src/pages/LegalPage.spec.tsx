@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import LegalPage from "./LegalPage";
 import { legalService, type LegalDocument } from "../services/LegalService";
@@ -22,6 +22,18 @@ const DOCS = [
 
 // Served at its own key, but not in the index: it is the mill's to issue.
 const UNLISTED = { ...doc("employee-notice", "Employee notice", "Notice body."), in_bundle: false };
+
+// The page scrolls in an effect that runs after the documents render, so wait
+// for the scroll itself: checking the moment the text appears raced the effect
+// on a busy CI runner.
+const scrolledTo = (id: string) =>
+  waitFor(
+    () => {
+      const scroll = vi.mocked(Element.prototype.scrollIntoView);
+      expect((scroll.mock.contexts.at(-1) as Element | undefined)?.id).toBe(id);
+    },
+    { timeout: 5000 },
+  );
 
 function draw(path: string) {
   // jsdom implements neither; the page calls both to jump between documents.
@@ -81,17 +93,14 @@ describe("LegalPage", () => {
     draw("/legal/privacy");
     expect(await screen.findByText("Privacy body.")).toBeInTheDocument();
     expect(screen.getByText("Terms body.")).toBeInTheDocument();
-    const scroll = vi.mocked(Element.prototype.scrollIntoView);
-    expect(scroll).toHaveBeenCalled();
-    expect((scroll.mock.contexts.at(-1) as Element).id).toBe("privacy");
+    await scrolledTo("privacy");
   });
 
   it("sends a link to a retired document to the section it became", async () => {
     // The Acceptable Use Policy is now section 7 of the Terms.
     draw("/legal/aup");
     expect(await screen.findByText("Use body.")).toBeInTheDocument();
-    const scroll = vi.mocked(Element.prototype.scrollIntoView);
-    expect((scroll.mock.contexts.at(-1) as Element).id).toBe("terms-7-acceptable-use");
+    await scrolledTo("terms-7-acceptable-use");
     expect(vi.mocked(legalService.document)).not.toHaveBeenCalledWith("aup");
   });
 
@@ -100,8 +109,7 @@ describe("LegalPage", () => {
     expect(await screen.findByText("Notice body.")).toBeInTheDocument();
     expect(screen.getByText("Terms body.")).toBeInTheDocument();
     expect(container.querySelector("section#employee-notice")).toBeTruthy();
-    const scroll = vi.mocked(Element.prototype.scrollIntoView);
-    expect((scroll.mock.contexts.at(-1) as Element).id).toBe("employee-notice");
+    await scrolledTo("employee-notice");
   });
 
   it("uses no animated or glass surfaces", async () => {
