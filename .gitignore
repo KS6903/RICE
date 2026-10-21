@@ -91,7 +91,3 @@ playwright-report/
 
 # Vite/Vitest config bundles written next to the config on each run
 *.timestamp-*.mjs
-
-# Design review captures (the surface briefs in .impeccable/surfaces are kept)
-**/.impeccable/review/
-**/.impeccable/questions/

@@ -1,357 +1,542 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { ArrowRight } from "lucide-react";
+import {
+  Wheat,
+  Factory,
+  Package,
+  ShoppingCart,
+  Truck,
+  Wallet,
+  BarChart3,
+  Users,
+  ShieldCheck,
+  ArrowRight,
+  Sparkles,
+  LayoutDashboard,
+  Settings,
+  TrendingUp,
+  CircleDollarSign,
+  Boxes,
+} from "lucide-react";
 import riceLogo from "../assets/Rice_Logo.svg";
-import "./HomePage.css";
 
 /* ------------------------------------------------------------------ */
-/* The board's price list. Every figure on this page is sample data.  */
+/* Small count-up hook for the "live" stat numbers in the mock UI      */
 /* ------------------------------------------------------------------ */
-const PRICES = [
-  { variety: "RC 222", kind: "Dry", values: [1150, 1175, 1160] },
-  { variety: "RC 222", kind: "Fresh", values: [900, 920, 910] },
-  { variety: "Dinorado", kind: "Dry", values: [1350, 1380, 1365] },
-];
-
-// How long one plate takes to swing up on its hooks and fall back.
-const SWING_MS = 760;
-const SWAP_AT_MS = 320;
-const SWAP_EVERY_MS = 3800;
-
-const peso = (n: number) => n.toLocaleString("en-PH");
-
-/** Like a miller swapping the number plates each morning: every few seconds one
- *  plate lifts on its hooks and comes back with the next figure. Off for
- *  reduced motion, while the tab is hidden, and while the board is off screen. */
-function usePlateSwaps(boardRef: React.RefObject<HTMLElement | null>) {
-  const [shown, setShown] = useState(() => PRICES.map(() => 0));
-  const [swinging, setSwinging] = useState<number | null>(null);
-
+function useCountUp(target: number, durationMs = 1600, startDelayMs = 0) {
+  const [value, setValue] = useState(0);
+  const raf = useRef<number>(0);
   useEffect(() => {
-    if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) return;
-    let visible = true;
-    const board = boardRef.current;
-    const obs =
-      board && typeof IntersectionObserver !== "undefined"
-        ? new IntersectionObserver(([entry]) => {
-            visible = entry.isIntersecting;
-          })
-        : null;
-    if (board && obs) obs.observe(board);
-
-    const timers: number[] = [];
-    let tick = 0;
-    const interval = window.setInterval(() => {
-      if (!visible || document.hidden) return;
-      const plate = tick % PRICES.length;
-      tick += 1;
-      setSwinging(plate);
-      timers.push(
-        window.setTimeout(() => {
-          setShown((s) => s.map((v, i) => (i === plate ? (v + 1) % PRICES[i].values.length : v)));
-        }, SWAP_AT_MS),
-        window.setTimeout(() => setSwinging(null), SWING_MS),
-      );
-    }, SWAP_EVERY_MS);
-
-    return () => {
-      window.clearInterval(interval);
-      timers.forEach((t) => window.clearTimeout(t));
-      obs?.disconnect();
+    let start: number | null = null;
+    const step = (ts: number) => {
+      if (start === null) start = ts;
+      const p = Math.min((ts - start) / durationMs, 1);
+      // ease-out cubic
+      const eased = 1 - Math.pow(1 - p, 3);
+      setValue(Math.round(target * eased));
+      if (p < 1) raf.current = requestAnimationFrame(step);
     };
-  }, [boardRef]);
-
-  return { shown, swinging };
+    const timer = setTimeout(() => {
+      raf.current = requestAnimationFrame(step);
+    }, startDelayMs);
+    return () => {
+      clearTimeout(timer);
+      cancelAnimationFrame(raf.current);
+    };
+  }, [target, durationMs, startDelayMs]);
+  return value;
 }
 
 /* ------------------------------------------------------------------ */
-/* Board material                                                      */
+/* Animated mock client dashboard (pure UI, fake data)                 */
 /* ------------------------------------------------------------------ */
-
-/** The painted double frame every signboard has. */
-function Frame() {
-  return <span className="hp-frame" aria-hidden="true" />;
-}
-
-function Bolt({ className, turn }: { className: string; turn: number }) {
-  return (
-    <svg className={`hp-bolt ${className}`} viewBox="0 0 14 14" aria-hidden="true">
-      <circle cx="7" cy="7" r="5.9" fill="#b9bab3" stroke="#16150f" strokeWidth="1.5" />
-      <path
-        d="M3.6 7h6.8"
-        stroke="#16150f"
-        strokeWidth="1.7"
-        strokeLinecap="round"
-        transform={`rotate(${turn} 7 7)`}
-      />
-    </svg>
-  );
-}
-
-function Bolts() {
-  return (
-    <>
-      <Bolt className="hp-bolt-tl" turn={-24} />
-      <Bolt className="hp-bolt-tr" turn={62} />
-      <Bolt className="hp-bolt-bl" turn={18} />
-      <Bolt className="hp-bolt-br" turn={-70} />
-    </>
-  );
-}
-
-/** A wire hook over a nail, the same stroke as the bolts. */
-function Hook({ side }: { side: "l" | "r" }) {
-  return (
-    <svg className={`hp-hook hp-hook-${side}`} viewBox="0 0 12 16" aria-hidden="true">
-      <circle cx="6" cy="3.2" r="2.2" fill="#b9bab3" stroke="#16150f" strokeWidth="1.3" />
-      <path
-        d="M3.4 16V6.6C3.4 3.1 8.6 3.1 8.6 6.6V8"
-        fill="none"
-        stroke="#16150f"
-        strokeWidth="1.5"
-        strokeLinecap="round"
-      />
-    </svg>
-  );
-}
-
-/** The iron arm a station sign hangs from, bolted to the route post. */
-function Bracket() {
-  return (
-    <svg className="hp-bracket" viewBox="0 0 40 30" preserveAspectRatio="none" aria-hidden="true">
-      <path d="M0 6h40" stroke="#16150f" strokeWidth="5" />
-      <path d="M2 26L34 7" stroke="#16150f" strokeWidth="3" />
-      <circle cx="4" cy="6" r="1.6" fill="#b9bab3" />
-    </svg>
-  );
-}
-
-function Screen({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <figure className="hp-screen">
-      <figcaption className="hp-screen-bar">
-        <b>{title}</b>
-        <span className="hp-sample">Sample data</span>
-      </figcaption>
-      {children}
-    </figure>
-  );
-}
-
-/** One stop on the palay's route: a sign hung off the post, what happens
- *  there, and the Oraiza screen that keeps the record. */
-function Station({
-  id,
-  sign,
-  proof,
-  children,
-  aside,
-  screen,
+function MockStat({
+  label,
+  value,
+  unit,
+  icon: Icon,
+  iconBg,
+  delay,
 }: {
-  id: string;
-  sign: string;
-  proof: "narrow" | "mid" | "wide" | "split";
-  children: React.ReactNode;
-  aside?: React.ReactNode;
-  screen: React.ReactNode;
+  label: string;
+  value: number;
+  unit?: string;
+  icon: React.ElementType;
+  iconBg: string;
+  delay: number;
 }) {
+  const n = useCountUp(value, 1800, delay);
   return (
-    <li className="hp-station" aria-labelledby={id}>
-      <div className="hp-station-head">
-        <h3 id={id} className="hp-sign hp-caps">
-          <Bracket />
-          <Frame />
-          <Bolt className="hp-bolt-ml" turn={40} />
-          <Bolt className="hp-bolt-mr" turn={-15} />
-          {sign}
-        </h3>
-        <p className="hp-station-copy">{children}</p>
+    <div
+      className="rounded-xl glass p-2.5 animate-grad-fade-up"
+      style={{ animationDelay: `${delay}ms` }}
+    >
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0">
+          <p className="text-[10px] font-bold uppercase tracking-wide text-muted truncate">
+            {label}
+          </p>
+          <p className="mt-1 text-lg font-extrabold tracking-tight text-primary">
+            {n.toLocaleString()}
+            {unit && (
+              <span className="text-[11px] font-semibold text-secondary ml-0.5">{unit}</span>
+            )}
+          </p>
+        </div>
+        <div className={`h-8 w-8 rounded-lg ${iconBg} grid place-items-center shadow-md shrink-0`}>
+          <Icon size={15} className="text-white" />
+        </div>
       </div>
-      <div className={`hp-proof hp-proof-${proof}`}>
-        {aside}
-        {screen}
-      </div>
-    </li>
+    </div>
   );
 }
 
-/* ------------------------------------------------------------------ */
-/* Sample records for each station                                     */
-/* ------------------------------------------------------------------ */
-function PurchaseScreen() {
-  return (
-    <Screen title="Palay purchase · 7:42 AM">
-      <div className="hp-screen-body">
-        <dl className="hp-fields">
-          <div>
-            <dt>Supplier</dt>
-            <dd>R. Santos, San Isidro</dd>
-          </div>
-          <div>
-            <dt>Variety</dt>
-            <dd>RC 222 · Dry</dd>
-          </div>
-          <div>
-            <dt>Moisture</dt>
-            <dd>14.0%</dd>
-          </div>
-          <div>
-            <dt>Gross weight</dt>
-            <dd>2,450 kg</dd>
-          </div>
-          <div>
-            <dt>Tare: 49 sacks</dt>
-            <dd>49 kg</dd>
-          </div>
-          <div>
-            <dt>Net weight</dt>
-            <dd>2,401 kg</dd>
-          </div>
-          <div>
-            <dt>Price per cavan</dt>
-            <dd>₱1,150</dd>
-          </div>
-          <div>
-            <dt>Cavans</dt>
-            <dd>48.0</dd>
-          </div>
-        </dl>
-        <div className="hp-total">
-          <span>Amount to pay</span>
-          <b>₱55,223</b>
-        </div>
-        <p className="hp-stock-note">2,401 kg added to palay stock</p>
-      </div>
-    </Screen>
-  );
-}
-
-const SPLIT = [
-  { key: "bigas", label: "Bigas", kg: 1956 },
-  { key: "ipa", label: "Ipa", kg: 630 },
-  { key: "darak", label: "Darak", kg: 300 },
-  { key: "binlid", label: "Binlid", kg: 114 },
-];
-const BATCH_IN = SPLIT.reduce((s, p) => s + p.kg, 0);
-
-function MillingScreen() {
-  return (
-    <Screen title="Milling batch #128">
-      <div className="hp-screen-body">
-        <div className="hp-batch-head">
-          <span>
-            Palay in: <b>{peso(BATCH_IN)} kg</b> RC 222, 14% moisture
-          </span>
-          <span>Out, to scale</span>
-        </div>
-        <div
-          className="hp-split"
-          role="img"
-          aria-label="Out of 3,000 kg of palay: 1,956 kg bigas, 630 kg ipa, 300 kg darak, 114 kg binlid"
-        >
-          {SPLIT.map((p) => (
-            <div
-              key={p.key}
-              className={`s-${p.key}`}
-              style={{ width: `${(p.kg / BATCH_IN) * 100}%` }}
-            />
-          ))}
-        </div>
-        <ul className="hp-split-legend">
-          {SPLIT.map((p) => (
-            <li key={p.key}>
-              <i className={`s-${p.key}`} />
-              {p.label}
-              <b>{peso(p.kg)} kg</b>
-            </li>
-          ))}
-        </ul>
-        <div className="hp-recovery">
-          <b>65.2% recovery</b>
-          <span>Worked out for you: 1,956 kg of bigas from 3,000 kg of palay.</span>
-        </div>
-      </div>
-    </Screen>
-  );
-}
-
-const STOCK: { item: string; sub: string; kg: number; cavans: number | null }[] = [
-  { item: "Palay", sub: "RC 222", kg: 18450, cavans: 369 },
-  { item: "Palay", sub: "Dinorado", kg: 6200, cavans: 124 },
-  { item: "Bigas", sub: "Premium RC 222", kg: 9320, cavans: 186.4 },
-  { item: "Ipa", sub: "Rice hull", kg: 4100, cavans: null },
-  { item: "Darak", sub: "Rice bran", kg: 1850, cavans: null },
-  { item: "Binlid", sub: "Broken rice", kg: 640, cavans: null },
+const MOCK_NAV = [
+  { icon: LayoutDashboard, label: "Dashboard", active: true },
+  { icon: Wheat, label: "Paddy" },
+  { icon: Factory, label: "Milling" },
+  { icon: Package, label: "Inventory" },
+  { icon: ShoppingCart, label: "Sales" },
+  { icon: BarChart3, label: "Reports" },
+  { icon: Settings, label: "Settings" },
 ];
 
-function StockScreen() {
-  return (
-    <Screen title="Stock on hand">
-      <table className="hp-table">
-        <thead>
-          <tr>
-            <th>Item</th>
-            <th className="num">Stock (kg)</th>
-            <th className="num">Cavans</th>
-          </tr>
-        </thead>
-        <tbody>
-          {STOCK.map((s) => (
-            <tr key={s.item + s.sub}>
-              <td>
-                {s.item}
-                <small>{s.sub}</small>
-              </td>
-              <td className="num">{peso(s.kg)}</td>
-              <td className="num">{s.cavans == null ? "—" : s.cavans.toFixed(1)}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </Screen>
-  );
-}
-
-const SALES = [
-  { who: "J. Santos Trading", what: "50 sacks Premium", total: 87500, paid: 87500 },
-  { who: "Aling Nena Store", what: "20 sacks Regular", total: 31000, paid: 15000 },
-  { who: "Dela Cruz Bigasan", what: "35 sacks Premium", total: 61250, paid: 0 },
+const MOCK_ACTIVITY = [
+  {
+    icon: Wheat,
+    text: "Paddy intake: 2,400 kg from Brgy. San Isidro",
+    badge: "Procurement",
+    badgeClass: "badge-green",
+  },
+  {
+    icon: Factory,
+    text: "Milling run #128 finished, 65.2% recovery",
+    badge: "Milling",
+    badgeClass: "badge-violet",
+  },
+  {
+    icon: ShoppingCart,
+    text: "Sale: 50 sacks premium rice to J. Santos",
+    badge: "Sales",
+    badgeClass: "badge-cyan",
+  },
+  {
+    icon: Truck,
+    text: "Dispatch DR-0341 out for delivery",
+    badge: "Dispatch",
+    badgeClass: "badge-yellow",
+  },
 ];
 
-function SalesScreen() {
+function MockDashboard() {
   return (
-    <Screen title="Sales this week">
-      <table className="hp-table">
-        <thead>
-          <tr>
-            <th>Customer</th>
-            <th className="num">Total</th>
-            <th className="num hide-sm">Paid</th>
-            <th>Status</th>
-          </tr>
-        </thead>
-        <tbody>
-          {SALES.map((s) => {
-            const status = s.paid >= s.total ? "paid" : s.paid > 0 ? "part" : "unpaid";
-            return (
-              <tr key={s.who}>
-                <td>
-                  {s.who}
-                  <small>{s.what}</small>
-                </td>
-                <td className="num">₱{peso(s.total)}</td>
-                <td className="num hide-sm">₱{peso(s.paid)}</td>
-                <td>
-                  <span className={`hp-badge hp-badge-${status}`}>
-                    {status === "paid" ? "Paid" : status === "part" ? "Partial" : "Unpaid"}
+    <div className="hp-stage relative w-full" aria-hidden>
+      {/* Local keyframes: cinematic intro, looping graphs + feed */}
+      <style>{`
+        @keyframes hpDrawLine {
+          0%        { stroke-dashoffset: 480; opacity: 0; }
+          6%        { opacity: 1; }
+          40%       { stroke-dashoffset: 0; opacity: 1; }
+          90%       { stroke-dashoffset: 0; opacity: 1; }
+          100%      { stroke-dashoffset: 480; opacity: 0; }
+        }
+        @keyframes hpFillFade {
+          0%, 32%   { opacity: 0; }
+          46%, 88%  { opacity: 1; }
+          100%      { opacity: 0; }
+        }
+        @keyframes hpBarGrow {
+          0%        { transform: scaleY(0); }
+          18%       { transform: scaleY(1); }
+          82%       { transform: scaleY(1); }
+          100%      { transform: scaleY(0); }
+        }
+        @keyframes hpRowLoop {
+          0%, 4%   { opacity: 0; transform: translateY(6px); }
+          8%, 92%  { opacity: 1; transform: translateY(0); }
+          96%, 100%{ opacity: 0; transform: translateY(-4px); }
+        }
+        @keyframes hpPulse {
+          0%, 100% { opacity: 1; }
+          50%      { opacity: 0.35; }
+        }
+        /* Cinematic one-time entrance: the frame unfolds out of depth */
+        @keyframes hpAssemble {
+          0% {
+            opacity: 0;
+            transform: perspective(1400px) rotateX(13deg) rotateY(-22deg) translateZ(-160px) scale(0.9);
+            filter: blur(12px);
+          }
+          55% { opacity: 1; filter: blur(0); }
+          100% {
+            opacity: 1;
+            transform: perspective(1400px) rotateX(0deg) rotateY(0deg) translateZ(0) scale(1);
+            filter: blur(0);
+          }
+        }
+        /* Light glint sweeping across the glass as it locks into place */
+        @keyframes hpGlint {
+          0%   { opacity: 0; background-position: 175% 0; }
+          22%  { opacity: 1; }
+          100% { opacity: 0; background-position: -65% 0; }
+        }
+        @keyframes hpFloat {
+          0%, 100% { transform: translateY(0); }
+          50%      { transform: translateY(-6px); }
+        }
+        .hp-assemble {
+          animation: hpAssemble 1.15s cubic-bezier(0.16, 1, 0.3, 1) 0.1s both;
+        }
+        .hp-float { animation: hpFloat 4s ease-in-out 1.3s infinite both; }
+        .hp-glint {
+          position: absolute;
+          inset: 0;
+          z-index: 5;
+          pointer-events: none;
+          background: linear-gradient(
+            105deg,
+            transparent 32%,
+            rgba(255, 255, 255, 0.6) 48%,
+            transparent 62%
+          );
+          background-size: 250% 100%;
+          background-position: 175% 0;
+          opacity: 0;
+          mix-blend-mode: overlay;
+          animation: hpGlint 1.2s ease-out 0.95s 1 both;
+        }
+        .hp-line {
+          stroke-dasharray: 480;
+          animation: hpDrawLine 6s ease-in-out 0.5s infinite both;
+        }
+        .hp-fill { animation: hpFillFade 6s ease-in-out 0.5s infinite both; }
+        .hp-bar {
+          transform-origin: bottom;
+          animation: hpBarGrow 6s cubic-bezier(0.22, 1, 0.36, 1) infinite both;
+        }
+        .hp-row { animation: hpRowLoop 12s ease-in-out infinite both; }
+        .hp-pulse { animation: hpPulse 2s ease-in-out infinite; }
+
+        @media (prefers-reduced-motion: reduce) {
+          .hp-assemble { animation: none; opacity: 1; transform: none; filter: none; }
+          .hp-glint    { animation: none; opacity: 0; }
+          .hp-float    { animation: none; }
+          .hp-line     { animation: none; stroke-dashoffset: 0; }
+          .hp-fill     { animation: none; opacity: 1; }
+          .hp-bar      { animation: none; transform: none; }
+          .hp-row      { animation: none; opacity: 1; transform: none; }
+          .hp-pulse    { animation: none; }
+        }
+      `}</style>
+
+      <div className="hp-assemble">
+        <div className="hp-float relative">
+          {/* Browser frame */}
+          <div className="relative rounded-2xl glass-strong shadow-2xl overflow-hidden ring-1 ring-black/5 dark:ring-white/10">
+            <div className="hp-glint" />
+            <div className="flex items-center gap-2 px-4 py-2.5 border-b border-soft">
+              <span className="h-2.5 w-2.5 rounded-full bg-rose-400" />
+              <span className="h-2.5 w-2.5 rounded-full bg-amber-400" />
+              <span className="h-2.5 w-2.5 rounded-full bg-emerald-400" />
+              <div className="ml-3 flex-1 max-w-[260px] rounded-md bg-slate-500/10 px-3 py-1 text-[10px] text-muted truncate">
+                app.ricemillsystem.com/dashboard
+              </div>
+              <span className="ml-auto inline-flex items-center gap-1.5 text-[10px] font-semibold text-emerald-600 dark:text-emerald-400">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 hp-pulse" /> Live
+              </span>
+            </div>
+
+            <div className="flex">
+              {/* Mini sidebar */}
+              <div className="hidden sm:flex w-36 shrink-0 flex-col gap-1 border-r border-soft p-2.5">
+                <div className="flex items-center gap-1.5 px-1.5 pb-2">
+                  <div className="h-5 w-5 rounded-md bg-grad-brand grid place-items-center">
+                    <Wheat size={11} className="text-white" />
+                  </div>
+                  <span className="text-[10px] font-extrabold text-primary truncate">
+                    Rice Mill 1
                   </span>
-                </td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
-    </Screen>
+                </div>
+                {MOCK_NAV.map((item, i) => (
+                  <div
+                    key={item.label}
+                    className={`flex items-center gap-2 rounded-lg px-2 py-1.5 text-[10px] font-medium animate-grad-fade-up ${
+                      item.active ? "bg-grad-brand text-white shadow-md" : "text-secondary"
+                    }`}
+                    style={{ animationDelay: `${150 + i * 90}ms` }}
+                  >
+                    <item.icon size={11} />
+                    {item.label}
+                  </div>
+                ))}
+              </div>
+
+              {/* Main panel */}
+              <div className="flex-1 p-3 space-y-2 min-w-0">
+                {/* Ribbon */}
+                <div
+                  className="relative overflow-hidden rounded-xl p-2.5 animate-grad-fade-up"
+                  style={{ animationDelay: "100ms" }}
+                >
+                  <div className="absolute inset-0 bg-grad-brand-anim opacity-95" />
+                  <div className="relative text-white">
+                    <p className="text-[10px] font-bold uppercase tracking-wide opacity-90 inline-flex items-center gap-1">
+                      <Sparkles size={10} /> Today at a glance
+                    </p>
+                    <p className="text-sm font-extrabold mt-0.5">Good morning, Rice Mill 1 👋</p>
+                  </div>
+                </div>
+
+                {/* Stats */}
+                <div className="grid grid-cols-2 gap-2.5">
+                  <MockStat
+                    label="Paddy stock"
+                    value={18450}
+                    unit="kg"
+                    icon={Wheat}
+                    iconBg="bg-gradient-to-br from-emerald-400 to-emerald-600"
+                    delay={300}
+                  />
+                  <MockStat
+                    label="Milled rice"
+                    value={9320}
+                    unit="kg"
+                    icon={Boxes}
+                    iconBg="bg-gradient-to-br from-violet-400 to-violet-600"
+                    delay={450}
+                  />
+                  <MockStat
+                    label="Sales today"
+                    value={42800}
+                    unit="₱"
+                    icon={CircleDollarSign}
+                    iconBg="bg-gradient-to-br from-cyan-400 to-cyan-600"
+                    delay={600}
+                  />
+                  <MockStat
+                    label="Net profit"
+                    value={12640}
+                    unit="₱"
+                    icon={TrendingUp}
+                    iconBg="bg-gradient-to-br from-amber-400 to-amber-600"
+                    delay={750}
+                  />
+                </div>
+
+                {/* Chart + bars */}
+                <div className="grid grid-cols-5 gap-2.5">
+                  <div
+                    className="col-span-3 rounded-xl glass p-3 animate-grad-fade-up"
+                    style={{ animationDelay: "500ms" }}
+                  >
+                    <p className="text-[10px] font-bold uppercase tracking-wide text-muted mb-1.5">
+                      Revenue, last 7 days
+                    </p>
+                    <svg viewBox="0 0 220 70" className="w-full h-12" preserveAspectRatio="none">
+                      <defs>
+                        <linearGradient id="hpGrad" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor="#10b981" stopOpacity="0.35" />
+                          <stop offset="100%" stopColor="#10b981" stopOpacity="0" />
+                        </linearGradient>
+                        <linearGradient id="hpStroke" x1="0" y1="0" x2="1" y2="0">
+                          <stop offset="0%" stopColor="#10b981" />
+                          <stop offset="55%" stopColor="#06b6d4" />
+                          <stop offset="100%" stopColor="#8b5cf6" />
+                        </linearGradient>
+                      </defs>
+                      <path
+                        className="hp-fill"
+                        d="M0,55 C20,50 35,38 55,40 C75,42 90,26 110,28 C130,30 145,14 165,18 C185,22 205,10 220,8 L220,70 L0,70 Z"
+                        fill="url(#hpGrad)"
+                      />
+                      <path
+                        className="hp-line"
+                        d="M0,55 C20,50 35,38 55,40 C75,42 90,26 110,28 C130,30 145,14 165,18 C185,22 205,10 220,8"
+                        fill="none"
+                        stroke="url(#hpStroke)"
+                        strokeWidth="2.5"
+                        strokeLinecap="round"
+                      />
+                    </svg>
+                  </div>
+                  <div
+                    className="col-span-2 rounded-xl glass p-3 animate-grad-fade-up"
+                    style={{ animationDelay: "650ms" }}
+                  >
+                    <p className="text-[10px] font-bold uppercase tracking-wide text-muted mb-1.5">
+                      Milling recovery
+                    </p>
+                    <div className="flex items-end justify-between gap-1.5 h-12">
+                      {[62, 48, 70, 55, 78, 64, 88].map((h, i) => (
+                        <div
+                          key={i}
+                          className="hp-bar flex-1 rounded-t-md bg-grad-brand"
+                          style={{ height: `${h}%`, animationDelay: `${900 + i * 120}ms` }}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Looping activity feed */}
+                <div
+                  className="rounded-xl glass p-2.5 animate-grad-fade-up"
+                  style={{ animationDelay: "800ms" }}
+                >
+                  <p className="text-[10px] font-bold uppercase tracking-wide text-muted mb-2">
+                    Recent activity
+                  </p>
+                  <div className="space-y-1">
+                    {MOCK_ACTIVITY.map((a, i) => (
+                      <div
+                        key={i}
+                        className="hp-row flex items-center gap-2"
+                        style={{ animationDelay: `${1200 + i * 700}ms` }}
+                      >
+                        <div className="h-6 w-6 rounded-md bg-slate-500/10 grid place-items-center shrink-0">
+                          <a.icon size={12} className="text-secondary" />
+                        </div>
+                        <p className="text-[10px] text-secondary truncate flex-1">{a.text}</p>
+                        <span
+                          className={`${a.badgeClass} hidden md:inline-flex !text-[9px] !px-1.5 !py-0.5`}
+                        >
+                          {a.badge}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Glow under the frame */}
+          <div className="absolute -inset-x-8 -bottom-10 h-24 bg-grad-brand opacity-20 blur-3xl rounded-full pointer-events-none" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Feature grid                                                        */
+/* ------------------------------------------------------------------ */
+const FEATURES = [
+  {
+    icon: Wheat,
+    title: "Paddy procurement",
+    desc: "Record paddy intake from farmers and traders with weights, moisture, and pricing, every kilo accounted for.",
+    iconBg: "bg-gradient-to-br from-emerald-400 to-emerald-600",
+  },
+  {
+    icon: Factory,
+    title: "Milling runs",
+    desc: "Track each milling batch from paddy to rice, with recovery rates and by-products computed automatically.",
+    iconBg: "bg-gradient-to-br from-violet-400 to-violet-600",
+  },
+  {
+    icon: Package,
+    title: "Inventory",
+    desc: "Live stock levels for paddy, milled rice, and by-products. Know exactly what's in the warehouse at all times.",
+    iconBg: "bg-gradient-to-br from-cyan-400 to-cyan-600",
+  },
+  {
+    icon: ShoppingCart,
+    title: "Sales & dispatch",
+    desc: "Issue sales, generate delivery records, and follow every dispatch from the mill gate to the customer.",
+    iconBg: "bg-gradient-to-br from-amber-400 to-amber-600",
+  },
+  {
+    icon: Wallet,
+    title: "Expenses & P&L",
+    desc: "Log operating costs and see revenue, cost of goods, and net profit roll up into a clear monthly P&L.",
+    iconBg: "bg-gradient-to-br from-rose-400 to-rose-600",
+  },
+  {
+    icon: BarChart3,
+    title: "Reports",
+    desc: "Production, sales, and financial reports ready when you need them, no spreadsheets required.",
+    iconBg: "bg-gradient-to-br from-sky-400 to-sky-600",
+  },
+  {
+    icon: Users,
+    title: "Team & roles",
+    desc: "Give your accountant, cashier, encoder, and operators their own logins with just the access they need.",
+    iconBg: "bg-gradient-to-br from-indigo-400 to-indigo-600",
+  },
+  {
+    icon: ShieldCheck,
+    title: "Secure by default",
+    desc: "Sign in with Google, optional two-factor authentication, and your mill's data kept fully separate.",
+    iconBg: "bg-gradient-to-br from-teal-400 to-teal-600",
+  },
+];
+
+/* ------------------------------------------------------------------ */
+/* Scroll-reveal primitives — fire once when the element enters view   */
+/* ------------------------------------------------------------------ */
+function useInView<T extends HTMLElement>() {
+  const ref = useRef<T | null>(null);
+  const [inView, setInView] = useState(false);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    if (typeof IntersectionObserver === "undefined") {
+      setInView(true);
+      return;
+    }
+    const obs = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setInView(true);
+          obs.disconnect();
+        }
+      },
+      { threshold: 0.15, rootMargin: "0px 0px -8% 0px" },
+    );
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, []);
+  return { ref, inView };
+}
+
+function Reveal({
+  children,
+  className = "",
+  delay = 0,
+}: {
+  children: React.ReactNode;
+  className?: string;
+  delay?: number;
+}) {
+  const { ref, inView } = useInView<HTMLDivElement>();
+  return (
+    <div
+      ref={ref}
+      className={`hp-reveal ${inView ? "hp-reveal-in" : ""} ${className}`}
+      style={delay ? { transitionDelay: `${delay}ms` } : undefined}
+    >
+      {children}
+    </div>
+  );
+}
+
+function FeatureCard({ f, index }: { f: (typeof FEATURES)[number]; index: number }) {
+  const { ref, inView } = useInView<HTMLDivElement>();
+  return (
+    <div
+      ref={ref}
+      className={`hp-reveal h-full ${inView ? "hp-reveal-in" : ""}`}
+      style={{ transitionDelay: `${(index % 4) * 60}ms` }}
+    >
+      <div className="card hp-card !p-5 h-full">
+        <div className={`h-11 w-11 rounded-xl ${f.iconBg} grid place-items-center shadow-md mb-4`}>
+          <f.icon size={20} className="text-white" />
+        </div>
+        <h3 className="font-bold text-primary">{f.title}</h3>
+        <p className="mt-1.5 text-sm text-secondary">{f.desc}</p>
+      </div>
+    </div>
   );
 }
 
@@ -366,196 +551,149 @@ export default function HomePage() {
     window.scrollTo(0, 0);
   }, []);
 
-  const boardRef = useRef<HTMLDivElement>(null);
-  const { shown, swinging } = usePlateSwaps(boardRef);
-  // A real buying board says which day its prices are for.
-  const today = new Date().toLocaleDateString("en-PH", { month: "short", day: "numeric" });
-
   // Block text selection / copy on the public landing page.
   const blockCopy = (e: React.SyntheticEvent) => e.preventDefault();
 
   return (
     <div
-      className="hp"
+      className="min-h-screen flex flex-col select-none"
       onCopy={blockCopy}
       onCut={blockCopy}
       onContextMenu={blockCopy}
       onDragStart={blockCopy}
     >
-      <header className="hp-header">
-        <div className="hp-wrap">
-          <Link to="/" className="hp-brand">
-            <img src={riceLogo} alt="" />
-            <span className="hp-caps">Oraiza</span>
-          </Link>
-          <nav className="hp-nav" aria-label="Account">
-            <Link to="/login" className="hp-textlink">
+      <style>{`
+        .hp-reveal {
+          opacity: 0;
+          transform: translateY(22px);
+          transition: opacity 640ms cubic-bezier(0.23, 1, 0.32, 1),
+                      transform 640ms cubic-bezier(0.23, 1, 0.32, 1);
+          will-change: opacity, transform;
+        }
+        .hp-reveal-in { opacity: 1; transform: none; }
+        @media (hover: hover) and (pointer: fine) {
+          .hp-card {
+            transition: transform 220ms cubic-bezier(0.23, 1, 0.32, 1),
+                        box-shadow 220ms cubic-bezier(0.23, 1, 0.32, 1);
+          }
+          .hp-card:hover { transform: translateY(-4px); }
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .hp-reveal { opacity: 1; transform: none; transition: opacity 200ms ease; }
+          .hp-card:hover { transform: none; }
+        }
+      `}</style>
+      {/* Header */}
+      <header className="sticky top-0 z-20 glass-strong border-b border-soft">
+        <div className="mx-auto max-w-6xl px-4 sm:px-6 h-16 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2.5">
+            <div className="h-9 w-9 rounded-xl bg-grad-brand grid place-items-center shadow-grad-glow">
+              <img
+                src={riceLogo}
+                alt="Oraiza"
+                className="h-full w-full object-contain brightness-0 invert"
+              />
+            </div>
+            <span className="text-lg font-bold tracking-tight text-primary">Oraiza</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <Link to="/login" className="btn-secondary !py-2">
               Log in
             </Link>
-            <Link to="/signup" className="hp-plate hp-plate-ink">
-              Open an account
+            <Link to="/signup" className="btn-primary !py-2">
+              Get started <ArrowRight size={16} />
             </Link>
-          </nav>
+          </div>
         </div>
       </header>
 
-      <main style={{ flex: 1 }}>
-        <section className="hp-hero">
-          <div className="hp-wrap">
-            <div className="hp-board" ref={boardRef}>
-              <Frame />
-              <Bolts />
-              <div className="hp-hero-grid">
-                <div>
-                  <h1 className="hp-headline hp-caps">
-                    <span>Palay in.</span> <span>Bigas out.</span>{" "}
-                    <span>Every kilo on the books.</span>
-                  </h1>
-                  <p className="hp-lede">
-                    Your board out front tells farmers today's price.{" "}
-                    <strong>Oraiza keeps the books behind it:</strong> every weigh-in, every milling
-                    batch, what's in the bodega, what you sold, and who still owes you.
-                  </p>
-                  <div className="hp-actions">
-                    <Link to="/signup" className="hp-plate hp-plate-red">
-                      Open your mill's account <ArrowRight size={20} strokeWidth={2.5} />
-                    </Link>
-                    <Link to="/login" className="hp-textlink">
-                      Log in
-                    </Link>
-                  </div>
-                  <p className="hp-fineprint">Free for one branch and up to 3 users.</p>
-                </div>
-
-                <span className="hp-divider" aria-hidden="true" />
-
-                <div className="hp-prices">
-                  <h2 className="hp-prices-title hp-caps">
-                    Buying palay
-                    <small>
-                      <span>Sample prices</span> · <span>{today}</span> ·{" "}
-                      <span>1 cavan = 50 kg</span>
-                    </small>
-                  </h2>
-                  <ul className="hp-price-rows">
-                    {PRICES.map((p, i) => (
-                      <li className="hp-price-row" key={p.variety + p.kind}>
-                        <span className="hp-variety hp-caps">
-                          {p.variety}
-                          <em>{p.kind}</em>
-                        </span>
-                        <span className="hp-hang">
-                          <span
-                            className={`hp-numplate hp-cond${swinging === i ? " is-swinging" : ""}`}
-                          >
-                            <Hook side="l" />
-                            <Hook side="r" />
-                            <span className="hp-peso">₱</span>
-                            {peso(p.values[shown[i]])}
-                          </span>
-                          <span className="hp-unit">/cavan</span>
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
-                  <p className="hp-board-note">
-                    The price changes every morning. Oraiza keeps each day's price with each
-                    delivery.
-                  </p>
-                </div>
+      {/* Hero */}
+      <main className="flex-1">
+        <section className="mx-auto max-w-6xl px-4 sm:px-6 pt-14 lg:pt-20 pb-16">
+          <div className="grid lg:grid-cols-[1fr_1.25fr] gap-10 items-center">
+            <div className="animate-grad-fade-up">
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full glass text-xs font-bold uppercase tracking-wide text-secondary mb-5">
+                <Sparkles size={12} className="text-emerald-500" />
+                Built for rice mills
               </div>
-            </div>
-          </div>
-        </section>
-
-        <section className="hp-path" aria-labelledby="hp-path">
-          <div className="hp-wrap">
-            <h2 id="hp-path" className="hp-path-title hp-caps">
-              The books behind the board
-            </h2>
-            <p className="hp-path-lede">
-              Follow one delivery of palay through the mill, from the scale to the office. The
-              screens below are Oraiza, filled with sample data.
-            </p>
-
-            <ol className="hp-route">
-              <Station id="hp-weigh" sign="Weigh-in" proof="mid" screen={<PurchaseScreen />}>
-                A farmer's truck comes in. Record the weight, the sacks, the moisture and your price
-                per cavan. <strong>Oraiza works out the net, the cavans and the amount</strong>, and
-                adds the palay to your stock.
-              </Station>
-              <Station id="hp-mill" sign="Milling" proof="wide" screen={<MillingScreen />}>
-                Enter what went into the mill and what came out.{" "}
-                <strong>Oraiza works out the recovery</strong>, and the bigas, ipa, darak and binlid
-                go straight into the bodega count, ready to sell.
-              </Station>
-              <Station id="hp-bodega" sign="Bodega" proof="narrow" screen={<StockScreen />}>
-                Know what's in the bodega without walking over to count sacks. Every purchase,
-                milling batch and sale moves the count, <strong>so the figure is today's</strong>,
-                not last week's.
-              </Station>
-              <Station
-                id="hp-office"
-                sign="Office"
-                proof="split"
-                screen={<SalesScreen />}
-                aside={
-                  <ul className="hp-roles" aria-label="Who logs in">
-                    <li>
-                      <b>Boss</b>
-                      <span>Sees everything and decides what each login can open.</span>
-                    </li>
-                    <li>
-                      <b>Your staff</b>
-                      <span>
-                        Cashier, encoder, accountant, mill operator: each gets their own login, with
-                        only the pages you allow.
-                      </span>
-                    </li>
-                  </ul>
-                }
-              >
-                See what you sold, what's been paid, and <strong>who still owes you</strong>.
-                Expenses and reports add up to your monthly profit and loss.
-              </Station>
-            </ol>
-          </div>
-        </section>
-
-        <section className="hp-close" aria-labelledby="hp-start">
-          <div className="hp-wrap">
-            <div className="hp-board">
-              <Frame />
-              <Bolts />
-              <h2 id="hp-start" className="hp-caps">
-                Start with tomorrow's first delivery.
-              </h2>
-              <p>
-                Setting up takes a few minutes. It's free for one branch and up to 3 users; add
-                staff and branches when you need them.
+              <h1 className="text-4xl lg:text-5xl font-extrabold tracking-tight text-primary leading-[1.1]">
+                Run your rice mill, <span className="text-grad-brand">from paddy to profit.</span>
+              </h1>
+              <p className="mt-5 text-lg text-secondary max-w-lg">
+                One simple system for procurement, milling, inventory, sales, and reports, so you
+                always know what's in the warehouse and what's on the books.
               </p>
-              <div className="hp-actions">
-                <Link to="/signup" className="hp-plate hp-plate-red">
-                  Open your mill's account <ArrowRight size={20} strokeWidth={2.5} />
+              <div className="mt-8 flex flex-wrap items-center gap-3">
+                <Link to="/signup" className="btn-primary !px-6 !py-3 text-base">
+                  Create your mill's account <ArrowRight size={18} />
                 </Link>
-                <Link to="/login" className="hp-textlink">
+                <Link to="/login" className="btn-secondary !px-6 !py-3 text-base">
                   Log in
                 </Link>
               </div>
             </div>
+
+            <MockDashboard />
           </div>
+        </section>
+
+        {/* Features */}
+        <section className="mx-auto max-w-6xl px-4 sm:px-6 pb-20">
+          <Reveal className="text-center max-w-2xl mx-auto mb-10">
+            <h2 className="text-3xl font-extrabold tracking-tight text-primary">
+              Everything your mill needs, in one place
+            </h2>
+            <p className="mt-3 text-secondary">
+              Replace the notebooks and scattered spreadsheets with a single source of truth for
+              daily operations.
+            </p>
+          </Reveal>
+          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {FEATURES.map((f, i) => (
+              <FeatureCard key={f.title} f={f} index={i} />
+            ))}
+          </div>
+        </section>
+
+        {/* CTA band */}
+        <section className="mx-auto max-w-6xl px-4 sm:px-6 pb-20">
+          <Reveal className="relative overflow-hidden rounded-3xl p-10 lg:p-14 text-center">
+            <div className="absolute inset-0 bg-grad-brand-anim opacity-95" />
+            <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_rgba(255,255,255,0.2),_transparent_55%)]" />
+            <div className="relative text-white">
+              <h2 className="text-3xl font-extrabold tracking-tight">
+                Ready to modernize your mill?
+              </h2>
+              <p className="mt-3 text-white/90 max-w-xl mx-auto">
+                Set up your account in minutes and start tracking your first paddy intake today.
+              </p>
+              <Link
+                to="/signup"
+                className="mt-7 inline-flex items-center gap-2 rounded-xl bg-white px-6 py-3 font-bold text-slate-900 shadow-lg hover:scale-[1.02] active:scale-[0.98] transition-transform"
+              >
+                Get started for free <ArrowRight size={18} />
+              </Link>
+            </div>
+          </Reveal>
         </section>
       </main>
 
-      <footer className="hp-footer">
-        <div className="hp-wrap">
+      {/* Footer */}
+      <footer className="border-t border-soft py-6">
+        <div className="mx-auto max-w-6xl px-4 sm:px-6 flex flex-col sm:flex-row items-center justify-between gap-3 text-sm text-muted">
           <span>© {new Date().getFullYear()} Oraiza by K Systematics</span>
-          {/* The agreements a visitor is about to be bound by, reachable before
-              they ever create an account. */}
-          <nav aria-label="Legal">
-            <Link to="/legal/terms">Terms</Link>
-            <Link to="/legal/privacy">Privacy</Link>
-          </nav>
+          {/* Login/Signup already have prominent buttons in the nav and the
+              CTA sections above; this slot is more useful as the agreements a
+              visitor is about to be bound by, reachable before they ever
+              create an account. */}
+          <div className="flex flex-wrap items-center justify-center gap-4">
+            <Link to="/legal/terms" className="hover:text-primary transition-colors">
+              Terms
+            </Link>
+            <Link to="/legal/privacy" className="hover:text-primary transition-colors">
+              Privacy
+            </Link>
+          </div>
         </div>
       </footer>
     </div>
