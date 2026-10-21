@@ -30,6 +30,16 @@ function filenameFrom(headers: Record<string, unknown>, fallback: string): strin
   return /filename="([^"]+)"/.exec(disposition)?.[1] ?? fallback;
 }
 
+/** FileReader rather than blob.text(), which the tests' DOM (jsdom) lacks. */
+function blobText(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = () => reject(reader.error);
+    reader.readAsText(blob);
+  });
+}
+
 /** A file download asks for a Blob, so a refusal's JSON arrives as one too and
  *  the server's reason (`detail`) would be lost behind a generic message. Read
  *  it back into JSON before the error goes on. */
@@ -39,7 +49,7 @@ async function blobRefusalsAsJson<T>(request: Promise<T>): Promise<T> {
   } catch (e) {
     if (isAxiosError(e) && e.response?.data instanceof Blob) {
       try {
-        e.response.data = JSON.parse(await e.response.data.text());
+        e.response.data = JSON.parse(await blobText(e.response.data));
       } catch {
         // Not JSON: the error stays as it came.
       }
