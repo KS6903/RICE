@@ -5,9 +5,10 @@ Every endpoint requires is_platform_admin (enforced by the DI factory).
 
 import uuid
 
-from fastapi import APIRouter, Depends, Response, status
+from fastapi import APIRouter, Depends, File, Form, Request, Response, UploadFile, status
 from sqlalchemy.orm import Session
 
+from ..core.config import settings
 from ..core.database import get_db
 from ..core.ratelimit import limiter
 from ..core.security import require_platform_admin
@@ -24,6 +25,7 @@ from ..schemas.admin import (
     UpgradeRequestResolution,
 )
 from ..services.admin_service import AdminService
+from .data_backup import check_upload_size
 
 router = APIRouter()
 
@@ -123,6 +125,43 @@ def get_tenant_activity(tenant_id: uuid.UUID, svc: AdminService = Depends(get_ad
 def get_tenant_legal_acceptances(tenant_id: uuid.UUID, svc: AdminService = Depends(get_admin_service)):
     """Read-only: the tenant's agreement-acceptance ledger, for the platform's records."""
     return svc.get_tenant_legal_acceptances(tenant_id)
+
+
+@router.get("/tenants/{tenant_id}/backup/status")
+def get_tenant_backup_status(tenant_id: uuid.UUID, svc: AdminService = Depends(get_admin_service)):
+    """Whether the tenant is empty, so a backup can be loaded into it."""
+    return svc.backup_status(tenant_id)
+
+
+@router.post("/tenants/{tenant_id}/backup/inspect")
+@limiter.limit(settings.RATE_LIMIT_DATA_RESTORE)
+def inspect_tenant_backup(
+    request: Request,
+    tenant_id: uuid.UUID,
+    file: UploadFile = File(...),
+    email: str | None = Form(default=None, max_length=100),
+    svc: AdminService = Depends(get_admin_service),
+):
+    """What a backup holds and whether it would load into this tenant. Changes
+    nothing. ``email`` is what the file was made for: the tenant Boss's own when
+    left out."""
+    check_upload_size(file)
+    return svc.inspect_backup(tenant_id, file.file, email)
+
+
+@router.post("/tenants/{tenant_id}/backup/restore")
+@limiter.limit(settings.RATE_LIMIT_DATA_RESTORE)
+def restore_tenant_backup(
+    request: Request,
+    tenant_id: uuid.UUID,
+    file: UploadFile = File(...),
+    email: str | None = Form(default=None, max_length=100),
+    svc: AdminService = Depends(get_admin_service),
+):
+    """Load a backup into this empty tenant, without the owner's checks
+    (data_backup.restore_as_admin). All or nothing."""
+    check_upload_size(file)
+    return svc.restore_backup(tenant_id, file.file, email)
 
 
 @router.put("/tenants/{tenant_id}/active")

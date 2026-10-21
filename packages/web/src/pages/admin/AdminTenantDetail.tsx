@@ -1,4 +1,5 @@
 import { ProvisioningBadge, ProvisioningPanel } from "../../components/admin/Provisioning";
+import TenantBackupLoad from "../../components/admin/TenantBackupLoad";
 import { useEffect, useRef, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useParams, Link } from "react-router-dom";
@@ -931,6 +932,8 @@ export default function AdminTenantDetail() {
               </tbody>
             </table>
           </div>
+
+          <TenantBackupLoad tenantId={id!} tenantName={c.name} />
 
           <div className="card">
             <h3 className="font-semibold text-primary mb-1">Activity log</h3>

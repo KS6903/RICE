@@ -74,6 +74,9 @@ A mill's accounts have one of six roles: **Boss** (`owner`), **Admin**, **Accoun
   fingerprint of the exact text they were shown, how (at sign-up or at sign-in), when and from
   which IP, plus anyone who hasn't accepted the current version. It's read-only, and the runtime
   database role can't change or delete its rows.
+- **Load a backup** into an empty tenant from its page. There are no owner's checks (confirmed
+  email, new login, password, plan branches). Enter the email of the owner who downloaded it, or
+  keep the Boss's email that's filled in. The records then belong to the tenant's Boss.
 - **All users:** search across every mill, and give a locked-out Boss a temporary password.
 - **Upgrade requests** and **plans**.
 

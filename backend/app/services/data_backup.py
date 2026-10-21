@@ -98,7 +98,7 @@ from ..core.security import get_user_features, verify_password
 from ..core.tenancy import PUBLIC_TABLE_NAMES, tenant_tables, valid_schema_name
 from ..models.company import Branch, Company
 from ..models.subscription import Subscription
-from ..models.user import User
+from ..models.user import Role, User
 from .data_export import _slug
 
 MAGIC = b"\x89ORAIZA\n"
@@ -680,10 +680,13 @@ def _live(branch: dict) -> bool:
     return branch.get("deleted_at") is None
 
 
-def _plan_branches(db: Session, company: Company, owner: User, manifest: dict) -> tuple[dict, list[dict]]:
+def _plan_branches(
+    db: Session, company: Company, owner: User, manifest: dict, *, enforce_limit: bool = True
+) -> tuple[dict, list[dict]]:
     """Which of the account's branches each of the backup's becomes, and which
     to create. The old main branch becomes the account's main branch. Refuses
-    when the plan has no room for the rest."""
+    when the plan has no room for the rest, unless ``enforce_limit`` is off
+    (the platform admin, who sets the plan)."""
     current = db.scalars(select(Branch).where(Branch.company_id == company.id)).all()
     by_id = {b.id: b for b in current}
     live_now = [b for b in current if b.deleted_at is None]
@@ -699,6 +702,8 @@ def _plan_branches(db: Session, company: Company, owner: User, manifest: dict) -
         else:
             create.append(branch)
 
+    if not enforce_limit:
+        return mapping, create
     total = len(live_now) + sum(1 for b in create if _live(b))
     allowed = None
     if "multi_branch" not in get_user_features(owner, db):
@@ -723,15 +728,19 @@ def _plan_branches(db: Session, company: Company, owner: User, manifest: dict) -
 def inspect(db: Session, company: Company, owner: User, file: IO[bytes]) -> Summary:
     """Check that the backup would load here, reading the whole file, and say
     what it holds. Writes nothing."""
-    email = check_owner(owner)
+    return _inspect(db, company, owner, file, check_owner(owner), as_owner=True)
+
+
+def _inspect(db: Session, company: Company, owner: User, file: IO[bytes], email: str, *, as_owner: bool) -> Summary:
     _require_empty(db, company)
     manifest: dict = {}
     rows = tables = 0
     for event in _events(file, email):
         if event[0] == "manifest":
             manifest = event[1]
-            _require_new_username(owner, manifest)
-            _plan_branches(db, company, owner, manifest)
+            if as_owner:
+                _require_new_username(owner, manifest)
+            _plan_branches(db, company, owner, manifest, enforce_limit=as_owner)
         elif event[0] == "table":
             tables += 1
         elif event[0] == "row":
@@ -856,7 +865,15 @@ def restore(db: Session, company: Company, owner: User, file: IO[bytes], *, pass
     Doesn't commit: the caller commits on success and rolls back on any error,
     which leaves the account exactly as it was. ``db`` must be scoped to
     ``company``'s schema."""
-    email = check_owner(owner)
+    return _restore(db, company, owner, file, check_owner(owner), password=password)
+
+
+def _restore(
+    db: Session, company: Company, owner: User, file: IO[bytes], email: str, *, password: str | None
+) -> Summary:
+    """The load itself. ``password`` is None for the platform admin, which also
+    skips the owner's checks (new login, plan limit); see restore_as_admin."""
+    as_owner = password is not None
     schema = _require_scope(db, company)
     _require_empty(db, company)  # before reading a byte: the cheap answer first
     options = _in_schema(schema)
@@ -865,12 +882,13 @@ def restore(db: Session, company: Company, owner: User, file: IO[bytes], *, pass
     events = _events(file, email)
     # The first segment and the manifest are checked before anything changes.
     _, manifest = next(events)
-    _require_new_username(owner, manifest)
-    _require_new_password(db, manifest, password)
+    if as_owner:
+        _require_new_username(owner, manifest)
+        _require_new_password(db, manifest, password or "")
 
     _lock(db, schema, tables)
     _require_empty(db, company)  # again, now that nobody else can write
-    branches, create = _plan_branches(db, company, owner, manifest)
+    branches, create = _plan_branches(db, company, owner, manifest, enforce_limit=as_owner)
     for branch in create:
         made = Branch(
             company_id=company.id,
@@ -927,3 +945,67 @@ def restore(db: Session, company: Company, owner: User, file: IO[bytes], *, pass
     except (IntegrityError, DataError):
         raise BackupError(DOESNT_FIT, "backup_doesnt_fit") from None
     return _summary(manifest, rows, len(seen))
+
+
+# ── loading one as the platform admin ─────────────────────────────────────────
+#
+# BossAdmin loads a backup into an empty tenant without the owner's checks: the
+# account's email needn't be confirmed or match, there's no new username or
+# password to insist on (nobody signs in as the old owner here), and no branch
+# limit (the admin sets the plan). What stays: the tenant must be empty, and
+# the file must open, whole and unchanged, for the email it was made for.
+# The backup's maker becomes the tenant's Boss.
+
+ADMIN_NO_EMAIL = "Enter the email address of the owner who downloaded the backup: the file opens only for it."
+ADMIN_NO_BOSS = "This tenant has no Boss login to own the records. Restore the Boss first, then load the backup."
+ADMIN_NOT_YOURS = (
+    "This backup doesn't open for that email address, or it was changed after it was downloaded. "
+    "Enter the email of the owner who downloaded it."
+)
+ADMIN_NOT_EMPTY = "This tenant already has records of its own. A backup loads only into an empty tenant."
+_ADMIN_WORDS = {"backup_not_yours": ADMIN_NOT_YOURS, "backup_not_empty": ADMIN_NOT_EMPTY}
+
+
+def tenant_boss(db: Session, company: Company) -> User | None:
+    """The tenant's Boss: its first active owner login."""
+    return db.scalars(
+        select(User)
+        .join(Role, User.role_id == Role.id)
+        .where(User.company_id == company.id, Role.name == "owner", User.is_active.is_(True))
+        .order_by(User.created_at)
+    ).first()
+
+
+def _for_admin(db: Session, company: Company, email: str | None) -> tuple[User, str]:
+    boss = tenant_boss(db, company)
+    if boss is None:
+        raise BackupError(ADMIN_NO_BOSS, "backup_no_owner")
+    address = (email or "").strip().lower() or owner_email(boss)
+    if not address:
+        raise BackupError(ADMIN_NO_EMAIL, "backup_no_email")
+    return boss, address
+
+
+def _in_admin_words(error: BackupError) -> BackupError:
+    words = _ADMIN_WORDS.get(error.code)
+    return BackupError(words, error.code) if words else error
+
+
+def inspect_as_admin(db: Session, company: Company, file: IO[bytes], *, email: str | None) -> Summary:
+    """inspect, for the platform admin. ``email`` is what the file was made for;
+    the tenant Boss's own when left out. Writes nothing."""
+    try:
+        boss, address = _for_admin(db, company, email)
+        return _inspect(db, company, boss, file, address, as_owner=False)
+    except BackupError as e:
+        raise _in_admin_words(e) from None
+
+
+def restore_as_admin(db: Session, company: Company, file: IO[bytes], *, email: str | None) -> tuple[Summary, User]:
+    """restore, for the platform admin; returns the summary and the Boss who now
+    owns the records. Doesn't commit, as restore."""
+    try:
+        boss, address = _for_admin(db, company, email)
+        return _restore(db, company, boss, file, address, password=None), boss
+    except BackupError as e:
+        raise _in_admin_words(e) from None

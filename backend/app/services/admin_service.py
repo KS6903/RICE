@@ -10,9 +10,10 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime, timedelta, timezone
-from typing import Any
+from typing import IO, Any
 
 from sqlalchemy import func, true
+from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import Session
 
 from ..core import legal, provisioning
@@ -33,6 +34,7 @@ from ..repositories.billing import (
     SubscriptionRepository,
     UpgradeRequestRepository,
 )
+from ..services.activity import log_activity
 from ..services.activity_service import ActivityService
 from ..services.base import BaseService
 from ..services.legal_service import LegalService
@@ -45,7 +47,7 @@ from ..services.subscription import (
     resolve_pending_upgrade_requests,
     sweep_expired,
 )
-from . import platform_emails
+from . import data_backup, platform_emails
 
 ALLOWED_SUB_STATUSES = {"active", "trial", "past_due", "cancelled", "expired"}
 
@@ -587,6 +589,80 @@ class AdminService(BaseService):
             "message": f"Tenant '{company.name}' is now {'active' if data.is_active else 'inactive'}",
             "is_active": company.is_active,
         }
+
+    # ── loading a backup into an empty tenant ─────────────────────────────────
+    # Without the owner's checks (data_backup.restore_as_admin): the tenant must
+    # be empty, and the file must open for the email it was made for.
+
+    def _company(self, tenant_id: uuid.UUID) -> Company:
+        company = self.db.get(Company, tenant_id)
+        if not company:
+            raise NotFoundError("Tenant not found")
+        return company
+
+    def backup_status(self, tenant_id: uuid.UUID) -> dict:
+        """Whether the tenant could take a backup now, and the email a file
+        would be opened with unless the admin gives another."""
+        company = self._company(tenant_id)
+        with tenant_session(self.db, company) as ts:
+            boss = data_backup.tenant_boss(ts, company)
+            return {
+                "empty": data_backup.is_empty(ts, company),
+                "has_boss": boss is not None,
+                "owner_email": data_backup.owner_email(boss) if boss else None,
+            }
+
+    def inspect_backup(self, tenant_id: uuid.UUID, file: IO[bytes], email: str | None) -> dict:
+        company = self._company(tenant_id)
+        with tenant_session(self.db, company) as ts:
+            try:
+                return data_backup.inspect_as_admin(ts, company, file, email=email).as_dict()
+            except data_backup.BackupError as e:
+                raise BadRequestError(e.message, code=e.code) from None
+
+    def restore_backup(self, tenant_id: uuid.UUID, file: IO[bytes], email: str | None) -> dict:
+        """Load the backup into the empty tenant. All or nothing."""
+        company = self._company(tenant_id)
+        with tenant_session(self.db, company) as ts:
+            # Roll back before tenant_session resets the search_path, which a
+            # failed transaction would refuse.
+            try:
+                summary, boss = data_backup.restore_as_admin(ts, company, file, email=email)
+                log_activity(
+                    ts,
+                    company_id=company.id,
+                    user_id=self.current_user.id,
+                    action="data.restore",
+                    entity_type="company",
+                    entity_id=company.id,
+                    entity_label=company.name,
+                    detail=(
+                        f"The platform admin loaded {summary.rows} records from a backup of {summary.company}, "
+                        f"made on {summary.created_at[:10]} by {summary.created_by}"
+                    ),
+                )
+                ts.commit()
+            except data_backup.BackupError as e:
+                ts.rollback()
+                raise BadRequestError(e.message, code=e.code) from None
+            except OperationalError:
+                # Most often the lock wait: someone in the mill was saving a record.
+                ts.rollback()
+                raise ConflictError(
+                    "Someone in that mill was saving a record just then. Nothing was changed. Try again in a minute.",
+                    code="backup_busy",
+                ) from None
+            except BaseException:
+                ts.rollback()
+                raise
+        platform_emails.backup_restored_by_admin(
+            boss,
+            company=company.name,
+            source=summary.company,
+            rows=summary.rows,
+            made_at=summary.created_at[:10],
+        )
+        return summary.as_dict()
 
     def list_all_users(self) -> list[dict]:
         db = self.db

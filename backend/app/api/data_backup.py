@@ -35,7 +35,7 @@ def _owners_company(user, doing: str) -> Company:
     return company
 
 
-def _check_size(file: UploadFile) -> None:
+def check_upload_size(file: UploadFile) -> None:
     size = file.size
     if size is None:
         size = file.file.seek(0, 2)
@@ -108,7 +108,7 @@ def inspect_backup(
     """Whether an uploaded backup would load here, and what it holds. Reads the
     whole file; changes nothing."""
     company = _owners_company(current_user, "load a backup")
-    _check_size(file)
+    check_upload_size(file)
     try:
         return data_backup.inspect(db, company, current_user, file.file).as_dict()
     except data_backup.BackupError as e:
@@ -127,7 +127,7 @@ def restore_backup(
 ) -> dict:
     """Load the backup's records into this new, empty account. All or nothing."""
     company = _owners_company(current_user, "load a backup")
-    _check_size(file)
+    check_upload_size(file)
     AuthService(db, current_user).confirm_identity(
         current_password, mfa_code, reason="Loading a backup into the account"
     )

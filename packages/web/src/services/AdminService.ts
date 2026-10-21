@@ -1,7 +1,26 @@
 // AdminService — typed API client for the platform-admin domain (Phase F).
 // One service for all /admin/* endpoints the admin pages use.
 import api from "./api";
+import type { BackupSummary } from "./DataExportService";
 import type { TemporaryPassword } from "./UsersService";
+
+/** Whether a backup can be loaded into the tenant, and the email a file is
+ *  opened with unless another is given. */
+export type TenantBackupStatus = {
+  empty: boolean;
+  has_boss: boolean;
+  owner_email: string | null;
+};
+
+// The client sends JSON by default, which would turn a FormData into JSON.
+const MULTIPART = { headers: { "Content-Type": "multipart/form-data" } };
+
+function backupForm(file: File, email: string): FormData {
+  const form = new FormData();
+  form.append("file", file);
+  if (email.trim()) form.append("email", email.trim());
+  return form;
+}
 
 type LedgerUser = {
   user_id: string;
@@ -84,6 +103,22 @@ export class AdminService {
   }
   assignTenantSubscription(id: string, body: Record<string, unknown>): Promise<any> {
     return this.http.put(`/admin/tenants/${id}/subscription`, body).then((r) => r.data);
+  }
+
+  // ── loading a backup into an empty tenant ───────────────────────────────────
+  getTenantBackupStatus(id: string): Promise<TenantBackupStatus> {
+    return this.http.get(`/admin/tenants/${id}/backup/status`).then((r) => r.data);
+  }
+  /** What the file holds and whether it would load. Changes nothing. */
+  inspectTenantBackup(id: string, file: File, email: string): Promise<BackupSummary> {
+    return this.http
+      .post(`/admin/tenants/${id}/backup/inspect`, backupForm(file, email), MULTIPART)
+      .then((r) => r.data);
+  }
+  restoreTenantBackup(id: string, file: File, email: string): Promise<BackupSummary> {
+    return this.http
+      .post(`/admin/tenants/${id}/backup/restore`, backupForm(file, email), MULTIPART)
+      .then((r) => r.data);
   }
 
   // ── subscription maintenance ────────────────────────────────────────────────

@@ -587,3 +587,85 @@ def test_the_routes_are_rate_limited():
     assert limits("download_backup") == ["3 per 1 hour"]
     assert limits("inspect_backup") == ["5 per 1 hour"]
     assert limits("restore_backup") == ["5 per 1 hour"]
+    for name in ("inspect_tenant_backup", "restore_tenant_backup"):
+        assert [str(lim.limit) for lim in limiter._route_limits.get(f"app.api.admin.{name}", [])] == ["5 per 1 hour"]
+
+
+# ── BossAdmin loading a backup into an empty tenant ───────────────────────────
+
+
+def _as_platform_admin(db, role_id: int) -> User:
+    admin = User(
+        username="bossadmin",
+        full_name="Platform Admin",
+        email="admin@test.local",
+        password_hash=hash_password("AdminPassword1"),
+        role_id=role_id,
+        is_active=True,
+        is_platform_admin=True,
+    )
+    db.add(admin)
+    db.flush()
+    app.dependency_overrides[get_current_user] = lambda: admin
+    return admin
+
+
+def _admin_post(client, tenant_id: uuid.UUID, route: str, data: bytes, **form):
+    return client.post(
+        f"/api/admin/tenants/{tenant_id}/backup/{route}",
+        files={"file": ("mill.oraiza", data, "application/octet-stream")},
+        data=form,
+    )
+
+
+def test_the_platform_admin_loads_a_backup_without_the_owners_checks(client, auth_client, seed_owner, db_session, sent):
+    db_session.add(Customer(company_id=seed_owner.company_id, name="Old Customer"))
+    db_session.add_all([Branch(company_id=seed_owner.company_id, name=f"Branch {i}") for i in (2, 3)])
+    db_session.flush()
+    data = _download(auth_client)
+    # The tenant's Boss has no email, let alone a confirmed one, and a plan with
+    # one branch: an owner couldn't load this file here.
+    new = _account(db_session, seed_owner.role_id, email=None, verified=False, max_branches=1, sign_in=False)
+    route = f"/api/admin/tenants/{new.company.id}/backup/status"
+    assert client.get(route).status_code == 403  # an owner can't use the admin's way in
+    _as_platform_admin(db_session, seed_owner.role_id)
+
+    assert client.get(route).json() == {"empty": True, "has_boss": True, "owner_email": None}
+    res = _admin_post(client, new.company.id, "inspect", data)
+    assert res.status_code == 400 and res.json()["code"] == "backup_no_email", res.text
+    res = _admin_post(client, new.company.id, "inspect", data, email="stranger@test.local")
+    assert res.status_code == 400 and res.json()["code"] == "backup_not_yours", res.text
+    assert "email of the owner" in res.json()["detail"]
+
+    checked = _admin_post(client, new.company.id, "inspect", data, email=EMAIL)
+    assert checked.status_code == 200, checked.text
+    assert (checked.json()["company"], checked.json()["branches"]) == ("Test Mill", 3)
+
+    res = _admin_post(client, new.company.id, "restore", data, email=f" {EMAIL.upper()} ")
+    assert res.status_code == 200, res.text
+    assert _names(db_session, new.schema) == ["Old Customer"]
+    live = "SELECT count(*) FROM public.branches WHERE company_id = :c AND deleted_at IS NULL"
+    assert db_session.execute(text(live), {"c": new.company.id}).scalar() == 3
+    assert _actions(db_session, new.schema) == ["data.restore"]
+    assert client.get(route).json()["empty"] is False
+
+
+def test_the_platform_admin_loads_only_into_an_empty_tenant(client, auth_client, seed_owner, db_session, sent):
+    data = _download(auth_client)
+    _close_old_account(db_session, seed_owner)
+    new = _account(db_session, seed_owner.role_id, sign_in=False)  # its Boss has the backup's email
+    db_session.add(Customer(company_id=new.company.id, name="Already Here"))
+    db_session.flush()
+    _as_platform_admin(db_session, seed_owner.role_id)
+
+    for route in ("inspect", "restore"):
+        res = _admin_post(client, new.company.id, route, data)
+        assert res.status_code == 400 and res.json()["code"] == "backup_not_empty", res.text
+        assert "empty tenant" in res.json()["detail"]
+    assert _names(db_session, new.schema) == ["Already Here"]
+
+    # Emptied, it opens with the Boss's own email when none is given.
+    db_session.execute(text(f'DELETE FROM "{new.schema}".customers'))
+    db_session.flush()
+    checked = _admin_post(client, new.company.id, "inspect", data)
+    assert checked.status_code == 200, checked.text

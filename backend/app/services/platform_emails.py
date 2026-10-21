@@ -151,6 +151,19 @@ def backup_restored(user: User, *, company: str, source: str, rows: int, made_at
     return _send(user.email, f"Your records were loaded into {company}", text)
 
 
+def backup_restored_by_admin(user: User, *, company: str, source: str, rows: int, made_at: str) -> bool:
+    """Tell the tenant's Boss that the platform admin loaded a backup for them."""
+    text = (
+        f"Hello {user.full_name or user.username},\n\n"
+        f"A backup of {source} made on {made_at} ({rows:,} records) was just loaded into {company} "
+        f"by the {settings.APP_NAME} platform admin.\n\n"
+        "If you asked for this, there's nothing to do. Add your staff again under Users: their logins "
+        "aren't part of a backup.\n\n"
+        f"If you didn't, reply to this email or contact {settings.APP_NAME} support.\n"
+    )
+    return _send(user.email, f"Your records were loaded into {company}", text)
+
+
 def redis_budget(db: Session, *, used: int, limit: int, level: int) -> int:
     """Warn platform admins that Redis is through ``level``% of the month's quota."""
     admins = db.query(User).filter(User.is_platform_admin.is_(True), User.is_active.is_(True)).all()
