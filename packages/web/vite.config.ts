@@ -112,6 +112,12 @@ export default defineConfig({
         ],
       },
       workbox: {
+        // autoUpdate turns these on only when injectRegister is "auto", and it
+        // is false here. Without them a new deploy's service worker waits until
+        // every tab of the site is closed, and the tabs keep running the old
+        // build (an old sign-up form sent no Turnstile token and was refused).
+        skipWaiting: true,
+        clientsClaim: true,
         globPatterns: ["**/*.{js,css,html,ico,png,svg}"],
         // The existing high-resolution brand asset is ~2.7 MiB.
         maximumFileSizeToCacheInBytes: 3 * 1024 * 1024,
