@@ -658,6 +658,9 @@ def test_the_platform_admin_loads_only_into_an_empty_tenant(client, auth_client,
     db_session.add(Customer(company_id=new.company.id, name="Already Here"))
     db_session.flush()
     _as_platform_admin(db_session, seed_owner.role_id)
+    # A refused load rolls its transaction back. A real request has nothing else
+    # in it, so commit the setup first (into the test's outer transaction).
+    db_session.commit()
 
     for route in ("inspect", "restore"):
         res = _admin_post(client, new.company.id, route, data)
