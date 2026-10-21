@@ -1,4 +1,6 @@
-@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap");
+/* Archivo is the signed-out front page's painted lettering (HomePage.css); the
+   browser only downloads it on that page. */
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Archivo:wdth,wght@62..125,400..900&display=swap");
 
 @tailwind base;
 @tailwind components;

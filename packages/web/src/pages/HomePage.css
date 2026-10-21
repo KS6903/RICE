@@ -1,0 +1,953 @@
+/* The signed-out front page: the mill's painted palay board up top, and the
+   books behind it (sample Oraiza records) along the palay's route below.
+   Everything is scoped under .hp so none of it leaks into the app, which keeps
+   its own look. */
+
+.hp {
+  --hp-ground: #e3e4df; /* the concrete wall the boards are bolted to */
+  --hp-board: #fbfbf7; /* white enamel */
+  --hp-ink: #16150f; /* sign black */
+  --hp-ink-2: #45443d;
+  --hp-red: #c1271b; /* enamel red: one plate per screen, the action */
+  --hp-red-press: #9e1f15;
+  --hp-gold: #edbe2f; /* hook-on number plates */
+  --hp-sign: "Archivo", ui-sans-serif, system-ui, sans-serif;
+  --hp-app: "Inter", ui-sans-serif, system-ui, sans-serif;
+
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--hp-ground);
+  color: var(--hp-ink);
+  font-family: var(--hp-sign);
+  font-size: 18px;
+  line-height: 1.55;
+  font-feature-settings: normal;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.hp a:focus-visible,
+.hp button:focus-visible {
+  outline: 3px solid var(--hp-ink);
+  outline-offset: 3px;
+}
+
+.hp-wrap {
+  width: 100%;
+  max-width: 1240px;
+  margin: 0 auto;
+  padding: 0 16px;
+}
+@media (min-width: 640px) {
+  .hp-wrap {
+    padding: 0 28px;
+  }
+}
+
+/* ---------------------------------------------------------------- */
+/* Painted lettering                                                 */
+/* ---------------------------------------------------------------- */
+.hp-caps {
+  font-family: var(--hp-sign);
+  font-weight: 900;
+  font-stretch: 112%;
+  text-transform: uppercase;
+  letter-spacing: -0.01em;
+  line-height: 0.95;
+}
+.hp-cond {
+  font-family: var(--hp-sign);
+  font-weight: 800;
+  font-stretch: 72%;
+  font-variant-numeric: tabular-nums lining-nums;
+}
+
+/* ---------------------------------------------------------------- */
+/* Header                                                            */
+/* ---------------------------------------------------------------- */
+.hp-header {
+  border-bottom: 3px solid var(--hp-ink);
+  background: var(--hp-board);
+}
+.hp-header .hp-wrap {
+  height: 68px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.hp-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--hp-ink);
+  text-decoration: none;
+}
+/* The stalk mark painted in sign black, like everything else on the board. */
+.hp-brand img {
+  height: 40px;
+  width: 40px;
+  object-fit: contain;
+  filter: brightness(0);
+}
+.hp-brand span {
+  font-size: 20px;
+  letter-spacing: 0.02em;
+}
+.hp-nav {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+/* On a phone the hero's own red plate sits right under the header. */
+@media (max-width: 479px) {
+  .hp-nav .hp-plate {
+    display: none;
+  }
+}
+
+/* ---------------------------------------------------------------- */
+/* Plates: the controls are painted plates, not pills                */
+/* ---------------------------------------------------------------- */
+.hp-plate {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 48px;
+  padding: 0 18px;
+  border: 3px solid var(--hp-ink);
+  border-radius: 3px;
+  font-family: var(--hp-sign);
+  font-weight: 800;
+  font-stretch: 100%;
+  font-size: 17px;
+  letter-spacing: 0.01em;
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    background-color 160ms ease-out,
+    transform 120ms ease-out;
+}
+.hp-plate:active {
+  transform: translateY(1px);
+}
+.hp-plate-ink {
+  background: var(--hp-board);
+  color: var(--hp-ink);
+}
+.hp-plate-ink:hover {
+  background: var(--hp-ink);
+  color: var(--hp-board);
+}
+.hp-plate-red {
+  background: var(--hp-red);
+  border-color: var(--hp-red);
+  color: #fff;
+  min-height: 60px;
+  padding: 0 26px;
+  font-size: 19px;
+  box-shadow: 0 10px 18px -12px rgba(110, 18, 10, 0.75);
+}
+@media (max-width: 479px) {
+  .hp-plate-red {
+    width: 100%;
+    padding: 10px 16px;
+    font-size: 18px;
+    white-space: normal;
+    text-align: center;
+  }
+}
+.hp-plate-red:hover {
+  background: var(--hp-red-press);
+  border-color: var(--hp-red-press);
+}
+.hp-plate svg {
+  transition: transform 180ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.hp-plate:hover svg {
+  transform: translateX(3px);
+}
+.hp-textlink {
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  min-height: 48px;
+  padding: 0 12px;
+  color: var(--hp-ink);
+  font-weight: 700;
+  font-size: 17px;
+  text-decoration: underline;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 5px;
+}
+.hp-textlink:hover {
+  text-decoration-color: var(--hp-red);
+}
+
+/* ---------------------------------------------------------------- */
+/* Board material                                                    */
+/* ---------------------------------------------------------------- */
+.hp-board {
+  position: relative;
+  background: var(--hp-board);
+  border-radius: 4px;
+  box-shadow: 0 26px 40px -30px rgba(22, 21, 15, 0.55);
+}
+/* The painted double frame: a heavy outer line and the inner keyline every
+   signboard has. */
+.hp-frame {
+  --frame: 6px;
+  --keyline: 2px;
+  --gap: 8px;
+  position: absolute;
+  inset: 0;
+  border: var(--frame) solid var(--hp-ink);
+  border-radius: 4px;
+  pointer-events: none;
+}
+.hp-frame::before {
+  content: "";
+  position: absolute;
+  inset: var(--gap);
+  border: var(--keyline) solid var(--hp-ink);
+  border-radius: 2px;
+}
+.hp-bolt {
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  z-index: 1;
+}
+.hp-bolt-tl {
+  top: 18px;
+  left: 18px;
+}
+.hp-bolt-tr {
+  top: 18px;
+  right: 18px;
+}
+.hp-bolt-bl {
+  bottom: 18px;
+  left: 18px;
+}
+.hp-bolt-br {
+  bottom: 18px;
+  right: 18px;
+}
+
+/* ---------------------------------------------------------------- */
+/* Hero board                                                        */
+/* ---------------------------------------------------------------- */
+.hp-hero {
+  padding: 20px 0 56px;
+}
+@media (min-width: 1024px) {
+  .hp-hero {
+    padding: 28px 0 80px;
+  }
+}
+.hp-hero .hp-board {
+  padding: 42px 24px 38px;
+}
+@media (min-width: 640px) {
+  .hp-hero .hp-board {
+    padding: 50px 46px 46px;
+  }
+}
+@media (min-width: 1024px) {
+  .hp-hero .hp-board {
+    padding: 54px 58px 50px;
+  }
+}
+
+.hp-hero-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 40px;
+}
+/* Two panels, like a mill sign: the message, and the price list, with a
+   painted bar between them. */
+@media (min-width: 960px) {
+  .hp-hero-grid {
+    grid-template-columns: minmax(0, 1.16fr) 6px minmax(0, 0.84fr);
+    gap: 0;
+  }
+  .hp-hero-grid > :first-child {
+    padding-right: 44px;
+  }
+}
+.hp-divider {
+  display: block;
+  height: 6px;
+  background: var(--hp-ink);
+  border-radius: 1px;
+}
+@media (min-width: 960px) {
+  .hp-divider {
+    height: auto;
+  }
+}
+
+/* Each sentence is painted as its own line, so "PALAY IN." and "BIGAS OUT."
+   never break apart; the last sentence balances over two lines. */
+.hp-headline {
+  margin: 0;
+  font-stretch: 118%;
+  font-size: clamp(2.05rem, 3.75vw, 3.85rem);
+  line-height: 0.98;
+}
+.hp-headline span {
+  display: block;
+  text-wrap: balance;
+}
+.hp-lede {
+  margin: 24px 0 0;
+  max-width: 34em;
+  font-size: 19px;
+  line-height: 1.55;
+  color: var(--hp-ink-2);
+}
+@media (min-width: 1280px) {
+  .hp-lede {
+    font-size: 20px;
+  }
+}
+.hp-lede strong {
+  color: var(--hp-ink);
+  font-weight: 700;
+}
+.hp-actions {
+  margin-top: 26px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 14px;
+}
+.hp-fineprint {
+  margin: 12px 0 0;
+  font-size: 16px;
+  color: var(--hp-ink-2);
+}
+
+/* ---------------------------------------------------------------- */
+/* Price list with hook-on plates                                    */
+/* ---------------------------------------------------------------- */
+@media (min-width: 960px) {
+  .hp-prices {
+    padding: 4px 0 0 40px;
+  }
+}
+.hp-prices-title {
+  margin: 0;
+  font-size: clamp(1.9rem, 3.4vw, 2.5rem);
+  color: var(--hp-red);
+}
+.hp-prices-title small {
+  display: block;
+  margin-top: 8px;
+  font-size: 15px;
+  font-weight: 700;
+  font-stretch: 100%;
+  letter-spacing: 0.05em;
+  line-height: 1.35;
+  color: var(--hp-ink-2);
+}
+.hp-prices-title small span {
+  white-space: nowrap;
+}
+.hp-price-rows {
+  list-style: none;
+  margin: 20px 0 0;
+  padding: 0;
+}
+.hp-price-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 14px;
+  padding: 16px 0 12px;
+  border-bottom: 2px solid var(--hp-ink);
+}
+.hp-price-row:last-child {
+  border-bottom: 0;
+}
+.hp-variety {
+  font-stretch: 100%;
+  font-size: clamp(1.2rem, 1.8vw, 1.45rem);
+  line-height: 1.05;
+}
+.hp-variety em {
+  display: block;
+  margin-top: 4px;
+  font-style: normal;
+  font-weight: 700;
+  font-stretch: 100%;
+  font-size: 15px;
+  letter-spacing: 0.08em;
+  color: var(--hp-ink-2);
+}
+.hp-hang {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  perspective: 600px;
+}
+.hp-unit {
+  padding-bottom: 6px;
+  font-weight: 700;
+  font-size: 15px;
+  color: var(--hp-ink-2);
+  white-space: nowrap;
+}
+@media (max-width: 420px) {
+  .hp-hang {
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 2px;
+  }
+  .hp-unit {
+    padding-bottom: 0;
+  }
+}
+/* A plate hangs from two hooks; the swap lifts it on the hooks and lets it
+   fall back with the new figure. Every plate is the same module. */
+.hp-numplate {
+  position: relative;
+  display: inline-flex;
+  align-items: baseline;
+  justify-content: flex-end;
+  min-width: 4.5em;
+  padding: 8px 12px 6px;
+  background: var(--hp-gold);
+  border: 2px solid var(--hp-ink);
+  border-radius: 3px;
+  color: var(--hp-ink);
+  font-size: clamp(1.7rem, 2.9vw, 2.3rem);
+  line-height: 1;
+  transform-origin: 50% -12px;
+  box-shadow: 0 8px 10px -8px rgba(22, 21, 15, 0.6);
+}
+.hp-hook {
+  position: absolute;
+  top: -15px;
+  width: 12px;
+  height: 16px;
+}
+.hp-hook-l {
+  left: 16%;
+}
+.hp-hook-r {
+  right: 16%;
+}
+.hp-numplate .hp-peso {
+  font-size: 0.62em;
+  margin-right: 0.12em;
+}
+.hp-numplate.is-swinging {
+  animation: hp-swing 760ms cubic-bezier(0.3, 0.7, 0.2, 1) both;
+}
+@keyframes hp-swing {
+  0% {
+    transform: rotateX(0deg);
+  }
+  42%,
+  43% {
+    transform: rotateX(-82deg);
+  }
+  78% {
+    transform: rotateX(9deg);
+  }
+  100% {
+    transform: rotateX(0deg);
+  }
+}
+.hp-board-note {
+  margin: 16px 0 0;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--hp-ink-2);
+}
+
+/* ---------------------------------------------------------------- */
+/* The route: one post, a sign hung off it at every station          */
+/* ---------------------------------------------------------------- */
+.hp-path {
+  padding: 8px 0 24px;
+}
+.hp-path-title {
+  margin: 0;
+  max-width: 18ch;
+  font-size: clamp(2rem, 4.6vw, 3.6rem);
+  text-wrap: balance;
+}
+.hp-path-lede {
+  margin: 18px 0 0;
+  max-width: 40em;
+  font-size: 19px;
+  color: var(--hp-ink-2);
+}
+
+.hp-route {
+  --post-x: 6px;
+  --post-w: 6px;
+  --reach: 30px;
+  position: relative;
+  list-style: none;
+  margin: 44px 0 0;
+  padding: 0 0 0 calc(var(--post-x) + var(--post-w) + var(--reach));
+}
+@media (min-width: 640px) {
+  .hp-route {
+    --post-x: 14px;
+    --post-w: 8px;
+    --reach: 44px;
+    margin-top: 56px;
+  }
+}
+/* The post itself, running from the first station to the last. */
+.hp-route::before {
+  content: "";
+  position: absolute;
+  left: var(--post-x);
+  top: 0;
+  bottom: 40px;
+  width: var(--post-w);
+  background: var(--hp-ink);
+  border-radius: 2px;
+}
+.hp-station {
+  position: relative;
+  padding-bottom: 64px;
+}
+@media (min-width: 1024px) {
+  .hp-station {
+    padding-bottom: 88px;
+  }
+}
+.hp-station-head {
+  display: grid;
+  gap: 16px;
+  align-items: center;
+}
+@media (min-width: 960px) {
+  .hp-station-head {
+    grid-template-columns: 17rem minmax(0, 1fr);
+    gap: 40px;
+  }
+}
+/* A station's sign is its heading: a small enamel board on a bracket. */
+.hp-sign {
+  position: relative;
+  justify-self: start;
+  margin: 0;
+  padding: 18px 34px 16px;
+  background: var(--hp-board);
+  border-radius: 3px;
+  font-size: clamp(1.6rem, 2.8vw, 2.15rem);
+  box-shadow: 0 14px 22px -18px rgba(22, 21, 15, 0.6);
+}
+.hp-sign .hp-frame {
+  --frame: 4px;
+  --keyline: 1.5px;
+  --gap: 5px;
+  border-radius: 3px;
+}
+.hp-sign .hp-bolt {
+  width: 10px;
+  height: 10px;
+  top: calc(50% - 5px);
+}
+.hp-bolt-ml {
+  left: 12px;
+}
+.hp-bolt-mr {
+  right: 12px;
+}
+.hp-bracket {
+  position: absolute;
+  top: calc(50% - 6px);
+  left: calc(-1 * var(--reach));
+  width: var(--reach);
+  height: 26px;
+}
+.hp-station-copy {
+  margin: 0;
+  max-width: 34em;
+  font-size: 19px;
+  color: var(--hp-ink-2);
+}
+.hp-station-copy strong {
+  color: var(--hp-ink);
+}
+.hp-proof {
+  margin-top: 28px;
+}
+.hp-proof-narrow {
+  max-width: 600px;
+}
+.hp-proof-mid {
+  max-width: 780px;
+}
+.hp-proof-split {
+  display: grid;
+  gap: 28px;
+  align-items: start;
+}
+@media (min-width: 960px) {
+  .hp-proof-split {
+    grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr);
+    gap: 48px;
+  }
+}
+
+/* ---------------------------------------------------------------- */
+/* Sample app screens: these are Oraiza, so they wear the app's font */
+/* ---------------------------------------------------------------- */
+.hp-screen {
+  position: relative;
+  margin: 0;
+  background: #fff;
+  border: 1px solid #c9ced6;
+  border-radius: 10px;
+  box-shadow: 0 18px 34px -24px rgba(22, 21, 15, 0.45);
+  font-family: var(--hp-app);
+  font-size: 15px;
+  line-height: 1.5;
+  color: #0f172a;
+  font-variant-numeric: tabular-nums;
+  overflow: hidden;
+}
+.hp-screen-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 16px;
+  border-bottom: 1px solid #e2e6ec;
+  background: #f8fafc;
+}
+.hp-screen-bar b {
+  font-weight: 700;
+  font-size: 15px;
+}
+.hp-sample {
+  flex: none;
+  padding: 2px 8px;
+  border: 1.5px dashed #64748b;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #475569;
+}
+.hp-screen-body {
+  padding: 16px;
+}
+@media (min-width: 640px) {
+  .hp-screen-body {
+    padding: 20px 22px;
+  }
+}
+.hp-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px 18px;
+  margin: 0;
+}
+@media (min-width: 640px) {
+  .hp-fields {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+.hp-fields dt {
+  font-size: 12.5px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #475569;
+}
+.hp-fields dd {
+  margin: 2px 0 0;
+  font-size: 17px;
+  font-weight: 600;
+}
+.hp-total {
+  margin-top: 18px;
+  padding-top: 14px;
+  border-top: 1px solid #e2e6ec;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 6px 16px;
+}
+.hp-total span {
+  color: #475569;
+  font-size: 14px;
+}
+.hp-total b {
+  font-size: 24px;
+  font-weight: 700;
+}
+.hp-stock-note {
+  margin: 12px 0 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: #047857;
+}
+
+/* Milling: the batch drawn to scale */
+.hp-batch-head {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 6px 16px;
+  margin-bottom: 14px;
+  font-size: 15px;
+  color: #475569;
+}
+.hp-batch-head b {
+  color: #0f172a;
+}
+.hp-split {
+  display: flex;
+  height: 72px;
+  border-radius: 6px;
+  overflow: hidden;
+  border: 1px solid #c9ced6;
+}
+.hp-split > div {
+  height: 100%;
+}
+.hp-split > div + div {
+  border-left: 1px solid rgba(15, 23, 42, 0.18);
+}
+.hp-screen .s-bigas {
+  background: #f1ecda;
+}
+.hp-screen .s-ipa {
+  background: #c9a45a;
+}
+.hp-screen .s-darak {
+  background: #8d6a3a;
+}
+.hp-screen .s-binlid {
+  background: #ddd1ad;
+}
+.hp-split-legend {
+  list-style: none;
+  margin: 16px 0 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px 18px;
+}
+@media (min-width: 640px) {
+  .hp-split-legend {
+    grid-template-columns: repeat(4, minmax(0, auto));
+    justify-content: start;
+    column-gap: 48px;
+  }
+}
+.hp-split-legend li {
+  display: grid;
+  grid-template-columns: 12px auto;
+  column-gap: 8px;
+  align-items: baseline;
+  font-size: 14px;
+  color: #475569;
+}
+.hp-split-legend i {
+  width: 12px;
+  height: 12px;
+  border-radius: 2px;
+  border: 1px solid rgba(15, 23, 42, 0.25);
+  transform: translateY(1px);
+}
+.hp-split-legend b {
+  grid-column: 2;
+  font-size: 16px;
+  font-weight: 700;
+  color: #0f172a;
+}
+.hp-recovery {
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid #e2e6ec;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 16px;
+}
+.hp-recovery b {
+  font-size: 30px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: #047857;
+}
+.hp-recovery span {
+  font-size: 15px;
+  color: #475569;
+}
+
+/* Tables in the sample screens */
+.hp-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 15px;
+}
+.hp-table th {
+  text-align: left;
+  font-size: 12.5px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #475569;
+  padding: 10px 16px;
+  border-bottom: 1px solid #e2e6ec;
+  background: #f8fafc;
+}
+.hp-table td {
+  padding: 12px 16px;
+  border-bottom: 1px solid #eef1f5;
+}
+.hp-table tr:last-child td {
+  border-bottom: 0;
+}
+.hp-table .num {
+  text-align: right;
+  white-space: nowrap;
+}
+.hp-table td small {
+  display: block;
+  font-size: 13px;
+  color: #64748b;
+}
+.hp-badge {
+  display: inline-block;
+  padding: 2px 9px;
+  border-radius: 999px;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: #fff;
+}
+.hp-badge-paid {
+  background: #047857;
+}
+.hp-badge-part {
+  background: #b45309;
+}
+.hp-badge-unpaid {
+  background: #be123c;
+}
+@media (max-width: 559px) {
+  .hp-table .hide-sm {
+    display: none;
+  }
+  .hp-table th,
+  .hp-table td {
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+}
+
+/* Who logs in */
+.hp-roles {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border-top: 2px solid var(--hp-ink);
+}
+.hp-roles li {
+  display: grid;
+  gap: 2px;
+  padding: 14px 0;
+  border-bottom: 2px solid var(--hp-ink);
+}
+.hp-roles b {
+  font-weight: 900;
+  font-stretch: 112%;
+  text-transform: uppercase;
+  font-size: 18px;
+}
+.hp-roles span {
+  font-size: 17px;
+  color: var(--hp-ink-2);
+}
+
+/* ---------------------------------------------------------------- */
+/* Closing board                                                     */
+/* ---------------------------------------------------------------- */
+.hp-close {
+  padding: 24px 0 72px;
+}
+.hp-close .hp-board {
+  padding: 46px 24px 42px;
+  text-align: center;
+}
+@media (min-width: 640px) {
+  .hp-close .hp-board {
+    padding: 64px 48px 60px;
+  }
+}
+.hp-close h2 {
+  margin: 0 auto;
+  max-width: 16ch;
+  font-size: clamp(2rem, 5.4vw, 4.2rem);
+  text-wrap: balance;
+}
+.hp-close p {
+  margin: 18px auto 0;
+  max-width: 34em;
+  font-size: 19px;
+  color: var(--hp-ink-2);
+}
+.hp-close .hp-actions {
+  justify-content: center;
+}
+
+/* ---------------------------------------------------------------- */
+/* Footer                                                            */
+/* ---------------------------------------------------------------- */
+.hp-footer {
+  border-top: 3px solid var(--hp-ink);
+  background: var(--hp-board);
+}
+.hp-footer .hp-wrap {
+  min-height: 72px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 20px;
+  padding-top: 16px;
+  padding-bottom: 16px;
+  font-size: 16px;
+  color: var(--hp-ink-2);
+}
+.hp-footer nav {
+  display: flex;
+  gap: 4px;
+}
+.hp-footer a {
+  color: var(--hp-ink);
+  font-weight: 600;
+  padding: 8px 10px;
+  text-decoration: underline;
+  text-decoration-thickness: 1.5px;
+  text-underline-offset: 4px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hp-numplate.is-swinging {
+    animation: none;
+  }
+  .hp-plate,
+  .hp-plate svg {
+    transition: none;
+  }
+}

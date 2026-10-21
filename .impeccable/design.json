@@ -1,0 +1,132 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-22T00:00:00Z",
+  "title": "Design System: Oraiza",
+  "scope": "Tokens and components prefixed hp- cover only the signed-out front page '/' (HomePage.tsx/.css, under .hp). app- tokens cover the tenant app, /admin and auth/legal pages, documented in DESIGN.md's app sections.",
+  "extensions": {
+    "colorMeta": {
+      "app-brand-emerald": { "role": "primary", "displayName": "Brand Emerald", "canonical": "#10b981", "tonalRamp": ["#022c22", "#064e3b", "#065f46", "#047857", "#059669", "#10b981", "#6ee7b7", "#d1fae5"] },
+      "app-brand-emerald-deep": { "role": "primary", "displayName": "Deep Emerald", "canonical": "#059669", "tonalRamp": ["#022c22", "#064e3b", "#065f46", "#047857", "#059669", "#10b981", "#6ee7b7", "#d1fae5"] },
+      "app-brand-cyan": { "role": "secondary", "displayName": "Brand Cyan (gradient stop)", "canonical": "#06b6d4", "tonalRamp": ["#083344", "#164e63", "#155e75", "#0e7490", "#0891b2", "#06b6d4", "#67e8f9", "#cffafe"] },
+      "app-brand-violet": { "role": "tertiary", "displayName": "Brand Violet (gradient stop)", "canonical": "#8b5cf6", "tonalRamp": ["#2e1065", "#4c1d95", "#5b21b6", "#6d28d9", "#7c3aed", "#8b5cf6", "#c4b5fd", "#ede9fe"] },
+      "hp-ground": { "role": "neutral", "displayName": "Concrete Wall", "canonical": "#e3e4df", "tonalRamp": ["#1d1e1a", "#33342f", "#4c4d47", "#686963", "#878882", "#a8a9a3", "#c9cac4", "#e3e4df"] },
+      "hp-board": { "role": "neutral", "displayName": "White Enamel", "canonical": "#fbfbf7", "tonalRamp": ["#1e1e1b", "#34342f", "#4e4e48", "#6b6b64", "#8b8b84", "#adada6", "#d2d2cb", "#fbfbf7"] },
+      "hp-ink": { "role": "neutral", "displayName": "Sign Black", "canonical": "#16150f", "tonalRamp": ["#16150f", "#2b2a23", "#45443d", "#605f57", "#7d7c74", "#9c9b93", "#bdbcb4", "#e0dfd8"] },
+      "hp-ink-2": { "role": "neutral", "displayName": "Weathered Black", "canonical": "#45443d", "tonalRamp": ["#16150f", "#2b2a23", "#45443d", "#605f57", "#7d7c74", "#9c9b93", "#bdbcb4", "#e0dfd8"] },
+      "hp-red": { "role": "primary", "displayName": "Enamel Red", "canonical": "#c1271b", "tonalRamp": ["#3a0904", "#5e110a", "#7f170e", "#9e1f15", "#c1271b", "#e0513f", "#f0958a", "#fbd9d4"] },
+      "hp-red-press": { "role": "primary", "displayName": "Enamel Red, pressed", "canonical": "#9e1f15", "tonalRamp": ["#3a0904", "#5e110a", "#7f170e", "#9e1f15", "#c1271b", "#e0513f", "#f0958a", "#fbd9d4"] },
+      "hp-gold": { "role": "secondary", "displayName": "Plate Gold", "canonical": "#edbe2f", "tonalRamp": ["#3a2c04", "#5c460a", "#836410", "#ab8418", "#d2a422", "#edbe2f", "#f5d97f", "#fcf1cf"] },
+      "hp-bolt-steel": { "role": "neutral", "displayName": "Bolt Steel", "canonical": "#b9bab3", "tonalRamp": ["#1e1e1b", "#36372f", "#52534c", "#71726b", "#93948d", "#b9bab3", "#d6d7d1", "#efefeb"] }
+    },
+    "typographyMeta": {
+      "app-body": { "displayName": "App Body (Inter)", "purpose": "Tenant app, admin and auth pages; also the sample screens on the front page." },
+      "hp-display": { "displayName": "Painted Headline", "purpose": "Front page hero h1: Archivo 900 stretched 118%, uppercase, one block line per sentence." },
+      "hp-headline": { "displayName": "Painted Capitals", "purpose": "Front page section titles, station signs, closing board: Archivo 900 at 112% width, uppercase." },
+      "hp-body": { "displayName": "Board Copy", "purpose": "Front page ledes and station copy in Archivo at 100% width, max 34-40em." },
+      "hp-plate-number": { "displayName": "Number Plate Figures", "purpose": "Gold hook-on price plates: Archivo 800 condensed to 72%, tabular lining figures." },
+      "hp-control": { "displayName": "Plate Label", "purpose": "Front page plate and text-link labels." }
+    },
+    "shadows": [
+      { "name": "hp-board-hang", "value": "0 26px 40px -30px rgba(22, 21, 15, 0.55)", "purpose": "Front page boards hanging on the wall." },
+      { "name": "hp-sign-hang", "value": "0 14px 22px -18px rgba(22, 21, 15, 0.6)", "purpose": "Station signs on their brackets." },
+      { "name": "hp-numplate-hang", "value": "0 8px 10px -8px rgba(22, 21, 15, 0.6)", "purpose": "Gold number plates on their hooks." },
+      { "name": "hp-red-plate", "value": "0 10px 18px -12px rgba(110, 18, 10, 0.75)", "purpose": "The one red primary plate." },
+      { "name": "hp-screen", "value": "0 18px 34px -24px rgba(22, 21, 15, 0.45)", "purpose": "Sample app screens." }
+    ],
+    "motion": [
+      { "name": "hp-swing", "value": "760ms cubic-bezier(0.3, 0.7, 0.2, 1), every 3800ms", "purpose": "One number plate lifts on its hooks (rotateX to -82deg) and falls back with the next figure. Off for prefers-reduced-motion, hidden tab, and board off screen." },
+      { "name": "hp-plate-hover", "value": "background-color 160ms ease-out; transform 120ms ease-out", "purpose": "Plate fill change and 1px press." },
+      { "name": "hp-arrow-nudge", "value": "180ms cubic-bezier(0.22, 1, 0.36, 1)", "purpose": "Arrow in the red plate moves 3px on hover." },
+      { "name": "app-standard", "value": "150-250ms ease-out", "purpose": "App state transitions; press scale 0.97-0.98." }
+    ],
+    "breakpoints": [
+      { "name": "hp-phone", "value": "479px", "purpose": "At or below: header plate hidden, red plate full width." },
+      { "name": "sm", "value": "640px" },
+      { "name": "hp-two-panel", "value": "960px", "purpose": "Hero board splits into two panels with a painted bar; station sign and copy go side by side." },
+      { "name": "lg", "value": "1024px" },
+      { "name": "xl", "value": "1280px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Red Plate (front page primary)",
+      "kind": "button",
+      "refersTo": "hp-plate-red",
+      "description": "The one primary action per screen on the front page.",
+      "html": "<a class=\"ds-hp-plate ds-hp-plate-red\" href=\"#\">Open your mill's account <svg width=\"20\" height=\"20\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M5 12h14\"/><path d=\"m12 5 7 7-7 7\"/></svg></a>",
+      "css": ".ds-hp-plate { display: inline-flex; align-items: center; justify-content: center; gap: 10px; min-height: 48px; padding: 0 18px; border: 3px solid #16150f; border-radius: 3px; font-family: Archivo, ui-sans-serif, system-ui, sans-serif; font-weight: 800; font-size: 17px; letter-spacing: 0.01em; text-decoration: none; white-space: nowrap; cursor: pointer; transition: background-color 160ms ease-out, transform 120ms ease-out; } .ds-hp-plate:active { transform: translateY(1px); } .ds-hp-plate:focus-visible { outline: 3px solid #16150f; outline-offset: 3px; } .ds-hp-plate svg { transition: transform 180ms cubic-bezier(0.22, 1, 0.36, 1); } .ds-hp-plate:hover svg { transform: translateX(3px); } .ds-hp-plate-red { background: #c1271b; border-color: #c1271b; color: #fff; min-height: 60px; padding: 0 26px; font-size: 19px; box-shadow: 0 10px 18px -12px rgba(110, 18, 10, 0.75); } .ds-hp-plate-red:hover { background: #9e1f15; border-color: #9e1f15; }"
+    },
+    {
+      "name": "Ink Plate (front page secondary)",
+      "kind": "button",
+      "refersTo": "hp-plate-ink",
+      "description": "Secondary action, e.g. the header's account plate.",
+      "html": "<a class=\"ds-hp-plate-ink\" href=\"#\">Open an account</a>",
+      "css": ".ds-hp-plate-ink { display: inline-flex; align-items: center; min-height: 48px; padding: 0 18px; border: 3px solid #16150f; border-radius: 3px; background: #fbfbf7; color: #16150f; font-family: Archivo, ui-sans-serif, system-ui, sans-serif; font-weight: 800; font-size: 17px; letter-spacing: 0.01em; text-decoration: none; transition: background-color 160ms ease-out, transform 120ms ease-out; } .ds-hp-plate-ink:hover { background: #16150f; color: #fbfbf7; } .ds-hp-plate-ink:active { transform: translateY(1px); } .ds-hp-plate-ink:focus-visible { outline: 3px solid #16150f; outline-offset: 3px; }"
+    },
+    {
+      "name": "Text Link (front page tertiary)",
+      "kind": "nav",
+      "refersTo": "hp-control",
+      "description": "Log in and other tertiary links on the board.",
+      "html": "<a class=\"ds-hp-textlink\" href=\"#\">Log in</a>",
+      "css": ".ds-hp-textlink { display: inline-flex; align-items: center; min-height: 48px; padding: 0 12px; color: #16150f; font-family: Archivo, ui-sans-serif, system-ui, sans-serif; font-weight: 700; font-size: 17px; text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: 5px; } .ds-hp-textlink:hover { text-decoration-color: #c1271b; } .ds-hp-textlink:focus-visible { outline: 3px solid #16150f; outline-offset: 3px; }"
+    },
+    {
+      "name": "Gold Number Plate",
+      "kind": "custom",
+      "refersTo": "hp-numplate",
+      "description": "Hook-on price plate hung from two SVG wire hooks.",
+      "html": "<span class=\"ds-hp-numplate\"><svg class=\"ds-hp-hook ds-hp-hook-l\" viewBox=\"0 0 12 16\"><circle cx=\"6\" cy=\"3.2\" r=\"2.2\" fill=\"#b9bab3\" stroke=\"#16150f\" stroke-width=\"1.3\"/><path d=\"M3.4 16V6.6C3.4 3.1 8.6 3.1 8.6 6.6V8\" fill=\"none\" stroke=\"#16150f\" stroke-width=\"1.5\" stroke-linecap=\"round\"/></svg><svg class=\"ds-hp-hook ds-hp-hook-r\" viewBox=\"0 0 12 16\"><circle cx=\"6\" cy=\"3.2\" r=\"2.2\" fill=\"#b9bab3\" stroke=\"#16150f\" stroke-width=\"1.3\"/><path d=\"M3.4 16V6.6C3.4 3.1 8.6 3.1 8.6 6.6V8\" fill=\"none\" stroke=\"#16150f\" stroke-width=\"1.5\" stroke-linecap=\"round\"/></svg><span class=\"ds-hp-peso\">&#8369;</span>1,150</span>",
+      "css": ".ds-hp-numplate { position: relative; display: inline-flex; align-items: baseline; justify-content: flex-end; min-width: 4.5em; margin-top: 16px; padding: 8px 12px 6px; background: #edbe2f; border: 2px solid #16150f; border-radius: 3px; color: #16150f; font-family: Archivo, ui-sans-serif, system-ui, sans-serif; font-weight: 800; font-stretch: 72%; font-variant-numeric: tabular-nums lining-nums; font-size: 2.3rem; line-height: 1; box-shadow: 0 8px 10px -8px rgba(22, 21, 15, 0.6); } .ds-hp-hook { position: absolute; top: -15px; width: 12px; height: 16px; } .ds-hp-hook-l { left: 16%; } .ds-hp-hook-r { right: 16%; } .ds-hp-peso { font-size: 0.62em; margin-right: 0.12em; }"
+    },
+    {
+      "name": "Enamel Board",
+      "kind": "card",
+      "refersTo": "hp-board",
+      "description": "White enamel board with a painted double frame and corner bolts.",
+      "html": "<div class=\"ds-hp-board\"><span class=\"ds-hp-frame\"></span><svg class=\"ds-hp-bolt\" style=\"top:18px;left:18px\" viewBox=\"0 0 14 14\"><circle cx=\"7\" cy=\"7\" r=\"5.9\" fill=\"#b9bab3\" stroke=\"#16150f\" stroke-width=\"1.5\"/><path d=\"M3.6 7h6.8\" stroke=\"#16150f\" stroke-width=\"1.7\" stroke-linecap=\"round\" transform=\"rotate(-24 7 7)\"/></svg><svg class=\"ds-hp-bolt\" style=\"top:18px;right:18px\" viewBox=\"0 0 14 14\"><circle cx=\"7\" cy=\"7\" r=\"5.9\" fill=\"#b9bab3\" stroke=\"#16150f\" stroke-width=\"1.5\"/><path d=\"M3.6 7h6.8\" stroke=\"#16150f\" stroke-width=\"1.7\" stroke-linecap=\"round\" transform=\"rotate(62 7 7)\"/></svg><h2 class=\"ds-hp-caps\">Palay in. Bigas out.</h2></div>",
+      "css": ".ds-hp-board { position: relative; padding: 54px 58px 50px; background: #fbfbf7; color: #16150f; border-radius: 4px; box-shadow: 0 26px 40px -30px rgba(22, 21, 15, 0.55); } .ds-hp-frame { position: absolute; inset: 0; border: 6px solid #16150f; border-radius: 4px; pointer-events: none; } .ds-hp-frame::before { content: ''; position: absolute; inset: 8px; border: 2px solid #16150f; border-radius: 2px; } .ds-hp-bolt { position: absolute; width: 14px; height: 14px; z-index: 1; } .ds-hp-caps { margin: 0; font-family: Archivo, ui-sans-serif, system-ui, sans-serif; font-weight: 900; font-stretch: 118%; text-transform: uppercase; letter-spacing: -0.01em; line-height: 0.98; font-size: 3rem; }"
+    },
+    {
+      "name": "Station Sign",
+      "kind": "custom",
+      "refersTo": "hp-headline",
+      "description": "Small framed board on an SVG bracket; the heading of each route station.",
+      "html": "<h3 class=\"ds-hp-sign\"><svg class=\"ds-hp-bracket\" viewBox=\"0 0 40 30\" preserveAspectRatio=\"none\"><path d=\"M0 6h40\" stroke=\"#16150f\" stroke-width=\"5\"/><path d=\"M2 26L34 7\" stroke=\"#16150f\" stroke-width=\"3\"/><circle cx=\"4\" cy=\"6\" r=\"1.6\" fill=\"#b9bab3\"/></svg><span class=\"ds-hp-sign-frame\"></span>Weigh-in</h3>",
+      "css": ".ds-hp-sign { position: relative; display: inline-block; margin: 0 0 0 44px; padding: 18px 34px 16px; background: #fbfbf7; color: #16150f; border-radius: 3px; font-family: Archivo, ui-sans-serif, system-ui, sans-serif; font-weight: 900; font-stretch: 112%; text-transform: uppercase; letter-spacing: -0.01em; line-height: 0.95; font-size: 2.15rem; box-shadow: 0 14px 22px -18px rgba(22, 21, 15, 0.6); } .ds-hp-sign-frame { position: absolute; inset: 0; border: 4px solid #16150f; border-radius: 3px; } .ds-hp-sign-frame::before { content: ''; position: absolute; inset: 5px; border: 1.5px solid #16150f; border-radius: 2px; } .ds-hp-bracket { position: absolute; top: calc(50% - 6px); left: -44px; width: 44px; height: 26px; }"
+    },
+    {
+      "name": "Sample Screen",
+      "kind": "card",
+      "description": "Framed Oraiza record on the front page, in Inter, always tagged Sample data.",
+      "html": "<figure class=\"ds-hp-screen\"><figcaption class=\"ds-hp-screen-bar\"><b>Stock on hand</b><span class=\"ds-hp-sample\">Sample data</span></figcaption><div class=\"ds-hp-screen-body\">Palay RC 222 &middot; 18,450 kg</div></figure>",
+      "css": ".ds-hp-screen { margin: 0; max-width: 600px; background: #fff; border: 1px solid #c9ced6; border-radius: 10px; box-shadow: 0 18px 34px -24px rgba(22, 21, 15, 0.45); font-family: Inter, ui-sans-serif, system-ui, sans-serif; font-size: 15px; line-height: 1.5; color: #0f172a; font-variant-numeric: tabular-nums; overflow: hidden; } .ds-hp-screen-bar { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 16px; border-bottom: 1px solid #e2e6ec; background: #f8fafc; } .ds-hp-sample { padding: 2px 8px; border: 1.5px dashed #64748b; border-radius: 4px; font-size: 12px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: #475569; } .ds-hp-screen-body { padding: 20px 22px; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Mill's Painted Palay Board",
+    "overview": "Front page only. The page is the enamel signboard out front of a rice mill; Oraiza is the books behind it. Flat painted enamel on a concrete wall: white boards, sign-black capitals, one red plate for the action, gold hook-on number plates. Hardware (bolts, hooks, brackets) is authored inline SVG in the same black stroke and steel fill. The real app appears only as framed sample screens, in Inter, each labeled Sample data. The rest of the product keeps the app system: Inter, emerald to cyan to violet brand gradient, glass surfaces over a mesh body.",
+    "keyCharacteristics": [
+      "The page is the enamel signboard out front of a rice mill; Oraiza is the books behind it.",
+      "Flat painted enamel on a concrete wall: white boards, sign-black capitals, one red plate for the action, gold hook-on number plates.",
+      "Hardware (bolts, hooks, brackets) is authored inline SVG in the same black stroke and steel fill (`hp-bolt-steel`). No icon set, no illustrations.",
+      "The real app appears only as framed sample screens, in Inter, each labeled \"Sample data\"."
+    ],
+    "rules": [
+      { "name": "The One Red Plate Rule", "body": "Red fill appears once per screen, on the one primary action. The header's account plate is ink-outline, so the hero's red plate stands alone.", "section": "colors" },
+      { "name": "The Bare Enamel Rule", "body": "No gradients, glass, blur or mesh on this page. Color is flat paint.", "section": "colors" },
+      { "name": "The Two Hands Rule", "body": "Archivo is the sign painter's hand; Inter is the app's. Inter appears only inside sample screens, Archivo never inside them.", "section": "typography" }
+    ],
+    "dos": [
+      "Do keep every figure on the page sample-labeled: \"Sample prices\" on the board, \"Sample data\" on every screen.",
+      "Do draw hardware as inline SVG in `hp-ink` stroke and `hp-bolt-steel` fill.",
+      "Do use the enamel tokens through `--hp-*` variables; add new front-page rules under `.hp`."
+    ],
+    "donts": [
+      "Don't put a second red fill on a screen, or make the header plate red.",
+      "Don't bring the app's gradient, glass, mesh or icon chips onto this page, and don't use icon-card grids or a browser-framed dashboard hero.",
+      "Don't use Archivo inside sample screens, or Inter on the board."
+    ]
+  }
+}
