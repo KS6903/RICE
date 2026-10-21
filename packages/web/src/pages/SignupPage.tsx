@@ -367,6 +367,7 @@ export default function SignupPage() {
                   value={form.full_name}
                   onChange={(e) => update("full_name", e.target.value)}
                   placeholder="Juan Dela Cruz"
+                  autoComplete="name"
                 />
               </div>
               <div className="grid grid-cols-2 gap-3">
@@ -377,6 +378,7 @@ export default function SignupPage() {
                     value={form.username}
                     onChange={(e) => update("username", e.target.value)}
                     placeholder="juandc"
+                    autoComplete="username"
                   />
                 </div>
                 <div>
@@ -387,6 +389,7 @@ export default function SignupPage() {
                     value={form.email}
                     onChange={(e) => update("email", e.target.value)}
                     placeholder="you@company.com"
+                    autoComplete="email"
                   />
                 </div>
               </div>
@@ -398,6 +401,7 @@ export default function SignupPage() {
                     value={form.password}
                     onChange={(e) => update("password", e.target.value)}
                     placeholder="8+ characters"
+                    autoComplete="new-password"
                   />
                 </div>
                 <div>
@@ -407,6 +411,7 @@ export default function SignupPage() {
                     value={form.confirm}
                     onChange={(e) => update("confirm", e.target.value)}
                     placeholder="••••••••"
+                    autoComplete="new-password"
                   />
                 </div>
               </div>
