@@ -36,7 +36,7 @@ concurrency:
 jobs:
   setup:
     name: Is the drill set up?
-    runs-on: ${{ vars.CI_RUNNER || 'rice-ci' }}
+    runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
     outputs:
       ready: ${{ steps.check.outputs.ready }}
     steps:

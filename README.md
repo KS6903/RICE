@@ -127,9 +127,10 @@ Deploys are started by hand (`deploy.yml`, from `main` only) and pass the same c
 and the placeholders in `legal/entity.json` are filled in. A private test site for invited
 testers deploys separately, with `deploy-preview.yml`; see [PREVIEW_DEPLOY.md](PREVIEW_DEPLOY.md).
 
-GitHub's CI and both deploys run on a self-hosted runner on the maintainer's PC, so they bill no
-Actions minutes. When that PC is off, jobs wait. See
-[scripts/self-hosted-runner/README.md](scripts/self-hosted-runner/README.md).
+CI and both deploys run on GitHub's `ubuntu-latest` runners. The repository variable `CI_RUNNER`
+can point them at another runner, such as the self-hosted one in
+[scripts/self-hosted-runner/README.md](scripts/self-hosted-runner/README.md), but only while the
+repository is private.
 
 ## More documentation
 

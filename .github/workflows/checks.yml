@@ -5,11 +5,11 @@ name: Checks
 # deploy, so a deploy runs exactly what CI runs. Callers own the triggers and
 # the concurrency. scripts/ci_local.mjs mirrors these steps for a run by hand.
 #
-# Every job in every workflow runs on the self-hosted runner labelled rice-ci,
-# where GitHub charges no Actions minutes (scripts/self-hosted-runner/README.md).
-# It is reused between jobs, unlike GitHub's runners, hence the fresh virtualenvs
-# and the API container clean-up. To run on GitHub's own runners instead, which
-# bills minutes, set the repository variable CI_RUNNER to ubuntu-latest.
+# Every job in every workflow runs on GitHub's ubuntu-latest runners. The
+# repository variable CI_RUNNER can name another runner label instead. The
+# self-hosted runner (scripts/self-hosted-runner/README.md) is reused between
+# jobs, hence the fresh virtualenvs and the API container clean-up. Never point
+# a public repository at it: a pull request from a fork would run on that PC.
 on:
   workflow_call:
 
@@ -18,7 +18,7 @@ permissions:
 
 jobs:
   backend:
-    runs-on: ${{ vars.CI_RUNNER || 'rice-ci' }}
+    runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
     services:
       postgres:
         image: postgres:16
@@ -88,7 +88,7 @@ jobs:
     # migrations (what production goes through), and every migration from
     # empty (a new environment). Each ends with `alembic check`, which fails
     # when the models describe something the migrations don't build.
-    runs-on: ${{ vars.CI_RUNNER || 'rice-ci' }}
+    runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
     services:
       postgres:
         image: postgres:16
@@ -138,7 +138,7 @@ jobs:
           python scripts/check_migrations.py --database-url "$DATABASE_URL" $base
 
   frontend:
-    runs-on: ${{ vars.CI_RUNNER || 'rice-ci' }}
+    runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
         with:
@@ -171,7 +171,7 @@ jobs:
         run: npm run test:e2e:typecheck
 
   security:
-    runs-on: ${{ vars.CI_RUNNER || 'rice-ci' }}
+    runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
         with:
@@ -218,7 +218,7 @@ jobs:
     # Replaces CodeQL, whose code scanning isn't available on this private repo's
     # plan. Findings fail the job; reviewed exceptions carry a `nosemgrep` comment
     # with the reason, and .semgrepignore scopes what is scanned.
-    runs-on: ${{ vars.CI_RUNNER || 'rice-ci' }}
+    runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
     container:
       image: semgrep/semgrep:1.177.0@sha256:acaac22ffc7b7cc5926de0751b223bce0b2491c33d18422fa72f632c78d81198
     steps:
@@ -232,7 +232,7 @@ jobs:
     name: API image
     # wrangler builds this image only at deploy time, so without this job a
     # broken Dockerfile or build context would surface mid-deploy.
-    runs-on: ${{ vars.CI_RUNNER || 'rice-ci' }}
+    runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
         with:
@@ -257,7 +257,7 @@ jobs:
 
   e2e-api:
     name: API end-to-end
-    runs-on: ${{ vars.CI_RUNNER || 'rice-ci' }}
+    runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
     services:
       postgres:
         image: postgres:16
@@ -309,7 +309,7 @@ jobs:
     # checklist and guided tour, buying, milling, selling and invoicing,
     # inventory, dispatch and weather. playwright.config.ts starts a disposable
     # backend and a web dev server in front of it; nothing else is touched.
-    runs-on: ${{ vars.CI_RUNNER || 'rice-ci' }}
+    runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
     services:
       postgres:
         image: postgres:16

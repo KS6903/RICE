@@ -29,7 +29,7 @@ concurrency:
 jobs:
   main-only:
     name: Deploys run from main only
-    runs-on: ${{ vars.CI_RUNNER || 'rice-ci' }}
+    runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
     steps:
       - name: Refuse any other branch
         if: github.ref != 'refs/heads/main'
@@ -47,7 +47,7 @@ jobs:
   readiness:
     name: Production readiness
     needs: main-only
-    runs-on: ${{ vars.CI_RUNNER || 'rice-ci' }}
+    runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
         with:
@@ -73,7 +73,7 @@ jobs:
     # credential, which only this job and the provisioner container hold; the
     # database must accept connections from the CI runner.
     needs: [verify, readiness]
-    runs-on: ${{ vars.CI_RUNNER || 'rice-ci' }}
+    runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
     environment: production
     env:
       PROCESS_ROLE: provisioner
@@ -115,7 +115,7 @@ jobs:
 
   deploy:
     needs: [verify, readiness, migrate]
-    runs-on: ${{ vars.CI_RUNNER || 'rice-ci' }}
+    runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
     environment: production
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6

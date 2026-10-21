@@ -27,7 +27,7 @@ jobs:
   automerge:
     needs: checks
     if: github.event_name == 'pull_request' && github.actor == 'dependabot[bot]'
-    runs-on: ${{ vars.CI_RUNNER || 'rice-ci' }}
+    runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
     permissions:
       contents: write
       pull-requests: write
