@@ -123,7 +123,7 @@ export default function AdminShell() {
         </nav>
 
         <div className="relative px-5 py-3 border-t border-soft text-xs text-muted font-medium">
-          v1.0.0 · SaaS owner
+          v1.0.0 · BossAdmin
         </div>
       </aside>
 
@@ -138,7 +138,7 @@ export default function AdminShell() {
             <ThemeToggle />
 
             <div className="hidden sm:flex items-center gap-2.5 pl-3 border-l border-soft">
-              {/* The platform owner's avatar is the KS mark, not initials. The
+              {/* The BossAdmin's avatar is the KS mark, not initials. The
                   stroke is thicker than the sidebar's so it reads at this size. */}
               <div
                 className="h-9 w-9 rounded-full bg-grad-brand grid place-items-center shadow-grad-glow"
@@ -150,7 +150,7 @@ export default function AdminShell() {
                 <p className="text-sm font-semibold text-primary truncate max-w-[10rem]">
                   {user?.full_name}
                 </p>
-                <p className="text-xs text-muted capitalize font-medium">Owner</p>
+                <p className="text-xs text-muted font-medium">BossAdmin</p>
               </div>
             </div>
 

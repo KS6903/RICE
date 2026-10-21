@@ -38,6 +38,8 @@ from ..services.base import BaseService
 from ..services.legal_service import LegalService
 from ..services.subscription import (
     activate_subscription,
+    annual_discount,
+    annual_price,
     backfill_free,
     effective_status,
     resolve_pending_upgrade_requests,
@@ -74,6 +76,7 @@ class AdminService(BaseService):
             "description": p.description,
             "monthly_price": float(p.monthly_price),
             "annual_price": float(p.annual_price),
+            "annual_discount_percent": float(p.annual_discount_percent),
             "max_users": p.max_users,
             "max_branches": p.max_branches,
             "features": list(p.features or []),
@@ -132,7 +135,8 @@ class AdminService(BaseService):
             name=data.name,
             description=data.description,
             monthly_price=data.monthly_price,
-            annual_price=data.annual_price,
+            annual_discount_percent=annual_discount(data.annual_discount_percent),
+            annual_price=annual_price(data.monthly_price, data.annual_discount_percent),
             max_users=data.max_users,
             max_branches=data.max_branches,
             features=data.features,
@@ -155,7 +159,8 @@ class AdminService(BaseService):
             plan.name = data.name
             plan.description = data.description
             plan.monthly_price = data.monthly_price
-            plan.annual_price = data.annual_price
+            plan.annual_discount_percent = annual_discount(data.annual_discount_percent)
+            plan.annual_price = annual_price(data.monthly_price, data.annual_discount_percent)
             plan.max_users = data.max_users
             plan.max_branches = data.max_branches
             plan.features = data.features

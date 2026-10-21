@@ -4,6 +4,7 @@ import { adminService } from "../../services/AdminService";
 import { authService } from "../../services/AuthService";
 import { useAuthStore } from "../../stores/authStore";
 import PasswordInput from "../../components/PasswordInput";
+import { TWO_MONTHS_FREE, annualPrice } from "../../utils/planPricing";
 import { clsx } from "clsx";
 import {
   CreditCard,
@@ -40,12 +41,16 @@ type Plan = {
   description?: string | null;
   monthly_price: number;
   annual_price: number;
+  annual_discount_percent: number;
   features: string[];
   max_branches: number | null;
   max_users: number | null;
   is_active: boolean;
   sort_order: number;
 };
+
+const peso = (n: number) => `₱${n.toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
+const percent = (n: number) => `${n.toLocaleString(undefined, { maximumFractionDigits: 2 })}%`;
 
 const PLAN_ICONS: Record<string, React.ElementType> = {
   enterprise: Crown,
@@ -80,6 +85,12 @@ function PlanRow({
         {plan.annual_price > 0 && (
           <div className="text-xs font-normal text-muted">
             ₱{Number(plan.annual_price).toLocaleString()}/yr
+            {plan.annual_discount_percent > 0 && (
+              <span className="text-emerald-600 dark:text-emerald-400">
+                {" "}
+                · {percent(plan.annual_discount_percent)} off
+              </span>
+            )}
           </div>
         )}
       </td>
@@ -115,7 +126,7 @@ const EMPTY_PLAN = {
   name: "",
   description: "" as string,
   monthly_price: 0,
-  annual_price: 0,
+  annual_discount_percent: 0,
   features: [] as string[],
   max_branches: null as number | null,
   max_users: null as number | null,
@@ -177,7 +188,7 @@ function PlansTab() {
       name: p.name,
       description: p.description ?? "",
       monthly_price: p.monthly_price,
-      annual_price: p.annual_price,
+      annual_discount_percent: p.annual_discount_percent,
       features: p.features,
       max_branches: p.max_branches,
       max_users: p.max_users,
@@ -187,6 +198,13 @@ function PlansTab() {
     setFeaturesRaw(p.features.join(", "));
     setShowForm(true);
   };
+
+  const pricesValid =
+    form.monthly_price >= 0 &&
+    form.annual_discount_percent >= 0 &&
+    form.annual_discount_percent < 100;
+  const twelveMonths = form.monthly_price * 12;
+  const yearlyPrice = annualPrice(form.monthly_price, form.annual_discount_percent);
 
   const handleSubmit = () => {
     const payload = {
@@ -251,8 +269,11 @@ function PlansTab() {
               />
             </div>
             <div>
-              <label className={LABEL}>Monthly price (₱)</label>
+              <label htmlFor="plan-monthly-price" className={LABEL}>
+                Monthly price (₱)
+              </label>
               <input
+                id="plan-monthly-price"
                 type="number"
                 min={0}
                 className={INPUT}
@@ -261,15 +282,62 @@ function PlansTab() {
               />
             </div>
             <div>
-              <label className={LABEL}>Annual price (₱)</label>
+              <label htmlFor="plan-annual-discount" className={LABEL}>
+                Annual discount (%)
+              </label>
               <input
+                id="plan-annual-discount"
                 type="number"
                 min={0}
+                max={99.99}
+                step="any"
                 className={INPUT}
-                value={form.annual_price}
-                onChange={(e) => setForm((f) => ({ ...f, annual_price: Number(e.target.value) }))}
-                placeholder="e.g. 10x monthly for 2 months free"
+                value={form.annual_discount_percent}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, annual_discount_percent: Number(e.target.value) }))
+                }
+                aria-describedby="plan-annual-discount-hint"
               />
+              <p id="plan-annual-discount-hint" className="text-xs text-muted mt-1">
+                Off 12 months, for tenants who pay yearly.{" "}
+                <button
+                  type="button"
+                  className="font-semibold text-emerald-600 dark:text-emerald-400 hover:underline"
+                  onClick={() =>
+                    setForm((f) => ({ ...f, annual_discount_percent: TWO_MONTHS_FREE }))
+                  }
+                >
+                  Use 2 months free
+                </button>
+              </p>
+            </div>
+            <div
+              className="sm:col-span-2 rounded-lg bg-emerald-500/5 ring-1 ring-emerald-500/20 px-4 py-3"
+              aria-live="polite"
+            >
+              {pricesValid ? (
+                <>
+                  <div className="flex items-baseline justify-between gap-3 flex-wrap">
+                    <span className="text-sm font-medium text-secondary">Annual price</span>
+                    <span className="text-lg font-bold text-primary tabular-nums">
+                      <span data-testid="annual-price">{peso(yearlyPrice)}</span>
+                      <span className="text-xs font-normal text-muted">/yr</span>
+                    </span>
+                  </div>
+                  <p className="text-xs text-muted mt-1 tabular-nums">
+                    {peso(form.monthly_price)} × 12 = {peso(twelveMonths)}
+                    {form.annual_discount_percent > 0
+                      ? `, less ${percent(form.annual_discount_percent)} (${peso(twelveMonths - yearlyPrice)})`
+                      : ", no discount"}
+                    . Worked out for you, to the nearest peso.
+                  </p>
+                </>
+              ) : (
+                <p className="text-sm text-rose-600 dark:text-rose-400" role="alert">
+                  The price can&apos;t be below ₱0, and the discount has to be from 0% up to (not
+                  including) 100%.
+                </p>
+              )}
             </div>
             <div>
               <label className={LABEL}>Sort order</label>
@@ -342,7 +410,10 @@ function PlansTab() {
           {upsert.isError && (
             <div className={ERROR_BOX}>
               <AlertCircle size={15} className="mt-0.5 shrink-0" />
-              {(upsert.error as any)?.response?.data?.detail || "Failed to save plan."}
+              {/* A rejected field comes back as a list, not a sentence. */}
+              {typeof (upsert.error as any)?.response?.data?.detail === "string"
+                ? (upsert.error as any).response.data.detail
+                : "Failed to save plan."}
             </div>
           )}
           <div className="flex gap-2 pt-1">
@@ -351,7 +422,7 @@ function PlansTab() {
             </button>
             <button
               onClick={handleSubmit}
-              disabled={upsert.isPending || !form.code.trim() || !form.name.trim()}
+              disabled={upsert.isPending || !form.code.trim() || !form.name.trim() || !pricesValid}
               className="btn-primary flex-1"
             >
               {upsert.isPending ? (
@@ -465,7 +536,12 @@ function ProfileTab() {
         </div>
         <div>
           <label className={LABEL}>Role</label>
-          <input className={INPUT} value={user?.role ?? ""} disabled readOnly />
+          <input
+            className={INPUT}
+            value={user?.is_platform_admin ? "BossAdmin" : (user?.role ?? "")}
+            disabled
+            readOnly
+          />
         </div>
 
         {save.isError && (

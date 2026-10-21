@@ -19,6 +19,12 @@ class SubscriptionPlan(Base):
     description: Mapped[str | None] = mapped_column(Text)
     monthly_price: Mapped[Decimal] = mapped_column(Numeric(10, 2), default=0)
     annual_price: Mapped[Decimal] = mapped_column(Numeric(10, 2), default=0)
+    # What a yearly subscriber saves off 12 months of the monthly price. The
+    # annual price is worked out from it (services.subscription.annual_price).
+    # Four places so "2 months free" (16.6667%) lands on monthly x 10 exactly.
+    annual_discount_percent: Mapped[Decimal] = mapped_column(
+        Numeric(7, 4), default=0, server_default="0", nullable=False
+    )
     max_users: Mapped[int | None] = mapped_column(Integer)  # null = unlimited
     max_branches: Mapped[int | None] = mapped_column(Integer)  # null = unlimited
     features: Mapped[list] = mapped_column(JSONB, default=list)

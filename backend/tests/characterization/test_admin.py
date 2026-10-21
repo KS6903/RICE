@@ -49,6 +49,34 @@ def test_plan_crud_lifecycle(admin_client):
     assert deleted.status_code == 200
 
 
+def test_plan_annual_price_is_worked_out_from_the_discount(admin_client):
+    body = {"code": "adm_annual", "name": "Annual", "monthly_price": 1499, "annual_discount_percent": 16.6667}
+    created = admin_client.post("/api/admin/plans", json=body)
+    assert created.status_code == 201, created.text
+    plan = created.json()
+    # Two months free: 10x the monthly price, to the peso.
+    assert plan["annual_price"] == 14990.0
+    assert plan["annual_discount_percent"] == 16.6667
+
+    # An annual price sent by an older client is ignored, not stored.
+    upd = admin_client.put(
+        f"/api/admin/plans/{plan['id']}",
+        json={**body, "annual_discount_percent": 20, "annual_price": 1},
+    )
+    assert upd.status_code == 200, upd.text
+    assert upd.json()["annual_price"] == 14390.0  # 17,988 less 20% is 14,390.40
+
+    no_discount = admin_client.put(f"/api/admin/plans/{plan['id']}", json={**body, "annual_discount_percent": 0})
+    assert no_discount.json()["annual_price"] == 17988.0
+
+
+def test_plan_discount_and_price_must_be_in_range(admin_client):
+    base = {"code": "adm_bad", "name": "Bad", "monthly_price": 1000}
+    for bad in ({"annual_discount_percent": 100}, {"annual_discount_percent": -1}, {"monthly_price": -5}):
+        res = admin_client.post("/api/admin/plans", json={**base, **bad})
+        assert res.status_code == 422, bad
+
+
 def test_stats_shape(admin_client):
     body = admin_client.get("/api/admin/stats").json()
     assert set(body.keys()) == STATS_KEYS

@@ -2,6 +2,7 @@
 
 import uuid
 from datetime import datetime, timezone
+from decimal import ROUND_HALF_UP, Decimal
 
 from sqlalchemy.orm import Session
 
@@ -27,6 +28,23 @@ def effective_status(sub: Subscription | None) -> str | None:
 
 def is_active(sub: Subscription | None) -> bool:
     return effective_status(sub) in ACTIVE_STATUSES
+
+
+DISCOUNT_PLACES = Decimal("0.0001")
+
+
+def annual_discount(percent: Decimal | float) -> Decimal:
+    """The discount as it is stored: four decimal places."""
+    return Decimal(str(percent)).quantize(DISCOUNT_PLACES, rounding=ROUND_HALF_UP)
+
+
+def annual_price(monthly_price: Decimal | float, discount_percent: Decimal | float) -> Decimal:
+    """A year of the plan: 12 months less the annual discount, to the nearest peso.
+
+    The platform console shows the same sum as a preview while the price is typed."""
+    year = Decimal(str(monthly_price)) * 12
+    off = annual_discount(discount_percent)
+    return (year * (100 - off) / 100).quantize(Decimal("1"), rounding=ROUND_HALF_UP)
 
 
 def get_free_plan(db: Session) -> SubscriptionPlan | None:

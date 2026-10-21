@@ -3,15 +3,16 @@
 import uuid
 from datetime import datetime
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class PlanUpsert(BaseModel):
     code: str
     name: str
     description: str | None = None
-    monthly_price: float = 0
-    annual_price: float = 0
+    monthly_price: float = Field(0, ge=0)
+    # The annual price isn't sent: the server works it out from these two.
+    annual_discount_percent: float = Field(0, ge=0, lt=100)
     max_users: int | None = None
     max_branches: int | None = None
     features: list[str] = []
