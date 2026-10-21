@@ -28,19 +28,23 @@ against and what is still open.
 
 ## The documents
 
+Two documents, the way Google publishes its own: the Terms and the Privacy Policy.
+
 | File | Key | In the acceptance bundle |
 |---|---|---|
 | `terms-of-service.md` | `terms` | yes |
 | `privacy-policy.md` | `privacy` | yes |
-| `data-processing-addendum.md` | `dpa` | yes |
-| `acceptable-use-policy.md` | `aup` | yes |
-| `subprocessors.md` | `subprocessors` | no, it changes on its own 30-day notice cycle |
-| `templates/employee-privacy-notice.md` | `employee-notice` | no, it is for tenants to issue to their own workers |
+| `templates/employee-privacy-notice.md` | `employee-notice` | no, it is for tenants to issue to their own workers, and it isn't listed on `/legal`: section 9.3 of the Terms links to it |
+
+What used to be separate documents are sections now: the Data Processing Addendum is section 9 of
+the Terms, the Acceptable Use Policy is section 7, and the sub-processor register is section 4.1 of
+the Privacy Policy. The old `/legal/dpa`, `/legal/aup` and `/legal/subprocessors` links scroll to
+those sections.
 
 ## How versioning works
 
 Each document has a version and an effective date in
-[`backend/app/core/legal.py`](../backend/app/core/legal.py). The four documents a customer accepts
+[`backend/app/core/legal.py`](../backend/app/core/legal.py). The two documents a customer accepts
 in one click form the **agreement bundle**, versioned by `AGREEMENT_VERSION`.
 
 Editing a document changes its content hash, which changes the bundle hash, which makes
@@ -54,10 +58,11 @@ That is intentional but not free: it interrupts every tenant. So:
   next real change.
 - **Material change** (a new clause, a changed liability cap, a new purpose for personal data): bump
   the document's `version`, bump `AGREEMENT_VERSION`, set a new `effective_date` at least 30 days
-  out (`terms_change_notice_days`), and notify account administrators before that date. Section 18
+  out (`terms_change_notice_days`), and notify account administrators before that date. Section 20
   of the Terms promises this.
-- **A new sub-processor**: update `subprocessors.md` and its change log, notify administrators 30
-  days ahead, and leave `AGREEMENT_VERSION` alone. Section 6.3 of the DPA covers this path.
+- **A new sub-processor**: notify administrators 30 days ahead (section 9.5 of the Terms), then add
+  it to section 4.1 of the Privacy Policy and its change log. That edit moves the bundle hash, so
+  every tenant re-accepts once; the list lives inside the Privacy Policy now, not beside it.
 
 ## How acceptance is recorded
 
@@ -77,7 +82,8 @@ are reading is what they agreed to, and so can you.
 
 1. Write the markdown here, using `{{token}}` for anything from `entity.json`.
 2. Add a `LegalDocument` entry to `DOCUMENTS` in `backend/app/core/legal.py`.
-3. Decide `in_bundle`. If yes, bump `AGREEMENT_VERSION` and expect every tenant to re-accept.
-4. Add it to the link lists in `LegalPage.tsx`, `LegalAcceptanceGate.tsx` and the signup checkbox if
-   it belongs in the bundle.
+3. Decide `in_bundle` and `listed`. If it is in the bundle, bump `AGREEMENT_VERSION` and expect
+   every tenant to re-accept. Prefer a new section of the Terms or the Privacy Policy over a new
+   document: two documents is the point.
+4. If it belongs in the bundle, name it in `LegalAcceptanceGate.tsx` and the signup checkbox.
 5. Run `pytest tests/unit/test_legal_documents.py`.
