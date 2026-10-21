@@ -21,5 +21,10 @@ export default defineConfig({
     globals: true,
     setupFiles: ["./src/test/setup.ts"],
     include: ["src/**/*.{test,spec}.{ts,tsx}"],
+    // Vitest's 5 s default is too tight for the slowest page tests on the
+    // self-hosted CI runner (LoginPage and Tour took 5.2 s and 6.4 s there);
+    // 20 s leaves room on a busy machine and still catches a test that hangs.
+    testTimeout: 20_000,
+    hookTimeout: 20_000,
   },
 });
