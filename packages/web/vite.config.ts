@@ -33,6 +33,10 @@ function cspDirectives(dev: boolean, forHeader: boolean): Record<string, string[
     "script-src": [
       "'self'",
       "https://accounts.google.com",
+      // Cloudflare Turnstile, the sign-up form's bot check: its script, and below
+      // its challenge iframe. Blocked, the widget never draws and sign-up can't
+      // be sent.
+      "https://challenges.cloudflare.com",
       ...(dev ? ["'unsafe-inline'", "'unsafe-eval'"] : []),
     ],
     "script-src-attr": ["'none'"],
@@ -54,7 +58,7 @@ function cspDirectives(dev: boolean, forHeader: boolean): Record<string, string[
       ...desktopSocket,
       ...(dev ? [`ws://localhost:${devPort}`, `ws://127.0.0.1:${devPort}`] : []),
     ],
-    "frame-src": ["https://accounts.google.com"],
+    "frame-src": ["https://accounts.google.com", "https://challenges.cloudflare.com"],
     "child-src": ["'none'"],
     "worker-src": ["'self'"],
     "media-src": ["'none'"],
