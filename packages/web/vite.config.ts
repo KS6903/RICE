@@ -122,6 +122,28 @@ export default defineConfig({
         // build (an old sign-up form sent no Turnstile token and was refused).
         skipWaiting: true,
         clientsClaim: true,
+        // Pages come from the network, so a visit after a deploy runs the new
+        // build at once. Served from the cache first, the old build showed for a
+        // moment and was then swapped out (the sign-up form's invite field
+        // appeared and vanished). The precached app shell is the fallback when
+        // the network fails or takes over 5 s, so the app still opens offline,
+        // with the assets precached alongside it. Nothing here caches a page: a
+        // stale copy would point at assets the next deploy deletes, and Cloudflare
+        // Access's sign-in redirect must never be stored as one. "/" must not
+        // match the precached index.html either, hence directoryIndex: null.
+        navigateFallback: null,
+        directoryIndex: null,
+        runtimeCaching: [
+          {
+            urlPattern: ({ request, url }) =>
+              request.mode === "navigate" && !url.pathname.startsWith("/api/"),
+            handler: "NetworkOnly",
+            options: {
+              networkTimeoutSeconds: 5,
+              precacheFallback: { fallbackURL: "index.html" },
+            },
+          },
+        ],
         globPatterns: ["**/*.{js,css,html,ico,png,svg}"],
         // The existing high-resolution brand asset is ~2.7 MiB.
         maximumFileSizeToCacheInBytes: 3 * 1024 * 1024,

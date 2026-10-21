@@ -13,7 +13,13 @@ import { registerSW } from "virtual:pwa-register";
 // The offline cache is for the browser. The desktop app (app://oraiza) has its
 // own offline store, and its scheme can't host a service worker anyway.
 if ("serviceWorker" in navigator && location.protocol.startsWith("http")) {
-  registerSW({ immediate: true });
+  registerSW({
+    immediate: true,
+    // Pages already come from the network (vite.config.ts), so the page is the
+    // new build by the time a new worker takes over. Reloading then would only
+    // blink the screen and drop whatever was being typed.
+    onNeedReload: () => {},
+  });
 }
 
 const app = (
