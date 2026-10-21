@@ -143,6 +143,8 @@ function AppRoutes() {
       {/* Open to anyone: it explains the steps, or takes the backup once the
           owner of a new, empty account is signed in. */}
       <Route path="/retrieve-data" element={<RetrieveDataPage />} />
+      {/* The address people guess for loading a backup file. */}
+      <Route path="/upload" element={<Navigate to="/retrieve-data" replace />} />
 
       <Route
         path="/admin"
