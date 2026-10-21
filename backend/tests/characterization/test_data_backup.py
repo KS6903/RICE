@@ -654,6 +654,7 @@ def test_the_platform_admin_loads_only_into_an_empty_tenant(client, auth_client,
     data = _download(auth_client)
     _close_old_account(db_session, seed_owner)
     new = _account(db_session, seed_owner.role_id, sign_in=False)  # its Boss has the backup's email
+    set_search_path(db_session, new.schema)  # provisioning left the session on public
     db_session.add(Customer(company_id=new.company.id, name="Already Here"))
     db_session.flush()
     _as_platform_admin(db_session, seed_owner.role_id)
