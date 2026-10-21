@@ -58,14 +58,30 @@ def _closed_port() -> int:
         return s.getsockname()[1]
 
 
-def test_a_dead_redis_fails_in_under_a_second():
-    """One half-second attempt, then the fallback: no retries, whatever the defaults become."""
+def test_a_dead_redis_gets_one_short_attempt(monkeypatch):
+    """One half-second attempt, then the fallback: no retries, whatever the defaults become.
+
+    The attempts are counted, not just timed: on Windows a closed port waits out
+    the connect timeout instead of refusing, so one attempt on a busy machine
+    can pass a second, while two attempts on Linux take milliseconds.
+    """
+    attempts = []
+    connect = redis.connection.Connection._connect
+
+    def counted_connect(self):
+        attempts.append(self.port)
+        return connect(self)
+
+    monkeypatch.setattr(redis.connection.Connection, "_connect", counted_connect)
     client = redis.from_url(f"redis://127.0.0.1:{_closed_port()}/0", **redis_client_options())
     started = time.monotonic()
     # Refused on Linux; on Windows a closed port times out instead.
     with pytest.raises((redis.ConnectionError, redis.TimeoutError)):
         client.ping()
-    assert time.monotonic() - started < 1.0
+    assert len(attempts) == 1
+    # Far below the system's own connect timeout (about 21 s on Windows), so the
+    # half-second socket_connect_timeout is what ended the attempt.
+    assert time.monotonic() - started < 5.0
 
 
 @pytest.mark.skipif(not os.environ.get("REDIS_TEST_URL"), reason="set REDIS_TEST_URL to run against a real Redis")
