@@ -105,7 +105,8 @@ python seed_demo.py --only staff,sales # just these parts: base, staff, inventor
 
 It can run again safely, and it refuses a database that isn't on this machine. The `staff` part
 gives each mill as many staff logins as its plan has room for, in the order cashier, encoder,
-accountant, mill operator.
+accountant, mill operator. The `email` part gives each Boss the confirmed address
+`millN@example.com`. A backup is sealed to the owner's email, so without one it can't be made.
 
 ## Pushing and CI
 

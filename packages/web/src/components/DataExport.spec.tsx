@@ -47,6 +47,19 @@ describe("DataExport backup and restore", () => {
     expect(document.querySelector('input[type="file"]')).toBeNull();
   });
 
+  it("asks for an email address before a backup can be made", async () => {
+    vi.spyOn(dataExportService, "backupStatus").mockResolvedValue({
+      empty: false,
+      email: null,
+      email_verified: false,
+    });
+    draw();
+    expect(await screen.findByText(/Add an email address under My Profile first/)).toBeTruthy();
+    expect(screen.getByRole("button", { name: /Download a backup/ }).hasAttribute("disabled")).toBe(
+      true,
+    );
+  });
+
   it("downloads a backup under the server's file name", async () => {
     vi.spyOn(dataExportService, "backupStatus").mockResolvedValue({
       empty: false,

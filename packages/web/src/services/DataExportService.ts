@@ -1,5 +1,6 @@
 // DataExportService — the owner's full data export, downloaded as one ZIP, and
 // the backup file: downloaded, checked and restored.
+import { isAxiosError } from "axios";
 import api from "./api";
 
 /** What a backup file holds, as the server read it. */
@@ -29,6 +30,24 @@ function filenameFrom(headers: Record<string, unknown>, fallback: string): strin
   return /filename="([^"]+)"/.exec(disposition)?.[1] ?? fallback;
 }
 
+/** A file download asks for a Blob, so a refusal's JSON arrives as one too and
+ *  the server's reason (`detail`) would be lost behind a generic message. Read
+ *  it back into JSON before the error goes on. */
+async function blobRefusalsAsJson<T>(request: Promise<T>): Promise<T> {
+  try {
+    return await request;
+  } catch (e) {
+    if (isAxiosError(e) && e.response?.data instanceof Blob) {
+      try {
+        e.response.data = JSON.parse(await e.response.data.text());
+      } catch {
+        // Not JSON: the error stays as it came.
+      }
+    }
+    throw e;
+  }
+}
+
 function fileForm(file: File, fields: Record<string, string> = {}): FormData {
   const form = new FormData();
   form.append("file", file);
@@ -44,14 +63,14 @@ export class DataExportService {
 
   /** The ZIP, and the file name the server gave it. */
   async download(): Promise<{ blob: Blob; filename: string }> {
-    const res = await this.http.get("/export", { responseType: "blob" });
+    const res = await blobRefusalsAsJson(this.http.get("/export", { responseType: "blob" }));
     const today = new Date().toISOString().slice(0, 10);
     return { blob: res.data, filename: filenameFrom(res.headers, `oraiza-data-${today}.zip`) };
   }
 
   /** The backup file, and the file name the server gave it. */
   async downloadBackup(): Promise<{ blob: Blob; filename: string }> {
-    const res = await this.http.get("/backup", { responseType: "blob" });
+    const res = await blobRefusalsAsJson(this.http.get("/backup", { responseType: "blob" }));
     const today = new Date().toISOString().slice(0, 10);
     return { blob: res.data, filename: filenameFrom(res.headers, `oraiza-backup-${today}.oraiza`) };
   }

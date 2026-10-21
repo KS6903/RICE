@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { AxiosError } from "axios";
 import { DataExportService } from "./DataExportService";
 
 function serviceReturning(headers: Record<string, string>) {
@@ -33,6 +34,23 @@ describe("DataExportService backups", () => {
     expect((await service.downloadBackup()).filename).toBe("rice-mill-1-backup-2026-10-20.oraiza");
     const { filename } = await serviceReturning({}).service.downloadBackup();
     expect(filename).toMatch(/^oraiza-backup-\d{4}-\d{2}-\d{2}\.oraiza$/);
+  });
+
+  it("keeps the server's reason when it refuses a download", async () => {
+    const refusal = new AxiosError("Bad Request", "ERR_BAD_REQUEST", undefined, undefined, {
+      status: 400,
+      data: new Blob([JSON.stringify({ detail: "Add an email address first." })], {
+        type: "application/json",
+      }),
+    } as never);
+    const http = {
+      get: async () => {
+        throw refusal;
+      },
+    };
+    await expect(new DataExportService(http as never).downloadBackup()).rejects.toMatchObject({
+      response: { data: { detail: "Add an email address first." } },
+    });
   });
 
   function posting() {

@@ -131,7 +131,7 @@ TOO_OLD = "This backup is too old to load with this version of the app."
 DOESNT_FIT = "Some records in this backup don't fit this account. Nothing was changed."
 NO_EMAIL = (
     "Add an email address to your account before downloading a backup: the backup opens only for that "
-    "address. You can add it under Settings → Profile."
+    "address. You can add it under Settings → My Profile."
 )
 UNVERIFIED = "Confirm your email address first. A backup only loads into an account whose email is confirmed."
 NOT_EMPTY = (

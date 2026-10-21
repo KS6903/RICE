@@ -10,6 +10,8 @@ tenant it has already seeded, so running this twice changes nothing:
                milling, fleet and dispatch, warehouse pallets (seed_demo_full.py)
   staff        cashier, encoder, accountant and mill operator logins, as many
                as the mill's plan has room for (seed_demo_staff.py)
+  email        <login>@example.com for the Boss, who needs an email to download
+               a backup (seed_demo_email.py)
   inventory    palay, milled rice and by-product stock (seed_demo_inventory.py)
   sales        this year's sales and expenses, a different profile per mill
                (seed_demo_sales.py)
@@ -56,6 +58,12 @@ def _staff(username: str, reset: bool) -> str:
     return _with_session(lambda db: seed_demo_staff.seed(db, username))
 
 
+def _email(username: str, reset: bool) -> str:
+    import seed_demo_email
+
+    return _with_session(lambda db: seed_demo_email.seed(db, username))
+
+
 def _inventory(username: str, reset: bool) -> str:
     import seed_demo_inventory
 
@@ -88,6 +96,7 @@ def _automations(username: str, reset: bool) -> str:
 PARTS: dict[str, Callable[[str, bool], str]] = {
     "base": _base,
     "staff": _staff,
+    "email": _email,
     "inventory": _inventory,
     "sales": _sales,
     "buying": _buying,

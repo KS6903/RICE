@@ -131,6 +131,12 @@ function BackupAndRestore() {
                 It opens only for an account with the email <strong>{email}</strong>.
               </p>
             )}
+            {status.isSuccess && !email && (
+              <p className="text-sm text-amber-700 dark:text-amber-300 mt-1">
+                Add an email address under My Profile first. A backup opens only for an account with
+                that email.
+              </p>
+            )}
           </div>
         </div>
         <div className="flex items-center gap-3 flex-wrap">
@@ -138,7 +144,7 @@ function BackupAndRestore() {
             type="button"
             className="btn-secondary"
             onClick={() => backup.mutate()}
-            disabled={backup.isPending}
+            disabled={backup.isPending || (status.isSuccess && !email)}
           >
             {backup.isPending ? (
               <Loader2 size={16} className="animate-spin" />
