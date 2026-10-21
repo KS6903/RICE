@@ -22,7 +22,9 @@
 param(
   [string]$Repo = "KS6903/RICE",
   [string]$Distro = "rice-runner",
-  [string]$Location = "D:\WSL\rice-runner",
+  # On the SSD: on the D: hard drive, pytest's Postgres traffic made the
+  # backend job crawl (78 minutes without finishing, mostly I/O wait).
+  [string]$Location = "C:\WSL\rice-runner",
   [string]$Label = "rice-ci",
   [string]$RunnerName = ("$env:COMPUTERNAME-wsl").ToLower()
 )

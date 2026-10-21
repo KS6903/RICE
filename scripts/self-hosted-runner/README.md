@@ -8,8 +8,10 @@ the setup it would affect.)
 
 ## What it is
 
-- A WSL distro, `rice-runner` (Ubuntu 24.04), at `D:\WSL\rice-runner`, separate from Docker
-  Desktop's.
+- A WSL distro, `rice-runner` (Ubuntu 24.04), at `C:\WSL\rice-runner`, separate from Docker
+  Desktop's. Keep it on the SSD: on the D: hard drive the backend tests crawl, waiting on
+  Postgres's disk writes. To move it: end the keep-alive (below), `wsl --shutdown` (this
+  restarts Docker Desktop's engine too), then `wsl --manage rice-runner --move <folder>`.
 - Inside it: Docker Engine, and the GitHub Actions runner as a systemd service under the user
   `runner`, with the label `rice-ci`. It runs one job at a time, so a CI run's jobs go one
   after another.
