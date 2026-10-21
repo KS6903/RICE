@@ -10,9 +10,11 @@ type SignupConfig = { invite_required: boolean; turnstile_site_key: string | nul
 
 function draw(
   history: string[],
-  config: SignupConfig = { invite_required: true, turnstile_site_key: null },
+  config: SignupConfig | "unreachable" = { invite_required: true, turnstile_site_key: null },
 ) {
-  vi.spyOn(authService, "signupConfig").mockResolvedValue(config);
+  const signupConfig = vi.spyOn(authService, "signupConfig");
+  if (config === "unreachable") signupConfig.mockRejectedValue(new Error("offline"));
+  else signupConfig.mockResolvedValue(config);
   vi.spyOn(legalService, "index").mockResolvedValue({
     agreement_version: "2026.1",
     bundle_hash: "bundle",
@@ -170,6 +172,17 @@ describe("SignupPage open sign-up", () => {
 
   it("asks for the invite code while sign-up is by invitation", async () => {
     draw(["/signup"]);
+    expect(await screen.findByText("Invite code")).toBeInTheDocument();
+  });
+
+  it("shows no invite field before the server says whether one is needed", async () => {
+    draw(["/signup"]);
+    expect(screen.queryByText("Invite code")).not.toBeInTheDocument();
+    expect(await screen.findByText("Invite code")).toBeInTheDocument();
+  });
+
+  it("asks for the invite code when the server can't be asked", async () => {
+    draw(["/signup"], "unreachable");
     expect(await screen.findByText("Invite code")).toBeInTheDocument();
   });
 

@@ -38,11 +38,13 @@ export default function SignupPage() {
   // while this tab is open the server rejects the stale version rather than
   // silently binding the user to text they never saw.
   const [agreementVersion, setAgreementVersion] = useState<string | null>(null);
-  // Until the server says otherwise, ask for the invite code and show no bot check.
+  // null until the server answers, and neither the invite field nor the bot
+  // check shows before then: the invite field used to show at first and then
+  // vanish when sign-up turned out to be open.
   const [config, setConfig] = useState<{
     invite_required: boolean;
     turnstile_site_key: string | null;
-  }>({ invite_required: true, turnstile_site_key: null });
+  } | null>(null);
   const [turnstileToken, setTurnstileToken] = useState("");
   const turnstile = useRef<TurnstileHandle>(null);
 
@@ -54,7 +56,8 @@ export default function SignupPage() {
         if (!cancelled) setConfig(c);
       })
       .catch(() => {
-        /* Keep the invite field: the server decides either way. */
+        // Ask for the invite code: the server decides either way.
+        if (!cancelled) setConfig({ invite_required: true, turnstile_site_key: null });
       });
     return () => {
       cancelled = true;
@@ -285,7 +288,7 @@ export default function SignupPage() {
                 />
               </div>
 
-              {config.invite_required && (
+              {config?.invite_required && (
                 <div>
                   <label className="form-label">Invite code</label>
                   <input
@@ -451,7 +454,7 @@ export default function SignupPage() {
                 </span>
               </label>
 
-              {config.turnstile_site_key && (
+              {config?.turnstile_site_key && (
                 <TurnstileWidget
                   ref={turnstile}
                   siteKey={config.turnstile_site_key}
@@ -470,7 +473,7 @@ export default function SignupPage() {
                     !form.username ||
                     !form.email ||
                     !form.password ||
-                    (!!config.turnstile_site_key && !turnstileToken)
+                    (!!config?.turnstile_site_key && !turnstileToken)
                   }
                 >
                   {loading ? "Creating…" : "Create account"}
