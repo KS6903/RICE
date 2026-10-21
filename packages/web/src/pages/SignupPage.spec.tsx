@@ -128,6 +128,23 @@ describe("SignupPage terms checkbox", () => {
     expect(screen.queryByRole("button", { name: "Sign up with Google" })).toBeNull();
     expect(screen.queryByText("or")).toBeNull();
   });
+
+  it("never lets the browser fill in the username, email or passwords", () => {
+    draw(["/signup"]);
+    toStep2();
+    for (const placeholder of ["juandc", "you@company.com"]) {
+      expect(screen.getByPlaceholderText(placeholder)).toHaveAttribute("autocomplete", "off");
+    }
+    for (const placeholder of ["8+ characters", "••••••••"]) {
+      expect(screen.getByPlaceholderText(placeholder)).toHaveAttribute(
+        "autocomplete",
+        "new-password",
+      );
+    }
+    for (const placeholder of ["juandc", "you@company.com", "8+ characters", "••••••••"]) {
+      expect(screen.getByPlaceholderText(placeholder)).toHaveAttribute("data-1p-ignore", "true");
+    }
+  });
 });
 
 describe("SignupPage open sign-up", () => {

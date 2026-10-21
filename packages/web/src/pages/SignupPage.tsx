@@ -11,6 +11,18 @@ import { legalService } from "../services/LegalService";
 import TurnstileWidget, { type TurnstileHandle } from "../components/TurnstileWidget";
 import { safeNext, withNext } from "../utils/next";
 
+// A new account's username, email and password are never a saved one, so no
+// browser or password manager may fill them in. "off" keeps Chrome's autofill
+// out of the text fields. For passwords Chrome ignores "off" but won't fill a
+// saved password into "new-password". The data- attributes ask 1Password,
+// LastPass, Bitwarden and Dashlane to stay out too.
+const NO_AUTOFILL = {
+  "data-1p-ignore": "true",
+  "data-lpignore": "true",
+  "data-bwignore": "true",
+  "data-form-type": "other",
+};
+
 const TICK_TERMS = "Tick the box to accept the Terms of Service and policies first.";
 
 export default function SignupPage() {
@@ -179,18 +191,21 @@ export default function SignupPage() {
           className="absolute inset-0 pointer-events-none bg-[radial-gradient(ellipse_at_bottom_left,_rgba(255,255,255,0.18),_transparent_60%)]"
           aria-hidden
         />
+        {/* Soft glows drawn as gradients, not blur filters, and nothing here
+            moves: without GPU drawing, blurs and endless animation made
+            typing in the form lag (index.css, .bg-grad-brand-anim). */}
         <div
-          className="absolute -top-32 -left-20 h-96 w-96 rounded-full bg-white/10 blur-3xl pointer-events-none animate-grad-float"
+          className="absolute -top-32 -left-20 h-96 w-96 rounded-full bg-[radial-gradient(closest-side,rgba(255,255,255,0.14),transparent)] pointer-events-none"
           aria-hidden
         />
         <div
-          className="absolute -bottom-32 -right-32 h-96 w-96 rounded-full bg-violet-400/30 blur-3xl pointer-events-none"
+          className="absolute -bottom-32 -right-32 h-96 w-96 rounded-full bg-[radial-gradient(closest-side,rgba(167,139,250,0.4),transparent)] pointer-events-none"
           aria-hidden
         />
 
         <div className="relative flex items-center gap-3 text-white">
           <Link to="/" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
-            <div className="h-11 w-11 rounded-xl bg-white/15 backdrop-blur-md grid place-items-center ring-1 ring-white/30">
+            <div className="h-11 w-11 rounded-xl bg-white/15 grid place-items-center ring-1 ring-white/30">
               <img
                 src={riceLogo}
                 alt="Oraiza"
@@ -222,7 +237,7 @@ export default function SignupPage() {
               "Cloud sync across all your devices",
             ].map((line) => (
               <li key={line} className="flex items-center gap-3">
-                <div className="h-6 w-6 rounded-full bg-white/20 backdrop-blur-md grid place-items-center ring-1 ring-white/30">
+                <div className="h-6 w-6 rounded-full bg-white/20 grid place-items-center ring-1 ring-white/30">
                   <Check size={13} />
                 </div>
                 {line}
@@ -378,7 +393,8 @@ export default function SignupPage() {
                     value={form.username}
                     onChange={(e) => update("username", e.target.value)}
                     placeholder="juandc"
-                    autoComplete="username"
+                    autoComplete="off"
+                    {...NO_AUTOFILL}
                   />
                 </div>
                 <div>
@@ -389,7 +405,8 @@ export default function SignupPage() {
                     value={form.email}
                     onChange={(e) => update("email", e.target.value)}
                     placeholder="you@company.com"
-                    autoComplete="email"
+                    autoComplete="off"
+                    {...NO_AUTOFILL}
                   />
                 </div>
               </div>
@@ -402,6 +419,7 @@ export default function SignupPage() {
                     onChange={(e) => update("password", e.target.value)}
                     placeholder="8+ characters"
                     autoComplete="new-password"
+                    {...NO_AUTOFILL}
                   />
                 </div>
                 <div>
@@ -412,6 +430,7 @@ export default function SignupPage() {
                     onChange={(e) => update("confirm", e.target.value)}
                     placeholder="••••••••"
                     autoComplete="new-password"
+                    {...NO_AUTOFILL}
                   />
                 </div>
               </div>
