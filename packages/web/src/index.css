@@ -113,10 +113,6 @@
   from { opacity: 0; transform: translateX(12px); }
   to   { opacity: 1; transform: translateX(0); }
 }
-@keyframes grad-float {
-  0%, 100% { transform: translateY(0); }
-  50%      { transform: translateY(-6px); }
-}
 @keyframes grad-fade-up {
   0%   { opacity: 0; transform: translateY(8px); }
   100% { opacity: 1; transform: translateY(0); }
@@ -181,10 +177,14 @@
     background-image: linear-gradient(135deg, #10b981 0%, #06b6d4 55%, #8b5cf6 100%);
     background-size: 200% 100%;
   }
+  /* Holds still at what was the drift's first frame. Animating
+     background-position repaints the whole panel every frame, and on a PC
+     without GPU drawing (Windows' Basic Render Driver) that froze typing on
+     the sign-up page for seconds at a time. */
   .bg-grad-brand-anim {
     background-image: linear-gradient(135deg, #10b981 0%, #06b6d4 55%, #8b5cf6 100%);
     background-size: 200% 200%;
-    animation: grad-shift 8s ease infinite;
+    background-position: 0% 50%;
   }
   .shadow-grad-glow {
     box-shadow: 0 0 0 1px rgba(16, 185, 129, 0.25),
@@ -199,7 +199,6 @@
 
   /* ========== Animations ========== */
   .animate-grad-shift   { animation: grad-shift 8s ease infinite; }
-  .animate-grad-float   { animation: grad-float 4s ease-in-out infinite; }
   .animate-grad-fade-up { animation: grad-fade-up 0.4s ease-out both; }
   .animate-panel-in     { animation: panelIn 0.18s ease-out both; }
 

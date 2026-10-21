@@ -144,18 +144,19 @@ export default function LoginPage() {
           className="absolute inset-0 pointer-events-none bg-[radial-gradient(ellipse_at_top_right,_rgba(255,255,255,0.18),_transparent_60%)]"
           aria-hidden
         />
+        {/* Gradients, not blur filters, and still: see SignupPage. */}
         <div
-          className="absolute -bottom-32 -left-32 h-96 w-96 rounded-full bg-white/10 blur-3xl pointer-events-none animate-grad-float"
+          className="absolute -bottom-32 -left-32 h-96 w-96 rounded-full bg-[radial-gradient(closest-side,rgba(255,255,255,0.14),transparent)] pointer-events-none"
           aria-hidden
         />
         <div
-          className="absolute -top-32 -right-20 h-96 w-96 rounded-full bg-violet-400/30 blur-3xl pointer-events-none"
+          className="absolute -top-32 -right-20 h-96 w-96 rounded-full bg-[radial-gradient(closest-side,rgba(167,139,250,0.4),transparent)] pointer-events-none"
           aria-hidden
         />
 
         <div className="relative flex items-center gap-3 text-white">
           <Link to="/" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
-            <div className="h-12 w-12 rounded-xl bg-white/15 backdrop-blur-md grid place-items-center ring-1 ring-white/30">
+            <div className="h-12 w-12 rounded-xl bg-white/15 grid place-items-center ring-1 ring-white/30">
               <img
                 src={riceLogo}
                 alt="Oraiza"
@@ -186,7 +187,7 @@ export default function LoginPage() {
               { icon: Building2, label: "Single or multi-branch out of the box" },
             ].map(({ icon: Icon, label }) => (
               <div key={label} className="flex items-center gap-3 text-base text-white font-medium">
-                <div className="h-9 w-9 rounded-lg bg-white/15 backdrop-blur-md grid place-items-center ring-1 ring-white/25">
+                <div className="h-9 w-9 rounded-lg bg-white/15 grid place-items-center ring-1 ring-white/25">
                   <Icon size={16} />
                 </div>
                 {label}
