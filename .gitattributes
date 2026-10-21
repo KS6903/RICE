@@ -11,7 +11,3 @@
 # checkout and the Linux container, so diffs on a legal document show the clause
 # that changed instead of every line, and core.autocrlf stops rewriting them.
 legal/** text eol=lf
-
-# Git hooks run under sh, including Git for Windows' sh: a CRLF line ending
-# turns the shebang into "/bin/sh\r" and the hook fails to start.
-.githooks/** text eol=lf

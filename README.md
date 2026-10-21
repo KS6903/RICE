@@ -17,7 +17,7 @@ product is for.
 | `worker/` | Cloudflare Worker: serves the web app and routes `/api` to the API container |
 | `e2e/` | Playwright tests (API suite and browser suite) |
 | `legal/` | Terms of service, privacy policy, the employee notice template and the entity details |
-| `scripts/` | `ci_local.mjs` (the local CI mirror) and git hook setup |
+| `scripts/` | `ci_local.mjs` (an optional local copy of the CI checks) and git setup |
 
 ## Running it locally
 
@@ -30,7 +30,7 @@ python seed.py                # reference data: roles, rice varieties, grades
 python run.py                 # API on http://localhost:8000, docs at /api/docs
 
 cd ..
-npm install                   # also turns on the pre-push hook
+npm install
 npm run dev:web               # web app on http://localhost:8448
 ```
 
@@ -107,18 +107,16 @@ It can run again safely, and it refuses a database that isn't on this machine. T
 gives each mill as many staff logins as its plan has room for, in the order cashier, encoder,
 accountant, mill operator.
 
-## Checks before pushing to main
+## Pushing and CI
 
-`npm install` turns on `.githooks/pre-push`. On any push to `main` it runs
-`scripts/ci_local.mjs`, a local copy of the GitHub checks (`.github/workflows/checks.yml`), and
-blocks the push if a required check fails. A full run takes about 25 minutes, mostly the backend
-tests, the web build and Semgrep, plus the two end-to-end suites: the API one takes a few minutes,
-the browser one up to half an hour on a busy Windows machine. `npm run ci:local -- --fast` runs the
-quick subset by hand.
+Work goes straight to `main`, with no pull requests. Every push to `main` runs CI on GitHub
+(`.github/workflows/ci.yml`, which calls `checks.yml`), and the preview deploys itself only when
+that run passes. Nothing runs before the push.
 
-- The tree must be clean, and `gitleaks` must be installed (`winget install Gitleaks.Gitleaks`)
-  or named in `GITLEAKS_BIN`.
-- Don't bypass the hook with `--no-verify`; fix what it reports.
+`npm run ci:local` runs the same checks on this machine, if you want them before pushing:
+`-- --fast` for the quick subset, or the full run in about 50 minutes. It needs `gitleaks`
+(`winget install Gitleaks.Gitleaks`, or `GITLEAKS_BIN`).
+
 - All backend test runs share one test database, so run one pytest session at a time.
 - The end-to-end suites start their own disposable backend (:8001) and, for the browser suite, a
   second web dev server (:8449), on a database whose name must contain `e2e`. They never touch the

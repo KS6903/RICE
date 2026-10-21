@@ -1,7 +1,7 @@
 #!/usr/bin/env node
-// Local mirror of .github/workflows/checks.yml. The pre-push hook
-// (.githooks/pre-push) runs it before anything is pushed to main; run it by
-// hand with `npm run ci:local`. Keep the step list in step with checks.yml.
+// Local mirror of .github/workflows/checks.yml, run by hand with
+// `npm run ci:local`. Nothing runs it automatically: CI on GitHub is the gate.
+// Keep the step list in step with checks.yml.
 //
 // Deliberate differences from CI:
 //   - pytest uses backend/.env (conftest's "<db> Test" sibling database),
@@ -18,8 +18,7 @@
 // Flags:
 //   --fast        skip the slow steps (pytest, both e2e suites, production
 //                 build, Docker)
-//   --sha <sha>   refuse to run unless HEAD is that commit (the hook passes the
-//                 commit being pushed, so what is checked is what is pushed)
+//   --sha <sha>   refuse to run unless HEAD is that commit
 import { spawnSync } from "node:child_process";
 import { existsSync, readFileSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";

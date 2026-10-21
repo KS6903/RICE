@@ -3,7 +3,7 @@ name: Checks
 # Every check CI runs, as one reusable workflow. ci.yml calls it on each push to
 # main and each pull request; deploy.yml calls it as the gate in front of a
 # deploy, so a deploy runs exactly what CI runs. Callers own the triggers and
-# the concurrency. scripts/ci_local.mjs mirrors these steps for the pre-push hook.
+# the concurrency. scripts/ci_local.mjs mirrors these steps for a run by hand.
 #
 # Every job in every workflow runs on the self-hosted runner labelled rice-ci,
 # where GitHub charges no Actions minutes (scripts/self-hosted-runner/README.md).
