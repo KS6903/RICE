@@ -17,6 +17,7 @@ import { initDatabase, TenantDatabaseManager } from "./database/sqlite";
 import { registerIpcHandlers } from "./ipc/handlers";
 import { SyncIdentity } from "./sync/contract";
 import { SyncEngine } from "./sync/engine";
+import { MfaTrustJar, MfaTrustStore } from "./security/mfaTrust";
 import { identityFromToken, sameIdentity, validateTokenWithServer } from "./security/token";
 import { startUpdates, Updates } from "./updater";
 
@@ -110,6 +111,35 @@ function loadStoredSession(): StoredSession | null {
     return null;
   }
 }
+
+const mfaTrustFile = (): string => path.join(app.getPath("userData"), "mfa-trust.bin");
+
+/** The weekly 2FA trust, encrypted at rest like the sync session; in memory
+ *  only where the OS offers no real encryption. */
+const mfaTrustStore: MfaTrustStore = {
+  load() {
+    try {
+      if (!secureCredentialStorageAvailable() || !fs.existsSync(mfaTrustFile())) return [];
+      const parsed: unknown = JSON.parse(
+        safeStorage.decryptString(fs.readFileSync(mfaTrustFile())),
+      );
+      return Array.isArray(parsed) ? parsed.filter((t): t is string => typeof t === "string") : [];
+    } catch {
+      return [];
+    }
+  },
+  save(tokens) {
+    try {
+      if (!secureCredentialStorageAvailable()) return; // memory-only fallback
+      fs.writeFileSync(mfaTrustFile(), safeStorage.encryptString(JSON.stringify(tokens)), {
+        mode: 0o600,
+      });
+    } catch {
+      // Do not print an exception object: filesystem errors can contain user paths.
+      console.error("[main] failed to persist the 2FA trust");
+    }
+  },
+};
 
 function isAllowedAppUrl(rawUrl: string): boolean {
   try {
@@ -242,6 +272,7 @@ app.whenReady().then(() => {
       apiOrigin: config.apiOrigin,
       appVersion,
       onUpgradeRequired: tellToUpdate,
+      mfaTrust: new MfaTrustJar(mfaTrustStore),
     });
   }
 

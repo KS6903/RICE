@@ -7,6 +7,9 @@ export const APP_SCHEME = "app";
 export const APP_HOST = "oraiza";
 export const APP_ORIGIN = `${APP_SCHEME}://${APP_HOST}`;
 export const CLIENT_VERSION_HEADER = "X-Client-Version";
+/** The weekly 2FA trust: issued on a passed 2FA, sent back on sign-in. The main
+ *  process keeps it (security/mfaTrust.ts); the page never sees or sets it. */
+export const MFA_TRUST_HEADER = "X-MFA-Trust";
 
 /**
  * Whether a URL is the app's own. Compares scheme and host, never `.origin`:
@@ -48,6 +51,11 @@ export function staticFile(webRoot: string, pathname: string): string {
   }
 }
 
+/** The sign-ins that skip 2FA where the account already passed it this week. */
+export function sendsMfaTrust(pathname: string): boolean {
+  return pathname === "/api/auth/login" || pathname === "/api/auth/google";
+}
+
 /** Where an app://oraiza/api/... request goes. */
 export function apiTarget(apiOrigin: string, url: URL): string {
   return new URL(`${url.pathname}${url.search}`, apiOrigin).toString();
@@ -56,11 +64,13 @@ export function apiTarget(apiOrigin: string, url: URL): string {
 /**
  * The headers forwarded to the API: the renderer's, minus what describes the
  * app:// page rather than the request (and would only confuse the API's
- * origin and cookie checks), plus this build's version.
+ * origin and cookie checks) and the 2FA trust, which only the main process
+ * adds, plus this build's version.
  */
 export function forwardedHeaders(incoming: Headers, appVersion: string): Headers {
   const headers = new Headers(incoming);
-  for (const name of ["origin", "referer", "cookie", "host"]) headers.delete(name);
+  for (const name of ["origin", "referer", "cookie", "host", MFA_TRUST_HEADER])
+    headers.delete(name);
   headers.set(CLIENT_VERSION_HEADER, appVersion);
   return headers;
 }

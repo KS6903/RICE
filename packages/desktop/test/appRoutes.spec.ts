@@ -2,7 +2,14 @@ import fs from "fs";
 import os from "os";
 import path from "path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { apiTarget, forwardedHeaders, isApiPath, isAppUrl, staticFile } from "../main/appRoutes";
+import {
+  apiTarget,
+  forwardedHeaders,
+  isApiPath,
+  isAppUrl,
+  sendsMfaTrust,
+  staticFile,
+} from "../main/appRoutes";
 
 let root: string;
 let outside: string;
@@ -86,6 +93,7 @@ describe("the API route", () => {
         Origin: "app://oraiza",
         Referer: "app://oraiza/settings",
         Cookie: "a=b",
+        "X-MFA-Trust": "from-the-page",
         "Content-Type": "application/json",
       }),
       "1.4.0",
@@ -93,6 +101,21 @@ describe("the API route", () => {
     expect(headers.get("authorization")).toBe("Bearer t");
     expect(headers.get("content-type")).toBe("application/json");
     expect(headers.get("x-client-version")).toBe("1.4.0");
-    for (const name of ["origin", "referer", "cookie"]) expect(headers.has(name)).toBe(false);
+    for (const name of ["origin", "referer", "cookie", "x-mfa-trust"]) {
+      expect(headers.has(name)).toBe(false);
+    }
+  });
+
+  it("sends the 2FA trust on sign-in only", () => {
+    expect(sendsMfaTrust("/api/auth/login")).toBe(true);
+    expect(sendsMfaTrust("/api/auth/google")).toBe(true);
+    for (const other of [
+      "/api/auth/me",
+      "/api/auth/mfa/verify",
+      "/api/sync/pull",
+      "/api/auth/login/x",
+    ]) {
+      expect(sendsMfaTrust(other)).toBe(false);
+    }
   });
 });

@@ -14,6 +14,7 @@ import re
 import secrets
 import string
 import uuid
+from collections.abc import Iterable, Sequence
 from datetime import datetime, timedelta, timezone
 from typing import Any
 from zoneinfo import ZoneInfo
@@ -297,7 +298,7 @@ class AuthService(BaseService):
     # ── login / refresh / logout ──────────────────────────────────────────────
 
     def login(
-        self, username: str, password: str, mfa_trust_token: str | None = None
+        self, username: str, password: str, mfa_trust_tokens: Sequence[str] = ()
     ) -> TokenResponse | MfaChallengeResponse:
         # Progressive account lockout (per-username) sits in front of the per-IP
         # rate limit so a credential-stuffing run spread across many IPs is still
@@ -338,8 +339,9 @@ class AuthService(BaseService):
             raise ServiceUnavailableError("Account setup is in progress. Please try again shortly.")
         # MFA: the password alone yields only a short-lived challenge token —
         # real tokens are issued by mfa_verify() after a valid TOTP code. A
-        # device that verified MFA within the trust window skips the challenge.
-        if user.mfa_enabled and not self._mfa_trusted(user, mfa_trust_token):
+        # device where this account verified MFA within the trust window skips
+        # the challenge.
+        if user.mfa_enabled and not self._mfa_trusted(user, mfa_trust_tokens):
             return MfaChallengeResponse(challenge_token=self._mfa_challenge_token(user))
         clear_login_failures(username)
         with self.transaction():
@@ -402,12 +404,20 @@ class AuthService(BaseService):
         )
 
     @staticmethod
-    def _mfa_trusted(user: User, token: str | None) -> bool:
-        """True if ``token`` is a valid, unexpired MFA-trust token for this user
-        that still matches their current MFA secret. Never raises — a bad/expired
-        token just means 'not trusted', so login falls back to the MFA challenge."""
-        if not token or not settings.MFA_TRUST_ENABLED:
+    def _mfa_trusted(user: User, tokens: str | Iterable[str] | None) -> bool:
+        """True if any of ``tokens`` is a valid, unexpired MFA-trust token for this
+        user that still matches their current MFA secret. A device carries one per
+        account that passed 2FA on it; the others' simply don't match. Never
+        raises — a bad/expired token just means 'not trusted', so login falls back
+        to the MFA challenge."""
+        if not tokens or not settings.MFA_TRUST_ENABLED:
             return False
+        if isinstance(tokens, str):
+            tokens = (tokens,)
+        return any(AuthService._trust_token_matches(user, token) for token in tokens)
+
+    @staticmethod
+    def _trust_token_matches(user: User, token: str) -> bool:
         try:
             payload = pyjwt.decode(
                 token,
@@ -980,7 +990,7 @@ class AuthService(BaseService):
         return {"message": "Google account unlinked. Please sign in again."}
 
     def google_auth(
-        self, data, mfa_trust_token: str | None = None, request=None
+        self, data, mfa_trust_tokens: Sequence[str] = (), request=None
     ) -> TokenResponse | MfaChallengeResponse:
         email, full_name, subject, issuer = self._verified_google_identity(data.credential)
 
@@ -1004,7 +1014,7 @@ class AuthService(BaseService):
             # A verified Google identity proves the first factor only — an
             # MFA-enabled account must still pass the TOTP challenge, unless this
             # device is within its MFA trust window.
-            if user.mfa_enabled and not self._mfa_trusted(user, mfa_trust_token):
+            if user.mfa_enabled and not self._mfa_trusted(user, mfa_trust_tokens):
                 return MfaChallengeResponse(challenge_token=self._mfa_challenge_token(user))
             clear_login_failures(user.username)
             with self.transaction():

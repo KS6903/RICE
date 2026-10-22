@@ -16,6 +16,7 @@ in prod by the config fail-closed validator.
 
 from __future__ import annotations
 
+import hashlib
 import time
 
 import jwt
@@ -30,27 +31,43 @@ REFRESH_COOKIE = "refresh_token"
 # API traffic — smaller attack surface, and it can't leak via other endpoints.
 REFRESH_COOKIE_PATH = "/api/auth"
 
-# "Remember this device" for MFA. Like the refresh cookie, scoped to the auth
-# router so it only ever rides on login/refresh, not normal API traffic.
+# "Remember this device" for MFA: one cookie per account that passed 2FA in
+# this browser, so signing in as another account doesn't cost the first one its
+# trust. Like the refresh cookie, scoped to the auth router so it only ever
+# rides on login/refresh, not normal API traffic.
 MFA_TRUST_COOKIE = "mfa_trust"
 MFA_TRUST_COOKIE_PATH = "/api/auth"
 
 
+def mfa_trust_cookie_name(user_id: str) -> str:
+    """One account's trust cookie. The suffix is a hash, so the name doesn't
+    spell out the user's id."""
+    return f"{MFA_TRUST_COOKIE}_{hashlib.sha256(str(user_id).encode()).hexdigest()[:16]}"
+
+
+def is_mfa_trust_cookie(name: str) -> bool:
+    """An account's trust cookie, or the single shared one browsers kept before
+    there was one per account (it lapses on Sunday by itself)."""
+    return name == MFA_TRUST_COOKIE or name.startswith(f"{MFA_TRUST_COOKIE}_")
+
+
 def set_mfa_trust_cookie(response: Response, token: str) -> None:
-    """Mark this browser as MFA-trusted for exactly as long as the trust token
-    itself: until the next Sunday 00:00 in the user's local time (httpOnly)."""
+    """Mark this browser as MFA-trusted for the token's account, for exactly as
+    long as the token itself: until the next Sunday 00:00 in the user's local
+    time (httpOnly)."""
     # We minted the token a moment ago; its exp is that Sunday boundary. Read it
     # through a verified decode anyway, so nothing here ever trusts a token's
     # claims without its signature.
-    expires = jwt.decode(
+    claims = jwt.decode(
         token,
         settings.SECRET_KEY,
         algorithms=[settings.ALGORITHM],
         issuer=settings.JWT_ISSUER,
         audience=settings.JWT_AUDIENCE,
-    )["exp"]
+    )
+    expires = claims["exp"]
     response.set_cookie(
-        MFA_TRUST_COOKIE,
+        mfa_trust_cookie_name(claims["sub"]),
         token,
         max_age=max(1, int(expires - time.time())),
         path=MFA_TRUST_COOKIE_PATH,
@@ -98,7 +115,7 @@ def set_auth_cookies(response: Response, *, access_token: str, refresh_token: st
 def clear_auth_cookies(response: Response) -> None:
     """End the session's cookies.
 
-    The MFA trust cookie is deliberately left alone: it belongs to the device,
+    The MFA trust cookies are deliberately left alone: they belong to the device,
     not the session, so signing out (by hand or by the idle timer) doesn't bring
     the 2FA prompt back before Sunday. Logging in still needs the password, and
     the trust lapses on Sunday or as soon as MFA is disabled or re-enrolled.

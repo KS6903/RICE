@@ -111,19 +111,17 @@ export class ApiContainer extends Container<Env> {
     // The private preview sleeps sooner, to stay inside the plan's included hours.
     // Read when the idle timer is next renewed, so overriding it here is enough.
     if (env.API_SLEEP_AFTER) this.sleepAfter = env.API_SLEEP_AFTER;
-  }
-
-  override async fetch(request: Request): Promise<Response> {
-    await this.startAndWaitForPorts({
-      startOptions: {
-        // Includes RATE_LIMIT_TRUST_FORWARDED_FOR=true with one hop: the Worker
-        // is the only peer the container sees, so the real client IP arrives as
-        // a single X-Forwarded-For entry. Without it every caller would share
-        // one rate-limit and lockout bucket.
-        envVars: containerEnvFor(this.env, "api"),
-      },
-    });
-    return super.fetch(request);
+    // Used whenever the container has to start. Includes
+    // RATE_LIMIT_TRUST_FORWARDED_FOR=true with one hop: the Worker is the only
+    // peer the container sees, so the real client IP arrives as a single
+    // X-Forwarded-For entry. Without it every caller would share one rate-limit
+    // and lockout bucket.
+    //
+    // Set here rather than by calling startAndWaitForPorts from fetch: that
+    // pinged the container and wrote its state, under a lock that let one
+    // request through at a time, on every request. Container's own fetch only
+    // starts it when it isn't already running.
+    this.envVars = containerEnvFor(env, "api");
   }
 }
 

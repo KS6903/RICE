@@ -16,9 +16,9 @@ from ..core.access_policy import access_for_user
 from ..core.config import settings
 from ..core.cookies import (
     ACCESS_COOKIE,
-    MFA_TRUST_COOKIE,
     REFRESH_COOKIE,
     clear_auth_cookies,
+    is_mfa_trust_cookie,
     set_auth_cookies,
     set_mfa_trust_cookie,
 )
@@ -52,6 +52,8 @@ from ..services.auth_service import AuthService
 router = APIRouter()
 MFA_RATE_LIMIT = "5/minute"
 LOCKOUT_HELP_RATE_LIMIT = "5/hour"
+# However many a client sends, a login checks no more trust tokens than this.
+MAX_MFA_TRUST_TOKENS = 20
 
 
 def _is_bearer_client(request: Request) -> bool:
@@ -68,6 +70,17 @@ def _is_bearer_client(request: Request) -> bool:
     # Limit this exception to the configured local dev origin; production still
     # requires the packaged opaque origin and cannot be opted into by a website.
     return settings.ENV == "dev" and origin == settings.FRONTEND_BASE_URL
+
+
+def _mfa_trust_tokens(request: Request) -> list[str]:
+    """The "remember this device" tokens the client carries, one per account
+    that passed 2FA on it: a browser's per-account cookies, or the desktop app's
+    X-MFA-Trust header (comma-separated)."""
+    if _is_bearer_client(request):
+        tokens = [token.strip() for token in request.headers.get("X-MFA-Trust", "").split(",")]
+    else:
+        tokens = [value for name, value in request.cookies.items() if is_mfa_trust_cookie(name)]
+    return [token for token in tokens if token][:MAX_MFA_TRUST_TOKENS]
 
 
 def _complete_auth(request: Request, response: Response, tokens: TokenResponse):
@@ -133,11 +146,10 @@ def login(
     """Authenticate a browser with cookies or an explicit native client with tokens.
 
     Accounts with MFA enabled get ``{"mfa_required": true, "challenge_token"}``
-    instead — the client completes login via POST /auth/mfa/verify. A device that
-    already verified MFA carries an ``mfa_trust`` cookie (or X-MFA-Trust header)
-    and skips straight to tokens until the next weekly reset (Sunday)."""
-    trust = request.headers.get("X-MFA-Trust") if _is_bearer_client(request) else request.cookies.get(MFA_TRUST_COOKIE)
-    result = svc.login(form.username, form.password, mfa_trust_token=trust)
+    instead — the client completes login via POST /auth/mfa/verify. A device where
+    this account already verified MFA carries its trust cookie (or X-MFA-Trust
+    header) and skips straight to tokens until the next weekly reset (Sunday)."""
+    result = svc.login(form.username, form.password, mfa_trust_tokens=_mfa_trust_tokens(request))
     if isinstance(result, TokenResponse):
         return _complete_auth(request, response, result)
     response.headers["Cache-Control"] = "no-store"
@@ -238,8 +250,7 @@ def google_auth(
 ):
     """Like /login: an MFA-enabled account gets a challenge instead of tokens,
     unless this device is within its MFA trust window."""
-    trust = request.headers.get("X-MFA-Trust") if _is_bearer_client(request) else request.cookies.get(MFA_TRUST_COOKIE)
-    result = svc.google_auth(body, mfa_trust_token=trust, request=request)
+    result = svc.google_auth(body, mfa_trust_tokens=_mfa_trust_tokens(request), request=request)
     if isinstance(result, TokenResponse):
         return _complete_auth(request, response, result)
     response.headers["Cache-Control"] = "no-store"
@@ -282,8 +293,8 @@ def mfa_verify(
 ):
     """Second login step for MFA accounts: challenge token + TOTP code → tokens.
 
-    On success this device is remembered: an httpOnly ``mfa_trust`` cookie (and an
-    ``X-MFA-Trust`` response header for bearer clients) lets it skip MFA on login
+    On success this device is remembered for this account: an httpOnly trust
+    cookie (an ``X-MFA-Trust`` response header for bearer clients) lets it skip MFA on login
     until the next weekly reset (Sunday 00:00 in the user's local time), so the
     user isn't prompted every login."""
     tokens, trust = svc.mfa_verify(body.challenge_token, body.code, body.timezone)
