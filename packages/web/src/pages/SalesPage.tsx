@@ -175,7 +175,10 @@ export default function SalesPage() {
           </button>
         )}
         {tab === "customers" && (
-          <button onClick={() => setShowCustomerForm(!showCustomerForm)} className="btn-primary shrink-0">
+          <button
+            onClick={() => setShowCustomerForm(!showCustomerForm)}
+            className="btn-primary shrink-0"
+          >
             <Plus size={16} /> New Customer
           </button>
         )}
