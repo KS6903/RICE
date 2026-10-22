@@ -6,6 +6,9 @@ export type SheetLine = {
   kind: "milled_rice" | "palay" | "byproduct";
   inventory_id: string;
   label: string;
+  /** The label in parts: the item alone, and the branch when there are several. */
+  item: string;
+  branch: string | null;
 };
 
 export type StockCount = {

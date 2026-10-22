@@ -41,6 +41,9 @@ class SheetLine:
     inventory_id: uuid.UUID
     label: str
     recorded_kg: Decimal
+    # The label in parts, so the sheet can group by branch and kind.
+    item: str = ""
+    branch: str | None = None
 
 
 def sheet(db: Session, company_id: uuid.UUID) -> list[SheetLine]:
@@ -50,34 +53,18 @@ def sheet(db: Session, company_id: uuid.UUID) -> list[SheetLine]:
     branches = {b.id: b.name for b in db.query(Branch).filter(Branch.company_id == company_id).all()}
     many = len(branches) > 1
 
-    def at(branch_id) -> str:
-        return f", {branches[branch_id]}" if many and branch_id in branches else ""
+    def line(kind: str, row, kind_name: str, item: str) -> SheetLine:
+        branch = branches.get(row.branch_id) if many else None
+        label = f"{kind_name}, {item}" + (f", {branch}" if branch else "")
+        return SheetLine(kind, row.id, label, Decimal(row.quantity_kg or 0), item, branch)
 
     lines = [
-        SheetLine(
-            "milled_rice",
-            r.id,
-            f"Milled rice, {rice_name(names.get(r.variety_id), r.grade_name)}{at(r.branch_id)}",
-            Decimal(r.quantity_kg or 0),
-        )
+        line("milled_rice", r, "Milled rice", rice_name(names.get(r.variety_id), r.grade_name))
         for r in db.query(MilledRiceInventory).all()
     ]
+    lines += [line("palay", p, "Palay", names.get(p.variety_id, "no variety")) for p in db.query(PalayInventory).all()]
     lines += [
-        SheetLine(
-            "palay",
-            p.id,
-            f"Palay, {names.get(p.variety_id, 'no variety')}{at(p.branch_id)}",
-            Decimal(p.quantity_kg or 0),
-        )
-        for p in db.query(PalayInventory).all()
-    ]
-    lines += [
-        SheetLine(
-            "byproduct",
-            b.id,
-            f"By-product, {b.byproduct_type.replace('_', ' ')}{at(b.branch_id)}",
-            Decimal(b.quantity_kg or 0),
-        )
+        line("byproduct", b, "By-product", b.byproduct_type.replace("_", " "))
         for b in db.query(ByproductInventory).all()
     ]
     return sorted(lines, key=lambda line: line.label)

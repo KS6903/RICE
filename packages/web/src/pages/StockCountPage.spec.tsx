@@ -19,8 +19,20 @@ const owner: User = {
 
 const page: Page = {
   sheet: [
-    { kind: "byproduct", inventory_id: "b1", label: "By-product, darak" },
-    { kind: "milled_rice", inventory_id: "r1", label: "Milled rice, NSIC Rc222 (grade Premium)" },
+    {
+      kind: "byproduct",
+      inventory_id: "b1",
+      label: "By-product, darak",
+      item: "darak",
+      branch: null,
+    },
+    {
+      kind: "milled_rice",
+      inventory_id: "r1",
+      label: "Milled rice, NSIC Rc222 (grade Premium)",
+      item: "NSIC Rc222 (grade Premium)",
+      branch: null,
+    },
   ],
   tolerance_pct: 2,
   manager: true,
@@ -61,6 +73,7 @@ describe("StockCountPage", () => {
   afterEach(() => {
     vi.restoreAllMocks();
     useAuthStore.setState({ user: null });
+    localStorage.clear();
   });
 
   it("counts blind and sends only the lines filled in", async () => {
@@ -69,18 +82,57 @@ describe("StockCountPage", () => {
     const record = vi.spyOn(stockCountService, "record").mockResolvedValue(page.counts[0]);
     draw();
     const sheet = await screen.findByRole("region", { name: "Count sheet" });
-    // No recorded quantities on the sheet.
+    // No recorded quantities on the sheet, and the lines sit under their kind.
     expect(within(sheet).queryByText(/5,000/)).toBeNull();
+    expect(within(sheet).getByRole("group", { name: "Milled rice" })).toBeInTheDocument();
+    fireEvent.click(within(sheet).getByRole("radio", { name: "Kilos only" }));
     fireEvent.change(within(sheet).getByLabelText("Milled rice, NSIC Rc222 (grade Premium)"), {
       target: { value: "4,700" },
     });
-    fireEvent.click(within(sheet).getByRole("button", { name: /Save the count \(1 of 2 lines\)/ }));
+    expect(within(sheet).getByText("1 of 2 counted")).toBeInTheDocument();
+    fireEvent.click(within(sheet).getByRole("button", { name: "Save the count" }));
     await waitFor(() =>
       expect(record).toHaveBeenCalledWith({
         lines: [{ kind: "milled_rice", inventory_id: "r1", counted_kg: "4700" }],
         note: "",
       }),
     );
+  });
+
+  it("works out the kilos from sacks plus the loose kilos", async () => {
+    useAuthStore.setState({ user: owner });
+    vi.spyOn(stockCountService, "page").mockResolvedValue(page);
+    const record = vi.spyOn(stockCountService, "record").mockResolvedValue(page.counts[0]);
+    draw();
+    const sheet = await screen.findByRole("region", { name: "Count sheet" });
+    const rice = "Milled rice, NSIC Rc222 (grade Premium)";
+    fireEvent.change(within(sheet).getByLabelText(`${rice}, sacks`), { target: { value: "94" } });
+    fireEvent.change(within(sheet).getByLabelText(`${rice}, loose kg`), {
+      target: { value: "12" },
+    });
+    expect(within(sheet).getByText("= 4,712 kg")).toBeInTheDocument();
+    expect(within(sheet).getByText("1 of 2 counted")).toBeInTheDocument();
+    fireEvent.click(within(sheet).getByRole("button", { name: /Save the count/ }));
+    await waitFor(() =>
+      expect(record).toHaveBeenCalledWith({
+        lines: [{ kind: "milled_rice", inventory_id: "r1", counted_kg: "4712" }],
+        note: "",
+      }),
+    );
+  });
+
+  it("keeps an unsaved count through a reload", async () => {
+    useAuthStore.setState({ user: owner });
+    vi.spyOn(stockCountService, "page").mockResolvedValue(page);
+    const first = draw();
+    const sheet = await screen.findByRole("region", { name: "Count sheet" });
+    fireEvent.change(within(sheet).getByLabelText("By-product, darak, sacks"), {
+      target: { value: "7" },
+    });
+    first.unmount();
+    draw();
+    const again = await screen.findByRole("region", { name: "Count sheet" });
+    expect(within(again).getByLabelText("By-product, darak, sacks")).toHaveValue("7");
   });
 
   it("shows the lines out and lets the owner review them", async () => {

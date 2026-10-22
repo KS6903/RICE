@@ -81,7 +81,13 @@ def counts_and_sheet(current_user=Depends(get_current_user), db: Session = Depen
     return {
         # No recorded quantities: a blind count.
         "sheet": [
-            {"kind": line.kind, "inventory_id": str(line.inventory_id), "label": line.label}
+            {
+                "kind": line.kind,
+                "inventory_id": str(line.inventory_id),
+                "label": line.label,
+                "item": line.item,
+                "branch": line.branch,
+            }
             for line in stock_count.sheet(db, current_user.company_id)
         ],
         "tolerance_pct": params.tolerance_pct,
