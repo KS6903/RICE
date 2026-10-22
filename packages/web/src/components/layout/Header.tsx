@@ -8,6 +8,7 @@ import NotificationBell from "./NotificationBell";
 import TourButton from "../help/TourButton";
 import UserAvatar from "../UserAvatar";
 import { roleLabel } from "@rice-mill/shared";
+import { NavDrawerButton } from "./NavDrawer";
 
 function PlanBadge() {
   const plan = useCurrentPlan();
@@ -55,13 +56,14 @@ function PlanBadge() {
       title={`Plan: ${plan.name} · Status: ${plan.status}`}
     >
       <Icon size={12} />
-      {plan.name}
+      {/* A phone's header has room for the icon alone; the title names it. */}
+      <span className="hidden sm:inline">{plan.name}</span>
       <span className={`w-1.5 h-1.5 rounded-full ml-0.5 ${statusTint}`} />
     </Link>
   );
 }
 
-export default function Header() {
+export default function Header({ menuOpen, onMenu }: { menuOpen: boolean; onMenu: () => void }) {
   const { user, logout } = useAuthStore();
   const navigate = useNavigate();
   const [isOnline, setIsOnline] = useState(navigator.onLine);
@@ -83,8 +85,9 @@ export default function Header() {
   };
 
   return (
-    <header className="h-16 glass-strong border-b border-soft flex items-center justify-between px-6 shrink-0 relative z-10">
-      <div className="flex items-center gap-3 ml-auto">
+    <header className="h-16 glass-strong border-b border-soft flex items-center justify-between gap-2 px-3 sm:px-6 shrink-0 relative z-10">
+      <NavDrawerButton open={menuOpen} onOpen={onMenu} />
+      <div className="flex items-center gap-1.5 sm:gap-3 ml-auto min-w-0">
         {/* Weather + location picker — saved favorites follow the user across
             every page and every login. */}
         <LocationPicker />

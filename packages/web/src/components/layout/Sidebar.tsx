@@ -1,11 +1,12 @@
 import { NavLink } from "react-router-dom";
-import { Settings, Lock } from "lucide-react";
+import { Settings, Lock, X } from "lucide-react";
 import riceLogo from "../../assets/Rice_Logo.svg";
 import { clsx } from "clsx";
 import { useFeature } from "../../hooks/useFeature";
 import { useAccess } from "../../hooks/useAccess";
 import { useSubLock } from "../SubscriptionGuard";
 import { NAV_GROUPS } from "./navigation";
+import { NavDrawer } from "./NavDrawer";
 
 function NavItem({
   to,
@@ -72,7 +73,7 @@ function NavItem({
   );
 }
 
-export default function Sidebar() {
+export default function Sidebar({ open, onClose }: { open: boolean; onClose: () => void }) {
   const subLock = useSubLock();
   const locked = subLock !== null;
   const { canView, isReadOnly } = useAccess();
@@ -83,7 +84,7 @@ export default function Sidebar() {
     items: g.items.filter((item) => canView(item.section)),
   })).filter((g) => g.items.length > 0);
   return (
-    <aside className="relative w-64 shrink-0 flex flex-col glass border-r border-soft">
+    <NavDrawer open={open} onClose={onClose} className="lg:w-64">
       <div className="pointer-events-none absolute -top-10 -left-10 h-40 w-40 rounded-full bg-grad-brand opacity-20 blur-3xl" />
 
       <div className="relative px-5 py-5 border-b border-soft">
@@ -95,11 +96,19 @@ export default function Sidebar() {
               className="h-full w-full object-contain brightness-0 invert"
             />
           </div>
-          <div className="min-w-0">
+          <div className="min-w-0 flex-1">
             <h1 className="text-base font-bold tracking-tight text-primary leading-tight truncate">
               Oraiza
             </h1>
           </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="lg:hidden -mr-2 h-10 w-10 grid place-items-center rounded-xl text-secondary hover:text-primary"
+            aria-label="Close menu"
+          >
+            <X size={20} />
+          </button>
         </div>
       </div>
 
@@ -140,6 +149,6 @@ export default function Sidebar() {
           )}
         </NavLink>
       </div>
-    </aside>
+    </NavDrawer>
   );
 }

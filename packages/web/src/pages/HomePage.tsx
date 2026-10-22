@@ -556,7 +556,7 @@ export default function HomePage() {
 
   return (
     <div
-      className="min-h-screen flex flex-col select-none"
+      className="min-h-screen flex flex-col select-none overflow-x-clip"
       onCopy={blockCopy}
       onCut={blockCopy}
       onContextMenu={blockCopy}

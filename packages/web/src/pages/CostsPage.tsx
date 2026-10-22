@@ -57,14 +57,14 @@ export default function CostsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-3">
         <div>
           <h2 className="text-xl font-bold text-gray-900 dark:text-slate-100">Expenses & Costs</h2>
           <p className="text-sm text-gray-500 dark:text-slate-400">
             Track fuel, electricity, labor, maintenance, and more
           </p>
         </div>
-        <button onClick={() => setShowForm(!showForm)} className="btn-primary">
+        <button onClick={() => setShowForm(!showForm)} className="btn-primary shrink-0">
           <Plus size={16} /> Add Expense
         </button>
       </div>

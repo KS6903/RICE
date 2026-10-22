@@ -14,10 +14,12 @@ import {
   ShieldCheck,
   Sun,
   Moon,
+  X,
 } from "lucide-react";
 import { clsx } from "clsx";
 import UpgradeRequestToast from "../admin/UpgradeRequestToast";
 import BrandLogo from "../BrandLogo";
+import { NavDrawer, NavDrawerButton, useNavDrawer } from "./NavDrawer";
 
 const NAV = [
   { to: "/admin", label: "Dashboard", icon: LayoutDashboard, end: true },
@@ -52,6 +54,7 @@ export default function AdminShell() {
   const { user, logout } = useAuthStore();
   const navigate = useNavigate();
   useAccountTheme();
+  const nav = useNavDrawer();
 
   const { data: pending } = useQuery({
     queryKey: ["admin-pending-upgrades"],
@@ -68,8 +71,8 @@ export default function AdminShell() {
   };
 
   return (
-    <div className="flex h-screen overflow-hidden">
-      <aside className="relative w-60 shrink-0 flex flex-col glass border-r border-soft">
+    <div className="app-viewport flex overflow-hidden">
+      <NavDrawer open={nav.open} onClose={() => nav.setOpen(false)} className="lg:w-60">
         <div className="pointer-events-none absolute -top-10 -left-10 h-40 w-40 rounded-full bg-grad-brand opacity-20 blur-3xl" />
 
         <div className="relative px-5 py-5 border-b border-soft">
@@ -79,12 +82,20 @@ export default function AdminShell() {
             <div className="h-10 w-10 grid place-items-center">
               <BrandLogo gradient width={40} height={18} strokeWidth={6} />
             </div>
-            <div className="min-w-0">
+            <div className="min-w-0 flex-1">
               <h1 className="text-base font-bold tracking-tight text-primary leading-tight truncate">
                 Oraiza
               </h1>
               <p className="text-xs text-muted leading-tight font-medium">Platform console</p>
             </div>
+            <button
+              type="button"
+              onClick={() => nav.setOpen(false)}
+              className="lg:hidden -mr-2 h-10 w-10 grid place-items-center rounded-xl text-secondary hover:text-primary"
+              aria-label="Close menu"
+            >
+              <X size={20} />
+            </button>
           </div>
         </div>
 
@@ -125,16 +136,17 @@ export default function AdminShell() {
         <div className="relative px-5 py-3 border-t border-soft text-xs text-muted font-medium">
           v1.0.0 · BossAdmin
         </div>
-      </aside>
+      </NavDrawer>
 
       <div className="flex-1 flex flex-col min-w-0">
-        <header className="h-16 glass-strong border-b border-soft flex items-center justify-between px-6 shrink-0 relative z-10">
-          <span className="inline-flex items-center gap-1.5 badge-violet">
+        <header className="h-16 glass-strong border-b border-soft flex items-center justify-between gap-2 px-3 sm:px-6 shrink-0 relative z-10">
+          <NavDrawerButton open={nav.open} onOpen={() => nav.setOpen(true)} />
+          <span className="inline-flex items-center gap-1.5 badge-violet mr-auto lg:mr-0">
             <ShieldCheck size={12} />
             Platform admin
           </span>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3">
             <ThemeToggle />
 
             <div className="hidden sm:flex items-center gap-2.5 pl-3 border-l border-soft">
@@ -164,7 +176,7 @@ export default function AdminShell() {
           </div>
         </header>
 
-        <main className="flex-1 overflow-y-auto px-6 py-6 lg:px-8 lg:py-8">
+        <main className="flex-1 overflow-y-auto px-4 py-5 sm:px-6 sm:py-6 lg:px-8 lg:py-8">
           <div className="mx-auto max-w-7xl animate-grad-fade-up">
             <Outlet />
           </div>

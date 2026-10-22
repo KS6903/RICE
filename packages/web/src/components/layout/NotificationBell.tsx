@@ -126,7 +126,7 @@ export default function NotificationBell() {
       {open && (
         <div
           ref={popoverRef}
-          className="absolute right-0 mt-2 w-96 max-w-[calc(100vw-2rem)] z-50 bg-white dark:bg-slate-900 rounded-xl shadow-2xl ring-1 ring-soft overflow-hidden"
+          className="fixed inset-x-3 top-[4.5rem] sm:absolute sm:inset-x-auto sm:top-auto sm:right-0 sm:mt-2 sm:w-96 z-50 bg-white dark:bg-slate-900 rounded-xl shadow-2xl ring-1 ring-soft overflow-hidden"
           role="dialog"
           aria-label="Notifications"
         >

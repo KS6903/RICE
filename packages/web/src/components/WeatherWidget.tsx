@@ -178,7 +178,7 @@ function Shell({
     <div
       data-testid={testid}
       title={title}
-      className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-white/60 dark:bg-slate-800/60 ring-1 ring-soft text-secondary"
+      className="inline-flex items-center gap-1.5 px-2 sm:px-2.5 py-1.5 rounded-xl bg-white/60 dark:bg-slate-800/60 ring-1 ring-soft text-secondary"
     >
       {children}
     </div>

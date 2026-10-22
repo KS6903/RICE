@@ -87,6 +87,16 @@
       linear-gradient(180deg, #020617 0%, #0f172a 100%);
   }
 
+  /* iPhones zoom the page into any field whose text is under 16px, and leave
+     it zoomed. Touch screens get 16px fields; `.input` is matched below. */
+  @media (pointer: coarse) {
+    input,
+    select,
+    textarea {
+      font-size: max(16px, 1em);
+    }
+  }
+
   ::-webkit-scrollbar { width: 10px; height: 10px; }
   ::-webkit-scrollbar-track { background: transparent; }
   ::-webkit-scrollbar-thumb {
@@ -123,6 +133,14 @@
    custom tokens, so dev-server cache state cannot break them.
    --------------------------------------------------------- */
 @layer components {
+  /* The app's full-height frame. On a phone, 100vh is taller than what shows
+     while the browser's address bar is out, which hides the bottom of the
+     page; dvh follows the bar. */
+  .app-viewport {
+    height: 100vh;
+    height: 100dvh;
+  }
+
   /* ========== Glass surfaces ========== */
   .glass {
     background-color: rgb(var(--glass-bg) / var(--glass-alpha));
@@ -419,6 +437,9 @@
     box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.04);
     transition: all 0.15s ease;
   }
+  @media (pointer: coarse) {
+    .input { font-size: 1rem; }
+  }
   .input::placeholder { color: rgb(var(--ink-subtle)); }
   .input:hover { border-color: rgb(var(--line-strong)); }
   .input:focus {
@@ -663,4 +684,25 @@
     color: #b45309;
   }
   .dark .icon-chip-amber { color: #fcd34d; }
+}
+
+/* ---------------------------------------------------------
+   Tables on a narrow screen. Most tables sit straight inside a
+   card or panel that clips its corners, which also cut off the
+   right-hand columns on a phone with no way to reach them:
+   those containers scroll sideways instead. On a phone, cells
+   keep to one line, so a date or an order number doesn't break
+   at every hyphen. Outside the layers so it's always emitted
+   and outranks the `overflow-hidden` utility.
+   --------------------------------------------------------- */
+.card.overflow-hidden:has(> table),
+.panel:has(> table) {
+  overflow-x: auto;
+}
+@media (max-width: 639px) {
+  .card.overflow-hidden > table :is(th, td),
+  .panel > table :is(th, td),
+  .overflow-x-auto > table :is(th, td) {
+    white-space: nowrap;
+  }
 }

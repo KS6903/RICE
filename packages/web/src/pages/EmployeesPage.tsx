@@ -338,11 +338,11 @@ function EmployeesPageInner() {
             {active.length} active · {inactive.length} deactivated
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          <div className="relative">
+        <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 w-full sm:w-auto">
+          <div className="relative basis-full sm:basis-auto">
             <Search size={16} className="absolute left-3 top-2.5 text-gray-400" />
             <input
-              className="input pl-9 w-56"
+              className="input pl-9 sm:w-56"
               placeholder="Search…"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
@@ -350,7 +350,7 @@ function EmployeesPageInner() {
           </div>
           <Select
             aria-label="Branch"
-            className="!w-auto min-w-[10rem]"
+            className="flex-1 sm:flex-none sm:!w-auto min-w-[10rem]"
             value={branchFilter}
             onChange={setBranchFilter}
             options={[
@@ -358,7 +358,7 @@ function EmployeesPageInner() {
               ...branches.map((b: any) => ({ value: b.id, label: b.name })),
             ]}
           />
-          <button onClick={() => setShowForm(!showForm)} className="btn-primary">
+          <button onClick={() => setShowForm(!showForm)} className="btn-primary shrink-0">
             <Plus size={16} /> Add employee
           </button>
         </div>

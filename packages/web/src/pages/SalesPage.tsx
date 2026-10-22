@@ -162,7 +162,7 @@ export default function SalesPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-3">
         <div>
           <h2 className="text-xl font-bold text-gray-900 dark:text-slate-100">Sales</h2>
           <p className="text-sm text-gray-500 dark:text-slate-400">
@@ -170,12 +170,12 @@ export default function SalesPage() {
           </p>
         </div>
         {tab === "orders" && (
-          <button onClick={() => setShowOrderForm(!showOrderForm)} className="btn-primary">
+          <button onClick={() => setShowOrderForm(!showOrderForm)} className="btn-primary shrink-0">
             <Plus size={16} /> New Order
           </button>
         )}
         {tab === "customers" && (
-          <button onClick={() => setShowCustomerForm(!showCustomerForm)} className="btn-primary">
+          <button onClick={() => setShowCustomerForm(!showCustomerForm)} className="btn-primary shrink-0">
             <Plus size={16} /> New Customer
           </button>
         )}
@@ -286,8 +286,8 @@ export default function SalesPage() {
               </button>
             </div>
             {orderForm.items.map((item, idx) => (
-              <div key={idx} className="grid grid-cols-5 gap-2">
-                <FieldCaption label="Rice in stock">
+              <div key={idx} className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+                <FieldCaption label="Rice in stock" className="col-span-2 sm:col-span-1">
                   <Select
                     aria-label="Rice in stock"
                     placeholder="Variety"
@@ -348,7 +348,7 @@ export default function SalesPage() {
                     }}
                   />
                 </FieldCaption>
-                <FieldCaption label="Amount">
+                <FieldCaption label="Amount" className="col-span-2 sm:col-span-1">
                   <span className="input block bg-gray-50 dark:bg-slate-900/50 text-gray-600 dark:text-slate-300">
                     ₱
                     {item.quantity_kg && item.unit_price_per_kg

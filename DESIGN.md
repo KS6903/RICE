@@ -45,7 +45,11 @@ OKLCH-adjacent hex brand ramp; surfaces via CSS variables.
 ## Layout
 
 - App shell: glass sidebar (`w-64`) + `glass-strong` header + mesh body. Admin shell mirrors it
-  (`w-60`). Content max-width `7xl`, `px-6 py-6` (`lg:px-8 lg:py-8`).
+  (`w-60`). Content max-width `7xl`, `px-4 py-5` on phones, `sm:px-6 sm:py-6`, `lg:px-8 lg:py-8`.
+- Below `lg` the sidebar is a slide-in drawer (`NavDrawer`) opened from a menu button in the
+  header; header pop-ups pin full-width under the header on phones. Tables inside a clipped
+  `.card`/`.panel` scroll sideways, with one-line cells under `sm`. Touch screens get 16px fields
+  so iOS doesn't zoom in on focus. The frame uses `.app-viewport` (`100dvh`), not `h-screen`.
 - Responsive grids via `repeat(auto-fit, minmax(...))` or breakpoint columns; sidebar collapses
   structurally (not fluid type).
 

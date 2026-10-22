@@ -36,7 +36,7 @@ export default function PurchaseColumn({
           </p>
         </div>
         {canBuy && (
-          <button onClick={onNew} className="btn-primary">
+          <button onClick={onNew} className="btn-primary shrink-0">
             <Plus size={16} /> New Purchase
           </button>
         )}

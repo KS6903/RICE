@@ -193,7 +193,7 @@ export default function UsersPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-3">
         <div>
           <h2 className="text-xl font-bold text-gray-900 dark:text-slate-100">Users</h2>
           <p className="text-sm text-gray-500 dark:text-slate-400">
@@ -207,7 +207,7 @@ export default function UsersPage() {
             setProof(EMPTY_PROOF);
             setShowForm(!showForm);
           }}
-          className="btn-primary"
+          className="btn-primary shrink-0"
         >
           <Plus size={16} /> Add User
         </button>

@@ -91,7 +91,12 @@ function TourRun() {
       return;
     }
     el.scrollIntoView?.({ block: "nearest" });
-    const measure = () => setRect(el.getBoundingClientRect());
+    // On a phone the menu is tucked away off-screen: center the tooltip
+    // rather than aim it at nothing.
+    const measure = () => {
+      const r = el.getBoundingClientRect();
+      setRect(r.right <= 0 || r.left >= window.innerWidth ? null : r);
+    };
     measure();
     window.addEventListener("resize", measure);
     window.addEventListener("scroll", measure, true);
