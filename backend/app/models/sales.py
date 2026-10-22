@@ -54,8 +54,12 @@ class SalesOrder(Base, TimestampMixin):
     assigned_miller_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("millers.id"))
     delivered_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     # Who delivers it: "customer" (they collect it, or send their own courier) or
-    # "mill" (the rice mill's own courier). The note is optional.
+    # "mill" (the rice mill's own courier). The plate number and the driver are
+    # required with either; the phone and the note are optional.
     courier_type: Mapped[str | None] = mapped_column(String(20))
+    courier_plate: Mapped[str | None] = mapped_column(String(20))
+    courier_driver: Mapped[str | None] = mapped_column(String(150))
+    courier_phone: Mapped[str | None] = mapped_column(String(20))
     courier_notes: Mapped[str | None] = mapped_column(Text)
 
     customer: Mapped["Customer"] = relationship("Customer")

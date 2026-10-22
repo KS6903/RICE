@@ -41,6 +41,9 @@ ORDER_KEYS = {
     "unmark_until",
     "customer",
     "courier_type",
+    "courier_plate",
+    "courier_driver",
+    "courier_phone",
     "courier_notes",
     "assigned_agent",
     "assigned_miller",
@@ -115,20 +118,39 @@ def test_dispatch_orders_courier_and_delivery(auth_client):
 
     assigned = auth_client.patch(
         f"/api/sales-orders/{order['id']}/assign-courier",
-        json={"courier_type": "mill", "notes": "Truck leaves at 6am"},
+        json={
+            "courier_type": "mill",
+            "plate_number": " abc  1234 ",
+            "driver_name": "Juan  Dela Cruz",
+            "driver_phone": "0917 123 4567",
+            "notes": "Truck leaves at 6am",
+        },
     )
     assert assigned.status_code == 200
     assert assigned.json()["courier_type"] == "mill"
+    assert assigned.json()["courier_plate"] == "ABC 1234"
+    assert assigned.json()["courier_driver"] == "Juan Dela Cruz"
+    assert assigned.json()["courier_phone"] == "0917 123 4567"
     assert assigned.json()["courier_notes"] == "Truck leaves at 6am"
     assert assigned.json()["assigned_agent"] is None
     assert assigned.json()["assigned_miller"] is None
 
-    # The customer collecting it is the other choice; the notes are optional.
-    customer_pickup = auth_client.patch(
-        f"/api/sales-orders/{order['id']}/assign-courier", json={"courier_type": "customer"}
-    )
+    # Either courier needs the plate number and the driver.
+    for body in (
+        {"courier_type": "customer"},
+        {"courier_type": "customer", "plate_number": "XYZ 987"},
+        {"courier_type": "mill", "plate_number": "  ", "driver_name": "Ana"},
+    ):
+        missing = auth_client.patch(f"/api/sales-orders/{order['id']}/assign-courier", json=body)
+        assert missing.status_code == 400, body
+        assert "plate number" in missing.json()["detail"]
+
+    # The customer collecting it is the other choice; the phone and notes are optional.
+    customer_pickup = auth_client.patch(f"/api/sales-orders/{order['id']}/assign-courier", json=PICKUP)
     assert customer_pickup.status_code == 200
     assert customer_pickup.json()["courier_type"] == "customer"
+    assert customer_pickup.json()["courier_plate"] == "XYZ 987"
+    assert customer_pickup.json()["courier_phone"] is None
     assert customer_pickup.json()["courier_notes"] is None
 
     # Nothing else is a courier: an agent, a miller or any other kind is refused.
@@ -144,6 +166,11 @@ def test_dispatch_orders_courier_and_delivery(auth_client):
     assert delivered.status_code == 200
     assert delivered.json()["status"] == "delivered"
     assert delivered.json()["delivered_at"]
+
+
+# The customer collecting it in their own vehicle; the mill's courier likewise.
+PICKUP = {"courier_type": "customer", "plate_number": "XYZ 987", "driver_name": "Ana"}
+MILL = {"courier_type": "mill", "plate_number": "ABC 1234", "driver_name": "Juan"}
 
 
 def _confirmed_order(auth_client):
@@ -173,7 +200,7 @@ def test_nothing_is_delivered_without_a_courier(auth_client):
     assert still["status"] == "confirmed" and still["delivered_at"] is None
 
     # With a courier it goes through, and the courier can't then be taken off.
-    auth_client.patch(f"/api/sales-orders/{order['id']}/assign-courier", json={"courier_type": "customer"})
+    auth_client.patch(f"/api/sales-orders/{order['id']}/assign-courier", json=PICKUP)
     done = auth_client.patch(f"/api/sales-orders/{order['id']}/mark-delivered")
     assert done.status_code == 200 and done.json()["status"] == "delivered"
     removed = auth_client.patch(f"/api/sales-orders/{order['id']}/assign-courier", json={})
@@ -182,16 +209,18 @@ def test_nothing_is_delivered_without_a_courier(auth_client):
 
 def test_a_courier_can_still_be_removed_before_delivery(auth_client):
     order = _confirmed_order(auth_client)
-    auth_client.patch(f"/api/sales-orders/{order['id']}/assign-courier", json={"courier_type": "mill", "notes": "x"})
+    auth_client.patch(f"/api/sales-orders/{order['id']}/assign-courier", json={**MILL, "notes": "x"})
     cleared = auth_client.patch(f"/api/sales-orders/{order['id']}/assign-courier", json={})
     assert cleared.status_code == 200
     assert cleared.json()["courier_type"] is None
+    assert cleared.json()["courier_plate"] is None
+    assert cleared.json()["courier_driver"] is None
     assert cleared.json()["courier_notes"] is None
 
 
 def _delivered_order(auth_client):
     order = _confirmed_order(auth_client)
-    auth_client.patch(f"/api/sales-orders/{order['id']}/assign-courier", json={"courier_type": "mill"})
+    auth_client.patch(f"/api/sales-orders/{order['id']}/assign-courier", json=MILL)
     done = auth_client.patch(f"/api/sales-orders/{order['id']}/mark-delivered")
     assert done.status_code == 200, done.text
     return order, done.json()

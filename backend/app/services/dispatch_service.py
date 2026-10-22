@@ -13,7 +13,7 @@ from typing import Any
 
 from sqlalchemy.orm import Session
 
-from ..core.exceptions import ConflictError, NotFoundError
+from ..core.exceptions import BadRequestError, ConflictError, NotFoundError
 from ..models.dispatch import Agent, Miller
 from ..models.sales import SalesOrder
 from ..repositories.dispatch import AgentRepository, DispatchOrderRepository, MillerRepository
@@ -85,6 +85,9 @@ class DispatchService(BaseService):
             "unmark_until": deadline.isoformat() if (deadline := edit_deadline(o)) else None,
             "customer": {"id": str(o.customer.id), "name": o.customer.name} if o.customer else None,
             "courier_type": o.courier_type or ("mill" if (o.assigned_agent or o.assigned_miller) else None),
+            "courier_plate": o.courier_plate,
+            "courier_driver": o.courier_driver,
+            "courier_phone": o.courier_phone,
             "courier_notes": o.courier_notes,
             "assigned_agent": self._serialize_agent(o.assigned_agent) if o.assigned_agent else None,
             "assigned_miller": self._serialize_miller(o.assigned_miller) if o.assigned_miller else None,
@@ -210,17 +213,27 @@ class DispatchService(BaseService):
 
     def assign_courier(self, order_id: uuid.UUID, data) -> dict:
         """Say who delivers the order: the customer, or the rice mill's courier
-        (None clears it). Notes are optional."""
+        (None clears it), with the plate number and the driver. The driver's
+        phone and the notes are optional."""
         order = self.orders.get_for_company(order_id, self.current_user.company_id)
         if not order:
             raise NotFoundError("Order not found")
         if data.courier_type is None and order.status == "delivered":
             # A delivered order always says who delivered it.
             raise ConflictError("A delivered order keeps its courier. Choose a different one instead.")
+        plate = " ".join((data.plate_number or "").split()).upper() or None
+        driver = " ".join((data.driver_name or "").split()) or None
+        if data.courier_type and not (plate and driver):
+            raise BadRequestError("Enter the plate number and the driver's name.")
+        phone = (data.driver_phone or "").strip() or None
         notes = (data.notes or "").strip() or None
+        on = data.courier_type is not None
         with self.transaction():
             order.courier_type = data.courier_type
-            order.courier_notes = notes if data.courier_type else None
+            order.courier_plate = plate if on else None
+            order.courier_driver = driver if on else None
+            order.courier_phone = phone if on else None
+            order.courier_notes = notes if on else None
             # Anyone assigned the old way is replaced by this choice.
             order.assigned_agent_id = None
             order.assigned_miller_id = None

@@ -50,10 +50,15 @@ class MillerUpdate(BaseModel):
 
 class CourierAssign(BaseModel):
     """Who delivers an order: the customer, or the rice mill's own courier. None
-    clears it. The note is optional. Nothing else is a courier, so an old client
-    still sending an agent or miller is refused rather than silently clearing it."""
+    clears it. Either needs the plate number and the driver (checked by the
+    service, so the refusal reads as one sentence); the phone and the note are
+    optional. Nothing else is a courier, so an old client still sending an agent
+    or miller is refused rather than silently clearing it."""
 
     model_config = ConfigDict(extra="forbid")
 
     courier_type: Literal["customer", "mill"] | None = None
+    plate_number: str | None = Field(None, max_length=20)
+    driver_name: str | None = Field(None, max_length=150)
+    driver_phone: str | None = Field(None, max_length=20)
     notes: str | None = Field(None, max_length=500)

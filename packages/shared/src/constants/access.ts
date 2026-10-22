@@ -113,7 +113,7 @@ export const ROLE_ACCESS: Record<Role, Record<AppSection, AccessLevel>> = {
     milling: "full",
     inventory: "view",
     sales: "full",
-    dispatch: "none",
+    dispatch: "full", // who takes each order: the plate number and the driver
     operators: "none",
     expenses: "none",
     reports: "none",

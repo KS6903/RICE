@@ -25,6 +25,7 @@ import { fleetService, TRUCK_TYPES } from "../services/FleetService";
 import type { Driver, Truck as TruckType, DispatchTrip } from "../services/FleetService";
 import { employeesService } from "../services/EmployeesService";
 import Select from "../components/Select";
+import ComboInput from "../components/ComboInput";
 import DatePicker from "../components/DatePicker";
 import { useAuthStore } from "../stores/authStore";
 import { useAccess } from "../hooks/useAccess";
@@ -62,6 +63,10 @@ type DispatchOrder = {
   customer: { id: string; name: string } | null;
   // Who delivers it: the customer, or the rice mill's own courier.
   courier_type: "customer" | "mill" | null;
+  // The vehicle and the driver that take it.
+  courier_plate: string | null;
+  courier_driver: string | null;
+  courier_phone: string | null;
   courier_notes: string | null;
   // Until when the owner can still take the delivered mark off.
   unmark_until: string | null;
@@ -225,12 +230,26 @@ function OrdersTab() {
                               {COURIER_LABEL[courier]}
                             </span>
                           </span>
-                          {(o.courier_notes || legacyName) && (
+                          {o.courier_plate && (
+                            <p className="mt-0.5 text-xs text-secondary">
+                              <span className="font-mono font-semibold text-primary">
+                                {o.courier_plate}
+                              </span>
+                              {o.courier_driver && `, ${o.courier_driver}`}
+                              {o.courier_phone && `, ${o.courier_phone}`}
+                            </p>
+                          )}
+                          {(o.courier_notes || (!o.courier_plate && legacyName)) && (
                             <p
                               className="mt-0.5 max-w-[16rem] truncate text-xs text-muted"
                               title={o.courier_notes ?? legacyName ?? undefined}
                             >
                               {o.courier_notes ?? legacyName}
+                            </p>
+                          )}
+                          {!o.courier_plate && o.status !== "delivered" && (
+                            <p className="mt-0.5 text-xs text-amber-700 dark:text-amber-400">
+                              No plate number yet
                             </p>
                           )}
                         </div>
@@ -337,13 +356,13 @@ const COURIER_OPTIONS = [
   {
     value: "customer",
     label: "Customer",
-    hint: "The customer collects it, or sends their own courier.",
+    hint: "The customer collects it, or sends their own vehicle.",
     icon: User,
   },
   {
     value: "mill",
     label: "Rice mill courier",
-    hint: "The mill delivers it with its own courier.",
+    hint: "The mill delivers it with one of its own trucks.",
     icon: Truck,
   },
 ] as const;
@@ -352,11 +371,39 @@ function AssignCourierModal({ order, onClose }: { order: DispatchOrder; onClose:
   useEscapeKey(onClose);
   const qc = useQueryClient();
   const [choice, setChoice] = useState<"customer" | "mill" | null>(order.courier_type);
+  const [plate, setPlate] = useState(order.courier_plate ?? "");
+  const [driver, setDriver] = useState(order.courier_driver ?? "");
+  const [phone, setPhone] = useState(order.courier_phone ?? "");
   const [notes, setNotes] = useState(order.courier_notes ?? "");
 
+  // The mill's own trucks and drivers, to pick from instead of typing.
+  const { data: trucks = [] } = useQuery<TruckType[]>({
+    queryKey: ["fleet-trucks"],
+    queryFn: () => fleetService.listTrucks(),
+  });
+  const { data: drivers = [] } = useQuery<Driver[]>({
+    queryKey: ["fleet-drivers"],
+    queryFn: () => fleetService.listDrivers(),
+  });
+  const takeDriver = (name: string) => {
+    setDriver(name);
+    const known = drivers.find((d) => d.name.toLowerCase() === name.trim().toLowerCase());
+    if (known?.phone) setPhone(known.phone);
+  };
+  const takeTruck = (t: TruckType) => {
+    setPlate(t.plate_number);
+    if (t.default_driver_name) takeDriver(t.default_driver_name);
+  };
+
+  const ready = !!choice && !!plate.trim() && !!driver.trim();
   const assign = useMutation({
-    mutationFn: (c: { choice: "customer" | "mill" | null; notes: string }) =>
-      dispatchService.assignCourier(order.id, c.choice, c.notes),
+    mutationFn: (c: { choice: "customer" | "mill" | null }) =>
+      dispatchService.assignCourier(order.id, c.choice, {
+        plate_number: plate,
+        driver_name: driver,
+        driver_phone: phone,
+        notes,
+      }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["dispatch-orders"] });
       onClose();
@@ -425,20 +472,97 @@ function AssignCourierModal({ order, onClose }: { order: DispatchOrder; onClose:
           })}
         </div>
 
-        <div className="mt-4">
-          <label htmlFor="courier-notes" className={LABEL}>
-            Notes (optional)
-          </label>
-          <textarea
-            id="courier-notes"
-            rows={3}
-            maxLength={500}
-            className="input"
-            placeholder="For example, the plate number or the pickup time"
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-          />
-        </div>
+        {choice && (
+          <div className="mt-4 space-y-3" data-testid="courier-details">
+            {choice === "mill" && trucks.length > 0 && (
+              <div>
+                <p className={LABEL}>Pick a truck</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {trucks.map((t) => {
+                    const on = plate.trim().toUpperCase() === t.plate_number.toUpperCase();
+                    return (
+                      <button
+                        key={t.id}
+                        type="button"
+                        aria-pressed={on}
+                        onClick={() => takeTruck(t)}
+                        className={`rounded-lg px-2.5 py-1.5 text-xs font-semibold ring-1 transition-colors ${
+                          on
+                            ? "bg-emerald-500/10 text-emerald-800 ring-emerald-400 dark:text-emerald-200"
+                            : "text-secondary ring-soft hover:ring-emerald-300"
+                        }`}
+                      >
+                        <span className="font-mono">{t.plate_number}</span>
+                        {t.default_driver_name && (
+                          <span className="font-normal text-muted">, {t.default_driver_name}</span>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div>
+                <label htmlFor="courier-plate" className={LABEL}>
+                  Plate number *
+                </label>
+                <ComboInput
+                  id="courier-plate"
+                  className="input font-mono uppercase"
+                  maxLength={20}
+                  placeholder="ABC 1234"
+                  value={plate}
+                  onChange={(v) => setPlate(v.toUpperCase())}
+                  suggestions={choice === "mill" ? trucks.map((t) => t.plate_number) : []}
+                />
+              </div>
+              <div>
+                <label htmlFor="courier-driver" className={LABEL}>
+                  Driver's name *
+                </label>
+                <ComboInput
+                  id="courier-driver"
+                  className="input"
+                  maxLength={150}
+                  placeholder={choice === "customer" ? "Who picks it up" : "Who drives"}
+                  value={driver}
+                  onChange={takeDriver}
+                  suggestions={choice === "mill" ? drivers.map((d) => d.name) : []}
+                />
+              </div>
+              <div>
+                <label htmlFor="courier-phone" className={LABEL}>
+                  Driver's phone
+                </label>
+                <input
+                  id="courier-phone"
+                  type="tel"
+                  inputMode="tel"
+                  maxLength={20}
+                  className="input"
+                  placeholder="0917 123 4567"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                />
+              </div>
+            </div>
+            <div>
+              <label htmlFor="courier-notes" className={LABEL}>
+                Notes (optional)
+              </label>
+              <textarea
+                id="courier-notes"
+                rows={2}
+                maxLength={500}
+                className="input"
+                placeholder="For example, the pickup time or the vehicle"
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+              />
+            </div>
+          </div>
+        )}
 
         {assign.isError && (
           <p className="text-xs text-rose-600 dark:text-rose-400 font-medium mt-3 flex items-center gap-1">
@@ -451,7 +575,7 @@ function AssignCourierModal({ order, onClose }: { order: DispatchOrder; onClose:
             {order.courier_type && order.status !== "delivered" && (
               <button
                 type="button"
-                onClick={() => assign.mutate({ choice: null, notes: "" })}
+                onClick={() => assign.mutate({ choice: null })}
                 disabled={assign.isPending}
                 className="text-xs font-semibold text-rose-600 dark:text-rose-400 hover:underline"
               >
@@ -466,8 +590,9 @@ function AssignCourierModal({ order, onClose }: { order: DispatchOrder; onClose:
             <button
               type="button"
               data-testid="confirm-courier"
-              onClick={() => assign.mutate({ choice, notes })}
-              disabled={assign.isPending || !choice}
+              onClick={() => assign.mutate({ choice })}
+              disabled={assign.isPending || !ready}
+              title={ready || !choice ? undefined : "Enter the plate number and the driver's name"}
               className="btn-primary !py-1.5 !px-3 text-sm disabled:opacity-50"
             >
               {assign.isPending ? "Saving…" : "Save"}

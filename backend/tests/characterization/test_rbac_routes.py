@@ -99,4 +99,5 @@ def test_encoder_can_write_paddy_sales_and_milling_but_only_view_inventory(make_
     )
 
     assert client.get("/api/agents").status_code == 403
-    assert client.get("/api/dispatch/orders").status_code == 403
+    # Encoders enter who takes each order (the plate number and the driver).
+    assert client.get("/api/dispatch/orders").status_code == 200

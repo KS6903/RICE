@@ -54,6 +54,10 @@ _extra_ddl: list[str] = [
     # Who delivers an order: the customer or the rice mill's courier, plus a note.
     "ALTER TABLE sales_orders ADD COLUMN IF NOT EXISTS courier_type VARCHAR(20)",
     "ALTER TABLE sales_orders ADD COLUMN IF NOT EXISTS courier_notes TEXT",
+    # The vehicle and the driver that take it.
+    "ALTER TABLE sales_orders ADD COLUMN IF NOT EXISTS courier_plate VARCHAR(20)",
+    "ALTER TABLE sales_orders ADD COLUMN IF NOT EXISTS courier_driver VARCHAR(150)",
+    "ALTER TABLE sales_orders ADD COLUMN IF NOT EXISTS courier_phone VARCHAR(20)",
     # When a trip's status last changed (a departed or delivered trip locks a week later).
     "ALTER TABLE dispatch_trips ADD COLUMN IF NOT EXISTS status_changed_at TIMESTAMPTZ",
     # How an employee's salary is paid, and the details that method needs.

@@ -117,7 +117,8 @@ SECTION_ACCESS: dict[str, dict[str, str]] = {
         "milling": "full",
         "inventory": "view",
         "sales": "full",
-        "dispatch": "none",
+        # Enters who takes each order: the plate number and the driver.
+        "dispatch": "full",
         "operators": "none",
         "expenses": "none",
         "reports": "none",
