@@ -678,7 +678,7 @@ export default function HomePage() {
                 to="/signup"
                 className="mt-7 inline-flex items-center gap-2 rounded-xl bg-white px-6 py-3 font-bold text-slate-900 shadow-lg hover:scale-[1.02] active:scale-[0.98] transition-transform"
               >
-                Sign up for free <ArrowRight size={18} />
+                Get started for free <ArrowRight size={18} />
               </Link>
             </div>
           </Reveal>
