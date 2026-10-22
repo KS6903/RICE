@@ -49,6 +49,17 @@ const TONE_STYLES: Record<Tone, { ring: string; iconBg: string }> = {
   },
 };
 
+/** "-₱359,808.02", with the minus ahead of the peso sign. */
+const signedPeso = (n: number) => `${n < 0 ? "-" : ""}₱${Math.abs(n).toLocaleString()}`;
+
+/** The figure's font size: text-3xl, or smaller when the figure is too long for
+ *  its card, so a big number never pushes the icon out of place. 0.6em is a
+ *  generous average width per character; a unit after it takes about 1.5rem. */
+function fitFontSize(text: string, unit?: string) {
+  const room = unit ? "(100cqi - 1.5rem)" : "100cqi";
+  return `min(1.875rem, calc(${room} / ${(text.length * 0.6).toFixed(2)}))`;
+}
+
 function StatCard({
   label,
   value,
@@ -63,6 +74,7 @@ function StatCard({
   tone: Tone;
 }) {
   const t = TONE_STYLES[tone];
+  const text = typeof value === "number" ? value.toLocaleString() : value;
   return (
     <div className={`card relative overflow-hidden ring-1 ring-inset ${t.ring}`}>
       <div
@@ -70,10 +82,16 @@ function StatCard({
         aria-hidden
       />
       <div className="flex items-start justify-between gap-3">
-        <div>
+        {/* min-w-0 + flex-1: the text takes what's left beside the icon, and its
+            width (not the figure's) is what 100cqi measures. */}
+        <div className="min-w-0 flex-1 [container-type:inline-size]">
           <p className="text-sm font-bold uppercase tracking-wide text-muted">{label}</p>
-          <p className="mt-2 text-3xl font-extrabold tracking-tight text-primary">
-            {typeof value === "number" ? value.toLocaleString() : value}
+          <p
+            className="mt-2 font-extrabold leading-tight tracking-tight text-primary truncate"
+            style={{ fontSize: fitFontSize(text, unit) }}
+            title={unit ? `${text} ${unit}` : text}
+          >
+            {text}
             {unit && <span className="text-base font-semibold text-secondary ml-1">{unit}</span>}
           </p>
         </div>
@@ -160,7 +178,7 @@ export default function Dashboard() {
                 </div>
               </div>
               <h1 className="mt-2 text-3xl lg:text-4xl font-extrabold tracking-tight leading-[1.05]">
-                {pnl ? `₱${Number(pnl.net_profit).toLocaleString()}` : "—"}
+                {pnl ? signedPeso(Number(pnl.net_profit)) : "—"}
               </h1>
               <p className="mt-1 text-white text-sm font-medium">
                 Net profit · {format(new Date(), "MMMM yyyy")} · all branches
@@ -216,7 +234,7 @@ export default function Dashboard() {
           <>
             <StatCard
               label="Net Profit (MTD)"
-              value={pnl ? `₱${Number(pnl.net_profit).toLocaleString()}` : "—"}
+              value={pnl ? signedPeso(Number(pnl.net_profit)) : "—"}
               icon={TrendingUp}
               tone="cyan"
             />
