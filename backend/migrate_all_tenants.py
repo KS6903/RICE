@@ -61,6 +61,8 @@ _extra_ddl: list[str] = [
     "ALTER TABLE employees ADD COLUMN IF NOT EXISTS pay_provider VARCHAR(100)",
     "ALTER TABLE employees ADD COLUMN IF NOT EXISTS pay_account_name VARCHAR(150)",
     "ALTER TABLE employees ADD COLUMN IF NOT EXISTS pay_account_no VARCHAR(40)",
+    # The client whose palay a milling batch is (custom milling).
+    "ALTER TABLE milling_batches ADD COLUMN IF NOT EXISTS customer_id UUID REFERENCES customers(id)",
 ]
 
 
