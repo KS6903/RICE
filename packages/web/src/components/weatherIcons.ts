@@ -46,6 +46,8 @@ export function weatherIconClass(code: WeatherConditionCode, isDay: boolean): st
   if (code === "clear" || code === "mostly_clear") {
     return isDay ? "text-amber-500" : "text-indigo-400";
   }
+  // Sun behind a cloud: the sun still sets the colour by day.
+  if (code === "partly_cloudy" && isDay) return "text-amber-500";
   if (code.startsWith("rain") || code.startsWith("wind_rain")) return "text-sky-500";
   if (code.startsWith("snow") || code === "sleet" || code === "hail") return "text-cyan-400";
   if (code === "thunderstorm") return "text-violet-500";

@@ -1,8 +1,9 @@
-import { Cloud, Loader2, MapPin, Droplets } from "lucide-react";
+import { Cloud, CloudSunRain, Droplets, Loader2, Wind } from "lucide-react";
 import { useActiveLocation } from "../hooks/useActiveLocation";
 import { useWeather, useForecast } from "../hooks/useWeather";
 import { WEATHER_ICONS as ICONS, weatherIconClass as iconClass } from "./weatherIcons";
 import DryingAdvisor from "./DryingAdvisor";
+import { rainOutlook } from "../utils/dryingAdvice";
 
 type Variant = "compact" | "expanded";
 
@@ -14,8 +15,8 @@ export default function WeatherWidget({ variant = "compact" }: { variant?: Varia
   const coords =
     active.lat != null && active.lon != null ? { lat: active.lat, lon: active.lon } : null;
   const w = useWeather(coords);
-  // Today's prediction (high/low + rain chance) for the expanded card only — the
-  // compact top-bar pill doesn't show it, so skip the fetch there.
+  // The hourly forecast, for when rain is next likely and the drying advice:
+  // the expanded card only, so the compact top-bar pill skips the fetch.
   const fc = useForecast(coords, { enabled: variant === "expanded" });
 
   // ── Loading state ──
@@ -54,7 +55,6 @@ export default function WeatherWidget({ variant = "compact" }: { variant?: Varia
     active.source === "saved" && active.label
       ? active.label
       : (p.location.label ?? `${p.location.lat.toFixed(2)}, ${p.location.lon.toFixed(2)}`);
-  const today = fc.data?.daily?.[0];
 
   if (variant === "compact") {
     return (
@@ -80,76 +80,51 @@ export default function WeatherWidget({ variant = "compact" }: { variant?: Varia
     );
   }
 
-  // Expanded dashboard card
+  // Expanded dashboard card: the reading on the left, humidity, wind and the
+  // rain outlook on the right, the drying advice underneath.
+  const rain = fc.data ? rainOutlook(fc.data.hourly) : null;
   return (
-    <div
-      data-testid="weather-widget"
-      className="card relative overflow-hidden flex items-center gap-4 !py-3"
-    >
-      <div
-        className="absolute -top-10 -right-10 h-32 w-32 rounded-full bg-sky-300/20 dark:bg-sky-500/10 blur-2xl pointer-events-none"
-        aria-hidden
-      />
-      <div className="shrink-0 h-16 w-16 rounded-2xl ring-1 ring-slate-200 dark:ring-slate-700 grid place-items-center bg-white/60 dark:bg-slate-800/60">
-        <Icon size={32} className={tint} data-testid="weather-icon" />
-      </div>
-
-      {/* Today's prediction — high/low + rain chance, sitting beside the
-          current reading on the left. */}
-      {today && (
-        <div
-          className="relative shrink-0 self-stretch flex flex-col justify-center pr-4 mr-1 border-r border-soft"
-          data-testid="weather-today"
-        >
-          <p className="text-xs font-bold uppercase tracking-wide text-muted">Today</p>
-          <p className="text-2xl font-extrabold text-primary tabular-nums mt-0.5 leading-none">
-            {today.temp_max_c != null ? `${Math.round(today.temp_max_c)}°` : "—"}
-            <span className="text-muted font-semibold text-lg">
-              {" "}
-              / {today.temp_min_c != null ? `${Math.round(today.temp_min_c)}°` : "—"}
-            </span>
-          </p>
-          {today.precip_pct != null && today.precip_pct > 0 && (
-            <p className="text-sm font-semibold text-sky-500 inline-flex items-center gap-1 mt-1.5">
-              <Droplets size={14} /> {today.precip_pct}% rain
+    <div data-testid="weather-widget" className="card">
+      <div className="flex flex-wrap items-center gap-x-8 gap-y-4">
+        <div className="flex min-w-0 items-center gap-4">
+          <Icon size={44} className={`${tint} shrink-0`} data-testid="weather-icon" />
+          <div className="min-w-0">
+            <p
+              className="text-4xl font-extrabold leading-none text-primary tabular-nums"
+              data-testid="weather-temp"
+            >
+              {tempLabel}C
             </p>
+            <p className="mt-1.5 text-sm text-secondary sm:truncate">
+              <span data-testid="weather-condition">{p.condition}</span>
+              {" · "}
+              <span data-testid="weather-location">{placeLabel}</span>
+            </p>
+          </div>
+        </div>
+        <ul className="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-secondary sm:ml-auto">
+          {p.humidity_pct != null && (
+            <li className="inline-flex items-center gap-1.5">
+              <Droplets size={16} className="shrink-0" aria-hidden />
+              Humidity {p.humidity_pct}%
+            </li>
           )}
-          <p className="text-xs text-muted truncate max-w-[10rem] mt-1">{today.condition}</p>
-        </div>
-      )}
-
-      <div className="min-w-0 flex-1">
-        <div className="flex items-baseline gap-2">
-          <p
-            className="text-3xl font-extrabold text-primary tabular-nums leading-none"
-            data-testid="weather-temp"
-          >
-            {tempLabel}
-            <span className="text-base font-semibold text-secondary ml-0.5">C</span>
-          </p>
-          <p
-            className="text-sm font-semibold text-secondary truncate"
-            data-testid="weather-condition"
-          >
-            {p.condition}
-          </p>
-        </div>
-        <p
-          className="text-xs text-muted mt-1 inline-flex items-center gap-1"
-          data-testid="weather-location"
-        >
-          <MapPin size={11} />
-          {placeLabel} · {p.provider}
-        </p>
-        <div className="mt-2 flex flex-wrap gap-x-4 gap-y-0.5 text-[11px] text-muted tabular-nums">
-          {p.feels_like_c != null && <span>Feels {Math.round(p.feels_like_c)}°C</span>}
-          {p.humidity_pct != null && <span>Humidity {p.humidity_pct}%</span>}
-          {p.wind_kph != null && <span>Wind {Math.round(p.wind_kph)} km/h</span>}
-        </div>
+          {p.wind_kph != null && (
+            <li className="inline-flex items-center gap-1.5">
+              <Wind size={16} className="shrink-0" aria-hidden />
+              Wind {Math.round(p.wind_kph)} km/h
+            </li>
+          )}
+          {rain && (
+            <li className="inline-flex items-center gap-1.5" data-testid="weather-rain">
+              <CloudSunRain size={16} className="shrink-0" aria-hidden />
+              {rain}
+            </li>
+          )}
+        </ul>
       </div>
 
-      {/* Agentic AI palay-drying advisor (Enterprise-only) */}
-      <DryingAdvisor coords={coords} />
+      <DryingAdvisor coords={coords} hourly={fc.data?.hourly} />
     </div>
   );
 }
