@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { inventoryService } from "../services/InventoryService";
 import { reportsService } from "../services/ReportsService";
+import { BYPRODUCT_NAMES } from "../mappers/InventoryMapper";
 import {
   Package,
   Wheat,
@@ -119,10 +120,14 @@ export default function Dashboard() {
     return () => clearInterval(timer);
   }, []);
 
+  // The same cache entry as Inventory's "All warehouses" view, so both pages
+  // always show the same stock.
   const { data: inventory } = useQuery({
-    queryKey: ["inventory-summary"],
+    queryKey: ["inventory-summary", ""],
     queryFn: () => inventoryService.getSummary(),
   });
+  const byproducts = Object.entries<number>(inventory?.byproducts ?? {});
+  const byproductTotal = byproducts.reduce((s, [, kg]) => s + kg, 0);
 
   const { data: pnl } = useQuery({
     queryKey: ["pnl-dashboard", currentMonth],
@@ -218,14 +223,14 @@ export default function Dashboard() {
       >
         <StatCard
           label="Palay Stock"
-          value={inventory ? Math.round(inventory.palay_total_kg).toLocaleString() : "—"}
+          value={inventory ? inventory.palay_total_kg.toLocaleString() : "—"}
           unit="kg"
           icon={Wheat}
           tone="amber"
         />
         <StatCard
           label="Milled Rice"
-          value={inventory ? Math.round(inventory.milled_rice_total_kg).toLocaleString() : "—"}
+          value={inventory ? inventory.milled_rice_total_kg.toLocaleString() : "—"}
           unit="kg"
           icon={Package}
           tone="emerald"
@@ -328,19 +333,10 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {inventory?.byproducts ? (
+          {byproducts.length > 0 ? (
             <div className="space-y-4">
-              {Object.entries(inventory.byproducts).map(([type, kg]) => {
-                const total = Object.values(inventory.byproducts).reduce(
-                  (a: number, b) => a + Number(b),
-                  0,
-                ) as number;
-                const pct = total > 0 ? (Number(kg) / total) * 100 : 0;
-                const labels: Record<string, string> = {
-                  ipa: "Ipa (Rice Hull)",
-                  darak: "Darak (Rice Bran)",
-                  binlid: "Binlid (Broken Rice)",
-                };
+              {byproducts.map(([type, kg]) => {
+                const pct = byproductTotal > 0 ? (kg / byproductTotal) * 100 : 0;
                 const colors: Record<string, string> = {
                   ipa: "from-amber-400 to-amber-600",
                   darak: "from-cyan-400 to-cyan-600",
@@ -350,10 +346,10 @@ export default function Dashboard() {
                   <div key={type}>
                     <div className="flex justify-between items-baseline mb-1.5">
                       <span className="text-sm font-semibold text-secondary">
-                        {labels[type] || type}
+                        {BYPRODUCT_NAMES[type] || type}
                       </span>
                       <span className="text-sm font-bold text-primary">
-                        {Number(kg).toLocaleString()}
+                        {kg.toLocaleString()}
                         <span className="text-xs font-semibold text-muted ml-0.5">kg</span>
                       </span>
                     </div>

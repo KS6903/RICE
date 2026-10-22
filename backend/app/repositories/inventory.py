@@ -29,14 +29,6 @@ class MilledRiceInventoryRepository(BaseRepository[MilledRiceInventory]):
             stmt = stmt.where(MilledRiceInventory.branch_id == branch_id)
         return self.db.execute(stmt).scalars().all()
 
-    def list_for_company(
-        self, company_id: uuid.UUID, *, branch_id: uuid.UUID | None = None
-    ) -> Sequence[MilledRiceInventory]:
-        stmt = select(MilledRiceInventory).where(MilledRiceInventory.company_id == company_id)
-        if branch_id:
-            stmt = stmt.where(MilledRiceInventory.branch_id == branch_id)
-        return self.db.execute(stmt).scalars().all()
-
     def find_bucket(self, company_id, branch_id, variety_id, grade_name) -> MilledRiceInventory | None:
         stmt = select(MilledRiceInventory).where(
             MilledRiceInventory.company_id == company_id,

@@ -62,6 +62,17 @@ export default function MillingPage() {
     mutationFn: (body: typeof form) => millingService.createBatch(body),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["milling-batches"] });
+      // A batch uses palay and adds milled rice and by-products, so every
+      // stock figure (Inventory, the dashboard, the buying pages) refreshes.
+      for (const key of [
+        "palay-inventory",
+        "milled-rice",
+        "byproducts",
+        "inventory-summary",
+        "rice-stock",
+        "byproduct-stock",
+      ])
+        qc.invalidateQueries({ queryKey: [key] });
       setShowForm(false);
     },
   });

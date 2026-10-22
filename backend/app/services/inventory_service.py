@@ -81,9 +81,13 @@ class InventoryService(BaseService):
         ]
 
     def get_summary(self, *, branch_id: uuid.UUID | None = None) -> dict:
+        """The totals the dashboard shows. They count exactly the rows the
+        Inventory page lists (palay and milled rice with stock on hand, every
+        by-product row), so the two always agree. Each by-product type adds up
+        across warehouses."""
         company_id = self.current_user.company_id
-        palay = self.palay.list_for_company(company_id, branch_id=branch_id)
-        milled = self.milled.list_for_company(company_id, branch_id=branch_id)
+        palay = self.palay.list_with_stock(company_id, branch_id=branch_id)
+        milled = self.milled.list_with_stock(company_id, branch_id=branch_id)
         byproducts = self.byproducts.list_for_company(company_id, branch_id=branch_id)
 
         branches = self._branch_map()
@@ -95,17 +99,19 @@ class InventoryService(BaseService):
                 bid, {"branch": branches.get(bid), "palay_kg": 0.0, "milled_kg": 0.0, "byproduct_kg": 0.0}
             )
 
+        by_type: dict[str, float] = {}
         for p in palay:
             _bucket(p.branch_id)["palay_kg"] += float(p.quantity_kg)
         for m in milled:
             _bucket(m.branch_id)["milled_kg"] += float(m.quantity_kg)
         for b in byproducts:
             _bucket(b.branch_id)["byproduct_kg"] += float(b.quantity_kg)
+            by_type[b.byproduct_type] = by_type.get(b.byproduct_type, 0.0) + float(b.quantity_kg)
 
         return {
             "palay_total_kg": sum(float(i.quantity_kg) for i in palay),
             "milled_rice_total_kg": sum(float(i.quantity_kg) for i in milled),
-            "byproducts": {b.byproduct_type: float(b.quantity_kg) for b in byproducts},
+            "byproducts": by_type,
             "by_branch": list(by_branch.values()),
         }
 

@@ -89,15 +89,6 @@ class PalayInventoryRepository(BaseRepository[PalayInventory]):
             stmt = stmt.where(PalayInventory.branch_id == branch_id)
         return self.db.execute(stmt).scalars().all()
 
-    def list_for_company(
-        self, company_id: uuid.UUID, *, branch_id: uuid.UUID | None = None
-    ) -> Sequence[PalayInventory]:
-        """All palay rows for a company (no stock filter) — used by the summary."""
-        stmt = select(PalayInventory).where(PalayInventory.company_id == company_id)
-        if branch_id:
-            stmt = stmt.where(PalayInventory.branch_id == branch_id)
-        return self.db.execute(stmt).scalars().all()
-
     def find_bucket(self, company_id: uuid.UUID, branch_id, variety_id, grade_id) -> PalayInventory | None:
         """The single stock row for a (company, branch, variety, grade) tuple."""
         stmt = select(PalayInventory).where(
