@@ -605,7 +605,7 @@ export default function HomePage() {
               Log in
             </Link>
             <Link to="/signup" className="btn-primary !py-2 max-sm:!px-3.5">
-              Get started <ArrowRight size={16} className="max-sm:hidden" />
+              Sign up <ArrowRight size={16} className="max-sm:hidden" />
             </Link>
           </div>
         </div>
@@ -678,7 +678,7 @@ export default function HomePage() {
                 to="/signup"
                 className="mt-7 inline-flex items-center gap-2 rounded-xl bg-white px-6 py-3 font-bold text-slate-900 shadow-lg hover:scale-[1.02] active:scale-[0.98] transition-transform"
               >
-                Get started for free <ArrowRight size={18} />
+                Sign up for free <ArrowRight size={18} />
               </Link>
             </div>
           </Reveal>
