@@ -587,18 +587,14 @@ export default function HomePage() {
       <header className="sticky top-0 z-20 glass-strong border-b border-soft">
         <div className="mx-auto max-w-6xl px-4 sm:px-6 h-16 flex items-center justify-between gap-3">
           <div className="flex items-center gap-2.5 min-w-0">
-            <div className="h-9 w-9 shrink-0 rounded-xl bg-grad-brand grid place-items-center shadow-grad-glow">
+            <div className="h-9 w-9 shrink-0 rounded-xl bg-grad-brand grid place-items-center shadow-grad-glow max-[314px]:hidden">
               <img
                 src={riceLogo}
                 alt="Oraiza"
                 className="h-full w-full object-contain brightness-0 invert"
               />
             </div>
-            {/* On the narrowest screens (or with the phone's text zoomed up)
-                the buttons need the room more than the name does. */}
-            <span className="text-lg font-bold tracking-tight text-primary truncate max-[379px]:hidden">
-              Oraiza
-            </span>
+            <span className="text-lg font-bold tracking-tight text-primary">Oraiza</span>
           </div>
           <div className="flex items-center gap-2 shrink-0">
             <Link to="/login" className="btn-secondary !py-2 max-sm:!px-3.5">
