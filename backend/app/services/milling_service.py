@@ -1,6 +1,6 @@
 """MillingService — business logic for the milling domain (Phase 3c).
 
-Equipment CRUD plus the batch lifecycle: creating a batch deducts palay stock
+Equipment CRUD, the client list for custom milling, plus the batch lifecycle: creating a batch deducts palay stock
 per input and rolls each output into milled-rice / by-product inventory, with the
 milling-recovery percentage computed against total input. The old module helpers
 (generate_batch_no, deduct_palay_inventory, apply_outputs_to_inventory) are folded
@@ -27,6 +27,7 @@ from ..models.milling import (
 )
 from ..models.paddy import PalayInventoryMovement
 from ..models.reference import QualityGrade, RiceVariety
+from ..models.supplier_customer import Customer
 from ..models.user import User
 from ..repositories.inventory import (
     ByproductInventoryRepository,
@@ -34,7 +35,9 @@ from ..repositories.inventory import (
 )
 from ..repositories.milling import MillingBatchRepository, MillingEquipmentRepository
 from ..repositories.paddy import PalayInventoryRepository
+from ..repositories.sales import CustomerRepository
 from ..services.base import BaseService
+from ..services.canva_color import pick_unused_color
 
 
 class MillingService(BaseService):
@@ -48,6 +51,7 @@ class MillingService(BaseService):
         milled: MilledRiceInventoryRepository,
         byproducts: ByproductInventoryRepository,
         palay: PalayInventoryRepository,
+        customers: CustomerRepository,
     ) -> None:
         super().__init__(db, current_user)
         self.equipment = equipment
@@ -55,6 +59,7 @@ class MillingService(BaseService):
         self.milled = milled
         self.byproducts = byproducts
         self.palay = palay
+        self.customers = customers
 
     # ── equipment ─────────────────────────────────────────────────────────────
 
@@ -82,6 +87,28 @@ class MillingService(BaseService):
         self.db.refresh(eq)
         return eq
 
+    # ── clients (custom milling) ──────────────────────────────────────────────
+    # A mill operator has no Sales access, so the batch form reads and adds
+    # customers here: just enough to name whose palay is being milled (no
+    # credit limits or TINs). Inactive ones stay listed so old batches keep
+    # their client's name; the form offers only the active ones.
+
+    def list_clients(self) -> list[dict]:
+        customers = self.customers.list_for_company(self.current_user.company_id, include_inactive=True)
+        return [{"id": c.id, "name": c.name, "is_active": c.is_active} for c in customers]
+
+    def create_client(self, data) -> dict:
+        customer = Customer(
+            company_id=self.current_user.company_id,
+            branch_id=self.current_user.branch_id,
+            canva_color_hex=pick_unused_color(self.db, self.current_user.company_id),
+            name=data.name.strip(),
+            phone=data.phone or None,
+        )
+        with self.transaction():
+            self.customers.add(customer)
+        return {"id": customer.id, "name": customer.name, "is_active": True}
+
     # ── batches ───────────────────────────────────────────────────────────────
 
     def list_batches(self, *, skip: int = 0, limit: int = 50) -> Sequence[MillingBatch]:
@@ -98,6 +125,7 @@ class MillingService(BaseService):
         # varieties/grades must be ours or from the shared system catalog.
         self.assert_company_fk(MillingEquipment, data.equipment_id, label="Equipment")
         self.assert_company_fk(User, data.operator_id, label="Operator")
+        self.assert_company_fk(Customer, data.customer_id, label="Client")
         for inp in data.inputs:
             self.assert_company_fk(RiceVariety, inp.variety_id, label="Variety", allow_shared=True)
             self.assert_company_fk(QualityGrade, inp.grade_id, label="Grade", allow_shared=True)
@@ -111,6 +139,7 @@ class MillingService(BaseService):
                     batch_no=self._next_batch_no(),
                     equipment_id=data.equipment_id,
                     operator_id=data.operator_id,
+                    customer_id=data.customer_id,
                     start_datetime=data.start_datetime,
                     remarks=data.remarks,
                     status="in_progress",

@@ -14,7 +14,8 @@ from ..repositories.inventory import (
 )
 from ..repositories.milling import MillingBatchRepository, MillingEquipmentRepository
 from ..repositories.paddy import PalayInventoryRepository
-from ..schemas.milling import BatchCreate, BatchOutputIn, EquipmentCreate, EquipmentUpdate
+from ..repositories.sales import CustomerRepository
+from ..schemas.milling import BatchCreate, BatchOutputIn, ClientCreate, EquipmentCreate, EquipmentUpdate
 from ..services.milling_service import MillingService
 
 router = APIRouter(
@@ -37,6 +38,7 @@ def get_milling_service(
         milled=MilledRiceInventoryRepository(db),
         byproducts=ByproductInventoryRepository(db),
         palay=PalayInventoryRepository(db),
+        customers=CustomerRepository(db),
     )
 
 
@@ -65,6 +67,23 @@ def update_equipment(
     equipment_id: uuid.UUID, body: EquipmentUpdate, svc: MillingService = Depends(get_milling_service)
 ):
     return svc.update_equipment(equipment_id, body)
+
+
+# ── Clients (custom milling) ──────────────────────────────────────────────────
+
+
+@router.get("/clients")
+def list_clients(svc: MillingService = Depends(get_milling_service)):
+    return svc.list_clients()
+
+
+@router.post(
+    "/clients",
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(require_section_access("milling", write=True))],
+)
+def create_client(body: ClientCreate, svc: MillingService = Depends(get_milling_service)):
+    return svc.create_client(body)
 
 
 # ── Batches ───────────────────────────────────────────────────────────────────

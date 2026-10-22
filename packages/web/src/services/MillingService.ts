@@ -12,12 +12,15 @@ export type BatchOutputForm = {
   output_type: string;
   variety_id: string;
   output_weight_kg: string;
+  /** False while the weight is the estimate; true once someone types the weighed kilos. */
+  weight_manual?: boolean;
   broken_rice_pct: string;
   grade_name: string;
 };
 
 export type BatchForm = {
   equipment_id: string;
+  customer_id: string;
   start_datetime: string;
   remarks: string;
   inputs: BatchInputForm[];
@@ -36,6 +39,11 @@ export class MillingService {
     return this.http.get(`/milling/equipment${q}`).then((r) => r.data);
   }
 
+  /** Customers, by name only, for whose palay a batch is milled. */
+  listClients(): Promise<{ id: string; name: string; is_active: boolean }[]> {
+    return this.http.get("/milling/clients").then((r) => r.data);
+  }
+
   createEquipment(body: Record<string, unknown>): Promise<any> {
     return this.http.post("/milling/equipment", body).then((r) => r.data);
   }
@@ -49,6 +57,7 @@ export class MillingService {
     return {
       ...form,
       equipment_id: form.equipment_id || null,
+      customer_id: form.customer_id || null,
       inputs: form.inputs.map((i) => ({
         ...i,
         input_weight_kg: parseFloat(i.input_weight_kg),
@@ -56,7 +65,7 @@ export class MillingService {
         variety_id: i.variety_id || null,
         grade_id: i.grade_id || null,
       })),
-      outputs: form.outputs.map((o) => ({
+      outputs: form.outputs.map(({ weight_manual: _manual, ...o }) => ({
         ...o,
         output_weight_kg: parseFloat(o.output_weight_kg),
         broken_rice_pct: o.broken_rice_pct ? parseFloat(o.broken_rice_pct) : null,

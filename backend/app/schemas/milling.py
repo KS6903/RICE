@@ -4,7 +4,7 @@ import uuid
 from datetime import datetime
 from decimal import Decimal
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class BatchInputIn(BaseModel):
@@ -25,10 +25,16 @@ class BatchOutputIn(BaseModel):
 class BatchCreate(BaseModel):
     equipment_id: uuid.UUID | None = None
     operator_id: uuid.UUID | None = None
+    customer_id: uuid.UUID | None = None
     start_datetime: datetime
     remarks: str | None = None
     inputs: list[BatchInputIn]
     outputs: list[BatchOutputIn] = []
+
+
+class ClientCreate(BaseModel):
+    name: str = Field(min_length=1, max_length=200)
+    phone: str | None = Field(default=None, max_length=20)
 
 
 class EquipmentCreate(BaseModel):

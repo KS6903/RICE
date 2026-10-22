@@ -102,6 +102,7 @@ export const TABLE_COLUMNS: Record<SyncTable, readonly string[]> = {
     "batch_no",
     "equipment_id",
     "operator_id",
+    "customer_id",
     "start_datetime",
     "end_datetime",
     "status",

@@ -2,9 +2,9 @@ import { useState } from "react";
 import { useEscapeKey } from "../hooks/useEscapeKey";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { millingService } from "../services/MillingService";
-import { MillingMapper } from "../mappers/MillingMapper";
+import { MillingMapper, estimateOutputs, DEFAULT_RECOVERY_PCT } from "../mappers/MillingMapper";
 import { paddyService } from "../services/PaddyService";
-import { Factory, Plus } from "lucide-react";
+import { Factory, Plus, X } from "lucide-react";
 import { format } from "date-fns";
 import QuickAdd from "../components/QuickAdd";
 import { useAccess } from "../hooks/useAccess";
@@ -22,6 +22,21 @@ function StatusBadge({ status }: { status: string }) {
   };
   return <span className={map[status] || "badge-gray"}>{status.replace("_", " ")}</span>;
 }
+
+// Output types the estimate fills in; broken rice (binlid) is weighed, not estimated.
+type EstimatedType = "milled_rice" | "ipa" | "darak";
+const ESTIMATED_TYPES: string[] = ["milled_rice", "ipa", "darak"];
+
+const blankOutput = (output_type: string, grade_name = "") => ({
+  output_type,
+  variety_id: "",
+  output_weight_kg: "",
+  weight_manual: false,
+  broken_rice_pct: "",
+  grade_name,
+});
+
+const fmtKg = (n: number) => n.toLocaleString(undefined, { maximumFractionDigits: 1 });
 
 export default function MillingPage() {
   const qc = useQueryClient();
@@ -41,22 +56,52 @@ export default function MillingPage() {
     queryKey: ["varieties"],
     queryFn: () => paddyService.listVarieties(),
   });
+  const { data: clients = [] } = useQuery({
+    queryKey: ["milling-clients"],
+    queryFn: () => millingService.listClients(),
+  });
+  const clientName = Object.fromEntries(clients.map((c) => [c.id, c.name]));
 
   const [form, setForm] = useState({
     equipment_id: "",
+    customer_id: "",
     start_datetime: format(new Date(), "yyyy-MM-dd'T'HH:mm"),
     remarks: "",
     inputs: [{ variety_id: "", grade_id: "", input_weight_kg: "", moisture_content_pct: "" }],
-    outputs: [
-      {
-        output_type: "milled_rice",
-        variety_id: "",
-        output_weight_kg: "",
-        broken_rice_pct: "",
-        grade_name: "regular",
-      },
-    ],
+    outputs: [blankOutput("milled_rice", "regular"), blankOutput("ipa"), blankOutput("darak")],
   });
+
+  // Each output weight follows the palay going in until someone types the
+  // weighed kilos. Only the first row of a type takes the estimate, so a
+  // second milled-rice row doesn't count the same rice twice.
+  const estimate = estimateOutputs(
+    form.inputs,
+    Object.fromEntries(varieties.map((v: any) => [v.id, v.typical_recovery_pct])),
+  );
+  const estimateFor = (idx: number): number | null => {
+    const type = form.outputs[idx].output_type;
+    if (!ESTIMATED_TYPES.includes(type)) return null;
+    if (form.outputs.findIndex((o) => o.output_type === type) !== idx) return null;
+    return estimate[type as EstimatedType] || null;
+  };
+  const weightShown = (idx: number) => {
+    const out = form.outputs[idx];
+    if (out.weight_manual) return out.output_weight_kg;
+    const est = estimateFor(idx);
+    return est != null ? String(est) : "";
+  };
+  const setOutput = (idx: number, patch: Partial<(typeof form.outputs)[number]>) =>
+    setForm((f) => ({
+      ...f,
+      outputs: f.outputs.map((o, i) => (i === idx ? { ...o, ...patch } : o)),
+    }));
+  const submit = () =>
+    createMutation.mutate({
+      ...form,
+      outputs: form.outputs
+        .map((o, idx) => ({ ...o, output_weight_kg: weightShown(idx) }))
+        .filter((o) => parseFloat(o.output_weight_kg) > 0),
+    });
 
   const createMutation = useMutation({
     mutationFn: (body: typeof form) => millingService.createBatch(body),
@@ -99,6 +144,35 @@ export default function MillingPage() {
         <div className="card space-y-4">
           <h3 className="font-semibold text-gray-900 dark:text-slate-100">New Milling Batch</h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="sm:col-span-2">
+              <div className="flex items-baseline justify-between mb-1">
+                <label className="block text-sm font-medium text-gray-700 dark:text-slate-200">
+                  Client
+                </label>
+                <QuickAdd
+                  label="New client"
+                  endpoint="/milling/clients"
+                  queryKey={["milling-clients"]}
+                  fields={[
+                    { key: "name", label: "Name", required: true, full: true },
+                    { key: "phone", label: "Phone" },
+                  ]}
+                  onCreated={(c) => setForm((f) => ({ ...f, customer_id: c.id }))}
+                />
+              </div>
+              <Select
+                aria-label="Client"
+                value={form.customer_id}
+                onChange={(v) => setForm((f) => ({ ...f, customer_id: v }))}
+                options={[
+                  { value: "", label: "Our own palay" },
+                  ...clients
+                    .filter((c) => c.is_active)
+                    .map((c) => ({ value: c.id, label: c.name })),
+                ]}
+              />
+              <p className="text-xs text-muted mt-1">Whose palay is being milled.</p>
+            </div>
             <div>
               <div className="flex items-baseline justify-between mb-1">
                 <label className="block text-sm font-medium text-gray-700 dark:text-slate-200">
@@ -266,23 +340,14 @@ export default function MillingPage() {
               <div>
                 <p className="text-sm font-medium text-gray-700 dark:text-slate-200">Outputs</p>
                 <p className="text-xs text-muted">
-                  The rice that came out, plus hull, bran or broken rice (add a row for each).
+                  Worked out from the palay going in. Type the weighed kilos to replace an estimate.
                 </p>
               </div>
               <button
                 onClick={() =>
                   setForm((f) => ({
                     ...f,
-                    outputs: [
-                      ...f.outputs,
-                      {
-                        output_type: "ipa",
-                        variety_id: "",
-                        output_weight_kg: "",
-                        broken_rice_pct: "",
-                        grade_name: "",
-                      },
-                    ],
+                    outputs: [...f.outputs, blankOutput("binlid")],
                   }))
                 }
                 className="text-sm text-brand-600 dark:text-brand-400"
@@ -290,66 +355,108 @@ export default function MillingPage() {
                 + Add
               </button>
             </div>
-            {form.outputs.map((out, idx) => (
-              <div key={idx} className="grid grid-cols-4 gap-2 mb-2">
-                <FieldCaption label="What came out">
-                  <Select
-                    aria-label="What came out"
-                    value={out.output_type}
-                    onChange={(v) => {
-                      const outputs = [...form.outputs];
-                      outputs[idx].output_type = v;
-                      setForm((f) => ({ ...f, outputs }));
-                    }}
-                    options={[
-                      { value: "milled_rice", label: "Milled Rice (Bigas)" },
-                      { value: "ipa", label: "Ipa (Rice Hull)" },
-                      { value: "darak", label: "Darak (Rice Bran)" },
-                      { value: "binlid", label: "Binlid (Broken Rice)" },
-                    ]}
-                  />
-                </FieldCaption>
-                <FieldCaption label="Weight (kg)">
-                  <input
-                    className="input"
-                    placeholder="Weight kg"
-                    type="number"
-                    value={out.output_weight_kg}
-                    onChange={(e) => {
-                      const outputs = [...form.outputs];
-                      outputs[idx].output_weight_kg = e.target.value;
-                      setForm((f) => ({ ...f, outputs }));
-                    }}
-                  />
-                </FieldCaption>
-                {out.output_type === "milled_rice" && (
-                  <FieldCaption label="Broken rice %">
-                    <input
-                      className="input"
-                      placeholder="Broken rice %"
-                      type="number"
-                      value={out.broken_rice_pct}
-                      onChange={(e) => {
-                        const outputs = [...form.outputs];
-                        outputs[idx].broken_rice_pct = e.target.value;
-                        setForm((f) => ({ ...f, outputs }));
-                      }}
+            {form.outputs.map((out, idx) => {
+              const est = estimateFor(idx);
+              return (
+                <div key={idx} className="grid grid-cols-4 gap-2 mb-2 items-start">
+                  <FieldCaption label="What came out">
+                    <Select
+                      aria-label="What came out"
+                      value={out.output_type}
+                      onChange={(v) => setOutput(idx, { output_type: v })}
+                      options={[
+                        { value: "milled_rice", label: "Milled Rice (Bigas)" },
+                        { value: "ipa", label: "Ipa (Rice Hull)" },
+                        { value: "darak", label: "Darak (Rice Bran)" },
+                        { value: "binlid", label: "Binlid (Broken Rice)" },
+                      ]}
                     />
                   </FieldCaption>
-                )}
+                  <div>
+                    <FieldCaption label="Weight (kg)">
+                      <input
+                        className="input"
+                        placeholder="Weight kg"
+                        type="number"
+                        value={weightShown(idx)}
+                        onChange={(e) =>
+                          // Clearing the box hands it back to the estimate.
+                          setOutput(idx, {
+                            output_weight_kg: e.target.value,
+                            weight_manual: e.target.value !== "",
+                          })
+                        }
+                      />
+                    </FieldCaption>
+                    {est != null &&
+                      (out.weight_manual ? (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setOutput(idx, { output_weight_kg: "", weight_manual: false })
+                          }
+                          className="mt-1 text-xs text-brand-600 dark:text-brand-400"
+                        >
+                          Use estimate ({fmtKg(est)} kg)
+                        </button>
+                      ) : (
+                        <p className="mt-1 text-xs text-muted">Estimated</p>
+                      ))}
+                  </div>
+                  {out.output_type === "milled_rice" && (
+                    <FieldCaption label="Broken rice %">
+                      <input
+                        className="input"
+                        placeholder="Broken rice %"
+                        type="number"
+                        value={out.broken_rice_pct}
+                        onChange={(e) => setOutput(idx, { broken_rice_pct: e.target.value })}
+                      />
+                    </FieldCaption>
+                  )}
+                  {form.outputs.length > 1 && (
+                    <button
+                      type="button"
+                      aria-label="Remove this output"
+                      title="Remove this output"
+                      onClick={() =>
+                        setForm((f) => ({ ...f, outputs: f.outputs.filter((_, i) => i !== idx) }))
+                      }
+                      className="mt-7 justify-self-start text-muted hover:text-red-600"
+                    >
+                      <X size={16} />
+                    </button>
+                  )}
+                </div>
+              );
+            })}
+            {estimate.palayKg > 0 && (
+              <div className="mt-3 rounded-md bg-gray-50 dark:bg-slate-900/50 px-3 py-2 text-xs text-secondary space-y-1">
+                <p>
+                  From {fmtKg(estimate.palayKg)} kg palay
+                  {estimate.adjustedKg !== estimate.palayKg &&
+                    ` (${fmtKg(estimate.adjustedKg)} kg once dried to 14% moisture)`}
+                  , expect about {fmtKg(estimate.milled_rice)} kg bigas
+                  {estimate.recoveryPct != null &&
+                    ` (${estimate.recoveryPct.toFixed(1)}% recovery)`}
+                  , {fmtKg(estimate.ipa)} kg ipa and {fmtKg(estimate.darak)} kg darak
+                  {estimate.lossKg > 0 &&
+                    `, with about ${fmtKg(estimate.lossKg)} kg lost as moisture and dust`}
+                  .
+                </p>
+                <p className="text-muted">
+                  Bigas uses each variety's Recovery % ({DEFAULT_RECOVERY_PCT}% when it has none).
+                  Ipa is 20% of the palay and darak about 10%.
+                </p>
               </div>
-            ))}
+            )}
           </div>
 
           <div className="flex gap-2 justify-end">
             <button onClick={() => setShowForm(false)} className="btn-secondary">
               Cancel
             </button>
-            <button
-              onClick={() => createMutation.mutate(form)}
-              className="btn-primary"
-              disabled={createMutation.isPending}
-            >
+            <button onClick={submit} className="btn-primary" disabled={createMutation.isPending}>
               {createMutation.isPending ? "Saving…" : "Start Batch"}
             </button>
           </div>
@@ -362,6 +469,7 @@ export default function MillingPage() {
             <tr>
               {[
                 "Batch No.",
+                "Client",
                 "Start",
                 "Status",
                 "Inputs (kg)",
@@ -384,6 +492,9 @@ export default function MillingPage() {
                 <tr key={b.id} className="hover:bg-gray-50 dark:hover:bg-slate-900/50">
                   <td className="px-4 py-3 font-mono text-xs">{b.batch_no}</td>
                   <td className="px-4 py-3">
+                    {(b.customer_id && clientName[b.customer_id]) || "—"}
+                  </td>
+                  <td className="px-4 py-3">
                     {b.start_datetime
                       ? format(new Date(b.start_datetime), "MMM d, yyyy HH:mm")
                       : "—"}
@@ -403,7 +514,7 @@ export default function MillingPage() {
             })}
             {batches.length === 0 && (
               <tr>
-                <td colSpan={6}>
+                <td colSpan={7}>
                   <EmptyState
                     icon={Factory}
                     title="No milling batches yet"

@@ -36,6 +36,8 @@ class MillingBatch(Base, TimestampMixin):
     batch_no: Mapped[str] = mapped_column(String(30), unique=True, nullable=False)
     equipment_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("milling_equipment.id"))
     operator_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"))
+    # The client whose palay this is (custom milling); None when it's the mill's own.
+    customer_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("customers.id"))
     start_datetime: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     end_datetime: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     status: Mapped[str] = mapped_column(String(20), default="in_progress")  # in_progress, completed, cancelled

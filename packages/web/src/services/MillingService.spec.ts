@@ -5,6 +5,7 @@ describe("MillingService.toBatchPayload", () => {
   it("parses numeric input/output fields and nulls empties", () => {
     const form = {
       equipment_id: "",
+      customer_id: "",
       start_datetime: "2026-06-06T08:00",
       remarks: "",
       inputs: [
@@ -15,6 +16,7 @@ describe("MillingService.toBatchPayload", () => {
           output_type: "milled_rice",
           variety_id: "",
           output_weight_kg: "300",
+          weight_manual: true,
           broken_rice_pct: "",
           grade_name: "regular",
         },
@@ -22,6 +24,7 @@ describe("MillingService.toBatchPayload", () => {
     };
     const payload = MillingService.toBatchPayload(form);
     expect(payload.equipment_id).toBeNull();
+    expect(payload.customer_id).toBeNull();
     expect(payload.inputs[0]).toMatchObject({
       variety_id: "v1",
       grade_id: null,
@@ -34,5 +37,6 @@ describe("MillingService.toBatchPayload", () => {
       output_weight_kg: 300,
       broken_rice_pct: null,
     });
+    expect(payload.outputs[0]).not.toHaveProperty("weight_manual");
   });
 });

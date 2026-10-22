@@ -70,3 +70,43 @@ def test_create_batch_deducts_palay_and_adds_milled_rice(auth_client, seed_owner
     palay = auth_client.get("/api/paddy/inventory").json()
     pmine = [p for p in palay if p["variety"] and p["variety"]["id"] == variety["id"]]
     assert pmine and pmine[0]["quantity_kg"] == 500.0
+
+
+def test_batch_records_the_client_it_was_milled_for(auth_client):
+    client = auth_client.post("/api/milling/clients", json={"name": "Mang Jose", "phone": "09171234567"})
+    assert client.status_code == 201, client.text
+    client = client.json()
+    listed = auth_client.get("/api/milling/clients").json()
+    assert {"id": client["id"], "name": "Mang Jose", "is_active": True} in listed
+    # Name only: the milling side never sees a customer's credit terms.
+    assert all(set(c) == {"id", "name", "is_active"} for c in listed)
+
+    res = auth_client.post(
+        "/api/milling/batches",
+        json={
+            "customer_id": client["id"],
+            "start_datetime": "2026-06-05T08:00:00Z",
+            "inputs": [{"input_weight_kg": "1000"}],
+            "outputs": [{"output_type": "milled_rice", "output_weight_kg": "650"}],
+        },
+    )
+    assert res.status_code == 201, res.text
+    assert res.json()["customer_id"] == client["id"]
+
+    batch = next(b for b in auth_client.get("/api/milling/batches").json() if b["id"] == res.json()["id"])
+    assert batch["customer_id"] == client["id"]
+    # The list carries each batch's kilos for the Inputs and Milled Rice columns.
+    assert float(batch["inputs"][0]["input_weight_kg"]) == 1000.0
+    assert float(batch["outputs"][0]["output_weight_kg"]) == 650.0
+
+
+def test_batch_refuses_an_unknown_client(auth_client):
+    res = auth_client.post(
+        "/api/milling/batches",
+        json={
+            "customer_id": "00000000-0000-4000-8000-000000000000",
+            "start_datetime": "2026-06-05T08:00:00Z",
+            "inputs": [{"input_weight_kg": "100"}],
+        },
+    )
+    assert res.status_code == 404, res.text

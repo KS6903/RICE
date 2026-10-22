@@ -117,7 +117,7 @@ TABLE_POLICIES: Mapping[str, TablePolicy] = {
     ),
     "milling_batches": TablePolicy(
         _keys(
-            "id company_id branch_id batch_no equipment_id operator_id start_datetime end_datetime status remarks created_by created_at updated_at"
+            "id company_id branch_id batch_no equipment_id operator_id customer_id start_datetime end_datetime status remarks created_by created_at updated_at"
         ),
         _keys("batch_no start_datetime"),
         MILLING_READ,

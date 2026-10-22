@@ -10,7 +10,7 @@ export const PAGE_WHAT: Record<string, string> = {
   "/byproducts":
     "Record the ipa, darak and binlid you buy: weight and price per kg. It's added to your by-product stock.",
   "/milling":
-    "Record what went into the mill and what came out. Palay leaves your stock; the rice and by-products go into Inventory.",
+    "Record the palay going into the mill and whose it is. Oraiza estimates the rice, ipa and darak that come out; type the weighed kilos to replace them. Palay leaves your stock; the rice and by-products go into Inventory.",
   "/maintenance": "When each machine is due for service, counted from the milling it has done.",
   "/inventory":
     "Everything in your warehouses, by branch. Already had stock before Oraiza? Enter it once with Add inventory.",

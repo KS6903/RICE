@@ -45,6 +45,7 @@ export class TenantDatabaseManager {
 
     createSchema(db);
     ensureSyncMarkers(db);
+    ensureMillingClient(db);
     createQuarantineTable(db);
     removeLegacyPasswordHash(db);
     try {
@@ -169,6 +170,14 @@ function ensureSyncMarkers(db: Db): void {
       // `table` is a compile-time member of SYNC_TABLES, never external input.
       db.exec(`ALTER TABLE ${table} ADD COLUMN _synced INTEGER NOT NULL DEFAULT 0`);
     }
+  }
+}
+
+// Databases made before batches recorded a client lack the column.
+function ensureMillingClient(db: Db): void {
+  const columns = db.prepare("PRAGMA table_info(milling_batches)").all() as Array<{ name: string }>;
+  if (!columns.some((column) => column.name === "customer_id")) {
+    db.exec("ALTER TABLE milling_batches ADD COLUMN customer_id TEXT");
   }
 }
 
@@ -345,6 +354,7 @@ function createSchema(db: Db) {
       batch_no TEXT UNIQUE NOT NULL,
       equipment_id TEXT,
       operator_id TEXT,
+      customer_id TEXT,
       start_datetime TEXT NOT NULL,
       end_datetime TEXT,
       status TEXT DEFAULT 'in_progress',
