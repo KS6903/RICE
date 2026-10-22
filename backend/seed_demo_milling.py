@@ -2,8 +2,10 @@
 
 Custom milling: the two oldest demo batches become batches milled for a
 customer's palay, using the customers the base or sales demo already made, so
-the Client column shows names next to the mill's own batches. Skipped when any
-batch already has a client.
+the Client column shows names and terms (one walk-in, one contracted) next to
+the mill's own batches. Their stock was counted when the base demo made them as
+the mill's own; this only relabels them. Skipped when any batch already has a
+client.
 
 Run AFTER `alembic upgrade head`, `migrate_all_tenants.py` and the base demo
 (it needs its batches and customers).
@@ -44,8 +46,13 @@ def seed(db, username: str) -> str:
     oldest = batches.order_by(MillingBatch.start_datetime).limit(2).all()
     if not oldest:
         return f"{username}: milling clients skipped (no batches)"
+    terms = [
+        ("client_takes_all", "Walk-in, picks up the bigas the same day"),
+        ("contracted", "₱150 per cavan, paid on pickup"),
+    ]
     for i, batch in enumerate(oldest):
         batch.customer_id = customers[i % len(customers)].id
+        batch.client_arrangement, batch.client_notes = terms[i % len(terms)]
     db.commit()
     return f"{username}: {len(oldest)} batch(es) milled for a client"
 

@@ -173,11 +173,16 @@ function ensureSyncMarkers(db: Db): void {
   }
 }
 
-// Databases made before batches recorded a client lack the column.
+// Databases made before batches recorded a client lack these columns.
+const MILLING_CLIENT_COLUMNS = ["customer_id", "client_arrangement", "client_notes"] as const;
+
 function ensureMillingClient(db: Db): void {
   const columns = db.prepare("PRAGMA table_info(milling_batches)").all() as Array<{ name: string }>;
-  if (!columns.some((column) => column.name === "customer_id")) {
-    db.exec("ALTER TABLE milling_batches ADD COLUMN customer_id TEXT");
+  for (const name of MILLING_CLIENT_COLUMNS) {
+    if (!columns.some((column) => column.name === name)) {
+      // `name` is a compile-time member of MILLING_CLIENT_COLUMNS, never external input.
+      db.exec(`ALTER TABLE milling_batches ADD COLUMN ${name} TEXT`);
+    }
   }
 }
 
@@ -355,6 +360,8 @@ function createSchema(db: Db) {
       equipment_id TEXT,
       operator_id TEXT,
       customer_id TEXT,
+      client_arrangement TEXT,
+      client_notes TEXT,
       start_datetime TEXT NOT NULL,
       end_datetime TEXT,
       status TEXT DEFAULT 'in_progress',

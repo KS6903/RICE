@@ -89,25 +89,32 @@ class MillingService(BaseService):
 
     # ── clients (custom milling) ──────────────────────────────────────────────
     # A mill operator has no Sales access, so the batch form reads and adds
-    # customers here: just enough to name whose palay is being milled (no
-    # credit limits or TINs). Inactive ones stay listed so old batches keep
-    # their client's name; the form offers only the active ones.
+    # customers here: who the client is and how to reach them (no credit
+    # limits or TINs). Inactive ones stay listed so old batches keep their
+    # client's name; the form offers only the active ones.
+
+    @staticmethod
+    def _client_row(c: Customer) -> dict:
+        return {"id": c.id, "name": c.name, "phone": c.phone, "address": c.address, "is_active": c.is_active}
 
     def list_clients(self) -> list[dict]:
         customers = self.customers.list_for_company(self.current_user.company_id, include_inactive=True)
-        return [{"id": c.id, "name": c.name, "is_active": c.is_active} for c in customers]
+        return [self._client_row(c) for c in customers]
 
     def create_client(self, data) -> dict:
         customer = Customer(
             company_id=self.current_user.company_id,
             branch_id=self.current_user.branch_id,
             canva_color_hex=pick_unused_color(self.db, self.current_user.company_id),
-            name=data.name.strip(),
-            phone=data.phone or None,
+            customer_type="walk_in",
+            name=data.name,
+            phone=data.phone,
+            address=(data.address or "").strip() or None,
+            is_active=True,
         )
         with self.transaction():
             self.customers.add(customer)
-        return {"id": customer.id, "name": customer.name, "is_active": True}
+        return self._client_row(customer)
 
     # ── batches ───────────────────────────────────────────────────────────────
 
@@ -131,6 +138,12 @@ class MillingService(BaseService):
             self.assert_company_fk(QualityGrade, inp.grade_id, label="Grade", allow_shared=True)
         for out in data.outputs:
             self.assert_company_fk(RiceVariety, out.variety_id, label="Variety", allow_shared=True)
+        # A client batch always says what was agreed; the mill's own has no terms.
+        if data.customer_id:
+            arrangement = data.client_arrangement or "client_takes_all"
+            notes = (data.client_notes or "").strip() or None
+        else:
+            arrangement = notes = None
         with self.transaction():
             batch = self.batches.add(
                 MillingBatch(
@@ -140,6 +153,8 @@ class MillingService(BaseService):
                     equipment_id=data.equipment_id,
                     operator_id=data.operator_id,
                     customer_id=data.customer_id,
+                    client_arrangement=arrangement,
+                    client_notes=notes,
                     start_datetime=data.start_datetime,
                     remarks=data.remarks,
                     status="in_progress",
@@ -150,7 +165,9 @@ class MillingService(BaseService):
             for inp in data.inputs:
                 self.db.add(MillingBatchInput(batch_id=batch.id, **inp.model_dump()))
                 total_input_kg += inp.input_weight_kg
-                self._deduct_palay(inp, str(batch.id))
+                # A client's palay was never in the mill's stock.
+                if not batch.customer_id:
+                    self._deduct_palay(inp, str(batch.id))
 
             for out in data.outputs:
                 recovery = (out.output_weight_kg / total_input_kg * 100) if total_input_kg > 0 else None
@@ -164,7 +181,8 @@ class MillingService(BaseService):
                         milling_recovery_pct=recovery if out.output_type == "milled_rice" else None,
                     )
                 )
-                self._apply_output(out)
+                if self._mill_keeps(batch, out):
+                    self._apply_output(out)
         self.db.refresh(batch)
         return batch
 
@@ -188,11 +206,22 @@ class MillingService(BaseService):
                         milling_recovery_pct=recovery,
                     )
                 )
-                self._apply_output(out)
+                if self._mill_keeps(b, out):
+                    self._apply_output(out)
         self.db.refresh(b)
         return b
 
     # ── private helpers (formerly services/milling.py) ────────────────────────
+
+    @staticmethod
+    def _mill_keeps(batch: MillingBatch, out) -> bool:
+        """Whether this output goes into the mill's stock. All of it does from the
+        mill's own palay; from a client's, only the ipa and darak, and only when
+        the mill keeps them. Contracted terms are in the notes, so stock is
+        left for someone to adjust by hand."""
+        if not batch.customer_id:
+            return True
+        return batch.client_arrangement == "mill_keeps_byproducts" and out.output_type in ("ipa", "darak")
 
     def _next_batch_no(self) -> str:
         today = datetime.now(timezone.utc).strftime("%Y%m%d")

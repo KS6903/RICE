@@ -113,7 +113,8 @@ SECTION_ACCESS: dict[str, dict[str, str]] = {
     "encoder": {
         "dashboard": "full",
         "paddy": "full",
-        "milling": "view",
+        # Encodes batches too, custom milling for walk-in clients included.
+        "milling": "full",
         "inventory": "view",
         "sales": "full",
         "dispatch": "none",

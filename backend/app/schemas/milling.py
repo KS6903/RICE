@@ -4,7 +4,13 @@ import uuid
 from datetime import datetime
 from decimal import Decimal
 
-from pydantic import BaseModel, Field
+from typing import Literal
+
+from pydantic import BaseModel, Field, field_validator
+
+# Custom milling: what the client and the mill agreed. Only mill_keeps_byproducts
+# puts anything into the mill's stock (the ipa and darak).
+ClientArrangement = Literal["client_takes_all", "mill_keeps_byproducts", "contracted"]
 
 
 class BatchInputIn(BaseModel):
@@ -26,6 +32,8 @@ class BatchCreate(BaseModel):
     equipment_id: uuid.UUID | None = None
     operator_id: uuid.UUID | None = None
     customer_id: uuid.UUID | None = None
+    client_arrangement: ClientArrangement | None = None
+    client_notes: str | None = Field(default=None, max_length=1000)
     start_datetime: datetime
     remarks: str | None = None
     inputs: list[BatchInputIn]
@@ -33,8 +41,19 @@ class BatchCreate(BaseModel):
 
 
 class ClientCreate(BaseModel):
+    """A walk-in client for custom milling: who they are and how to reach them."""
+
     name: str = Field(min_length=1, max_length=200)
-    phone: str | None = Field(default=None, max_length=20)
+    phone: str = Field(min_length=1, max_length=20)
+    address: str | None = Field(default=None, max_length=500)
+
+    @field_validator("name", "phone")
+    @classmethod
+    def not_blank(cls, value: str) -> str:
+        value = value.strip()
+        if not value:
+            raise ValueError("is required")
+        return value
 
 
 class EquipmentCreate(BaseModel):

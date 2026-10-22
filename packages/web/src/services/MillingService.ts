@@ -18,9 +18,22 @@ export type BatchOutputForm = {
   grade_name: string;
 };
 
+/** Custom milling: what the client and the mill agreed. */
+export type ClientArrangement = "client_takes_all" | "mill_keeps_byproducts" | "contracted";
+
+export type MillingClient = {
+  id: string;
+  name: string;
+  phone: string | null;
+  address: string | null;
+  is_active: boolean;
+};
+
 export type BatchForm = {
   equipment_id: string;
   customer_id: string;
+  client_arrangement: ClientArrangement;
+  client_notes: string;
   start_datetime: string;
   remarks: string;
   inputs: BatchInputForm[];
@@ -39,8 +52,8 @@ export class MillingService {
     return this.http.get(`/milling/equipment${q}`).then((r) => r.data);
   }
 
-  /** Customers, by name only, for whose palay a batch is milled. */
-  listClients(): Promise<{ id: string; name: string; is_active: boolean }[]> {
+  /** Customers whose palay a batch is milled for, with how to reach them. */
+  listClients(): Promise<MillingClient[]> {
     return this.http.get("/milling/clients").then((r) => r.data);
   }
 
@@ -58,6 +71,9 @@ export class MillingService {
       ...form,
       equipment_id: form.equipment_id || null,
       customer_id: form.customer_id || null,
+      // Terms only mean something for a client's palay.
+      client_arrangement: form.customer_id ? form.client_arrangement : null,
+      client_notes: (form.customer_id && form.client_notes.trim()) || null,
       inputs: form.inputs.map((i) => ({
         ...i,
         input_weight_kg: parseFloat(i.input_weight_kg),

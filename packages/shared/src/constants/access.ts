@@ -105,11 +105,12 @@ export const ROLE_ACCESS: Record<Role, Record<AppSection, AccessLevel>> = {
     tasks: "full", // their own tasks
   },
 
-  // Secretary / data entry — encodes palay intake and sales orders.
+  // Secretary / data entry — encodes palay intake, milling batches (custom
+  // milling for walk-in clients included) and sales orders.
   encoder: {
     dashboard: "full",
     paddy: "full",
-    milling: "view",
+    milling: "full",
     inventory: "view",
     sales: "full",
     dispatch: "none",

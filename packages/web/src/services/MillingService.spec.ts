@@ -6,6 +6,8 @@ describe("MillingService.toBatchPayload", () => {
     const form = {
       equipment_id: "",
       customer_id: "",
+      client_arrangement: "contracted" as const,
+      client_notes: "ignored without a client",
       start_datetime: "2026-06-06T08:00",
       remarks: "",
       inputs: [
@@ -25,6 +27,8 @@ describe("MillingService.toBatchPayload", () => {
     const payload = MillingService.toBatchPayload(form);
     expect(payload.equipment_id).toBeNull();
     expect(payload.customer_id).toBeNull();
+    expect(payload.client_arrangement).toBeNull();
+    expect(payload.client_notes).toBeNull();
     expect(payload.inputs[0]).toMatchObject({
       variety_id: "v1",
       grade_id: null,
@@ -38,5 +42,23 @@ describe("MillingService.toBatchPayload", () => {
       broken_rice_pct: null,
     });
     expect(payload.outputs[0]).not.toHaveProperty("weight_manual");
+  });
+
+  it("sends a client batch's terms, trimmed", () => {
+    const payload = MillingService.toBatchPayload({
+      equipment_id: "",
+      customer_id: "c1",
+      client_arrangement: "mill_keeps_byproducts",
+      client_notes: "  ₱150 per cavan  ",
+      start_datetime: "2026-06-06T08:00",
+      remarks: "",
+      inputs: [],
+      outputs: [],
+    });
+    expect(payload).toMatchObject({
+      customer_id: "c1",
+      client_arrangement: "mill_keeps_byproducts",
+      client_notes: "₱150 per cavan",
+    });
   });
 });

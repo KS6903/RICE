@@ -38,6 +38,10 @@ class MillingBatch(Base, TimestampMixin):
     operator_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"))
     # The client whose palay this is (custom milling); None when it's the mill's own.
     customer_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("customers.id"))
+    # What the client and the mill agreed: client_takes_all, mill_keeps_byproducts
+    # or contracted, with the terms in client_notes. None for the mill's own palay.
+    client_arrangement: Mapped[str | None] = mapped_column(String(30))
+    client_notes: Mapped[str | None] = mapped_column(Text)
     start_datetime: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     end_datetime: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     status: Mapped[str] = mapped_column(String(20), default="in_progress")  # in_progress, completed, cancelled

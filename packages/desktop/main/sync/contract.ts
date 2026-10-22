@@ -103,6 +103,8 @@ export const TABLE_COLUMNS: Record<SyncTable, readonly string[]> = {
     "equipment_id",
     "operator_id",
     "customer_id",
+    "client_arrangement",
+    "client_notes",
     "start_datetime",
     "end_datetime",
     "status",

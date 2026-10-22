@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useEscapeKey } from "../hooks/useEscapeKey";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { millingService } from "../services/MillingService";
+import { millingService, type ClientArrangement } from "../services/MillingService";
 import { MillingMapper, estimateOutputs, DEFAULT_RECOVERY_PCT } from "../mappers/MillingMapper";
 import { paddyService } from "../services/PaddyService";
 import { Factory, Plus, X } from "lucide-react";
@@ -38,6 +38,26 @@ const blankOutput = (output_type: string, grade_name = "") => ({
 
 const fmtKg = (n: number) => n.toLocaleString(undefined, { maximumFractionDigits: 1 });
 
+// Custom milling: what the client and the mill agreed, and what it does to stock.
+const ARRANGEMENTS: { value: ClientArrangement; label: string; stock: string }[] = [
+  {
+    value: "client_takes_all",
+    label: "Client takes everything",
+    stock: "Nothing goes into your stock.",
+  },
+  {
+    value: "mill_keeps_byproducts",
+    label: "We keep the ipa and darak",
+    stock: "The ipa and darak go into your Inventory; the bigas goes to the client.",
+  },
+  {
+    value: "contracted",
+    label: "Contracted",
+    stock: "Write the terms in the notes. Nothing goes into your stock by itself.",
+  },
+];
+const arrangementLabel = Object.fromEntries(ARRANGEMENTS.map((a) => [a.value, a.label]));
+
 export default function MillingPage() {
   const qc = useQueryClient();
   const { canEdit } = useAccess();
@@ -60,11 +80,13 @@ export default function MillingPage() {
     queryKey: ["milling-clients"],
     queryFn: () => millingService.listClients(),
   });
-  const clientName = Object.fromEntries(clients.map((c) => [c.id, c.name]));
+  const clientById = Object.fromEntries(clients.map((c) => [c.id, c]));
 
   const [form, setForm] = useState({
     equipment_id: "",
     customer_id: "",
+    client_arrangement: "client_takes_all" as ClientArrangement,
+    client_notes: "",
     start_datetime: format(new Date(), "yyyy-MM-dd'T'HH:mm"),
     remarks: "",
     inputs: [{ variety_id: "", grade_id: "", input_weight_kg: "", moisture_content_pct: "" }],
@@ -155,7 +177,13 @@ export default function MillingPage() {
                   queryKey={["milling-clients"]}
                   fields={[
                     { key: "name", label: "Name", required: true, full: true },
-                    { key: "phone", label: "Phone" },
+                    {
+                      key: "phone",
+                      label: "Phone",
+                      required: true,
+                      placeholder: "e.g. 0917 123 4567",
+                    },
+                    { key: "address", label: "Address", placeholder: "Barangay, town" },
                   ]}
                   onCreated={(c) => setForm((f) => ({ ...f, customer_id: c.id }))}
                 />
@@ -171,8 +199,59 @@ export default function MillingPage() {
                     .map((c) => ({ value: c.id, label: c.name })),
                 ]}
               />
-              <p className="text-xs text-muted mt-1">Whose palay is being milled.</p>
+              {form.customer_id && clientById[form.customer_id] ? (
+                <p className="text-xs text-secondary mt-1">
+                  {[clientById[form.customer_id].phone, clientById[form.customer_id].address]
+                    .filter(Boolean)
+                    .join(" · ") || "No phone or address on file."}
+                </p>
+              ) : (
+                <p className="text-xs text-muted mt-1">
+                  Whose palay is being milled. A walk-in? Add them with New client.
+                </p>
+              )}
             </div>
+            {form.customer_id && (
+              <div className="sm:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-slate-200 mb-1">
+                    Arrangement
+                  </label>
+                  <Select
+                    aria-label="Arrangement"
+                    value={form.client_arrangement}
+                    onChange={(v) =>
+                      setForm((f) => ({ ...f, client_arrangement: v as ClientArrangement }))
+                    }
+                    options={ARRANGEMENTS.map((a) => ({ value: a.value, label: a.label }))}
+                  />
+                  <p className="text-xs text-muted mt-1">
+                    {ARRANGEMENTS.find((a) => a.value === form.client_arrangement)?.stock} The
+                    client's palay isn't taken from your stock.
+                  </p>
+                </div>
+                <div>
+                  <label
+                    htmlFor="client-notes"
+                    className="block text-sm font-medium text-gray-700 dark:text-slate-200 mb-1"
+                  >
+                    Notes
+                  </label>
+                  <input
+                    id="client-notes"
+                    className="input"
+                    maxLength={1000}
+                    placeholder={
+                      form.client_arrangement === "contracted"
+                        ? "e.g. ₱150 per cavan, paid on pickup"
+                        : "e.g. picks up tomorrow"
+                    }
+                    value={form.client_notes}
+                    onChange={(e) => setForm((f) => ({ ...f, client_notes: e.target.value }))}
+                  />
+                </div>
+              </div>
+            )}
             <div>
               <div className="flex items-baseline justify-between mb-1">
                 <label className="block text-sm font-medium text-gray-700 dark:text-slate-200">
@@ -492,7 +571,22 @@ export default function MillingPage() {
                 <tr key={b.id} className="hover:bg-gray-50 dark:hover:bg-slate-900/50">
                   <td className="px-4 py-3 font-mono text-xs">{b.batch_no}</td>
                   <td className="px-4 py-3">
-                    {(b.customer_id && clientName[b.customer_id]) || "—"}
+                    {b.customer_id && clientById[b.customer_id] ? (
+                      <>
+                        <span className="block">{clientById[b.customer_id].name}</span>
+                        {b.client_arrangement && (
+                          <span
+                            className="block max-w-[16rem] truncate text-xs text-muted"
+                            title={b.client_notes || undefined}
+                          >
+                            {arrangementLabel[b.client_arrangement] ?? b.client_arrangement}
+                            {b.client_notes && ` · ${b.client_notes}`}
+                          </span>
+                        )}
+                      </>
+                    ) : (
+                      "—"
+                    )}
                   </td>
                   <td className="px-4 py-3">
                     {b.start_datetime

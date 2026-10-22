@@ -80,14 +80,15 @@ def test_mill_operator_can_run_floor_sections_but_cannot_read_sales_or_pii(make_
     assert client.get("/api/employees/").status_code == 403
 
 
-def test_encoder_can_write_paddy_and_sales_but_only_view_milling_inventory(make_auth_client):
+def test_encoder_can_write_paddy_sales_and_milling_but_only_view_inventory(make_auth_client):
     client = make_auth_client(ALL_FEATURES, username="rbac-encoder", role_name="encoder")
 
     assert client.post("/api/paddy/suppliers", json={"name": "Allowed"}).status_code == 201
     assert client.post("/api/sales/customers", json={"name": "Allowed"}).status_code == 201
 
     assert client.get("/api/milling/equipment").status_code == 200
-    assert client.post("/api/milling/equipment", json={"name": "Blocked"}).status_code == 403
+    # Encoders encode milling batches, custom milling for walk-in clients included.
+    assert client.post("/api/milling/equipment", json={"name": "Allowed"}).status_code == 201
     assert client.get("/api/inventory/summary").status_code == 200
     assert (
         client.post(
