@@ -450,7 +450,7 @@ function RackCard({
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        className="w-full flex items-center gap-3 px-4 py-3 hover:bg-slate-50/60 dark:hover:bg-slate-800/40 transition-colors text-left"
+        className="w-full flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-3 hover:bg-slate-50/60 dark:hover:bg-slate-800/40 transition-colors text-left"
       >
         <span className="w-3 h-3 rounded-sm shrink-0" style={{ backgroundColor: rack.color_hex }} />
         <div className="flex items-center gap-2 min-w-0">
@@ -461,7 +461,7 @@ function RackCard({
           </span>
         </div>
 
-        <div className="ml-auto flex items-center gap-4">
+        <div className="ml-auto flex items-center gap-2 sm:gap-4">
           {rack.capacity_kg ? (
             <div className="hidden md:flex items-center gap-2 w-40">
               <div className="flex-1 h-2 rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden">
@@ -516,11 +516,11 @@ function PalletRow({
     <button
       type="button"
       onClick={() => onSelect(p)}
-      className={`w-full text-left flex items-center gap-3 px-4 py-2.5 transition-colors ${highlighted ? "bg-amber-500/10" : "hover:bg-slate-50/60 dark:hover:bg-slate-800/30"}`}
+      className={`w-full text-left flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-2.5 transition-colors ${highlighted ? "bg-amber-500/10" : "hover:bg-slate-50/60 dark:hover:bg-slate-800/30"}`}
       data-testid={`pallet-${p.id}`}
     >
       <span className={`w-2 h-2 rounded-full shrink-0 ${meta.dot}`} />
-      <span className="font-mono text-sm font-semibold text-primary w-32 shrink-0 truncate">
+      <span className="font-mono text-sm font-semibold text-primary w-24 sm:w-32 shrink-0 truncate">
         {p.pallet_code}
       </span>
       <div className="flex-1 min-w-0">
@@ -529,7 +529,7 @@ function PalletRow({
           {p.client_name ? <span className="text-muted"> · {p.client_name}</span> : null}
         </p>
       </div>
-      <span className="text-xs text-muted tabular-nums w-12 text-right shrink-0">
+      <span className="text-xs text-muted tabular-nums w-9 sm:w-12 text-right shrink-0">
         {p.days_old}d
       </span>
       <span className="hidden sm:flex items-center gap-1 text-xs text-muted tabular-nums w-24 justify-end shrink-0">

@@ -47,7 +47,7 @@ type Params = Automation["params"];
 
 // As many tiles per row as fit, none narrower than 17rem. Sized by the space the
 // page actually has, not the window's: the sidebar takes a varying share of it.
-const CARD_GRID = "group/grid grid grid-cols-[repeat(auto-fill,minmax(17rem,1fr))] gap-4";
+const CARD_GRID = "group/grid grid grid-cols-[repeat(auto-fill,minmax(min(17rem,100%),1fr))] gap-4";
 
 // Tab order: everyday operations first, the AI advisor last. A group gets a tab
 // only once it has recipes; the blurb is the tab's tooltip. The people group's

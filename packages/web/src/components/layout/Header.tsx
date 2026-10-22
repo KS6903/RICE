@@ -97,7 +97,10 @@ export default function Header({ menuOpen, onMenu }: { menuOpen: boolean; onMenu
           {isOnline ? "Online" : "Offline"}
         </span>
 
-        <PlanBadge />
+        {/* The tiniest screens (a fold phone's cover) need the room; Settings shows the plan. */}
+        <div className="contents max-[339px]:hidden">
+          <PlanBadge />
+        </div>
 
         <TourButton />
 

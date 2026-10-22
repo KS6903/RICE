@@ -167,6 +167,10 @@
     box-shadow: 0 4px 24px -8px rgba(15, 23, 42, 0.12),
       inset 0 1px 0 0 rgba(255, 255, 255, 0.55);
   }
+  /* A phone can't spare 24px a side. */
+  @media (max-width: 639px) {
+    .card { padding: 1.125rem; }
+  }
   .dark .card {
     box-shadow: 0 8px 32px -12px rgba(0, 0, 0, 0.5),
       inset 0 1px 0 0 rgba(255, 255, 255, 0.06);
@@ -292,6 +296,16 @@
   .btn-secondary:focus-visible {
     outline: 2px solid rgba(16, 185, 129, 0.4);
     outline-offset: 2px;
+  }
+
+  /* A button's label stays on one line: on a narrow phone, or one with its
+     text zoomed up, the layout around it gives way instead ("Log / in" read
+     as two words). `whitespace-normal` opts a long label out. */
+  .btn-primary,
+  .btn-secondary,
+  .btn-danger,
+  .btn-ghost {
+    white-space: nowrap;
   }
 
   .btn-ghost {

@@ -142,7 +142,7 @@ function BackupAndRestore() {
         <div className="flex items-center gap-3 flex-wrap">
           <button
             type="button"
-            className="btn-secondary"
+            className="btn-secondary max-w-full whitespace-normal"
             onClick={() => backup.mutate()}
             disabled={backup.isPending || (status.isSuccess && !email)}
           >

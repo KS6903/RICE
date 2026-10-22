@@ -268,29 +268,31 @@ function ClassicView({ palay, milled, byproducts, summary, branchFilter }: any) 
       {summary?.by_branch && summary.by_branch.length > 0 && !branchFilter && (
         <div className="card">
           <h3 className="font-semibold text-primary mb-3">Stock by warehouse</h3>
-          <table className="w-full text-sm">
-            <thead className="border-b border-slate-200 dark:border-slate-700">
-              <tr className="text-left text-secondary">
-                <th className="px-3 py-2 font-medium">Warehouse</th>
-                <th className="px-3 py-2 font-medium text-right">Palay (kg)</th>
-                <th className="px-3 py-2 font-medium text-right">Milled Rice (kg)</th>
-                <th className="px-3 py-2 font-medium text-right">By-products (kg)</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-              {summary.by_branch.map((row: any, i: number) => (
-                <tr key={i} className="hover:bg-slate-50 dark:hover:bg-slate-800/40">
-                  <td className="px-3 py-2 font-medium text-primary">
-                    {row.branch?.name || "Unassigned"}
-                    {row.branch?.is_main_branch && <span className="badge-green ml-2">Main</span>}
-                  </td>
-                  <td className="px-3 py-2 text-right">{row.palay_kg.toLocaleString()}</td>
-                  <td className="px-3 py-2 text-right">{row.milled_kg.toLocaleString()}</td>
-                  <td className="px-3 py-2 text-right">{row.byproduct_kg.toLocaleString()}</td>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="border-b border-slate-200 dark:border-slate-700">
+                <tr className="text-left text-secondary">
+                  <th className="px-3 py-2 font-medium">Warehouse</th>
+                  <th className="px-3 py-2 font-medium text-right">Palay (kg)</th>
+                  <th className="px-3 py-2 font-medium text-right">Milled Rice (kg)</th>
+                  <th className="px-3 py-2 font-medium text-right">By-products (kg)</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                {summary.by_branch.map((row: any, i: number) => (
+                  <tr key={i} className="hover:bg-slate-50 dark:hover:bg-slate-800/40">
+                    <td className="px-3 py-2 font-medium text-primary">
+                      {row.branch?.name || "Unassigned"}
+                      {row.branch?.is_main_branch && <span className="badge-green ml-2">Main</span>}
+                    </td>
+                    <td className="px-3 py-2 text-right">{row.palay_kg.toLocaleString()}</td>
+                    <td className="px-3 py-2 text-right">{row.milled_kg.toLocaleString()}</td>
+                    <td className="px-3 py-2 text-right">{row.byproduct_kg.toLocaleString()}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
 

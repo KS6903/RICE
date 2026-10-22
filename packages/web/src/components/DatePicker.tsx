@@ -294,7 +294,7 @@ export default function DatePicker({
             role="dialog"
             aria-label="Choose a date"
             className="fixed z-[70] rounded-xl bg-white p-3 shadow-2xl ring-1 ring-soft animate-panel-in dark:bg-slate-900"
-            style={{ ...place, width: WIDTH }}
+            style={{ ...place, width: `min(${WIDTH}px, calc(100vw - 16px))` }}
             onKeyDown={onPanelKeyDown}
           >
             <div className="mb-2 flex items-center justify-between gap-1">

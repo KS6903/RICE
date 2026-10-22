@@ -586,22 +586,26 @@ export default function HomePage() {
       {/* Header */}
       <header className="sticky top-0 z-20 glass-strong border-b border-soft">
         <div className="mx-auto max-w-6xl px-4 sm:px-6 h-16 flex items-center justify-between gap-3">
-          <div className="flex items-center gap-2.5">
-            <div className="h-9 w-9 rounded-xl bg-grad-brand grid place-items-center shadow-grad-glow">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="h-9 w-9 shrink-0 rounded-xl bg-grad-brand grid place-items-center shadow-grad-glow">
               <img
                 src={riceLogo}
                 alt="Oraiza"
                 className="h-full w-full object-contain brightness-0 invert"
               />
             </div>
-            <span className="text-lg font-bold tracking-tight text-primary">Oraiza</span>
+            {/* On the narrowest screens (or with the phone's text zoomed up)
+                the buttons need the room more than the name does. */}
+            <span className="text-lg font-bold tracking-tight text-primary truncate max-[379px]:hidden">
+              Oraiza
+            </span>
           </div>
-          <div className="flex items-center gap-2">
-            <Link to="/login" className="btn-secondary !py-2">
+          <div className="flex items-center gap-2 shrink-0">
+            <Link to="/login" className="btn-secondary !py-2 max-sm:!px-3.5">
               Log in
             </Link>
-            <Link to="/signup" className="btn-primary !py-2">
-              Get started <ArrowRight size={16} />
+            <Link to="/signup" className="btn-primary !py-2 max-sm:!px-3.5">
+              Get started <ArrowRight size={16} className="max-sm:hidden" />
             </Link>
           </div>
         </div>
@@ -610,7 +614,7 @@ export default function HomePage() {
       {/* Hero */}
       <main className="flex-1">
         <section className="mx-auto max-w-6xl px-4 sm:px-6 pt-14 lg:pt-20 pb-16">
-          <div className="grid lg:grid-cols-[1fr_1.25fr] gap-10 items-center">
+          <div className="grid lg:grid-cols-[1fr_1.25fr] gap-10 items-center [&>*]:min-w-0">
             <div className="animate-grad-fade-up">
               <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full glass text-xs font-bold uppercase tracking-wide text-secondary mb-5">
                 <Sparkles size={12} className="text-emerald-500" />
@@ -624,10 +628,13 @@ export default function HomePage() {
                 always know what's in the warehouse and what's on the books.
               </p>
               <div className="mt-8 flex flex-wrap items-center gap-3">
-                <Link to="/signup" className="btn-primary !px-6 !py-3 text-base">
+                <Link
+                  to="/signup"
+                  className="btn-primary !px-6 !py-3 text-base max-sm:w-full max-sm:!px-4 max-sm:whitespace-normal max-sm:text-center"
+                >
                   Create your mill's account <ArrowRight size={18} />
                 </Link>
-                <Link to="/login" className="btn-secondary !px-6 !py-3 text-base">
+                <Link to="/login" className="btn-secondary !px-6 !py-3 text-base max-sm:w-full">
                   Log in
                 </Link>
               </div>

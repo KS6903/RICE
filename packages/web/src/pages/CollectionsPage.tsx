@@ -44,7 +44,7 @@ function Step({ n, title, children }: { n: number; title: string; children: Reac
         </span>
         {title}
       </h3>
-      <div className="pl-8">{children}</div>
+      <div className="sm:pl-8">{children}</div>
     </section>
   );
 }
@@ -281,7 +281,7 @@ export default function CollectionsPage() {
           </p>
         </div>
       ) : (
-        <div className="grid gap-5 lg:grid-cols-[minmax(16rem,22rem)_1fr]">
+        <div className="grid gap-5 lg:grid-cols-[minmax(16rem,22rem)_1fr] [&>*]:min-w-0">
           <Step n={1} title="Who to call first">
             <ol className="space-y-2">
               {customers.map((d) => {

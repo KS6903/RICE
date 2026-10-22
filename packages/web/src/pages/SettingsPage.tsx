@@ -1409,7 +1409,7 @@ function BranchesTab() {
         <p className="text-sm text-secondary font-medium">
           {branches.length} branch{branches.length === 1 ? "" : "es"}
         </p>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <button onClick={() => setShowTrash((v) => !v)} className="btn-secondary">
             <History size={16} /> {showTrash ? "Hide history" : "History / Trash"}
           </button>

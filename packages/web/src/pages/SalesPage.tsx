@@ -407,12 +407,12 @@ export default function SalesPage() {
         </div>
       )}
 
-      <div className="flex gap-2 border-b border-gray-200 dark:border-slate-700">
+      <div className="flex gap-2 overflow-x-auto border-b border-gray-200 dark:border-slate-700">
         {(["orders", "invoices", "customers"] as const).map((t) => (
           <button
             key={t}
             onClick={() => setTab(t)}
-            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors capitalize ${tab === t ? "border-brand-600 text-brand-600 dark:text-brand-400" : "border-transparent text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200"}`}
+            className={`shrink-0 px-3 sm:px-4 py-2 text-sm font-medium border-b-2 transition-colors capitalize ${tab === t ? "border-brand-600 text-brand-600 dark:text-brand-400" : "border-transparent text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200"}`}
           >
             {t}
           </button>
