@@ -7,7 +7,7 @@ import jwt
 from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordBearer
 from jwt import InvalidTokenError
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 # The default role/section matrix, and what a mill's Boss may change about it,
 # are in access_policy; this module is where they are enforced.
@@ -169,7 +169,10 @@ def authenticate_access_token(token: str, db: Session):
     # (they operate on `public` and loop client schemas via tenant_session).
     if not payload.get("is_platform_admin") and not valid_schema_name(payload.get("schema")):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
-    user = db.get(User, user_id)
+    # Company and role in the same query: both are read on every request (the
+    # tenant check below, then section access), and lazy-loading them cost two
+    # more database round trips each time.
+    user = db.get(User, user_id, options=[joinedload(User.company), joinedload(User.role)])
     if not user or not user.is_active:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found or inactive")
     if not user.is_platform_admin:

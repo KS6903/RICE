@@ -124,13 +124,22 @@ def set_search_path(db: Session, schema_name: str | None) -> None:
         logger.warning("Ignoring invalid schema name %r; using public", schema_name)
         schema_name = None
     db.info[_SEARCH_PATH_KEY] = schema_name
-    # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
-    db.execute(text(_search_path_sql(schema_name)))
+    # Inside a transaction, apply it now. Otherwise the next transaction's
+    # after_begin applies it: executing here would begin that transaction, the
+    # hook would send the SET, and this line would send it again, one wasted
+    # database round trip on every request.
+    if db.in_transaction():
+        # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
+        db.execute(text(_search_path_sql(schema_name)))
 
 
 @event.listens_for(Session, "after_begin")
 def _reapply_search_path(session: Session, transaction, connection) -> None:
     """Give every transaction a session begins the schema the session was set to."""
+    # A savepoint lives inside a transaction that already has it: SET LOCAL
+    # holds until that transaction ends, so sending it again is a wasted trip.
+    if transaction.nested:
+        return
     if _SEARCH_PATH_KEY in session.info:
         connection.exec_driver_sql(_search_path_sql(session.info[_SEARCH_PATH_KEY]))
 

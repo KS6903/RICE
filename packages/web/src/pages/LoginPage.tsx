@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate, Link, useSearchParams } from "react-router-dom";
 import { authService } from "../services/AuthService";
 import { useAuthStore } from "../stores/authStore";
@@ -16,8 +16,11 @@ import { GoogleLogin } from "@react-oauth/google";
 import { googleSignInEnabled } from "../utils/googleSignIn";
 import riceLogo from "../assets/Rice_Logo.svg";
 import { safeNext, withNext } from "../utils/next";
+import { warmUpApi } from "../services/warmUp";
 
 export default function LoginPage() {
+  // Boot a sleeping API while the person types, not after they press Sign in.
+  useEffect(() => warmUpApi(), []);
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");

@@ -72,7 +72,6 @@ from ..models.auth_session import AuthSession
 from ..models.base import now_utc
 from ..models.company import Branch, Company
 from ..models.password_reset import PasswordResetToken
-from ..models.subscription import Subscription
 from ..models.user import Role, User
 from ..schemas.auth import MfaChallengeResponse, TokenResponse
 from ..services.activity import log_activity
@@ -1087,26 +1086,34 @@ class AuthService(BaseService):
 
     def me(self) -> dict:
         user = self.current_user
+        sub = None
         if user.company_id and not user.is_platform_admin:
-            ensure_subscription(self.db, user.company_id)
-            auto_downgrade_to_free_if_expired(self.db, user.company_id)
-            self.db.commit()
+            # One read of the subscription serves the expiry check and the plan
+            # below. It commits by itself, and only when a paid plan has run out;
+            # the row it returns is the same one, kept current.
+            sub = auto_downgrade_to_free_if_expired(self.db, user.company_id)
+            if sub is None:
+                # No subscription row yet: start one on Free. Commit only then.
+                # /me is polled every minute, and a needless commit hands the
+                # connection back and expires every loaded row, so the rest of
+                # this method would reload the user, company and role again.
+                sub = ensure_subscription(self.db, user.company_id)
+                if sub is not None:
+                    self.db.commit()
 
         features = get_user_features(user, self.db)
 
         plan_info = None
-        if user.company_id and not user.is_platform_admin:
-            sub = self.db.query(Subscription).filter(Subscription.company_id == user.company_id).first()
-            if sub and sub.plan:
-                plan_info = {
-                    "code": sub.plan.code,
-                    "name": sub.plan.name,
-                    "monthly_price": float(sub.plan.monthly_price),
-                    "max_users": sub.plan.max_users,
-                    "max_branches": sub.plan.max_branches,
-                    "status": effective_status(sub) or sub.status,
-                    "expires_at": sub.expires_at.isoformat() if sub.expires_at else None,
-                }
+        if sub is not None and sub.plan:
+            plan_info = {
+                "code": sub.plan.code,
+                "name": sub.plan.name,
+                "monthly_price": float(sub.plan.monthly_price),
+                "max_users": sub.plan.max_users,
+                "max_branches": sub.plan.max_branches,
+                "status": effective_status(sub) or sub.status,
+                "expires_at": sub.expires_at.isoformat() if sub.expires_at else None,
+            }
 
         is_privileged = user.is_platform_admin or (user.role and user.role.name == "owner")
         return {
