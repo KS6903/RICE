@@ -174,18 +174,22 @@ function FieldOperatorsContent() {
   });
 
   // The type tabs count active contacts only; deactivated ones live in their own
-  // tab at the far end. "All" spans agents + millers, suppliers are their own tab.
+  // tab at the far end. "All" is everyone: agents, millers and suppliers.
   const tabs = useMemo(() => {
     const activeAgents = agents.filter((a) => a.is_active).length;
     const activeMillers = millers.filter((m) => m.is_active).length;
+    const activeSuppliers = hasPaddy ? suppliers.filter((s) => s.is_active).length : 0;
     const base = [
-      { key: "all" as TypeTab, label: "All", count: activeAgents + activeMillers },
+      {
+        key: "all" as TypeTab,
+        label: "All",
+        count: activeAgents + activeMillers + activeSuppliers,
+      },
       { key: "agent" as TypeTab, label: "Agents", count: activeAgents },
       { key: "miller" as TypeTab, label: "Millers", count: activeMillers },
     ];
     if (hasPaddy) {
-      const count = suppliers.filter((s) => s.is_active).length;
-      base.push({ key: "supplier" as TypeTab, label: "Suppliers", count });
+      base.push({ key: "supplier" as TypeTab, label: "Suppliers", count: activeSuppliers });
     }
     const deactivated =
       agents.filter((a) => !a.is_active).length +
@@ -283,6 +287,29 @@ function FieldOperatorsContent() {
               />
             </div>
           )}
+        </div>
+      ) : typeTab === "all" && hasPaddy ? (
+        <div className="space-y-6">
+          <div className="space-y-2">
+            <h3 className="text-sm font-bold text-primary">Agents and millers</h3>
+            <OperatorsPanel
+              typeTab="all"
+              status="active"
+              search=""
+              agents={agents}
+              millers={millers}
+              canEdit={canEdit("operators")}
+            />
+          </div>
+          <div className="space-y-2">
+            <h3 className="text-sm font-bold text-primary">Suppliers</h3>
+            <SuppliersPanel
+              status="active"
+              search=""
+              suppliers={suppliers}
+              canEdit={canEdit("paddy")}
+            />
+          </div>
         </div>
       ) : typeTab === "supplier" ? (
         <SuppliersPanel
