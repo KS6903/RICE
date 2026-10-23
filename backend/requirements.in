@@ -5,7 +5,7 @@
 #
 # Pins refreshed by the security hardening pass (pip-audit clean as of 2026-06):
 # fastapi/starlette, python-multipart, python-dotenv bumped past known CVEs.
-fastapi==0.150.0
+fastapi==0.151.0
 # uvicorn's [standard] extras, listed one by one instead of via the extra:
 # the extra adds uvloop on Linux only, and pip-compile drops platform
 # markers, so a lock compiled on Linux (Dependabot, CI) listed uvloop and the
