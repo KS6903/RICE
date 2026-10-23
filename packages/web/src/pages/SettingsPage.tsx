@@ -48,7 +48,7 @@ import {
   Moon,
   Download,
 } from "lucide-react";
-import { format } from "date-fns";
+import { addDays, differenceInCalendarDays, format, parseISO, subDays } from "date-fns";
 import { useCurrentPlan, useFeature } from "../hooks/useFeature";
 import { roleLabel, type SubscriptionPlan, type UpgradeRequest } from "@rice-mill/shared";
 import ActivityLogList from "../components/activity/ActivityLogList";
@@ -2046,20 +2046,113 @@ function BranchTrashPanel() {
   );
 }
 
+// The most days one look at the log covers (the server refuses more), and the
+// most rows it sends back.
+const ACTIVITY_MAX_DAYS = 31;
+const ACTIVITY_ROW_LIMIT = 500;
+
+const isoDay = (d: Date) => format(d, "yyyy-MM-dd");
+const spanDays = (start: string, end: string) =>
+  differenceInCalendarDays(parseISO(end), parseISO(start)) + 1;
+
 function ActivityTab() {
-  const { data: rows = [], isLoading } = useQuery<ActivityRow[]>({
-    queryKey: ["activity"],
-    queryFn: () => activityService.list(),
+  const today = isoDay(new Date());
+  // The last month: today and the 30 days before it.
+  const lastMonth = () => ({
+    start: isoDay(subDays(new Date(), ACTIVITY_MAX_DAYS - 1)),
+    end: isoDay(new Date()),
   });
+  const [range, setRange] = useState(lastMonth);
+
+  const {
+    data: rows = [],
+    isLoading,
+    error,
+  } = useQuery<ActivityRow[]>({
+    queryKey: ["activity", range.start, range.end],
+    queryFn: () => activityService.list(range),
+  });
+
+  // Moving one end past the 31 days drags the other along, so the range is
+  // always one the server accepts.
+  const setStart = (start: string) => {
+    if (!start) return;
+    setRange((r) => {
+      let end = r.end < start ? start : r.end;
+      if (spanDays(start, end) > ACTIVITY_MAX_DAYS) {
+        end = isoDay(addDays(parseISO(start), ACTIVITY_MAX_DAYS - 1));
+      }
+      return { start, end: end > today ? today : end };
+    });
+  };
+  const setEnd = (end: string) => {
+    if (!end) return;
+    setRange((r) => {
+      let start = r.start > end ? end : r.start;
+      if (spanDays(start, end) > ACTIVITY_MAX_DAYS) {
+        start = isoDay(subDays(parseISO(end), ACTIVITY_MAX_DAYS - 1));
+      }
+      return { start, end };
+    });
+  };
+
+  const isLastMonth = range.start === lastMonth().start && range.end === today;
+
   return (
     <div className="space-y-4">
       <div>
         <h3 className="text-lg font-bold text-primary">Activity log</h3>
         <p className="text-sm text-secondary">
-          Who deleted, restored, or purged warehouses, and who downloaded the mill&apos;s data —
-          most recent first.
+          Who deleted, restored, or purged warehouses, and who downloaded the mill&apos;s data, most
+          recent first. It shows the last month; pick other days to look further back, up to{" "}
+          {ACTIVITY_MAX_DAYS} days at a time.
         </p>
       </div>
+      <div className="flex flex-wrap items-end gap-3">
+        <div>
+          <label htmlFor="activity-from" className={LABEL}>
+            From
+          </label>
+          <input
+            id="activity-from"
+            type="date"
+            className="input"
+            value={range.start}
+            max={today}
+            onChange={(e) => setStart(e.target.value)}
+          />
+        </div>
+        <div>
+          <label htmlFor="activity-to" className={LABEL}>
+            To
+          </label>
+          <input
+            id="activity-to"
+            type="date"
+            className="input"
+            value={range.end}
+            min={range.start}
+            max={today}
+            onChange={(e) => setEnd(e.target.value)}
+          />
+        </div>
+        {!isLastMonth && (
+          <button type="button" onClick={() => setRange(lastMonth())} className="btn-secondary">
+            Last month
+          </button>
+        )}
+      </div>
+      {error ? (
+        <p className="text-sm font-medium text-rose-600 dark:text-rose-400">
+          {(error as any)?.response?.data?.detail || "Couldn't load the activity."}
+        </p>
+      ) : (
+        rows.length >= ACTIVITY_ROW_LIMIT && (
+          <p className="text-sm text-secondary">
+            Showing the latest {ACTIVITY_ROW_LIMIT}. Pick fewer days to see the rest.
+          </p>
+        )
+      )}
       <div className="card">
         <ActivityLogList rows={rows} loading={isLoading} />
       </div>

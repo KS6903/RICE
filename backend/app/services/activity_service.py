@@ -10,13 +10,21 @@ activity endpoint and the platform-admin tenant-detail view.
 from __future__ import annotations
 
 import uuid
-from typing import Any
+from datetime import date, datetime, time, timedelta
+from typing import Any, Sequence
+from zoneinfo import ZoneInfo
 
 from sqlalchemy.orm import Session
 
+from ..core.exceptions import ValidationError
+from ..models.activity import ActivityLog
 from ..models.user import User
 from ..repositories.activity import ActivityLogRepository
 from ..services.base import BaseService
+
+# The most days one look at the log covers, and what it shows unless asked: the
+# last month (today and the 30 days before it).
+MAX_RANGE_DAYS = 31
 
 
 class ActivityService(BaseService):
@@ -30,7 +38,30 @@ class ActivityService(BaseService):
         ``company_id`` is explicit (not taken from current_user) because the
         platform-admin view reads another tenant's log.
         """
-        rows = self.activity.list_recent_for_company(company_id, limit=limit)
+        return self._serialize(self.activity.list_recent_for_company(company_id, limit=limit))
+
+    def list_between(
+        self,
+        company_id: uuid.UUID,
+        zone: ZoneInfo,
+        *,
+        start: date | None = None,
+        end: date | None = None,
+        limit: int = 500,
+    ) -> list[dict]:
+        """Audit rows from the *start* day to the *end* day, both whole days in
+        the mill's time zone, newest first. Without dates: the last month."""
+        end = end or datetime.now(zone).date()
+        start = start or end - timedelta(days=MAX_RANGE_DAYS - 1)
+        if start > end:
+            raise ValidationError("The start date is after the end date.")
+        if (end - start).days + 1 > MAX_RANGE_DAYS:
+            raise ValidationError(f"Pick up to {MAX_RANGE_DAYS} days at a time.")
+        since = datetime.combine(start, time.min, zone)
+        until = datetime.combine(end + timedelta(days=1), time.min, zone)
+        return self._serialize(self.activity.list_for_company_between(company_id, since, until, limit=limit))
+
+    def _serialize(self, rows: Sequence[ActivityLog]) -> list[dict]:
         user_ids = {r.user_id for r in rows if r.user_id}
         names: dict[uuid.UUID, str] = {}
         if user_ids:

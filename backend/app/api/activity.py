@@ -1,12 +1,14 @@
 """Activity-log HTTP controller — thin routing over ActivityService (Phase 3b)."""
 
 import uuid
+from datetime import date
 
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
 from ..core.database import get_db
 from ..core.security import require_roles, require_section_access
+from ..core.timezones import tenant_zone
 from ..services.activity_service import ActivityService
 
 router = APIRouter(dependencies=[Depends(require_section_access("settings"))])
@@ -26,8 +28,13 @@ def serialize_logs(db: Session, company_id: uuid.UUID, limit: int = 200) -> list
 
 @router.get("/")
 def list_activity(
-    limit: int = Query(200, le=500),
+    start: date | None = None,
+    end: date | None = None,
+    limit: int = Query(500, ge=1, le=1000),
     current_user=Depends(require_roles("owner", "admin")),
     svc: ActivityService = Depends(get_activity_service),
 ):
-    return svc.list_recent(current_user.company_id, limit=limit)
+    """The mill's activity from *start* to *end* (whole days, in its own time
+    zone): the last month unless asked, and at most 31 days at a time."""
+    zone = tenant_zone(current_user.company.timezone)
+    return svc.list_between(current_user.company_id, zone, start=start, end=end, limit=limit)

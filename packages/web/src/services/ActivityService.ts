@@ -4,8 +4,10 @@ import api from "./api";
 export class ActivityService {
   constructor(private http = api) {}
 
-  list(): Promise<any[]> {
-    return this.http.get("/activity/").then((r) => r.data);
+  /** The log from `start` to `end` (yyyy-MM-dd, whole days, at most 31); the
+   *  last month when no range is given. */
+  list(range?: { start: string; end: string }): Promise<any[]> {
+    return this.http.get("/activity/", { params: range }).then((r) => r.data);
   }
 }
 
