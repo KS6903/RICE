@@ -145,7 +145,7 @@ def _reapply_search_path(session: Session, transaction, connection) -> None:
 
 
 # Cross-tenant code must visit each client by switching to its schema. Use
-# tenant_session / iter_tenant_sessions below rather than ad-hoc search_path
+# tenant_session below rather than ad-hoc search_path
 # mutation, so the path is always restored afterwards.
 
 
@@ -343,22 +343,3 @@ def tenant_session(db: Session, company) -> Iterator[Session]:
     finally:
         set_search_path(db, None)
 
-
-def iter_tenant_sessions() -> Iterator[tuple]:
-    """Yield ``(company, session)`` for every client, each scoped to its schema.
-    For cross-tenant batch work (cron, reporting). Each session is closed after
-    the caller resumes the generator."""
-    from ..models.company import Company
-
-    catalog = SessionLocal()
-    try:
-        companies = catalog.query(Company).all()
-    finally:
-        catalog.close()
-
-    for company in companies:
-        session = session_for_company(company)
-        try:
-            yield company, session
-        finally:
-            session.close()

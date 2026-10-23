@@ -16,9 +16,6 @@ Usage:
     data = cache.get_json("features:123")           # None on miss / Redis down
     cache.set_json("features:123", [...], ttl=60)   # no-op when Redis down
     cache.delete("features:123")                    # invalidate
-
-    # or read-through in one call:
-    features = cache.get_or_set("features:123", 60, lambda: load_from_db())
 """
 
 from __future__ import annotations
@@ -27,7 +24,7 @@ import json
 import logging
 import time
 from types import ModuleType
-from typing import Any, Callable
+from typing import Any
 
 from .config import settings
 from .redis_options import redis_client_options
@@ -234,21 +231,6 @@ class _Cache:
         except Exception as e:  # noqa: BLE001
             self._trip(e)
             return False
-
-    def get_or_set(self, key: str, ttl: int, loader: Callable[[], Any]) -> Any:
-        """Read-through cache-aside helper.
-
-        Returns the cached value if present; otherwise calls ``loader()``, caches
-        the result (unless it's None), and returns it. ``loader`` always runs on a
-        cache miss *or* when Redis is down, so correctness never depends on Redis.
-        """
-        cached = self.get_json(key)
-        if cached is not None:
-            return cached
-        value = loader()
-        if value is not None:
-            self.set_json(key, value, ttl)
-        return value
 
 
 # Module-level singleton — import this everywhere.

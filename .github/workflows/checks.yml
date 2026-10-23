@@ -6,10 +6,10 @@ name: Checks
 # the concurrency. scripts/ci_local.mjs mirrors these steps for a run by hand.
 #
 # Every job in every workflow runs on GitHub's ubuntu-latest runners. The
-# repository variable CI_RUNNER can name another runner label instead. The
-# self-hosted runner (scripts/self-hosted-runner/README.md) is reused between
-# jobs, hence the fresh virtualenvs and the API container clean-up. Never point
-# a public repository at it: a pull request from a fork would run on that PC.
+# repository variable CI_RUNNER can name another runner label instead. A
+# self-hosted runner is reused between jobs, hence the fresh virtualenvs and the
+# API container clean-up. Never point a public repository at one: a pull
+# request from a fork would run on that machine.
 on:
   workflow_call:
 

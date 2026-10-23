@@ -5,7 +5,10 @@
 #   ci.yml's automerge job merges them once every check has passed, then
 #   re-runs CI on main. Formatter and linter upgrades get groups of their own.
 # - Majors arrive as one PR per package and are never merged automatically:
-#   each is a deliberate migration (see OUTSTANDING.md).
+#   each is a deliberate migration. Still to do: Tailwind CSS 3 -> 4 (new engine
+#   and config; check every surface in light and dark mode), ESLint 9 -> 10 with
+#   TypeScript 5.9 -> 6 (the TS 6 PR failed the frontend build), and
+#   actions/checkout v6 -> v7 (keep SHA pinning).
 # - pip: requirements.in / requirements-dev.in are the inputs; the hash-pinned
 #   requirements*.txt are pip-compile output that Dependabot regenerates, under
 #   the Python in backend/.python-version. CI fails a PR whose lock and input

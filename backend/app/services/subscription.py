@@ -168,7 +168,7 @@ def activate_subscription(
     return sub
 
 
-def auto_downgrade_to_free_if_expired(db: Session, company_id: uuid.UUID) -> Subscription | None:
+def downgrade_if_expired(db: Session, sub: Subscription) -> Subscription:
     """If this company's paid (active/trial) subscription has passed its expires_at,
     move them to the Free plan instead of leaving them in a locked-out state.
 
@@ -176,19 +176,8 @@ def auto_downgrade_to_free_if_expired(db: Session, company_id: uuid.UUID) -> Sub
     than one that locks users out. Admin-set "expired"/"cancelled"/"past_due" are
     deliberate revocations and are NOT auto-downgraded here.
 
-    Returns the updated (or unchanged) subscription, or None if no row exists.
-    Safe to call on every /auth/me poll — only writes when an actual transition
-    happens.
-    """
-    sub = db.query(Subscription).filter(Subscription.company_id == company_id).first()
-    if not sub:
-        return None
-    return downgrade_if_expired(db, sub)
-
-
-def downgrade_if_expired(db: Session, sub: Subscription) -> Subscription:
-    """auto_downgrade_to_free_if_expired for a subscription already loaded (one
-    query fewer on /auth/me). Writes and commits only on a transition."""
+    Returns the updated (or unchanged) subscription. Safe to call on every
+    /auth/me poll: it writes and commits only on a transition."""
     company_id = sub.company_id
     if sub.status not in ACTIVE_STATUSES:
         return sub

@@ -17,8 +17,6 @@ Public surface:
     palette slot is taken.
   - `colors_in_use(db, company_id, exclude=...)` — set of colors already
     claimed (helper, also used in tests).
-  - `assert_color_available(db, company_id, color, *, exclude_table, exclude_id)`
-    — raises HTTP 409 if another row in the tenant already claims `color`.
 """
 
 from __future__ import annotations
@@ -26,7 +24,6 @@ from __future__ import annotations
 import hashlib
 import uuid
 
-from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
 from ..core.database import Base
@@ -123,33 +120,3 @@ def pick_unused_color(db: Session, company_id: uuid.UUID) -> str:
             return color
         salt += 1
 
-
-def assert_color_available(
-    db: Session,
-    company_id: uuid.UUID,
-    color: str,
-    *,
-    exclude_table: type | None = None,
-    exclude_id: uuid.UUID | None = None,
-) -> None:
-    """Raise HTTP 409 if `color` is already claimed by a different party row.
-
-    Pass `exclude_table`/`exclude_id` when editing a row so it doesn't conflict
-    with itself.
-    """
-    used = colors_in_use(db, company_id, exclude_table=exclude_table, exclude_id=exclude_id)
-    if color.lower() in used:
-        raise HTTPException(
-            status_code=409,
-            detail=f"Color {color} is already assigned to another contact in this company. Pick a different one.",
-        )
-
-
-def normalize_hex(color: str | None) -> str | None:
-    """Lowercase + 7-char (#rrggbb) form, or None if the input is empty."""
-    if not color:
-        return None
-    c = color.strip().lower()
-    if not c.startswith("#"):
-        c = "#" + c
-    return c

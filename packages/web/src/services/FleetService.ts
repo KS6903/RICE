@@ -54,13 +54,6 @@ export const TRUCK_TYPES = [
   { value: "other", label: "Other" },
 ];
 
-export const TRIP_STATUSES = [
-  { value: "planned", label: "Planned" },
-  { value: "in_transit", label: "In Transit" },
-  { value: "completed", label: "Completed" },
-  { value: "cancelled", label: "Cancelled" },
-];
-
 export class FleetService {
   constructor(private http = api) {}
 

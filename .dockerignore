@@ -32,14 +32,7 @@ backend/tests/
 backend/deploy/
 backend/scripts/
 backend/seed*.py
-backend/migrate_canva_rename.py
-backend/migrate_dispatch.py
-backend/migrate_multi_layout.py
-backend/migrate_user_locations.py
-backend/apply_013.py
-backend/cleanup_zones.py
 backend/drop_test_db.py
-backend/list_users.py
 backend/start_disposable_e2e.py
 backend/requirements-dev.in
 backend/requirements-dev.txt

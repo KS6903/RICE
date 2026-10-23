@@ -133,9 +133,7 @@ and the placeholders in `legal/entity.json` are filled in. A private test site f
 testers deploys separately, with `deploy-preview.yml`; see [PREVIEW_DEPLOY.md](PREVIEW_DEPLOY.md).
 
 CI and both deploys run on GitHub's `ubuntu-latest` runners. The repository variable `CI_RUNNER`
-can point them at another runner, such as the self-hosted one in
-[scripts/self-hosted-runner/README.md](scripts/self-hosted-runner/README.md), but only while the
-repository is private.
+can point them at another runner, but never at a self-hosted one while the repository is public.
 
 ## More documentation
 
@@ -145,4 +143,3 @@ repository is private.
 - [PREVIEW_DEPLOY.md](PREVIEW_DEPLOY.md): the private test site for invited testers, and its costs
 - [PRODUCTION_LAUNCH_CHECKLIST.md](PRODUCTION_LAUNCH_CHECKLIST.md): what's left before launch
 - [SECURITY_OPERATIONS.md](SECURITY_OPERATIONS.md): release gate, e2e databases, account recovery
-- [OUTSTANDING.md](OUTSTANDING.md): the roadmap of remaining work

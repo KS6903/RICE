@@ -146,13 +146,6 @@ class WarehouseZoneRepository(BaseRepository[WarehouseZone]):
     def list_for_layout(self, layout_id: uuid.UUID) -> list[WarehouseZone]:
         return self.db.query(WarehouseZone).filter(WarehouseZone.layout_id == layout_id).all()
 
-    def premium_for_layout(self, layout_id: uuid.UUID) -> WarehouseZone | None:
-        return (
-            self.db.query(WarehouseZone)
-            .filter(WarehouseZone.layout_id == layout_id, WarehouseZone.zone_type == "premium_storage")
-            .first()
-        )
-
 
 class PalletRepository(BaseRepository[Pallet]):
     model = Pallet
@@ -213,23 +206,6 @@ class PalletRepository(BaseRepository[Pallet]):
         if variety_id is not None:
             q = q.filter(RiceBatch.variety_id == variety_id)
         return q.order_by(RiceBatch.milling_date.asc(), Pallet.created_at.asc()).all()  # type: ignore[return-value]
-
-    def next_pallet_code(self, company_id: uuid.UUID, year: int) -> str:
-        """Next ``PL-<year>-NNNN`` code for a company (sequential per year)."""
-        prefix = f"PL-{year}-"
-        last = (
-            self.db.query(Pallet)
-            .filter(Pallet.company_id == company_id, Pallet.pallet_code.like(f"{prefix}%"))
-            .order_by(Pallet.pallet_code.desc())
-            .first()
-        )
-        next_num = 1
-        if last:
-            try:
-                next_num = int(last.pallet_code.rsplit("-", 1)[1]) + 1
-            except (ValueError, IndexError):
-                next_num = 1
-        return f"{prefix}{next_num:04d}"
 
 
 class PalletMovementRepository(BaseRepository[PalletMovement]):

@@ -13,14 +13,7 @@ scripts/
 .env.*
 !.env.example
 seed*.py
-migrate_canva_rename.py
-migrate_dispatch.py
-migrate_multi_layout.py
-migrate_user_locations.py
-apply_013.py
-cleanup_zones.py
 drop_test_db.py
-list_users.py
 start_disposable_e2e.py
 requirements-dev.in
 requirements-dev.txt

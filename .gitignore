@@ -9,15 +9,10 @@ __pycache__/
 dist/
 build/
 out/
-.next/
 
 # Environment
 .env
-.env.local
 .env.*
-.env.*.local
-.env.production.secrets
-backend/.env.production.secrets
 !.env.example
 
 # Logs
@@ -41,8 +36,6 @@ CLAUDE.md
 Thumbs.db
 
 # Electron
-packages/desktop/out/
-packages/desktop/dist/
 # Written by packages/desktop/scripts/build-desktop.mjs for each packaged build.
 packages/desktop/main/build-config.json
 release/
@@ -76,9 +69,6 @@ htmlcov/
 # TypeScript / Vite incremental caches
 *.tsbuildinfo
 .vite/
-
-# Alembic
-backend/migrations/versions/*.pyc
 
 # Playwright test artifacts
 test-results/
