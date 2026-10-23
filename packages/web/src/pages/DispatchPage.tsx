@@ -24,6 +24,7 @@ import { dispatchService } from "../services/DispatchService";
 import { fleetService, TRUCK_TYPES } from "../services/FleetService";
 import type { Driver, Truck as TruckType, DispatchTrip } from "../services/FleetService";
 import { employeesService } from "../services/EmployeesService";
+import { useFeature } from "../hooks/useFeature";
 import Select from "../components/Select";
 import ComboInput from "../components/ComboInput";
 import DatePicker from "../components/DatePicker";
@@ -1473,11 +1474,13 @@ function DriverForm({
   const [licenseNo, setLicenseNo] = useState(initial?.license_no ?? "");
   const [isPayroll, setIsPayroll] = useState(initial?.is_payroll ?? false);
   const [employeeId, setEmployeeId] = useState(initial?.employee_id ?? "");
+  // Linking a payroll driver to an employee record needs Employees (Pro and up).
+  const hasEmployees = useFeature("employees");
 
   const { data: employees = [] } = useQuery<any[]>({
     queryKey: ["employees"],
     queryFn: () => employeesService.list(),
-    enabled: isPayroll,
+    enabled: isPayroll && hasEmployees,
   });
 
   const save = useMutation({
@@ -1487,7 +1490,7 @@ function DriverForm({
         phone: phone || null,
         license_no: licenseNo || null,
         is_payroll: isPayroll,
-        employee_id: isPayroll && employeeId ? employeeId : null,
+        employee_id: isPayroll && hasEmployees && employeeId ? employeeId : null,
       };
       return initial
         ? fleetService.updateDriver(initial.id, body)
@@ -1550,7 +1553,7 @@ function DriverForm({
             onChange={(e) => setLicenseNo(e.target.value)}
           />
         </div>
-        {isPayroll && (
+        {isPayroll && hasEmployees && (
           <div>
             <label className={LABEL}>Link to employee</label>
             <Select

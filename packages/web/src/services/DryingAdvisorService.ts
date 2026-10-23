@@ -1,4 +1,4 @@
-// DryingAdvisorService — typed API client for the Enterprise-only palay
+// DryingAdvisorService — typed API client for the palay (Basic and up)
 // Drying Advisor. Mirrors WeatherService's coords-or-IP-fallback contract.
 import api from "./api";
 

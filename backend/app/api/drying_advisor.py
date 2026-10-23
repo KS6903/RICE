@@ -1,4 +1,4 @@
-"""Drying Advisor HTTP controller — Enterprise-only palay sun-drying advisory."""
+"""Drying Advisor HTTP controller — palay sun-drying advisory (Basic and up)."""
 
 from __future__ import annotations
 

@@ -1,4 +1,4 @@
-"""DryingAdvisorService — palay sun-drying advisory via DeepSeek (Enterprise only).
+"""DryingAdvisorService — palay sun-drying advisory via DeepSeek (Basic and up).
 
 No user-supplied free text ever reaches the model: the only input is our own
 weather forecast data, already reduced to a small fixed vocabulary of condition

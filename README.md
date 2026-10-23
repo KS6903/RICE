@@ -40,14 +40,15 @@ The API doesn't reload on its own: restart it after a backend change, and run
 
 ## Plans
 
-As seeded by the baseline migration. The platform admin can change them in the console.
+As set by migration 019 (`019_plan_tiers`). The platform admin can change them in the console.
+Users include the owner. Each warehouse is a branch: "Add warehouse" creates one.
 
-| Plan | Users | Branches | Adds |
+| Plan | Users | Warehouses | Adds |
 | --- | --- | --- | --- |
-| Free | 3 | 1 | Dashboard, palay, milling, inventory, sales, expenses, users |
-| Basic | 7 | 2 | Multiple branches |
-| Pro | 15 | 5 | Employees and payroll, advanced reports |
-| Enterprise | Unlimited | Unlimited | Compliance reports, offline desktop sync, automations, drying advisor |
+| Free | 3 | 1 | Dashboard, palay, inventory, sales, expenses, users |
+| Basic | 5 | 3 | Milling, dispatch, palay drying advice |
+| Pro | 15 | 5 | Field operators, cash count, collections, employees, advanced reports, warehouse view |
+| Enterprise | Unlimited | Unlimited | Automations, To do, stock count, maintenance, compliance reports, offline desktop sync |
 
 ## Roles and staff accounts
 

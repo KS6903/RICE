@@ -102,13 +102,13 @@ class BranchService(BaseService):
         features = get_user_features(self.current_user, self.db)
         if existing_count >= 1 and "multi_branch" not in features:
             raise FeatureRequiredError(
-                "Multi-branch is not included in your current plan. Please upgrade to add more branches.",
+                "Your plan includes one warehouse. Please upgrade to add more.",
                 code="multi_branch",
             )
         sub = self.db.query(Subscription).filter(Subscription.company_id == company_id).first()
         if sub and sub.plan and sub.plan.max_branches is not None and existing_count >= sub.plan.max_branches:
             raise FeatureRequiredError(
-                f"Your plan allows up to {sub.plan.max_branches} branches. Please upgrade for more.",
+                f"Your plan allows up to {sub.plan.max_branches} warehouses. Please upgrade for more.",
                 code="branch_limit",
             )
         branch = Branch(company_id=company_id, **data.model_dump())

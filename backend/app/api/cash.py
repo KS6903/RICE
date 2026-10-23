@@ -1,5 +1,6 @@
-"""Cash count HTTP controller (Enterprise, with the automations): the drawer
-counted at close, against what it should hold.
+"""Cash count HTTP controller (Pro and up, `cash_count` feature): the drawer
+counted at close, against what it should hold. The alert to the owner when a
+count is out comes from the cash-count automation, which stays Enterprise.
 
 Anyone with sales access sees the counts; counting needs sales write access
 (cashiers, owners, admins, accountants). Reviewing a difference is for owners
@@ -21,7 +22,7 @@ from ..core.timezones import tenant_zone
 from ..models.cash import CashCount
 from ..models.user import User
 
-router = APIRouter(dependencies=[Depends(require_feature("automations")), Depends(require_section_access("sales"))])
+router = APIRouter(dependencies=[Depends(require_feature("cash_count")), Depends(require_section_access("sales"))])
 write = [Depends(require_section_access("sales", write=True))]
 
 Money = Field(ge=0, le=100_000_000, max_digits=14, decimal_places=2)

@@ -13,7 +13,7 @@ from ..services.fleet_service import FleetService
 
 router = APIRouter(
     dependencies=[
-        Depends(require_feature("sales")),
+        Depends(require_feature("dispatch")),
         Depends(require_section_access("dispatch")),
     ]
 )

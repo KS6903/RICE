@@ -1,5 +1,6 @@
-"""Collections HTTP controller (Enterprise, with the automations): who to chase
-for money first, what they owe, a reminder to send, and what happened.
+"""Collections HTTP controller (Pro and up, `collections` feature): who to chase
+for money first, what they owe, a reminder to send, and what happened. The
+scheduled reminders are an automation, which stays Enterprise.
 
 Anyone with access to sales sees the list; recording what happened needs
 sales write access.
@@ -22,7 +23,7 @@ from ..models.collections import CollectionFollowUp
 from ..models.supplier_customer import Customer
 from ..models.user import User
 
-router = APIRouter(dependencies=[Depends(require_feature("automations")), Depends(require_section_access("sales"))])
+router = APIRouter(dependencies=[Depends(require_feature("collections")), Depends(require_section_access("sales"))])
 
 
 class FollowUpIn(BaseModel):

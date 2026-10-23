@@ -104,7 +104,7 @@ function CaveatTooltip() {
 }
 
 /** Palay drying advice, one line under the current weather: when to spread
- *  the palay and when to bring it in. Enterprise only, like the AI advisor it
+ *  the palay and when to bring it in. Basic and up, like the AI advisor it
  *  comes from; other plans see where to get it. */
 export default function DryingAdvisor({
   coords,
@@ -121,7 +121,7 @@ export default function DryingAdvisor({
         data-testid="drying-advisor-upsell"
       >
         <Lock size={16} className="shrink-0 text-amber-500" />
-        Palay drying advice comes with the Enterprise plan.
+        Palay drying advice comes with the Basic plan and up.
       </p>
     );
   }

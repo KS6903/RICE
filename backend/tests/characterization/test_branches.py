@@ -23,7 +23,8 @@ def test_create_second_branch_requires_multi_branch(auth_client):
     # Seeded owner already has a main branch and no multi_branch feature.
     res = auth_client.post("/api/branches/", json={"name": "Branch 2"})
     assert res.status_code == 402
-    assert "multi-branch" in res.json()["detail"].lower()
+    assert res.json()["code"] == "multi_branch"
+    assert "one warehouse" in res.json()["detail"]
 
 
 def test_bulk_delete_skips_main(auth_client):

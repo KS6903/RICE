@@ -205,7 +205,7 @@ function AppRoutes() {
           path="milling"
           element={
             <RoleGate section="milling">
-              <FeatureGate code="milling" label="Milling">
+              <FeatureGate code="milling" label="Milling" requires="Basic or higher">
                 <MillingPage />
               </FeatureGate>
             </RoleGate>
@@ -235,7 +235,7 @@ function AppRoutes() {
           path="dispatch"
           element={
             <RoleGate section="dispatch">
-              <FeatureGate code="sales" label="Dispatch">
+              <FeatureGate code="dispatch" label="Dispatch" requires="Basic or higher">
                 <DispatchPage />
               </FeatureGate>
             </RoleGate>
@@ -245,7 +245,11 @@ function AppRoutes() {
           path="operators"
           element={
             <RoleGate section="operators">
-              <FeatureGate code="sales" label="Field Operators">
+              <FeatureGate
+                code="field_operators"
+                label="Field Operators"
+                requires="Pro or Enterprise"
+              >
                 <FieldOperatorsPage />
               </FeatureGate>
             </RoleGate>
@@ -325,7 +329,7 @@ function AppRoutes() {
           path="cash"
           element={
             <RoleGate section="sales">
-              <FeatureGate code="automations" label="Cash count" requires="Enterprise">
+              <FeatureGate code="cash_count" label="Cash count" requires="Pro or Enterprise">
                 <CashCountPage />
               </FeatureGate>
             </RoleGate>
@@ -335,7 +339,7 @@ function AppRoutes() {
           path="collections"
           element={
             <RoleGate section="sales">
-              <FeatureGate code="automations" label="Collections" requires="Enterprise">
+              <FeatureGate code="collections" label="Collections" requires="Pro or Enterprise">
                 <CollectionsPage />
               </FeatureGate>
             </RoleGate>

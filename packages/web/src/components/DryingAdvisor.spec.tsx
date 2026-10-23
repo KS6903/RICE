@@ -110,7 +110,7 @@ describe("DryingAdvisor", () => {
     const get = vi.spyOn(dryingAdvisorService, "get");
     draw();
     expect(screen.getByTestId("drying-advisor-upsell")).toHaveTextContent(
-      "Palay drying advice comes with the Enterprise plan.",
+      "Palay drying advice comes with the Basic plan and up.",
     );
     expect(get).not.toHaveBeenCalled();
   });

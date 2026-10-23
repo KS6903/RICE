@@ -49,7 +49,7 @@ import {
   Download,
 } from "lucide-react";
 import { format } from "date-fns";
-import { useCurrentPlan } from "../hooks/useFeature";
+import { useCurrentPlan, useFeature } from "../hooks/useFeature";
 import { roleLabel, type SubscriptionPlan, type UpgradeRequest } from "@rice-mill/shared";
 import ActivityLogList from "../components/activity/ActivityLogList";
 import BackupCodes from "../components/BackupCodes";
@@ -81,6 +81,8 @@ const TABLE_HEAD =
 export default function SettingsPage() {
   const role = useAuthStore((s) => s.user?.role);
   const isManager = role === "owner" || role === "admin";
+  // The mill's machines are milling's (Basic and up).
+  const hasMilling = useFeature("milling");
   // Non-managers (cashier, encoder, mill_operator, accountant) only manage their
   // own account — everything else here is an owner/admin surface.
   const [tab, setTab] = useState<Tab>(isManager ? "billing" : "profile");
@@ -93,7 +95,7 @@ export default function SettingsPage() {
           { key: "company" as Tab, label: "Company", icon: Building2 },
           { key: "branches" as Tab, label: "Branches", icon: MapPin },
           { key: "varieties" as Tab, label: "Rice Varieties", icon: Wheat },
-          { key: "equipment" as Tab, label: "Equipment", icon: Factory },
+          ...(hasMilling ? [{ key: "equipment" as Tab, label: "Equipment", icon: Factory }] : []),
           { key: "categories" as Tab, label: "Expense Categories", icon: Receipt },
           { key: "activity" as Tab, label: "Activity Log", icon: History },
         ]
@@ -171,16 +173,21 @@ export default function SettingsPage() {
   );
 }
 
+// In the order a plan card lists them: the basics, then what each tier adds.
 const FEATURE_LABELS: Record<string, string> = {
   dashboard: "Dashboard",
   paddy: "Paddy procurement",
-  milling: "Milling operations",
   inventory: "Inventory tracking",
   sales: "Sales & invoices",
   expenses: "Expense tracking",
   users: "User management",
+  milling: "Milling operations",
+  dispatch: "Dispatch (deliveries, trucks and drivers)",
+  multi_branch: "More than one warehouse",
+  field_operators: "Field operators (agents and millers)",
+  cash_count: "Cash count",
+  collections: "Collections",
   employees: "Employees module",
-  multi_branch: "Multiple branches",
   reports_advanced: "Advanced reports (AR aging, valuation)",
   compliance_reports: "DA / NFA compliance reports",
   offline_sync: "Offline sync (Electron desktop)",
@@ -190,6 +197,14 @@ const FEATURE_LABELS: Record<string, string> = {
 };
 
 const ALL_FEATURE_KEYS = Object.keys(FEATURE_LABELS);
+/** Labelled features in FEATURE_LABELS order; any unknown code after them. */
+const byFeatureOrder = (a: string, b: string) => {
+  const rank = (f: string) => {
+    const i = ALL_FEATURE_KEYS.indexOf(f);
+    return i === -1 ? ALL_FEATURE_KEYS.length : i;
+  };
+  return rank(a) - rank(b);
+};
 
 function planIcon(code: string, size = 16) {
   if (code === "enterprise") return <Crown size={size} />;
@@ -599,11 +614,13 @@ function BillingTab() {
                   {p.description}
                 </p>
                 <div className="text-xs text-slate-700 dark:text-slate-300 font-semibold mb-3">
-                  {p.max_users ? `${p.max_users} users` : "Unlimited users"} ·{" "}
-                  {p.max_branches ? `${p.max_branches} branches` : "Unlimited branches"}
+                  {p.max_users ? `${p.max_users} users, owner included` : "Unlimited users"} ·{" "}
+                  {p.max_branches
+                    ? `${p.max_branches} ${p.max_branches === 1 ? "warehouse" : "warehouses"}`
+                    : "Unlimited warehouses"}
                 </div>
                 <ul className="text-sm text-slate-800 dark:text-slate-200 space-y-1.5 flex-1">
-                  {(p.features || []).map((f) => (
+                  {[...(p.features || [])].sort(byFeatureOrder).map((f) => (
                     <li key={f} className="flex items-center gap-1.5">
                       <Check size={14} className={`${checkColor} shrink-0`} />
                       {FEATURE_LABELS[f] || f.replace(/_/g, " ")}

@@ -134,9 +134,9 @@ def test_the_list_and_what_happened_over_the_api(auth_client, db_session, debts)
     assert history[0]["note"] == "Paying after harvest sale."
 
 
-def test_collections_need_enterprise_and_sales_access(make_auth_client):
-    assert make_auth_client(features=["sales"], username="pro").get("/api/collections/").status_code == 402
-    floor = make_auth_client(features=["automations"], username="floor", role_name="mill_operator")
+def test_collections_need_the_pro_feature_and_sales_access(make_auth_client):
+    assert make_auth_client(features=["sales"], username="basic").get("/api/collections/").status_code == 402
+    floor = make_auth_client(features=["collections"], username="floor", role_name="mill_operator")
     assert floor.get("/api/collections/").status_code == 403
 
 

@@ -11,6 +11,8 @@ ALL_FEATURES = [
     "canva_inventory",
     "reports_advanced",
     "compliance_reports",
+    "dispatch",
+    "field_operators",
 ]
 
 

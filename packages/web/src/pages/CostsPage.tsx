@@ -8,6 +8,7 @@ import { format } from "date-fns";
 import QuickAdd from "../components/QuickAdd";
 import EmptyState from "../components/EmptyState";
 import { useAccess } from "../hooks/useAccess";
+import { useFeature } from "../hooks/useFeature";
 import { useOpenOnArrival } from "../hooks/useOpenOnArrival";
 import Select from "../components/Select";
 import DatePicker from "../components/DatePicker";
@@ -26,9 +27,13 @@ export default function CostsPage() {
     queryKey: ["expense-categories"],
     queryFn: () => costsService.listCategories(),
   });
+  // Linking a cost to a milling batch needs milling (Basic and up). Without it,
+  // don't ask: the refusal would raise the upgrade banner on this page.
+  const hasMilling = useFeature("milling");
   const { data: batches = [] } = useQuery({
     queryKey: ["milling-batches"],
     queryFn: () => millingService.listBatches(),
+    enabled: hasMilling,
   });
 
   const [form, setForm] = useState({
@@ -151,20 +156,22 @@ export default function CostsPage() {
                 onChange={(e) => setForm((f) => ({ ...f, amount: e.target.value }))}
               />
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-slate-200 mb-1">
-                Milling Batch (optional)
-              </label>
-              <Select
-                aria-label="Milling batch"
-                value={form.batch_id}
-                onChange={(v) => setForm((f) => ({ ...f, batch_id: v }))}
-                options={[
-                  { value: "", label: "Not batch-specific" },
-                  ...batches.map((b: any) => ({ value: b.id, label: b.batch_no })),
-                ]}
-              />
-            </div>
+            {hasMilling && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-slate-200 mb-1">
+                  Milling Batch (optional)
+                </label>
+                <Select
+                  aria-label="Milling batch"
+                  value={form.batch_id}
+                  onChange={(v) => setForm((f) => ({ ...f, batch_id: v }))}
+                  options={[
+                    { value: "", label: "Not batch-specific" },
+                    ...batches.map((b: any) => ({ value: b.id, label: b.batch_no })),
+                  ]}
+                />
+              </div>
+            )}
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-slate-200 mb-1">
                 Description
@@ -241,7 +248,11 @@ export default function CostsPage() {
                     title="No expenses recorded"
                     action={canEdit("expenses") ? "Add your first expense" : undefined}
                     onAction={() => setShowForm(true)}
-                    next="Production costs can be linked to a milling batch to see what each batch really cost."
+                    next={
+                      hasMilling
+                        ? "Production costs can be linked to a milling batch to see what each batch really cost."
+                        : undefined
+                    }
                   >
                     Fuel, electricity, labor, repairs: anything the mill pays for. Without them the
                     profit on your dashboard only counts sales.

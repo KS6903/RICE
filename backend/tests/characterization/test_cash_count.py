@@ -144,7 +144,7 @@ def test_the_evening_reminder_goes_only_when_nobody_counted(db_session, company)
     assert recipe.build(ctx, recipe.params()) == []
 
 
-def test_cash_counts_need_enterprise_and_sales_access(make_auth_client):
-    assert make_auth_client(features=["sales"], username="pro").get("/api/cash/").status_code == 402
-    floor = make_auth_client(features=["automations"], username="floor", role_name="mill_operator")
+def test_cash_counts_need_the_pro_feature_and_sales_access(make_auth_client):
+    assert make_auth_client(features=["sales"], username="basic").get("/api/cash/").status_code == 402
+    floor = make_auth_client(features=["cash_count"], username="floor", role_name="mill_operator")
     assert floor.get("/api/cash/").status_code == 403
