@@ -614,7 +614,7 @@ function BillingTab() {
                   {p.description}
                 </p>
                 <div className="text-xs text-slate-700 dark:text-slate-300 font-semibold mb-3">
-                  {p.max_users ? `${p.max_users} users, owner included` : "Unlimited users"} ·{" "}
+                  {p.max_users ? `${p.max_users} users` : "Unlimited users"} ·{" "}
                   {p.max_branches
                     ? `${p.max_branches} ${p.max_branches === 1 ? "warehouse" : "warehouses"}`
                     : "Unlimited warehouses"}
