@@ -1,4 +1,3 @@
-import { useRef } from "react";
 import { Cloud, Loader2, Droplets, CalendarDays, Clock3 } from "lucide-react";
 import { useActiveLocation } from "../hooks/useActiveLocation";
 import { useForecast, type HourlyForecast, type DailyForecast } from "../hooks/useWeather";
@@ -28,38 +27,14 @@ function dayLabel(date: string, isFirst: boolean): string {
 /** Hourly (today) + 7-day forecast panel for the active location. Sits under
  *  the current-conditions WeatherWidget on the dashboard.
  *
- *  Both rows are horizontal slidable strips, and their scrolling is linked: the
- *  two strips have different item counts (24 vs 7), so they're synced by
- *  *ratio* (0–1 of each one's scrollable width) rather than raw pixels, so they
- *  reach their ends together when you drag either one. */
+ *  Both rows are horizontal slidable strips that scroll on their own. (They
+ *  used to be scroll-linked, which on a phone made them fight each other: a
+ *  swipe's momentum kept echoing positions back and forth between the two.) */
 export default function WeatherForecast() {
   const active = useActiveLocation();
   const coords =
     active.lat != null && active.lon != null ? { lat: active.lat, lon: active.lon } : null;
   const q = useForecast(coords);
-
-  const hourlyRef = useRef<HTMLDivElement>(null);
-  const dailyRef = useRef<HTMLDivElement>(null);
-  // Guards the feedback loop: a programmatic scroll on one strip fires the
-  // other's scroll handler, which we swallow instead of echoing back.
-  const syncing = useRef(false);
-
-  function linkScroll(from: HTMLDivElement | null, to: HTMLDivElement | null) {
-    if (!from || !to) return;
-    if (syncing.current) {
-      syncing.current = false;
-      return;
-    }
-    const fromMax = from.scrollWidth - from.clientWidth;
-    const toMax = to.scrollWidth - to.clientWidth;
-    const ratio = fromMax > 0 ? from.scrollLeft / fromMax : 0;
-    const target = ratio * toMax;
-    // Skip no-op sets — they wouldn't fire a scroll event, which would leave the
-    // `syncing` latch stuck and swallow the next real scroll.
-    if (Math.abs(to.scrollLeft - target) < 1) return;
-    syncing.current = true;
-    to.scrollLeft = target;
-  }
 
   if (q.isLoading) {
     return (
@@ -93,11 +68,7 @@ export default function WeatherForecast() {
             Today · hourly
           </h3>
         </div>
-        <div
-          ref={hourlyRef}
-          onScroll={() => linkScroll(hourlyRef.current, dailyRef.current)}
-          className="flex gap-2 overflow-x-auto py-2 -mx-1 px-1 scroll-smooth"
-        >
+        <div className="flex gap-2 overflow-x-auto overscroll-x-contain py-2 -mx-1 px-1">
           {hourly.map((h: HourlyForecast, i: number) => {
             const Icon = WEATHER_ICONS[h.condition_code] ?? Cloud;
             const tint = weatherIconClass(h.condition_code, h.is_daytime);
@@ -128,7 +99,7 @@ export default function WeatherForecast() {
         </div>
       </div>
 
-      {/* ── Next 7 days — same slidable strip, scroll-linked to the hourly ── */}
+      {/* ── Next 7 days — the same kind of slidable strip ── */}
       <div>
         <div className="flex items-center gap-2 mb-3">
           <CalendarDays size={16} className="text-violet-500" />
@@ -136,11 +107,7 @@ export default function WeatherForecast() {
             7-day forecast
           </h3>
         </div>
-        <div
-          ref={dailyRef}
-          onScroll={() => linkScroll(dailyRef.current, hourlyRef.current)}
-          className="flex gap-2 overflow-x-auto py-2 -mx-1 px-1 scroll-smooth"
-        >
+        <div className="flex gap-2 overflow-x-auto overscroll-x-contain py-2 -mx-1 px-1">
           {daily.map((d: DailyForecast, i: number) => {
             const Icon = WEATHER_ICONS[d.condition_code] ?? Cloud;
             const tint = weatherIconClass(d.condition_code, true);
