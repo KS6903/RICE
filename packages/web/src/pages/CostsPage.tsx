@@ -12,6 +12,7 @@ import { useFeature } from "../hooks/useFeature";
 import { useOpenOnArrival } from "../hooks/useOpenOnArrival";
 import Select from "../components/Select";
 import DatePicker from "../components/DatePicker";
+import CodeValue from "../components/CodeValue";
 
 export default function CostsPage() {
   const qc = useQueryClient();
@@ -229,8 +230,8 @@ export default function CostsPage() {
                 <td className="px-4 py-3">
                   {categories.find((c: any) => c.id === e.category_id)?.name || "—"}
                 </td>
-                <td className="px-4 py-3 font-mono text-xs">
-                  {batches.find((b: any) => b.id === e.batch_id)?.batch_no || "—"}
+                <td className="px-4 py-3">
+                  <CodeValue value={batches.find((b: any) => b.id === e.batch_id)?.batch_no} />
                 </td>
                 <td className="px-4 py-3 font-medium text-red-600 dark:text-red-400">
                   ₱{Number(e.amount).toLocaleString()}

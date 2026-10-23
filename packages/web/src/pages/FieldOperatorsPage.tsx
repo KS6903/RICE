@@ -21,6 +21,7 @@ import Select from "../components/Select";
 import TruncatedText from "../components/TruncatedText";
 import { useAccess } from "../hooks/useAccess";
 import { useFeature } from "../hooks/useFeature";
+import CodeValue from "../components/CodeValue";
 
 type Agent = {
   id: string;
@@ -1181,7 +1182,9 @@ function SupplierRow({
       <td className="px-4 py-3 text-secondary">{supplier.municipality || "—"}</td>
       <td className="px-4 py-3 text-secondary">{supplier.province || "—"}</td>
       <td className="px-4 py-3 text-secondary">{supplier.phone || "—"}</td>
-      <td className="px-4 py-3 text-secondary font-mono text-xs">{supplier.farmer_id || "—"}</td>
+      <td className="px-4 py-3 text-secondary">
+        <CodeValue value={supplier.farmer_id} />
+      </td>
       {!deactivated && (
         <td className="px-4 py-3">
           <span className="badge-green">Active</span>

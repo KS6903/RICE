@@ -30,6 +30,7 @@ import ComboInput from "../components/ComboInput";
 import DatePicker from "../components/DatePicker";
 import { useAuthStore } from "../stores/authStore";
 import { useAccess } from "../hooks/useAccess";
+import CodeValue from "../components/CodeValue";
 
 type Agent = {
   id: string;
@@ -726,8 +727,8 @@ function TripsTab() {
                     <td className="px-4 py-3 text-secondary tabular-nums">
                       {t.fuel_used_l ?? "—"}
                     </td>
-                    <td className="px-4 py-3 font-mono text-xs text-secondary">
-                      {t.order_no ?? "—"}
+                    <td className="px-4 py-3 text-secondary">
+                      <CodeValue value={t.order_no} />
                     </td>
                     <td className="px-4 py-3 text-secondary">{t.destination ?? "—"}</td>
                     <td className="px-4 py-3">
@@ -1397,8 +1398,8 @@ function DriversPanel() {
                 >
                   <td className="px-4 py-3 font-semibold text-primary">{d.name}</td>
                   <td className="px-4 py-3 text-secondary">{d.phone ?? "—"}</td>
-                  <td className="px-4 py-3 font-mono text-xs text-secondary">
-                    {d.license_no ?? "—"}
+                  <td className="px-4 py-3 text-secondary">
+                    <CodeValue value={d.license_no} />
                   </td>
                   <td className="px-4 py-3">
                     <span

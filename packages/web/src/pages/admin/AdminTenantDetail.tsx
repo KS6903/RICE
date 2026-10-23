@@ -32,6 +32,7 @@ import {
   Clock,
   ScrollText,
 } from "lucide-react";
+import CodeValue from "../../components/CodeValue";
 
 /* ─── Plan icon helper ─── */
 function PlanIcon({ code, size = 18 }: { code: string; size?: number }) {
@@ -119,7 +120,9 @@ function TenantLegalLedger({ tenantId }: { tenantId: string }) {
             <tr key={r.id}>
               <td className="px-4 py-3">
                 <span className="font-medium">{r.full_name || "—"}</span>
-                <span className="block font-mono text-xs text-muted">{r.username || "—"}</span>
+                <span className="block text-muted">
+                  <CodeValue value={r.username} />
+                </span>
               </td>
               <td className="px-4 py-3 font-mono text-xs">{r.agreement_version}</td>
               <td className="px-4 py-3">{ACCEPTANCE_METHOD[r.method] ?? r.method}</td>
