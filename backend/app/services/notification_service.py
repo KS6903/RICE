@@ -110,6 +110,16 @@ def _attachments_for(db: Session, keys: set[str]) -> dict[str, tuple[Attachment,
     return {key: tuple(files) for key, files in found.items()}
 
 
+def unread_count_column(user_id: uuid.UUID):
+    """unread_count as a column, for a query that reads more than this."""
+    return (
+        select(func.count())
+        .select_from(Notification)
+        .where(Notification.user_id == user_id, Notification.read_at.is_(None))
+        .scalar_subquery()
+    )
+
+
 def unread_count(db: Session, user_id: uuid.UUID) -> int:
     return (
         db.scalar(

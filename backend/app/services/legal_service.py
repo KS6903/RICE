@@ -87,6 +87,22 @@ class LegalService:
         )
         return self.db.execute(stmt).scalars().first()
 
+    @staticmethod
+    def acceptance_current_column(user_id: uuid.UUID):
+        """acceptance_required as a column, for a query that reads more than
+        this: true when this user's latest acceptance is of the current bundle,
+        false or NULL (never accepted) when they must accept again."""
+        return (
+            select(
+                (LegalAcceptance.agreement_version == legal.AGREEMENT_VERSION)
+                & (LegalAcceptance.content_hash == legal.bundle_hash())
+            )
+            .where(LegalAcceptance.user_id == user_id)
+            .order_by(LegalAcceptance.accepted_at.desc())
+            .limit(1)
+            .scalar_subquery()
+        )
+
     def acceptance_required(self, user_id: uuid.UUID) -> bool:
         """True when the user has never accepted, or accepted an older bundle.
 

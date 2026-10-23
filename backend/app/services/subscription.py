@@ -183,6 +183,13 @@ def auto_downgrade_to_free_if_expired(db: Session, company_id: uuid.UUID) -> Sub
     sub = db.query(Subscription).filter(Subscription.company_id == company_id).first()
     if not sub:
         return None
+    return downgrade_if_expired(db, sub)
+
+
+def downgrade_if_expired(db: Session, sub: Subscription) -> Subscription:
+    """auto_downgrade_to_free_if_expired for a subscription already loaded (one
+    query fewer on /auth/me). Writes and commits only on a transition."""
+    company_id = sub.company_id
     if sub.status not in ACTIVE_STATUSES:
         return sub
     if sub.expires_at is None:

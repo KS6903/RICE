@@ -7,6 +7,7 @@ import jwt
 from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordBearer
 from jwt import InvalidTokenError
+from sqlalchemy import false, select
 from sqlalchemy.orm import Session, joinedload
 
 # The default role/section matrix, and what a mill's Boss may change about it,
@@ -169,10 +170,37 @@ def authenticate_access_token(token: str, db: Session):
     # (they operate on `public` and loop client schemas via tenant_session).
     if not payload.get("is_platform_admin") and not valid_schema_name(payload.get("schema")):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
-    # Company and role in the same query: both are read on every request (the
-    # tenant check below, then section access), and lazy-loading them cost two
-    # more database round trips each time.
-    user = db.get(User, user_id, options=[joinedload(User.company), joinedload(User.role)])
+    try:
+        user_uuid = uuid.UUID(user_id)
+    except ValueError:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
+    # A malformed sign-in id is refused after the user and company checks below,
+    # in the order these checks have always run.
+    try:
+        family_id: uuid.UUID | None = uuid.UUID(str(payload.get("sid")))
+    except (TypeError, ValueError):
+        family_id = None
+    # One database round trip for everything below: the user with their company
+    # and role (the tenant check, then section access), and whether this
+    # sign-in is still live. Each part is matched on this token's own user and
+    # session ids, and every check still runs, in the same order, before
+    # anything is returned.
+    session_live = (
+        select(AuthSession.id)
+        .where(
+            AuthSession.family_id == family_id,
+            AuthSession.user_id == User.id,
+            AuthSession.revoked_at.is_(None),
+            AuthSession.expires_at > datetime.now(timezone.utc),
+        )
+        .exists()
+        if family_id is not None
+        else false()
+    )
+    row = db.execute(
+        select(User, session_live).options(joinedload(User.company), joinedload(User.role)).where(User.id == user_uuid)
+    ).one_or_none()
+    user, live = (row[0], bool(row[1])) if row is not None else (None, False)
     if not user or not user.is_active:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found or inactive")
     if not user.is_platform_admin:
@@ -187,22 +215,9 @@ def authenticate_access_token(token: str, db: Session):
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
         if payload.get("schema") != company.schema_name:
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
-    sid = payload.get("sid")
-    try:
-        family_id = uuid.UUID(str(sid))
-    except (TypeError, ValueError):
+    if family_id is None:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
-    live_session = (
-        db.query(AuthSession.id)
-        .filter(
-            AuthSession.family_id == family_id,
-            AuthSession.user_id == user.id,
-            AuthSession.revoked_at.is_(None),
-            AuthSession.expires_at > datetime.now(timezone.utc),
-        )
-        .first()
-    )
-    if live_session is None:
+    if not live:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Session has been revoked")
     return user, payload
 

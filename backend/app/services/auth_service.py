@@ -21,7 +21,8 @@ from zoneinfo import ZoneInfo
 
 import jwt as pyjwt
 import pyotp
-from sqlalchemy.orm import Session
+from sqlalchemy import select
+from sqlalchemy.orm import Session, joinedload
 
 from ..core import legal as legal_docs
 from ..core import provisioning, turnstile
@@ -72,13 +73,15 @@ from ..models.auth_session import AuthSession
 from ..models.base import now_utc
 from ..models.company import Branch, Company
 from ..models.password_reset import PasswordResetToken
+from ..models.subscription import Subscription
 from ..models.user import Role, User
 from ..schemas.auth import MfaChallengeResponse, TokenResponse
 from ..services.activity import log_activity
 from ..services.base import BaseService
 from ..services.legal_service import LegalService
+from ..services.notification_service import unread_count_column
 from ..services.subscription import (
-    auto_downgrade_to_free_if_expired,
+    downgrade_if_expired,
     effective_status,
     ensure_subscription,
 )
@@ -96,6 +99,12 @@ except ImportError:  # requests transport missing — Google login disabled
     google_requests = None  # type: ignore[assignment]
 
 logger = logging.getLogger("ricemill.auth")
+
+# Client schemas seen to have a notifications table, in this process. A schema
+# not migrated yet may lack it; until one is seen, the unread count goes through
+# a savepoint so a missing table can't fail /auth/me. Tables are never dropped,
+# so once seen, the count joins the one account query.
+_SCHEMAS_WITH_NOTIFICATIONS: set[str] = set()
 _DUMMY_PASSWORD_HASH = hash_password(secrets.token_urlsafe(32))
 
 
@@ -1087,11 +1096,12 @@ class AuthService(BaseService):
     def me(self) -> dict:
         user = self.current_user
         sub = None
+        # The platform owner is the other party to the agreements, not a
+        # customer bound by them, and belongs to no tenant.
+        legal_required = False
+        unread = 0
         if user.company_id and not user.is_platform_admin:
-            # One read of the subscription serves the expiry check and the plan
-            # below. It commits by itself, and only when a paid plan has run out;
-            # the row it returns is the same one, kept current.
-            sub = auto_downgrade_to_free_if_expired(self.db, user.company_id)
+            sub, legal_required, counted = self._account_state(user)
             if sub is None:
                 # No subscription row yet: start one on Free. Commit only then.
                 # /me is polled every minute, and a needless commit hands the
@@ -1100,6 +1110,10 @@ class AuthService(BaseService):
                 sub = ensure_subscription(self.db, user.company_id)
                 if sub is not None:
                     self.db.commit()
+            else:
+                # Commits by itself, and only when a paid plan has run out.
+                sub = downgrade_if_expired(self.db, sub)
+            unread = counted if counted is not None else self._notifications_unread(user)
 
         features = get_user_features(user, self.db)
 
@@ -1159,14 +1173,42 @@ class AuthService(BaseService):
             # accepted (or when there is no acceptance at all).
             # The platform owner is the other party to these agreements, not a
             # customer bound by them, so the admin console is never gated.
-            "legal_acceptance_required": (
-                False if user.is_platform_admin else LegalService(self.db).acceptance_required(user.id)
-            ),
+            "legal_acceptance_required": legal_required,
             "agreement_version": legal_docs.AGREEMENT_VERSION,
             # The bell's badge. /auth/me is already polled every 10s, so the
             # count rides along instead of adding a second poller.
-            "notifications_unread": self._notifications_unread(user),
+            "notifications_unread": unread,
         }
+
+    def _account_state(self, user: User) -> tuple[Subscription | None, bool, int | None]:
+        """What /auth/me reports beyond the user row, in one database round trip:
+        the subscription with its plan, whether the terms must be accepted again,
+        and (once this schema is known to have the table) the unread count.
+
+        Runs only after get_current_user has matched the token to this user, their
+        active company and its schema. Every part is filtered on this user's or
+        this company's own id, and the unread count reads the schema the request
+        is already scoped to, so nothing from another account can come back.
+        Returns the unread count as None when it wasn't counted here.
+        """
+        company = user.company
+        count_unread = (
+            company is not None
+            and company.provisioned_at is not None
+            and company.schema_name in _SCHEMAS_WITH_NOTIFICATIONS
+        )
+        columns: list[Any] = [Subscription, LegalService.acceptance_current_column(user.id)]
+        if count_unread:
+            columns.append(unread_count_column(user.id))
+        row = self.db.execute(
+            select(*columns)
+            .select_from(User)
+            .outerjoin(Subscription, Subscription.company_id == User.company_id)
+            .options(joinedload(Subscription.plan))
+            .where(User.id == user.id)
+        ).one()
+        unread = int(row[2] or 0) if count_unread else None
+        return row[0], not row[1], unread
 
     def _notifications_unread(self, user: User) -> int:
         # Only a provisioned tenant has a schema with a notifications table;
@@ -1181,7 +1223,12 @@ class AuthService(BaseService):
             # A savepoint: a tenant schema not migrated yet (no notifications
             # table) must not fail /auth/me, which every page depends on.
             with self.db.begin_nested():
-                return unread_count(self.db, user.id)
+                count = unread_count(self.db, user.id)
+            # The table is there: from now on the count rides along in the
+            # account query instead of costing a savepoint each time.
+            if user.company is not None and user.company.schema_name:
+                _SCHEMAS_WITH_NOTIFICATIONS.add(user.company.schema_name)
+            return count
         except ProgrammingError:
             logger.warning("notifications table missing for company %s", user.company_id)
             return 0
