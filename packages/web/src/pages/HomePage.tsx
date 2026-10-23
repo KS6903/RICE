@@ -19,6 +19,7 @@ import {
   Boxes,
 } from "lucide-react";
 import riceLogo from "../assets/Rice_Logo.svg";
+import { warmUpApi } from "../services/warmUp";
 
 /* ------------------------------------------------------------------ */
 /* Small count-up hook for the "live" stat numbers in the mock UI      */
@@ -544,6 +545,9 @@ function FeatureCard({ f, index }: { f: (typeof FEATURES)[number]; index: number
 /* Page                                                                */
 /* ------------------------------------------------------------------ */
 export default function HomePage() {
+  // Most visitors start here, then tap Log in or Sign up: start the hosted
+  // API booting now, so it's awake by the time they get there.
+  useEffect(() => warmUpApi(), []);
   // Always land at the top on load/reload — don't let the browser restore
   // a previous (scrolled-down) position.
   useEffect(() => {

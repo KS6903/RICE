@@ -10,6 +10,7 @@ import riceLogo from "../assets/Rice_Logo.svg";
 import { legalService } from "../services/LegalService";
 import TurnstileWidget, { type TurnstileHandle } from "../components/TurnstileWidget";
 import { safeNext, withNext } from "../utils/next";
+import { warmUpApi } from "../services/warmUp";
 
 // A new account's username, email and password are never a saved one, so no
 // browser or password manager may fill them in. "off" keeps Chrome's autofill
@@ -26,6 +27,7 @@ const NO_AUTOFILL = {
 const TICK_TERMS = "Tick the box to accept the Terms of Service and policies first.";
 
 export default function SignupPage() {
+  useEffect(() => warmUpApi(), []);
   const navigate = useNavigate();
   const location = useLocation();
   // Where to go once the account exists, if it's a page that may ask (/retrieve-data).
