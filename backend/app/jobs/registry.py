@@ -50,14 +50,6 @@ def _sweep_expired_subscriptions(ctx: JobContext) -> str:
     return f"{count} subscription(s) moved off an expired plan"
 
 
-def _purge_stale_varieties(ctx: JobContext) -> str:
-    from ..services.paddy_service import purge_stale_varieties
-
-    count = purge_stale_varieties(ctx.db)
-    ctx.db.commit()
-    return f"{count} stale rice variet{'y' if count == 1 else 'ies'} deleted"
-
-
 def _mark_overdue_invoices(ctx: JobContext) -> str:
     from ..services.sales_service import mark_overdue_invoices
 
@@ -147,10 +139,6 @@ JOBS: tuple[Job, ...] = (
     # Before this job that happened only lazily, on the tenant's own /auth/me
     # or from an admin button, so an idle tenant kept a lapsed plan.
     Job("subscriptions.sweep_expired", "platform", hourly(), _sweep_expired_subscriptions),
-    # Varieties deactivated over 30 days ago. This used to be a loop inside the
-    # API process that waited 24h before its first pass; containers sleep after
-    # 30 idle minutes, so it never ran.
-    Job("varieties.purge_stale", "tenant", daily(time(3, 0)), _purge_stale_varieties),
     # Unpaid and part-paid invoices past their due date become overdue, for
     # every plan: the status was defined but nothing ever set it. Shortly after
     # local midnight, so the day starts with it right.

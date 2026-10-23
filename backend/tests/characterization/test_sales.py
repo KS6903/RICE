@@ -173,7 +173,7 @@ def _order(c, customer_id, *items, day="2026-10-17"):
 
 def test_orders_sell_palay_too_and_list_by_what_they_sell(auth_client):
     customer = auth_client.post("/api/sales/customers", json={"name": "Trader Co"}).json()
-    variety = auth_client.post("/api/paddy/varieties", json={"code": "RC222", "name": "NSIC Rc222"}).json()
+    variety = auth_client.post("/api/paddy/varieties", json={"code": "RC400", "name": "NSIC Rc400"}).json()
     palay = _order(
         auth_client,
         customer["id"],

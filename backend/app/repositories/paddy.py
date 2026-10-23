@@ -10,7 +10,7 @@ from __future__ import annotations
 import uuid
 from typing import Sequence
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import joinedload, selectinload
 
 from ..models.paddy import PalayInventory, PalayPurchase
@@ -30,8 +30,17 @@ class RiceVarietyRepository(BaseRepository[RiceVariety]):
             stmt = stmt.where(RiceVariety.is_active.is_(True))
         return self.db.execute(stmt.order_by(RiceVariety.code)).scalars().all()
 
-    def get_by_code(self, company_id: uuid.UUID, code: str) -> RiceVariety | None:
-        stmt = select(RiceVariety).where(RiceVariety.company_id == company_id, RiceVariety.code == code)
+    def get_by_code(
+        self, company_id: uuid.UUID, code: str, *, exclude_id: uuid.UUID | None = None
+    ) -> RiceVariety | None:
+        """The variety with that code, ignoring case, among the company's own and
+        the standard (shared) ones."""
+        stmt = select(RiceVariety).where(
+            (RiceVariety.company_id == company_id) | (RiceVariety.company_id.is_(None)),
+            func.lower(RiceVariety.code) == code.lower(),
+        )
+        if exclude_id is not None:
+            stmt = stmt.where(RiceVariety.id != exclude_id)
         return self.db.execute(stmt).scalars().first()
 
 

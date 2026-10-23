@@ -58,7 +58,7 @@ import DataExport from "../components/DataExport";
 import Select from "../components/Select";
 import ConfirmDialog from "../components/ConfirmDialog";
 import type { ActivityRow } from "../components/activity/format";
-import { Trash2, RotateCcw } from "lucide-react";
+import { Trash2, RotateCcw, Eye, EyeOff } from "lucide-react";
 
 type Tab =
   | "billing"
@@ -711,8 +711,25 @@ function BillingTab() {
   );
 }
 
-function VarietyRow({ v, user, onToggle }: { v: any; user: any; onToggle: () => void }) {
-  const isOwn = v.company_id === user?.company_id;
+type VarietyEdit = { id: string; code: string; name: string; category: string; recovery: string };
+
+const VARIETY_CATEGORIES = [
+  { value: "inbred", label: "Inbred" },
+  { value: "hybrid", label: "Hybrid" },
+  { value: "local", label: "Local" },
+];
+
+function VarietyRow({
+  v,
+  onEdit,
+  onToggle,
+  busy,
+}: {
+  v: any;
+  onEdit: () => void;
+  onToggle: () => void;
+  busy: boolean;
+}) {
   return (
     <tr
       className={`hover:bg-slate-50/50 dark:hover:bg-slate-700/15 transition-colors ${
@@ -726,33 +743,117 @@ function VarietyRow({ v, user, onToggle }: { v: any; user: any; onToggle: () => 
         {v.typical_recovery_pct ? `${v.typical_recovery_pct}%` : "—"}
       </td>
       <td className="px-4 py-3">
-        {isOwn ? (
+        {v.company_id ? (
           <span className="badge-green">Custom</span>
         ) : (
-          <span className="badge-gray">System</span>
+          <span className="badge-gray">Default</span>
         )}
       </td>
       <td className="px-4 py-3">
         {v.is_active ? (
-          <span className="badge-green">Active</span>
+          <span className="badge-green">Shown</span>
         ) : (
-          <span className="badge-red">Inactive</span>
+          <span className="badge-gray">Hidden</span>
         )}
       </td>
       <td className="px-4 py-3">
-        {isOwn && (
+        <div className="flex justify-end gap-4">
           <button
+            type="button"
+            aria-label={`Edit ${v.name}`}
+            onClick={onEdit}
+            className="text-xs font-semibold inline-flex items-center gap-1 text-secondary hover:text-primary"
+          >
+            <Pencil size={12} />
+            Edit
+          </button>
+          <button
+            type="button"
+            aria-label={`${v.is_active ? "Hide" : "Unhide"} ${v.name}`}
             onClick={onToggle}
+            disabled={busy}
             className={`text-xs font-semibold inline-flex items-center gap-1 ${
               v.is_active
                 ? "text-rose-600 dark:text-rose-400 hover:text-rose-700"
                 : "text-emerald-600 dark:text-emerald-400 hover:text-emerald-700"
             }`}
           >
-            <Power size={12} />
-            {v.is_active ? "Deactivate" : "Activate"}
+            {v.is_active ? <EyeOff size={12} /> : <Eye size={12} />}
+            {v.is_active ? "Hide" : "Unhide"}
           </button>
+        </div>
+      </td>
+    </tr>
+  );
+}
+
+function VarietyEditRow({
+  edit,
+  setEdit,
+  onSave,
+  onCancel,
+  saving,
+  error,
+}: {
+  edit: VarietyEdit;
+  setEdit: (e: VarietyEdit) => void;
+  onSave: () => void;
+  onCancel: () => void;
+  saving: boolean;
+  error: string | null;
+}) {
+  return (
+    <tr className="bg-slate-50/60 dark:bg-slate-800/30">
+      <td className="px-4 py-2.5">
+        <input
+          className="input font-mono"
+          aria-label="Variety code"
+          value={edit.code}
+          onChange={(e) => setEdit({ ...edit, code: e.target.value.toUpperCase() })}
+        />
+      </td>
+      <td className="px-4 py-2.5">
+        <input
+          className="input"
+          aria-label="Variety name"
+          value={edit.name}
+          onChange={(e) => setEdit({ ...edit, name: e.target.value })}
+        />
+        {error && (
+          <p className="mt-1 text-xs font-medium text-rose-600 dark:text-rose-400">{error}</p>
         )}
+      </td>
+      <td className="px-4 py-2.5">
+        <Select
+          aria-label="Variety category"
+          value={edit.category}
+          onChange={(v) => setEdit({ ...edit, category: v })}
+          options={VARIETY_CATEGORIES}
+        />
+      </td>
+      <td className="px-4 py-2.5">
+        <input
+          className="input"
+          type="number"
+          aria-label="Typical recovery %"
+          value={edit.recovery}
+          onChange={(e) => setEdit({ ...edit, recovery: e.target.value })}
+        />
+      </td>
+      <td className="px-4 py-2.5" colSpan={3}>
+        <div className="flex justify-end gap-2">
+          <button type="button" onClick={onCancel} className="btn-secondary">
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={onSave}
+            className="btn-primary"
+            disabled={saving || !edit.code.trim() || !edit.name.trim()}
+          >
+            {saving ? "Saving…" : "Save"}
+          </button>
+        </div>
       </td>
     </tr>
   );
@@ -760,8 +861,7 @@ function VarietyRow({ v, user, onToggle }: { v: any; user: any; onToggle: () => 
 
 function VarietiesTab() {
   const qc = useQueryClient();
-  const user = useAuthStore((s) => s.user);
-  const [showHistory, setShowHistory] = useState(false);
+  const [showHidden, setShowHidden] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({
     code: "",
@@ -769,13 +869,18 @@ function VarietiesTab() {
     category: "inbred",
     typical_recovery_pct: "",
   });
+  const [editing, setEditing] = useState<VarietyEdit | null>(null);
 
   const { data: varieties = [] } = useQuery({
     queryKey: ["varieties-all"],
     queryFn: () => paddyService.listVarieties(true),
   });
-  const active = varieties.filter((v: any) => v.is_active);
-  const inactive = varieties.filter((v: any) => !v.is_active);
+  const shown = varieties.filter((v: any) => v.is_active);
+  const hidden = varieties.filter((v: any) => !v.is_active);
+  const refresh = () => {
+    qc.invalidateQueries({ queryKey: ["varieties-all"] });
+    qc.invalidateQueries({ queryKey: ["varieties"] });
+  };
 
   const create = useMutation({
     mutationFn: (b: typeof form) =>
@@ -784,8 +889,7 @@ function VarietiesTab() {
         typical_recovery_pct: b.typical_recovery_pct ? parseFloat(b.typical_recovery_pct) : null,
       }),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["varieties-all"] });
-      qc.invalidateQueries({ queryKey: ["varieties"] });
+      refresh();
       setShowForm(false);
       setForm({ code: "", name: "", category: "inbred", typical_recovery_pct: "" });
     },
@@ -794,17 +898,66 @@ function VarietiesTab() {
   const toggle = useMutation({
     mutationFn: ({ id, is_active }: { id: string; is_active: boolean }) =>
       paddyService.updateVariety(id, { is_active }),
+    onSuccess: refresh,
+  });
+
+  const save = useMutation({
+    mutationFn: (e: VarietyEdit) =>
+      paddyService.updateVariety(e.id, {
+        code: e.code.trim(),
+        name: e.name.trim(),
+        category: e.category,
+        ...(e.recovery !== "" ? { typical_recovery_pct: parseFloat(e.recovery) } : {}),
+      }),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["varieties-all"] });
-      qc.invalidateQueries({ queryKey: ["varieties"] });
+      refresh();
+      setEditing(null);
     },
   });
+
+  const startEdit = (v: any) => {
+    save.reset();
+    setEditing({
+      id: v.id,
+      code: v.code ?? "",
+      name: v.name ?? "",
+      category: v.category || "inbred",
+      recovery: v.typical_recovery_pct != null ? String(Number(v.typical_recovery_pct)) : "",
+    });
+  };
+
+  const rows = (list: any[]) =>
+    list.map((v: any) =>
+      editing?.id === v.id ? (
+        <VarietyEditRow
+          key={v.id}
+          edit={editing}
+          setEdit={setEditing}
+          onSave={() => save.mutate(editing)}
+          onCancel={() => setEditing(null)}
+          saving={save.isPending}
+          error={
+            save.isError
+              ? (save.error as any)?.response?.data?.detail || "Couldn't save the variety."
+              : null
+          }
+        />
+      ) : (
+        <VarietyRow
+          key={v.id}
+          v={v}
+          onEdit={() => startEdit(v)}
+          onToggle={() => toggle.mutate({ id: v.id, is_active: !v.is_active })}
+          busy={toggle.isPending}
+        />
+      ),
+    );
 
   return (
     <div className="space-y-4">
       <p className="text-sm text-secondary">
-        Add custom rice varieties for your company. System varieties (NSIC Rc222 etc.) are shared
-        across all clients but can't be modified.
+        Add your own rice varieties, or edit the default ones (NSIC Rc222 and the rest). Hide a
+        variety you don't use: it leaves the lists you pick from until you unhide it.
       </p>
       <div className="flex justify-end">
         <button onClick={() => setShowForm(!showForm)} className="btn-primary">
@@ -840,11 +993,7 @@ function VarietiesTab() {
                 aria-label="Category"
                 value={form.category}
                 onChange={(v) => setForm((f) => ({ ...f, category: v }))}
-                options={[
-                  { value: "inbred", label: "Inbred" },
-                  { value: "hybrid", label: "Hybrid" },
-                  { value: "local", label: "Local" },
-                ]}
+                options={VARIETY_CATEGORIES}
               />
             </div>
             <div>
@@ -890,47 +1039,33 @@ function VarietiesTab() {
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-200/60 dark:divide-slate-700/50">
-            {active.map((v: any) => (
-              <VarietyRow
-                key={v.id}
-                v={v}
-                user={user}
-                onToggle={() => toggle.mutate({ id: v.id, is_active: false })}
-              />
-            ))}
-            {active.length === 0 && (
+            {rows(shown)}
+            {shown.length === 0 && (
               <tr>
                 <td colSpan={7} className="px-4 py-8 text-center text-muted font-medium">
-                  No active varieties
+                  No varieties shown
                 </td>
               </tr>
             )}
           </tbody>
         </table>
 
-        {inactive.length > 0 && (
+        {hidden.length > 0 && (
           <div className="border-t border-soft bg-slate-50/40 dark:bg-slate-800/30">
             <button
-              onClick={() => setShowHistory(!showHistory)}
+              onClick={() => setShowHidden(!showHidden)}
               className="w-full px-4 py-3 flex items-center justify-between text-sm font-semibold text-secondary hover:text-primary hover:bg-slate-100/50 dark:hover:bg-slate-600/15 transition-colors"
             >
               <span className="inline-flex items-center gap-2">
-                <History size={14} />
-                Deactivated history ({inactive.length})
+                <EyeOff size={14} />
+                Hidden varieties ({hidden.length})
               </span>
-              {showHistory ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+              {showHidden ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
             </button>
-            {showHistory && (
+            {showHidden && (
               <table className="w-full text-sm">
                 <tbody className="divide-y divide-slate-200/60 dark:divide-slate-700/50">
-                  {inactive.map((v: any) => (
-                    <VarietyRow
-                      key={v.id}
-                      v={v}
-                      user={user}
-                      onToggle={() => toggle.mutate({ id: v.id, is_active: true })}
-                    />
-                  ))}
+                  {rows(hidden)}
                 </tbody>
               </table>
             )}

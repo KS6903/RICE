@@ -56,6 +56,48 @@ def test_list_varieties_excludes_inactive_by_default(auth_client):
     assert any(v["id"] == created["id"] for v in incl)
 
 
+
+def _standard(c, code="Rc222"):
+    every = c.get("/api/paddy/varieties", params={"include_inactive": True}).json()
+    return next(v for v in every if v["code"] == code and v["company_id"] is None)
+
+
+def test_a_standard_variety_can_be_edited(auth_client):
+    rc222 = _standard(auth_client)
+    res = auth_client.put(
+        f"/api/paddy/varieties/{rc222['id']}",
+        json={"name": "NSIC Rc222 (Tubigan 18)", "category": "inbred", "typical_recovery_pct": "67.5"},
+    )
+    assert res.status_code == 200, res.text
+    body = res.json()
+    assert body["name"] == "NSIC Rc222 (Tubigan 18)"
+    assert float(body["typical_recovery_pct"]) == 67.5
+
+
+def test_a_standard_variety_can_be_hidden_and_unhidden(auth_client):
+    rc222 = _standard(auth_client)
+    url = f"/api/paddy/varieties/{rc222['id']}"
+    assert auth_client.put(url, json={"is_active": False}).status_code == 200
+    assert all(v["id"] != rc222["id"] for v in auth_client.get("/api/paddy/varieties").json())
+
+    assert auth_client.put(url, json={"is_active": True}).status_code == 200
+    assert any(v["id"] == rc222["id"] for v in auth_client.get("/api/paddy/varieties").json())
+    assert _standard(auth_client)["deactivated_at"] is None
+
+
+def test_a_code_is_taken_whatever_its_case(auth_client):
+    assert _make_variety(auth_client, code="rc222").status_code == 409
+    mine = _make_variety(auth_client, code="RC400", name="NSIC Rc400").json()
+    clash = auth_client.put(f"/api/paddy/varieties/{mine['id']}", json={"code": "SINAG"})
+    assert clash.status_code == 409
+
+
+def test_a_variety_needs_a_name(auth_client):
+    mine = _make_variety(auth_client).json()
+    res = auth_client.put(f"/api/paddy/varieties/{mine['id']}", json={"name": "  "})
+    assert res.status_code == 422
+
+
 # ── grades ───────────────────────────────────────────────────────────────────
 
 

@@ -14,11 +14,10 @@ update_palay_inventory) are folded in here as private methods.
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from decimal import Decimal
 from typing import Any, Sequence
 
-from sqlalchemy import delete
 from sqlalchemy.orm import Session
 
 from ..core.exceptions import ConflictError, NotFoundError, PermissionDeniedError, ValidationError
@@ -67,22 +66,28 @@ class PaddyService(BaseService):
         return self.varieties.list_company_or_shared(self.current_user.company_id, include_inactive=include_inactive)
 
     def create_variety(self, data) -> RiceVariety:
-        if self.varieties.get_by_code(self.current_user.company_id, data.code):
-            raise ConflictError(f"Variety code '{data.code}' already exists in your company", code="variety_exists")
-        variety = RiceVariety(company_id=self.current_user.company_id, **data.model_dump())
+        payload = data.model_dump()
+        payload["code"] = self._free_variety_code(data.code)
+        payload["name"] = _required(data.name, "Give the variety a name.")
+        variety = RiceVariety(company_id=self.current_user.company_id, **payload)
         with self.transaction():
             self.varieties.add(variety)
         self.db.refresh(variety)
         return variety
 
     def update_variety(self, variety_id: uuid.UUID, data) -> RiceVariety:
+        """Edit a variety, or hide it (is_active=False) from the pickers and
+        unhide it. The standard ones (NSIC Rc222 and the rest) are this mill's
+        own copy in its schema, so they can be edited and hidden too."""
         v = self.varieties.get(variety_id)
-        if not v:
+        if not v or v.company_id not in (self.current_user.company_id, None):
             raise NotFoundError("Variety not found")
-        if v.company_id != self.current_user.company_id:
-            raise PermissionDeniedError("Cannot edit shared/system varieties. Create your own copy instead.")
+        payload = data.model_dump(exclude_none=True)
+        if "code" in payload:
+            payload["code"] = self._free_variety_code(payload["code"], exclude_id=v.id)
+        if "name" in payload:
+            payload["name"] = _required(payload["name"], "Give the variety a name.")
         with self.transaction():
-            payload = data.model_dump(exclude_none=True)
             for field, val in payload.items():
                 setattr(v, field, val)
             if payload.get("is_active") is False and v.deactivated_at is None:
@@ -91,6 +96,12 @@ class PaddyService(BaseService):
                 v.deactivated_at = None
         self.db.refresh(v)
         return v
+
+    def _free_variety_code(self, code: str, *, exclude_id: uuid.UUID | None = None) -> str:
+        code = _required(code, "Give the variety a code.")
+        if self.varieties.get_by_code(self.current_user.company_id, code, exclude_id=exclude_id):
+            raise ConflictError(f"Variety code '{code}' already exists in your company", code="variety_exists")
+        return code
 
     # ── grades ────────────────────────────────────────────────────────────────
 
@@ -311,19 +322,8 @@ def purchase_warehouse(db: Session, current_user: Any, branch_id: uuid.UUID | No
     return branch.id
 
 
-def purge_stale_varieties(db: Session, *, days: int = 30) -> int:
-    """Delete tenant rice varieties that have been deactivated for *days* days.
-
-    System/shared varieties (company_id IS NULL) are never touched.
-    Does NOT commit — callers own the transaction boundary.
-    Returns the number of rows deleted.
-    """
-    cutoff = datetime.now(timezone.utc) - timedelta(days=days)
-    result = db.execute(
-        delete(RiceVariety).where(
-            RiceVariety.is_active.is_(False),
-            RiceVariety.deactivated_at <= cutoff,
-            RiceVariety.company_id.is_not(None),
-        )
-    )
-    return result.rowcount  # type: ignore[attr-defined]
+def _required(value: str, message: str) -> str:
+    value = value.strip()
+    if not value:
+        raise ValidationError(message)
+    return value
