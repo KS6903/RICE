@@ -40,7 +40,7 @@ class ExpenseCategoryRepository(BaseRepository[ExpenseCategory]):
             .where(Expense.company_id == company_id, Expense.category_id.is_not(None))
             .group_by(Expense.category_id)
         )
-        return {category_id: count for category_id, count in self.db.execute(stmt).all()}
+        return {category_id: count for category_id, count in self.db.execute(stmt).all() if category_id is not None}
 
     def move_expenses(self, from_id: uuid.UUID, to_id: uuid.UUID) -> None:
         self.db.execute(update(Expense).where(Expense.category_id == from_id).values(category_id=to_id))
