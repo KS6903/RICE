@@ -234,9 +234,7 @@ def seed_default_expense_categories(db: Session, company_id: uuid.UUID) -> None:
             have.add(cat.name.lower())
     for name, production in _DEFAULT_EXPENSE_CATEGORIES:
         if name.lower() not in have:
-            db.add(
-                ExpenseCategory(company_id=company_id, name=name, is_production_cost=production, is_default=True)
-            )
+            db.add(ExpenseCategory(company_id=company_id, name=name, is_production_cost=production, is_default=True))
     db.flush()
 
 

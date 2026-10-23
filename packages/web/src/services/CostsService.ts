@@ -25,10 +25,7 @@ export class CostsService {
     return this.http.post("/costs/categories", body).then((r) => r.data);
   }
 
-  updateCategory(
-    id: string,
-    body: { name?: string; is_production_cost?: boolean },
-  ): Promise<any> {
+  updateCategory(id: string, body: { name?: string; is_production_cost?: boolean }): Promise<any> {
     return this.http.put(`/costs/categories/${id}`, body).then((r) => r.data);
   }
 

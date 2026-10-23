@@ -56,7 +56,6 @@ def test_list_varieties_excludes_inactive_by_default(auth_client):
     assert any(v["id"] == created["id"] for v in incl)
 
 
-
 def _standard(c, code="Rc222"):
     every = c.get("/api/paddy/varieties", params={"include_inactive": True}).json()
     return next(v for v in every if v["code"] == code and v["company_id"] is None)

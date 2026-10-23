@@ -928,7 +928,7 @@ function VarietiesTab() {
 
   const rows = (list: any[]) =>
     list.map((v: any) =>
-      editing?.id === v.id ? (
+      editing && editing.id === v.id ? (
         <VarietyEditRow
           key={v.id}
           edit={editing}
@@ -1406,7 +1406,7 @@ function CategoriesTab() {
           </thead>
           <tbody className="divide-y divide-slate-200/60 dark:divide-slate-700/50">
             {categories.map((c: any) =>
-              editing?.id === c.id ? (
+              editing && editing.id === c.id ? (
                 <tr key={c.id} className="bg-slate-50/60 dark:bg-slate-800/30">
                   <td className="px-4 py-2.5">
                     <input
@@ -1417,7 +1417,8 @@ function CategoriesTab() {
                     />
                     {save.isError && (
                       <p className="mt-1 text-xs font-medium text-rose-600 dark:text-rose-400">
-                        {(save.error as any)?.response?.data?.detail || "Couldn't save the category."}
+                        {(save.error as any)?.response?.data?.detail ||
+                          "Couldn't save the category."}
                       </p>
                     )}
                   </td>
@@ -1425,7 +1426,9 @@ function CategoriesTab() {
                     <Select
                       aria-label="Category type"
                       value={editing.is_production_cost ? "production" : "overhead"}
-                      onChange={(v) => setEditing({ ...editing, is_production_cost: v === "production" })}
+                      onChange={(v) =>
+                        setEditing({ ...editing, is_production_cost: v === "production" })
+                      }
                       options={CATEGORY_TYPES}
                     />
                   </td>
@@ -1434,7 +1437,11 @@ function CategoriesTab() {
                   </td>
                   <td className="px-4 py-2.5">
                     <div className="flex justify-end gap-2">
-                      <button type="button" onClick={() => setEditing(null)} className="btn-secondary">
+                      <button
+                        type="button"
+                        onClick={() => setEditing(null)}
+                        className="btn-secondary"
+                      >
                         Cancel
                       </button>
                       <button
