@@ -23,6 +23,22 @@ import {
 } from "lucide-react";
 import type { AppSection } from "@rice-mill/shared";
 
+export type PlanName = "Basic" | "Pro" | "Enterprise";
+
+/** The first plan that includes each feature a lower plan lacks (migration
+ *  019_plan_tiers), in the order the menu lists them. */
+export const FEATURE_PLAN: Record<string, PlanName> = {
+  milling: "Basic",
+  dispatch: "Basic",
+  drying_advisor: "Basic",
+  field_operators: "Pro",
+  cash_count: "Pro",
+  collections: "Pro",
+  employees: "Pro",
+  automations: "Enterprise",
+};
+export const PLAN_ORDER: PlanName[] = ["Basic", "Pro", "Enterprise"];
+
 export type NavEntry = {
   to: string;
   label: string;
