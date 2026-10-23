@@ -342,4 +342,3 @@ def tenant_session(db: Session, company) -> Iterator[Session]:
         yield db
     finally:
         set_search_path(db, None)
-

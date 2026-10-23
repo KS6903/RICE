@@ -119,4 +119,3 @@ def pick_unused_color(db: Session, company_id: uuid.UUID) -> str:
         if color.lower() not in used:
             return color
         salt += 1
-
