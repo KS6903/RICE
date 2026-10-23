@@ -9,6 +9,7 @@ import ConfirmItsYou, { type Proof } from "../components/ConfirmItsYou";
 import TemporaryPasswordDialog from "../components/TemporaryPasswordDialog";
 import { ROLES, roleLabel } from "@rice-mill/shared";
 import { useAuthStore } from "../stores/authStore";
+import { useCurrentPlan } from "../hooks/useFeature";
 import Select from "../components/Select";
 import ConfirmDialog from "../components/ConfirmDialog";
 import RoleAccessPanel from "../components/RoleAccessPanel";
@@ -71,6 +72,11 @@ export default function UsersPage() {
     queryKey: ["users"],
     queryFn: () => usersService.list(),
   });
+  // Every active login takes one of the plan's seats, the Boss's too; a removed
+  // user frees theirs (user_service checks the same count).
+  const seatLimit = useCurrentPlan()?.max_users ?? null;
+  const seatsUsed = users.filter((u: any) => u.is_active).length;
+  const seatsFull = seatLimit !== null && seatsUsed >= seatLimit;
 
   const [form, setForm] = useState({ ...EMPTY_USER_FORM });
 
@@ -199,6 +205,16 @@ export default function UsersPage() {
           <p className="text-sm text-gray-500 dark:text-slate-400">
             Give each person their own login. Their role decides which pages they see and what they
             can change.
+          </p>
+          <p
+            className={`mt-1.5 text-sm font-semibold ${
+              seatsFull ? "text-amber-700 dark:text-amber-300" : "text-gray-700 dark:text-slate-300"
+            }`}
+          >
+            {seatLimit === null
+              ? `${seatsUsed} ${seatsUsed === 1 ? "user" : "users"}. Your plan has no user limit.`
+              : `${seatsUsed} of ${seatLimit} users`}
+            {seatsFull && ". Every seat is taken: upgrade your plan to add more."}
           </p>
         </div>
         <button

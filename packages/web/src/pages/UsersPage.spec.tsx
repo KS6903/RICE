@@ -330,3 +330,39 @@ describe("Users page: who can open what", () => {
     expect(screen.queryByRole("button", { name: /Who can open what/ })).toBeNull();
   });
 });
+
+describe("Users: seats on the plan", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+    useAuthStore.setState({ user: null });
+  });
+
+  const plan = (max_users: number | null) => ({
+    subscription: {
+      code: "basic",
+      name: "Basic",
+      monthly_price: 999,
+      max_users,
+      max_branches: 1,
+      status: "active",
+      expires_at: null,
+    },
+  });
+
+  it("counts the active users, the Boss included, against the plan", async () => {
+    setup(plan(5));
+    expect(await screen.findByText("2 of 5 users")).toBeInTheDocument();
+  });
+
+  it("says when every seat is taken", async () => {
+    setup(plan(2));
+    expect(
+      await screen.findByText("2 of 2 users. Every seat is taken: upgrade your plan to add more."),
+    ).toBeInTheDocument();
+  });
+
+  it("says when the plan has no limit", async () => {
+    setup(plan(null));
+    expect(await screen.findByText("2 users. Your plan has no user limit.")).toBeInTheDocument();
+  });
+});
