@@ -2,12 +2,12 @@ import uuid
 from datetime import datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import BigInteger, Boolean, DateTime, ForeignKey, Index, Integer, SmallInteger, String, func
+from sqlalchemy import BigInteger, Boolean, DateTime, ForeignKey, Integer, SmallInteger, String
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from ..core.database import Base
-from .base import TimestampMixin, now_utc
+from .base import TimestampMixin
 
 if TYPE_CHECKING:
     from .company import Branch, Company
@@ -22,32 +22,6 @@ class Role(Base):
     users: Mapped[list["User"]] = relationship("User", back_populates="role")
 
 
-class CompanyRole(Base):
-    """A role a mill's Boss made up ("Warehouse Manager"), with the pages it can
-    open. Unlike the built-in roles (``roles``), it belongs to one mill and has
-    no default: ``access`` is its level on every page, as the Boss chose it
-    (core/access_policy.py reads it). Someone with a custom role has no built-in
-    role, so nothing that checks a role by name treats them as a Boss or an Admin.
-    Lives in public, beside the users who hold it."""
-
-    __tablename__ = "company_roles"
-    __table_args__ = (Index("uq_company_roles_company_name", "company_id", "name", unique=True),)
-
-    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    company_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("companies.id", ondelete="CASCADE"), nullable=False
-    )
-    name: Mapped[str] = mapped_column(String(50), nullable=False)
-    # {page: "full" | "view" | "none"}; a page missing from it is "none".
-    access: Mapped[dict] = mapped_column(JSONB, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc, server_default=func.now())
-    updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=now_utc, onupdate=now_utc, server_default=func.now()
-    )
-
-    users: Mapped[list["User"]] = relationship("User", back_populates="custom_role")
-
-
 class User(Base, TimestampMixin):
     __tablename__ = "users"
 
@@ -59,11 +33,6 @@ class User(Base, TimestampMixin):
     password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
     full_name: Mapped[str] = mapped_column(String(150), nullable=False)
     role_id: Mapped[int | None] = mapped_column(SmallInteger, ForeignKey("roles.id"))
-    # Instead of a built-in role: one the mill's Boss made up. A role that
-    # still has people can't be deleted.
-    custom_role_id: Mapped[uuid.UUID | None] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("company_roles.id", ondelete="RESTRICT"), index=True
-    )
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     is_platform_admin: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     last_login: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
@@ -104,4 +73,3 @@ class User(Base, TimestampMixin):
     company: Mapped["Company"] = relationship("Company", back_populates="users")
     branch: Mapped["Branch"] = relationship("Branch", back_populates="users", foreign_keys="[User.branch_id]")
     role: Mapped["Role"] = relationship("Role", back_populates="users")
-    custom_role: Mapped["CompanyRole | None"] = relationship("CompanyRole", back_populates="users")

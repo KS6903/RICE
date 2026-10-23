@@ -39,24 +39,6 @@ export default function ReportsPage() {
   const isDark = theme === "dark";
   const gridColor = isDark ? "rgba(148,163,184,0.18)" : "rgba(15,23,42,0.1)";
   const axisColor = isDark ? "#cbd5e1" : "#334155";
-  // One look for every chart here, in either theme: the tooltip takes the
-  // app's surface and ink, and the hover highlight behind a bar is a faint
-  // wash rather than the library's pale grey (near-white on a dark page).
-  const tooltipStyle = {
-    contentStyle: {
-      backgroundColor: "rgb(var(--surface-raised))",
-      border: "1px solid rgb(var(--line))",
-      borderRadius: 12,
-      boxShadow: "0 8px 24px -8px rgba(15,23,42,0.25)",
-      fontWeight: 500,
-    },
-    labelStyle: { color: "rgb(var(--ink))", fontWeight: 600 },
-    cursor: {
-      fill: isDark ? "rgba(148,163,184,0.10)" : "rgba(15,23,42,0.05)",
-      stroke: gridColor,
-    },
-  };
-  const axisTick = { fontSize: 11, fill: axisColor, fontWeight: 500 };
 
   const { data: pnl } = useQuery({
     queryKey: ["pnl", dateRange.start, dateRange.end],
@@ -163,20 +145,13 @@ export default function ReportsPage() {
             </div>
             <ResponsiveContainer width="100%" height={220}>
               <BarChart data={pnlData}>
-                <CartesianGrid strokeDasharray="3 3" stroke={gridColor} />
-                <XAxis
-                  dataKey="name"
-                  tick={axisTick}
-                  axisLine={{ stroke: gridColor }}
-                  tickLine={false}
-                />
+                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                <XAxis dataKey="name" tick={{ fontSize: 11 }} />
                 <YAxis
-                  tick={axisTick}
-                  axisLine={{ stroke: gridColor }}
-                  tickLine={false}
+                  tick={{ fontSize: 11 }}
                   tickFormatter={(v) => `₱${(v / 1000).toFixed(0)}k`}
                 />
-                <Tooltip formatter={(v: number) => `₱${v.toLocaleString()}`} {...tooltipStyle} />
+                <Tooltip formatter={(v: number) => `₱${v.toLocaleString()}`} />
                 <Bar dataKey="amount" fill="#16a34a" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
@@ -268,7 +243,13 @@ export default function ReportsPage() {
                   />
                   <Tooltip
                     formatter={(v: number) => [`₱${v.toLocaleString()}`, "Revenue"]}
-                    {...tooltipStyle}
+                    contentStyle={{
+                      backgroundColor: isDark ? "rgba(15,23,42,0.96)" : "rgba(255,255,255,0.98)",
+                      border: `1px solid ${gridColor}`,
+                      borderRadius: 12,
+                      color: isDark ? "#f1f5f9" : "#0f172a",
+                      fontWeight: 500,
+                    }}
                   />
                   <ReferenceLine
                     y={revenueAnnual.reduce((sum, m) => sum + m.revenue, 0) / 12}
@@ -301,7 +282,13 @@ export default function ReportsPage() {
                   />
                   <Tooltip
                     formatter={(v: number) => [`₱${v.toLocaleString()}`, "Revenue"]}
-                    {...tooltipStyle}
+                    contentStyle={{
+                      backgroundColor: isDark ? "rgba(15,23,42,0.96)" : "rgba(255,255,255,0.98)",
+                      border: `1px solid ${gridColor}`,
+                      borderRadius: 12,
+                      color: isDark ? "#f1f5f9" : "#0f172a",
+                      fontWeight: 500,
+                    }}
                   />
                   <ReferenceLine
                     y={revenueAnnual.reduce((sum, m) => sum + m.revenue, 0) / 12}
@@ -349,20 +336,10 @@ export default function ReportsPage() {
         ) : arData.length > 0 ? (
           <ResponsiveContainer width="100%" height={200}>
             <BarChart data={arData}>
-              <CartesianGrid strokeDasharray="3 3" stroke={gridColor} />
-              <XAxis
-                dataKey="bucket"
-                tick={axisTick}
-                axisLine={{ stroke: gridColor }}
-                tickLine={false}
-              />
-              <YAxis
-                tick={axisTick}
-                axisLine={{ stroke: gridColor }}
-                tickLine={false}
-                tickFormatter={(v) => `₱${(v / 1000).toFixed(0)}k`}
-              />
-              <Tooltip formatter={(v: number) => `₱${v.toLocaleString()}`} {...tooltipStyle} />
+              <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+              <XAxis dataKey="bucket" tick={{ fontSize: 11 }} />
+              <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => `₱${(v / 1000).toFixed(0)}k`} />
+              <Tooltip formatter={(v: number) => `₱${v.toLocaleString()}`} />
               <Bar dataKey="amount" fill="#f59e0b" radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
