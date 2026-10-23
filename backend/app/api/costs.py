@@ -53,6 +53,20 @@ def update_category(category_id: uuid.UUID, body: CategoryUpdate, svc: CostsServ
     return svc.update_category(category_id, body)
 
 
+@router.delete(
+    "/categories/{category_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    dependencies=[Depends(require_section_access("expenses", write=True))],
+)
+def delete_category(
+    category_id: uuid.UUID,
+    move_to: uuid.UUID | None = None,
+    svc: CostsService = Depends(get_costs_service),
+):
+    """Delete a category the mill added; ``move_to`` takes its expenses."""
+    svc.delete_category(category_id, move_to=move_to)
+
+
 @router.get("/expenses")
 def list_expenses(skip: int = 0, limit: int = 100, svc: CostsService = Depends(get_costs_service)):
     return svc.list_expenses(skip=skip, limit=limit)

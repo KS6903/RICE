@@ -21,6 +21,9 @@ class ExpenseCategory(Base):
     company_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("companies.id"))
     name: Mapped[str] = mapped_column(String(100), nullable=False)
     is_production_cost: Mapped[bool] = mapped_column(Boolean, default=True)
+    # One of the categories every mill starts with: it can be renamed or change
+    # type, but not deleted (tenancy.seed_default_expense_categories).
+    is_default: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="false")
 
     expenses: Mapped[list["Expense"]] = relationship("Expense", back_populates="category")
 

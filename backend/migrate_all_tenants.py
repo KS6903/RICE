@@ -29,6 +29,7 @@ from app.core.database import Base, ProvisionerSessionLocal
 from app.core.tenancy import (
     grant_runtime_schema_access,
     schema_name_for,
+    seed_default_expense_categories,
     set_search_path,
     tenant_tables,
 )
@@ -70,6 +71,8 @@ _extra_ddl: list[str] = [
     # What the client and the mill agreed, and the terms.
     "ALTER TABLE milling_batches ADD COLUMN IF NOT EXISTS client_arrangement VARCHAR(30)",
     "ALTER TABLE milling_batches ADD COLUMN IF NOT EXISTS client_notes TEXT",
+    # The categories every mill starts with can't be deleted (filled in below).
+    "ALTER TABLE expense_categories ADD COLUMN IF NOT EXISTS is_default BOOLEAN NOT NULL DEFAULT false",
 ]
 
 
@@ -95,6 +98,7 @@ def migrate_all() -> int:
             Base.metadata.create_all(bind=session.connection(), tables=tenant_tables())
             for stmt in _extra_ddl:
                 session.execute(text(stmt))
+            seed_default_expense_categories(session, company.id)
             if settings.PROVISIONER_DATABASE_URL is not None:
                 grant_runtime_schema_access(session, schema)
             session.commit()

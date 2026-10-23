@@ -1136,31 +1136,80 @@ function EquipmentTab() {
   );
 }
 
+type CategoryEdit = { id: string; name: string; is_production_cost: boolean };
+
+const CATEGORY_TYPES = [
+  { value: "production", label: "Production" },
+  { value: "overhead", label: "Overhead" },
+];
+
 function CategoriesTab() {
   const qc = useQueryClient();
-  const user = useAuthStore((s) => s.user);
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ name: "", is_production_cost: true });
+  const [editing, setEditing] = useState<CategoryEdit | null>(null);
+  const [deleting, setDeleting] = useState<any | null>(null);
+  const [moveTo, setMoveTo] = useState("");
 
   const { data: categories = [] } = useQuery({
     queryKey: ["expense-categories"],
     queryFn: () => costsService.listCategories(),
   });
+  const refresh = () => qc.invalidateQueries({ queryKey: ["expense-categories"] });
 
   const create = useMutation({
     mutationFn: (b: typeof form) => costsService.createCategory(b),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["expense-categories"] });
+      refresh();
       setShowForm(false);
       setForm({ name: "", is_production_cost: true });
     },
   });
 
+  const save = useMutation({
+    mutationFn: (e: CategoryEdit) =>
+      costsService.updateCategory(e.id, { name: e.name, is_production_cost: e.is_production_cost }),
+    onSuccess: () => {
+      refresh();
+      setEditing(null);
+    },
+  });
+
+  const remove = useMutation({
+    mutationFn: ({ id, moveTo }: { id: string; moveTo?: string }) =>
+      costsService.deleteCategory(id, moveTo),
+    onSuccess: () => {
+      refresh();
+      qc.invalidateQueries({ queryKey: ["expenses"] });
+      setDeleting(null);
+    },
+  });
+
+  const startEdit = (c: any) => {
+    save.reset();
+    setEditing({ id: c.id, name: c.name, is_production_cost: c.is_production_cost });
+  };
+
+  const startDelete = (c: any) => {
+    remove.reset();
+    const others = categories.filter((o: any) => o.id !== c.id);
+    // Default categories first: they're the ones that never go away.
+    const target = others.find((o: any) => o.is_default) ?? others[0];
+    setMoveTo(target?.id ?? "");
+    setDeleting(c);
+  };
+
+  const inUse: number = deleting?.expense_count ?? 0;
+  const moveOptions = categories
+    .filter((o: any) => o.id !== deleting?.id)
+    .map((o: any) => ({ value: o.id, label: o.name }));
+
   return (
     <div className="space-y-4">
       <p className="text-sm text-secondary">
-        Categorize your expenses (Fuel, Electricity, Labor, etc.). System defaults are shared across
-        all clients.
+        Categorize your expenses (Fuel, Electricity, Labor, etc.). The default categories can be
+        renamed or switched between production and overhead, but they can't be deleted. Categories
+        you add can be deleted.
       </p>
       <div className="flex justify-end">
         <button onClick={() => setShowForm(!showForm)} className="btn-primary">
@@ -1175,7 +1224,7 @@ function CategoriesTab() {
             <label className={LABEL}>Category name *</label>
             <input
               className="input"
-              placeholder="e.g. Sack/Packaging"
+              placeholder="e.g. Rice hull hauling"
               value={form.name}
               onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
             />
@@ -1201,7 +1250,7 @@ function CategoriesTab() {
             <button
               onClick={() => create.mutate(form)}
               className="btn-primary"
-              disabled={create.isPending || !form.name}
+              disabled={create.isPending || !form.name.trim()}
             >
               {create.isPending ? "Saving…" : "Save category"}
             </button>
@@ -1213,7 +1262,7 @@ function CategoriesTab() {
         <table className="w-full text-sm">
           <thead className="bg-gradient-to-r from-emerald-50/80 via-cyan-50/60 to-violet-50/80 dark:from-emerald-900/20 dark:via-cyan-900/10 dark:to-violet-900/20 border-b border-soft">
             <tr>
-              {["Name", "Type", "Source"].map((h) => (
+              {["Name", "Type", "Source", ""].map((h) => (
                 <th key={h} className={TABLE_HEAD}>
                   {h}
                 </th>
@@ -1221,9 +1270,50 @@ function CategoriesTab() {
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-200/60 dark:divide-slate-700/50">
-            {categories.map((c: any) => {
-              const isOwn = c.company_id === user?.company_id;
-              return (
+            {categories.map((c: any) =>
+              editing?.id === c.id ? (
+                <tr key={c.id} className="bg-slate-50/60 dark:bg-slate-800/30">
+                  <td className="px-4 py-2.5">
+                    <input
+                      className="input"
+                      aria-label="Category name"
+                      value={editing.name}
+                      onChange={(e) => setEditing({ ...editing, name: e.target.value })}
+                    />
+                    {save.isError && (
+                      <p className="mt-1 text-xs font-medium text-rose-600 dark:text-rose-400">
+                        {(save.error as any)?.response?.data?.detail || "Couldn't save the category."}
+                      </p>
+                    )}
+                  </td>
+                  <td className="px-4 py-2.5">
+                    <Select
+                      aria-label="Category type"
+                      value={editing.is_production_cost ? "production" : "overhead"}
+                      onChange={(v) => setEditing({ ...editing, is_production_cost: v === "production" })}
+                      options={CATEGORY_TYPES}
+                    />
+                  </td>
+                  <td className="px-4 py-2.5">
+                    <CategorySource c={c} />
+                  </td>
+                  <td className="px-4 py-2.5">
+                    <div className="flex justify-end gap-2">
+                      <button type="button" onClick={() => setEditing(null)} className="btn-secondary">
+                        Cancel
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => save.mutate({ ...editing, name: editing.name.trim() })}
+                        className="btn-primary"
+                        disabled={save.isPending || !editing.name.trim()}
+                      >
+                        {save.isPending ? "Saving…" : "Save"}
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ) : (
                 <tr
                   key={c.id}
                   className="hover:bg-slate-50/50 dark:hover:bg-slate-700/15 transition-colors"
@@ -1237,18 +1327,38 @@ function CategoriesTab() {
                     )}
                   </td>
                   <td className="px-4 py-3">
-                    {isOwn ? (
-                      <span className="badge-green">Custom</span>
-                    ) : (
-                      <span className="badge-gray">System</span>
-                    )}
+                    <CategorySource c={c} />
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="flex justify-end gap-4">
+                      <button
+                        type="button"
+                        aria-label={`Edit ${c.name}`}
+                        onClick={() => startEdit(c)}
+                        className="text-xs font-semibold inline-flex items-center gap-1 text-secondary hover:text-primary"
+                      >
+                        <Pencil size={12} />
+                        Edit
+                      </button>
+                      {!c.is_default && (
+                        <button
+                          type="button"
+                          aria-label={`Delete ${c.name}`}
+                          onClick={() => startDelete(c)}
+                          className="text-xs font-semibold inline-flex items-center gap-1 text-rose-600 dark:text-rose-400 hover:text-rose-700"
+                        >
+                          <Trash2 size={12} />
+                          Delete
+                        </button>
+                      )}
+                    </div>
                   </td>
                 </tr>
-              );
-            })}
+              ),
+            )}
             {categories.length === 0 && (
               <tr>
-                <td colSpan={3} className="px-4 py-8 text-center text-muted font-medium">
+                <td colSpan={4} className="px-4 py-8 text-center text-muted font-medium">
                   No categories
                 </td>
               </tr>
@@ -1256,7 +1366,49 @@ function CategoriesTab() {
           </tbody>
         </table>
       </div>
+
+      <ConfirmDialog
+        open={!!deleting}
+        danger
+        busy={remove.isPending || (inUse > 0 && !moveTo)}
+        title={`Delete ${deleting?.name ?? "category"}?`}
+        confirmLabel={inUse > 0 ? "Move and delete" : "Delete"}
+        onCancel={() => setDeleting(null)}
+        onConfirm={() => remove.mutate({ id: deleting.id, moveTo: inUse > 0 ? moveTo : undefined })}
+      >
+        <div className="space-y-2">
+          {inUse > 0 ? (
+            <>
+              <p>
+                {inUse === 1 ? "1 expense is" : `${inUse} expenses are`} filed under it. Choose
+                where {inUse === 1 ? "it goes" : "they go"}:
+              </p>
+              <Select
+                aria-label="Move its expenses to"
+                value={moveTo}
+                onChange={setMoveTo}
+                options={moveOptions}
+              />
+            </>
+          ) : (
+            <p>No expense is filed under it.</p>
+          )}
+          {remove.isError && (
+            <p className="font-medium text-rose-600 dark:text-rose-400">
+              {(remove.error as any)?.response?.data?.detail || "Couldn't delete the category."}
+            </p>
+          )}
+        </div>
+      </ConfirmDialog>
     </div>
+  );
+}
+
+function CategorySource({ c }: { c: any }) {
+  return c.is_default ? (
+    <span className="badge-gray">Default</span>
+  ) : (
+    <span className="badge-green">Custom</span>
   );
 }
 

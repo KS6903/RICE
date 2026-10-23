@@ -25,6 +25,7 @@ from __future__ import annotations
 
 import logging
 import re
+import uuid
 from contextlib import contextmanager
 from typing import Iterator
 
@@ -182,6 +183,16 @@ _SYSTEM_GRADES = [
     ("NFA2", "NFA Grade 2", 14.1, 18.0),
 ]
 
+# The expense categories every mill starts with: (name, is_production_cost).
+_DEFAULT_EXPENSE_CATEGORIES = [
+    ("Fuel", True),
+    ("Electricity", True),
+    ("Labor", True),
+    ("Maintenance", True),
+    ("Sacks/Packaging", True),
+    ("Office/Admin", False),
+]
+
 
 def seed_reference_rows(db: Session) -> None:
     """Seed system rice varieties + quality grades into the CURRENT schema.
@@ -199,6 +210,33 @@ def seed_reference_rows(db: Session) -> None:
         grade: QualityGrade | None = db.query(QualityGrade).filter_by(code=code, company_id=None).first()
         if not grade:
             db.add(QualityGrade(code=code, name=name, min_moisture_pct=mn, max_moisture_pct=mx))
+    db.flush()
+
+
+def seed_default_expense_categories(db: Session, company_id: uuid.UUID) -> None:
+    """Give the CURRENT schema its default expense categories, once.
+
+    Runs on provisioning and from migrate_all_tenants.py. A schema that already
+    has a default is left alone, so a renamed default is never added back. In a
+    schema from before defaults existed, its rows with a default's name (or no
+    company, the old system rows) become the defaults, and only the missing ones
+    are added. Flush only; the caller owns the transaction.
+    """
+    from ..models.costs import ExpenseCategory
+
+    if db.query(ExpenseCategory.id).filter(ExpenseCategory.is_default.is_(True)).first():
+        return
+    names = {name.lower() for name, _ in _DEFAULT_EXPENSE_CATEGORIES}
+    have: set[str] = set()
+    for cat in db.query(ExpenseCategory).all():
+        if cat.company_id is None or cat.name.lower() in names:
+            cat.is_default = True
+            have.add(cat.name.lower())
+    for name, production in _DEFAULT_EXPENSE_CATEGORIES:
+        if name.lower() not in have:
+            db.add(
+                ExpenseCategory(company_id=company_id, name=name, is_production_cost=production, is_default=True)
+            )
     db.flush()
 
 
@@ -255,6 +293,7 @@ def provision_tenant(company, *, db: Session | None = None) -> str:
 
         # 3. Seed that client's system reference catalog.
         seed_reference_rows(session)
+        seed_default_expense_categories(session, company.id)
 
         # The DDL credential owns the schema; the API role receives only the
         # data privileges it needs. In dev/test the roles may be the same or the

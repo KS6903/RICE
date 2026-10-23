@@ -20,7 +20,7 @@ from decimal import Decimal
 from random import choice, uniform
 
 from app.core.database import SessionLocal
-from app.core.tenancy import session_for_company
+from app.core.tenancy import seed_default_expense_categories, session_for_company
 from app.models.company import Branch
 from app.models.costs import ExpenseCategory
 from app.models.dispatch import Agent, Miller
@@ -144,19 +144,10 @@ def _seed_equipment(db, company_id, branch_id):
 
 
 def _seed_expense_categories(db, company_id):
-    if db.query(ExpenseCategory).count():
-        return "expense_categories: skip"
-    rows = [
-        ("Fuel", True),
-        ("Electricity", True),
-        ("Labor", True),
-        ("Maintenance", True),
-        ("Sacks/Packaging", True),
-        ("Office/Admin", False),
-    ]
-    for name, prod in rows:
-        db.add(ExpenseCategory(company_id=company_id, name=name, is_production_cost=prod))
-    return f"expense_categories: +{len(rows)}"
+    before = db.query(ExpenseCategory).count()
+    seed_default_expense_categories(db, company_id)
+    added = db.query(ExpenseCategory).count() - before
+    return f"expense_categories: +{added}" if added else "expense_categories: skip"
 
 
 def _seed_purchases(db, company_id, branch_id):

@@ -71,17 +71,6 @@ export const PAYMENT_METHODS = [
   { value: "check", label: "Check" },
 ];
 
-export const DEFAULT_EXPENSE_CATEGORIES = [
-  { name: "Fuel & Lubricants", is_production_cost: true },
-  { name: "Electricity", is_production_cost: true },
-  { name: "Labor / Wages", is_production_cost: true },
-  { name: "Maintenance & Repair", is_production_cost: true },
-  { name: "Drying Cost", is_production_cost: true },
-  { name: "Transportation", is_production_cost: false },
-  { name: "Office Supplies", is_production_cost: false },
-  { name: "Government Fees", is_production_cost: false },
-];
-
 // `name` is what the server and permissions use; `label` is what people see.
 // The owner role is shown as "Boss".
 export const ROLES = [
