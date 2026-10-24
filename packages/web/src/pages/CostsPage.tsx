@@ -3,7 +3,7 @@ import { useEscapeKey } from "../hooks/useEscapeKey";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { costsService } from "../services/CostsService";
 import { millingService } from "../services/MillingService";
-import { Plus, Receipt } from "lucide-react";
+import { History, Pencil, Plus, Receipt } from "lucide-react";
 import { format } from "date-fns";
 import QuickAdd from "../components/QuickAdd";
 import EmptyState from "../components/EmptyState";
@@ -14,10 +14,19 @@ import { useOpenOnArrival } from "../hooks/useOpenOnArrival";
 import Select from "../components/Select";
 import DatePicker from "../components/DatePicker";
 import CodeValue from "../components/CodeValue";
+import EditExpenseDialog from "../components/costs/EditExpenseDialog";
+import RecordHistory from "../components/sales/RecordHistory";
+import { useCanEditSavedRecords } from "../hooks/useRecordEditor";
 
 export default function CostsPage() {
   const qc = useQueryClient();
   const { canEdit } = useAccess();
+  // Correcting a saved expense needs edit power; its history, either that or
+  // the right to add expenses.
+  const canCorrect = useCanEditSavedRecords();
+  const canSeeHistory = canCorrect || canEdit("expenses");
+  const [editing, setEditing] = useState<any | null>(null);
+  const [historyOf, setHistoryOf] = useState<any | null>(null);
   const [showForm, setShowForm] = useOpenOnArrival();
   useEscapeKey(() => setShowForm(false), showForm);
 
@@ -214,7 +223,7 @@ export default function CostsPage() {
         <table className="w-full text-sm">
           <thead className="bg-gray-50 dark:bg-slate-900/50 border-b border-gray-200 dark:border-slate-700">
             <tr>
-              {["Date", "Category", "Batch", "Amount", "Description"].map((h) => (
+              {["Date", "Category", "Batch", "Amount", "Description", ""].map((h) => (
                 <th
                   key={h}
                   className="px-4 py-3 text-left font-medium text-gray-600 dark:text-slate-300"
@@ -240,18 +249,44 @@ export default function CostsPage() {
                 <td className="px-4 py-3 text-gray-500 dark:text-slate-400">
                   {e.description || "—"}
                 </td>
+                <td className="px-4 py-3">
+                  <div className="flex justify-end gap-3">
+                    {canCorrect && (
+                      <button
+                        type="button"
+                        aria-label={`Edit the expense of ${e.expense_date}`}
+                        onClick={() => setEditing(e)}
+                        className="text-xs font-semibold inline-flex items-center gap-1 text-secondary hover:text-primary"
+                      >
+                        <Pencil size={12} aria-hidden />
+                        Edit
+                      </button>
+                    )}
+                    {canSeeHistory && (
+                      <button
+                        type="button"
+                        aria-label={`History of the expense of ${e.expense_date}`}
+                        onClick={() => setHistoryOf(e)}
+                        className="text-xs font-semibold inline-flex items-center gap-1 text-secondary hover:text-primary"
+                      >
+                        <History size={12} aria-hidden />
+                        History
+                      </button>
+                    )}
+                  </div>
+                </td>
               </tr>
             ))}
             {expensesLoading ? (
               <tr>
-                <td colSpan={5}>
+                <td colSpan={6}>
                   <LoadingRows />
                 </td>
               </tr>
             ) : (
               expenses.length === 0 && (
                 <tr>
-                  <td colSpan={5}>
+                  <td colSpan={6}>
                     <EmptyState
                       icon={Receipt}
                       title="No expenses recorded"
@@ -273,6 +308,23 @@ export default function CostsPage() {
           </tbody>
         </table>
       </div>
+
+      {editing && (
+        <EditExpenseDialog
+          expense={editing}
+          categories={categories}
+          batches={batches}
+          onClose={() => setEditing(null)}
+        />
+      )}
+      {historyOf && (
+        <RecordHistory
+          kind="expense"
+          id={historyOf.id}
+          label={`the expense of ${historyOf.expense_date}`}
+          onClose={() => setHistoryOf(null)}
+        />
+      )}
     </div>
   );
 }

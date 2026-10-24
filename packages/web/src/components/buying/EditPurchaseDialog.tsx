@@ -1,0 +1,372 @@
+// Correcting a saved purchase (edit power): its date, supplier, delivery and
+// remarks, and its lines. Saved lines replace the old ones, the stock follows,
+// and every changed field goes in the purchase's history.
+import { useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Plus, Trash2 } from "lucide-react";
+import RecordDialog from "../sales/RecordDialog";
+import Select from "../Select";
+import DatePicker from "../DatePicker";
+import { paddyService, type PurchaseEdit } from "../../services/PaddyService";
+import { buyingService } from "../../services/BuyingService";
+import { useByproductKinds } from "../../hooks/useByproductKinds";
+import { MILLED_GRADES } from "../../mappers/InventoryMapper";
+import { peso } from "./money";
+import { gradeLabel, type TradeKind } from "./trade";
+
+type Line = Record<string, string>;
+
+/** The numbers on a line, as each kind's create takes them. */
+const NUMBERS: Record<TradeKind, { key: string; label: string; optional?: boolean }[]> = {
+  palay: [
+    { key: "gross_weight_kg", label: "Gross kg" },
+    { key: "tare_weight_kg", label: "Tare kg" },
+    { key: "moisture_content_pct", label: "Moisture %", optional: true },
+    { key: "price_per_cavan", label: "₱ per cavan" },
+  ],
+  rice: [
+    { key: "sack_count", label: "Sacks" },
+    { key: "kg_per_sack", label: "Kg per sack" },
+    { key: "price_per_sack", label: "₱ per sack" },
+  ],
+  byproduct: [
+    { key: "weight_kg", label: "Kilos" },
+    { key: "price_per_kg", label: "₱ per kg" },
+  ],
+};
+
+const BLANK: Record<TradeKind, Line> = {
+  palay: {
+    variety_id: "",
+    grade_id: "",
+    gross_weight_kg: "",
+    tare_weight_kg: "0",
+    moisture_content_pct: "",
+    price_per_cavan: "",
+  },
+  rice: {
+    variety_id: "",
+    grade_name: "premium",
+    sack_count: "",
+    kg_per_sack: "50",
+    price_per_sack: "",
+  },
+  byproduct: { byproduct_type: "ipa", weight_kg: "", price_per_kg: "" },
+};
+
+const DELIVERY: Record<TradeKind, { value: string; label: string }[]> = {
+  palay: [
+    { value: "delivered", label: "Delivered" },
+    { value: "farm_gate", label: "Farm Gate" },
+  ],
+  rice: [
+    { value: "delivered", label: "Delivered" },
+    { value: "picked_up", label: "Picked up" },
+  ],
+  byproduct: [
+    { value: "delivered", label: "Delivered" },
+    { value: "picked_up", label: "Picked up" },
+  ],
+};
+
+const text = (v: unknown) => (v === null || v === undefined ? "" : String(Number(v)));
+const num = (v: string) => parseFloat(v) || 0;
+
+/** A saved line, as the dialog edits it. */
+function fromItem(kind: TradeKind, i: any): Line {
+  const line: Line = { ...BLANK[kind] };
+  for (const key of Object.keys(line)) {
+    const value = i[key];
+    if (value === null || value === undefined) line[key] = "";
+    else line[key] = NUMBERS[kind].some((n) => n.key === key) ? text(value) : String(value);
+  }
+  return line;
+}
+
+const lineAmount = (kind: TradeKind, l: Line) =>
+  kind === "palay"
+    ? ((num(l.gross_weight_kg) - num(l.tare_weight_kg)) / 50) * num(l.price_per_cavan)
+    : kind === "rice"
+      ? num(l.sack_count) * num(l.price_per_sack)
+      : num(l.weight_kg) * num(l.price_per_kg);
+
+function lineIsValid(kind: TradeKind, l: Line): boolean {
+  const filled = NUMBERS[kind].every((n) => n.optional || l[n.key] !== "");
+  if (!filled || NUMBERS[kind].some((n) => num(l[n.key]) < 0)) return false;
+  if (kind === "palay") return num(l.gross_weight_kg) > num(l.tare_weight_kg);
+  if (kind === "rice") return num(l.sack_count) > 0 && num(l.kg_per_sack) > 0;
+  return !!l.byproduct_type && num(l.weight_kg) > 0;
+}
+
+/** A line as the server takes it: numbers as numbers, blanks as null. */
+function toItem(kind: TradeKind, l: Line): Record<string, unknown> {
+  const item: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(l)) {
+    const isNumber = NUMBERS[kind].some((n) => n.key === key);
+    item[key] = value === "" ? null : isNumber ? num(value) : value;
+  }
+  return item;
+}
+
+const SAVE: Record<TradeKind, (id: string, body: PurchaseEdit) => Promise<any>> = {
+  palay: (id, body) => paddyService.editPurchase(id, body),
+  rice: (id, body) => buyingService.editRicePurchase(id, body),
+  byproduct: (id, body) => buyingService.editByproductPurchase(id, body),
+};
+
+/** What the page and the stock views show of a purchase, to fetch again. */
+const AFFECTED: Record<TradeKind, string[]> = {
+  palay: ["palay-purchases", "palay-inventory"],
+  rice: ["rice-purchases", "rice-stock", "milled-rice"],
+  byproduct: ["byproduct-purchases", "byproduct-stock", "byproducts", "byproduct-kinds"],
+};
+
+export default function EditPurchaseDialog({
+  kind,
+  purchase,
+  onClose,
+}: {
+  kind: TradeKind;
+  purchase: any;
+  onClose: () => void;
+}) {
+  const qc = useQueryClient();
+  const [supplierId, setSupplierId] = useState<string>(purchase.supplier_id ?? "");
+  const [date, setDate] = useState<string>(purchase.purchase_date ?? "");
+  const [delivery, setDelivery] = useState<string>(purchase.delivery_type ?? "");
+  const [remarks, setRemarks] = useState<string>(purchase.remarks ?? "");
+  const [lines, setLines] = useState<Line[]>(() =>
+    (purchase.items ?? []).map((i: any) => fromItem(kind, i)),
+  );
+
+  const { data: suppliers = [] } = useQuery<any[]>({
+    queryKey: ["suppliers"],
+    queryFn: () => paddyService.listSuppliers(),
+  });
+  const { data: varieties = [] } = useQuery<any[]>({
+    queryKey: ["varieties"],
+    queryFn: () => paddyService.listVarieties(),
+    enabled: kind !== "byproduct",
+  });
+  const { data: grades = [] } = useQuery<any[]>({
+    queryKey: ["grades"],
+    queryFn: () => paddyService.listGrades(),
+    enabled: kind === "palay",
+  });
+  const { active: byproductKinds } = useByproductKinds();
+
+  const total = lines.reduce((sum, l) => sum + lineAmount(kind, l), 0);
+  const valid = !!date && lines.length > 0 && lines.every((l) => lineIsValid(kind, l));
+
+  const save = useMutation({
+    mutationFn: () =>
+      SAVE[kind](purchase.id, {
+        supplier_id: supplierId || null,
+        purchase_date: date,
+        delivery_type: delivery || null,
+        remarks: remarks.trim() || null,
+        items: lines.map((l) => toItem(kind, l)),
+      }),
+    onSuccess: () => {
+      for (const key of [...AFFECTED[kind], "inventory-summary", "record-history"]) {
+        qc.invalidateQueries({ queryKey: [key] });
+      }
+      onClose();
+    },
+  });
+  const error = (save.error as any)?.response?.data?.detail;
+
+  const setLine = (i: number, patch: Line) =>
+    setLines((ls) => ls.map((l, j) => (j === i ? { ...l, ...patch } : l)));
+
+  // A variety, grade or by-product the purchase has but the list hides stays pickable.
+  const withCurrent = (
+    options: { value: string; label: string }[],
+    value: string,
+    label: string | null | undefined,
+  ) =>
+    !value || options.some((o) => o.value === value)
+      ? options
+      : [...options, { value, label: label || value }];
+
+  const supplierOptions = withCurrent(
+    [
+      { value: "", label: "No supplier" },
+      ...suppliers.map((s: any) => ({ value: String(s.id), label: s.name })),
+    ],
+    supplierId,
+    purchase.supplier?.name,
+  );
+  const varietyOptions = [
+    { value: "", label: "Any variety" },
+    ...varieties.map((v: any) => ({ value: v.id, label: v.code })),
+  ];
+  const gradeOptions = [
+    { value: "", label: "No grade" },
+    ...grades.map((g: any) => ({ value: g.id, label: g.code })),
+  ];
+  const byproductOptions = byproductKinds.map((k) => ({ value: k.code, label: k.name }));
+
+  const whatPickers = (l: Line, i: number) => {
+    const saved = purchase.items?.[i];
+    if (kind === "byproduct")
+      return (
+        <Select
+          aria-label={`By-product of line ${i + 1}`}
+          value={l.byproduct_type}
+          onChange={(v) => setLine(i, { byproduct_type: v })}
+          options={withCurrent(byproductOptions, l.byproduct_type, l.byproduct_type)}
+        />
+      );
+    return (
+      <div className="grid grid-cols-2 gap-2">
+        <Select
+          aria-label={`Variety of line ${i + 1}`}
+          value={l.variety_id}
+          onChange={(v) => setLine(i, { variety_id: v })}
+          options={withCurrent(varietyOptions, l.variety_id, saved?.variety_code)}
+        />
+        {kind === "palay" ? (
+          <Select
+            aria-label={`Grade of line ${i + 1}`}
+            value={l.grade_id}
+            onChange={(v) => setLine(i, { grade_id: v })}
+            options={withCurrent(gradeOptions, l.grade_id, saved?.grade_code)}
+          />
+        ) : (
+          <Select
+            aria-label={`Grade of line ${i + 1}`}
+            value={l.grade_name}
+            onChange={(v) => setLine(i, { grade_name: v })}
+            options={MILLED_GRADES.map((g) => ({ value: g, label: gradeLabel(g) }))}
+          />
+        )}
+      </div>
+    );
+  };
+
+  return (
+    <RecordDialog
+      title={`Edit purchase ${purchase.reference_no}`}
+      subtitle="Stock follows the lines you save, and every change goes in the purchase's history."
+      onClose={onClose}
+      busy={save.isPending}
+      testId="edit-purchase"
+      footer={
+        <>
+          <button
+            type="button"
+            className="btn-secondary"
+            onClick={onClose}
+            disabled={save.isPending}
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            className="btn-primary"
+            onClick={() => save.mutate()}
+            disabled={!valid || save.isPending}
+          >
+            {save.isPending ? "Saving…" : "Save changes"}
+          </button>
+        </>
+      }
+    >
+      <div className="space-y-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <label className="block">
+            <span className="block mb-1 text-xs font-medium text-secondary">Date</span>
+            <DatePicker value={date} onChange={setDate} aria-label="Purchase date" />
+          </label>
+          <label className="block">
+            <span className="block mb-1 text-xs font-medium text-secondary">Supplier</span>
+            <Select
+              aria-label="Supplier"
+              value={supplierId}
+              onChange={setSupplierId}
+              options={supplierOptions}
+            />
+          </label>
+          <label className="block">
+            <span className="block mb-1 text-xs font-medium text-secondary">Delivery</span>
+            <Select
+              aria-label="Delivery"
+              value={delivery}
+              onChange={setDelivery}
+              options={withCurrent(DELIVERY[kind], delivery, delivery)}
+            />
+          </label>
+        </div>
+
+        <div>
+          <p className="mb-1.5 text-xs font-medium text-secondary">Lines</p>
+          <div className="space-y-3">
+            {lines.map((l, i) => (
+              <div
+                key={i}
+                className="space-y-2 rounded-lg bg-gray-50 p-3 dark:bg-slate-900/50"
+                data-testid="purchase-line"
+              >
+                <div className="flex items-start gap-2">
+                  <div className="min-w-0 flex-1">{whatPickers(l, i)}</div>
+                  <button
+                    type="button"
+                    className="btn-ghost !p-2"
+                    aria-label={`Remove line ${i + 1}`}
+                    disabled={lines.length === 1}
+                    onClick={() => setLines((ls) => ls.filter((_, j) => j !== i))}
+                  >
+                    <Trash2 size={15} />
+                  </button>
+                </div>
+                <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                  {NUMBERS[kind].map((n) => (
+                    <label key={n.key} className="block">
+                      <span className="block mb-1 text-[11px] text-muted">{n.label}</span>
+                      <input
+                        className="input"
+                        type="number"
+                        min={0}
+                        aria-label={`${n.label} of line ${i + 1}`}
+                        value={l[n.key]}
+                        onChange={(e) => setLine(i, { [n.key]: e.target.value })}
+                      />
+                    </label>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="mt-2 flex items-center justify-between gap-2">
+            <button
+              type="button"
+              className="btn-ghost text-sm"
+              onClick={() => setLines((ls) => [...ls, { ...BLANK[kind] }])}
+            >
+              <Plus size={15} /> Add line
+            </button>
+            <p className="text-sm text-secondary">
+              New total: <span className="font-semibold text-primary">{peso(total)}</span>
+            </p>
+          </div>
+        </div>
+
+        <label className="block">
+          <span className="block mb-1 text-xs font-medium text-secondary">Remarks</span>
+          <textarea
+            className="input min-h-[4rem]"
+            value={remarks}
+            onChange={(e) => setRemarks(e.target.value)}
+          />
+        </label>
+
+        {error && (
+          <p role="alert" className="text-sm text-rose-600 dark:text-rose-400">
+            {typeof error === "string" ? error : "Couldn't save. Check the fields and try again."}
+          </p>
+        )}
+      </div>
+    </RecordDialog>
+  );
+}

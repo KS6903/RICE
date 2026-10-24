@@ -9,6 +9,8 @@ the same rows milling output and Add inventory use.
 
 from __future__ import annotations
 
+import uuid
+from collections.abc import Callable
 from datetime import datetime, timezone
 from decimal import Decimal
 from typing import Any
@@ -16,14 +18,16 @@ from typing import Any
 from sqlalchemy.orm import Session
 
 from ..core.branch_scope import only_viewed
+from ..core.exceptions import NotFoundError, ValidationError
 from ..models.buying import ByproductPurchase, ByproductPurchaseItem, RicePurchase, RicePurchaseItem
 from ..models.milling import ByproductInventory, MilledRiceInventory
 from ..models.reference import RiceVariety
 from ..models.supplier_customer import Supplier
 from ..repositories.inventory import ByproductInventoryRepository, MilledRiceInventoryRepository
 from ..services.base import BaseService
-from ..services.byproduct_kind_service import ByproductKindService
-from ..services.paddy_service import purchase_warehouse
+from ..services.byproduct_kind_service import ByproductKindService, byproduct_name
+from ..services.paddy_service import PURCHASE_FIELDS, purchase_state, purchase_warehouse
+from ..services.record_changes import changed_fields, log_changes, show
 
 Purchase = RicePurchase | ByproductPurchase
 
@@ -77,6 +81,7 @@ class BuyingService(BaseService):
         if isinstance(i, RicePurchaseItem):
             return {
                 "id": i.id,
+                "variety_id": i.variety_id,
                 "variety_code": i.variety.code if i.variety else None,
                 "grade_name": i.grade_name,
                 "sack_count": i.sack_count,
@@ -124,26 +129,38 @@ class BuyingService(BaseService):
         for line in data.items:
             self.assert_company_fk(RiceVariety, line.variety_id, label="Variety", allow_shared=True)
         branch_id = purchase_warehouse(self.db, self.current_user, data.branch_id)
-        company_id = self.current_user.company_id
         with self.transaction():
             purchase = self._header(RicePurchase, "RP", data, branch_id)
             for line in data.items:
                 item = RicePurchaseItem(purchase_id=purchase.id, **line.model_dump())
                 self.db.add(item)
-                stock = self.milled.find_bucket(company_id, branch_id, item.variety_id, item.grade_name)
-                if stock is None:
-                    stock = MilledRiceInventory(
-                        company_id=company_id,
-                        branch_id=branch_id,
-                        variety_id=item.variety_id,
-                        grade_name=item.grade_name,
-                        quantity_kg=Decimal("0"),
-                    )
-                    self.db.add(stock)
-                stock.quantity_kg = (stock.quantity_kg or Decimal("0")) + item.weight_kg
-                self.db.flush()
+                self._move_rice(item, branch_id, 1)
         self.db.refresh(purchase)
         return self.serialize(purchase)
+
+    def edit_rice_purchase(self, purchase_id: uuid.UUID, data) -> dict:
+        """Correct a saved rice purchase (edit power); lines sent replace the old
+        ones, and milled-rice stock follows. Every changed field is logged."""
+        p = self._own(RicePurchase, purchase_id)
+        for line in data.items or []:
+            self.assert_company_fk(RiceVariety, line.variety_id, label="Variety", allow_shared=True)
+        return self._edit(p, data, RicePurchaseItem, self._move_rice, _rice_line, "rice_purchase")
+
+    def _move_rice(self, item: RicePurchaseItem, branch_id: uuid.UUID | None, sign: int) -> None:
+        """Put a rice line's kilos into milled-rice stock (sign 1), or take them out (-1)."""
+        company_id = self.current_user.company_id
+        stock = self.milled.find_bucket(company_id, branch_id, item.variety_id, item.grade_name)
+        if stock is None:
+            stock = MilledRiceInventory(
+                company_id=company_id,
+                branch_id=branch_id,
+                variety_id=item.variety_id,
+                grade_name=item.grade_name,
+                quantity_kg=Decimal("0"),
+            )
+            self.db.add(stock)
+        stock.quantity_kg = (stock.quantity_kg or Decimal("0")) + sign * item.weight_kg
+        self.db.flush()
 
     # ── by-products ───────────────────────────────────────────────────────────
 
@@ -154,24 +171,86 @@ class BuyingService(BaseService):
         """Record a by-product purchase and add its weight to by-product stock — atomically."""
         self.assert_company_fk(Supplier, data.supplier_id, label="Supplier")
         branch_id = purchase_warehouse(self.db, self.current_user, data.branch_id)
-        company_id = self.current_user.company_id
-        kinds = ByproductKindService(self.db, self.current_user)
         with self.transaction():
             purchase = self._header(ByproductPurchase, "BP", data, branch_id)
             for line in data.items:
                 item = ByproductPurchaseItem(purchase_id=purchase.id, **line.model_dump())
                 self.db.add(item)
-                kinds.ensure(item.byproduct_type)
-                stock = self.byproducts.find_bucket(company_id, branch_id, item.byproduct_type)
-                if stock is None:
-                    stock = ByproductInventory(
-                        company_id=company_id,
-                        branch_id=branch_id,
-                        byproduct_type=item.byproduct_type,
-                        quantity_kg=Decimal("0"),
-                    )
-                    self.db.add(stock)
-                stock.quantity_kg = (stock.quantity_kg or Decimal("0")) + item.weight_kg
-                self.db.flush()
+                self._move_byproduct(item, branch_id, 1)
         self.db.refresh(purchase)
         return self.serialize(purchase)
+
+    def edit_byproduct_purchase(self, purchase_id: uuid.UUID, data) -> dict:
+        """Correct a saved by-product purchase (edit power); lines sent replace
+        the old ones, and by-product stock follows. Every changed field is logged."""
+        p = self._own(ByproductPurchase, purchase_id)
+        return self._edit(p, data, ByproductPurchaseItem, self._move_byproduct, _byproduct_line, "byproduct_purchase")
+
+    def _move_byproduct(self, item: ByproductPurchaseItem, branch_id: uuid.UUID | None, sign: int) -> None:
+        """Put a by-product line's kilos into stock (sign 1), or take them out
+        (-1). A by-product new to the mill joins its list."""
+        company_id = self.current_user.company_id
+        if sign > 0:
+            ByproductKindService(self.db, self.current_user).ensure(item.byproduct_type)
+        stock = self.byproducts.find_bucket(company_id, branch_id, item.byproduct_type)
+        if stock is None:
+            stock = ByproductInventory(
+                company_id=company_id,
+                branch_id=branch_id,
+                byproduct_type=item.byproduct_type,
+                quantity_kg=Decimal("0"),
+            )
+            self.db.add(stock)
+        stock.quantity_kg = (stock.quantity_kg or Decimal("0")) + sign * item.weight_kg
+        self.db.flush()
+
+    # ── corrections ───────────────────────────────────────────────────────────
+
+    def _own(self, model: type[Purchase], purchase_id: uuid.UUID) -> Any:
+        p = self.db.get(model, purchase_id)
+        if p is None or p.company_id != self.current_user.company_id:
+            raise NotFoundError("Purchase not found")
+        return p
+
+    def _edit(self, p: Any, data, item_model: type, move: Callable, line_text: Callable, entity_type: str) -> dict:
+        """The correction both kinds share: the header fields sent, and, when
+        lines are sent, the old lines' stock out and the new lines' in, in the
+        purchase's warehouse; then one log row of every changed field."""
+        fields = data.model_dump(exclude_unset=True, exclude={"items"})
+        if "purchase_date" in fields and fields["purchase_date"] is None:
+            raise ValidationError("Give the purchase a date.")
+        self.assert_company_fk(Supplier, fields.get("supplier_id"), label="Supplier")
+        before = purchase_state(p, line_text)
+        with self.transaction():
+            for field, val in fields.items():
+                setattr(p, field, val)
+            if data.items is not None:
+                for old in list(p.items):
+                    move(old, p.branch_id, -1)
+                    p.items.remove(old)
+                for line in data.items:
+                    item = item_model(purchase_id=p.id, **line.model_dump())
+                    self.db.add(item)
+                    move(item, p.branch_id, 1)
+            self.db.flush()
+            self.db.expire(p)
+            log_changes(
+                self.db,
+                user=self.current_user,
+                action=f"{entity_type}.edit",
+                entity_type=entity_type,
+                entity_id=p.id,
+                entity_label=p.reference_no,
+                lines=changed_fields(before, purchase_state(p, line_text), PURCHASE_FIELDS),
+            )
+        self.db.refresh(p)
+        return self.serialize(p)
+
+
+def _rice_line(i: RicePurchaseItem) -> str:
+    what = " ".join(filter(None, [i.variety.code if i.variety else "Any variety", i.grade_name]))
+    return f"{what}, {show(i.sack_count)} sacks of {show(i.kg_per_sack)} kg at ₱{show(i.price_per_sack)}/sack"
+
+
+def _byproduct_line(i: ByproductPurchaseItem) -> str:
+    return f"{byproduct_name(i.byproduct_type)}, {show(i.weight_kg)} kg at ₱{show(i.price_per_kg)}/kg"

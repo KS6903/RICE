@@ -91,6 +91,18 @@ class PurchaseCreate(BaseModel):
     items: list[PurchaseItemIn]
 
 
+class PurchaseEdit(BaseModel):
+    """A correction to a saved palay purchase, by someone with edit power
+    (services/record_changes.py). Only the fields sent change; lines sent
+    replace the old ones, and the palay stock follows."""
+
+    supplier_id: uuid.UUID | None = None
+    purchase_date: date | None = None
+    delivery_type: str | None = Field(None, max_length=20)
+    remarks: str | None = Field(None, max_length=2000)
+    items: list[PurchaseItemIn] | None = Field(None, min_length=1)
+
+
 class PurchaseUpdate(BaseModel):
     """Replaces the old untyped ``body: dict`` on PUT /purchases/{id} — only
     these fields are updatable; anything else fails validation instead of

@@ -58,3 +58,24 @@ class ByproductPurchaseCreate(BaseModel):
     delivery_type: str | None = Field(None, max_length=20)
     remarks: str | None = Field(None, max_length=2000)
     items: list[ByproductPurchaseItemIn] = Field(min_length=1)
+
+
+class RicePurchaseEdit(BaseModel):
+    """A correction to a saved rice purchase, by someone with edit power. Only
+    the fields sent change; lines sent replace the old ones, and stock follows."""
+
+    supplier_id: uuid.UUID | None = None
+    purchase_date: date | None = None
+    delivery_type: str | None = Field(None, max_length=20)
+    remarks: str | None = Field(None, max_length=2000)
+    items: list[RicePurchaseItemIn] | None = Field(None, min_length=1)
+
+
+class ByproductPurchaseEdit(BaseModel):
+    """As RicePurchaseEdit, for a by-product purchase."""
+
+    supplier_id: uuid.UUID | None = None
+    purchase_date: date | None = None
+    delivery_type: str | None = Field(None, max_length=20)
+    remarks: str | None = Field(None, max_length=2000)
+    items: list[ByproductPurchaseItemIn] | None = Field(None, min_length=1)

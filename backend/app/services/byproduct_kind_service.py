@@ -31,6 +31,12 @@ def code_for(name: str) -> str:
     return re.sub(r"[^a-z0-9]+", "_", name.lower()).strip("_")[:CODE_LENGTH].rstrip("_")
 
 
+def byproduct_name(code: str) -> str:
+    """A code's name for a log line: a built-in's, or the code in words. (The
+    current schema's own names need a session; logs keep it simple.)"""
+    return BUILT_IN.get(code) or name_for(code)
+
+
 def name_for(code: str) -> str:
     """A name for a code nobody named: "darak_d1" → "Darak d1"."""
     return code.replace("_", " ").capitalize()

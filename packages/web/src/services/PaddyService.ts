@@ -3,6 +3,7 @@
 // purchase-form → API-payload transform (extracted from PaddyPage so it's
 // unit-testable without HTTP).
 import api from "./api";
+import type { ChangeEntry } from "./SalesService";
 
 export type PurchaseItemForm = {
   variety_id: string;
@@ -22,11 +23,34 @@ export type PurchaseForm = {
   items: PurchaseItemForm[];
 };
 
+/** A correction to a saved purchase (palay, rice or by-products): the
+ *  header, and its lines in the shape the purchase's create takes. */
+export type PurchaseEdit = {
+  supplier_id: string | null;
+  purchase_date: string;
+  delivery_type: string | null;
+  remarks: string | null;
+  items: Record<string, unknown>[];
+};
+
 export class PaddyService {
   constructor(private http = api) {}
 
   listPurchases(): Promise<any[]> {
     return this.http.get("/paddy/purchases").then((r) => r.data);
+  }
+
+  /** Correct a saved palay purchase (edit power); lines sent replace the old. */
+  editPurchase(id: string, body: PurchaseEdit): Promise<any> {
+    return this.http.patch(`/paddy/purchases/${id}`, body).then((r) => r.data);
+  }
+
+  /** Every logged change to one purchase (palay, rice or by-products), newest first. */
+  history(
+    kind: "palay_purchase" | "rice_purchase" | "byproduct_purchase",
+    id: string,
+  ): Promise<ChangeEntry[]> {
+    return this.http.get(`/paddy/history/${kind}/${id}`).then((r) => r.data);
   }
 
   listSuppliers(includeInactive = true): Promise<any[]> {

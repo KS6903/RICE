@@ -1,13 +1,23 @@
 // The left half of a Buy & mill page: what was bought. Each purchase is a row;
-// clicking it opens the full purchase in a popup.
+// clicking it opens the full purchase in a popup, where someone with edit power
+// corrects it and anyone who buys sees its history.
 import { useState, type ReactNode } from "react";
-import { Plus } from "lucide-react";
+import { History, Pencil, Plus } from "lucide-react";
 import { roleLabel } from "@rice-mill/shared";
 import Modal from "../Modal";
 import LoadingRows from "../LoadingRows";
 import { inSeveralWarehouses } from "../PurchaseWarehouse";
 import { peso } from "./money";
 import { STATUS_BADGE, byproductName, gradeLabel, type TradeKind } from "./trade";
+import EditPurchaseDialog from "./EditPurchaseDialog";
+import RecordHistory, { type RecordKind } from "../sales/RecordHistory";
+import { useCanEditSavedRecords } from "../../hooks/useRecordEditor";
+
+const HISTORY_KIND: Record<TradeKind, RecordKind> = {
+  palay: "palay_purchase",
+  rice: "rice_purchase",
+  byproduct: "byproduct_purchase",
+};
 
 export default function PurchaseColumn({
   kind,
@@ -27,6 +37,10 @@ export default function PurchaseColumn({
   loading?: boolean;
 }) {
   const [open, setOpen] = useState<any | null>(null);
+  const [editing, setEditing] = useState<any | null>(null);
+  const [history, setHistory] = useState<any | null>(null);
+  const canCorrect = useCanEditSavedRecords();
+  const canSeeHistory = canCorrect || canBuy;
   const several = inSeveralWarehouses(purchases);
   const total = purchases.reduce((s, p) => s + Number(p.total_amount ?? 0), 0);
 
@@ -93,7 +107,40 @@ export default function PurchaseColumn({
           </ul>
         )}
       </div>
-      {open && <PurchaseDetails kind={kind} purchase={open} onClose={() => setOpen(null)} />}
+      {open && (
+        <PurchaseDetails
+          kind={kind}
+          purchase={open}
+          onClose={() => setOpen(null)}
+          onEdit={
+            canCorrect
+              ? () => {
+                  setEditing(open);
+                  setOpen(null);
+                }
+              : undefined
+          }
+          onHistory={
+            canSeeHistory
+              ? () => {
+                  setHistory(open);
+                  setOpen(null);
+                }
+              : undefined
+          }
+        />
+      )}
+      {editing && (
+        <EditPurchaseDialog kind={kind} purchase={editing} onClose={() => setEditing(null)} />
+      )}
+      {history && (
+        <RecordHistory
+          kind={HISTORY_KIND[kind]}
+          id={history.id}
+          label={history.reference_no}
+          onClose={() => setHistory(null)}
+        />
+      )}
     </section>
   );
 }
@@ -143,10 +190,16 @@ export function PurchaseDetails({
   kind,
   purchase: p,
   onClose,
+  onEdit,
+  onHistory,
 }: {
   kind: TradeKind;
   purchase: any;
   onClose: () => void;
+  /** Correct it (edit power); left out, no Edit button. */
+  onEdit?: () => void;
+  /** Its logged changes; left out, no History button. */
+  onHistory?: () => void;
 }) {
   const cols = LINE_COLUMNS[kind];
   const facts: [string, ReactNode][] = [
@@ -175,6 +228,22 @@ export function PurchaseDetails({
       subtitle={`${p.item_count ?? p.items?.length ?? 0} item(s)`}
       onClose={onClose}
       testId="purchase-details"
+      footer={
+        (onEdit || onHistory) && (
+          <div className="flex justify-end gap-2">
+            {onHistory && (
+              <button type="button" className="btn-secondary" onClick={onHistory}>
+                <History size={15} aria-hidden /> History
+              </button>
+            )}
+            {onEdit && (
+              <button type="button" className="btn-primary" onClick={onEdit}>
+                <Pencil size={15} aria-hidden /> Edit
+              </button>
+            )}
+          </div>
+        )
+      }
     >
       <dl className="grid grid-cols-2 gap-3 sm:grid-cols-3">
         {facts.map(([label, value]) => (

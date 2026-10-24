@@ -6,6 +6,7 @@ DB access, and transaction handling live in the service/repository layers.
 """
 
 import uuid
+from typing import Literal
 
 from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.orm import Session
@@ -20,19 +21,27 @@ from ..repositories.paddy import (
     RiceVarietyRepository,
     SupplierRepository,
 )
-from ..schemas.buying import ByproductPurchaseCreate, RicePurchaseCreate
+from ..schemas.buying import (
+    ByproductPurchaseCreate,
+    ByproductPurchaseEdit,
+    RicePurchaseCreate,
+    RicePurchaseEdit,
+)
 from ..schemas.paddy import (
     GradeCreate,
     PurchaseCreate,
+    PurchaseEdit,
     PurchaseUpdate,
     SupplierCreate,
     SupplierUpdate,
     VarietyCreate,
     VarietyUpdate,
 )
+from ..services.activity_service import ActivityService
 from ..services.buying_service import BuyingService
 from ..services.inventory_service import InventoryService
 from ..services.paddy_service import PaddyService
+from ..services.record_changes import require_record_editor
 from .inventory import get_inventory_service
 
 router = APIRouter(
@@ -161,6 +170,12 @@ def update_purchase(purchase_id: uuid.UUID, body: PurchaseUpdate, svc: PaddyServ
     return svc.update_purchase(purchase_id, body)
 
 
+@router.patch("/purchases/{purchase_id}", dependencies=[Depends(require_record_editor)])
+def edit_purchase(purchase_id: uuid.UUID, body: PurchaseEdit, svc: PaddyService = Depends(get_paddy_service)):
+    """Correct a saved purchase (edit power), every change logged."""
+    return svc.serialize_purchase(svc.edit_purchase(purchase_id, body))
+
+
 # ── Inventory ─────────────────────────────────────────────────────────────────
 
 
@@ -203,6 +218,13 @@ def create_rice_purchase(body: RicePurchaseCreate, svc: BuyingService = Depends(
     return svc.create_rice_purchase(body)
 
 
+@router.patch("/rice-purchases/{purchase_id}", dependencies=[Depends(require_record_editor)])
+def edit_rice_purchase(
+    purchase_id: uuid.UUID, body: RicePurchaseEdit, svc: BuyingService = Depends(get_buying_service)
+):
+    return svc.edit_rice_purchase(purchase_id, body)
+
+
 @router.get("/rice-stock")
 def get_rice_stock(svc: InventoryService = Depends(get_inventory_service)):
     """Milled rice on hand, for the Rice page (same rows as Inventory shows)."""
@@ -221,6 +243,24 @@ def list_byproduct_purchases(skip: int = 0, limit: int = 50, svc: BuyingService 
 )
 def create_byproduct_purchase(body: ByproductPurchaseCreate, svc: BuyingService = Depends(get_buying_service)):
     return svc.create_byproduct_purchase(body)
+
+
+@router.patch("/byproduct-purchases/{purchase_id}", dependencies=[Depends(require_record_editor)])
+def edit_byproduct_purchase(
+    purchase_id: uuid.UUID, body: ByproductPurchaseEdit, svc: BuyingService = Depends(get_buying_service)
+):
+    return svc.edit_byproduct_purchase(purchase_id, body)
+
+
+@router.get("/history/{entity_type}/{entity_id}")
+def purchase_history(
+    entity_type: Literal["palay_purchase", "rice_purchase", "byproduct_purchase"],
+    entity_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    """Every logged change to one purchase, newest first."""
+    return ActivityService(db, current_user).list_for_entity(current_user.company_id, entity_type, entity_id)
 
 
 @router.get("/byproduct-stock")

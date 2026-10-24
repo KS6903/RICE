@@ -2,16 +2,36 @@ import { useQuery } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { History } from "lucide-react";
 import RecordDialog from "./RecordDialog";
-import { salesService, type RecordKind } from "../../services/SalesService";
+import { salesService, type ChangeEntry } from "../../services/SalesService";
+import { paddyService } from "../../services/PaddyService";
+import { costsService } from "../../services/CostsService";
 
-const KIND_NAME: Record<RecordKind, string> = {
-  sales_order: "order",
-  invoice: "invoice",
-  customer: "customer",
+/** The saved records whose corrections are logged (edit power). */
+export type RecordKind =
+  | "sales_order"
+  | "invoice"
+  | "customer"
+  | "palay_purchase"
+  | "rice_purchase"
+  | "byproduct_purchase"
+  | "expense";
+
+/** Each kind in words, and where its history comes from. */
+const KINDS: Record<RecordKind, { noun: string; load: (id: string) => Promise<ChangeEntry[]> }> = {
+  sales_order: { noun: "order", load: (id) => salesService.history("sales_order", id) },
+  invoice: { noun: "invoice", load: (id) => salesService.history("invoice", id) },
+  customer: { noun: "customer", load: (id) => salesService.history("customer", id) },
+  palay_purchase: { noun: "purchase", load: (id) => paddyService.history("palay_purchase", id) },
+  rice_purchase: { noun: "purchase", load: (id) => paddyService.history("rice_purchase", id) },
+  byproduct_purchase: {
+    noun: "purchase",
+    load: (id) => paddyService.history("byproduct_purchase", id),
+  },
+  expense: { noun: "expense", load: (id) => costsService.history(id) },
 };
 
-/** Every logged change to one order, invoice or customer: who, when, and each
- *  field from its old value to its new one. */
+/** Every logged change to one saved record: who, when, and each field from its
+ *  old value to its new one. */
 export default function RecordHistory({
   kind,
   id,
@@ -25,13 +45,13 @@ export default function RecordHistory({
 }) {
   const q = useQuery({
     queryKey: ["record-history", kind, id],
-    queryFn: () => salesService.history(kind, id),
+    queryFn: () => KINDS[kind].load(id),
     staleTime: 0,
   });
   return (
     <RecordDialog
       title={`History of ${label}`}
-      subtitle={`Every change made to this ${KIND_NAME[kind]}, newest first.`}
+      subtitle={`Every change made to this ${KINDS[kind].noun}, newest first.`}
       onClose={onClose}
       testId="record-history"
     >
@@ -41,7 +61,7 @@ export default function RecordHistory({
         <div className="py-6 text-center">
           <History size={22} className="mx-auto text-muted" aria-hidden />
           <p className="mt-2 text-sm text-secondary">
-            No changes yet. Edits to this {KIND_NAME[kind]} show here, field by field.
+            No changes yet. Edits to this {KINDS[kind].noun} show here, field by field.
           </p>
         </div>
       )}

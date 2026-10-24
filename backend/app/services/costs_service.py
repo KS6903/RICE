@@ -7,11 +7,12 @@ from typing import Any, Sequence
 
 from sqlalchemy.orm import Session
 
-from ..core.exceptions import BadRequestError, ConflictError, NotFoundError
+from ..core.exceptions import BadRequestError, ConflictError, NotFoundError, ValidationError
 from ..models.costs import Expense, ExpenseCategory
 from ..models.milling import MillingBatch
 from ..repositories.costs import ExpenseCategoryRepository, ExpenseRepository
 from ..services.base import BaseService
+from ..services.record_changes import changed_fields, log_changes
 
 
 class CostsService(BaseService):
@@ -100,6 +101,39 @@ class CostsService(BaseService):
     def list_expenses(self, *, skip: int = 0, limit: int = 100) -> Sequence[Expense]:
         return self.expenses.list_for_company(self.current_user.company_id, skip=skip, limit=limit)
 
+    def edit_expense(self, expense_id: uuid.UUID, data) -> Expense:
+        """Correct a saved expense (edit power). Every changed field is logged."""
+        e = self.db.get(Expense, expense_id)
+        if e is None or e.company_id != self.current_user.company_id:
+            raise NotFoundError("Expense not found")
+        fields = data.model_dump(exclude_unset=True)
+        for key, message in (
+            ("category_id", "Pick a category."),
+            ("expense_date", "Give the expense a date."),
+            ("amount", "Give the amount."),
+        ):
+            if key in fields and fields[key] is None:
+                raise ValidationError(message)
+        self.assert_company_fk(ExpenseCategory, fields.get("category_id"), label="Category", allow_shared=True)
+        self.assert_company_fk(MillingBatch, fields.get("batch_id"), label="Batch")
+        before = _expense_state(e)
+        with self.transaction():
+            for field, val in fields.items():
+                setattr(e, field, val)
+            self.db.flush()
+            self.db.expire(e)
+            log_changes(
+                self.db,
+                user=self.current_user,
+                action="expense.edit",
+                entity_type="expense",
+                entity_id=e.id,
+                entity_label=_expense_label(e),
+                lines=changed_fields(before, _expense_state(e), EXPENSE_FIELDS),
+            )
+        self.db.refresh(e)
+        return e
+
     def create_expense(self, data) -> Expense:
         # IDOR guards: the category must be ours or shared; an attached milling
         # batch must be ours.
@@ -115,6 +149,32 @@ class CostsService(BaseService):
             self.expenses.add(expense)
         self.db.refresh(expense)
         return expense
+
+
+EXPENSE_FIELDS = {
+    "category": "Category",
+    "expense_date": "Date",
+    "amount": "Amount",
+    "description": "Description",
+    "reference_no": "Reference no.",
+    "batch": "Batch",
+}
+
+
+def _expense_state(e: Expense) -> dict:
+    return {
+        "category": e.category.name if e.category else None,
+        "expense_date": e.expense_date,
+        "amount": e.amount,
+        "description": e.description,
+        "reference_no": e.reference_no,
+        "batch": e.batch.batch_no if e.batch else None,
+    }
+
+
+def _expense_label(e: Expense) -> str:
+    """ "Fuel on 2026-10-24", as the Activity Log names an expense."""
+    return f"{e.category.name if e.category else 'Expense'} on {e.expense_date.isoformat()}"
 
 
 def _category_out(cat: ExpenseCategory, expense_count: int) -> dict:

@@ -1,5 +1,6 @@
 // CostsService — typed API client for the costs/expenses domain (Phase F).
 import api from "./api";
+import type { ChangeEntry } from "./SalesService";
 
 export type ExpenseForm = {
   category_id: string;
@@ -10,11 +11,30 @@ export type ExpenseForm = {
   reference_no: string;
 };
 
+export type ExpenseEdit = {
+  category_id: string;
+  batch_id: string | null;
+  expense_date: string;
+  amount: number;
+  description: string | null;
+  reference_no: string | null;
+};
+
 export class CostsService {
   constructor(private http = api) {}
 
   listExpenses(): Promise<any[]> {
     return this.http.get("/costs/expenses").then((r) => r.data);
+  }
+
+  /** Correct a saved expense (edit power). */
+  editExpense(id: string, body: ExpenseEdit): Promise<any> {
+    return this.http.patch(`/costs/expenses/${id}`, body).then((r) => r.data);
+  }
+
+  /** Every logged change to one expense, newest first. */
+  history(id: string): Promise<ChangeEntry[]> {
+    return this.http.get(`/costs/history/expense/${id}`).then((r) => r.data);
   }
 
   listCategories(): Promise<any[]> {

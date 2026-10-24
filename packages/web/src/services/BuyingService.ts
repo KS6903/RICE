@@ -2,6 +2,7 @@
 // palay purchase's siblings (see PaddyService). Holds the form → payload
 // transforms so they're testable without HTTP.
 import api from "./api";
+import type { PurchaseEdit } from "./PaddyService";
 
 export type RiceLineForm = {
   variety_id: string;
@@ -79,6 +80,16 @@ export class BuyingService {
     return this.http
       .post("/paddy/byproduct-purchases", BuyingService.toByproductPayload(form))
       .then((r) => r.data);
+  }
+
+  /** Correct a saved rice purchase (edit power); lines sent replace the old. */
+  editRicePurchase(id: string, body: PurchaseEdit): Promise<any> {
+    return this.http.patch(`/paddy/rice-purchases/${id}`, body).then((r) => r.data);
+  }
+
+  /** Correct a saved by-product purchase (edit power); lines sent replace the old. */
+  editByproductPurchase(id: string, body: PurchaseEdit): Promise<any> {
+    return this.http.patch(`/paddy/byproduct-purchases/${id}`, body).then((r) => r.data);
   }
 
   listByproductStock(): Promise<any[]> {

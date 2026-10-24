@@ -38,6 +38,7 @@ from ..repositories.paddy import (
     SupplierRepository,
 )
 from ..services.base import BaseService
+from ..services.record_changes import changed_fields, log_changes, show
 from ..services.canva_color import pick_unused_color
 
 
@@ -170,7 +171,9 @@ class PaddyService(BaseService):
         data["items"] = [
             {
                 "id": i.id,
+                "variety_id": i.variety_id,
                 "variety_code": i.variety.code if i.variety else None,
+                "grade_id": i.grade_id,
                 "grade_code": i.grade.code if i.grade else None,
                 "gross_weight_kg": i.gross_weight_kg,
                 "tare_weight_kg": i.tare_weight_kg,
@@ -225,6 +228,46 @@ class PaddyService(BaseService):
                 self._apply_inventory_movement(item, "in", str(purchase.id), branch_id)
         self.db.refresh(purchase)
         return purchase
+
+    def edit_purchase(self, purchase_id: uuid.UUID, data) -> PalayPurchase:
+        """Correct a saved purchase (edit power). Lines sent replace the old
+        ones: the old lines' palay leaves the purchase's warehouse and the new
+        ones' comes in. Every changed field is logged."""
+        p = self.get_purchase(purchase_id)
+        fields = data.model_dump(exclude_unset=True, exclude={"items"})
+        if "purchase_date" in fields and fields["purchase_date"] is None:
+            raise ValidationError("Give the purchase a date.")
+        self.assert_company_fk(Supplier, fields.get("supplier_id"), label="Supplier")
+        for item_data in data.items or []:
+            self.assert_company_fk(RiceVariety, item_data.variety_id, label="Variety", allow_shared=True)
+            self.assert_company_fk(QualityGrade, item_data.grade_id, label="Grade", allow_shared=True)
+        before = _purchase_state(p)
+        with self.transaction():
+            for field, val in fields.items():
+                setattr(p, field, val)
+            if data.items is not None:
+                for old in list(p.items):
+                    self._apply_inventory_movement(old, "out", str(p.id), p.branch_id)
+                    p.items.remove(old)
+                for item_data in data.items:
+                    item = PalayPurchaseItem(purchase_id=p.id, **item_data.model_dump())
+                    item.cavan_count = (item.gross_weight_kg - item.tare_weight_kg) / 50
+                    self.db.add(item)
+                    self.db.flush()
+                    self._apply_inventory_movement(item, "in", str(p.id), p.branch_id)
+            self.db.flush()
+            self.db.expire(p)
+            log_changes(
+                self.db,
+                user=self.current_user,
+                action="palay_purchase.edit",
+                entity_type="palay_purchase",
+                entity_id=p.id,
+                entity_label=p.reference_no,
+                lines=changed_fields(before, _purchase_state(p), PURCHASE_FIELDS),
+            )
+        self.db.refresh(p)
+        return p
 
     def update_purchase(self, purchase_id: uuid.UUID, body) -> PalayPurchase:
         p = self.purchases.get_for_company(purchase_id, self.current_user.company_id)
@@ -302,6 +345,40 @@ class PaddyService(BaseService):
 
 
 # ── module-level helpers ──────────────────────────────────────────────────────
+
+# What an edit logs of a purchase (palay, rice or by-products), old to new.
+PURCHASE_FIELDS = {
+    "supplier": "Supplier",
+    "purchase_date": "Date",
+    "delivery_type": "Delivery",
+    "remarks": "Remarks",
+    "items": "Lines",
+}
+
+
+def purchase_state(p: Any, line_text: Any) -> dict[str, Any]:
+    """A purchase as its edit log compares it: the header, and its lines in
+    words, one string."""
+    return {
+        "supplier": p.supplier.name if p.supplier else None,
+        "purchase_date": p.purchase_date,
+        "delivery_type": p.delivery_type,
+        "remarks": p.remarks,
+        "items": "; ".join(line_text(i) for i in p.items),
+    }
+
+
+def _palay_line(i: PalayPurchaseItem) -> str:
+    what = " ".join(filter(None, [i.variety.code if i.variety else "Any variety", i.grade.code if i.grade else None]))
+    parts = [f"{show(i.gross_weight_kg)} kg gross", f"{show(i.tare_weight_kg)} kg tare"]
+    if i.moisture_content_pct is not None:
+        parts.append(f"{show(i.moisture_content_pct)}% moisture")
+    parts.append(f"₱{show(i.price_per_cavan)}/cavan")
+    return f"{what}, {', '.join(parts)}"
+
+
+def _purchase_state(p: PalayPurchase) -> dict[str, Any]:
+    return purchase_state(p, _palay_line)
 
 
 def purchase_warehouse(db: Session, current_user: Any, branch_id: uuid.UUID | None) -> uuid.UUID | None:
