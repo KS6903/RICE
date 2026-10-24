@@ -25,7 +25,7 @@ from ..core.cookies import (
 from ..core.csrf import enforce_csrf
 from ..core.database import get_db
 from ..core.exceptions import UnauthorizedError
-from ..core.ratelimit import AUTH_RATE_LIMIT, limiter
+from ..core.ratelimit import AUTH_RATE_LIMIT, client_ip, limiter
 from ..core.security import get_access_token_payload, get_current_user
 from ..schemas.auth import (
     BrowserAuthResponse,
@@ -97,7 +97,7 @@ def _complete_auth(request: Request, response: Response, tokens: TokenResponse):
 
 
 def get_public_auth_service(request: Request, db: Session = Depends(get_db)) -> AuthService:
-    return AuthService(db, client=request.headers.get("user-agent"))
+    return AuthService(db, client=request.headers.get("user-agent"), ip=client_ip(request))
 
 
 def get_auth_service(
@@ -105,7 +105,7 @@ def get_auth_service(
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user),
 ) -> AuthService:
-    return AuthService(db, current_user, client=request.headers.get("user-agent"))
+    return AuthService(db, current_user, client=request.headers.get("user-agent"), ip=client_ip(request))
 
 
 # ── Unauthenticated ──────────────────────────────────────────────────────────

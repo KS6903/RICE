@@ -32,6 +32,39 @@ def test_list_shows_current_session_with_device_label(client, seed_owner):
     assert len(sessions) == 1
     assert sessions[0]["current"] is True
     assert sessions[0]["client"] == "Desktop app"
+    assert sessions[0]["device_type"] == "Desktop app"
+    # The desktop app keeps its sign-in itself, not in browser cookies.
+    assert sessions[0]["cookies"] == []
+
+
+PHONE = (
+    "Mozilla/5.0 (Linux; Android 14; SM-S918B) AppleWebKit/537.36 (KHTML, like Gecko) "
+    "Chrome/141.0.0.0 Mobile Safari/537.36"
+)
+
+
+def test_each_session_shows_its_device_ip_and_cookies(client, seed_owner):
+    res = client.post(
+        "/api/auth/login",
+        data={"username": "owner", "password": "Password123"},
+        headers={**NATIVE_HEADER, "User-Agent": PHONE},
+    )
+    assert res.status_code == 200, res.text
+    client.cookies.clear()
+
+    (s,) = client.get("/api/auth/sessions", headers=_auth(res.json())).json()
+    assert (s["device_type"], s["device_name"], s["browser"], s["os"]) == (
+        "Phone",
+        "SM-S918B",
+        "Chrome 141",
+        "Android 14",
+    )
+    assert s["user_agent"] == PHONE
+    # Starlette's TestClient connects as "testclient".
+    assert s["ip_address"] == s["signed_in_ip"] == "testclient"
+    assert s["signed_in_at"] <= s["last_active"]
+    assert [c["name"] for c in s["cookies"]] == ["access_token", "refresh_token", "csrf_token"]
+    assert s["cookies"][1]["expires_at"] == s["expires_at"]
 
 
 def test_multiple_logins_listed_then_revoke_one(client, seed_owner):

@@ -57,6 +57,7 @@ import TotpSetup from "../components/TotpSetup";
 import DataExport from "../components/DataExport";
 import Select from "../components/Select";
 import ConfirmDialog from "../components/ConfirmDialog";
+import DeviceSessionCard from "../components/DeviceSessionCard";
 import type { ActivityRow } from "../components/activity/format";
 import { Trash2, RotateCcw, Eye, EyeOff } from "lucide-react";
 
@@ -2924,13 +2925,6 @@ function SessionsTab() {
 
   const sessions = q.data ?? [];
   const hasOthers = sessions.some((s) => !s.current);
-  const fmt = (iso: string) => {
-    try {
-      return new Date(iso).toLocaleString();
-    } catch {
-      return iso;
-    }
-  };
 
   return (
     <div className="card max-w-2xl space-y-5">
@@ -2941,7 +2935,8 @@ function SessionsTab() {
         <div>
           <h3 className="text-lg font-bold text-primary">Devices &amp; sessions</h3>
           <p className="text-sm text-secondary">
-            Where you&apos;re signed in. Revoke anything you don&apos;t recognize.
+            Every device signed in to your account: what it is, its IP address, and the cookies it
+            keeps. Revoke anything you don&apos;t recognize.
           </p>
         </div>
       </div>
@@ -2953,31 +2948,12 @@ function SessionsTab() {
       ) : (
         <div className="space-y-2">
           {sessions.map((s) => (
-            <div
+            <DeviceSessionCard
               key={s.id}
-              className="flex items-center justify-between gap-3 px-4 py-3 rounded-xl ring-1 ring-inset ring-slate-500/20 bg-slate-500/5"
-            >
-              <div className="min-w-0">
-                <p className="font-semibold text-primary flex items-center gap-2">
-                  {s.client}
-                  {s.current && (
-                    <span className="text-xs font-bold px-1.5 py-0.5 rounded-md bg-emerald-500/15 text-emerald-700 dark:text-emerald-300">
-                      This device
-                    </span>
-                  )}
-                </p>
-                <p className="text-xs text-muted">Last active {fmt(s.last_active)}</p>
-              </div>
-              {!s.current && (
-                <button
-                  onClick={() => revokeOne.mutate(s.id)}
-                  disabled={revokeOne.isPending}
-                  className="shrink-0 text-sm font-semibold text-rose-600 dark:text-rose-400 hover:opacity-80"
-                >
-                  Revoke
-                </button>
-              )}
-            </div>
+              session={s}
+              onRevoke={s.current ? undefined : () => revokeOne.mutate(s.id)}
+              revoking={revokeOne.isPending}
+            />
           ))}
         </div>
       )}

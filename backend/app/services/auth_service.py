@@ -27,7 +27,9 @@ from sqlalchemy.orm import Session, joinedload
 from ..core import legal as legal_docs
 from ..core import provisioning, turnstile
 from ..core.config import settings
+from ..core.cookies import describe_session_cookies
 from ..core.crypto import decrypt_str, encrypt_str
+from ..core.devices import describe_device
 from ..core.email import send_account_email
 from ..core.exceptions import (
     AppException,
@@ -203,11 +205,12 @@ def _lockout_error(state: LockoutState) -> TooManyRequestsError:
 
 
 class AuthService(BaseService):
-    def __init__(self, db: Session, current_user: Any = None, client: str | None = None) -> None:
+    def __init__(self, db: Session, current_user: Any = None, client: str | None = None, ip: str | None = None) -> None:
         super().__init__(db, current_user)
-        # Raw User-Agent of the request that constructed this service; recorded on
-        # any AuthSession it creates so the user can recognize their devices.
+        # Raw User-Agent and IP of the request that constructed this service;
+        # recorded on any AuthSession it creates so the user can recognize their devices.
         self._client = client
+        self._ip = ip
 
     @staticmethod
     def _validate_signup_invite(invite_code: str | None) -> None:
@@ -245,6 +248,8 @@ class AuthService(BaseService):
             family_id=family_id or uuid.uuid4(),
             user_id=user.id,
             client=_client_label(self._client),
+            ip_address=self._ip[:45] if self._ip else None,
+            user_agent=self._client[:512] if self._client else None,
             # Rotation preserves the original family's absolute expiry rather
             # than extending a stolen refresh token forever.
             expires_at=family_expires_at or now_utc() + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS),
@@ -744,16 +749,39 @@ class AuthService(BaseService):
             .order_by(AuthSession.created_at.desc())
             .all()
         )
-        return [
-            {
-                "id": str(r.family_id),
-                "client": r.client or "Unknown device",
-                "last_active": r.created_at.isoformat(),
-                "expires_at": r.expires_at.isoformat(),
-                "current": current_sid is not None and str(r.family_id) == current_sid,
-            }
-            for r in rows
-        ]
+        # Each family's first row is the sign-in itself; the live row is the
+        # latest refresh, so it says where the device was last used.
+        firsts: dict[uuid.UUID, AuthSession] = {}
+        if rows:
+            chain = (
+                self.db.query(AuthSession)
+                .filter(AuthSession.family_id.in_({r.family_id for r in rows}))
+                .order_by(AuthSession.created_at.asc())
+                .all()
+            )
+            for r in chain:
+                firsts.setdefault(r.family_id, r)
+        sessions: list[dict] = []
+        for r in rows:
+            first = firsts.get(r.family_id, r)
+            desktop = "Electron" in (r.user_agent or "") or r.client == "Desktop app"
+            sessions.append(
+                {
+                    "id": str(r.family_id),
+                    "client": r.client or "Unknown device",
+                    **describe_device(r.user_agent),
+                    "user_agent": r.user_agent,
+                    "ip_address": r.ip_address,
+                    "signed_in_ip": first.ip_address,
+                    "signed_in_at": first.created_at.isoformat(),
+                    "last_active": r.created_at.isoformat(),
+                    "expires_at": r.expires_at.isoformat(),
+                    "current": current_sid is not None and str(r.family_id) == current_sid,
+                    # The desktop app holds its tokens itself, not in browser cookies.
+                    "cookies": [] if desktop else describe_session_cookies(r.expires_at),
+                }
+            )
+        return sessions
 
     def revoke_session(self, family_id: uuid.UUID) -> dict:
         """Revoke one of the user's own sessions (e.g. a lost device). Another

@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import hashlib
 import time
+from datetime import datetime
 
 import jwt
 from fastapi import Response
@@ -110,6 +111,41 @@ def set_auth_cookies(response: Response, *, access_token: str, refresh_token: st
         samesite="strict",
         domain=settings.COOKIE_DOMAIN,
     )
+
+
+def describe_session_cookies(expires_at: datetime) -> list[dict]:
+    """The cookies a signed-in browser holds for one session, as set_auth_cookies
+    sets them: for Settings > Devices, so people can see what's kept and why."""
+    common = {"secure": settings.COOKIE_SECURE, "same_site": "Strict"}
+    return [
+        {
+            "name": ACCESS_COOKIE,
+            "purpose": "Proves it's you on each request.",
+            "lasts": f"{settings.ACCESS_TOKEN_EXPIRE_MINUTES} minutes, renewed while you use the app",
+            "expires_at": None,
+            "http_only": True,
+            "path": "/",
+            **common,
+        },
+        {
+            "name": REFRESH_COOKIE,
+            "purpose": "Keeps this device signed in.",
+            "lasts": None,
+            "expires_at": expires_at.isoformat(),
+            "http_only": True,
+            "path": REFRESH_COOKIE_PATH,
+            **common,
+        },
+        {
+            "name": CSRF_COOKIE,
+            "purpose": "Stops other websites from sending requests as you.",
+            "lasts": None,
+            "expires_at": expires_at.isoformat(),
+            "http_only": False,
+            "path": "/",
+            **common,
+        },
+    ]
 
 
 def clear_auth_cookies(response: Response) -> None:

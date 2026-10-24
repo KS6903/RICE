@@ -10,6 +10,38 @@ export type UpdateProfileRequest = {
   mfa_code?: string;
 };
 
+/** A cookie a signed-in browser keeps for one session (Settings > Devices). */
+export type SessionCookie = {
+  name: string;
+  purpose: string;
+  /** How long it lasts when it renews itself, e.g. "15 minutes, renewed while you use the app". */
+  lasts: string | null;
+  expires_at: string | null;
+  http_only: boolean;
+  secure: boolean;
+  same_site: string;
+  path: string;
+};
+
+/** One signed-in device. Sessions from before device details were kept have
+ *  no user_agent or IP. */
+export type DeviceSession = {
+  id: string;
+  client: string;
+  device_type: "Phone" | "Tablet" | "Computer" | "Desktop app" | "Unknown";
+  device_name: string | null;
+  browser: string | null;
+  os: string | null;
+  user_agent: string | null;
+  ip_address: string | null;
+  signed_in_ip: string | null;
+  signed_in_at: string;
+  last_active: string;
+  expires_at: string;
+  current: boolean;
+  cookies: SessionCookie[];
+};
+
 export class AuthService {
   constructor(private http = api) {}
 
@@ -134,9 +166,7 @@ export class AuthService {
 
   // ── Active sessions / devices ───────────────────────────────────────────────
 
-  sessions(): Promise<
-    { id: string; client: string; last_active: string; expires_at: string; current: boolean }[]
-  > {
+  sessions(): Promise<DeviceSession[]> {
     return this.http.get("/auth/sessions").then((r) => r.data);
   }
 

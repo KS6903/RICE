@@ -33,3 +33,7 @@ class AuthSession(Base):
     replaced_by: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True))
     # Coarse client info for the user's "active sessions" view / audit. Optional.
     client: Mapped[str | None] = mapped_column(String(255))
+    # The request that made this row (the login, then each refresh): shown to the
+    # user in Settings > Devices so they can tell their own devices apart.
+    ip_address: Mapped[str | None] = mapped_column(String(45))
+    user_agent: Mapped[str | None] = mapped_column(String(512))
