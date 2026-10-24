@@ -63,7 +63,7 @@ class RoleAccessService(BaseService):
             .where(User.company_id == company.id, User.custom_role_id.is_not(None), User.is_active.is_(True))
             .group_by(User.custom_role_id)
         )
-        return {role_id: count for role_id, count in rows}
+        return {role_id: count for role_id, count in rows if role_id is not None}
 
     def _view(self, company: Company) -> dict:
         """Every role's level on every page as it stands now: the built-in ones

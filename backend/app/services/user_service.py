@@ -15,9 +15,8 @@ from ..core.access_policy import access_for_role, access_for_user, custom_role_a
 from ..core.exceptions import BadRequestError, FeatureRequiredError, NotFoundError, PermissionDeniedError
 from ..core.passwords import validate_password_strength
 from ..core.security import hash_password
-from ..models.company import Branch
+from ..models.company import Branch, Company
 from ..models.subscription import Subscription
-from ..models.company import Company
 from ..models.user import CompanyRole, Role, User
 from ..repositories.users import UserRepository
 from ..schemas.users import UserResponse
@@ -239,28 +238,29 @@ class UserService(BaseService):
             raise NotFoundError("User not found")
         if data.role_id is not None and data.custom_role_id is not None:
             raise BadRequestError("Choose one role.")
-        chosen = None
+        # The role being given, when it's a change: the edit form always sends the role.
+        change: _Chosen | None = None
         if data.role_id is not None or data.custom_role_id is not None:
             chosen = self._chosen(data.role_id, data.custom_role_id)
-        role_changes = chosen is not None and (
-            (chosen.role is not None and (user.custom_role_id is not None or chosen.role.id != user.role_id))
-            or (chosen.custom is not None and chosen.custom.id != user.custom_role_id)
-        )
+            if (chosen.role is not None and (user.custom_role_id is not None or chosen.role.id != user.role_id)) or (
+                chosen.custom is not None and chosen.custom.id != user.custom_role_id
+            ):
+                change = chosen
 
         # Your own account can't be removed, and you can't change your own role
         # (an owner demoting themselves could leave the mill without one).
         if user.id == self.current_user.id:
             if data.is_active is False:
                 raise BadRequestError("You can't remove your own account.")
-            if role_changes:
+            if change is not None:
                 raise BadRequestError("You can't change your own role.")
 
         # Owners (shown as "Boss") outrank everyone: only an owner can edit or
         # remove an owner, or make someone an owner; and nobody else changes
         # someone who can open more than they can, or gives a role that does.
         self._assert_may_manage(user)
-        if role_changes:
-            self._assert_may_give(chosen)
+        if change is not None:
+            self._assert_may_give(change)
 
         # Restoring a removed user takes a seat again.
         if data.is_active is True and not user.is_active:
@@ -271,8 +271,8 @@ class UserService(BaseService):
         was_active = user.is_active
         # Becoming a Boss or an Admin is confirmed like creating one. An unchanged
         # role (the edit form always sends it) is not.
-        if role_changes and self._needs_confirming(chosen):
-            self._confirm_actor(data, f"Made {user.username} a {chosen.name}")
+        if change is not None and self._needs_confirming(change):
+            self._confirm_actor(data, f"Made {user.username} a {change.name}")
         # Sent blank, the email is taken off; left out, it stays as it is.
         new_email = _clean_email(data.email) if data.email is not None else user.email
         email_changed = data.email is not None and (new_email or "").lower() != (user.email or "").strip().lower()
@@ -285,10 +285,10 @@ class UserService(BaseService):
                 setattr(user, field, val)
             if email_changed:
                 user.email = new_email
-            if role_changes:
+            if change is not None:
                 # One or the other: a built-in role, or one the Boss made up.
-                user.role_id = chosen.role.id if chosen.role is not None else None
-                user.custom_role_id = chosen.custom.id if chosen.custom is not None else None
+                user.role_id = change.role.id if change.role is not None else None
+                user.custom_role_id = change.custom.id if change.custom is not None else None
             if email_changed:
                 # A new address is unproven until its owner confirms it, here as
                 # on the profile page: a verified email is what lets an owner load
@@ -300,7 +300,7 @@ class UserService(BaseService):
                 self._log(user, "user.remove")
             elif not was_active and data.is_active is True:
                 self._log(user, "user.restore")
-            if role_changes:
-                self._log(user, "user.role_change", f"{old_role or 'none'} → {chosen.name}")
+            if change is not None:
+                self._log(user, "user.role_change", f"{old_role or 'none'} → {change.name}")
         self.db.refresh(user)
         return self._safe(user)

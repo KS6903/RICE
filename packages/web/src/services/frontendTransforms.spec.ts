@@ -11,8 +11,8 @@ describe("UsersService.toCreatePayload", () => {
       password: "secret123",
       role_id: "3",
     });
-    expect(out.role_id).toBe(3);
-    expect(out.username).toBe("u");
+    // A built-in role goes as its number (a made-up one under custom_role_id).
+    expect(out).toMatchObject({ role_id: 3, username: "u" });
   });
 });
 
