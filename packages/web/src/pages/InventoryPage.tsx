@@ -19,6 +19,7 @@ import {
   Plus,
 } from "lucide-react";
 import NewWarehouseView from "../components/warehouse/NewWarehouseView";
+import LoadingRows from "../components/LoadingRows";
 import InventoryDetailDrawer from "../components/inventory/InventoryDetailDrawer";
 import WarehousePicker from "../components/inventory/WarehousePicker";
 import AddInventoryModal from "../components/inventory/AddInventoryModal";
@@ -102,15 +103,15 @@ export default function InventoryPage() {
     queryKey: ["branches"],
     queryFn: () => inventoryService.getBranches(),
   });
-  const { data: milled = [] } = useQuery<any[]>({
+  const { data: milled = [], isLoading: milledLoading } = useQuery<any[]>({
     queryKey: ["milled-rice", branchFilter],
     queryFn: () => inventoryService.getMilledRice(branchFilter),
   });
-  const { data: byproducts = [] } = useQuery<any[]>({
+  const { data: byproducts = [], isLoading: byproductsLoading } = useQuery<any[]>({
     queryKey: ["byproducts", branchFilter],
     queryFn: () => inventoryService.getByproducts(branchFilter),
   });
-  const { data: palay = [] } = useQuery<any[]>({
+  const { data: palay = [], isLoading: palayLoading } = useQuery<any[]>({
     queryKey: ["palay-inventory", branchFilter],
     queryFn: () => inventoryService.getPalay(branchFilter),
   });
@@ -118,6 +119,7 @@ export default function InventoryPage() {
     queryKey: ["inventory-summary", branchFilter],
     queryFn: () => inventoryService.getSummary(branchFilter),
   });
+  const stockLoading = palayLoading || milledLoading || byproductsLoading;
 
   // Every view lists stock in the order this account chose (remembered between
   // visits, even after signing out). With "All warehouses" picked, one variety
@@ -212,18 +214,30 @@ export default function InventoryPage() {
           <WarehouseLegend items={items} onPick={setBranchFilter} />
         )}
 
-        {view === "classic" && (
-          <ClassicView
-            palay={palaySorted}
-            milled={milledSorted}
-            byproducts={byproductsSorted}
-            summary={summary}
-            branchFilter={branchFilter}
-          />
+        {/* The list views wait for all three kinds of stock: until then a page that
+            is only loading would say the inventory is empty. */}
+        {stockLoading && view !== "warehouse" ? (
+          <div className="card !p-0">
+            <LoadingRows rows={5} />
+          </div>
+        ) : (
+          <>
+            {view === "classic" && (
+              <ClassicView
+                palay={palaySorted}
+                milled={milledSorted}
+                byproducts={byproductsSorted}
+                summary={summary}
+                branchFilter={branchFilter}
+              />
+            )}
+            {view === "spreadsheet" && <SpreadsheetView key={sort} items={items} />}
+            {view === "cards" && (
+              <CardsView items={items} totalKg={totalKg} onSelect={setSelected} />
+            )}
+            {view === "bins" && <BinsView items={items} onSelect={setSelected} />}
+          </>
         )}
-        {view === "spreadsheet" && <SpreadsheetView key={sort} items={items} />}
-        {view === "cards" && <CardsView items={items} totalKg={totalKg} onSelect={setSelected} />}
-        {view === "bins" && <BinsView items={items} onSelect={setSelected} />}
         {view === "warehouse" && (
           <NewWarehouseView
             branches={branches}

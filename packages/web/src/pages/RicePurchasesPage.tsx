@@ -12,6 +12,7 @@ import { buyingService, type RiceLineForm } from "../services/BuyingService";
 import { MILLED_GRADES } from "../mappers/InventoryMapper";
 import QuickAdd from "../components/QuickAdd";
 import EmptyState from "../components/EmptyState";
+import LoadingRows from "../components/LoadingRows";
 import FieldCaption from "../components/FieldCaption";
 import Select from "../components/Select";
 import DatePicker from "../components/DatePicker";
@@ -43,7 +44,7 @@ export default function RicePurchasesPage() {
   const { canEdit } = useAccess();
   const [showForm, setShowForm] = useOpenOnArrival();
 
-  const { data: purchases = [] } = useQuery({
+  const { data: purchases = [], isLoading: purchasesLoading } = useQuery({
     queryKey: ["rice-purchases"],
     queryFn: () => buyingService.listRicePurchases(),
   });
@@ -51,7 +52,7 @@ export default function RicePurchasesPage() {
     queryKey: ["varieties"],
     queryFn: () => paddyService.listVarieties(),
   });
-  const { data: stock = [] } = useQuery({
+  const { data: stock = [], isLoading: stockLoading } = useQuery({
     queryKey: ["rice-stock"],
     queryFn: () => buyingService.listRiceStock(),
   });
@@ -283,16 +284,24 @@ export default function RicePurchasesPage() {
                   </td>
                 </tr>
               ))}
-              {stock.length === 0 && (
+              {stockLoading ? (
                 <tr>
-                  <td
-                    colSpan={stockInSeveralWarehouses ? 5 : 4}
-                    className="px-4 py-8 text-center text-muted"
-                  >
-                    No rice in stock. Purchases you record and rice you mill show up here by variety
-                    and grade.
+                  <td colSpan={stockInSeveralWarehouses ? 5 : 4}>
+                    <LoadingRows rows={2} />
                   </td>
                 </tr>
+              ) : (
+                stock.length === 0 && (
+                  <tr>
+                    <td
+                      colSpan={stockInSeveralWarehouses ? 5 : 4}
+                      className="px-4 py-8 text-center text-muted"
+                    >
+                      No rice in stock. Purchases you record and rice you mill show up here by
+                      variety and grade.
+                    </td>
+                  </tr>
+                )
               )}
             </tbody>
           </table>
@@ -304,6 +313,7 @@ export default function RicePurchasesPage() {
         <PurchaseColumn
           kind="rice"
           purchases={purchases}
+          loading={purchasesLoading}
           canBuy={canEdit("paddy")}
           onNew={() => setShowForm(true)}
           empty={

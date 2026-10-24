@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import WeatherWidget from "../components/WeatherWidget";
 import GettingStarted from "../components/GettingStarted";
+import LoadingRows from "../components/LoadingRows";
 import WeatherForecast from "../components/WeatherForecast";
 import {
   Area,
@@ -122,14 +123,14 @@ export default function Dashboard() {
 
   // The same cache entry as Inventory's "All warehouses" view, so both pages
   // always show the same stock.
-  const { data: inventory } = useQuery({
+  const { data: inventory, isLoading: inventoryLoading } = useQuery({
     queryKey: ["inventory-summary", ""],
     queryFn: () => inventoryService.getSummary(),
   });
   const byproducts = Object.entries<number>(inventory?.byproducts ?? {});
   const byproductTotal = byproducts.reduce((s, [, kg]) => s + kg, 0);
 
-  const { data: pnl } = useQuery({
+  const { data: pnl, isLoading: pnlLoading } = useQuery({
     queryKey: ["pnl-dashboard", currentMonth],
     queryFn: () => reportsService.getPnl(monthStart, today),
     refetchInterval: 60 * 60 * 1000,
@@ -267,7 +268,11 @@ export default function Dashboard() {
               <span className="badge-violet">Live</span>
             </div>
 
-            {pnlChart.length > 0 ? (
+            {pnlLoading ? (
+              <div className="skeleton h-[260px] rounded-xl" aria-busy="true">
+                <span className="sr-only">Loading</span>
+              </div>
+            ) : pnlChart.length > 0 ? (
               <ResponsiveContainer width="100%" height={260}>
                 <AreaChart data={pnlChart} margin={{ left: -10, right: 8, top: 4 }}>
                   <defs>
@@ -333,7 +338,9 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {byproducts.length > 0 ? (
+          {inventoryLoading ? (
+            <LoadingRows />
+          ) : byproducts.length > 0 ? (
             <div className="space-y-4">
               {byproducts.map(([type, kg]) => {
                 const pct = byproductTotal > 0 ? (kg / byproductTotal) * 100 : 0;

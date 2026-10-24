@@ -7,6 +7,7 @@ import { Plus, Receipt } from "lucide-react";
 import { format } from "date-fns";
 import QuickAdd from "../components/QuickAdd";
 import EmptyState from "../components/EmptyState";
+import LoadingRows from "../components/LoadingRows";
 import { useAccess } from "../hooks/useAccess";
 import { useFeature } from "../hooks/useFeature";
 import { useOpenOnArrival } from "../hooks/useOpenOnArrival";
@@ -20,7 +21,7 @@ export default function CostsPage() {
   const [showForm, setShowForm] = useOpenOnArrival();
   useEscapeKey(() => setShowForm(false), showForm);
 
-  const { data: expenses = [] } = useQuery({
+  const { data: expenses = [], isLoading: expensesLoading } = useQuery({
     queryKey: ["expenses"],
     queryFn: () => costsService.listExpenses(),
   });
@@ -241,25 +242,33 @@ export default function CostsPage() {
                 </td>
               </tr>
             ))}
-            {expenses.length === 0 && (
+            {expensesLoading ? (
               <tr>
                 <td colSpan={5}>
-                  <EmptyState
-                    icon={Receipt}
-                    title="No expenses recorded"
-                    action={canEdit("expenses") ? "Add your first expense" : undefined}
-                    onAction={() => setShowForm(true)}
-                    next={
-                      hasMilling
-                        ? "Production costs can be linked to a milling batch to see what each batch really cost."
-                        : undefined
-                    }
-                  >
-                    Fuel, electricity, labor, repairs: anything the mill pays for. Without them the
-                    profit on your dashboard only counts sales.
-                  </EmptyState>
+                  <LoadingRows />
                 </td>
               </tr>
+            ) : (
+              expenses.length === 0 && (
+                <tr>
+                  <td colSpan={5}>
+                    <EmptyState
+                      icon={Receipt}
+                      title="No expenses recorded"
+                      action={canEdit("expenses") ? "Add your first expense" : undefined}
+                      onAction={() => setShowForm(true)}
+                      next={
+                        hasMilling
+                          ? "Production costs can be linked to a milling batch to see what each batch really cost."
+                          : undefined
+                      }
+                    >
+                      Fuel, electricity, labor, repairs: anything the mill pays for. Without them
+                      the profit on your dashboard only counts sales.
+                    </EmptyState>
+                  </td>
+                </tr>
+              )
             )}
           </tbody>
         </table>

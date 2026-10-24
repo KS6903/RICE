@@ -10,6 +10,7 @@ import { useOpenOnArrival } from "../hooks/useOpenOnArrival";
 import { buyingService, type ByproductLineForm } from "../services/BuyingService";
 import { BYPRODUCT_NAMES } from "../mappers/InventoryMapper";
 import EmptyState from "../components/EmptyState";
+import LoadingRows from "../components/LoadingRows";
 import FieldCaption from "../components/FieldCaption";
 import Select from "../components/Select";
 import DatePicker from "../components/DatePicker";
@@ -39,11 +40,11 @@ export default function ByproductPurchasesPage() {
   const { canEdit } = useAccess();
   const [showForm, setShowForm] = useOpenOnArrival();
 
-  const { data: purchases = [] } = useQuery({
+  const { data: purchases = [], isLoading: purchasesLoading } = useQuery({
     queryKey: ["byproduct-purchases"],
     queryFn: () => buyingService.listByproductPurchases(),
   });
-  const { data: stock = [] } = useQuery({
+  const { data: stock = [], isLoading: stockLoading } = useQuery({
     queryKey: ["byproduct-stock"],
     queryFn: () => buyingService.listByproductStock(),
   });
@@ -249,15 +250,24 @@ export default function ByproductPurchasesPage() {
                   </td>
                 </tr>
               ))}
-              {stock.length === 0 && (
+              {stockLoading ? (
                 <tr>
-                  <td
-                    colSpan={stockInSeveralWarehouses ? 3 : 2}
-                    className="px-4 py-8 text-center text-muted"
-                  >
-                    No by-products in stock. What you buy and what milling leaves over show up here.
+                  <td colSpan={stockInSeveralWarehouses ? 3 : 2}>
+                    <LoadingRows rows={2} />
                   </td>
                 </tr>
+              ) : (
+                stock.length === 0 && (
+                  <tr>
+                    <td
+                      colSpan={stockInSeveralWarehouses ? 3 : 2}
+                      className="px-4 py-8 text-center text-muted"
+                    >
+                      No by-products in stock. What you buy and what milling leaves over show up
+                      here.
+                    </td>
+                  </tr>
+                )
               )}
             </tbody>
           </table>
@@ -269,6 +279,7 @@ export default function ByproductPurchasesPage() {
         <PurchaseColumn
           kind="byproduct"
           purchases={purchases}
+          loading={purchasesLoading}
           canBuy={canEdit("paddy")}
           onNew={() => setShowForm(true)}
           empty={

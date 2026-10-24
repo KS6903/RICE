@@ -10,6 +10,7 @@ import QuickAdd from "../components/QuickAdd";
 import { useAccess } from "../hooks/useAccess";
 import { useOpenOnArrival } from "../hooks/useOpenOnArrival";
 import EmptyState from "../components/EmptyState";
+import LoadingRows from "../components/LoadingRows";
 import FieldCaption from "../components/FieldCaption";
 import Select from "../components/Select";
 import DateTimePicker from "../components/DateTimePicker";
@@ -64,7 +65,7 @@ export default function MillingPage() {
   const [showForm, setShowForm] = useOpenOnArrival();
   useEscapeKey(() => setShowForm(false), showForm);
 
-  const { data: batches = [] } = useQuery({
+  const { data: batches = [], isLoading: batchesLoading } = useQuery({
     queryKey: ["milling-batches"],
     queryFn: () => millingService.listBatches(),
   });
@@ -606,21 +607,29 @@ export default function MillingPage() {
                 </tr>
               );
             })}
-            {batches.length === 0 && (
+            {batchesLoading ? (
               <tr>
                 <td colSpan={7}>
-                  <EmptyState
-                    icon={Factory}
-                    title="No milling batches yet"
-                    action={canEdit("milling") ? "Start your first batch" : undefined}
-                    onAction={() => setShowForm(true)}
-                    next="The rice and by-products you enter go straight into Inventory, ready to sell."
-                  >
-                    A batch records how much palay went into the mill and how much rice came out.
-                    Oraiza works out the recovery rate for you.
-                  </EmptyState>
+                  <LoadingRows />
                 </td>
               </tr>
+            ) : (
+              batches.length === 0 && (
+                <tr>
+                  <td colSpan={7}>
+                    <EmptyState
+                      icon={Factory}
+                      title="No milling batches yet"
+                      action={canEdit("milling") ? "Start your first batch" : undefined}
+                      onAction={() => setShowForm(true)}
+                      next="The rice and by-products you enter go straight into Inventory, ready to sell."
+                    >
+                      A batch records how much palay went into the mill and how much rice came out.
+                      Oraiza works out the recovery rate for you.
+                    </EmptyState>
+                  </td>
+                </tr>
+              )
             )}
           </tbody>
         </table>

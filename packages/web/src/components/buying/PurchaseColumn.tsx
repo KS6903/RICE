@@ -4,6 +4,7 @@ import { useState, type ReactNode } from "react";
 import { Plus } from "lucide-react";
 import { roleLabel } from "@rice-mill/shared";
 import Modal from "../Modal";
+import LoadingRows from "../LoadingRows";
 import { inSeveralWarehouses } from "../PurchaseWarehouse";
 import { peso } from "./money";
 import { STATUS_BADGE, byproductName, gradeLabel, type TradeKind } from "./trade";
@@ -14,6 +15,7 @@ export default function PurchaseColumn({
   canBuy,
   onNew,
   empty,
+  loading = false,
 }: {
   kind: TradeKind;
   purchases: any[];
@@ -21,6 +23,8 @@ export default function PurchaseColumn({
   onNew: () => void;
   /** What to show when nothing has been bought yet. */
   empty: ReactNode;
+  /** The purchases are still on their way: show that, not `empty`. */
+  loading?: boolean;
 }) {
   const [open, setOpen] = useState<any | null>(null);
   const several = inSeveralWarehouses(purchases);
@@ -32,7 +36,13 @@ export default function PurchaseColumn({
         <div>
           <h3 className="text-sm font-bold text-gray-900 dark:text-slate-100">Purchases</h3>
           <p className="text-xs text-muted tabular-nums">
-            {purchases.length} bought{purchases.length > 0 && <> · {peso(total)}</>}
+            {loading ? (
+              "Loading…"
+            ) : (
+              <>
+                {purchases.length} bought{purchases.length > 0 && <> · {peso(total)}</>}
+              </>
+            )}
           </p>
         </div>
         {canBuy && (
@@ -42,7 +52,9 @@ export default function PurchaseColumn({
         )}
       </div>
       <div className="card overflow-hidden p-0">
-        {purchases.length === 0 ? (
+        {loading ? (
+          <LoadingRows />
+        ) : purchases.length === 0 ? (
           empty
         ) : (
           <ul className="divide-y divide-gray-100 dark:divide-slate-700">

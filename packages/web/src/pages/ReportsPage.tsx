@@ -63,7 +63,7 @@ export default function ReportsPage() {
     queryFn: () => reportsService.getPnl(dateRange.start, dateRange.end),
   });
 
-  const { data: arAging } = useQuery({
+  const { data: arAging, isLoading: arLoading } = useQuery({
     queryKey: ["ar-aging"],
     queryFn: () => reportsService.getArAging(),
     enabled: hasAdvanced,
@@ -349,6 +349,10 @@ export default function ReportsPage() {
           <p className="text-sm text-gray-500 dark:text-slate-400 text-center py-8">
             Upgrade to Pro to unlock AR aging, inventory valuation, and other advanced reports.
           </p>
+        ) : arLoading ? (
+          <div className="skeleton h-[200px] rounded-xl" aria-busy="true">
+            <span className="sr-only">Loading</span>
+          </div>
         ) : arData.length > 0 ? (
           <ResponsiveContainer width="100%" height={200}>
             <BarChart data={arData}>

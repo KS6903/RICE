@@ -9,6 +9,7 @@ import { salesService } from "../../services/SalesService";
 import { useAccess } from "../../hooks/useAccess";
 import { useFeature } from "../../hooks/useFeature";
 import EmptyState from "../EmptyState";
+import LoadingRows from "../LoadingRows";
 import Modal from "../Modal";
 import NewSaleModal from "./NewSaleModal";
 import { peso } from "./money";
@@ -29,7 +30,7 @@ export default function SaleColumn({ kind }: { kind: TradeKind }) {
   const [selling, setSelling] = useState(false);
   const [open, setOpen] = useState<any | null>(null);
 
-  const { data: orders = [] } = useQuery<any[]>({
+  const { data: orders = [], isLoading } = useQuery<any[]>({
     queryKey: ["sales-orders", SALE_ITEM_TYPE[kind]],
     queryFn: () => salesService.listOrders(SALE_ITEM_TYPE[kind]),
     enabled: allowed,
@@ -42,7 +43,9 @@ export default function SaleColumn({ kind }: { kind: TradeKind }) {
         <div>
           <h3 className="text-sm font-bold text-gray-900 dark:text-slate-100">Sales</h3>
           <p className="text-xs text-muted tabular-nums">
-            {allowed ? (
+            {isLoading ? (
+              "Loading…"
+            ) : allowed ? (
               <>
                 {orders.length} sold{orders.length > 0 && <> · {peso(total)}</>}
               </>
@@ -66,6 +69,8 @@ export default function SaleColumn({ kind }: { kind: TradeKind }) {
           <p className="px-4 py-8 text-center text-sm text-muted">
             Your role doesn't see sales. The owner can change that in Users.
           </p>
+        ) : isLoading ? (
+          <LoadingRows />
         ) : orders.length === 0 ? (
           <EmptyState
             icon={ShoppingCart}

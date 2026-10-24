@@ -7,6 +7,7 @@ import QuickAdd from "../components/QuickAdd";
 import { useAccess } from "../hooks/useAccess";
 import { useOpenOnArrival } from "../hooks/useOpenOnArrival";
 import EmptyState from "../components/EmptyState";
+import LoadingRows from "../components/LoadingRows";
 import FieldCaption from "../components/FieldCaption";
 import Select from "../components/Select";
 import DatePicker from "../components/DatePicker";
@@ -24,7 +25,7 @@ export default function PaddyPage() {
   const { canEdit } = useAccess();
   const [showForm, setShowForm] = useOpenOnArrival();
 
-  const { data: purchases = [] } = useQuery({
+  const { data: purchases = [], isLoading: purchasesLoading } = useQuery({
     queryKey: ["palay-purchases"],
     queryFn: () => paddyService.listPurchases(),
   });
@@ -36,7 +37,7 @@ export default function PaddyPage() {
     queryKey: ["grades"],
     queryFn: () => paddyService.listGrades(),
   });
-  const { data: inventory = [] } = useQuery({
+  const { data: inventory = [], isLoading: inventoryLoading } = useQuery({
     queryKey: ["palay-inventory"],
     queryFn: () => paddyService.listInventory(),
   });
@@ -324,15 +325,23 @@ export default function PaddyPage() {
                   </td>
                 </tr>
               ))}
-              {inventory.length === 0 && (
+              {inventoryLoading ? (
                 <tr>
-                  <td
-                    colSpan={stockInSeveralWarehouses ? 5 : 4}
-                    className="px-4 py-8 text-center text-muted"
-                  >
-                    No palay in stock. Purchases you record show up here by variety and grade.
+                  <td colSpan={stockInSeveralWarehouses ? 5 : 4}>
+                    <LoadingRows rows={2} />
                   </td>
                 </tr>
+              ) : (
+                inventory.length === 0 && (
+                  <tr>
+                    <td
+                      colSpan={stockInSeveralWarehouses ? 5 : 4}
+                      className="px-4 py-8 text-center text-muted"
+                    >
+                      No palay in stock. Purchases you record show up here by variety and grade.
+                    </td>
+                  </tr>
+                )
               )}
             </tbody>
           </table>
@@ -344,6 +353,7 @@ export default function PaddyPage() {
         <PurchaseColumn
           kind="palay"
           purchases={purchases}
+          loading={purchasesLoading}
           canBuy={canEdit("paddy")}
           onNew={() => setShowForm(true)}
           empty={

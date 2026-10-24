@@ -230,3 +230,30 @@ describe("Paddy / Palay page layout", () => {
     expect(screen.getByRole("dialog", { name: "New Palay Purchase" })).toBeInTheDocument();
   });
 });
+
+describe("Purchases and sales while they load", () => {
+  it("says the purchases are loading, not that nothing was bought", () => {
+    draw(
+      <PurchaseColumn
+        kind="palay"
+        purchases={[]}
+        loading
+        canBuy={false}
+        onNew={() => {}}
+        empty={<p>No palay bought yet</p>}
+      />,
+    );
+    expect(screen.getByText("Loading…")).toBeInTheDocument();
+    expect(screen.queryByText("No palay bought yet")).toBeNull();
+    expect(screen.queryByText(/0 bought/)).toBeNull();
+  });
+
+  it("says the sales are loading until the orders arrive", () => {
+    vi.spyOn(salesService, "listOrders").mockReturnValue(new Promise(() => {}));
+    useAuthStore.setState({ user: owner });
+    draw(<SaleColumn kind="palay" />);
+    const column = screen.getByTestId("sales-column");
+    expect(within(column).getByText("Loading…")).toBeInTheDocument();
+    expect(within(column).queryByText("No palay sold yet")).toBeNull();
+  });
+});
