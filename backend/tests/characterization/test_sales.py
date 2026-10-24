@@ -204,7 +204,7 @@ def test_orders_sell_palay_too_and_list_by_what_they_sell(auth_client):
     assert len(auth_client.get("/api/sales/orders").json()) == 3
 
     line = auth_client.get("/api/sales/orders", params={"item_type": "palay"}).json()[0]["items"][0]
-    assert line["variety_code"] == "RC222"
+    assert line["variety_code"] == "RC400"
     assert line["grade_name"] == "A"
     assert float(line["line_total"]) == 22000.0
 

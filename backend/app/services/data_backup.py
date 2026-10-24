@@ -95,7 +95,7 @@ from sqlalchemy.sql.util import sort_tables
 from ..core import health
 from ..core.crypto import derive_key
 from ..core.security import get_user_features, verify_password
-from ..core.tenancy import PUBLIC_TABLE_NAMES, tenant_tables, valid_schema_name
+from ..core.tenancy import PUBLIC_TABLE_NAMES, seed_default_expense_categories, tenant_tables, valid_schema_name
 from ..models.company import Branch, Company
 from ..models.subscription import Subscription
 from ..models.user import Role, User
@@ -645,7 +645,8 @@ def check_owner(owner: User) -> str:
 
 def is_empty(db: Session, company: Company) -> bool:
     """Whether the mill has nothing of its own yet: no rows but the shared
-    catalogs' and the app's own bookkeeping."""
+    catalogs', the default expense categories every mill starts with, and the
+    app's own bookkeeping."""
     options = _in_schema(_require_scope(db, company))
     for table in backup_tables():
         if table.name in BOOKKEEPING_TABLES:
@@ -653,6 +654,8 @@ def is_empty(db: Session, company: Company) -> bool:
         stmt = select(literal(1)).select_from(table)
         if "company_id" in table.c:
             stmt = stmt.where(table.c.company_id.is_not(None))
+        if table.name == "expense_categories":
+            stmt = stmt.where(table.c.is_default.is_(False))
         if db.execute(stmt.limit(1), execution_options=options).first() is not None:
             return False
     return True
@@ -944,6 +947,9 @@ def _restore(
             load.finish()
     except (IntegrityError, DataError):
         raise BackupError(DOESNT_FIT, "backup_doesnt_fit") from None
+    # The load replaced the default expense categories with the backup's; one
+    # made before there were defaults marks none, so mark them again.
+    seed_default_expense_categories(db, company.id)
     return _summary(manifest, rows, len(seen))
 
 

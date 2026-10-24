@@ -11,7 +11,7 @@ from app.models.company import Branch
 from app.models.milling import ByproductInventory, MilledRiceInventory
 
 
-def _variety(c, code="RC222"):
+def _variety(c, code="RC400"):
     res = c.post("/api/paddy/varieties", json={"code": code, "name": f"NSIC {code}"})
     assert res.status_code == 201, res.text
     return res.json()
@@ -63,7 +63,7 @@ def test_rice_purchase_adds_its_sacks_to_milled_rice_stock(auth_client, db_sessi
 
     # The Rice page's stock table reads it back.
     rows = auth_client.get("/api/paddy/rice-stock").json()
-    assert [(r["variety"]["code"], r["grade_name"], r["quantity_kg"]) for r in rows] == [("RC222", "premium", 1250.0)]
+    assert [(r["variety"]["code"], r["grade_name"], r["quantity_kg"]) for r in rows] == [("RC400", "premium", 1250.0)]
 
 
 def test_rice_purchase_goes_to_the_warehouse_the_owner_picks(auth_client, db_session, seed_owner):
@@ -96,7 +96,7 @@ def test_rice_purchases_list_newest_first_with_who_recorded_them(auth_client):
     assert rows[0]["created_by_name"] == "Test Owner"
     # Each carries its lines, for the detail popup.
     [line] = rows[0]["items"]
-    assert line["variety_code"] == "RC222"
+    assert line["variety_code"] == "RC400"
     assert float(line["sack_count"]) == 20.0
     assert float(line["weight_kg"]) == 1000.0
     assert float(line["line_total"]) == 48000.0
