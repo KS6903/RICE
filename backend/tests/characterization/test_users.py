@@ -19,6 +19,8 @@ SAFE_USER_FIELDS = {
     "full_name",
     "role_id",
     "role",
+    "custom_role_id",
+    "custom_role",
     "is_active",
     "last_login",
     "email_verified",
@@ -93,6 +95,42 @@ def test_create_user_duplicate_username_400(auth_client):
     )
     assert dup.status_code == 400
     assert "already exists" in dup.json()["detail"]
+
+
+def test_people_added_without_an_email_have_none(auth_client, db_session):
+    """A blank email is no email: stored as "", the second account added
+    without one broke the database's unique rule (an internal server error)."""
+    for name in ("first", "second"):
+        res = auth_client.post(
+            "/api/users/",
+            json={"username": name, "email": " ", "password": "secret123", "full_name": name, "role_id": 2, **CONFIRM},
+        )
+        assert res.status_code == 201, res.text
+        assert res.json()["email"] is None
+
+
+def test_an_email_already_in_use_is_refused_plainly(auth_client, db_session, seed_owner):
+    taken = seed_owner.email
+    assert taken
+    res = auth_client.post(
+        "/api/users/",
+        json={
+            "username": "copycat",
+            "email": taken.upper(),
+            "password": "secret123",
+            "full_name": "C",
+            "role_id": 2,
+            **CONFIRM,
+        },
+    )
+    assert res.status_code == 400
+    assert "already used" in res.json()["detail"]
+
+    other = _add_user(db_session, seed_owner, "clerk")
+    res = auth_client.put(f"/api/users/{other.id}", json={"email": taken})
+    assert res.status_code == 400
+    # Blank takes the email off.
+    assert auth_client.put(f"/api/users/{other.id}", json={"email": ""}).json()["email"] is None
 
 
 def test_create_user_denied_for_cashier(make_auth_client):

@@ -334,6 +334,22 @@ def test_a_role_that_still_has_people_cannot_be_deleted(client, act_as):
     assert "Give them another role first" in res.json()["detail"]
 
 
+def test_someone_removed_from_the_mill_does_not_hold_a_role_up(client, act_as, db_session, seed_owner):
+    act_as("owner")
+    role_id = _custom(_make(client).json(), "Warehouse Manager")["id"]
+    res = client.post(
+        "/api/users/",
+        json={"username": "keeper", "password": "secret123", "full_name": "Stock Keeper", "custom_role_id": role_id},
+    )
+    keeper_id = res.json()["id"]
+    assert client.put(f"/api/users/{keeper_id}", json={"is_active": False}).status_code == 200
+    assert _custom(client.get("/api/role-access/").json(), "Warehouse Manager")["people"] == 0
+
+    assert client.delete(f"/api/role-access/custom/{role_id}").status_code == 200
+    db_session.expire_all()
+    assert db_session.query(User).filter_by(username="keeper").one().custom_role_id is None
+
+
 def test_an_unused_role_can_be_deleted(client, act_as, db_session, seed_owner):
     act_as("owner")
     role_id = _custom(_make(client).json(), "Warehouse Manager")["id"]

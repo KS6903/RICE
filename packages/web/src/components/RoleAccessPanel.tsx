@@ -241,6 +241,10 @@ function CustomRoleRow({ role, sections }: { role: CustomRoleEntry; sections: st
     name.trim() !== role.name || sections.some((s) => draft[s] !== (role.access[s] ?? "none"));
   const panelId = `custom-role-${role.id}`;
   const people = role.people === 1 ? "1 person" : `${role.people} people`;
+  const holders =
+    role.people === 0
+      ? "Nobody has it yet."
+      : `${people} ${role.people === 1 ? "has" : "have"} it.`;
 
   const toggle = () => {
     if (!open) {
@@ -258,7 +262,7 @@ function CustomRoleRow({ role, sections }: { role: CustomRoleEntry; sections: st
         <div className="min-w-0">
           <p className="text-sm font-semibold text-primary break-words">{role.name}</p>
           <p className="text-xs text-secondary">
-            {summary(role.access, sections)} {people}.
+            {summary(role.access, sections)} {holders}
           </p>
         </div>
         <button

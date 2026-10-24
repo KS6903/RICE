@@ -8,6 +8,7 @@ from __future__ import annotations
 import uuid
 from typing import Any
 
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from ..core.access_policy import access_for_role, access_for_user, custom_role_access, within
@@ -60,6 +61,13 @@ class _Chosen:
         return ROLE_LABELS.get(self.role.name, self.role.name) if self.role else "none"
 
 
+def _clean_email(raw: Any) -> str | None:
+    """An email as typed, tidied: blank is no email at all. Stored as "", it
+    clashed with the next account added without one (emails are unique)."""
+    cleaned = str(raw).strip() if raw is not None else ""
+    return cleaned or None
+
+
 class UserService(BaseService):
     def __init__(self, db: Session, current_user: Any, *, users: UserRepository) -> None:
         super().__init__(db, current_user)
@@ -87,6 +95,9 @@ class UserService(BaseService):
         chosen = self._chosen(data.role_id, data.custom_role_id)
         self._assert_may_give(chosen)
 
+        email = _clean_email(data.email)
+        self._assert_email_free(email)
+
         self._assert_seat_free()
         if self._needs_confirming(chosen):
             self._confirm_actor(data, f"Made {data.username} a {chosen.name}")
@@ -95,7 +106,7 @@ class UserService(BaseService):
             company_id=self.current_user.company_id,
             branch_id=data.branch_id,
             username=data.username,
-            email=data.email,
+            email=email,
             password_hash=hash_password(data.password),
             full_name=data.full_name,
             role_id=data.role_id,
@@ -112,6 +123,15 @@ class UserService(BaseService):
         from .auth_service import AuthService
 
         AuthService(self.db, self.current_user).confirm_identity(data.current_password, data.mfa_code, reason=reason)
+
+    def _assert_email_free(self, email: str | None, *, keep: User | None = None) -> None:
+        """Every account's email is its own: say so, rather than fail on the
+        database's unique rule."""
+        if email is None:
+            return
+        taken = self.db.query(User).filter(func.lower(User.email) == email.lower()).first()
+        if taken is not None and taken is not keep:
+            raise BadRequestError("That email is already used by another account.")
 
     def _editor_is_owner(self) -> bool:
         return bool(self.current_user.role and self.current_user.role.name == "owner")
@@ -253,12 +273,18 @@ class UserService(BaseService):
         # role (the edit form always sends it) is not.
         if role_changes and self._needs_confirming(chosen):
             self._confirm_actor(data, f"Made {user.username} a {chosen.name}")
-        email_changed = data.email is not None and str(data.email).strip().lower() != (user.email or "").strip().lower()
+        # Sent blank, the email is taken off; left out, it stays as it is.
+        new_email = _clean_email(data.email) if data.email is not None else user.email
+        email_changed = data.email is not None and (new_email or "").lower() != (user.email or "").strip().lower()
+        if email_changed:
+            self._assert_email_free(new_email, keep=user)
         with self.transaction():
-            # The confirmation fields are not account fields, and the role is set below.
-            exclude = {"current_password", "mfa_code", "role_id", "custom_role_id"}
+            # The confirmation fields are not account fields, and the role and email are set below.
+            exclude = {"current_password", "mfa_code", "role_id", "custom_role_id", "email"}
             for field, val in data.model_dump(exclude_none=True, exclude=exclude).items():
                 setattr(user, field, val)
+            if email_changed:
+                user.email = new_email
             if role_changes:
                 # One or the other: a built-in role, or one the Boss made up.
                 user.role_id = chosen.role.id if chosen.role is not None else None

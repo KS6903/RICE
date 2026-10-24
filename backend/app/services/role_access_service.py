@@ -11,7 +11,7 @@ from __future__ import annotations
 import uuid
 from typing import Any, Mapping
 
-from sqlalchemy import func, select
+from sqlalchemy import func, select, update
 from sqlalchemy.exc import IntegrityError
 
 from ..core.access_policy import (
@@ -57,10 +57,10 @@ class RoleAccessService(BaseService):
         return role
 
     def _people(self, company: Company) -> dict[uuid.UUID, int]:
-        """How many people hold each of the mill's made-up roles."""
+        """How many people of the mill (not removed) hold each of its made-up roles."""
         rows = self.db.execute(
             select(User.custom_role_id, func.count())
-            .where(User.company_id == company.id, User.custom_role_id.is_not(None))
+            .where(User.company_id == company.id, User.custom_role_id.is_not(None), User.is_active.is_(True))
             .group_by(User.custom_role_id)
         )
         return {role_id: count for role_id, count in rows}
@@ -181,11 +181,19 @@ class RoleAccessService(BaseService):
     def delete_custom(self, role_id: uuid.UUID) -> dict:
         role = self._custom_role(role_id)
         company = self._company()
-        holders = self.db.scalar(select(func.count()).select_from(User).where(User.custom_role_id == role.id)) or 0
+        holders = (
+            self.db.scalar(
+                select(func.count()).select_from(User).where(User.custom_role_id == role.id, User.is_active.is_(True))
+            )
+            or 0
+        )
         if holders:
             who = "1 person has" if holders == 1 else f"{holders} people have"
             raise BadRequestError(f"{who} this role. Give them another role first, on the Users page.")
         with self.transaction():
+            # Someone removed from the mill doesn't hold the role up: they lose
+            # it, and, restored, open nothing until they're given another.
+            self.db.execute(update(User).where(User.custom_role_id == role.id).values(custom_role_id=None))
             self._log(company, "role_access.delete", role.name, None)
             self.db.delete(role)
         return self._view(company)
