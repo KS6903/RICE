@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import uuid
 from datetime import date, datetime, timedelta, timezone
+from decimal import Decimal
 from typing import Any, Sequence
 
 from sqlalchemy import func, update
@@ -30,6 +31,85 @@ from ..services.base import BaseService
 from ..services.canva_color import pick_unused_color
 from ..services.delivery_rules import check_can_unmark, has_courier
 from ..services.doc_numbers import mill_code
+from ..services.record_changes import changed_fields, log_changes, show
+
+# What each record's change log names, field by field.
+CUSTOMER_FIELDS = {
+    "name": "Name",
+    "customer_type": "Type",
+    "contact_person": "Contact person",
+    "phone": "Phone",
+    "address": "Address",
+    "tin": "TIN",
+    "credit_limit": "Credit limit (₱)",
+    "payment_terms_days": "Payment terms (days)",
+    "is_active": "Active",
+}
+ORDER_FIELDS = {
+    "customer": "Customer",
+    "order_date": "Order date",
+    "delivery_date": "Delivery date",
+    "status": "Status",
+    "discount_pct": "Discount %",
+    "remarks": "Remarks",
+    "items": "Items",
+    "total_amount": "Total (₱)",
+}
+INVOICE_FIELDS = {
+    "invoice_date": "Invoice date",
+    "due_date": "Due date",
+    "customer": "Customer",
+    "total_amount": "Total (₱)",
+    "status": "Status",
+}
+
+
+def _customer_state(c: Customer) -> dict:
+    return {f: getattr(c, f) for f in CUSTOMER_FIELDS}
+
+
+def _item_text(i: SalesOrderItem) -> str:
+    if i.item_type == "byproduct":
+        what = i.byproduct_type or "by-product"
+    else:
+        code = i.variety.code if i.variety is not None else None
+        what = " ".join(x for x in (code, i.grade_name) if x) or i.item_type.replace("_", " ")
+    return f"{what} {show(i.quantity_kg)} kg at ₱{show(i.unit_price_per_kg)}"
+
+
+def _order_state(o: SalesOrder) -> dict:
+    return {
+        "customer": o.customer.name if o.customer is not None else None,
+        "order_date": o.order_date,
+        "delivery_date": o.delivery_date,
+        "status": o.status,
+        "discount_pct": o.discount_pct,
+        "remarks": o.remarks,
+        "items": "; ".join(_item_text(i) for i in o.items),
+        "total_amount": o.total_amount,
+    }
+
+
+def _invoice_state(inv: Invoice) -> dict:
+    return {
+        "invoice_date": inv.invoice_date,
+        "due_date": inv.due_date,
+        "customer": inv.customer.name if inv.customer is not None else None,
+        "total_amount": inv.total_amount,
+        "status": inv.status,
+    }
+
+
+def _payment_status(inv: Invoice) -> str:
+    """An invoice's status from what has been paid against its total, as
+    record_payment sets it. Overdue stays overdue until it's paid; the nightly
+    job marks new ones."""
+    paid = inv.paid_amount or 0
+    if inv.total_amount is not None and paid >= inv.total_amount:
+        return "paid"
+    if inv.status == "overdue":
+        return "overdue"
+    return "partial" if paid > 0 else "unpaid"
 
 
 class SalesService(BaseService):
@@ -71,9 +151,12 @@ class SalesService(BaseService):
         c = self.customers.get_for_company(customer_id, self.current_user.company_id)
         if not c:
             raise NotFoundError("Customer not found")
+        before = _customer_state(c)
         with self.transaction():
             for field, val in data.model_dump(exclude_none=True).items():
                 setattr(c, field, val)
+            lines = changed_fields(before, _customer_state(c), CUSTOMER_FIELDS)
+            self._log("customer.edit", "customer", c.id, c.name, lines)
         self.db.refresh(c)
         return c
 
@@ -197,13 +280,77 @@ class SalesService(BaseService):
         # ...and taking the mark back is the owner's, within the week, wherever it is done.
         if order.status == "delivered" and new_status is not None and new_status != "delivered":
             check_can_unmark(order, self.current_user)
+        before = _order_state(order)
         with self.transaction():
             # Typed OrderUpdate schema: only validated, allowlisted fields arrive
             # here; exclude_unset preserves the old "only touch sent fields" semantics.
             for f, val in body.model_dump(exclude_unset=True).items():
                 setattr(order, f, val)
+            self._log_order(order, before)
         self.db.refresh(order)
         return order
+
+    def edit_order(self, order_id: uuid.UUID, data) -> SalesOrder:
+        """The Boss corrects a saved order: its customer, dates, discount,
+        remarks and lines. The totals follow, and so does its invoice: the new
+        total, with what's already paid kept, and the status that leaves it in."""
+        order = self.orders.get_for_company(order_id, self.current_user.company_id)
+        if not order:
+            raise NotFoundError("Order not found")
+        sent = data.model_dump(exclude_unset=True)
+        if "customer_id" in sent:
+            self.assert_company_fk(Customer, data.customer_id, label="Customer")
+        if data.items is not None:
+            for i in data.items:
+                self.assert_company_fk(RiceVariety, i.variety_id, label="Variety", allow_shared=True)
+        before = _order_state(order)
+        invoices_before = {inv.id: _invoice_state(inv) for inv in order.invoices}
+        with self.transaction():
+            for f in ("customer_id", "order_date", "delivery_date", "discount_pct", "remarks"):
+                if f in sent:
+                    setattr(order, f, sent[f])
+            if data.items is not None:
+                order.items = [SalesOrderItem(**i.model_dump()) for i in data.items]
+            self.db.flush()
+            self.db.expire(order, ["customer"])
+            subtotal = sum((i.quantity_kg * i.unit_price_per_kg for i in order.items), Decimal(0))
+            order.subtotal = subtotal
+            order.discount_amount = subtotal * (order.discount_pct or 0) / 100
+            order.total_amount = subtotal - order.discount_amount
+            for inv in order.invoices:
+                inv.customer_id = order.customer_id
+                inv.total_amount = order.total_amount
+                inv.status = _payment_status(inv)
+                self.db.flush()
+                self.db.expire(inv, ["customer"])
+                lines = changed_fields(invoices_before[inv.id], _invoice_state(inv), INVOICE_FIELDS)
+                if lines:
+                    lines.append(f"Follows the edit to order {order.order_no}")
+                self._log("invoice.edit", "invoice", inv.id, inv.invoice_no, lines)
+                if inv.status == "paid":
+                    order.status = "paid"
+                elif order.status == "paid":
+                    order.status = "invoiced"
+            self._log_order(order, before)
+        self.db.refresh(order)
+        return order
+
+    def _log_order(self, order: SalesOrder, before: dict) -> None:
+        self.db.flush()
+        self.db.expire(order, ["customer"])
+        lines = changed_fields(before, _order_state(order), ORDER_FIELDS)
+        self._log("sales_order.edit", "sales_order", order.id, order.order_no, lines)
+
+    def _log(self, action: str, entity_type: str, entity_id: uuid.UUID, label: str | None, lines: list[str]) -> None:
+        log_changes(
+            self.db,
+            user=self.current_user,
+            action=action,
+            entity_type=entity_type,
+            entity_id=entity_id,
+            entity_label=label,
+            lines=lines,
+        )
 
     # ── invoices ──────────────────────────────────────────────────────────────
 
@@ -235,6 +382,24 @@ class SalesService(BaseService):
                 )
             )
             order.status = "invoiced"
+        self.db.refresh(inv)
+        return inv
+
+    def edit_invoice(self, invoice_id: uuid.UUID, data) -> Invoice:
+        """The Boss corrects a saved invoice's dates. Its amounts follow its order
+        (edit the order to change them). Moving the due date out of the past
+        takes the invoice off overdue; the nightly job marks it again if due."""
+        inv = self.invoices.get_for_company(invoice_id, self.current_user.company_id)
+        if not inv:
+            raise NotFoundError("Invoice not found")
+        before = _invoice_state(inv)
+        with self.transaction():
+            for f, val in data.model_dump(exclude_unset=True).items():
+                setattr(inv, f, val)
+            if inv.status == "overdue" and inv.due_date is not None and inv.due_date >= date.today():
+                inv.status = "partial" if (inv.paid_amount or 0) > 0 else "unpaid"
+            lines = changed_fields(before, _invoice_state(inv), INVOICE_FIELDS)
+            self._log("invoice.edit", "invoice", inv.id, inv.invoice_no, lines)
         self.db.refresh(inv)
         return inv
 

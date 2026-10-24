@@ -64,6 +64,26 @@ class OrderUpdate(BaseModel):
     remarks: str | None = Field(None, max_length=2000)
 
 
+class OrderEdit(BaseModel):
+    """What the Boss can correct on a saved order. Only the fields sent change;
+    items, when sent, replace all of the order's lines."""
+
+    customer_id: uuid.UUID | None = None
+    order_date: date | None = None
+    delivery_date: date | None = None
+    discount_pct: Decimal | None = Field(None, ge=0, le=100)
+    remarks: str | None = Field(None, max_length=2000)
+    items: list[OrderItemIn] | None = Field(None, min_length=1)
+
+
+class InvoiceEdit(BaseModel):
+    """What the Boss can correct on a saved invoice: its dates. Its amounts
+    follow its order."""
+
+    invoice_date: date | None = None
+    due_date: date | None = None
+
+
 class InvoiceCreate(BaseModel):
     order_id: uuid.UUID
     invoice_date: date

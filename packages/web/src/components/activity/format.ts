@@ -20,6 +20,10 @@ const ACTION_VERBS: Record<string, string> = {
   "user.role_change": "Changed the role of",
   "user.remove": "Removed user",
   "user.restore": "Restored user",
+  // Corrections to saved records; the detail lists each field, old → new.
+  "sales_order.edit": "Edited order",
+  "invoice.edit": "Edited invoice",
+  "customer.edit": "Edited customer",
 };
 
 export function formatActivity(row: ActivityRow): string {

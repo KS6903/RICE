@@ -20,6 +20,21 @@ from ..repositories.dispatch import AgentRepository, DispatchOrderRepository, Mi
 from ..services.base import BaseService
 from ..services.canva_color import PALETTE, colors_in_use, pick_unused_color
 from ..services.delivery_rules import check_can_unmark, edit_deadline, has_courier
+from ..services.record_changes import changed_fields, log_changes
+
+# What an order's change log names when its delivery changes.
+DELIVERY_FIELDS = {
+    "status": "Status",
+    "courier_type": "Who delivers",
+    "courier_plate": "Plate",
+    "courier_driver": "Driver",
+    "courier_phone": "Driver's phone",
+    "courier_notes": "Delivery notes",
+}
+
+
+def _delivery_state(order) -> dict:
+    return {f: getattr(order, f) for f in DELIVERY_FIELDS}
 
 
 class DispatchService(BaseService):
@@ -228,6 +243,7 @@ class DispatchService(BaseService):
         phone = (data.driver_phone or "").strip() or None
         notes = (data.notes or "").strip() or None
         on = data.courier_type is not None
+        before = _delivery_state(order)
         with self.transaction():
             order.courier_type = data.courier_type
             order.courier_plate = plate if on else None
@@ -237,7 +253,20 @@ class DispatchService(BaseService):
             # Anyone assigned the old way is replaced by this choice.
             order.assigned_agent_id = None
             order.assigned_miller_id = None
+            self._log_delivery(order, before)
         return self._serialize_order(self.orders.get_with_couriers(order_id))
+
+    def _log_delivery(self, order, before: dict) -> None:
+        """Log the order's delivery changes, field by field, in its history."""
+        log_changes(
+            self.db,
+            user=self.current_user,
+            action="sales_order.edit",
+            entity_type="sales_order",
+            entity_id=order.id,
+            entity_label=order.order_no,
+            lines=changed_fields(before, _delivery_state(order), DELIVERY_FIELDS),
+        )
 
     def mark_delivered(self, order_id: uuid.UUID) -> dict:
         order = self.orders.get_for_company(order_id, self.current_user.company_id)
@@ -247,9 +276,11 @@ class DispatchService(BaseService):
             raise ConflictError(
                 "Choose who delivers it (the customer or the rice mill courier) before marking it delivered."
             )
+        before = _delivery_state(order)
         with self.transaction():
             order.status = "delivered"
             order.delivered_at = datetime.now(timezone.utc)
+            self._log_delivery(order, before)
         return self._serialize_order(self.orders.get_with_couriers(order_id))
 
     def unmark_delivered(self, order_id: uuid.UUID) -> dict:
@@ -258,7 +289,9 @@ class DispatchService(BaseService):
         if not order:
             raise NotFoundError("Order not found")
         check_can_unmark(order, self.current_user)
+        before = _delivery_state(order)
         with self.transaction():
             order.status = "confirmed"
             order.delivered_at = None
+            self._log_delivery(order, before)
         return self._serialize_order(self.orders.get_with_couriers(order_id))

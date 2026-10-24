@@ -5,7 +5,16 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { salesService } from "../services/SalesService";
 import LegalNotice from "../components/LegalNotice";
 import { inventoryService } from "../services/InventoryService";
-import { Plus, Power, History, ChevronDown, ChevronUp, ShoppingCart, FileText } from "lucide-react";
+import {
+  Plus,
+  Power,
+  History,
+  ChevronDown,
+  ChevronUp,
+  ShoppingCart,
+  FileText,
+  Pencil,
+} from "lucide-react";
 import InvoicePreviewModal, { type PreviewOrder } from "../components/sales/InvoicePreviewModal";
 import TruncatedText from "../components/TruncatedText";
 import Select from "../components/Select";
@@ -18,6 +27,12 @@ import { useAccess } from "../hooks/useAccess";
 import { useOpenOnArrival } from "../hooks/useOpenOnArrival";
 import EmptyState from "../components/EmptyState";
 import FieldCaption from "../components/FieldCaption";
+import EditOrderDialog from "../components/sales/EditOrderDialog";
+import EditInvoiceDialog from "../components/sales/EditInvoiceDialog";
+import EditCustomerDialog from "../components/sales/EditCustomerDialog";
+import RecordHistory from "../components/sales/RecordHistory";
+import { useCanEditSavedRecords } from "../hooks/useRecordEditor";
+import type { RecordKind } from "../services/SalesService";
 
 type ApiError = { response?: { data?: { detail?: unknown; code?: string } } };
 
@@ -49,6 +64,28 @@ function StatusBadge({ status }: { status: string }) {
     partial: "badge-yellow",
   };
   return <span className={map[status] || "badge-gray"}>{status}</span>;
+}
+
+/** A quiet text button for a table row's Edit and History. */
+function RowButton({
+  onClick,
+  icon: Icon,
+  children,
+}: {
+  onClick: () => void;
+  icon: React.ElementType;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="inline-flex items-center gap-1 whitespace-nowrap text-xs font-medium text-secondary hover:text-primary"
+    >
+      <Icon size={12} aria-hidden />
+      {children}
+    </button>
+  );
 }
 
 export default function SalesPage() {
@@ -144,6 +181,18 @@ export default function SalesPage() {
   // and admins can approve it anyway.
   const role = useAuthStore((s) => s.user?.role);
   const canApprove = role === "owner" || role === "admin";
+
+  // Corrections (the Boss) and each record's change history.
+  const canCorrect = useCanEditSavedRecords();
+  const canSeeHistory = canCorrect || canEdit("sales");
+  const [editingOrder, setEditingOrder] = useState<any | null>(null);
+  const [editingInvoice, setEditingInvoice] = useState<any | null>(null);
+  const [editingCustomer, setEditingCustomer] = useState<any | null>(null);
+  const [historyOf, setHistoryOf] = useState<{
+    kind: RecordKind;
+    id: string;
+    label: string;
+  } | null>(null);
 
   // The order whose invoice is being previewed; generating happens from there.
   const [previewOrder, setPreviewOrder] = useState<PreviewOrder | null>(null);
@@ -470,6 +519,23 @@ export default function SalesPage() {
                         Generate invoice
                       </button>
                     )}
+                    <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1">
+                      {canCorrect && (
+                        <RowButton icon={Pencil} onClick={() => setEditingOrder(o)}>
+                          Edit
+                        </RowButton>
+                      )}
+                      {canSeeHistory && (
+                        <RowButton
+                          icon={History}
+                          onClick={() =>
+                            setHistoryOf({ kind: "sales_order", id: o.id, label: o.order_no })
+                          }
+                        >
+                          History
+                        </RowButton>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -498,7 +564,7 @@ export default function SalesPage() {
           <table className="w-full text-sm">
             <thead className="bg-gray-50 dark:bg-slate-900/50 border-b border-gray-200 dark:border-slate-700">
               <tr>
-                {["Invoice No.", "Date", "Due Date", "Total", "Paid", "Status"].map((h) => (
+                {["Invoice No.", "Date", "Due Date", "Total", "Paid", "Status", ""].map((h) => (
                   <th
                     key={h}
                     className="px-4 py-3 text-left font-medium text-gray-600 dark:text-slate-300"
@@ -521,11 +587,30 @@ export default function SalesPage() {
                   <td className="px-4 py-3">
                     <StatusBadge status={inv.status} />
                   </td>
+                  <td className="px-4 py-3">
+                    <div className="flex flex-wrap gap-x-3 gap-y-1">
+                      {canCorrect && (
+                        <RowButton icon={Pencil} onClick={() => setEditingInvoice(inv)}>
+                          Edit
+                        </RowButton>
+                      )}
+                      {canSeeHistory && (
+                        <RowButton
+                          icon={History}
+                          onClick={() =>
+                            setHistoryOf({ kind: "invoice", id: inv.id, label: inv.invoice_no })
+                          }
+                        >
+                          History
+                        </RowButton>
+                      )}
+                    </div>
+                  </td>
                 </tr>
               ))}
               {invoices.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="px-4 py-8 text-center text-muted">
+                  <td colSpan={7} className="px-4 py-8 text-center text-muted">
                     No invoices yet. Create one from a confirmed order on the Orders tab with
                     Generate Invoice.
                   </td>
@@ -685,12 +770,29 @@ export default function SalesPage() {
                       <span className="badge-green">Active</span>
                     </td>
                     <td className="px-4 py-3">
-                      <button
-                        onClick={() => toggleCustomer.mutate({ id: c.id, is_active: false })}
-                        className="text-xs text-rose-600 dark:text-rose-400 hover:text-rose-700 dark:hover:text-rose-300 inline-flex items-center gap-1"
-                      >
-                        <Power size={12} /> Deactivate
-                      </button>
+                      <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                        {canEdit("sales") && (
+                          <RowButton icon={Pencil} onClick={() => setEditingCustomer(c)}>
+                            Edit
+                          </RowButton>
+                        )}
+                        {canSeeHistory && (
+                          <RowButton
+                            icon={History}
+                            onClick={() =>
+                              setHistoryOf({ kind: "customer", id: c.id, label: c.name })
+                            }
+                          >
+                            History
+                          </RowButton>
+                        )}
+                        <button
+                          onClick={() => toggleCustomer.mutate({ id: c.id, is_active: false })}
+                          className="text-xs text-rose-600 dark:text-rose-400 hover:text-rose-700 dark:hover:text-rose-300 inline-flex items-center gap-1"
+                        >
+                          <Power size={12} /> Deactivate
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -750,6 +852,28 @@ export default function SalesPage() {
             )}
           </div>
         </>
+      )}
+
+      {editingOrder && (
+        <EditOrderDialog
+          order={editingOrder}
+          customers={activeCustomers}
+          onClose={() => setEditingOrder(null)}
+        />
+      )}
+      {editingInvoice && (
+        <EditInvoiceDialog invoice={editingInvoice} onClose={() => setEditingInvoice(null)} />
+      )}
+      {editingCustomer && (
+        <EditCustomerDialog customer={editingCustomer} onClose={() => setEditingCustomer(null)} />
+      )}
+      {historyOf && (
+        <RecordHistory
+          kind={historyOf.kind}
+          id={historyOf.id}
+          label={historyOf.label}
+          onClose={() => setHistoryOf(null)}
+        />
       )}
     </div>
   );

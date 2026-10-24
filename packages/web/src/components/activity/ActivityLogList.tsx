@@ -56,7 +56,9 @@ export default function ActivityLogList({
                 {formatActivity(row).replace(/^[A-Z]/, (c) => c.toLowerCase())}
               </span>
             </p>
-            {row.detail && <p className="text-xs text-muted mt-0.5">{row.detail}</p>}
+            {row.detail && (
+              <p className="text-xs text-muted mt-0.5 whitespace-pre-line">{row.detail}</p>
+            )}
           </div>
           <time className="shrink-0 text-xs text-muted tabular-nums" title={row.created_at ?? ""}>
             {timeAgo(row.created_at)}

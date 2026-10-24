@@ -75,6 +75,53 @@ export class SalesService {
       .post("/sales/invoices", { order_id: orderId, invoice_date: todayISO() })
       .then((r) => r.data);
   }
+
+  // ── corrections (the Boss) and each record's change history ────────────────
+
+  /** Correct a saved order: only the fields sent change; items replace its lines. */
+  editOrder(id: string, body: OrderEdit): Promise<any> {
+    return this.http.patch(`/sales/orders/${id}`, body).then((r) => r.data);
+  }
+
+  /** Correct a saved invoice's dates. Its amounts follow its order. */
+  editInvoice(id: string, body: { invoice_date?: string; due_date?: string | null }): Promise<any> {
+    return this.http.patch(`/sales/invoices/${id}`, body).then((r) => r.data);
+  }
+
+  updateCustomer(id: string, body: Record<string, unknown>): Promise<any> {
+    return this.http.put(`/sales/customers/${id}`, body).then((r) => r.data);
+  }
+
+  /** Every logged change to one record, newest first. */
+  history(kind: RecordKind, id: string): Promise<ChangeEntry[]> {
+    return this.http.get(`/sales/history/${kind}/${id}`).then((r) => r.data);
+  }
 }
+
+export type RecordKind = "sales_order" | "invoice" | "customer";
+
+export type ChangeEntry = {
+  id: string;
+  action: string;
+  user_name: string | null;
+  detail: string | null;
+  created_at: string | null;
+};
+
+export type OrderEdit = {
+  customer_id?: string;
+  order_date?: string;
+  delivery_date?: string | null;
+  discount_pct?: number;
+  remarks?: string | null;
+  items?: {
+    item_type: string;
+    variety_id: string | null;
+    grade_name: string | null;
+    byproduct_type: string | null;
+    quantity_kg: number;
+    unit_price_per_kg: number;
+  }[];
+};
 
 export const salesService = new SalesService();

@@ -61,6 +61,10 @@ class ActivityService(BaseService):
         until = datetime.combine(end + timedelta(days=1), time.min, zone)
         return self._serialize(self.activity.list_for_company_between(company_id, since, until, limit=limit))
 
+    def list_for_entity(self, company_id: uuid.UUID, entity_type: str, entity_id: uuid.UUID) -> list[dict]:
+        """One record's history: every logged change to it, newest first."""
+        return self._serialize(self.activity.list_for_entity(company_id, entity_type, entity_id))
+
     def _serialize(self, rows: Sequence[ActivityLog]) -> list[dict]:
         user_ids = {r.user_id for r in rows if r.user_id}
         names: dict[uuid.UUID, str] = {}

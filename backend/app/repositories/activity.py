@@ -24,6 +24,22 @@ class ActivityLogRepository(BaseRepository[ActivityLog]):
         )
         return self.db.execute(stmt).scalars().all()
 
+    def list_for_entity(
+        self, company_id: uuid.UUID, entity_type: str, entity_id: uuid.UUID, *, limit: int = 100
+    ) -> Sequence[ActivityLog]:
+        """One record's rows (its edit history), newest first."""
+        stmt = (
+            select(ActivityLog)
+            .where(
+                ActivityLog.company_id == company_id,
+                ActivityLog.entity_type == entity_type,
+                ActivityLog.entity_id == entity_id,
+            )
+            .order_by(ActivityLog.created_at.desc())
+            .limit(limit)
+        )
+        return self.db.execute(stmt).scalars().all()
+
     def list_for_company_between(
         self, company_id: uuid.UUID, since: datetime, until: datetime, *, limit: int
     ) -> Sequence[ActivityLog]:
