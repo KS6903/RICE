@@ -10,13 +10,13 @@ from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 from .api import (
     account,
-    branch_view,
     actions,
     activity,
     admin,
     auth,
     automations,
     billing,
+    branch_view,
     branches,
     canva,
     cash,
