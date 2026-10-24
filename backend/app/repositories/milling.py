@@ -8,6 +8,7 @@ from typing import Sequence
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
+from ..core.branch_scope import only_viewed
 from ..models.milling import MillingBatch, MillingEquipment
 from .base import BaseRepository
 
@@ -27,8 +28,9 @@ class MillingBatchRepository(BaseRepository[MillingBatch]):
 
     def list_for_company(self, company_id: uuid.UUID, *, skip: int = 0, limit: int = 50) -> Sequence[MillingBatch]:
         stmt = (
-            select(MillingBatch)
-            .where(MillingBatch.company_id == company_id)
+            only_viewed(
+                select(MillingBatch).where(MillingBatch.company_id == company_id), MillingBatch.branch_id, self.db
+            )
             # Loaded up front so the list carries each batch's kilos.
             .options(selectinload(MillingBatch.inputs), selectinload(MillingBatch.outputs))
             .order_by(MillingBatch.start_datetime.desc())

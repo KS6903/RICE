@@ -20,6 +20,7 @@ from .access_policy import (  # noqa: F401
     user_section_level,
 )
 from .account_status import boss_may_enter
+from .branch_scope import resolve_request
 from .cache import TTL_FEATURES, cache
 from .config import settings
 from .cookies import ACCESS_COOKIE
@@ -239,6 +240,7 @@ def get_current_user(
     db: Session = Depends(get_db),
 ):
     user, _payload = authenticate_access_token(token, db)
+    resolve_request(db, request, user)
     request.state.auth_context = {
         "user_id": user.id,
         "company_id": user.company_id,

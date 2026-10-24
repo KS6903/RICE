@@ -5,6 +5,7 @@ import { useState, useEffect } from "react";
 import { useCurrentPlan } from "../../hooks/useFeature";
 import LocationPicker from "../LocationPicker";
 import NotificationBell from "./NotificationBell";
+import BranchPicker from "./BranchPicker";
 import TourButton from "../help/TourButton";
 import UserAvatar from "../UserAvatar";
 import { roleLabel } from "@rice-mill/shared";
@@ -90,6 +91,9 @@ export default function Header({ menuOpen, onMenu }: { menuOpen: boolean; onMenu
     <header className="h-16 glass-strong border-b border-soft flex items-center justify-between gap-2 px-3 sm:px-6 shrink-0 relative z-10">
       <NavDrawerButton open={menuOpen} onOpen={onMenu} />
       <div className="flex items-center gap-1.5 sm:gap-3 ml-auto min-w-0">
+        {/* One branch, or all of them added up: the Boss's mill with several. */}
+        <BranchPicker />
+
         {/* Weather + location picker — saved favorites follow the user across
             every page and every login. */}
         {/* The weather is the Dashboard's: a role the Boss closed it to goes without. */}

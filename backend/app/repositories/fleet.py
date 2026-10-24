@@ -5,6 +5,7 @@ from typing import Sequence
 
 from sqlalchemy import Integer, cast, func
 
+from ..core.branch_scope import only_viewed
 from ..models.fleet import DispatchTrip, Driver, Truck
 from ..services.doc_numbers import trip_pattern
 from .base import BaseRepository
@@ -41,8 +42,11 @@ class TripRepository(BaseRepository[DispatchTrip]):
 
     def list_for_company(self, company_id: uuid.UUID, *, limit: int = 100) -> Sequence[DispatchTrip]:
         return (
-            self.db.query(DispatchTrip)
-            .filter(DispatchTrip.company_id == company_id)
+            only_viewed(
+                self.db.query(DispatchTrip).filter(DispatchTrip.company_id == company_id),
+                DispatchTrip.branch_id,
+                self.db,
+            )
             .order_by(DispatchTrip.dispatch_date.desc(), DispatchTrip.created_at.desc())
             .limit(limit)
             .all()

@@ -10,6 +10,7 @@ from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 from .api import (
     account,
+    branch_view,
     actions,
     activity,
     admin,
@@ -129,6 +130,7 @@ mfa_gate = [
 
 app.include_router(auth.router, prefix="/api/auth", tags=["Auth"])
 app.include_router(account.router, prefix="/api/auth/account", tags=["Account"])
+app.include_router(branch_view.router, prefix="/api/auth/branch-view", tags=["Branch view"])
 # Legal documents are public by design: terms nobody could read before
 # agreeing are weak terms. Acceptance endpoints inside still require auth.
 app.include_router(legal.router, prefix="/api/legal", tags=["Legal"])

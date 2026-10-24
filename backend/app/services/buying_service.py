@@ -15,6 +15,7 @@ from typing import Any
 
 from sqlalchemy.orm import Session
 
+from ..core.branch_scope import only_viewed
 from ..models.buying import ByproductPurchase, ByproductPurchaseItem, RicePurchase, RicePurchaseItem
 from ..models.milling import ByproductInventory, MilledRiceInventory
 from ..models.reference import RiceVariety
@@ -43,8 +44,11 @@ class BuyingService(BaseService):
 
     def _list(self, model: type[Purchase], *, skip: int, limit: int) -> list[Any]:
         return (
-            self.db.query(model)
-            .filter(model.company_id == self.current_user.company_id)
+            only_viewed(
+                self.db.query(model).filter(model.company_id == self.current_user.company_id),
+                model.branch_id,
+                self.db,
+            )
             .order_by(model.purchase_date.desc(), model.created_at.desc())
             .offset(skip)
             .limit(limit)

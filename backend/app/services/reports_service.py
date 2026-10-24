@@ -14,6 +14,7 @@ from typing import Any
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
+from ..core.branch_scope import viewed_branch
 from ..core.timezones import local_today
 from ..models.costs import Expense
 from ..models.milling import ByproductInventory, MilledRiceInventory, MillingBatch
@@ -30,6 +31,11 @@ class ReportsService(BaseService):
     def _company_id(self):
         return self.current_user.company_id
 
+    def _viewed(self, model: Any) -> list:
+        """The filter keeping a report to the branch the Boss is looking at (none for all)."""
+        branch = viewed_branch(self.db)
+        return [model.branch_id == branch] if branch is not None else []
+
     def profit_and_loss(self, period_start: date, period_end: date, batch_id: str | None = None) -> dict:
         revenue = (
             self.db.query(func.sum(SalesOrder.total_amount))
@@ -38,6 +44,7 @@ class ReportsService(BaseService):
                 SalesOrder.order_date >= period_start,
                 SalesOrder.order_date <= period_end,
                 SalesOrder.status.in_(["invoiced", "paid"]),
+                *self._viewed(SalesOrder),
             )
             .scalar()
             or 0
@@ -50,6 +57,7 @@ class ReportsService(BaseService):
                 PalayPurchase.company_id == self._company_id,
                 PalayPurchase.purchase_date >= period_start,
                 PalayPurchase.purchase_date <= period_end,
+                *self._viewed(PalayPurchase),
             )
             .scalar()
             or 0
@@ -59,6 +67,7 @@ class ReportsService(BaseService):
             Expense.company_id == self._company_id,
             Expense.expense_date >= period_start,
             Expense.expense_date <= period_end,
+            *self._viewed(Expense),
         )
         if batch_id:
             exp_q = exp_q.filter(Expense.batch_id == batch_id)
@@ -78,9 +87,21 @@ class ReportsService(BaseService):
         }
 
     def inventory_valuation(self) -> dict:
-        palay = self.db.query(PalayInventory).filter(PalayInventory.company_id == self._company_id).all()
-        milled = self.db.query(MilledRiceInventory).filter(MilledRiceInventory.company_id == self._company_id).all()
-        byp = self.db.query(ByproductInventory).filter(ByproductInventory.company_id == self._company_id).all()
+        palay = (
+            self.db.query(PalayInventory)
+            .filter(PalayInventory.company_id == self._company_id, *self._viewed(PalayInventory))
+            .all()
+        )
+        milled = (
+            self.db.query(MilledRiceInventory)
+            .filter(MilledRiceInventory.company_id == self._company_id, *self._viewed(MilledRiceInventory))
+            .all()
+        )
+        byp = (
+            self.db.query(ByproductInventory)
+            .filter(ByproductInventory.company_id == self._company_id, *self._viewed(ByproductInventory))
+            .all()
+        )
         return {
             "palay": [
                 {"variety_id": str(i.variety_id), "grade_id": str(i.grade_id), "quantity_kg": float(i.quantity_kg)}
@@ -100,6 +121,7 @@ class ReportsService(BaseService):
                 MillingBatch.company_id == self._company_id,
                 func.date(MillingBatch.start_datetime) >= period_start,
                 func.date(MillingBatch.start_datetime) <= period_end,
+                *self._viewed(MillingBatch),
             )
             .all()
         )
@@ -109,6 +131,7 @@ class ReportsService(BaseService):
                 PalayPurchase.company_id == self._company_id,
                 PalayPurchase.purchase_date >= period_start,
                 PalayPurchase.purchase_date <= period_end,
+                *self._viewed(PalayPurchase),
             )
             .all()
         )
@@ -137,6 +160,7 @@ class ReportsService(BaseService):
                     SalesOrder.order_date >= period_start,
                     SalesOrder.order_date <= period_end,
                     SalesOrder.status.in_(["invoiced", "paid"]),
+                    *self._viewed(SalesOrder),
                 )
                 .scalar()
                 or 0
@@ -158,6 +182,7 @@ class ReportsService(BaseService):
             .filter(
                 Invoice.company_id == self._company_id,
                 Invoice.status.in_(["unpaid", "partial", "overdue"]),
+                *self._viewed(Invoice),
             )
             .all()
         )

@@ -8,6 +8,7 @@ from typing import Sequence
 from sqlalchemy import select
 from sqlalchemy.orm import joinedload
 
+from ..core.branch_scope import only_viewed
 from ..models.dispatch import Agent, Miller
 from ..models.sales import SalesOrder
 from .base import BaseRepository
@@ -43,7 +44,9 @@ class DispatchOrderRepository(BaseRepository[SalesOrder]):
     )
 
     def list_for_dispatch(self, company_id: uuid.UUID, *, status: str | None = None) -> Sequence[SalesOrder]:
-        stmt = select(SalesOrder).where(SalesOrder.company_id == company_id).options(*self._COURIER_JOINS)
+        stmt = only_viewed(
+            select(SalesOrder).where(SalesOrder.company_id == company_id), SalesOrder.branch_id, self.db
+        ).options(*self._COURIER_JOINS)
         if status:
             stmt = stmt.where(SalesOrder.status == status)
         else:

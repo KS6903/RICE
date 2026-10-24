@@ -173,6 +173,11 @@ export class AuthService {
     return this.http.post("/auth/mfa/backup-codes/regenerate", { code }).then((r) => r.data);
   }
 
+  /** Where the branch picker opens, on every device: "main", "all", or a branch id. */
+  setBranchView(view: string): Promise<{ branch_view_default: string }> {
+    return this.http.put("/auth/branch-view", { view }).then((r) => r.data);
+  }
+
   // ── Closing the mill's account (the Boss) ───────────────────────────────────
 
   /** The account's state, and what (if anything) stops it closing now. */

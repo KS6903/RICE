@@ -1,5 +1,6 @@
 import axios, { type AxiosRequestConfig } from "axios";
 import { useAuthStore } from "../stores/authStore";
+import { useBranchStore } from "../stores/branchStore";
 import { useBillingNoticeStore } from "../stores/billingNoticeStore";
 import { isElectronRuntime } from "./runtime";
 import { createSingleFlight } from "./singleFlight";
@@ -37,6 +38,9 @@ api.interceptors.request.use((config) => {
 
   const csrf = getCookie("csrf_token");
   if (csrf) config.headers["X-CSRF-Token"] = csrf;
+  // The branch the Boss is looking at (stores/branchStore.ts).
+  const branch = useBranchStore.getState().view;
+  if (branch) config.headers["X-Branch"] = branch;
   return config;
 });
 

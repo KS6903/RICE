@@ -7,6 +7,7 @@ from typing import Sequence
 
 from sqlalchemy import Integer, cast, func, select
 
+from ..core.branch_scope import viewed_branch
 from ..models.employee import Employee
 from ..services.doc_numbers import employee_pattern
 from .base import BaseRepository
@@ -21,6 +22,7 @@ class EmployeeRepository(BaseRepository[Employee]):
         stmt = select(Employee).where(Employee.company_id == company_id)
         if not include_inactive:
             stmt = stmt.where(Employee.is_active.is_(True))
+        branch_id = branch_id or viewed_branch(self.db)
         if branch_id:
             stmt = stmt.where(Employee.branch_id == branch_id)
         stmt = stmt.order_by(Employee.is_active.desc(), Employee.last_name, Employee.first_name)

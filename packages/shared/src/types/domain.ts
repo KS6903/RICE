@@ -44,6 +44,8 @@ export interface User {
   agreement_version?: string;
   // Unread notices under the header's bell (0 for platform admins).
   notifications_unread?: number;
+  // Where the Boss's branch picker opens: "main", "all", or a branch id.
+  branch_view_default?: string;
   // Open, or closed by the Boss: paused, or with deletion asked for. Anything
   // but open shows the closed-account screen (the server shuts the data routes).
   account?: AccountState;

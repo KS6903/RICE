@@ -8,6 +8,7 @@ from typing import Sequence
 from sqlalchemy import Integer, cast, func, select
 from sqlalchemy.orm import joinedload, selectinload
 
+from ..core.branch_scope import only_viewed
 from ..models.sales import Invoice, PriceList, SalesOrder, SalesOrderItem
 from ..models.supplier_customer import Customer
 from ..services.doc_numbers import order_pattern
@@ -54,6 +55,7 @@ class SalesOrderRepository(BaseRepository[SalesOrder]):
             )
             .where(SalesOrder.company_id == company_id)
         )
+        stmt = only_viewed(stmt, SalesOrder.branch_id, self.db)
         if status:
             stmt = stmt.where(SalesOrder.status == status)
         if item_type:
@@ -80,7 +82,7 @@ class InvoiceRepository(BaseRepository[Invoice]):
     model = Invoice
 
     def list_for_company(self, company_id: uuid.UUID, *, status: str | None = None) -> Sequence[Invoice]:
-        stmt = select(Invoice).where(Invoice.company_id == company_id)
+        stmt = only_viewed(select(Invoice).where(Invoice.company_id == company_id), Invoice.branch_id, self.db)
         if status:
             stmt = stmt.where(Invoice.status == status)
         return self.db.execute(stmt.order_by(Invoice.invoice_date.desc())).scalars().all()

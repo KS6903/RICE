@@ -1167,6 +1167,8 @@ class AuthService(BaseService):
             "role_label": user.custom_role.name if user.custom_role else None,
             "company_id": str(user.company_id) if user.company_id else None,
             "branch_id": str(user.branch_id) if user.branch_id else None,
+            # Where the branch picker opens: "main", "all", or a branch id.
+            "branch_view_default": user.default_branch_view or "main",
             "is_platform_admin": user.is_platform_admin,
             "subscription": plan_info,
             "features": features,

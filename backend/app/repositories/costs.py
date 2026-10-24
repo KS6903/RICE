@@ -7,6 +7,7 @@ from typing import Sequence
 
 from sqlalchemy import func, select, update
 
+from ..core.branch_scope import only_viewed
 from ..models.costs import Expense, ExpenseCategory
 from .base import BaseRepository
 
@@ -51,8 +52,7 @@ class ExpenseRepository(BaseRepository[Expense]):
 
     def list_for_company(self, company_id: uuid.UUID, *, skip: int = 0, limit: int = 100) -> Sequence[Expense]:
         stmt = (
-            select(Expense)
-            .where(Expense.company_id == company_id)
+            only_viewed(select(Expense).where(Expense.company_id == company_id), Expense.branch_id, self.db)
             .order_by(Expense.expense_date.desc())
             .offset(skip)
             .limit(limit)

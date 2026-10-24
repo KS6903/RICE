@@ -13,6 +13,7 @@ from typing import Sequence
 from sqlalchemy import func, select
 from sqlalchemy.orm import joinedload, selectinload
 
+from ..core.branch_scope import only_viewed, viewed_branch
 from ..models.paddy import PalayInventory, PalayPurchase
 from ..models.reference import QualityGrade, RiceVariety
 from ..models.supplier_customer import Supplier
@@ -83,6 +84,7 @@ class PalayPurchaseRepository(BaseRepository[PalayPurchase]):
             )
             .where(PalayPurchase.company_id == company_id)
         )
+        stmt = only_viewed(stmt, PalayPurchase.branch_id, self.db)
         if status:
             stmt = stmt.where(PalayPurchase.status == status)
         stmt = stmt.order_by(PalayPurchase.purchase_date.desc()).offset(skip).limit(limit)
@@ -94,6 +96,7 @@ class PalayInventoryRepository(BaseRepository[PalayInventory]):
 
     def list_with_stock(self, company_id: uuid.UUID, *, branch_id: uuid.UUID | None = None) -> Sequence[PalayInventory]:
         stmt = select(PalayInventory).where(PalayInventory.company_id == company_id, PalayInventory.quantity_kg > 0)
+        branch_id = branch_id or viewed_branch(self.db)
         if branch_id:
             stmt = stmt.where(PalayInventory.branch_id == branch_id)
         return self.db.execute(stmt).scalars().all()

@@ -12,6 +12,7 @@ from typing import Sequence
 
 from sqlalchemy import select
 
+from ..core.branch_scope import viewed_branch
 from ..models.milling import ByproductInventory, MilledRiceInventory
 from .base import BaseRepository
 
@@ -25,6 +26,7 @@ class MilledRiceInventoryRepository(BaseRepository[MilledRiceInventory]):
         stmt = select(MilledRiceInventory).where(
             MilledRiceInventory.company_id == company_id, MilledRiceInventory.quantity_kg > 0
         )
+        branch_id = branch_id or viewed_branch(self.db)
         if branch_id:
             stmt = stmt.where(MilledRiceInventory.branch_id == branch_id)
         return self.db.execute(stmt).scalars().all()
@@ -46,6 +48,7 @@ class ByproductInventoryRepository(BaseRepository[ByproductInventory]):
         self, company_id: uuid.UUID, *, branch_id: uuid.UUID | None = None
     ) -> Sequence[ByproductInventory]:
         stmt = select(ByproductInventory).where(ByproductInventory.company_id == company_id)
+        branch_id = branch_id or viewed_branch(self.db)
         if branch_id:
             stmt = stmt.where(ByproductInventory.branch_id == branch_id)
         return self.db.execute(stmt).scalars().all()
