@@ -154,7 +154,8 @@ export default function FieldOperatorsPage() {
   );
 }
 
-function FieldOperatorsContent() {
+/** Agents, millers and suppliers (also on Stock > Catalog). */
+export function FieldOperatorsContent() {
   const { canEdit } = useAccess();
   const hasPaddy = useFeature("paddy");
   const [typeTab, setTypeTab] = useState<TypeTab>("all");

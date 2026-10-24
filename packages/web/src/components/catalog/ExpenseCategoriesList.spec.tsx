@@ -3,10 +3,9 @@ import { fireEvent, render, screen, waitFor, within } from "@testing-library/rea
 import { MemoryRouter } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { User } from "@rice-mill/shared";
-import SettingsPage from "./SettingsPage";
-import { useAuthStore } from "../stores/authStore";
-import { billingService } from "../services/BillingService";
-import { costsService } from "../services/CostsService";
+import { ExpenseCategoriesList } from "./CatalogLists";
+import { useAuthStore } from "../../stores/authStore";
+import { costsService } from "../../services/CostsService";
 
 const owner: User = {
   id: "u1",
@@ -41,22 +40,19 @@ const draw = () =>
       client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}
     >
       <MemoryRouter>
-        <SettingsPage />
+        <ExpenseCategoriesList />
       </MemoryRouter>
     </QueryClientProvider>,
   );
 
 const openTab = async () => {
   draw();
-  fireEvent.click(screen.getByRole("button", { name: "Expense Categories" }));
   await screen.findByText("Fuel");
 };
 
-describe("Settings: Expense Categories", () => {
+describe("Catalog: Expense categories", () => {
   beforeEach(() => {
     useAuthStore.setState({ user: owner });
-    vi.spyOn(billingService, "getPlans").mockResolvedValue([]);
-    vi.spyOn(billingService, "getMyRequest").mockResolvedValue({ request: null });
     vi.spyOn(costsService, "listCategories").mockResolvedValue([fuel, snacks, generator]);
     vi.spyOn(costsService, "updateCategory").mockResolvedValue({});
     vi.spyOn(costsService, "deleteCategory").mockResolvedValue(undefined);

@@ -17,6 +17,7 @@ import {
   HandCoins,
   Wallet,
   ClipboardList,
+  Library,
   Wrench,
   ShoppingBasket,
   Boxes,
@@ -131,6 +132,15 @@ export const NAV_GROUPS: { title: string | null; items: NavEntry[] }[] = [
         feature: "automations",
         section: "inventory",
         hint: "Count what's really there and compare it with the records",
+      },
+      {
+        to: "/catalog",
+        label: "Catalog",
+        icon: Library,
+        feature: "dashboard",
+        // The mill's lists are the Boss's (and whoever Settings is opened to).
+        section: "settings",
+        hint: "Varieties, categories, machines and the other lists you fill in",
       },
     ],
   },

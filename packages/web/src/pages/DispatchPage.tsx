@@ -1041,7 +1041,8 @@ function FleetTab() {
 
 // ── Trucks panel ─────────────────────────────────────────────────────────────
 
-function TrucksPanel() {
+/** The mill's trucks (also on Stock > Catalog). */
+export function TrucksPanel() {
   const qc = useQueryClient();
   const { canEdit } = useAccess();
   const [showForm, setShowForm] = useState(false);
@@ -1306,7 +1307,8 @@ function TruckForm({
 
 // ── Drivers panel ─────────────────────────────────────────────────────────────
 
-function DriversPanel() {
+/** The mill's drivers (also on Stock > Catalog). */
+export function DriversPanel() {
   const qc = useQueryClient();
   const { canEdit } = useAccess();
   const [showForm, setShowForm] = useState(false);

@@ -3,10 +3,9 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { User } from "@rice-mill/shared";
-import SettingsPage from "./SettingsPage";
-import { useAuthStore } from "../stores/authStore";
-import { billingService } from "../services/BillingService";
-import { paddyService } from "../services/PaddyService";
+import { VarietiesList } from "./CatalogLists";
+import { useAuthStore } from "../../stores/authStore";
+import { paddyService } from "../../services/PaddyService";
 
 const owner: User = {
   id: "u1",
@@ -34,22 +33,19 @@ const draw = () =>
       client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}
     >
       <MemoryRouter>
-        <SettingsPage />
+        <VarietiesList />
       </MemoryRouter>
     </QueryClientProvider>,
   );
 
 const openTab = async () => {
   draw();
-  fireEvent.click(screen.getByRole("button", { name: "Rice Varieties" }));
   await screen.findByText("NSIC Rc222");
 };
 
-describe("Settings: Rice Varieties", () => {
+describe("Catalog: Rice varieties", () => {
   beforeEach(() => {
     useAuthStore.setState({ user: owner });
-    vi.spyOn(billingService, "getPlans").mockResolvedValue([]);
-    vi.spyOn(billingService, "getMyRequest").mockResolvedValue({ request: null });
     vi.spyOn(paddyService, "listVarieties").mockResolvedValue([rc222, sinag]);
     vi.spyOn(paddyService, "updateVariety").mockResolvedValue({});
   });

@@ -28,6 +28,7 @@ import TasksPage from "./pages/TasksPage";
 import CollectionsPage from "./pages/CollectionsPage";
 import CashCountPage from "./pages/CashCountPage";
 import StockCountPage from "./pages/StockCountPage";
+import CatalogPage from "./pages/CatalogPage";
 import MaintenancePage from "./pages/MaintenancePage";
 import UsersPage from "./pages/UsersPage";
 import EmployeesPage from "./pages/EmployeesPage";
@@ -319,6 +320,14 @@ function AppRoutes() {
               <FeatureGate code="automations" label="Maintenance" requires="Enterprise">
                 <MaintenancePage />
               </FeatureGate>
+            </RoleGate>
+          }
+        />
+        <Route
+          path="catalog"
+          element={
+            <RoleGate section="settings">
+              <CatalogPage />
             </RoleGate>
           }
         />

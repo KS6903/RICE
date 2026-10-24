@@ -87,15 +87,17 @@ describe("Tour", () => {
     expect(screen.getByRole("dialog", { name: "Dashboard" })).toBeInTheDocument();
     expect(screen.getByTestId("where")).toHaveTextContent(/^\/$/);
 
-    // Arrow keys work too, and Back goes back. (Reports comes with the
-    // dashboard on every plan.)
+    // Arrow keys work too, and Back goes back. (The Catalog and Reports come
+    // with the dashboard on every plan; the Boss sees the Catalog.)
     fireEvent.keyDown(window, { key: "ArrowRight" });
-    expect(screen.getByRole("dialog", { name: "Reports" })).toBeInTheDocument();
-    expect(screen.getByTestId("where")).toHaveTextContent("/reports");
+    expect(screen.getByRole("dialog", { name: "Catalog" })).toBeInTheDocument();
+    expect(screen.getByTestId("where")).toHaveTextContent("/catalog");
     fireEvent.click(screen.getByRole("button", { name: "Back" }));
     expect(screen.getByRole("dialog", { name: "Dashboard" })).toBeInTheDocument();
 
     fireEvent.keyDown(window, { key: "ArrowRight" });
+    fireEvent.keyDown(window, { key: "ArrowRight" });
+    expect(screen.getByRole("dialog", { name: "Reports" })).toBeInTheDocument();
     fireEvent.keyDown(window, { key: "ArrowRight" });
     expect(screen.getByRole("dialog", { name: "Settings" })).toBeInTheDocument();
     fireEvent.keyDown(window, { key: "ArrowRight" });
@@ -128,7 +130,7 @@ describe("Tour", () => {
     setChecklistHidden("u1", true);
     draw("/costs");
     act(() => useHelpStore.getState().startTour());
-    for (let n = 0; n < 4; n++) fireEvent.keyDown(window, { key: "ArrowRight" });
+    for (let n = 0; n < 5; n++) fireEvent.keyDown(window, { key: "ArrowRight" });
     expect(screen.getByRole("dialog", { name: "That's the tour" })).toBeInTheDocument();
     fireEvent.click(
       screen.getByRole("button", { name: "Bring back the getting-started checklist" }),

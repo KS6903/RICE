@@ -16,6 +16,8 @@ export const PAGE_WHAT: Record<string, string> = {
     "Everything in your warehouses, by branch. Already had stock before Oraiza? Enter it once with Add inventory.",
   "/stock-count":
     "Count what's really on hand. You see what the records say only after saving, so the count stays honest.",
+  "/catalog":
+    "The lists you fill in once and every page picks from: varieties, categories, machines, trucks and the people you deal with.",
   "/sales": "Customer orders, then invoices once they're confirmed, plus your customer list.",
   "/dispatch": "Delivery trips, and your trucks and drivers.",
   "/operators": "Delivery agents, third-party millers and palay suppliers.",
