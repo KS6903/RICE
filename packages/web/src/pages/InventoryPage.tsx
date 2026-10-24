@@ -367,9 +367,7 @@ function ClassicCard({
           >
             <div>
               {kind === "byproduct" ? (
-                <span className="text-sm text-primary">
-                  {byproductLabel(inv.byproduct_type)}
-                </span>
+                <span className="text-sm text-primary">{byproductLabel(inv.byproduct_type)}</span>
               ) : (
                 <>
                   <span className="font-medium text-sm text-primary">
