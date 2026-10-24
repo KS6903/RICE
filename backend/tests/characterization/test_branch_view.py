@@ -107,3 +107,14 @@ def test_only_the_boss_and_admins_pick_a_branch():
     branch_scope.resolve(db, str(north), cashier)
     assert branch_scope.viewed_branch(db) is None
     assert cashier.branch_id == "home"
+
+
+def test_a_choice_never_outlives_its_request(db_session, seed_owner):
+    """The tests' requests share one session; a real one gets its own."""
+    north = _north(db_session, seed_owner)
+    home = seed_owner.branch_id
+    branch_scope.resolve(db_session, str(north.id), seed_owner)
+    assert (branch_scope.viewed_branch(db_session), seed_owner.branch_id) == (north.id, north.id)
+
+    branch_scope.resolve(db_session, "all", seed_owner)
+    assert (branch_scope.viewed_branch(db_session), seed_owner.branch_id) == (None, home)

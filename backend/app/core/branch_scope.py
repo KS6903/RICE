@@ -28,6 +28,8 @@ ALL = "all"
 # The roles that pick a branch; the users the picker is for.
 CHOOSERS = frozenset({"owner", "admin"})
 _VIEW = "oraiza.branch_view"
+# (user id, their own branch) while a chosen branch stands in for it.
+_HOME = "oraiza.home_branch"
 
 Q = TypeVar("Q")
 
@@ -39,7 +41,15 @@ def chooses(user: Any) -> bool:
 
 def resolve(db: Session, header: str | None, user: Any) -> None:
     """Apply the X-Branch header to this request. A header naming no live
-    branch of the user's mill is ignored, so it can never reach another mill's."""
+    branch of the user's mill is ignored, so it can never reach another mill's.
+
+    Whatever an earlier request on the same session chose is undone first, so
+    a session that serves more than one request (the tests share one) never
+    carries a branch over."""
+    db.info.pop(_VIEW, None)
+    home = db.info.pop(_HOME, None)
+    if home is not None and home[0] == getattr(user, "id", None):
+        set_committed_value(user, "branch_id", home[1])
     if not header or header == ALL or not chooses(user):
         return
     try:
@@ -52,6 +62,7 @@ def resolve(db: Session, header: str | None, user: Any) -> None:
     if branch is None or branch.company_id != user.company_id or branch.deleted_at is not None:
         return
     db.info[_VIEW] = branch.id
+    db.info[_HOME] = (user.id, user.branch_id)
     set_committed_value(user, "branch_id", branch.id)
 
 
