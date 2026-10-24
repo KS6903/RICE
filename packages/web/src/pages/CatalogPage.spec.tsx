@@ -12,6 +12,9 @@ vi.mock("../components/catalog/CatalogLists", () => ({
   ExpenseCategoriesList: () => <p>the categories list</p>,
   MachinesList: () => <p>the machines list</p>,
 }));
+vi.mock("../components/catalog/ServiceIntervalsList", () => ({
+  ServiceIntervalsList: () => <p>the service intervals</p>,
+}));
 vi.mock("./DispatchPage", () => ({
   TrucksPanel: () => <p>the trucks</p>,
   DriversPanel: () => <p>the drivers</p>,
@@ -58,12 +61,13 @@ describe("CatalogPage", () => {
     expect(others.querySelector("[data-plan=Basic]")).toHaveTextContent("Machines");
     expect(others.querySelector("[data-plan=Basic]")).toHaveTextContent("Trucks & drivers");
     expect(others.querySelector("[data-plan=Pro]")).toHaveTextContent("Employees");
+    expect(others.querySelector("[data-plan=Enterprise]")).toHaveTextContent("Service intervals");
   });
 
   it("an Enterprise mill gets every list, one tab each", () => {
     useAuthStore.setState({ user: boss(["*"]) });
     draw();
-    expect(screen.getAllByRole("tab")).toHaveLength(7);
+    expect(screen.getAllByRole("tab")).toHaveLength(8);
     expect(screen.queryByTestId("catalog-other-plans")).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("tab", { name: "Trucks & drivers" }));
     expect(screen.getByText("the trucks")).toBeInTheDocument();

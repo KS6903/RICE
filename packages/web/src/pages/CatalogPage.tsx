@@ -11,6 +11,7 @@ import {
   MachinesList,
   VarietiesList,
 } from "../components/catalog/CatalogLists";
+import { ServiceIntervalsList } from "../components/catalog/ServiceIntervalsList";
 import { DriversPanel, TrucksPanel } from "./DispatchPage";
 import { FieldOperatorsContent } from "./FieldOperatorsPage";
 import EmployeesPage from "./EmployeesPage";
@@ -60,6 +61,14 @@ const LISTS: List[] = [
     feature: "milling",
     section: "milling",
     render: () => <MachinesList />,
+  },
+  {
+    key: "service",
+    label: "Service intervals",
+    what: "The machines on the Maintenance page, and how often each is serviced.",
+    feature: "automations",
+    section: "milling",
+    render: () => <ServiceIntervalsList />,
   },
   {
     key: "fleet",

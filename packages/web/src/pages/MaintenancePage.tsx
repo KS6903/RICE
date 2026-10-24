@@ -16,7 +16,7 @@ const day = (iso: string) =>
     year: "numeric",
   });
 
-function errorText(error: unknown, fallback: string): string {
+export function errorText(error: unknown, fallback: string): string {
   const detail = (error as { response?: { data?: { detail?: unknown } } })?.response?.data?.detail;
   if (typeof detail === "string") return detail;
   if (Array.isArray(detail) && typeof detail[0]?.msg === "string")
@@ -134,7 +134,7 @@ function MachineCard({ machine, canEdit }: { machine: Machine; canEdit: boolean 
   );
 }
 
-function AddMachine({ onDone }: { onDone: () => void }) {
+export function AddMachine({ onDone }: { onDone: () => void }) {
   const queryClient = useQueryClient();
   const [name, setName] = useState("");
   const [hours, setHours] = useState("");

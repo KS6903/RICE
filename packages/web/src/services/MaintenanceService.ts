@@ -24,6 +24,8 @@ export type MachineIn = {
   every_days: number | null;
   last_service_on: string;
   notes: string;
+  /** Left out, the machine is in use. */
+  is_active?: boolean;
 };
 
 export class MaintenanceService {
@@ -35,6 +37,11 @@ export class MaintenanceService {
 
   add(body: MachineIn): Promise<Machine> {
     return this.http.post("/equipment/", body).then((r) => r.data);
+  }
+
+  /** Change its name, intervals, or whether it's in use. */
+  edit(id: string, body: MachineIn): Promise<Machine> {
+    return this.http.put(`/equipment/${id}`, body).then((r) => r.data);
   }
 
   service(id: string, body: { done_on: string; note: string }): Promise<Machine> {

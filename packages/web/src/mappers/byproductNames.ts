@@ -13,6 +13,8 @@ export const BYPRODUCT_NAMES: Record<string, string> = {
 
 const added: Record<string, string> = {};
 
+export type ByproductLabel = (code: string) => string;
+
 export function keepByproductNames(kinds: ByproductKind[]): void {
   for (const k of kinds) if (!k.built_in) added[k.code] = k.name;
 }

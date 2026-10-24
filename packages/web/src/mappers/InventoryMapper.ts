@@ -3,7 +3,7 @@
 // render. Extracted from InventoryPage's inline useMemo (Phase F) so the
 // transform is unit-testable in isolation. Pure: no React, no network.
 
-import { byproductLabel } from "./byproductNames";
+import { byproductLabel, type ByproductLabel } from "./byproductNames";
 
 export type UnifiedItem = {
   id: string;
@@ -103,6 +103,7 @@ export class InventoryMapper {
     rows: T[],
     kind: UnifiedItem["type"],
     sort: InventorySort = DEFAULT_INVENTORY_SORT,
+    label: ByproductLabel = byproductLabel,
   ): T[] {
     const fields = (r: any): Sortable => ({
       grade:
@@ -113,7 +114,7 @@ export class InventoryMapper {
             : NO_GRADE,
       variety:
         kind === "byproduct"
-          ? (r.byproduct_type && byproductLabel(r.byproduct_type)) || NO_GRADE
+          ? (r.byproduct_type && label(r.byproduct_type)) || NO_GRADE
           : r.variety?.code || NO_GRADE,
       quantity_kg: Number(r.quantity_kg),
     });
@@ -160,7 +161,12 @@ export class InventoryMapper {
     });
   }
 
-  static toUnifiedItems(palay: any[], milled: any[], byproducts: any[]): UnifiedItem[] {
+  static toUnifiedItems(
+    palay: any[],
+    milled: any[],
+    byproducts: any[],
+    label: ByproductLabel = byproductLabel,
+  ): UnifiedItem[] {
     const out: UnifiedItem[] = [];
     for (const p of palay) {
       out.push({
@@ -193,7 +199,7 @@ export class InventoryMapper {
         id: `bp-${b.id}`,
         type: "byproduct",
         typeLabel: "By-product",
-        variety: byproductLabel(b.byproduct_type),
+        variety: label(b.byproduct_type),
         grade: "—",
         branchId: b.branch_id,
         branchName: branchName(b),

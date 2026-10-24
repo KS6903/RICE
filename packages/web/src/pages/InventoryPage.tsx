@@ -121,8 +121,8 @@ export default function InventoryPage() {
     queryFn: () => inventoryService.getSummary(branchFilter),
   });
   const stockLoading = palayLoading || milledLoading || byproductsLoading;
-  // The by-products' names; the lists below are drawn again when they arrive.
-  const { all: byproductKinds } = useByproductKinds();
+  // The by-products' names, for the lists below.
+  const { label: byproductName } = useByproductKinds();
 
   // Every view lists stock in the order this account chose (remembered between
   // visits, even after signing out). With "All warehouses" picked, one variety
@@ -130,18 +130,18 @@ export default function InventoryPage() {
   // still shows how that total splits between the warehouses.
   const [sort, setSort] = useInventorySort();
   const items: UnifiedItem[] = useMemo(() => {
-    const unified = InventoryMapper.toUnifiedItems(palay, milled, byproducts);
+    const unified = InventoryMapper.toUnifiedItems(palay, milled, byproducts, byproductName);
     const shown = branchFilter ? unified : InventoryMapper.combineAcrossWarehouses(unified);
     return shown.sort(InventoryMapper.comparator(sort));
-  }, [palay, milled, byproducts, byproductKinds, sort, branchFilter]);
+  }, [palay, milled, byproducts, byproductName, sort, branchFilter]);
   const palaySorted = useMemo(() => InventoryMapper.sortRows(palay, "palay", sort), [palay, sort]);
   const milledSorted = useMemo(
     () => InventoryMapper.sortRows(milled, "milled", sort),
     [milled, sort],
   );
   const byproductsSorted = useMemo(
-    () => InventoryMapper.sortRows(byproducts, "byproduct", sort),
-    [byproducts, byproductKinds, sort],
+    () => InventoryMapper.sortRows(byproducts, "byproduct", sort, byproductName),
+    [byproducts, byproductName, sort],
   );
 
   const totalKg = items.reduce((s, i) => s + i.quantity_kg, 0);
