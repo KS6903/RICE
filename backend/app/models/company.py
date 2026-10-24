@@ -47,6 +47,12 @@ class Company(Base, TimestampMixin):
     timezone: Mapped[str] = mapped_column(String(50), default="Asia/Manila")
     is_multi_branch: Mapped[bool] = mapped_column(Boolean, default=False)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    # Closed by the mill's own Boss, not by Oraiza: paused, or with deletion asked
+    # for (core/account_status.py). closed_by is the Boss's user id, kept without a
+    # foreign key so companies and users don't gain a second join path.
+    closed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    closed_by: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True))
+    deletion_requested_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     # Changes this mill's Boss has made to what each staff role can open, as
     # {role: {page: "full" | "view" | "none"}}: only the cells that differ from
     # the default matrix (core/access_policy.py). NULL when nothing was changed.

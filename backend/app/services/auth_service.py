@@ -26,6 +26,7 @@ from sqlalchemy.orm import Session, joinedload
 
 from ..core import legal as legal_docs
 from ..core import provisioning, turnstile
+from ..core.account_status import describe_account, sign_in_refusal
 from ..core.config import settings
 from ..core.cookies import describe_session_cookies
 from ..core.crypto import decrypt_str, encrypt_str
@@ -340,10 +341,8 @@ class AuthService(BaseService):
             raise UnauthorizedError("Invalid credentials")
         if not user.is_active:
             raise PermissionDeniedError("Account disabled")
-        if user.company_id and user.company is not None and not user.company.is_active:
-            raise PermissionDeniedError(
-                "Your company account has been deactivated. Please contact the platform administrator."
-            )
+        if refusal := sign_in_refusal(user, now=now_utc()):
+            raise PermissionDeniedError(refusal)
         if user.must_change_password and user.temp_password_expires_at and user.temp_password_expires_at <= now_utc():
             raise UnauthorizedError("Your temporary password has expired. Ask for a new one.")
         if settings.is_prod and user.company is not None and user.company.provisioned_at is None:
@@ -687,8 +686,8 @@ class AuthService(BaseService):
             raise UnauthorizedError("User not found or inactive")
         if payload.get("sub") != str(user.id) or payload.get("sid") != str(session.family_id):
             raise UnauthorizedError("Invalid refresh token")
-        if user.company_id and user.company is not None and not user.company.is_active:
-            raise PermissionDeniedError("Your company account has been deactivated.")
+        if refusal := sign_in_refusal(user, now=now_utc()):
+            raise PermissionDeniedError(refusal)
         with self.transaction():
             session.revoked_at = now_utc()
             tokens = self._issue_tokens(
@@ -1039,8 +1038,8 @@ class AuthService(BaseService):
                 )
             if not user.is_active:
                 raise PermissionDeniedError("Account disabled")
-            if user.company_id and user.company is not None and not user.company.is_active:
-                raise PermissionDeniedError("Your company account has been deactivated.")
+            if refusal := sign_in_refusal(user, now=now_utc()):
+                raise PermissionDeniedError(refusal)
             if user.company is not None and user.company.provisioned_at is None:
                 if settings.is_prod:
                     with self.transaction():
@@ -1171,6 +1170,9 @@ class AuthService(BaseService):
             "is_platform_admin": user.is_platform_admin,
             "subscription": plan_info,
             "features": features,
+            # Open, or closed by the Boss (paused, or deletion asked for): the web
+            # app shows the closed-account screen for anything but open.
+            "account": describe_account(user.company),
             "tenant_provisioned": bool(user.company is None or user.company.provisioned_at is not None),
             "tenant_provisioning_pending": bool(
                 user.company is not None

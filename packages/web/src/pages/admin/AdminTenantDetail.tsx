@@ -711,6 +711,9 @@ const EMPTY_METRICS = {
 };
 
 /* ─── Main Page ─── */
+const fmtDay = (iso: string | null | undefined) =>
+  iso ? new Date(iso).toLocaleDateString(undefined, { dateStyle: "long" }) : "";
+
 export default function AdminTenantDetail() {
   const { id } = useParams<{ id: string }>();
   const qc = useQueryClient();
@@ -751,6 +754,10 @@ export default function AdminTenantDetail() {
             </h2>
             {c.is_active ? (
               <span className="badge-green">Active</span>
+            ) : c.account?.state === "paused" ? (
+              <span className="badge-red">Paused by its Boss</span>
+            ) : c.account?.state === "deletion_requested" ? (
+              <span className="badge-red">Deletion requested</span>
             ) : (
               <span className="badge-red">Inactive</span>
             )}
@@ -780,6 +787,23 @@ export default function AdminTenantDetail() {
           </button>
         )}
       </div>
+
+      {c.account?.state === "deletion_requested" && (
+        <div
+          role="status"
+          className="rounded-xl px-4 py-3 text-sm bg-rose-50 dark:bg-rose-950/30 ring-1 ring-rose-200 dark:ring-rose-800/60 text-rose-800 dark:text-rose-200"
+        >
+          The Boss asked on {fmtDay(c.account.deletion_requested_at)} for this mill to be deleted.
+          They can still sign in to take its data or change their mind until{" "}
+          {fmtDay(c.account.export_until)}. After that, delete its records, as the Terms of Service
+          (17.4) promise. Nothing is deleted automatically.
+        </div>
+      )}
+      {c.account?.state === "paused" && (
+        <p className="text-sm text-secondary">
+          Paused by its Boss on {fmtDay(c.account.closed_at)}. Activating the tenant opens it again.
+        </p>
+      )}
 
       {id && <ProvisioningPanel tenantId={id} info={c.provisioning} />}
 

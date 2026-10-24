@@ -59,6 +59,7 @@ import DataExport from "../components/DataExport";
 import Select from "../components/Select";
 import ConfirmDialog from "../components/ConfirmDialog";
 import DeviceSessionCard from "../components/DeviceSessionCard";
+import AccountClosureCard from "../components/AccountClosureCard";
 import type { ActivityRow } from "../components/activity/format";
 import { Trash2, RotateCcw, Eye, EyeOff } from "lucide-react";
 
@@ -2223,98 +2224,105 @@ function ProfileTab() {
   });
 
   return (
-    <div className="card max-w-xl space-y-5">
-      <div className="flex items-center gap-3">
-        <UserAvatar className="h-12 w-12" name={user?.full_name || user?.username} />
-        <div>
-          <h3 className="text-lg font-bold text-primary">My profile</h3>
-          <p className="text-xs text-muted font-medium">
-            {user?.role_label || roleLabel(user?.role)}
-          </p>
-        </div>
-      </div>
-
-      <div>
-        <label className={LABEL}>Username</label>
-        <input
-          className="input opacity-70 cursor-not-allowed"
-          value={user?.username || ""}
-          disabled
-        />
-      </div>
-      <div>
-        <label className={LABEL}>Full name</label>
-        <input
-          className="input"
-          value={form.full_name}
-          onChange={(e) => setForm((f) => ({ ...f, full_name: e.target.value }))}
-        />
-      </div>
-      <div>
-        <label className={LABEL}>Email</label>
-        <input
-          type="email"
-          className="input"
-          value={form.email}
-          onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
-          required
-        />
-      </div>
-      {emailChanged && (
-        <div className="rounded-xl bg-amber-50/70 dark:bg-amber-950/20 ring-1 ring-amber-200 dark:ring-amber-800/50 p-4 space-y-3">
+    <div className="max-w-xl space-y-6">
+      <div className="card space-y-5">
+        <div className="flex items-center gap-3">
+          <UserAvatar className="h-12 w-12" name={user?.full_name || user?.username} />
           <div>
-            <p className="text-sm font-semibold text-primary">Confirm this sensitive change</p>
-            <p className="text-xs text-secondary mt-0.5">
-              Changing your email signs it out of verified status until you confirm the new address.
+            <h3 className="text-lg font-bold text-primary">My profile</h3>
+            <p className="text-xs text-muted font-medium">
+              {user?.role_label || roleLabel(user?.role)}
             </p>
           </div>
-          <div>
-            <label className={LABEL}>Current password</label>
-            <PasswordInput
-              className="input"
-              value={form.current_password}
-              onChange={(e) => setForm((f) => ({ ...f, current_password: e.target.value }))}
-              autoComplete="current-password"
-              placeholder="Enter your current password"
-            />
-          </div>
-          {user?.mfa_enabled && (
+        </div>
+
+        <div>
+          <label className={LABEL}>Username</label>
+          <input
+            className="input opacity-70 cursor-not-allowed"
+            value={user?.username || ""}
+            disabled
+          />
+        </div>
+        <div>
+          <label className={LABEL}>Full name</label>
+          <input
+            className="input"
+            value={form.full_name}
+            onChange={(e) => setForm((f) => ({ ...f, full_name: e.target.value }))}
+          />
+        </div>
+        <div>
+          <label className={LABEL}>Email</label>
+          <input
+            type="email"
+            className="input"
+            value={form.email}
+            onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
+            required
+          />
+        </div>
+        {emailChanged && (
+          <div className="rounded-xl bg-amber-50/70 dark:bg-amber-950/20 ring-1 ring-amber-200 dark:ring-amber-800/50 p-4 space-y-3">
             <div>
-              <label className={LABEL}>Or authenticator code</label>
-              <input
-                className="input font-mono"
-                value={form.mfa_code}
-                onChange={(e) => setForm((f) => ({ ...f, mfa_code: e.target.value.slice(0, 30) }))}
-                autoComplete="one-time-code"
-                inputMode="numeric"
-                placeholder="6-digit code or backup code"
+              <p className="text-sm font-semibold text-primary">Confirm this sensitive change</p>
+              <p className="text-xs text-secondary mt-0.5">
+                Changing your email signs it out of verified status until you confirm the new
+                address.
+              </p>
+            </div>
+            <div>
+              <label className={LABEL}>Current password</label>
+              <PasswordInput
+                className="input"
+                value={form.current_password}
+                onChange={(e) => setForm((f) => ({ ...f, current_password: e.target.value }))}
+                autoComplete="current-password"
+                placeholder="Enter your current password"
               />
             </div>
+            {user?.mfa_enabled && (
+              <div>
+                <label className={LABEL}>Or authenticator code</label>
+                <input
+                  className="input font-mono"
+                  value={form.mfa_code}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, mfa_code: e.target.value.slice(0, 30) }))
+                  }
+                  autoComplete="one-time-code"
+                  inputMode="numeric"
+                  placeholder="6-digit code or backup code"
+                />
+              </div>
+            )}
+          </div>
+        )}
+        <div className="flex items-center gap-3 pt-2">
+          <button
+            onClick={() => save.mutate()}
+            className="btn-primary"
+            disabled={
+              save.isPending ||
+              !form.full_name.trim() ||
+              !form.email.trim() ||
+              (emailChanged && !hasEmailProof)
+            }
+          >
+            {save.isPending ? "Saving…" : "Save profile"}
+          </button>
+          {saved && (
+            <span className="text-sm font-semibold text-emerald-600 dark:text-emerald-400 inline-flex items-center gap-1">
+              <Check size={14} /> {saved}
+            </span>
+          )}
+          {error && (
+            <span className="text-sm font-medium text-rose-600 dark:text-rose-400">{error}</span>
           )}
         </div>
-      )}
-      <div className="flex items-center gap-3 pt-2">
-        <button
-          onClick={() => save.mutate()}
-          className="btn-primary"
-          disabled={
-            save.isPending ||
-            !form.full_name.trim() ||
-            !form.email.trim() ||
-            (emailChanged && !hasEmailProof)
-          }
-        >
-          {save.isPending ? "Saving…" : "Save profile"}
-        </button>
-        {saved && (
-          <span className="text-sm font-semibold text-emerald-600 dark:text-emerald-400 inline-flex items-center gap-1">
-            <Check size={14} /> {saved}
-          </span>
-        )}
-        {error && (
-          <span className="text-sm font-medium text-rose-600 dark:text-rose-400">{error}</span>
-        )}
       </div>
+      {/* The mill's account is the Boss's to close. */}
+      {user?.role === "owner" && <AccountClosureCard />}
     </div>
   );
 }

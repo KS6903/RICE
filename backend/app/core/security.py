@@ -20,6 +20,7 @@ from .access_policy import (  # noqa: F401
     user_section_level,
 )
 from .cache import TTL_FEATURES, cache
+from . import account_status
 from .config import settings
 from .cookies import ACCESS_COOKIE
 from .csrf import enforce_csrf
@@ -217,7 +218,11 @@ def authenticate_access_token(token: str, db: Session):
         # closes the gap where a forged token could point the DB search_path at a
         # different, but validly named, tenant schema.
         company = user.company
-        if not company or not company.is_active:
+        # A mill its Boss closed still lets the Boss in (enforce_account_open
+        # then keeps them to reopening it or taking its data).
+        if not company or not (
+            company.is_active or account_status.boss_may_enter(user, now=datetime.now(timezone.utc))
+        ):
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Company not found or inactive")
         if payload.get("company_id") != str(company.id):
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
@@ -275,6 +280,27 @@ def enforce_mfa_enrollment(current_user=Depends(get_current_user)):
             detail="Two-factor authentication setup is required for your role before continuing.",
         )
     return current_user
+
+
+# What the Boss of a closed account may still read from the data routers: the
+# mill's data, as the export and the sealed backup (Terms 17.4).
+_CLOSED_ACCOUNT_READS = frozenset({"/api/export", "/api/backup", "/api/backup/status"})
+
+
+def enforce_account_open(request: Request, current_user=Depends(get_current_user)):
+    """Gate dependency for data routers: when the Boss has paused the mill or
+    asked for it to be deleted, only the data export stays open (403 for the
+    rest). The account endpoints live under /api/auth, outside the gate. The web
+    app reads /me's ``account.state`` and shows the closed-account screen."""
+    company = getattr(current_user, "company", None)
+    if company is None or company.is_active:
+        return current_user
+    if request.method == "GET" and request.url.path.rstrip("/") in _CLOSED_ACCOUNT_READS:
+        return current_user
+    raise HTTPException(
+        status_code=status.HTTP_403_FORBIDDEN,
+        detail="This account is closed. Reopen it, or download its data, from the account screen.",
+    )
 
 
 def password_change_pending(user) -> bool:

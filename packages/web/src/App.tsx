@@ -41,6 +41,7 @@ import AdminSettingsPage from "./pages/admin/AdminSettingsPage";
 import FeatureGate from "./components/FeatureGate";
 import RoleGate from "./components/RoleGate";
 import MfaEnrollmentGate from "./components/MfaEnrollmentGate";
+import AccountClosedGate from "./components/AccountClosedGate";
 import PasswordChangeGate from "./components/PasswordChangeGate";
 import EmailVerificationGate from "./components/EmailVerificationGate";
 import LegalAcceptanceGate from "./components/LegalAcceptanceGate";
@@ -123,12 +124,18 @@ function AppRoutes() {
   const mustEnroll = useAuthStore((s) => !!s.user?.mfa_enrollment_required);
   const mustVerify = useAuthStore((s) => !!s.user?.email_verification_required);
   const mustAccept = useAuthStore((s) => !!s.user?.legal_acceptance_required);
+  // The Boss closed the mill's account: they may only reopen it or take its data.
+  const accountClosed = useAuthStore((s) => {
+    const state = s.user?.account?.state;
+    return state === "paused" || state === "deletion_requested";
+  });
   // /legal/* stays reachable from every gate: nobody should be asked to accept
   // terms they cannot open, and the pages are public anyway.
   const onLegalPage = pathname.startsWith("/legal");
   // First, the temporary password: nothing else matters until it is replaced.
   if (mustChangePassword && !onLegalPage) return <PasswordChangeGate />;
   if (mustEnroll && !onLegalPage) return <MfaEnrollmentGate />;
+  if (accountClosed && !onLegalPage) return <AccountClosedGate />;
   if (mustVerify && pathname !== "/verify-email" && !onLegalPage) return <EmailVerificationGate />;
   if (mustAccept && !onLegalPage) return <LegalAcceptanceGate />;
   return (

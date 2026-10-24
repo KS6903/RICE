@@ -16,7 +16,7 @@ from sqlalchemy import func, true
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import Session
 
-from ..core import legal, provisioning
+from ..core import account_status, legal, provisioning
 from ..core.exceptions import AppException, BadRequestError, ConflictError, NotFoundError
 from ..core.security import invalidate_company_features
 from ..core.tenancy import tenant_session
@@ -426,6 +426,7 @@ class AdminService(BaseService):
                 "email": c.email,
                 "is_multi_branch": c.is_multi_branch,
                 "is_active": c.is_active,
+                "account": account_status.describe_account(c),
                 "currency": c.currency,
                 "created_at": c.created_at.isoformat() if c.created_at else None,
                 "users_count": user_counts.get(c.id, 0),
@@ -492,6 +493,7 @@ class AdminService(BaseService):
                 "timezone": company.timezone,
                 "is_multi_branch": company.is_multi_branch,
                 "is_active": company.is_active,
+                "account": account_status.describe_account(company),
                 "created_at": company.created_at.isoformat() if company.created_at else None,
                 "provisioning": provisioning.describe(company),
             },
@@ -585,6 +587,11 @@ class AdminService(BaseService):
             raise NotFoundError("Tenant not found")
         with self.transaction():
             company.is_active = data.is_active
+            if data.is_active:
+                # Switched back on by Oraiza: whatever the Boss had closed is open.
+                company.closed_at = None
+                company.closed_by = None
+                company.deletion_requested_at = None
         return {
             "message": f"Tenant '{company.name}' is now {'active' if data.is_active else 'inactive'}",
             "is_active": company.is_active,

@@ -24,6 +24,11 @@ const ACTION_VERBS: Record<string, string> = {
   "sales_order.edit": "Edited order",
   "invoice.edit": "Edited invoice",
   "customer.edit": "Edited customer",
+  // The Boss closing the mill's account, and opening it again.
+  "account.paused": "Paused the account of",
+  "account.reopened": "Switched back on the account of",
+  "account.deletion_requested": "Asked to delete the account of",
+  "account.deletion_cancelled": "Took back the request to delete",
 };
 
 export function formatActivity(row: ActivityRow): string {
@@ -38,8 +43,20 @@ export function activityActor(row: ActivityRow): string {
 
 // Tone for the row's accent dot.
 export function activityTone(action: string): "rose" | "emerald" | "slate" {
-  if (action === "warehouse.restore" || action === "user.restore") return "emerald";
-  if (action === "warehouse.delete" || action === "warehouse.purge" || action === "user.remove")
+  if (
+    action === "warehouse.restore" ||
+    action === "user.restore" ||
+    action === "account.reopened" ||
+    action === "account.deletion_cancelled"
+  )
+    return "emerald";
+  if (
+    action === "warehouse.delete" ||
+    action === "warehouse.purge" ||
+    action === "user.remove" ||
+    action === "account.paused" ||
+    action === "account.deletion_requested"
+  )
     return "rose";
   return "slate";
 }

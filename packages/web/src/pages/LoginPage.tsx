@@ -49,6 +49,14 @@ export default function LoginPage() {
   const [searchParams] = useSearchParams();
   // Set by useIdleLogout when it signs the user out for inactivity.
   const idleSignedOut = searchParams.get("reason") === "idle";
+  // Signed out by closing the mill's account (Settings > My Profile).
+  const closedNotices: Record<string, string> = {
+    "account-paused":
+      "The account is paused and everyone is signed out. Sign in to switch it back on.",
+    "account-deletion":
+      "Your request to delete the account is in, and everyone is signed out. You can still sign in to download the mill's data or take the request back.",
+  };
+  const closedNotice = closedNotices[searchParams.get("reason") ?? ""];
   // Where to go once signed in, if it's a page that may ask (/retrieve-data).
   const next = safeNext(searchParams);
   // Prefer real history so the user lands where they came from; fall back to the
@@ -257,6 +265,15 @@ export default function LoginPage() {
                 : "Enter the 6-digit code from your authenticator app."
               : "Sign in to continue to your dashboard."}
           </p>
+
+          {closedNotice && !mfaChallenge && (
+            <div
+              role="status"
+              className="mt-6 px-3 py-2.5 rounded-xl bg-sky-500/15 ring-1 ring-inset ring-sky-500/40 text-sm font-medium text-sky-700 dark:text-sky-300"
+            >
+              {closedNotice}
+            </div>
+          )}
 
           {idleSignedOut && !mfaChallenge && (
             <div className="mt-6 flex items-start gap-2 px-3 py-2.5 rounded-xl bg-sky-500/15 ring-1 ring-inset ring-sky-500/40 text-sm font-medium text-sky-700 dark:text-sky-300">

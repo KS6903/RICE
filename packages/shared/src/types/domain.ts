@@ -42,6 +42,9 @@ export interface User {
   agreement_version?: string;
   // Unread notices under the header's bell (0 for platform admins).
   notifications_unread?: number;
+  // Open, or closed by the Boss: paused, or with deletion asked for. Anything
+  // but open shows the closed-account screen (the server shuts the data routes).
+  account?: AccountState;
   subscription?: {
     code: string;
     name: string;
@@ -51,6 +54,16 @@ export interface User {
     status: string;
     expires_at: string | null;
   } | null;
+}
+
+/** Whether the mill's account is open, paused by its Boss, waiting to be
+ *  deleted (until `export_until` the Boss can still come back), or switched off
+ *  by Oraiza. */
+export interface AccountState {
+  state: "open" | "paused" | "deletion_requested" | "deactivated";
+  closed_at: string | null;
+  deletion_requested_at: string | null;
+  export_until: string | null;
 }
 
 export interface Company {

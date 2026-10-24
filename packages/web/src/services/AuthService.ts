@@ -1,6 +1,7 @@
 // AuthService — typed API client for account self-service (Phase F).
 // Wraps the /auth/* endpoints used by settings pages. Token/login flows stay in
 // api.ts's interceptor + the auth store; this is the profile/password surface.
+import type { AccountState } from "@rice-mill/shared";
 import api from "./api";
 
 export type UpdateProfileRequest = {
@@ -8,6 +9,14 @@ export type UpdateProfileRequest = {
   email?: string;
   current_password?: string;
   mfa_code?: string;
+};
+
+/** What stands between the mill and closing its account: each thing still
+ *  open with Oraiza. */
+export type AccountClosure = AccountState & {
+  company_name: string;
+  export_window_days: number;
+  blockers: { code: "plan_request" | "unpaid" | "paid_time"; message: string }[];
 };
 
 /** A cookie a signed-in browser keeps for one session (Settings > Devices). */
@@ -162,6 +171,28 @@ export class AuthService {
   /** Issues a fresh set of backup codes (invalidates the old set). Needs a TOTP. */
   regenerateBackupCodes(code: string): Promise<{ backup_codes: string[] }> {
     return this.http.post("/auth/mfa/backup-codes/regenerate", { code }).then((r) => r.data);
+  }
+
+  // ── Closing the mill's account (the Boss) ───────────────────────────────────
+
+  /** The account's state, and what (if anything) stops it closing now. */
+  accountClosure(): Promise<AccountClosure> {
+    return this.http.get("/auth/account/closure").then((r) => r.data);
+  }
+
+  /** Pause the account, or ask for it to be deleted. Signs everyone out. */
+  closeAccount(body: {
+    mode: "pause" | "delete";
+    current_password: string;
+    mfa_code?: string;
+    confirm_name?: string;
+  }): Promise<AccountState> {
+    return this.http.post("/auth/account/close", body).then((r) => r.data);
+  }
+
+  /** Switch a paused account back on, or take back a deletion request. */
+  reopenAccount(): Promise<AccountState> {
+    return this.http.post("/auth/account/reopen").then((r) => r.data);
   }
 
   // ── Active sessions / devices ───────────────────────────────────────────────

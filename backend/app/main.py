@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 from .api import (
+    account,
     actions,
     activity,
     admin,
@@ -53,6 +54,7 @@ from .core.middleware import (
 )
 from .core.ratelimit import limiter, rate_limit_exceeded_handler
 from .core.security import (
+    enforce_account_open,
     enforce_email_verified,
     enforce_mfa_enrollment,
     enforce_password_change,
@@ -122,9 +124,11 @@ mfa_gate = [
     Depends(enforce_password_change),
     Depends(enforce_email_verified),
     Depends(enforce_tenant_provisioned),
+    Depends(enforce_account_open),
 ]
 
 app.include_router(auth.router, prefix="/api/auth", tags=["Auth"])
+app.include_router(account.router, prefix="/api/auth/account", tags=["Account"])
 # Legal documents are public by design: terms nobody could read before
 # agreeing are weak terms. Acceptance endpoints inside still require auth.
 app.include_router(legal.router, prefix="/api/legal", tags=["Legal"])
