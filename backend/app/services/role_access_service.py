@@ -16,13 +16,17 @@ from sqlalchemy.exc import IntegrityError
 
 from ..core.access_policy import (
     ALL_SECTIONS,
+    EDIT_POWER,
     FIXED_ROLES,
     SECTION_ACCESS,
+    STAFF_ROLES,
     access_for_role,
     clean_access,
     clean_changes,
     clean_role_name,
     custom_role_access,
+    custom_role_edit_power,
+    edit_power_for_role,
 )
 from ..core.exceptions import BadRequestError, NotFoundError
 from ..models.company import Company
@@ -78,6 +82,7 @@ class RoleAccessService(BaseService):
                     "editable": role not in FIXED_ROLES,
                     "access": access_for_role(role, overrides),
                     "defaults": dict(SECTION_ACCESS[role]),
+                    "edit_power": edit_power_for_role(role, overrides),
                 }
                 for role in SECTION_ACCESS
             ],
@@ -86,6 +91,7 @@ class RoleAccessService(BaseService):
                     "id": str(r.id),
                     "name": r.name,
                     "access": custom_role_access(r.access),
+                    "edit_power": custom_role_edit_power(r.access),
                     "people": people.get(r.id, 0),
                 }
                 for r in self._custom_roles(company)
@@ -106,8 +112,10 @@ class RoleAccessService(BaseService):
 
         # A new dict, so the column is seen to have changed.
         stored = {r: dict(c) for r, c in (company.role_access or {}).items() if isinstance(c, dict)}
-        if changes:
-            stored[role] = changes
+        # Setting the pages keeps the role's edit power as it was.
+        kept: dict[str, Any] = {**changes, EDIT_POWER: True} if edit_power_for_role(role, stored) else dict(changes)
+        if kept:
+            stored[role] = kept
         else:
             stored.pop(role, None)
 
@@ -123,6 +131,39 @@ class RoleAccessService(BaseService):
                     else "back to the defaults"
                 ),
             )
+        return self._view(company)
+
+    def set_edit_power(self, role: str, on: bool) -> dict:
+        """Give a built-in role edit power, or take it away. The Boss always has it."""
+        if role in FIXED_ROLES:
+            raise BadRequestError("The Boss always has edit power.")
+        if role not in STAFF_ROLES:
+            raise BadRequestError("That role can't be changed.")
+        company = self._company()
+        stored = {r: dict(c) for r, c in (company.role_access or {}).items() if isinstance(c, dict)}
+        entry = {k: v for k, v in stored.get(role, {}).items() if k != EDIT_POWER}
+        if on:
+            entry[EDIT_POWER] = True
+        if entry:
+            stored[role] = entry
+        else:
+            stored.pop(role, None)
+        with self.transaction():
+            company.role_access = stored or None
+            self._log(company, "role_access.edit_power", role, "on" if on else "off")
+        return self._view(company)
+
+    def set_custom_edit_power(self, role_id: uuid.UUID, on: bool) -> dict:
+        """Give a made-up role edit power, or take it away."""
+        role = self._custom_role(role_id)
+        company = self._company()
+        access: dict[str, Any] = dict(custom_role_access(role.access))
+        if on:
+            access[EDIT_POWER] = True
+        with self.transaction():
+            # A new dict, so the column is seen to have changed.
+            role.access = access
+            self._log(company, "role_access.edit_power", role.name, "on" if on else "off")
         return self._view(company)
 
     # ── roles the Boss makes up ──────────────────────────────────────────────
@@ -168,8 +209,12 @@ class RoleAccessService(BaseService):
         try:
             with self.transaction():
                 role.name = cleaned_name
-                # A new dict, so the column is seen to have changed.
-                role.access = dict(cleaned_access)
+                # A new dict, so the column is seen to have changed. Setting
+                # the pages keeps the role's edit power as it was.
+                kept: dict[str, Any] = dict(cleaned_access)
+                if custom_role_edit_power(role.access):
+                    kept[EDIT_POWER] = True
+                role.access = kept
                 detail = _describe(cleaned_access)
                 if cleaned_name != old_name:
                     detail = f"renamed from {old_name}; {detail}"

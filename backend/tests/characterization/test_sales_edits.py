@@ -71,13 +71,13 @@ def test_the_boss_corrects_an_order_and_its_invoice_follows(auth_client):
     assert f"Follows the edit to order {order['order_no']}" in inv_entry["detail"]
 
 
-def test_only_the_boss_can_edit_saved_records(make_auth_client):
+def test_without_edit_power_staff_cannot_edit_saved_records(make_auth_client):
     cashier = make_auth_client(["sales"], username="till", role_name="cashier")
     customer = _customer(cashier)
     order = _order(cashier, customer["id"])
     res = cashier.patch(f"/api/sales/orders/{order['id']}", json={"remarks": "x"})
     assert res.status_code == 403
-    assert "Only the Boss" in res.json()["detail"]
+    assert "edit power" in res.json()["detail"]
     assert _history(cashier, "sales_order", order["id"]) == []
 
 

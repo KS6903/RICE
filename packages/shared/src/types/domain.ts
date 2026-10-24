@@ -19,6 +19,8 @@ export interface User {
   // mill's Boss has set it. Absent from an older server: the shared role matrix
   // (constants/access) applies.
   access?: Record<string, "full" | "view" | "none">;
+  /** Can correct saved records (the Boss, or a role given edit power). */
+  edit_power?: boolean;
   mfa_enabled?: boolean;
   mfa_backup_codes_remaining?: number;
   mfa_setup_recommended?: boolean;

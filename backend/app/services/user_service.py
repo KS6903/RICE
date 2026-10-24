@@ -11,7 +11,15 @@ from typing import Any
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
-from ..core.access_policy import access_for_role, access_for_user, custom_role_access, within
+from ..core.access_policy import (
+    access_for_role,
+    access_for_user,
+    custom_role_access,
+    custom_role_edit_power,
+    edit_power_for_role,
+    edit_power_for_user,
+    within,
+)
 from ..core.exceptions import BadRequestError, FeatureRequiredError, NotFoundError, PermissionDeniedError
 from ..core.passwords import validate_password_strength
 from ..core.security import hash_password
@@ -153,6 +161,13 @@ class UserService(BaseService):
         company = self.db.get(Company, self.current_user.company_id)
         return access_for_role(chosen.role.name if chosen.role else None, company.role_access if company else None)
 
+    def _edit_power_of(self, chosen: _Chosen) -> bool:
+        """Whether a role can correct saved records in this mill."""
+        if chosen.custom is not None:
+            return custom_role_edit_power(chosen.custom.access)
+        company = self.db.get(Company, self.current_user.company_id)
+        return edit_power_for_role(chosen.role.name if chosen.role else None, company.role_access if company else None)
+
     def _assert_may_give(self, chosen: _Chosen) -> None:
         """Only the Boss makes a Boss, and nobody else can give a role that opens
         more than they have themselves: opening Users to someone lets them run
@@ -165,6 +180,10 @@ class UserService(BaseService):
             raise PermissionDeniedError(
                 f"The {chosen.label} role can open more than you can, so only the Boss can give it."
             )
+        if self._edit_power_of(chosen) and not edit_power_for_user(self.current_user):
+            raise PermissionDeniedError(
+                f"The {chosen.label} role can edit saved records and you can't, so only the Boss can give it."
+            )
 
     def _assert_may_manage(self, user: User) -> None:
         """Nobody but the Boss changes the account of someone who can open more
@@ -175,6 +194,10 @@ class UserService(BaseService):
             raise PermissionDeniedError("Only the Boss can change a Boss account.")
         if not within(access_for_user(user), access_for_user(self.current_user)):
             raise PermissionDeniedError("This person can open more than you can, so only the Boss can change them.")
+        if edit_power_for_user(user) and not edit_power_for_user(self.current_user):
+            raise PermissionDeniedError(
+                "This person can edit saved records and you can't, so only the Boss can change them."
+            )
 
     def _needs_confirming(self, chosen: _Chosen) -> bool:
         if chosen.role is not None and chosen.role.name in CONFIRMED_ROLES:

@@ -50,9 +50,16 @@ const roleAccess: RoleAccessData = {
       id: "r1",
       name: "Warehouse Manager",
       access: { inventory: "full", users: "none" },
+      edit_power: false,
       people: 1,
     },
-    { id: "r2", name: "Office Head", access: { inventory: "view", users: "full" }, people: 0 },
+    {
+      id: "r2",
+      name: "Office Head",
+      access: { inventory: "view", users: "full" },
+      edit_power: false,
+      people: 0,
+    },
   ],
 };
 

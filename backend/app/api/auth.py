@@ -12,7 +12,7 @@ from fastapi import APIRouter, Depends, Request, Response, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 
-from ..core.access_policy import access_for_user
+from ..core.access_policy import access_for_user, edit_power_for_user
 from ..core.config import settings
 from ..core.cookies import (
     ACCESS_COOKIE,
@@ -421,6 +421,8 @@ def me(svc: AuthService = Depends(get_auth_service)):
     # made to the role matrix. Polled with the rest, so a change reaches an open
     # tab without a sign-in.
     result["access"] = access_for_user(svc.current_user)
+    # Whether they can correct saved records (the Boss, or a role with edit power).
+    result["edit_power"] = edit_power_for_user(svc.current_user)
     return result
 
 

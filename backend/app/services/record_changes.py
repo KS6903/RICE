@@ -18,6 +18,7 @@ from typing import Any
 from fastapi import Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
+from ..core.access_policy import edit_power_for_user
 from ..core.security import get_current_user
 from .activity import log_activity
 
@@ -25,15 +26,18 @@ BLANK = "blank"
 
 
 def can_edit_saved_records(user: Any) -> bool:
-    """The Boss can correct any saved record."""
-    role = getattr(user, "role", None)
-    return bool(role is not None and role.name == "owner")
+    """The Boss, and the roles the Boss gives edit power, can correct any saved
+    record (core/access_policy.edit_power_for_user)."""
+    return edit_power_for_user(user)
 
 
 def require_record_editor(current_user=Depends(get_current_user)):
     """Dependency for the edit-a-saved-record routes."""
     if not can_edit_saved_records(current_user):
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only the Boss can edit saved records.")
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Your role can't edit saved records. The Boss can give it edit power.",
+        )
     return current_user
 
 

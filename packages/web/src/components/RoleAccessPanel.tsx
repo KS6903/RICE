@@ -109,6 +109,45 @@ function PageChecklist({
   );
 }
 
+/** The role's edit power: can it correct records already saved (an order, an
+ *  invoice, a purchase)? Every such change is logged, field by field. Saved as
+ *  soon as it's ticked. */
+function EditPowerToggle({
+  name,
+  on,
+  save,
+}: {
+  name: string;
+  on: boolean;
+  save: (on: boolean) => Promise<RoleAccessData>;
+}) {
+  const qc = useQueryClient();
+  const toggle = useMutation({
+    mutationFn: (next: boolean) => save(next),
+    onSuccess: (data) => qc.setQueryData(ROLE_ACCESS_QUERY_KEY, data),
+  });
+  const checked = toggle.isPending ? !!toggle.variables : on;
+  return (
+    <div className="mt-1.5">
+      <label className="inline-flex items-start gap-2 text-xs text-secondary cursor-pointer">
+        <input
+          type="checkbox"
+          className="mt-0.5"
+          checked={checked}
+          disabled={toggle.isPending}
+          onChange={(e) => toggle.mutate(e.target.checked)}
+          aria-label={`Edit power for ${name}`}
+        />
+        <span>
+          <span className="font-semibold text-primary">Edit power</span>: can correct saved records.
+          Every change is logged.
+        </span>
+      </label>
+      {toggle.isError && <SaveError error={toggle.error} />}
+    </div>
+  );
+}
+
 function SaveError({ error }: { error: unknown }) {
   return (
     <p role="alert" className="text-sm font-medium text-rose-600 dark:text-rose-400">
@@ -151,6 +190,17 @@ function RoleRow({ entry, sections }: { entry: RoleAccessEntry; sections: string
           <p className="text-xs text-secondary">
             {entry.editable ? summary(entry.access, sections) : "Everything, always."}
           </p>
+          {entry.editable ? (
+            <EditPowerToggle
+              name={name}
+              on={entry.edit_power}
+              save={(on) => roleAccessService.setEditPower(entry.role, on)}
+            />
+          ) : (
+            <p className="mt-1.5 text-xs text-secondary">
+              <span className="font-semibold text-primary">Edit power</span>: always.
+            </p>
+          )}
         </div>
         {entry.editable ? (
           <button
@@ -264,6 +314,11 @@ function CustomRoleRow({ role, sections }: { role: CustomRoleEntry; sections: st
           <p className="text-xs text-secondary">
             {summary(role.access, sections)} {holders}
           </p>
+          <EditPowerToggle
+            name={role.name}
+            on={role.edit_power}
+            save={(on) => roleAccessService.setCustomEditPower(role.id, on)}
+          />
         </div>
         <button
           type="button"

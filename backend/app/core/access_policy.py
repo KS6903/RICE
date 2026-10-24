@@ -153,6 +153,12 @@ CONFIGURABLE_SECTIONS: tuple[str, ...] = ALL_SECTIONS
 # How long a made-up role's name can be (company_roles.name).
 CUSTOM_ROLE_NAME_MAX = 50
 
+# Edit power: the Boss lets a role correct records already saved (an order, an
+# invoice, a purchase), every change logged field by field. Not a page: one yes
+# or no per role, stored with that role's page levels under this key (which no
+# page uses, so the page levels ignore it). The Boss always has it.
+EDIT_POWER = "edit_power"
+
 
 def stored_changes(overrides: Any, role_name: str | None) -> dict[str, str]:
     """The changes stored for a role that still count: a staff role, a page the
@@ -206,6 +212,35 @@ def access_for_user(user: Any) -> dict[str, str]:
         return custom_role_access(getattr(custom, "access", None))
     role_name = getattr(getattr(user, "role", None), "name", None)
     return access_for_role(role_name, company_overrides(user))
+
+
+def edit_power_for_role(role_name: str | None, overrides: Any = None) -> bool:
+    """Whether a built-in role can correct saved records in a mill."""
+    if role_name in FIXED_ROLES:
+        return True
+    if role_name not in STAFF_ROLES or not isinstance(overrides, Mapping):
+        return False
+    stored = overrides.get(role_name)
+    return isinstance(stored, Mapping) and stored.get(EDIT_POWER) is True
+
+
+def custom_role_edit_power(stored: Any) -> bool:
+    """Whether a made-up role can correct saved records."""
+    return isinstance(stored, Mapping) and stored.get(EDIT_POWER) is True
+
+
+def edit_power_for_user(user: Any) -> bool:
+    """Whether the signed-in person can correct saved records. Platform admins
+    run the console, not a mill's records."""
+    if getattr(user, "is_platform_admin", False):
+        return False
+    custom = getattr(user, "custom_role", None)
+    if custom is not None:
+        if getattr(custom, "company_id", None) != getattr(user, "company_id", None):
+            return False
+        return custom_role_edit_power(getattr(custom, "access", None))
+    role_name = getattr(getattr(user, "role", None), "name", None)
+    return edit_power_for_role(role_name, company_overrides(user))
 
 
 def user_section_level(user: Any, section: str) -> str:

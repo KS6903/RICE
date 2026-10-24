@@ -38,6 +38,11 @@ class CustomRoleCreate(BaseModel):
     access: dict[str, Level]
 
 
+class EditPowerUpdate(BaseModel):
+    # Whether the role can correct records already saved, every change logged.
+    on: bool
+
+
 class CustomRoleUpdate(BaseModel):
     name: str | None = None
     access: dict[str, Level] | None = None
@@ -69,9 +74,23 @@ def update_custom_role(
     return svc.update_custom(role_id, body.name, body.access)
 
 
+@router.put("/custom/{role_id}/edit-power", dependencies=BOSS_ONLY)
+def set_custom_edit_power(
+    role_id: uuid.UUID,
+    body: EditPowerUpdate,
+    svc: RoleAccessService = Depends(get_role_access_service),
+):
+    return svc.set_custom_edit_power(role_id, body.on)
+
+
 @router.delete("/custom/{role_id}", dependencies=BOSS_ONLY)
 def delete_custom_role(role_id: uuid.UUID, svc: RoleAccessService = Depends(get_role_access_service)):
     return svc.delete_custom(role_id)
+
+
+@router.put("/{role}/edit-power", dependencies=BOSS_ONLY)
+def set_edit_power(role: str, body: EditPowerUpdate, svc: RoleAccessService = Depends(get_role_access_service)):
+    return svc.set_edit_power(role, body.on)
 
 
 @router.put("/{role}", dependencies=BOSS_ONLY)

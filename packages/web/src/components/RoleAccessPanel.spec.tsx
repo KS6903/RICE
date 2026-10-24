@@ -29,6 +29,7 @@ const keeper: CustomRoleEntry = {
   id: "r1",
   name: "Warehouse Manager",
   access: level({ inventory: "full", reports: "view" }),
+  edit_power: false,
   people: 0,
 };
 
@@ -38,9 +39,15 @@ const matrix = (
 ): RoleAccessData => ({
   sections: SECTIONS,
   roles: [
-    { role: "owner", editable: false, access: everything, defaults: everything },
-    { role: "admin", editable: true, access: everything, defaults: everything },
-    { role: "cashier", editable: true, access: cashier, defaults: cashierDefaults },
+    { role: "owner", editable: false, access: everything, defaults: everything, edit_power: true },
+    { role: "admin", editable: true, access: everything, defaults: everything, edit_power: false },
+    {
+      role: "cashier",
+      editable: true,
+      access: cashier,
+      defaults: cashierDefaults,
+      edit_power: false,
+    },
   ],
   custom_roles: custom,
 });
@@ -82,6 +89,26 @@ describe("RoleAccessPanel", () => {
 
     await openPanel();
     expect(get).toHaveBeenCalledTimes(1);
+  });
+
+  it("ticks edit power for a role, and the Boss has it always", async () => {
+    draw();
+    const set = vi.spyOn(roleAccessService, "setEditPower").mockResolvedValue({
+      ...matrix(),
+      roles: matrix().roles.map((r) => (r.role === "cashier" ? { ...r, edit_power: true } : r)),
+    });
+    await openPanel();
+    const boss = screen.getByText("Boss").closest("li") as HTMLElement;
+    expect(boss).toHaveTextContent("Edit power: always.");
+    expect(within(boss).queryByRole("checkbox")).toBeNull();
+
+    const box = screen.getByRole("checkbox", { name: "Edit power for Cashier" });
+    expect(box).not.toBeChecked();
+    fireEvent.click(box);
+    await vi.waitFor(() => expect(set).toHaveBeenCalledWith("cashier", true));
+    await vi.waitFor(() =>
+      expect(screen.getByRole("checkbox", { name: "Edit power for Cashier" })).toBeChecked(),
+    );
   });
 
   it("shows each role, with only the Boss fixed at everything", async () => {
@@ -128,7 +155,7 @@ describe("RoleAccessPanel", () => {
       ),
     );
     // Back to the summary, with what was saved.
-    await waitFor(() => expect(screen.queryByRole("checkbox")).toBeNull());
+    await waitFor(() => expect(screen.queryByRole("checkbox", { name: /can open/ })).toBeNull());
     expect(screen.getByText("Cashier").closest("li")).toHaveTextContent(
       "Opens 3 of 5 pages, and can edit 1.",
     );
@@ -162,7 +189,7 @@ describe("RoleAccessPanel", () => {
     expect(screen.getByRole("checkbox", { name: "Cashier can open Inventory" })).toBeChecked();
 
     fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
-    expect(screen.queryByRole("checkbox")).toBeNull();
+    expect(screen.queryByRole("checkbox", { name: /can open/ })).toBeNull();
     expect(update).not.toHaveBeenCalled();
 
     // Opening it again starts from what is saved, not from the abandoned changes.
