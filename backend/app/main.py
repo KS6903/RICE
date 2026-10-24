@@ -18,6 +18,7 @@ from .api import (
     billing,
     branch_view,
     branches,
+    byproduct_kinds,
     canva,
     cash,
     collections,
@@ -140,6 +141,9 @@ app.include_router(branches.router, prefix="/api/branches", tags=["Branches"], d
 app.include_router(paddy.router, prefix="/api/paddy", tags=["Paddy"], dependencies=mfa_gate)
 app.include_router(milling.router, prefix="/api/milling", tags=["Milling"], dependencies=mfa_gate)
 app.include_router(inventory.router, prefix="/api/inventory", tags=["Inventory"], dependencies=mfa_gate)
+app.include_router(
+    byproduct_kinds.router, prefix="/api/byproduct-kinds", tags=["By-product kinds"], dependencies=mfa_gate
+)
 app.include_router(sales.router, prefix="/api/sales", tags=["Sales"], dependencies=mfa_gate)
 app.include_router(costs.router, prefix="/api/costs", tags=["Costs"], dependencies=mfa_gate)
 app.include_router(reports.router, prefix="/api/reports", tags=["Reports"], dependencies=mfa_gate)

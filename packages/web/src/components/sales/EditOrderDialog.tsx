@@ -5,6 +5,7 @@ import RecordDialog from "./RecordDialog";
 import Select from "../Select";
 import DatePicker from "../DatePicker";
 import { salesService } from "../../services/SalesService";
+import { byproductLabel } from "../../mappers/byproductNames";
 
 type Line = {
   item_type: string;
@@ -18,7 +19,7 @@ type Line = {
 
 const lineName = (l: Line) =>
   l.item_type === "byproduct"
-    ? l.byproduct_type || "By-product"
+    ? (l.byproduct_type && byproductLabel(l.byproduct_type)) || "By-product"
     : [l.variety_code, l.grade_name].filter(Boolean).join(" ") || l.item_type.replace("_", " ");
 
 const peso = (n: number) =>

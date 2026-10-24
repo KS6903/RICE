@@ -1,11 +1,13 @@
 // The lists the Boss fills in once and the rest of the app picks from: rice
-// varieties, the mill's machines and expense categories. Shown on the Stock >
-// Catalog page (they used to be Settings tabs).
+// varieties, by-products, the mill's machines and expense categories. Shown on
+// the Stock > Catalog page (most used to be Settings tabs).
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { paddyService } from "../../services/PaddyService";
 import { millingService } from "../../services/MillingService";
 import { costsService } from "../../services/CostsService";
+import { byproductKindService, type ByproductKind } from "../../services/ByproductKindService";
+import { useByproductKinds } from "../../hooks/useByproductKinds";
 import Select from "../Select";
 import ConfirmDialog from "../ConfirmDialog";
 import {
@@ -864,5 +866,201 @@ function CategorySource({ c }: { c: any }) {
     <span className="badge-gray">Default</span>
   ) : (
     <span className="badge-green">Custom</span>
+  );
+}
+
+type ByproductEdit = { id: string; name: string };
+
+const errorText = (error: unknown, fallback: string): string =>
+  (error as any)?.response?.data?.detail || fallback;
+
+export function ByproductsList() {
+  const qc = useQueryClient();
+  const { all: kinds } = useByproductKinds();
+  const [showForm, setShowForm] = useState(false);
+  const [name, setName] = useState("");
+  const [editing, setEditing] = useState<ByproductEdit | null>(null);
+  const refresh = () => qc.invalidateQueries({ queryKey: ["byproduct-kinds"] });
+
+  const create = useMutation({
+    mutationFn: (n: string) => byproductKindService.create(n),
+    onSuccess: () => {
+      refresh();
+      setShowForm(false);
+      setName("");
+    },
+  });
+  const save = useMutation({
+    mutationFn: (e: ByproductEdit) => byproductKindService.update(e.id, { name: e.name }),
+    onSuccess: () => {
+      refresh();
+      setEditing(null);
+    },
+  });
+  const toggle = useMutation({
+    mutationFn: (k: ByproductKind) =>
+      byproductKindService.update(k.id as string, { is_active: !k.is_active }),
+    onSuccess: refresh,
+  });
+
+  return (
+    <div className="space-y-4">
+      <p className="text-sm text-secondary">
+        Ipa, darak and binlid come with every mill, and milling counts them, so they stay. Add the
+        other by-products you buy, keep or sell. Renaming one keeps its stock and records; hiding
+        one takes it out of the pickers.
+      </p>
+      <div className="flex justify-end">
+        <button onClick={() => setShowForm(!showForm)} className="btn-primary">
+          <Plus size={16} /> Add by-product
+        </button>
+      </div>
+
+      {showForm && (
+        <div className="card space-y-4">
+          <h3 className="text-lg font-bold text-primary">New by-product</h3>
+          <div>
+            <label className={LABEL} htmlFor="new-byproduct">
+              Name *
+            </label>
+            <input
+              id="new-byproduct"
+              className="input"
+              placeholder="e.g. Carbonized rice hull"
+              maxLength={50}
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+            />
+          </div>
+          {create.isError && (
+            <p className="text-sm font-medium text-rose-600 dark:text-rose-400">
+              {errorText(create.error, "Couldn't add the by-product.")}
+            </p>
+          )}
+          <div className="flex gap-2 justify-end">
+            <button onClick={() => setShowForm(false)} className="btn-secondary">
+              Cancel
+            </button>
+            <button
+              onClick={() => create.mutate(name.trim())}
+              className="btn-primary"
+              disabled={create.isPending || !name.trim()}
+            >
+              {create.isPending ? "Saving…" : "Save by-product"}
+            </button>
+          </div>
+        </div>
+      )}
+
+      <div className="card overflow-hidden p-0">
+        <table className="w-full text-sm">
+          <thead className="bg-gradient-to-r from-emerald-50/80 via-cyan-50/60 to-violet-50/80 dark:from-emerald-900/20 dark:via-cyan-900/10 dark:to-violet-900/20 border-b border-soft">
+            <tr>
+              {["Name", "Source", "Status", ""].map((h) => (
+                <th key={h} className={TABLE_HEAD}>
+                  {h}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-200/60 dark:divide-slate-700/50">
+            {kinds.map((k) =>
+              editing && editing.id === k.id ? (
+                <tr key={k.code} className="bg-slate-50/60 dark:bg-slate-800/30">
+                  <td className="px-4 py-2.5" colSpan={3}>
+                    <input
+                      className="input"
+                      aria-label="By-product name"
+                      maxLength={50}
+                      value={editing.name}
+                      onChange={(e) => setEditing({ ...editing, name: e.target.value })}
+                    />
+                    {save.isError && (
+                      <p className="mt-1 text-xs font-medium text-rose-600 dark:text-rose-400">
+                        {errorText(save.error, "Couldn't save the by-product.")}
+                      </p>
+                    )}
+                  </td>
+                  <td className="px-4 py-2.5">
+                    <div className="flex justify-end gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setEditing(null)}
+                        className="btn-secondary"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => save.mutate({ ...editing, name: editing.name.trim() })}
+                        className="btn-primary"
+                        disabled={save.isPending || !editing.name.trim()}
+                      >
+                        {save.isPending ? "Saving…" : "Save"}
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ) : (
+                <tr
+                  key={k.code}
+                  className={`hover:bg-slate-50/50 dark:hover:bg-slate-700/15 transition-colors ${
+                    !k.is_active ? "opacity-60" : ""
+                  }`}
+                >
+                  <td className="px-4 py-3 font-semibold text-primary">{k.name}</td>
+                  <td className="px-4 py-3">
+                    {k.built_in ? (
+                      <span className="badge-gray">Default</span>
+                    ) : (
+                      <span className="badge-green">Custom</span>
+                    )}
+                  </td>
+                  <td className="px-4 py-3">
+                    {k.is_active ? (
+                      <span className="badge-green">Shown</span>
+                    ) : (
+                      <span className="badge-gray">Hidden</span>
+                    )}
+                  </td>
+                  <td className="px-4 py-3">
+                    {k.id && (
+                      <div className="flex justify-end gap-4">
+                        <button
+                          type="button"
+                          aria-label={`Edit ${k.name}`}
+                          onClick={() => {
+                            save.reset();
+                            setEditing({ id: k.id as string, name: k.name });
+                          }}
+                          className="text-xs font-semibold inline-flex items-center gap-1 text-secondary hover:text-primary"
+                        >
+                          <Pencil size={12} />
+                          Edit
+                        </button>
+                        <button
+                          type="button"
+                          aria-label={`${k.is_active ? "Hide" : "Unhide"} ${k.name}`}
+                          onClick={() => toggle.mutate(k)}
+                          disabled={toggle.isPending}
+                          className={`text-xs font-semibold inline-flex items-center gap-1 ${
+                            k.is_active
+                              ? "text-rose-600 dark:text-rose-400 hover:text-rose-700"
+                              : "text-emerald-600 dark:text-emerald-400 hover:text-emerald-700"
+                          }`}
+                        >
+                          {k.is_active ? <EyeOff size={12} /> : <Eye size={12} />}
+                          {k.is_active ? "Hide" : "Unhide"}
+                        </button>
+                      </div>
+                    )}
+                  </td>
+                </tr>
+              ),
+            )}
+          </tbody>
+        </table>
+      </div>
+    </div>
   );
 }

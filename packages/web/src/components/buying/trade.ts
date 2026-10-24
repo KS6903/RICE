@@ -1,6 +1,6 @@
 // The three Buy & mill pages (palay, rice, by-products) share one layout:
 // purchases on the left, sales on the right. What differs per page lives here.
-import { BYPRODUCT_NAMES } from "../../mappers/InventoryMapper";
+import { byproductLabel } from "../../mappers/byproductNames";
 
 export type TradeKind = "palay" | "rice" | "byproduct";
 
@@ -18,8 +18,7 @@ export const GOODS: Record<TradeKind, string> = {
   byproduct: "by-products",
 };
 
-export const byproductName = (t: string | null | undefined) =>
-  t ? (BYPRODUCT_NAMES[t] ?? t) : "—";
+export const byproductName = (t: string | null | undefined) => (t ? byproductLabel(t) : "—");
 
 export const gradeLabel = (g: string | null | undefined) =>
   g ? g.charAt(0).toUpperCase() + g.slice(1) : "—";

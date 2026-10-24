@@ -3,6 +3,8 @@
 // render. Extracted from InventoryPage's inline useMemo (Phase F) so the
 // transform is unit-testable in isolation. Pure: no React, no network.
 
+import { byproductLabel } from "./byproductNames";
+
 export type UnifiedItem = {
   id: string;
   type: "palay" | "milled" | "byproduct";
@@ -23,12 +25,6 @@ export type ItemLocation = { branchId: string | null; branchName: string; quanti
 
 /** The grades milled rice is stocked under (milling output, Add inventory, rice purchases). */
 export const MILLED_GRADES = ["premium", "regular", "broken"] as const;
-
-export const BYPRODUCT_NAMES: Record<string, string> = {
-  ipa: "Ipa (Rice Hull)",
-  darak: "Darak (Rice Bran)",
-  binlid: "Binlid (Broken Rice)",
-};
 
 // Just the progress-bar color per type (presentation lives in the page; this is
 // the one bit of styling the unified item carries).
@@ -117,7 +113,7 @@ export class InventoryMapper {
             : NO_GRADE,
       variety:
         kind === "byproduct"
-          ? BYPRODUCT_NAMES[r.byproduct_type] || r.byproduct_type || NO_GRADE
+          ? (r.byproduct_type && byproductLabel(r.byproduct_type)) || NO_GRADE
           : r.variety?.code || NO_GRADE,
       quantity_kg: Number(r.quantity_kg),
     });
@@ -197,7 +193,7 @@ export class InventoryMapper {
         id: `bp-${b.id}`,
         type: "byproduct",
         typeLabel: "By-product",
-        variety: BYPRODUCT_NAMES[b.byproduct_type] || b.byproduct_type,
+        variety: byproductLabel(b.byproduct_type),
         grade: "—",
         branchId: b.branch_id,
         branchName: branchName(b),

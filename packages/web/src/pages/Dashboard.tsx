@@ -2,7 +2,8 @@ import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { inventoryService } from "../services/InventoryService";
 import { reportsService } from "../services/ReportsService";
-import { BYPRODUCT_NAMES } from "../mappers/InventoryMapper";
+import { byproductLabel } from "../mappers/byproductNames";
+import { useByproductKinds } from "../hooks/useByproductKinds";
 import {
   Package,
   Wheat,
@@ -128,6 +129,7 @@ export default function Dashboard() {
     queryFn: () => inventoryService.getSummary(),
   });
   const byproducts = Object.entries<number>(inventory?.byproducts ?? {});
+  useByproductKinds(); // their names
   const byproductTotal = byproducts.reduce((s, [, kg]) => s + kg, 0);
 
   const { data: pnl, isLoading: pnlLoading } = useQuery({
@@ -353,7 +355,7 @@ export default function Dashboard() {
                   <div key={type}>
                     <div className="flex justify-between items-baseline mb-1.5">
                       <span className="text-sm font-semibold text-secondary">
-                        {BYPRODUCT_NAMES[type] || type}
+                        {byproductLabel(type)}
                       </span>
                       <span className="text-sm font-bold text-primary">
                         {kg.toLocaleString()}

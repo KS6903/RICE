@@ -8,14 +8,15 @@ import { CUSTOMER_TYPES } from "@rice-mill/shared";
 import { salesService } from "../../services/SalesService";
 import { paddyService } from "../../services/PaddyService";
 import { useAuthStore } from "../../stores/authStore";
-import { BYPRODUCT_NAMES, MILLED_GRADES } from "../../mappers/InventoryMapper";
+import { MILLED_GRADES } from "../../mappers/InventoryMapper";
+import { useByproductKinds } from "../../hooks/useByproductKinds";
 import Modal from "../Modal";
 import Select from "../Select";
 import DatePicker from "../DatePicker";
 import FieldCaption from "../FieldCaption";
 import QuickAdd from "../QuickAdd";
 import { peso } from "./money";
-import { GOODS, SALE_ITEM_TYPE, byproductName, gradeLabel, type TradeKind } from "./trade";
+import { GOODS, SALE_ITEM_TYPE, gradeLabel, type TradeKind } from "./trade";
 
 type Line = {
   variety_id: string;
@@ -68,6 +69,8 @@ export default function NewSaleModal({ kind, onClose }: { kind: TradeKind; onClo
     queryFn: () => paddyService.listGrades(),
     enabled: kind === "palay",
   });
+  // Ipa, darak, binlid and the ones the mill added on Stock > Catalog.
+  const { active: byproductKinds } = useByproductKinds();
 
   const gradeOptions = useMemo(
     () =>
@@ -216,10 +219,7 @@ export default function NewSaleModal({ kind, onClose }: { kind: TradeKind; onClo
                     aria-label="By-product"
                     value={item.byproduct_type}
                     onChange={(v) => setLine(idx, { byproduct_type: v })}
-                    options={Object.keys(BYPRODUCT_NAMES).map((t) => ({
-                      value: t,
-                      label: byproductName(t),
-                    }))}
+                    options={byproductKinds.map((k) => ({ value: k.code, label: k.name }))}
                   />
                 </FieldCaption>
               ) : (

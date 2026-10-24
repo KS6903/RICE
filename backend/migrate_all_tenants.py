@@ -73,6 +73,26 @@ _extra_ddl: list[str] = [
     "ALTER TABLE milling_batches ADD COLUMN IF NOT EXISTS client_notes TEXT",
     # The categories every mill starts with can't be deleted (filled in below).
     "ALTER TABLE expense_categories ADD COLUMN IF NOT EXISTS is_default BOOLEAN NOT NULL DEFAULT false",
+    # The mill's list of by-products (byproduct_kinds, made by create_all) starts
+    # with the ones it already has in stock, bought or sold, named as
+    # byproduct_kind_service.name_for names them.
+    """
+    INSERT INTO byproduct_kinds (id, company_id, code, name, is_active)
+    SELECT gen_random_uuid(), company_id, code,
+           upper(left(replace(code, '_', ' '), 1)) || lower(substr(replace(code, '_', ' '), 2)), true
+    FROM (
+        SELECT company_id, byproduct_type AS code FROM byproduct_inventory
+        UNION
+        SELECT p.company_id, i.byproduct_type FROM byproduct_purchase_items i
+        JOIN byproduct_purchases p ON p.id = i.purchase_id
+        UNION
+        SELECT o.company_id, i.byproduct_type FROM sales_order_items i
+        JOIN sales_orders o ON o.id = i.order_id
+    ) used
+    WHERE company_id IS NOT NULL AND code IS NOT NULL AND code <> ''
+      AND code NOT IN ('ipa', 'darak', 'binlid')
+    ON CONFLICT (company_id, code) DO NOTHING
+    """,
 ]
 
 

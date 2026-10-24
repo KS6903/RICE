@@ -6,6 +6,7 @@ import { useAccess } from "../hooks/useAccess";
 import { planHas } from "../hooks/useFeature";
 import type { AppSection } from "@rice-mill/shared";
 import {
+  ByproductsList,
   ExpenseCategoriesList,
   MachinesList,
   VarietiesList,
@@ -35,6 +36,14 @@ const LISTS: List[] = [
     feature: "paddy",
     section: "paddy",
     render: () => <VarietiesList />,
+  },
+  {
+    key: "byproducts",
+    label: "By-products",
+    what: "Ipa, darak, binlid and the others you buy, keep or sell.",
+    feature: "paddy",
+    section: "paddy",
+    render: () => <ByproductsList />,
   },
   {
     key: "categories",
@@ -104,8 +113,8 @@ export default function CatalogPage() {
       <div>
         <h1 className="text-2xl font-bold text-primary">Catalog</h1>
         <p className="text-secondary mt-1 max-w-2xl">
-          The lists you fill in once and every page picks from: varieties, categories, machines,
-          trucks, the people you deal with.
+          The lists you fill in once and every page picks from: varieties, by-products,
+          categories, machines, trucks, the people you deal with.
         </p>
       </div>
 

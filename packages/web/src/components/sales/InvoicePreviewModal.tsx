@@ -2,7 +2,7 @@ import { useEscapeKey } from "../../hooks/useEscapeKey";
 import { createPortal } from "react-dom";
 import { addDays, format } from "date-fns";
 import { AlertCircle, FileText, X as XIcon } from "lucide-react";
-import { BYPRODUCT_NAMES } from "../../mappers/InventoryMapper";
+import { byproductLabel } from "../../mappers/byproductNames";
 
 type OrderItem = {
   id: string;
@@ -47,7 +47,7 @@ const kg = (n: number | string) =>
 
 function describe(i: OrderItem): string {
   if (i.item_type === "byproduct") {
-    return BYPRODUCT_NAMES[i.byproduct_type ?? ""] ?? i.byproduct_type ?? "By-product";
+    return i.byproduct_type ? byproductLabel(i.byproduct_type) : "By-product";
   }
   const rice = i.variety_name || "Milled rice";
   return i.grade_name ? `${rice}, ${i.grade_name}` : rice;

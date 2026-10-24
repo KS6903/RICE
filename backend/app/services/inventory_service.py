@@ -25,6 +25,7 @@ from ..repositories.inventory import (
 )
 from ..repositories.paddy import PalayInventoryRepository
 from ..services.base import BaseService
+from ..services.byproduct_kind_service import ByproductKindService
 
 
 class InventoryService(BaseService):
@@ -184,11 +185,13 @@ class InventoryService(BaseService):
 
             elif data.inventory_type == "byproduct":
                 # By-product type is a free-form slug so owners can introduce their
-                # own named goods (and custom stock types route through here too).
+                # own named goods (and custom stock types route through here too);
+                # a new one joins the mill's list of by-products.
                 btype = (data.byproduct_type or "").strip().lower()
                 if not btype:
                     raise ValidationError("By-product type is required.")
                 data.byproduct_type = btype
+                ByproductKindService(self.db, self.current_user).ensure(btype)
                 inv = self.byproducts.find_bucket(company_id, data.branch_id, btype)
                 if not inv:
                     inv = ByproductInventory(

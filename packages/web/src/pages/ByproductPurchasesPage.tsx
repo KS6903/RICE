@@ -8,7 +8,8 @@ import { format } from "date-fns";
 import { useAccess } from "../hooks/useAccess";
 import { useOpenOnArrival } from "../hooks/useOpenOnArrival";
 import { buyingService, type ByproductLineForm } from "../services/BuyingService";
-import { BYPRODUCT_NAMES } from "../mappers/InventoryMapper";
+import { byproductLabel } from "../mappers/byproductNames";
+import { useByproductKinds } from "../hooks/useByproductKinds";
 import EmptyState from "../components/EmptyState";
 import LoadingRows from "../components/LoadingRows";
 import FieldCaption from "../components/FieldCaption";
@@ -23,8 +24,6 @@ import {
   inSeveralWarehouses,
   usePurchaseWarehouse,
 } from "../components/PurchaseWarehouse";
-
-const byproductName = (t: string) => BYPRODUCT_NAMES[t] ?? t;
 
 const newLine = (): ByproductLineForm => ({
   byproduct_type: "ipa",
@@ -53,14 +52,12 @@ export default function ByproductPurchasesPage() {
   const warehouse = usePurchaseWarehouse();
   const stockInSeveralWarehouses = inSeveralWarehouses(stock);
 
-  // Ipa, darak and binlid, plus any other by-product the mill already stocks.
+  // The mill's by-products (Stock > Catalog), plus any other it already stocks.
+  const { active: kinds } = useByproductKinds();
   const types = useMemo(() => {
-    const all = new Set([
-      ...Object.keys(BYPRODUCT_NAMES),
-      ...stock.map((r: any) => r.byproduct_type),
-    ]);
-    return [...all].map((t) => ({ value: t, label: byproductName(t) }));
-  }, [stock]);
+    const all = new Set([...kinds.map((k) => k.code), ...stock.map((r: any) => r.byproduct_type)]);
+    return [...all].map((t) => ({ value: t, label: byproductLabel(t) }));
+  }, [kinds, stock]);
 
   const [form, setForm] = useState({
     purchase_date: format(new Date(), "yyyy-MM-dd"),
@@ -81,6 +78,7 @@ export default function ByproductPurchasesPage() {
       qc.invalidateQueries({ queryKey: ["byproduct-purchases"] });
       qc.invalidateQueries({ queryKey: ["byproduct-stock"] });
       qc.invalidateQueries({ queryKey: ["byproducts"] });
+      qc.invalidateQueries({ queryKey: ["byproduct-kinds"] });
       qc.invalidateQueries({ queryKey: ["inventory-summary"] });
       setShowForm(false);
       setForm((f) => ({ ...f, remarks: "", items: [newLine()] }));
@@ -241,7 +239,7 @@ export default function ByproductPurchasesPage() {
             <tbody className="divide-y divide-gray-100 dark:divide-slate-700">
               {stock.map((r: any) => (
                 <tr key={r.id} className="hover:bg-gray-50 dark:hover:bg-slate-900/50">
-                  <td className="px-4 py-3">{byproductName(r.byproduct_type)}</td>
+                  <td className="px-4 py-3">{byproductLabel(r.byproduct_type)}</td>
                   {stockInSeveralWarehouses && (
                     <td className="px-4 py-3">{r.branch?.name || "Unassigned"}</td>
                   )}

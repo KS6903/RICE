@@ -8,6 +8,7 @@ import { useAuthStore } from "../stores/authStore";
 // The lists themselves have their own tests; here, which ones a mill gets.
 vi.mock("../components/catalog/CatalogLists", () => ({
   VarietiesList: () => <p>the varieties list</p>,
+  ByproductsList: () => <p>the by-products list</p>,
   ExpenseCategoriesList: () => <p>the categories list</p>,
   MachinesList: () => <p>the machines list</p>,
 }));
@@ -48,6 +49,7 @@ describe("CatalogPage", () => {
       "true",
     );
     expect(screen.getByText("the varieties list")).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "By-products" })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: "Expense categories" })).toBeInTheDocument();
     expect(screen.queryByRole("tab", { name: "Machines" })).not.toBeInTheDocument();
 
@@ -61,7 +63,7 @@ describe("CatalogPage", () => {
   it("an Enterprise mill gets every list, one tab each", () => {
     useAuthStore.setState({ user: boss(["*"]) });
     draw();
-    expect(screen.getAllByRole("tab")).toHaveLength(6);
+    expect(screen.getAllByRole("tab")).toHaveLength(7);
     expect(screen.queryByTestId("catalog-other-plans")).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("tab", { name: "Trucks & drivers" }));
     expect(screen.getByText("the trucks")).toBeInTheDocument();

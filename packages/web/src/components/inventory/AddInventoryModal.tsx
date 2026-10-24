@@ -8,6 +8,7 @@ import { inventoryService } from "../../services/InventoryService";
 import { allUnits, saveCustomUnit, type QuantityUnit, slugify } from "./inventoryExtras";
 import Select from "../Select";
 import { MILLED_GRADES } from "../../mappers/InventoryMapper";
+import { useByproductKinds } from "../../hooks/useByproductKinds";
 
 type StockType = "palay" | "milled_rice" | "byproduct";
 
@@ -15,12 +16,6 @@ const BUILTIN_TABS: { key: StockType; label: string; icon: React.ElementType }[]
   { key: "palay", label: "Palay", icon: Wheat },
   { key: "milled_rice", label: "Milled Rice", icon: Package },
   { key: "byproduct", label: "By-product", icon: Boxes },
-];
-
-const DEFAULT_BYPRODUCTS: { value: string; label: string }[] = [
-  { value: "ipa", label: "Ipa (Rice Hull)" },
-  { value: "darak", label: "Darak (Rice Bran)" },
-  { value: "binlid", label: "Binlid (Broken Rice)" },
 ];
 
 /* ── Inline "pick or create" select ──────────────────────────────────────────
@@ -155,7 +150,14 @@ export default function AddInventoryModal({
 
   // Local mirrors so freshly-created options appear instantly in this modal.
   const [branches, setBranches] = useState<any[]>(branchesProp);
-  const [byproductOptions, setByproductOptions] = useState(DEFAULT_BYPRODUCTS);
+  // The mill's by-products (Stock > Catalog), and any typed in here, which
+  // join the list when the stock is saved.
+  const { active: byproductKinds } = useByproductKinds();
+  const [newByproducts, setNewByproducts] = useState<{ value: string; label: string }[]>([]);
+  const byproductOptions = [
+    ...byproductKinds.map((k) => ({ value: k.code, label: k.name })),
+    ...newByproducts.filter((n) => !byproductKinds.some((k) => k.code === n.value)),
+  ];
   const [units, setUnits] = useState<QuantityUnit[]>(() => allUnits());
 
   const [type, setType] = useState<StockType>("palay");
@@ -211,9 +213,8 @@ export default function AddInventoryModal({
   const createByproduct = async (text: string) => {
     const value = slugify(text);
     if (!value) throw new Error("Enter a name.");
-    setByproductOptions((prev) =>
-      prev.some((o) => o.value === value) ? prev : [...prev, { value, label: text.trim() }],
-    );
+    if (!byproductOptions.some((o) => o.value === value))
+      setNewByproducts((prev) => [...prev, { value, label: text.trim() }]);
     setByproductType(value);
   };
 
@@ -254,6 +255,7 @@ export default function AddInventoryModal({
       qc.invalidateQueries({ queryKey: ["palay-inventory"] });
       qc.invalidateQueries({ queryKey: ["milled-rice"] });
       qc.invalidateQueries({ queryKey: ["byproducts"] });
+      qc.invalidateQueries({ queryKey: ["byproduct-kinds"] });
       qc.invalidateQueries({ queryKey: ["inventory-summary"] });
       onClose();
     },

@@ -22,6 +22,7 @@ from ..models.reference import RiceVariety
 from ..models.supplier_customer import Supplier
 from ..repositories.inventory import ByproductInventoryRepository, MilledRiceInventoryRepository
 from ..services.base import BaseService
+from ..services.byproduct_kind_service import ByproductKindService
 from ..services.paddy_service import purchase_warehouse
 
 Purchase = RicePurchase | ByproductPurchase
@@ -154,11 +155,13 @@ class BuyingService(BaseService):
         self.assert_company_fk(Supplier, data.supplier_id, label="Supplier")
         branch_id = purchase_warehouse(self.db, self.current_user, data.branch_id)
         company_id = self.current_user.company_id
+        kinds = ByproductKindService(self.db, self.current_user)
         with self.transaction():
             purchase = self._header(ByproductPurchase, "BP", data, branch_id)
             for line in data.items:
                 item = ByproductPurchaseItem(purchase_id=purchase.id, **line.model_dump())
                 self.db.add(item)
+                kinds.ensure(item.byproduct_type)
                 stock = self.byproducts.find_bucket(company_id, branch_id, item.byproduct_type)
                 if stock is None:
                     stock = ByproductInventory(

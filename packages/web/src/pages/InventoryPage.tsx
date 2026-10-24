@@ -32,9 +32,10 @@ import {
 } from "../components/inventory/locationShades";
 import { useAuthStore } from "../stores/authStore";
 import { inventoryService } from "../services/InventoryService";
+import { byproductLabel } from "../mappers/byproductNames";
+import { useByproductKinds } from "../hooks/useByproductKinds";
 import {
   InventoryMapper,
-  BYPRODUCT_NAMES,
   INVENTORY_SORTS,
   isInventorySort,
   type UnifiedItem,
@@ -120,6 +121,8 @@ export default function InventoryPage() {
     queryFn: () => inventoryService.getSummary(branchFilter),
   });
   const stockLoading = palayLoading || milledLoading || byproductsLoading;
+  // The by-products' names; the lists below are drawn again when they arrive.
+  const { all: byproductKinds } = useByproductKinds();
 
   // Every view lists stock in the order this account chose (remembered between
   // visits, even after signing out). With "All warehouses" picked, one variety
@@ -130,7 +133,7 @@ export default function InventoryPage() {
     const unified = InventoryMapper.toUnifiedItems(palay, milled, byproducts);
     const shown = branchFilter ? unified : InventoryMapper.combineAcrossWarehouses(unified);
     return shown.sort(InventoryMapper.comparator(sort));
-  }, [palay, milled, byproducts, sort, branchFilter]);
+  }, [palay, milled, byproducts, byproductKinds, sort, branchFilter]);
   const palaySorted = useMemo(() => InventoryMapper.sortRows(palay, "palay", sort), [palay, sort]);
   const milledSorted = useMemo(
     () => InventoryMapper.sortRows(milled, "milled", sort),
@@ -138,7 +141,7 @@ export default function InventoryPage() {
   );
   const byproductsSorted = useMemo(
     () => InventoryMapper.sortRows(byproducts, "byproduct", sort),
-    [byproducts, sort],
+    [byproducts, byproductKinds, sort],
   );
 
   const totalKg = items.reduce((s, i) => s + i.quantity_kg, 0);
@@ -365,7 +368,7 @@ function ClassicCard({
             <div>
               {kind === "byproduct" ? (
                 <span className="text-sm text-primary">
-                  {BYPRODUCT_NAMES[inv.byproduct_type] || inv.byproduct_type}
+                  {byproductLabel(inv.byproduct_type)}
                 </span>
               ) : (
                 <>

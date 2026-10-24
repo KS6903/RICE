@@ -10,6 +10,7 @@ import { useAuthStore } from "../../stores/authStore";
 import { salesService } from "../../services/SalesService";
 import { paddyService } from "../../services/PaddyService";
 import { inventoryService } from "../../services/InventoryService";
+import { byproductKindService } from "../../services/ByproductKindService";
 import { chooseOption } from "../../test/pickers";
 
 configure({ asyncUtilTimeout: 5000 });
@@ -133,6 +134,7 @@ describe("Sales column", () => {
     ]);
     vi.spyOn(paddyService, "listVarieties").mockResolvedValue([{ id: "v1", code: "RC222" }]);
     vi.spyOn(paddyService, "listGrades").mockResolvedValue([{ id: "g1", code: "A" }]);
+    vi.spyOn(byproductKindService, "list").mockResolvedValue([]);
   });
 
   it("lists the orders that sell this page's goods, counting only those lines", async () => {
