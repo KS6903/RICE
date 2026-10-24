@@ -38,8 +38,8 @@ from ..repositories.paddy import (
     SupplierRepository,
 )
 from ..services.base import BaseService
-from ..services.record_changes import changed_fields, log_changes, show
 from ..services.canva_color import pick_unused_color
+from ..services.record_changes import changed_fields, log_changes, show
 
 
 class PaddyService(BaseService):
@@ -364,7 +364,8 @@ def purchase_state(p: Any, line_text: Any) -> dict[str, Any]:
         "purchase_date": p.purchase_date,
         "delivery_type": p.delivery_type,
         "remarks": p.remarks,
-        "items": "; ".join(line_text(i) for i in p.items),
+        # Sorted: lines come back from the database in no set order.
+        "items": "; ".join(sorted(line_text(i) for i in p.items)),
     }
 
 
