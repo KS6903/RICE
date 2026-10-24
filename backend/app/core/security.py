@@ -19,8 +19,8 @@ from .access_policy import (  # noqa: F401
     section_level,
     user_section_level,
 )
+from .account_status import boss_may_enter
 from .cache import TTL_FEATURES, cache
-from . import account_status
 from .config import settings
 from .cookies import ACCESS_COOKIE
 from .csrf import enforce_csrf
@@ -220,9 +220,7 @@ def authenticate_access_token(token: str, db: Session):
         company = user.company
         # A mill its Boss closed still lets the Boss in (enforce_account_open
         # then keeps them to reopening it or taking its data).
-        if not company or not (
-            company.is_active or account_status.boss_may_enter(user, now=datetime.now(timezone.utc))
-        ):
+        if not company or not (company.is_active or boss_may_enter(user, now=datetime.now(timezone.utc))):
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Company not found or inactive")
         if payload.get("company_id") != str(company.id):
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")

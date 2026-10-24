@@ -66,8 +66,10 @@ describe("AccountClosureCard", () => {
   it("pauses with the password, then signs out", async () => {
     vi.spyOn(authService, "accountClosure").mockResolvedValue(open);
     draw();
-    fireEvent.click(await screen.findByRole("button", { name: /Pause account/ }));
-    const dialog = screen.getByRole("alertdialog");
+    const open = await screen.findByRole("button", { name: /Pause account/ });
+    await waitFor(() => expect(open).toBeEnabled());
+    fireEvent.click(open);
+    const dialog = await screen.findByRole("alertdialog");
     const confirm = within(dialog).getByRole("button", { name: "Pause it" });
     expect(confirm).toBeDisabled();
 
@@ -88,8 +90,10 @@ describe("AccountClosureCard", () => {
   it("asks for the mill's name before a deletion", async () => {
     vi.spyOn(authService, "accountClosure").mockResolvedValue(open);
     draw();
-    fireEvent.click(await screen.findByRole("button", { name: /Delete account/ }));
-    const dialog = screen.getByRole("alertdialog");
+    const open = await screen.findByRole("button", { name: /Delete account/ });
+    await waitFor(() => expect(open).toBeEnabled());
+    fireEvent.click(open);
+    const dialog = await screen.findByRole("alertdialog");
     fireEvent.change(within(dialog).getByLabelText("Your password"), {
       target: { value: "Password123" },
     });
