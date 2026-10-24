@@ -49,6 +49,7 @@ PUBLIC_TABLE_NAMES: frozenset[str] = frozenset(
         "branches",
         "users",
         "roles",
+        "company_roles",  # a mill's own roles; users point at them
         "auth_sessions",
         "password_reset_tokens",
         "subscription_plans",

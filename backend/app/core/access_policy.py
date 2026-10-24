@@ -1,21 +1,27 @@
 """Who can open which page, and what a mill's Boss may change about it.
 
-``SECTION_ACCESS`` is the default matrix: for each role, the level (``full``,
-``view`` or ``none``) it has on each page of the app. It mirrors
+``SECTION_ACCESS`` is the default matrix: for each built-in role, the level
+(``full``, ``view`` or ``none``) it has on each page of the app. It mirrors
 ``packages/shared/src/constants/access.ts``: the UI matrix is an ergonomics
 layer, this policy is the actual authorization boundary. It stays explicit and
 fail-closed so a newly introduced or typoed role never inherits access.
 
-A mill's Boss may change the matrix for the staff roles, page by page. Those
-changes are stored on the company (``companies.role_access``) as only the cells
-that differ from the default, so a later change to a default still reaches
-every cell the Boss left alone. The rules below keep that from becoming a way
-to lock the mill out, or to hand someone control of it:
+A mill's Boss may change any role but their own, page by page, every page
+included:
 
-- The Boss and the Admin always have full access; their rows can't be changed.
-- Dashboard, Tasks, Settings and Users are fixed for everyone. Users is how
-  someone becomes a Boss or an Admin, and the other three are every account's
-  own space, so none of them is the Boss's to hand out or take away.
+- Built-in roles (the Admin and the staff) start from the default. The Boss's
+  changes are stored on the company (``companies.role_access``) as only the
+  cells that differ from it, so a later change to a default still reaches every
+  cell the Boss left alone.
+- Roles the Boss makes up (``company_roles``) have no default: each stores its
+  level on every page, and a page it doesn't name is closed.
+- The Boss always has full access; that row can't be changed. Only the Boss
+  changes the matrix (api/role_access.py), and whoever runs the Users page can't
+  give anyone more than they have themselves (services/user_service.py), so
+  opening Users to someone doesn't hand them the mill.
+- "Settings" is the mill's settings: billing, the company, branches, the
+  activity log. Everyone keeps their own account (profile, password, two-factor,
+  devices) whatever it says, and the branch list other pages need.
 - Anything stored that breaks these rules (a stale value, a hand-edited row)
   is ignored, never obeyed.
 """
@@ -71,7 +77,7 @@ SECTION_ACCESS: dict[str, dict[str, str]] = {
         "reports": "full",
         "employees": "full",
         "users": "none",
-        "settings": "full",
+        "settings": "none",
         "automations": "view",
         # Their own tasks for everyone; owners and admins see all (api/actions).
         "tasks": "full",
@@ -88,7 +94,7 @@ SECTION_ACCESS: dict[str, dict[str, str]] = {
         "reports": "none",
         "employees": "none",
         "users": "none",
-        "settings": "full",
+        "settings": "none",
         "automations": "none",
         # Their own tasks for everyone; owners and admins see all (api/actions).
         "tasks": "full",
@@ -105,7 +111,7 @@ SECTION_ACCESS: dict[str, dict[str, str]] = {
         "reports": "none",
         "employees": "none",
         "users": "none",
-        "settings": "full",
+        "settings": "none",
         "automations": "none",
         # Their own tasks for everyone; owners and admins see all (api/actions).
         "tasks": "full",
@@ -124,7 +130,7 @@ SECTION_ACCESS: dict[str, dict[str, str]] = {
         "reports": "none",
         "employees": "none",
         "users": "none",
-        "settings": "full",
+        "settings": "none",
         "automations": "none",
         # Their own tasks for everyone; owners and admins see all (api/actions).
         "tasks": "full",
@@ -136,14 +142,16 @@ APP_SECTIONS = frozenset(next(iter(SECTION_ACCESS.values())))
 ALL_SECTIONS: tuple[str, ...] = tuple(next(iter(SECTION_ACCESS.values())))
 LEVELS: tuple[str, ...] = ("none", "view", "full")
 
-# The Boss and the Admin run the mill: their access is never narrowed.
-FIXED_ROLES: frozenset[str] = frozenset({"owner", "admin"})
-# The roles whose access the Boss can change.
+_RANK = {"none": 0, "view": 1, "full": 2}
+
+# The Boss runs the mill: their access is never narrowed.
+FIXED_ROLES: frozenset[str] = frozenset({"owner"})
+# The built-in roles whose access the Boss can change: the Admin and the staff.
 STAFF_ROLES: tuple[str, ...] = tuple(r for r in SECTION_ACCESS if r not in FIXED_ROLES)
-# Pages that are the same for everyone it applies to (see the module docstring).
-LOCKED_SECTIONS: frozenset[str] = frozenset({"dashboard", "tasks", "settings", "users"})
-# The pages the Boss can open to a role, or take away from it.
-CONFIGURABLE_SECTIONS: tuple[str, ...] = tuple(s for s in ALL_SECTIONS if s not in LOCKED_SECTIONS)
+# Every page can be opened to a role or taken away from it.
+CONFIGURABLE_SECTIONS: tuple[str, ...] = ALL_SECTIONS
+# How long a made-up role's name can be (company_roles.name).
+CUSTOM_ROLE_NAME_MAX = 50
 
 
 def stored_changes(overrides: Any, role_name: str | None) -> dict[str, str]:
@@ -177,12 +185,36 @@ def company_overrides(user: Any) -> Any:
     return getattr(getattr(user, "company", None), "role_access", None)
 
 
+def custom_role_access(stored: Any) -> dict[str, str]:
+    """A made-up role's level on every page, from what was stored for it: a
+    page it doesn't name, or names with a level that doesn't exist, is closed."""
+    if not isinstance(stored, Mapping):
+        return dict.fromkeys(ALL_SECTIONS, "none")
+    return {s: stored[s] if stored.get(s) in LEVELS else "none" for s in ALL_SECTIONS}
+
+
 def access_for_user(user: Any) -> dict[str, str]:
-    """Every page's level for the signed-in person, as the app should show it."""
+    """Every page's level for the signed-in person: what the app shows, and what
+    the server enforces (core/security.py)."""
     if getattr(user, "is_platform_admin", False):
         return dict.fromkeys(ALL_SECTIONS, "full")
+    custom = getattr(user, "custom_role", None)
+    if custom is not None:
+        # Only a role of the person's own mill counts.
+        if getattr(custom, "company_id", None) != getattr(user, "company_id", None):
+            return dict.fromkeys(ALL_SECTIONS, "none")
+        return custom_role_access(getattr(custom, "access", None))
     role_name = getattr(getattr(user, "role", None), "name", None)
     return access_for_role(role_name, company_overrides(user))
+
+
+def user_section_level(user: Any, section: str) -> str:
+    return access_for_user(user).get(section, "none")
+
+
+def within(access: Mapping[str, str], limit: Mapping[str, str]) -> bool:
+    """True when ``access`` opens nothing beyond ``limit``, page by page."""
+    return all(_RANK.get(access.get(s, "none"), 0) <= _RANK.get(limit.get(s, "none"), 0) for s in ALL_SECTIONS)
 
 
 def clean_changes(role_name: str, wanted: Mapping[str, str]) -> dict[str, str]:
@@ -190,7 +222,7 @@ def clean_changes(role_name: str, wanted: Mapping[str, str]) -> dict[str, str]:
     that differ from the default. Refuses what can't be changed, by raising
     ValueError with a message fit to show."""
     if role_name in FIXED_ROLES:
-        raise ValueError("The Boss and the Admin always have full access.")
+        raise ValueError("The Boss always has full access.")
     if role_name not in STAFF_ROLES:
         raise ValueError("That role can't be changed.")
     default = SECTION_ACCESS[role_name]
@@ -198,10 +230,29 @@ def clean_changes(role_name: str, wanted: Mapping[str, str]) -> dict[str, str]:
     for section, level in wanted.items():
         if section not in ALL_SECTIONS:
             raise ValueError(f"Unknown page: {section}.")
-        if section in LOCKED_SECTIONS:
-            raise ValueError(f"The {section} page can't be changed here.")
         if level not in LEVELS:
             raise ValueError(f"Unknown level: {level}.")
         if level != default[section]:
             changes[section] = level
     return changes
+
+
+def clean_access(wanted: Mapping[str, str]) -> dict[str, str]:
+    """A made-up role's level on every page, from the levels the Boss chose: a
+    page left out is closed. Refuses an unknown page or level with ValueError."""
+    for section, level in wanted.items():
+        if section not in ALL_SECTIONS:
+            raise ValueError(f"Unknown page: {section}.")
+        if level not in LEVELS:
+            raise ValueError(f"Unknown level: {level}.")
+    return {s: wanted.get(s, "none") for s in ALL_SECTIONS}
+
+
+def clean_role_name(name: str) -> str:
+    """A made-up role's name, tidied, or ValueError when it can't be one."""
+    cleaned = " ".join((name or "").split())
+    if not cleaned:
+        raise ValueError("Give the role a name.")
+    if len(cleaned) > CUSTOM_ROLE_NAME_MAX:
+        raise ValueError(f"A role's name can be at most {CUSTOM_ROLE_NAME_MAX} characters.")
+    return cleaned

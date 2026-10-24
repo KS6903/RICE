@@ -10,12 +10,14 @@ from typing import Any
 
 from sqlalchemy.orm import Session
 
+from ..core.access_policy import access_for_role, access_for_user, custom_role_access, within
 from ..core.exceptions import BadRequestError, FeatureRequiredError, NotFoundError, PermissionDeniedError
 from ..core.passwords import validate_password_strength
 from ..core.security import hash_password
 from ..models.company import Branch
 from ..models.subscription import Subscription
-from ..models.user import Role, User
+from ..models.company import Company
+from ..models.user import CompanyRole, Role, User
 from ..repositories.users import UserRepository
 from ..schemas.users import UserResponse
 from ..services.activity import log_activity
@@ -23,8 +25,39 @@ from ..services.base import BaseService
 
 # Making someone a Boss or an Admin hands over control of the mill, so it asks
 # the person doing it to confirm: their own password, and an authenticator code
-# if they use one.
+# if they use one. So does any role that can manage the people (Users, with edit).
 CONFIRMED_ROLES = {"owner", "admin"}
+# What the app calls the built-in roles (packages/shared ROLES).
+ROLE_LABELS = {
+    "owner": "Boss",
+    "admin": "Admin",
+    "accountant": "Accountant",
+    "cashier": "Cashier",
+    "mill_operator": "Mill operator",
+    "encoder": "Encoder",
+}
+
+
+class _Chosen:
+    """The role someone is being given: built in, or one the Boss made up."""
+
+    def __init__(self, role: Role | None = None, custom: CompanyRole | None = None) -> None:
+        self.role = role
+        self.custom = custom
+
+    @property
+    def name(self) -> str:
+        """For the activity log: a built-in role by its own name, as before."""
+        if self.custom is not None:
+            return self.custom.name
+        return self.role.name if self.role else "none"
+
+    @property
+    def label(self) -> str:
+        """For people: what the app calls the role."""
+        if self.custom is not None:
+            return self.custom.name
+        return ROLE_LABELS.get(self.role.name, self.role.name) if self.role else "none"
 
 
 class UserService(BaseService):
@@ -46,18 +79,17 @@ class UserService(BaseService):
         # (previously this path had NO password validation at all).
         validate_password_strength(data.password)
         # IDOR / integrity guards: the branch must belong to this company; the
-        # role must exist (roles are a small global table).
+        # role must exist (built-in roles are a small global table; a made-up
+        # one must be this mill's).
         self.assert_company_fk(Branch, data.branch_id, label="Branch")
-        role = self.db.get(Role, data.role_id) if data.role_id is not None else None
-        if data.role_id is not None and role is None:
-            raise BadRequestError("Invalid role")
-        # Same rule as editing: an admin can't make a Boss, or they could sign in as one.
-        if role is not None and role.name == "owner" and not self._editor_is_owner():
-            raise PermissionDeniedError("Only the Boss can make someone a Boss.")
+        if (data.role_id is None) == (data.custom_role_id is None):
+            raise BadRequestError("Choose a role.")
+        chosen = self._chosen(data.role_id, data.custom_role_id)
+        self._assert_may_give(chosen)
 
         self._assert_seat_free()
-        if role is not None and role.name in CONFIRMED_ROLES:
-            self._confirm_actor(data, f"Made {data.username} a {role.name}")
+        if self._needs_confirming(chosen):
+            self._confirm_actor(data, f"Made {data.username} a {chosen.name}")
 
         user = User(
             company_id=self.current_user.company_id,
@@ -67,11 +99,12 @@ class UserService(BaseService):
             password_hash=hash_password(data.password),
             full_name=data.full_name,
             role_id=data.role_id,
+            custom_role_id=data.custom_role_id,
         )
         with self.transaction():
             self.users.add(user)
             self.db.flush()
-            self._log(user, "user.create", f"Role: {role.name}" if role else None)
+            self._log(user, "user.create", f"Role: {chosen.name}")
         self.db.refresh(user)
         return self._safe(user)
 
@@ -82,6 +115,52 @@ class UserService(BaseService):
 
     def _editor_is_owner(self) -> bool:
         return bool(self.current_user.role and self.current_user.role.name == "owner")
+
+    def _chosen(self, role_id: int | None, custom_role_id: uuid.UUID | None) -> _Chosen:
+        if custom_role_id is not None:
+            custom = self.db.get(CompanyRole, custom_role_id)
+            if custom is None or custom.company_id != self.current_user.company_id:
+                raise BadRequestError("Invalid role")
+            return _Chosen(custom=custom)
+        role = self.db.get(Role, role_id) if role_id is not None else None
+        if role is None:
+            raise BadRequestError("Invalid role")
+        return _Chosen(role=role)
+
+    def _access_of(self, chosen: _Chosen) -> dict[str, str]:
+        """What a role opens in this mill, as its Boss has set it."""
+        if chosen.custom is not None:
+            return custom_role_access(chosen.custom.access)
+        company = self.db.get(Company, self.current_user.company_id)
+        return access_for_role(chosen.role.name if chosen.role else None, company.role_access if company else None)
+
+    def _assert_may_give(self, chosen: _Chosen) -> None:
+        """Only the Boss makes a Boss, and nobody else can give a role that opens
+        more than they have themselves: opening Users to someone lets them run
+        the staff, not hand themselves (or a friend) the mill."""
+        if self._editor_is_owner():
+            return
+        if chosen.role is not None and chosen.role.name == "owner":
+            raise PermissionDeniedError("Only the Boss can make someone a Boss.")
+        if not within(self._access_of(chosen), access_for_user(self.current_user)):
+            raise PermissionDeniedError(
+                f"The {chosen.label} role can open more than you can, so only the Boss can give it."
+            )
+
+    def _assert_may_manage(self, user: User) -> None:
+        """Nobody but the Boss changes the account of someone who can open more
+        than they can (an Admin, for one, when an Accountant runs the Users page)."""
+        if self._editor_is_owner() or user.id == self.current_user.id:
+            return
+        if user.role and user.role.name == "owner":
+            raise PermissionDeniedError("Only the Boss can change a Boss account.")
+        if not within(access_for_user(user), access_for_user(self.current_user)):
+            raise PermissionDeniedError("This person can open more than you can, so only the Boss can change them.")
+
+    def _needs_confirming(self, chosen: _Chosen) -> bool:
+        if chosen.role is not None and chosen.role.name in CONFIRMED_ROLES:
+            return True
+        return self._access_of(chosen).get("users") == "full"
 
     def _log(self, user: User, action: str, detail: str | None = None) -> None:
         """Audit row for a change to a member of staff's account, in the company's
@@ -138,44 +217,52 @@ class UserService(BaseService):
         user = self.users.get_for_company(user_id, self.current_user.company_id)
         if not user:
             raise NotFoundError("User not found")
-        new_role = None
-        if data.role_id is not None:
-            new_role = self.db.get(Role, data.role_id)
-            if new_role is None:
-                raise BadRequestError("Invalid role")
+        if data.role_id is not None and data.custom_role_id is not None:
+            raise BadRequestError("Choose one role.")
+        chosen = None
+        if data.role_id is not None or data.custom_role_id is not None:
+            chosen = self._chosen(data.role_id, data.custom_role_id)
+        role_changes = chosen is not None and (
+            (chosen.role is not None and (user.custom_role_id is not None or chosen.role.id != user.role_id))
+            or (chosen.custom is not None and chosen.custom.id != user.custom_role_id)
+        )
 
         # Your own account can't be removed, and you can't change your own role
         # (an owner demoting themselves could leave the mill without one).
         if user.id == self.current_user.id:
             if data.is_active is False:
                 raise BadRequestError("You can't remove your own account.")
-            if data.role_id is not None and data.role_id != user.role_id:
+            if role_changes:
                 raise BadRequestError("You can't change your own role.")
 
-        # Owners (shown as "Boss") outrank admins: only an owner can edit or
-        # remove an owner, or make someone an owner.
-        if not self._editor_is_owner():
-            if user.role and user.role.name == "owner":
-                raise PermissionDeniedError("Only the Boss can change a Boss account.")
-            if new_role is not None and new_role.name == "owner":
-                raise PermissionDeniedError("Only the Boss can make someone a Boss.")
+        # Owners (shown as "Boss") outrank everyone: only an owner can edit or
+        # remove an owner, or make someone an owner; and nobody else changes
+        # someone who can open more than they can, or gives a role that does.
+        self._assert_may_manage(user)
+        if role_changes:
+            self._assert_may_give(chosen)
 
         # Restoring a removed user takes a seat again.
         if data.is_active is True and not user.is_active:
             self._assert_seat_free()
 
         self.assert_company_fk(Branch, data.branch_id, label="Branch")
-        old_role = user.role.name if user.role else None
+        old_role = user.custom_role.name if user.custom_role else user.role.name if user.role else None
         was_active = user.is_active
         # Becoming a Boss or an Admin is confirmed like creating one. An unchanged
         # role (the edit form always sends it) is not.
-        if new_role is not None and new_role.name in CONFIRMED_ROLES and new_role.name != old_role:
-            self._confirm_actor(data, f"Made {user.username} a {new_role.name}")
+        if role_changes and self._needs_confirming(chosen):
+            self._confirm_actor(data, f"Made {user.username} a {chosen.name}")
         email_changed = data.email is not None and str(data.email).strip().lower() != (user.email or "").strip().lower()
         with self.transaction():
-            # The confirmation fields are not account fields.
-            for field, val in data.model_dump(exclude_none=True, exclude={"current_password", "mfa_code"}).items():
+            # The confirmation fields are not account fields, and the role is set below.
+            exclude = {"current_password", "mfa_code", "role_id", "custom_role_id"}
+            for field, val in data.model_dump(exclude_none=True, exclude=exclude).items():
                 setattr(user, field, val)
+            if role_changes:
+                # One or the other: a built-in role, or one the Boss made up.
+                user.role_id = chosen.role.id if chosen.role is not None else None
+                user.custom_role_id = chosen.custom.id if chosen.custom is not None else None
             if email_changed:
                 # A new address is unproven until its owner confirms it, here as
                 # on the profile page: a verified email is what lets an owner load
@@ -187,7 +274,7 @@ class UserService(BaseService):
                 self._log(user, "user.remove")
             elif not was_active and data.is_active is True:
                 self._log(user, "user.restore")
-            if new_role is not None and new_role.name != old_role:
-                self._log(user, "user.role_change", f"{old_role or 'none'} → {new_role.name}")
+            if role_changes:
+                self._log(user, "user.role_change", f"{old_role or 'none'} → {chosen.name}")
         self.db.refresh(user)
         return self._safe(user)

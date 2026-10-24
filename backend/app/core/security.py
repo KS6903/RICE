@@ -12,7 +12,13 @@ from sqlalchemy.orm import Session, joinedload
 
 # The default role/section matrix, and what a mill's Boss may change about it,
 # are in access_policy; this module is where they are enforced.
-from .access_policy import APP_SECTIONS, SECTION_ACCESS, company_overrides, section_level  # noqa: F401
+from .access_policy import (  # noqa: F401
+    APP_SECTIONS,
+    SECTION_ACCESS,
+    company_overrides,
+    section_level,
+    user_section_level,
+)
 from .cache import TTL_FEATURES, cache
 from .config import settings
 from .cookies import ACCESS_COOKIE
@@ -198,7 +204,9 @@ def authenticate_access_token(token: str, db: Session):
         else false()
     )
     row = db.execute(
-        select(User, session_live).options(joinedload(User.company), joinedload(User.role)).where(User.id == user_uuid)
+        select(User, session_live)
+        .options(joinedload(User.company), joinedload(User.role), joinedload(User.custom_role))
+        .where(User.id == user_uuid)
     ).one_or_none()
     user, live = (row[0], bool(row[1])) if row is not None else (None, False)
     if not user or not user.is_active:
@@ -344,10 +352,9 @@ def require_section_access(section: str, *, write: bool = False):
     def checker(current_user=Depends(get_current_user)):
         if getattr(current_user, "is_platform_admin", False):
             return current_user
-        role = getattr(current_user, "role", None)
-        role_name = getattr(role, "name", None)
-        # The default for the role, as this mill's Boss may have changed it.
-        level = section_level(role_name, section, company_overrides(current_user))
+        # The person's role, built in (as this mill's Boss may have changed it)
+        # or one the Boss made up.
+        level = user_section_level(current_user, section)
         allowed = level == "full" if write else level in {"view", "full"}
         if not allowed:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Insufficient permissions")

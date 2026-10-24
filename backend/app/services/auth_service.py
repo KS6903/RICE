@@ -1164,6 +1164,8 @@ class AuthService(BaseService):
             "email": user.email,
             "full_name": user.full_name,
             "role": user.role.name if user.role else None,
+            # A role the mill's Boss made up has no built-in name; this is what to call it.
+            "role_label": user.custom_role.name if user.custom_role else None,
             "company_id": str(user.company_id) if user.company_id else None,
             "branch_id": str(user.branch_id) if user.branch_id else None,
             "is_platform_admin": user.is_platform_admin,

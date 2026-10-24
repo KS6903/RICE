@@ -32,7 +32,7 @@ from .subscription import Subscription, SubscriptionPlan
 from .supplier_customer import Customer, Supplier
 from .sync import SyncConflict, SyncLog
 from .upgrade_request import UpgradeRequest
-from .user import Role, User
+from .user import CompanyRole, Role, User
 from .user_location import UserLocation
 from .warehouse import Pallet, PalletMovement, RiceBatch, WarehouseLayout, WarehouseZone
 
@@ -55,6 +55,7 @@ __all__ = [
     "Company",
     "Branch",
     "User",
+    "CompanyRole",
     "Role",
     "AuthSession",
     "PasswordResetToken",

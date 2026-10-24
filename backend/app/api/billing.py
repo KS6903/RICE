@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 
 from ..core.database import get_db
 from ..core.ratelimit import limiter
-from ..core.security import get_current_user, require_roles, require_section_access
+from ..core.security import get_current_user, require_section_access
 from ..repositories.billing import (
     SubscriptionPlanRepository,
     SubscriptionRepository,
@@ -16,14 +16,11 @@ from ..repositories.billing import (
 from ..schemas.billing import UpgradeRequestCreate
 from ..services.billing_service import BillingService
 
-WRITE_ROLES = ("owner", "admin")
+# Billing is part of the mill's settings: whoever the Boss opened Settings to
+# sees it, and asking for another plan needs Settings with edit.
+SETTINGS_WRITE = [Depends(require_section_access("settings", write=True))]
 
-router = APIRouter(
-    dependencies=[
-        Depends(require_section_access("settings")),
-        Depends(require_roles(*WRITE_ROLES)),
-    ]
-)
+router = APIRouter(dependencies=[Depends(require_section_access("settings"))])
 
 
 def get_billing_service(
@@ -57,13 +54,11 @@ def my_latest_request(svc: BillingService = Depends(get_billing_service)):
     return svc.my_latest_request()
 
 
-@router.post(
-    "/upgrade-requests", status_code=status.HTTP_201_CREATED, dependencies=[Depends(require_roles(*WRITE_ROLES))]
-)
+@router.post("/upgrade-requests", status_code=status.HTTP_201_CREATED, dependencies=SETTINGS_WRITE)
 def create_upgrade_request(body: UpgradeRequestCreate, svc: BillingService = Depends(get_billing_service)):
     return svc.create_upgrade_request(body)
 
 
-@router.delete("/upgrade-requests/{request_id}", dependencies=[Depends(require_roles(*WRITE_ROLES))])
+@router.delete("/upgrade-requests/{request_id}", dependencies=SETTINGS_WRITE)
 def cancel_upgrade_request(request_id: uuid.UUID, svc: BillingService = Depends(get_billing_service)):
     return svc.cancel_upgrade_request(request_id)

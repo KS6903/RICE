@@ -2,7 +2,8 @@ import { useState } from "react";
 import { useEscapeKey } from "../hooks/useEscapeKey";
 import { useOpenOnArrival } from "../hooks/useOpenOnArrival";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { usersService, type UserUpdate } from "../services/UsersService";
+import { CUSTOM_ROLE, roleField, usersService, type UserUpdate } from "../services/UsersService";
+import { roleAccessService } from "../services/RoleAccessService";
 import PasswordInput from "../components/PasswordInput";
 import { KeyRound, Pencil, Plus, RotateCcw, ShieldCheck, Trash2 } from "lucide-react";
 import ConfirmItsYou, { type Proof } from "../components/ConfirmItsYou";
@@ -12,7 +13,7 @@ import { useAuthStore } from "../stores/authStore";
 import { useCurrentPlan } from "../hooks/useFeature";
 import Select from "../components/Select";
 import ConfirmDialog from "../components/ConfirmDialog";
-import RoleAccessPanel from "../components/RoleAccessPanel";
+import RoleAccessPanel, { ROLE_ACCESS_QUERY_KEY } from "../components/RoleAccessPanel";
 
 const FIELD_LABEL = "block text-sm font-medium text-gray-700 dark:text-slate-200 mb-1";
 const ERROR_TEXT = "text-sm font-medium text-rose-600 dark:text-rose-400";
@@ -22,9 +23,16 @@ const errorText = (e: any, fallback: string) => e?.response?.data?.detail || fal
 const roleOptions = (roles: readonly { id: number; label: string }[]) =>
   roles.map((r) => ({ value: String(r.id), label: r.label }));
 
+/** The role picker's value for someone: a built-in role's id, or a made-up one's. */
+const roleValueOf = (u: any) =>
+  u?.custom_role_id ? `${CUSTOM_ROLE}${u.custom_role_id}` : String(u?.role_id ?? u?.role?.id ?? "");
+
+const withArticle = (label: string) => `${/^[aeiou]/i.test(label) ? "an" : "a"} ${label}`;
+
 // Making someone a Boss or an Admin hands over control of the mill, so the
 // person doing it confirms with their own password (and an authenticator code,
-// if they use one). The server asks for the same.
+// if they use one). So does any role that can manage the people here (Users,
+// with edit). The server asks for the same.
 const CONFIRMED_ROLES: Record<string, string> = { owner: "a Boss", admin: "an Admin" };
 const EMPTY_PROOF: Proof = { password: "", code: "" };
 /** A new user starts with no role: "-- Select Role --" until one is chosen. */
@@ -117,21 +125,44 @@ export default function UsersPage() {
     },
   });
 
+  // The roles the mill's Boss made up, and what every role opens.
+  const { data: roleAccess } = useQuery({
+    queryKey: ROLE_ACCESS_QUERY_KEY,
+    queryFn: () => roleAccessService.get(),
+  });
+  const customRoles = roleAccess?.custom_roles ?? [];
+
   // Only the Boss can change a Boss account or make someone a Boss (the server
-  // enforces this too).
+  // enforces this too, and that nobody else gives a role opening more than they can).
   const canManage = (u: any) => iAmBoss || u.role?.name !== "owner";
-  const roleChoices = ROLES.filter((r) => iAmBoss || r.name !== "owner");
+  const customOptions = customRoles.map((r) => ({ value: `${CUSTOM_ROLE}${r.id}`, label: r.name }));
+  const allRoleOptions = [...roleOptions(ROLES), ...customOptions];
+  const roleChoices = [
+    ...roleOptions(ROLES.filter((r) => iAmBoss || r.name !== "owner")),
+    ...customOptions,
+  ];
 
   // Whether the role chosen in a form is one that asks you to confirm, and for
   // the edit form, only when it is a change: the form always sends the role.
   const roleNameOf = (id: string) => ROLES.find((r) => String(r.id) === id)?.name ?? "";
+  const confirmWhat = (value: string): string | undefined => {
+    if (!value) return undefined;
+    if (value.startsWith(CUSTOM_ROLE)) {
+      const custom = customRoles.find((r) => `${CUSTOM_ROLE}${r.id}` === value);
+      return custom?.access.users === "full" ? withArticle(custom.name) : undefined;
+    }
+    const name = roleNameOf(value);
+    if (CONFIRMED_ROLES[name]) return CONFIRMED_ROLES[name];
+    const builtIn = roleAccess?.roles.find((r) => r.role === name);
+    return builtIn?.access.users === "full" ? withArticle(roleLabel(name)) : undefined;
+  };
   const usesCode = !!me?.mfa_enabled;
-  const createWhat = CONFIRMED_ROLES[roleNameOf(form.role_id)];
+  const createWhat = confirmWhat(form.role_id);
   // The role the person being edited has now, which the form starts on.
-  const ownRoleId = String(editing?.role_id ?? editing?.role?.id ?? "");
+  const ownRoleId = roleValueOf(editing);
   const editWhat =
     editing && editing.id !== me?.id && editForm.role_id !== ownRoleId
-      ? CONFIRMED_ROLES[roleNameOf(editForm.role_id)]
+      ? confirmWhat(editForm.role_id)
       : undefined;
   const proven = proof.password !== "" && (!usesCode || /^\d{6}$/.test(proof.code));
   const proofFields = {
@@ -147,7 +178,7 @@ export default function UsersPage() {
     setEditForm({
       full_name: u.full_name ?? "",
       email: u.email ?? "",
-      role_id: String(u.role_id ?? u.role?.id ?? ""),
+      role_id: roleValueOf(u),
     });
   };
 
@@ -161,7 +192,7 @@ export default function UsersPage() {
         full_name: editForm.full_name,
         email: editForm.email,
         // Your own role is locked; don't send it.
-        ...(isMe ? {} : { role_id: Number(editForm.role_id) }),
+        ...(isMe ? {} : roleField(editForm.role_id)),
         ...(editWhat ? proofFields : {}),
       },
     });
@@ -176,12 +207,12 @@ export default function UsersPage() {
   const pickCreateRole = (role_id: string) => {
     setForm((f) => ({ ...f, role_id }));
     setProof(EMPTY_PROOF);
-    if (CONFIRMED_ROLES[roleNameOf(role_id)]) setAsking({ form: "create" });
+    if (confirmWhat(role_id)) setAsking({ form: "create" });
   };
   const pickEditRole = (role_id: string) => {
     setEditForm((f) => ({ ...f, role_id }));
     setProof(EMPTY_PROOF);
-    if (role_id !== ownRoleId && CONFIRMED_ROLES[roleNameOf(role_id)]) {
+    if (role_id !== ownRoleId && confirmWhat(role_id)) {
       setAsking({ form: "edit" });
     }
   };
@@ -266,7 +297,7 @@ export default function UsersPage() {
                 id="new-user-role"
                 value={form.role_id}
                 onChange={pickCreateRole}
-                options={[{ value: "", label: "-- Select Role --" }, ...roleOptions(roleChoices)]}
+                options={[{ value: "", label: "-- Select Role --" }, ...roleChoices]}
               />
               {createWhat && (
                 <ConfirmedNote proven={proven} onAsk={() => setAsking({ form: "create" })} />
@@ -332,7 +363,7 @@ export default function UsersPage() {
                 value={editForm.role_id}
                 disabled={editing.id === me?.id}
                 onChange={pickEditRole}
-                options={roleOptions(editing.id === me?.id ? ROLES : roleChoices)}
+                options={editing.id === me?.id ? allRoleOptions : roleChoices}
               />
               {editing.id === me?.id && (
                 <p className="text-xs text-muted mt-1">You can't change your own role.</p>
@@ -390,7 +421,9 @@ export default function UsersPage() {
                     {isMe && <span className="ml-1 font-normal text-muted">(you)</span>}
                   </td>
                   <td className="px-4 py-3 text-gray-500 dark:text-slate-400">{u.email || "—"}</td>
-                  <td className="px-4 py-3">{roleLabel(u.role?.name) || "—"}</td>
+                  <td className="px-4 py-3">
+                    {u.custom_role?.name || roleLabel(u.role?.name) || "—"}
+                  </td>
                   <td className="px-4 py-3">
                     {u.is_active ? (
                       <span className="badge-green">Active</span>
@@ -490,10 +523,7 @@ export default function UsersPage() {
 
       <ConfirmItsYou
         open={!!asking}
-        what={
-          CONFIRMED_ROLES[roleNameOf(asking?.form === "edit" ? editForm.role_id : form.role_id)] ??
-          "a Boss"
-        }
+        what={confirmWhat(asking?.form === "edit" ? editForm.role_id : form.role_id) ?? "a Boss"}
         usesCode={usesCode}
         error={asking?.error}
         onConfirm={(p) => {

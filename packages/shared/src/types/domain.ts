@@ -7,7 +7,10 @@ export interface User {
   username: string;
   full_name: string;
   email?: string;
+  // A built-in role, or null for someone holding a role the mill's Boss made up
+  // (role_label names it).
   role: Role | null;
+  role_label?: string | null;
   company_id: string | null;
   branch_id?: string | null;
   is_platform_admin?: boolean;

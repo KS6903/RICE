@@ -7,10 +7,11 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
 from ..core.database import get_db
-from ..core.security import require_roles, require_section_access
+from ..core.security import get_current_user, require_section_access
 from ..core.timezones import tenant_zone
 from ..services.activity_service import ActivityService
 
+# Part of the mill's settings: whoever the Boss opened Settings to.
 router = APIRouter(dependencies=[Depends(require_section_access("settings"))])
 
 
@@ -31,7 +32,7 @@ def list_activity(
     start: date | None = None,
     end: date | None = None,
     limit: int = Query(500, ge=1, le=1000),
-    current_user=Depends(require_roles("owner", "admin")),
+    current_user=Depends(get_current_user),
     svc: ActivityService = Depends(get_activity_service),
 ):
     """The mill's activity from *start* to *end* (whole days, in its own time

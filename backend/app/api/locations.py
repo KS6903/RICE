@@ -12,12 +12,13 @@ from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.orm import Session
 
 from ..core.database import get_db
-from ..core.security import get_current_user, require_section_access
+from ..core.security import get_current_user
 from ..repositories.locations import UserLocationRepository
 from ..schemas.locations import LocationCreate
 from ..services.location_service import LocationService
 
-router = APIRouter(dependencies=[Depends(require_section_access("settings"))])
+# Each person's own saved places for the weather, whatever pages they can open.
+router = APIRouter()
 
 
 def get_location_service(
@@ -35,7 +36,6 @@ def list_locations(svc: LocationService = Depends(get_location_service)):
 @router.post(
     "/locations",
     status_code=status.HTTP_201_CREATED,
-    dependencies=[Depends(require_section_access("settings", write=True))],
 )
 def create_location(body: LocationCreate, svc: LocationService = Depends(get_location_service)):
     return svc.create_location(body)
@@ -43,7 +43,6 @@ def create_location(body: LocationCreate, svc: LocationService = Depends(get_loc
 
 @router.patch(
     "/locations/{location_id}/set-default",
-    dependencies=[Depends(require_section_access("settings", write=True))],
 )
 def set_default(location_id: uuid.UUID, svc: LocationService = Depends(get_location_service)):
     return svc.set_default(location_id)
@@ -52,7 +51,6 @@ def set_default(location_id: uuid.UUID, svc: LocationService = Depends(get_locat
 @router.delete(
     "/locations/{location_id}",
     status_code=204,
-    dependencies=[Depends(require_section_access("settings", write=True))],
 )
 def delete_location(location_id: uuid.UUID, svc: LocationService = Depends(get_location_service)):
     svc.delete_location(location_id)

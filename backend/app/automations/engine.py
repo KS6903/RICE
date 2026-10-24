@@ -22,7 +22,7 @@ from datetime import datetime, timedelta
 from pydantic import BaseModel, ValidationError
 from sqlalchemy.orm import Session
 
-from ..core.access_policy import section_level
+from ..core.access_policy import access_for_user
 from ..jobs.registry import JobContext
 from ..jobs.runner import claim_run, finish_run
 from ..models.automation import AutomationRule, AutomationSettings
@@ -59,15 +59,15 @@ def eligible_users(db: Session, company_id: uuid.UUID, recipe: Recipe) -> list[U
         .order_by(User.full_name)
         .all()
     )
-    # What each role can open in this mill, as its Boss has set it: a role that
-    # was shut out of a page isn't told what is on it.
-    overrides = db.query(Company.role_access).filter(Company.id == company_id).scalar()
+    # What each person can open in this mill, as its Boss has set it (a role
+    # made up by the Boss included): someone shut out of a page isn't told what
+    # is on it. A recipe for named roles only reaches those built-in roles.
     return [
         u
         for u in users
-        if u.role
-        and section_level(u.role.name, recipe.section, overrides) != "none"
-        and (not recipe.only_roles or u.role.name in recipe.only_roles)
+        if (u.role or u.custom_role)
+        and access_for_user(u).get(recipe.section, "none") != "none"
+        and (not recipe.only_roles or (u.role is not None and u.role.name in recipe.only_roles))
     ]
 
 
@@ -85,7 +85,7 @@ def recipient_ids(db: Session, company_id: uuid.UUID, recipe: Recipe, chosen: Se
             picked.append(user_id)
     if chosen:
         return picked
-    return [u.id for u in eligible.values() if u.role.name in recipe.default_roles]
+    return [u.id for u in eligible.values() if u.role is not None and u.role.name in recipe.default_roles]
 
 
 def parse_params(recipe: Recipe, raw: dict | None) -> BaseModel:

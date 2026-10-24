@@ -21,6 +21,8 @@ tenant it has already seeded, so running this twice changes nothing:
                (seed_demo_milling.py)
   automations  sixty days of activity for the Enterprise recipes, mill1 only
                (seed_demo_automations.py; --reset replaces it)
+  roles        a Warehouse Manager role of the mill's own, given to nobody
+               (seed_demo_roles.py)
 
 Usage, from backend/, after `alembic upgrade head` and `migrate_all_tenants.py`:
     python seed_demo.py                       # Tier 1: mill1-mill3 (the default)
@@ -101,6 +103,12 @@ def _automations(username: str, reset: bool) -> str:
     return _with_session(lambda db: seed_demo_automations.seed(db, username, reset=reset))
 
 
+def _roles(username: str, reset: bool) -> str:
+    import seed_demo_roles
+
+    return _with_session(lambda db: seed_demo_roles.seed(db, username))
+
+
 PARTS: dict[str, Callable[[str, bool], str]] = {
     "base": _base,
     "staff": _staff,
@@ -110,6 +118,7 @@ PARTS: dict[str, Callable[[str, bool], str]] = {
     "buying": _buying,
     "milling": _milling,
     "automations": _automations,
+    "roles": _roles,
 }
 
 

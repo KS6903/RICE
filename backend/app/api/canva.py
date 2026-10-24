@@ -20,7 +20,7 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
 from ..core.database import get_db
-from ..core.security import get_current_user, require_feature, require_roles, require_section_access
+from ..core.security import get_current_user, require_feature, require_section_access
 from ..repositories.canva import (
     PalletMovementRepository,
     PalletRepository,
@@ -46,8 +46,8 @@ from ..services.canva_layout_service import CanvaLayoutService
 from ..services.canva_pallet_service import PalletService
 from .canva_ws import ws_router  # noqa: F401 — re-exported for main.py registration
 
-# Roles allowed to mutate spatial state (move/stack/unstack)
-WRITE_ROLES = ("owner", "admin", "mill_operator")
+# Moving, stacking and unstacking pallets needs Inventory with edit, as the
+# mill's Boss set it (by default the Boss, the Admin and the mill operator).
 
 router = APIRouter(
     dependencies=[
@@ -135,7 +135,7 @@ def get_warehouse_canva(
 def move_pallet(
     pallet_id: uuid.UUID,
     body: PalletMove,
-    _=Depends(require_roles(*WRITE_ROLES)),
+    _=Depends(require_section_access("inventory", write=True)),
     svc: PalletService = Depends(get_pallet_service),
 ):
     return svc.move(pallet_id, body)
@@ -145,7 +145,7 @@ def move_pallet(
 def resize_pallet(
     pallet_id: uuid.UUID,
     body: PalletResize,
-    _=Depends(require_roles(*WRITE_ROLES)),
+    _=Depends(require_section_access("inventory", write=True)),
     svc: PalletService = Depends(get_pallet_service),
 ):
     return svc.resize(pallet_id, body)
@@ -155,7 +155,7 @@ def resize_pallet(
 def stack_pallet(
     pallet_id: uuid.UUID,
     body: PalletStack,
-    _=Depends(require_roles(*WRITE_ROLES)),
+    _=Depends(require_section_access("inventory", write=True)),
     svc: PalletService = Depends(get_pallet_service),
 ):
     return svc.stack(pallet_id, body)
@@ -165,7 +165,7 @@ def stack_pallet(
 def unstack_pallet(
     pallet_id: uuid.UUID,
     body: PalletUnstack,
-    _=Depends(require_roles(*WRITE_ROLES)),
+    _=Depends(require_section_access("inventory", write=True)),
     svc: PalletService = Depends(get_pallet_service),
 ):
     return svc.unstack(pallet_id, body)
@@ -232,7 +232,7 @@ def patch_layout(
     branch_id: uuid.UUID,
     body: LayoutPatch,
     layout_id: uuid.UUID | None = None,
-    _=Depends(require_roles(*WRITE_ROLES)),
+    _=Depends(require_section_access("inventory", write=True)),
     svc: CanvaLayoutService = Depends(get_layout_service),
 ):
     return svc.patch_layout(branch_id, body, layout_id)
@@ -243,7 +243,7 @@ def create_zone(
     branch_id: uuid.UUID,
     body: ZoneCreate,
     layout_id: uuid.UUID | None = None,
-    _=Depends(require_roles(*WRITE_ROLES)),
+    _=Depends(require_section_access("inventory", write=True)),
     svc: CanvaLayoutService = Depends(get_layout_service),
 ):
     return svc.create_zone(branch_id, body, layout_id)
@@ -253,7 +253,7 @@ def create_zone(
 def patch_zone(
     zone_id: uuid.UUID,
     body: ZonePatch,
-    _=Depends(require_roles(*WRITE_ROLES)),
+    _=Depends(require_section_access("inventory", write=True)),
     svc: CanvaLayoutService = Depends(get_layout_service),
 ):
     return svc.patch_zone(zone_id, body)
@@ -262,7 +262,7 @@ def patch_zone(
 @router.delete("/zones/{zone_id}")
 def delete_zone(
     zone_id: uuid.UUID,
-    _=Depends(require_roles(*WRITE_ROLES)),
+    _=Depends(require_section_access("inventory", write=True)),
     svc: CanvaLayoutService = Depends(get_layout_service),
 ):
     return svc.delete_zone(zone_id)
@@ -285,7 +285,7 @@ def list_canva_customers(
 @router.get("/branches/{branch_id}/layouts/trash")
 def list_trashed_layouts(
     branch_id: uuid.UUID,
-    _=Depends(require_roles(*WRITE_ROLES)),
+    _=Depends(require_section_access("inventory", write=True)),
     svc: CanvaLayoutService = Depends(get_layout_service),
 ):
     return svc.list_trashed_layouts(branch_id)
@@ -294,7 +294,7 @@ def list_trashed_layouts(
 @router.post("/layouts/{layout_id}/restore")
 def restore_layout(
     layout_id: uuid.UUID,
-    _=Depends(require_roles(*WRITE_ROLES)),
+    _=Depends(require_section_access("inventory", write=True)),
     svc: CanvaLayoutService = Depends(get_layout_service),
 ):
     return svc.restore_layout(layout_id)
@@ -319,7 +319,7 @@ def list_warehouse_size_presets(
 def create_branch_layout(
     branch_id: uuid.UUID,
     body: LayoutCreate,
-    _=Depends(require_roles(*WRITE_ROLES)),
+    _=Depends(require_section_access("inventory", write=True)),
     svc: CanvaLayoutService = Depends(get_layout_service),
 ):
     return svc.create_branch_layout(branch_id, body)
@@ -328,7 +328,7 @@ def create_branch_layout(
 @router.patch("/layouts/{layout_id}/set-default")
 def set_default_layout(
     layout_id: uuid.UUID,
-    _=Depends(require_roles(*WRITE_ROLES)),
+    _=Depends(require_section_access("inventory", write=True)),
     svc: CanvaLayoutService = Depends(get_layout_service),
 ):
     return svc.set_default_layout(layout_id)
@@ -337,7 +337,7 @@ def set_default_layout(
 @router.delete("/layouts/{layout_id}", status_code=204)
 def delete_layout(
     layout_id: uuid.UUID,
-    _=Depends(require_roles(*WRITE_ROLES)),
+    _=Depends(require_section_access("inventory", write=True)),
     svc: CanvaLayoutService = Depends(get_layout_service),
 ):
     svc.delete_layout(layout_id)
@@ -346,7 +346,7 @@ def delete_layout(
 @router.post("/layouts/bulk-delete")
 def bulk_delete_layouts(
     body: LayoutBulkDelete,
-    _=Depends(require_roles(*WRITE_ROLES)),
+    _=Depends(require_section_access("inventory", write=True)),
     svc: CanvaLayoutService = Depends(get_layout_service),
 ):
     return svc.bulk_delete_layouts(body)

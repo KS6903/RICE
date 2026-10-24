@@ -50,6 +50,7 @@ import {
 } from "lucide-react";
 import { addDays, differenceInCalendarDays, format, parseISO, subDays } from "date-fns";
 import { useCurrentPlan, useFeature } from "../hooks/useFeature";
+import { useAccess } from "../hooks/useAccess";
 import { roleLabel, type SubscriptionPlan, type UpgradeRequest } from "@rice-mill/shared";
 import ActivityLogList from "../components/activity/ActivityLogList";
 import BackupCodes from "../components/BackupCodes";
@@ -81,23 +82,31 @@ const TABLE_HEAD =
 
 export default function SettingsPage() {
   const role = useAuthStore((s) => s.user?.role);
-  const isManager = role === "owner" || role === "admin";
+  const { canView, canEdit } = useAccess();
+  // The mill's settings are for whoever the Boss opened Settings to (by default
+  // the Boss and the Admin). Everyone else manages only their own account.
+  const millSettings = canView("settings");
   // The mill's machines are milling's (Basic and up).
   const hasMilling = useFeature("milling");
-  // Non-managers (cashier, encoder, mill_operator, accountant) only manage their
-  // own account — everything else here is an owner/admin surface.
-  const [tab, setTab] = useState<Tab>(isManager ? "billing" : "profile");
+  const [tab, setTab] = useState<Tab>(millSettings ? "billing" : "profile");
 
   const tabs: { key: Tab; label: string; icon: React.ElementType }[] = [
-    // Company/management settings — owners & admins only.
-    ...(isManager
+    // The mill's settings. Varieties, machines and expense categories belong to
+    // their own pages too, so they also need edit there.
+    ...(millSettings
       ? [
           { key: "billing" as Tab, label: "Billing", icon: CreditCard },
           { key: "company" as Tab, label: "Company", icon: Building2 },
           { key: "branches" as Tab, label: "Branches", icon: MapPin },
-          { key: "varieties" as Tab, label: "Rice Varieties", icon: Wheat },
-          ...(hasMilling ? [{ key: "equipment" as Tab, label: "Equipment", icon: Factory }] : []),
-          { key: "categories" as Tab, label: "Expense Categories", icon: Receipt },
+          ...(canEdit("paddy")
+            ? [{ key: "varieties" as Tab, label: "Rice Varieties", icon: Wheat }]
+            : []),
+          ...(hasMilling && canEdit("milling")
+            ? [{ key: "equipment" as Tab, label: "Equipment", icon: Factory }]
+            : []),
+          ...(canEdit("expenses")
+            ? [{ key: "categories" as Tab, label: "Expense Categories", icon: Receipt }]
+            : []),
           { key: "activity" as Tab, label: "Activity Log", icon: History },
         ]
       : []),
@@ -275,7 +284,7 @@ function BillingTab() {
   const plan = useCurrentPlan();
   const user = useAuthStore((s) => s.user);
   const features = (user?.features as string[] | undefined) || [];
-  const canRequest = user?.role === "owner" || user?.role === "admin";
+  const canRequest = useAccess().canEdit("settings");
   const isOnPaidPlan =
     !!plan && plan.monthly_price > 0 && (plan.status === "active" || plan.status === "trial");
   const [dismissedIds, setDismissedIds] = useState<string[]>(() => getSeenRequests());
@@ -1557,6 +1566,7 @@ function CategorySource({ c }: { c: any }) {
 
 function CompanyTab() {
   const qc = useQueryClient();
+  const readOnly = !useAccess().canEdit("settings");
   const { data, isLoading } = useQuery({
     queryKey: ["company"],
     queryFn: () => branchesService.getCompany(),
@@ -1600,7 +1610,8 @@ function CompanyTab() {
             <label className={LABEL}>{label}</label>
             <input
               type={type || "text"}
-              className="input"
+              className="input disabled:opacity-70"
+              disabled={readOnly}
               value={form[key] || ""}
               onChange={(e) => setForm((f: any) => ({ ...f, [key]: e.target.value }))}
             />
@@ -1612,37 +1623,43 @@ function CompanyTab() {
               type="checkbox"
               className="h-4 w-4 rounded border-soft accent-emerald-500 cursor-pointer"
               checked={!!form.is_multi_branch}
+              disabled={readOnly}
               onChange={(e) => setForm((f: any) => ({ ...f, is_multi_branch: e.target.checked }))}
             />
             <span>Enable multi-branch mode</span>
           </label>
         </div>
       </div>
-      <div className="flex items-center gap-3 pt-2">
-        <button
-          onClick={() => save.mutate(form)}
-          className="btn-primary"
-          disabled={save.isPending || !form.name}
-        >
-          {save.isPending ? "Saving…" : "Save changes"}
-        </button>
-        {saved && (
-          <span className="text-sm font-semibold text-emerald-600 dark:text-emerald-400 inline-flex items-center gap-1">
-            <Check size={14} /> Saved
-          </span>
-        )}
-        {save.isError && (
-          <span className="text-sm font-medium text-rose-600 dark:text-rose-400">
-            Failed to save.
-          </span>
-        )}
-      </div>
+      {readOnly ? (
+        <p className="text-sm text-secondary">View only: your role can't change these.</p>
+      ) : (
+        <div className="flex items-center gap-3 pt-2">
+          <button
+            onClick={() => save.mutate(form)}
+            className="btn-primary"
+            disabled={save.isPending || !form.name}
+          >
+            {save.isPending ? "Saving…" : "Save changes"}
+          </button>
+          {saved && (
+            <span className="text-sm font-semibold text-emerald-600 dark:text-emerald-400 inline-flex items-center gap-1">
+              <Check size={14} /> Saved
+            </span>
+          )}
+          {save.isError && (
+            <span className="text-sm font-medium text-rose-600 dark:text-rose-400">
+              Failed to save.
+            </span>
+          )}
+        </div>
+      )}
     </div>
   );
 }
 
 function BranchesTab() {
   const qc = useQueryClient();
+  const readOnly = !useAccess().canEdit("settings");
   const { data: branches = [] } = useQuery({
     queryKey: ["branches"],
     queryFn: () => branchesService.list(),
@@ -1721,14 +1738,16 @@ function BranchesTab() {
         <p className="text-sm text-secondary font-medium">
           {branches.length} branch{branches.length === 1 ? "" : "es"}
         </p>
-        <div className="flex flex-wrap items-center gap-2">
-          <button onClick={() => setShowTrash((v) => !v)} className="btn-secondary">
-            <History size={16} /> {showTrash ? "Hide history" : "History / Trash"}
-          </button>
-          <button onClick={() => setShowForm(!showForm)} className="btn-primary">
-            <Plus size={16} /> Add branch
-          </button>
-        </div>
+        {!readOnly && (
+          <div className="flex flex-wrap items-center gap-2">
+            <button onClick={() => setShowTrash((v) => !v)} className="btn-secondary">
+              <History size={16} /> {showTrash ? "Hide history" : "History / Trash"}
+            </button>
+            <button onClick={() => setShowForm(!showForm)} className="btn-primary">
+              <Plus size={16} /> Add branch
+            </button>
+          </div>
+        )}
       </div>
 
       {selected.size > 0 && (
@@ -1851,7 +1870,7 @@ function BranchesTab() {
                   type="checkbox"
                   aria-label="Select all warehouses"
                   className="h-4 w-4 rounded border-soft accent-rose-500 cursor-pointer disabled:opacity-40"
-                  disabled={selectable.length === 0}
+                  disabled={readOnly || selectable.length === 0}
                   checked={selectable.length > 0 && selected.size === selectable.length}
                   ref={(el) => {
                     if (el)
@@ -1877,7 +1896,7 @@ function BranchesTab() {
                       type="checkbox"
                       aria-label={`Select ${b.name}`}
                       className="h-4 w-4 rounded border-soft accent-rose-500 cursor-pointer disabled:opacity-30"
-                      disabled={b.is_main_branch}
+                      disabled={readOnly || b.is_main_branch}
                       title={b.is_main_branch ? "The main warehouse can't be deleted" : undefined}
                       checked={selected.has(b.id)}
                       onChange={() => toggle(b.id)}
@@ -1956,7 +1975,7 @@ function BranchesTab() {
                           <XIcon size={14} />
                         </button>
                       </div>
-                    ) : (
+                    ) : readOnly ? null : (
                       <button
                         type="button"
                         aria-label={`Rename ${b.name}`}
@@ -2209,7 +2228,9 @@ function ProfileTab() {
         <UserAvatar className="h-12 w-12" name={user?.full_name || user?.username} />
         <div>
           <h3 className="text-lg font-bold text-primary">My profile</h3>
-          <p className="text-xs text-muted font-medium">{roleLabel(user?.role)}</p>
+          <p className="text-xs text-muted font-medium">
+            {user?.role_label || roleLabel(user?.role)}
+          </p>
         </div>
       </div>
 

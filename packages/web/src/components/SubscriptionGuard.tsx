@@ -1,6 +1,7 @@
 import { Link, useLocation } from "react-router-dom";
 import { Lock, AlertOctagon, Sparkles, CreditCard } from "lucide-react";
 import { useAuthStore } from "../stores/authStore";
+import { useAccess } from "../hooks/useAccess";
 
 type SubLockReason =
   "no_subscription" | "expired" | "cancelled" | "past_due" | "no_features" | null;
@@ -54,7 +55,9 @@ const COPY: Record<NonNullable<SubLockReason>, { title: string; body: string; ct
 
 export default function SubscriptionGuard({ children }: { children: React.ReactNode }) {
   const reason = useSubLock();
-  const user = useAuthStore((s) => s.user);
+  // Asking for another plan is the mill's settings, with edit (by default the
+  // Boss and the Admin).
+  const canRequestUpgrade = useAccess().canEdit("settings");
   const location = useLocation();
 
   if (!reason) return <>{children}</>;
@@ -63,7 +66,6 @@ export default function SubscriptionGuard({ children }: { children: React.ReactN
   if (location.pathname.startsWith("/settings")) return <>{children}</>;
 
   const copy = COPY[reason];
-  const canRequestUpgrade = user?.role === "owner" || user?.role === "admin";
 
   return (
     <div className="flex items-center justify-center min-h-[60vh] p-6">

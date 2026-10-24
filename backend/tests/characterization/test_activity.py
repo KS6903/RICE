@@ -60,7 +60,7 @@ def test_activity_serialized_shape(auth_client, seed_owner, db_session):
 
 
 def test_activity_requires_management_role(make_auth_client):
-    # A cashier (non owner/admin) must be blocked by require_roles.
+    # A cashier, whose role the Boss hasn't opened Settings to, is blocked.
     c = make_auth_client(features=["inventory"], username="cash", role_name="cashier")
     res = c.get("/api/activity/")
     assert res.status_code == 403

@@ -9,6 +9,7 @@ import TourButton from "../help/TourButton";
 import UserAvatar from "../UserAvatar";
 import { roleLabel } from "@rice-mill/shared";
 import { NavDrawerButton } from "./NavDrawer";
+import { useAccess } from "../../hooks/useAccess";
 
 function PlanBadge() {
   const plan = useCurrentPlan();
@@ -66,6 +67,7 @@ function PlanBadge() {
 export default function Header({ menuOpen, onMenu }: { menuOpen: boolean; onMenu: () => void }) {
   const { user, logout } = useAuthStore();
   const navigate = useNavigate();
+  const { canView } = useAccess();
   const [isOnline, setIsOnline] = useState(navigator.onLine);
 
   useEffect(() => {
@@ -90,7 +92,8 @@ export default function Header({ menuOpen, onMenu }: { menuOpen: boolean; onMenu
       <div className="flex items-center gap-1.5 sm:gap-3 ml-auto min-w-0">
         {/* Weather + location picker — saved favorites follow the user across
             every page and every login. */}
-        <LocationPicker />
+        {/* The weather is the Dashboard's: a role the Boss closed it to goes without. */}
+        {canView("dashboard") && <LocationPicker />}
 
         <span className={`hidden sm:inline-flex ${isOnline ? "badge-green" : "badge-yellow"}`}>
           {isOnline ? <Wifi size={12} /> : <WifiOff size={12} />}
@@ -112,7 +115,9 @@ export default function Header({ menuOpen, onMenu }: { menuOpen: boolean; onMenu
             <p className="text-sm font-semibold text-primary truncate max-w-[10rem]">
               {user?.full_name}
             </p>
-            <p className="text-xs text-muted font-medium">{roleLabel(user?.role)}</p>
+            <p className="text-xs text-muted font-medium">
+              {user?.role_label || roleLabel(user?.role)}
+            </p>
           </div>
         </div>
 

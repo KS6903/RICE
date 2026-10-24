@@ -140,9 +140,9 @@ export default function Sidebar({ open, onClose }: { open: boolean; onClose: () 
   const subLock = useSubLock();
   const locked = subLock !== null;
   const user = useAuthStore((s) => s.user);
-  const { role, canView, isReadOnly } = useAccess();
+  const { canView, canEdit, isReadOnly } = useAccess();
   // Only those who can change the plan see what other plans add.
-  const canChangePlan = role === "owner" || role === "admin";
+  const canChangePlan = canEdit("settings");
 
   // Pages the role can see at all. Those on the mill's plan stay in their
   // groups, together; those on other plans wait in one line at the bottom.

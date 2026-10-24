@@ -1,11 +1,13 @@
-// Role-based access control matrix.
+// Role-based access control matrix: the default for each built-in role.
 //
-// Single source of truth for "who can see/do what" in the tenant app. The web
-// (and desktop) UIs read this to gate navigation, routes, and action buttons.
-// The backend independently enforces writes via require_roles(); this layer is
-// the *interface* limit that keeps each role focused on their job.
+// It mirrors backend/app/core/access_policy.py, which is what the server
+// enforces. A mill's Boss can change every role but their own, page by page,
+// and make up roles of their own; the server sends each person's result
+// (user.access), which the app prefers. This is the fallback for a server that
+// doesn't send it.
 //
-// To change what a role can access, edit ROLE_ACCESS below — nothing else.
+// "settings" is the mill's settings (billing, the company, branches, the
+// activity log). Everyone keeps their own account tabs whatever it says.
 
 import type { Role } from "../types/domain";
 
@@ -64,7 +66,7 @@ export const ROLE_ACCESS: Record<Role, Record<AppSection, AccessLevel>> = {
     reports: "full",
     employees: "full",
     users: "none",
-    settings: "full", // own profile/password only; sensitive tabs gated in-page
+    settings: "none",
     automations: "view",
     tasks: "full", // their own tasks
   },
@@ -82,7 +84,7 @@ export const ROLE_ACCESS: Record<Role, Record<AppSection, AccessLevel>> = {
     reports: "none",
     employees: "none",
     users: "none",
-    settings: "full",
+    settings: "none",
     automations: "none",
     tasks: "full", // their own tasks
   },
@@ -100,7 +102,7 @@ export const ROLE_ACCESS: Record<Role, Record<AppSection, AccessLevel>> = {
     reports: "none",
     employees: "none",
     users: "none",
-    settings: "full",
+    settings: "none",
     automations: "none",
     tasks: "full", // their own tasks
   },
@@ -119,7 +121,7 @@ export const ROLE_ACCESS: Record<Role, Record<AppSection, AccessLevel>> = {
     reports: "none",
     employees: "none",
     users: "none",
-    settings: "full",
+    settings: "none",
     automations: "none",
     tasks: "full", // their own tasks
   },

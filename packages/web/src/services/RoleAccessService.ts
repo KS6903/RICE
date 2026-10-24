@@ -1,23 +1,31 @@
-// RoleAccessService: which pages each role can open in this mill, and the Boss
-// changing it (backend: /api/role-access).
+// RoleAccessService: which pages each role can open in this mill, the roles the
+// Boss made up, and the Boss changing them (backend: /api/role-access).
 import api from "./api";
 
 export type AccessLevel = "none" | "view" | "full";
 
 export interface RoleAccessEntry {
   role: string;
-  /** The Boss and the Admin always have full access and can't be changed. */
+  /** Every role but the Boss can be changed. */
   editable: boolean;
   access: Record<string, AccessLevel>;
   defaults: Record<string, AccessLevel>;
 }
 
+/** A role the mill's Boss made up: no default, just its level on every page. */
+export interface CustomRoleEntry {
+  id: string;
+  name: string;
+  access: Record<string, AccessLevel>;
+  /** How many people hold it; a role with people can't be deleted. */
+  people: number;
+}
+
 export interface RoleAccessData {
-  /** The pages the Boss can open to a role, or take away from it. */
+  /** Every page, in the order the checklist shows them. */
   sections: string[];
-  /** The pages that are the same for everyone (Users, Settings, ...). */
-  locked_sections: string[];
   roles: RoleAccessEntry[];
+  custom_roles: CustomRoleEntry[];
 }
 
 export class RoleAccessService {
@@ -27,10 +35,26 @@ export class RoleAccessService {
     return this.http.get("/role-access/").then((r) => r.data);
   }
 
-  /** Sets one staff role's level on each page named; a page left out goes back
-   *  to its default. Resolves to the whole matrix as it now stands. */
+  /** Sets one built-in role's level on each page named; a page left out goes
+   *  back to its default. Resolves to the whole matrix as it now stands. */
   update(role: string, access: Record<string, AccessLevel>): Promise<RoleAccessData> {
     return this.http.put(`/role-access/${role}`, { access }).then((r) => r.data);
+  }
+
+  /** Makes up a role; a page left out of ``access`` is closed to it. */
+  createCustom(name: string, access: Record<string, AccessLevel>): Promise<RoleAccessData> {
+    return this.http.post("/role-access/custom", { name, access }).then((r) => r.data);
+  }
+
+  updateCustom(
+    id: string,
+    change: { name?: string; access?: Record<string, AccessLevel> },
+  ): Promise<RoleAccessData> {
+    return this.http.put(`/role-access/custom/${id}`, change).then((r) => r.data);
+  }
+
+  deleteCustom(id: string): Promise<RoleAccessData> {
+    return this.http.delete(`/role-access/custom/${id}`).then((r) => r.data);
   }
 }
 

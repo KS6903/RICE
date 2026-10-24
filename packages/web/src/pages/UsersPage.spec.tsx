@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { User } from "@rice-mill/shared";
 import UsersPage from "./UsersPage";
 import { usersService } from "../services/UsersService";
+import { roleAccessService, type RoleAccessData } from "../services/RoleAccessService";
 import { useAuthStore } from "../stores/authStore";
 import { chooseOption } from "../test/pickers";
 
@@ -40,9 +41,25 @@ const staff = [
   },
 ];
 
-function setup(me: Partial<User> = {}) {
+// The roles the Boss made up: one that runs the stock, one that runs the people.
+const roleAccess: RoleAccessData = {
+  sections: ["inventory", "users"],
+  roles: [],
+  custom_roles: [
+    {
+      id: "r1",
+      name: "Warehouse Manager",
+      access: { inventory: "full", users: "none" },
+      people: 1,
+    },
+    { id: "r2", name: "Office Head", access: { inventory: "view", users: "full" }, people: 0 },
+  ],
+};
+
+function setup(me: Partial<User> = {}, people: any[] = staff) {
   useAuthStore.setState({ user: { ...boss, ...me } });
-  vi.spyOn(usersService, "list").mockResolvedValue(staff);
+  vi.spyOn(usersService, "list").mockResolvedValue(people);
+  vi.spyOn(roleAccessService, "get").mockResolvedValue(roleAccess);
   const create = vi.spyOn(usersService, "create").mockResolvedValue({ id: "u9" });
   const update = vi.spyOn(usersService, "update").mockResolvedValue({ id: "u2" });
   render(
@@ -364,5 +381,49 @@ describe("Users: seats on the plan", () => {
   it("says when the plan has no limit", async () => {
     setup(plan(null));
     expect(await screen.findByText("2 users. Your plan has no user limit.")).toBeInTheDocument();
+  });
+});
+
+describe("Roles the Boss made up", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+    useAuthStore.setState({ user: null });
+  });
+
+  it("offers them beside the built-in roles, and creates with the one picked", async () => {
+    const { create } = setup();
+    openAddForm();
+    await chooseOption("Role", "Warehouse Manager");
+    // It can't manage the people, so nothing to confirm.
+    noPopup();
+    fireEvent.click(createButton());
+    await waitFor(() =>
+      expect(create).toHaveBeenCalledWith(expect.objectContaining({ role_id: "c:r1" })),
+    );
+  });
+
+  it("asks you to confirm a role that can manage the people", async () => {
+    setup();
+    openAddForm();
+    await chooseOption("Role", "Office Head");
+    expect(popup()).toHaveTextContent("Office Head");
+  });
+
+  it("names someone's made-up role in the list", async () => {
+    setup({}, [
+      ...staff,
+      {
+        id: "u3",
+        username: "keeper",
+        full_name: "Stock Keeper",
+        role: null,
+        role_id: null,
+        custom_role_id: "r1",
+        custom_role: { id: "r1", name: "Warehouse Manager" },
+        is_active: true,
+      },
+    ]);
+    const row = (await screen.findByText("Stock Keeper")).closest("tr") as HTMLElement;
+    expect(row).toHaveTextContent("Warehouse Manager");
   });
 });

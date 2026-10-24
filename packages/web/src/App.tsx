@@ -12,7 +12,7 @@ import SignupPage from "./pages/SignupPage";
 import ForgotPasswordPage from "./pages/ForgotPasswordPage";
 import ResetPasswordPage from "./pages/ResetPasswordPage";
 import VerifyEmailPage from "./pages/VerifyEmailPage";
-import Dashboard from "./pages/Dashboard";
+import HomeRoute from "./components/HomeRoute";
 import PaddyPage from "./pages/PaddyPage";
 import RicePurchasesPage from "./pages/RicePurchasesPage";
 import ByproductPurchasesPage from "./pages/ByproductPurchasesPage";
@@ -170,7 +170,7 @@ function AppRoutes() {
           </TenantRoute>
         }
       >
-        <Route index element={<Dashboard />} />
+        <Route index element={<HomeRoute />} />
         <Route
           path="paddy"
           element={
