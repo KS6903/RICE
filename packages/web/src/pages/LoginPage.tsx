@@ -15,8 +15,10 @@ import {
 import { GoogleLogin } from "@react-oauth/google";
 import { googleSignInEnabled } from "../utils/googleSignIn";
 import riceLogo from "../assets/Rice_Logo.svg";
-import { safeNext, withNext } from "../utils/next";
-import { warmUpApi } from "../services/warmUp";
+import { enterApp, safeNext, withNext } from "../utils/next";
+import { serverUnreachableMessage, warmUpApi } from "../services/warmUp";
+import { useAfterDelay } from "../hooks/useAfterDelay";
+import ServerWakingHint from "../components/ServerWakingHint";
 
 export default function LoginPage() {
   // Boot a sleeping API while the person types, not after they press Sign in.
@@ -35,6 +37,8 @@ export default function LoginPage() {
     text: "",
   });
   const [loading, setLoading] = useState(false);
+  // A sign-in still going after 3 seconds is almost always the server waking up.
+  const slow = useAfterDelay(loading, 3000);
   // Two-step MFA login: when set, the password step passed and we're waiting
   // for the authenticator code.
   const [mfaChallenge, setMfaChallenge] = useState<string | null>(null);
@@ -54,11 +58,12 @@ export default function LoginPage() {
     else navigate("/");
   };
 
+  // The button stays busy on success: the page is being replaced by the app.
   const finishLogin = async (data: any) => {
     setTokens(data?.access_token, data?.refresh_token);
     const me = await authService.me();
     setUser(me);
-    navigate(me.is_platform_admin ? "/admin" : (next ?? "/"));
+    enterApp(me.is_platform_admin ? "/admin" : (next ?? "/"), navigate);
   };
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -72,17 +77,20 @@ export default function LoginPage() {
       const data = await authService.login(username, password);
       if (data.mfa_required) {
         setMfaChallenge(data.challenge_token);
+        setLoading(false);
         return;
       }
       await finishLogin(data);
     } catch (err: any) {
-      setError(err.response?.data?.detail || "Invalid username or password.");
+      setLoading(false);
+      setError(
+        serverUnreachableMessage(err) ??
+          (err.response?.data?.detail || "Invalid username or password."),
+      );
       // A permanent lockout can only be cleared by resetting the password.
       const code = err.response?.data?.code;
       setLockedOut(code === "account_locked");
       setLocked(code === "account_locked" || code === "account_locked_temporary");
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -110,15 +118,17 @@ export default function LoginPage() {
       const data = await authService.mfaVerify(mfaChallenge, mfaCode.trim());
       await finishLogin(data);
     } catch (err: any) {
+      setLoading(false);
       const status = err.response?.status;
-      setError(err.response?.data?.detail || "Invalid authentication code.");
+      setError(
+        serverUnreachableMessage(err) ??
+          (err.response?.data?.detail || "Invalid authentication code."),
+      );
       // An expired/consumed challenge means starting over from the password step.
       if (status === 401 && err.response?.data?.detail?.includes("challenge")) {
         setMfaChallenge(null);
         setMfaCode("");
       }
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -129,9 +139,10 @@ export default function LoginPage() {
       const data = await authService.loginGoogle(credentialResponse.credential);
       await finishLogin(data);
     } catch (err: any) {
-      setError(err.response?.data?.detail || "Google login failed.");
-    } finally {
       setLoading(false);
+      setError(
+        serverUnreachableMessage(err) ?? (err.response?.data?.detail || "Google login failed."),
+      );
     }
   };
 
@@ -298,6 +309,7 @@ export default function LoginPage() {
               >
                 {loading ? "Verifying…" : "Verify"}
               </button>
+              {slow && <ServerWakingHint />}
 
               <button
                 type="button"
@@ -422,6 +434,7 @@ export default function LoginPage() {
               <button type="submit" className="btn-primary w-full" disabled={loading || lockedOut}>
                 {loading ? "Signing in…" : "Sign in"}
               </button>
+              {slow && <ServerWakingHint />}
 
               {/* Google sign-in only when it is set up: see googleSignIn.ts. */}
               {googleSignInEnabled() && (

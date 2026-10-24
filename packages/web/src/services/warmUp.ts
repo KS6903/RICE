@@ -20,6 +20,26 @@ export function warmUpApi(): void {
   }
 }
 
+/**
+ * What to say when a sign-in or sign-up got no real answer: the browser couldn't
+ * reach the server, or the server was still booting (a gateway error, or the
+ * Worker's "upstream_unavailable"). Null when the server did answer, so the
+ * caller shows the server's own message. Without this, a cold start could read
+ * as "Invalid username or password."
+ */
+export function serverUnreachableMessage(err: any): string | null {
+  const res = err?.response;
+  if (!res) {
+    return err?.request
+      ? "Couldn't reach the server. Check your internet connection and try again."
+      : null;
+  }
+  if (res.status === 502 || res.status === 504 || res.data?.code === "upstream_unavailable") {
+    return "The server is still starting up. Wait a few seconds, then try again.";
+  }
+  return null;
+}
+
 /** For tests only. */
 export function resetWarmUpForTests(): void {
   started = false;

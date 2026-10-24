@@ -9,8 +9,10 @@ import { googleSignInEnabled } from "../utils/googleSignIn";
 import riceLogo from "../assets/Rice_Logo.svg";
 import { legalService } from "../services/LegalService";
 import TurnstileWidget, { type TurnstileHandle } from "../components/TurnstileWidget";
-import { safeNext, withNext } from "../utils/next";
-import { warmUpApi } from "../services/warmUp";
+import { enterApp, safeNext, withNext } from "../utils/next";
+import { serverUnreachableMessage, warmUpApi } from "../services/warmUp";
+import { useAfterDelay } from "../hooks/useAfterDelay";
+import ServerWakingHint from "../components/ServerWakingHint";
 
 // A new account's username, email and password are never a saved one, so no
 // browser or password manager may fill them in. "off" keeps Chrome's autofill
@@ -46,6 +48,8 @@ export default function SignupPage() {
     confirm: "",
   });
   const [loading, setLoading] = useState(false);
+  // Still going after 3 seconds is almost always the server waking up.
+  const slow = useAfterDelay(loading, 3000);
   const [error, setError] = useState("");
   const [acceptedTerms, setAcceptedTerms] = useState(false);
   // The version on screen travels with the acceptance. If the terms change
@@ -129,13 +133,16 @@ export default function SignupPage() {
       setTokens(data?.access_token, data?.refresh_token);
       const me = await authService.me();
       setUser(me);
-      navigate(next ?? "/");
+      // The button stays busy: the page is being replaced by the app.
+      enterApp(next ?? "/", navigate);
     } catch (e: any) {
-      setError(e.response?.data?.detail || "Signup failed. Please try again.");
+      setLoading(false);
+      setError(
+        serverUnreachableMessage(e) ??
+          (e.response?.data?.detail || "Signup failed. Please try again."),
+      );
       // A Turnstile token works once: get a fresh one for the next try.
       turnstile.current?.reset();
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -154,11 +161,12 @@ export default function SignupPage() {
       setTokens(data?.access_token, data?.refresh_token);
       const me = await authService.me();
       setUser(me);
-      navigate(next ?? "/");
+      enterApp(next ?? "/", navigate);
     } catch (err: any) {
-      setError(err.response?.data?.detail || "Google signup failed.");
-    } finally {
       setLoading(false);
+      setError(
+        serverUnreachableMessage(err) ?? (err.response?.data?.detail || "Google signup failed."),
+      );
     }
   };
 
@@ -506,6 +514,7 @@ export default function SignupPage() {
                   {!loading && <ArrowRight size={16} />}
                 </button>
               </div>
+              {slow && <ServerWakingHint />}
 
               {/* Google sign-up only when it is set up: see googleSignIn.ts. */}
               {googleSignInEnabled() && (

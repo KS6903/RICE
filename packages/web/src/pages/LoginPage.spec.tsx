@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { GoogleOAuthProvider } from "@react-oauth/google";
 import LoginPage from "./LoginPage";
@@ -115,6 +115,51 @@ describe("LoginPage when the account is locked", () => {
     signInAs("maria");
     expect(await screen.findByText("Invalid credentials")).toBeInTheDocument();
     expect(screen.queryByRole("region", { name: "Locked out?" })).toBeNull();
+  });
+});
+
+describe("LoginPage when the server is slow or doesn't answer", () => {
+  const signIn = () => {
+    fireEvent.change(screen.getByPlaceholderText("your.username"), { target: { value: "maria" } });
+    fireEvent.change(screen.getByPlaceholderText("••••••••"), { target: { value: "secret123" } });
+    fireEvent.click(screen.getByRole("button", { name: "Sign in" }));
+  };
+
+  afterEach(() => vi.useRealTimers());
+
+  it("says the server couldn't be reached, not that the password is wrong", async () => {
+    vi.spyOn(authService, "login").mockRejectedValue({ request: {} });
+    draw(["/login"]);
+    signIn();
+    expect(await screen.findByText(/Couldn't reach the server/)).toBeInTheDocument();
+    expect(screen.queryByText("Invalid username or password.")).toBeNull();
+  });
+
+  it("says the server is still starting when the Worker couldn't wake it", async () => {
+    vi.spyOn(authService, "login").mockRejectedValue({
+      request: {},
+      response: {
+        status: 503,
+        data: { detail: "Service temporarily unavailable", code: "upstream_unavailable" },
+      },
+    });
+    draw(["/login"]);
+    signIn();
+    expect(await screen.findByText(/still starting up/)).toBeInTheDocument();
+  });
+
+  it("explains a long wait instead of leaving the button looking stuck", () => {
+    vi.useFakeTimers();
+    vi.spyOn(authService, "login").mockReturnValue(new Promise(() => {}));
+    draw(["/login"]);
+    signIn();
+    expect(screen.getByRole("button", { name: "Signing in…" })).toBeDisabled();
+    expect(screen.queryByText(/server may be waking up/)).toBeNull();
+
+    act(() => {
+      vi.advanceTimersByTime(3000);
+    });
+    expect(screen.getByText(/server may be waking up/)).toBeInTheDocument();
   });
 });
 
