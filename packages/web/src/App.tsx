@@ -204,7 +204,7 @@ function AppRoutes() {
           element={
             <RoleGate section="paddy">
               <FeatureGate code="paddy" label="Paddy procurement">
-              <LazyPage component={PaddyPage} />
+                <LazyPage component={PaddyPage} />
               </FeatureGate>
             </RoleGate>
           }
@@ -214,7 +214,7 @@ function AppRoutes() {
           element={
             <RoleGate section="paddy">
               <FeatureGate code="paddy" label="Rice purchases">
-              <LazyPage component={RicePurchasesPage} />
+                <LazyPage component={RicePurchasesPage} />
               </FeatureGate>
             </RoleGate>
           }
@@ -224,7 +224,7 @@ function AppRoutes() {
           element={
             <RoleGate section="paddy">
               <FeatureGate code="paddy" label="By-product purchases">
-              <LazyPage component={ByproductPurchasesPage} />
+                <LazyPage component={ByproductPurchasesPage} />
               </FeatureGate>
             </RoleGate>
           }
@@ -234,7 +234,7 @@ function AppRoutes() {
           element={
             <RoleGate section="milling">
               <FeatureGate code="milling" label="Milling" requires="Basic or higher">
-              <LazyPage component={MillingPage} />
+                <LazyPage component={MillingPage} />
               </FeatureGate>
             </RoleGate>
           }
@@ -244,7 +244,7 @@ function AppRoutes() {
           element={
             <RoleGate section="inventory">
               <FeatureGate code="inventory" label="Inventory">
-              <LazyPage component={InventoryPage} />
+                <LazyPage component={InventoryPage} />
               </FeatureGate>
             </RoleGate>
           }
@@ -254,7 +254,7 @@ function AppRoutes() {
           element={
             <RoleGate section="sales">
               <FeatureGate code="sales" label="Sales">
-              <LazyPage component={SalesPage} />
+                <LazyPage component={SalesPage} />
               </FeatureGate>
             </RoleGate>
           }
@@ -264,7 +264,7 @@ function AppRoutes() {
           element={
             <RoleGate section="dispatch">
               <FeatureGate code="dispatch" label="Dispatch" requires="Basic or higher">
-              <LazyPage component={DispatchPage} />
+                <LazyPage component={DispatchPage} />
               </FeatureGate>
             </RoleGate>
           }
@@ -278,7 +278,7 @@ function AppRoutes() {
                 label="Field Operators"
                 requires="Pro or Enterprise"
               >
-              <LazyPage component={FieldOperatorsPage} />
+                <LazyPage component={FieldOperatorsPage} />
               </FeatureGate>
             </RoleGate>
           }
@@ -288,7 +288,7 @@ function AppRoutes() {
           element={
             <RoleGate section="expenses">
               <FeatureGate code="expenses" label="Expenses">
-              <LazyPage component={CostsPage} />
+                <LazyPage component={CostsPage} />
               </FeatureGate>
             </RoleGate>
           }
@@ -298,7 +298,7 @@ function AppRoutes() {
           element={
             <RoleGate section="reports">
               <FeatureGate code="dashboard" label="Reports">
-              <LazyPage component={ReportsPage} />
+                <LazyPage component={ReportsPage} />
               </FeatureGate>
             </RoleGate>
           }
@@ -308,7 +308,7 @@ function AppRoutes() {
           element={
             <RoleGate section="users">
               <FeatureGate code="users" label="Users">
-              <LazyPage component={UsersPage} />
+                <LazyPage component={UsersPage} />
               </FeatureGate>
             </RoleGate>
           }
@@ -318,7 +318,7 @@ function AppRoutes() {
           element={
             <RoleGate section="employees">
               <FeatureGate code="employees" label="Employees" requires="Pro or Enterprise">
-              <LazyPage component={EmployeesPage} />
+                <LazyPage component={EmployeesPage} />
               </FeatureGate>
             </RoleGate>
           }
@@ -328,7 +328,7 @@ function AppRoutes() {
           element={
             <RoleGate section="automations">
               <FeatureGate code="automations" label="Automations" requires="Enterprise">
-              <LazyPage component={AutomationsPage} />
+                <LazyPage component={AutomationsPage} />
               </FeatureGate>
             </RoleGate>
           }
@@ -338,7 +338,7 @@ function AppRoutes() {
           element={
             <RoleGate section="milling">
               <FeatureGate code="automations" label="Maintenance" requires="Enterprise">
-              <LazyPage component={MaintenancePage} />
+                <LazyPage component={MaintenancePage} />
               </FeatureGate>
             </RoleGate>
           }
@@ -356,7 +356,7 @@ function AppRoutes() {
           element={
             <RoleGate section="inventory">
               <FeatureGate code="automations" label="Stock count" requires="Enterprise">
-              <LazyPage component={StockCountPage} />
+                <LazyPage component={StockCountPage} />
               </FeatureGate>
             </RoleGate>
           }
@@ -366,7 +366,7 @@ function AppRoutes() {
           element={
             <RoleGate section="sales">
               <FeatureGate code="cash_count" label="Cash count" requires="Pro or Enterprise">
-              <LazyPage component={CashCountPage} />
+                <LazyPage component={CashCountPage} />
               </FeatureGate>
             </RoleGate>
           }
@@ -376,7 +376,7 @@ function AppRoutes() {
           element={
             <RoleGate section="sales">
               <FeatureGate code="collections" label="Collections" requires="Pro or Enterprise">
-              <LazyPage component={CollectionsPage} />
+                <LazyPage component={CollectionsPage} />
               </FeatureGate>
             </RoleGate>
           }
@@ -386,7 +386,7 @@ function AppRoutes() {
           element={
             <RoleGate section="tasks">
               <FeatureGate code="automations" label="To do" requires="Enterprise">
-              <LazyPage component={TasksPage} />
+                <LazyPage component={TasksPage} />
               </FeatureGate>
             </RoleGate>
           }
