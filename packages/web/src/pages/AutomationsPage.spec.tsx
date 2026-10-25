@@ -461,13 +461,28 @@ describe("AutomationsPage", () => {
 
   it("says so when a test had nothing to report", async () => {
     useAuthStore.setState({ user: owner });
-    vi.spyOn(automationsService, "sendTest").mockResolvedValue({ sent: 0 });
+    vi.spyOn(automationsService, "sendTest").mockResolvedValue({ sent: 0, email: null, to: null });
     draw();
     fireEvent.click(await screen.findByRole("tab", { name: "Owner watch" }));
     const big = card("Big transaction");
     fireEvent.click(within(big).getByRole("button", { name: "Settings" }));
     fireEvent.click(within(big).getByRole("button", { name: /send me a test/i }));
     expect(await within(big).findByText(/Nothing to report right now/)).toBeInTheDocument();
+  });
+
+  it("says where a test's email went", async () => {
+    useAuthStore.setState({ user: owner });
+    vi.spyOn(automationsService, "sendTest").mockResolvedValue({
+      sent: 1,
+      email: "sent",
+      to: "boss@mill.ph",
+    });
+    draw();
+    fireEvent.click(await screen.findByRole("tab", { name: "Owner watch" }));
+    const big = card("Big transaction");
+    fireEvent.click(within(big).getByRole("button", { name: "Settings" }));
+    fireEvent.click(within(big).getByRole("button", { name: /send me a test/i }));
+    expect(await within(big).findByText(/The email went to boss@mill\.ph\./)).toBeInTheDocument();
   });
 
   it("is read-only for an accountant", async () => {

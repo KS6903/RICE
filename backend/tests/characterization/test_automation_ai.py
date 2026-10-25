@@ -377,12 +377,12 @@ def test_ai_tests_are_rate_limited(auth_client, monkeypatch):
     # The API client itself speaks httpx, so the model call is stubbed above it.
     monkeypatch.setattr(ai, "ask", lambda facts, keys, **kw: QUIET)
     auth_client.put("/api/automations/ai", json={"enabled": True})
-    assert auth_client.post("/api/automations/ai_leakage_watch/test").json() == {"sent": 1}
+    assert auth_client.post("/api/automations/ai_leakage_watch/test").json()["sent"] == 1
     res = auth_client.post("/api/automations/ai_leakage_watch/test")
     assert res.status_code == 400 and "again in a few minutes" in res.json()["detail"]
     # Advice a plain recipe adds is rate-limited the same way.
     auth_client.put("/api/automations/owner_digest", json={"enabled": True, "params": {"ai_advice": True}})
-    assert auth_client.post("/api/automations/owner_digest/test").json() == {"sent": 1}
+    assert auth_client.post("/api/automations/owner_digest/test").json()["sent"] == 1
     assert auth_client.post("/api/automations/owner_digest/test").status_code == 400
 
 

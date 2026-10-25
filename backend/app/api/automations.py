@@ -281,13 +281,14 @@ def send_test(code: str, current_user=Depends(get_current_user), db: Session = D
     recipe = _recipe(code)
     company = current_user.company
     try:
-        sent = engine.send_test(
+        result = engine.send_test(
             db, company, recipe, current_user, now=datetime.now(timezone.utc), zone=tenant_zone(company.timezone)
         )
     except RecipeProblem as exc:
         # Raised before anything is written: nothing to undo.
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
-    return {"sent": sent}
+    # Their own address, so they know where to look (or that it's the wrong one).
+    return {**result, "to": current_user.email if result["email"] == "sent" else None}
 
 
 @router.get("/{code}/runs")

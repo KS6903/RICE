@@ -23,6 +23,7 @@ from pydantic import BaseModel, ValidationError
 from sqlalchemy.orm import Session
 
 from ..core.access_policy import access_for_user
+from ..core.exceptions import NotConfiguredError
 from ..jobs.registry import JobContext
 from ..jobs.runner import claim_run, finish_run
 from ..models.automation import AutomationRule, AutomationSettings
@@ -30,7 +31,7 @@ from ..models.company import Company
 from ..models.notification import Notification
 from ..models.subscription import Subscription
 from ..models.user import User
-from ..services.notification_service import attach, notify
+from ..services.notification_service import attach, deliver_pending_emails, notify
 from ..services.subscription import is_active
 from . import actions
 from .base import Notice, Recipe, RecipeContext, RecipeProblem, asks_ai
@@ -195,11 +196,13 @@ def run_due_automations(ctx: JobContext, *, ai: bool = False) -> str:
 AI_TEST_COOLDOWN = timedelta(minutes=10)
 
 
-def send_test(db: Session, company: Company, recipe: Recipe, user: User, *, now: datetime, zone) -> int:
+def send_test(db: Session, company: Company, recipe: Recipe, user: User, *, now: datetime, zone) -> dict:
     """Build the recipe as of now and send it to one user only. Commits.
 
-    A test changes no remembered state (RecipeContext.test), and raises
-    RecipeProblem when the recipe can't run as set up."""
+    Returns how many notices were new, and what became of the email (None when
+    there was none to send). A test changes no remembered state
+    (RecipeContext.test), and raises RecipeProblem when the recipe can't run
+    as set up."""
     rule = db.query(AutomationRule).filter(AutomationRule.recipe == recipe.code).first()
     params = parse_params(recipe, rule.params if rule else None)
     settings = ai_settings(db, company.id)
@@ -228,14 +231,29 @@ def send_test(db: Session, company: Company, recipe: Recipe, user: User, *, now:
         ai=ai_on,
     )
     notices = recipe.build(context, params)
-    new = deliver(
-        db,
-        company,
-        recipe,
-        notices,
-        [user.id],
-        email=bool(getattr(params, "email", True)),
-        key_suffix=f":test:{now.isoformat()}",
-    )
+    email = bool(getattr(params, "email", True))
+    new = deliver(db, company, recipe, notices, [user.id], email=email, key_suffix=f":test:{now.isoformat()}")
     db.commit()
-    return new
+    return {"sent": new, "email": email_test(db, recipe, user, now=now) if new and email else None}
+
+
+def email_test(db: Session, recipe: Recipe, user: User, *, now: datetime) -> str:
+    """Email a test now rather than on the next jobs tick, which may never come
+    on this server (the preview has no cron). Says what happened, for the page:
+    sent, no_address, not_set_up, later (over the day's cap) or failed."""
+    only = (Notification.user_id == user.id) & (Notification.kind == job_name(recipe.code))
+    try:
+        outcome = deliver_pending_emails(db, now=now, only=only)  # commits
+    except NotConfiguredError:
+        db.rollback()
+        return "not_set_up"
+    except Exception:
+        # The mail server couldn't be reached: the email stays pending for the jobs runner.
+        db.rollback()
+        logger.exception("automation test email failed", extra={"recipe": recipe.code})
+        return "failed"
+    if outcome["sent"]:
+        return "sent"
+    if outcome["skipped"]:
+        return "not_set_up" if user.email else "no_address"
+    return "later" if outcome["deferred"] else "failed"

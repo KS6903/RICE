@@ -82,6 +82,15 @@ export type AutomationPreset = {
   recipes: { code: string; title: string }[];
 };
 
+/** "Send me a test": how many notices were new, and what became of the email,
+ *  which goes out straight away (null when there was none to send). */
+export type TestResult = {
+  sent: number;
+  email: "sent" | "no_address" | "not_set_up" | "later" | "failed" | null;
+  /** The address it went to, when it went. */
+  to: string | null;
+};
+
 export type AutomationUpdate = {
   enabled: boolean;
   params: Record<string, string | number | boolean>;
@@ -116,7 +125,7 @@ export class AutomationsService {
     return this.http.put(`/automations/${code}`, body).then((r) => r.data);
   }
 
-  sendTest(code: string): Promise<{ sent: number }> {
+  sendTest(code: string): Promise<TestResult> {
     return this.http.post(`/automations/${code}/test`).then((r) => r.data);
   }
 

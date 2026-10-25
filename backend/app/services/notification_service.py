@@ -163,14 +163,18 @@ def _ready(now: datetime):
     )
 
 
-def deliver_pending_emails(db: Session, *, now: datetime | None = None) -> dict[str, int]:
+def deliver_pending_emails(db: Session, *, now: datetime | None = None, only=None) -> dict[str, int]:
     """Email the notices waiting for it, within the tenant's daily cap. Commits.
+
+    ``only`` narrows it to the notices matching that condition (a test sent
+    now, rather than everything waiting for the next jobs tick).
 
     Returns counts by outcome: sent, retrying (failed this time, tried again
     later), failed (every retry used), skipped (no address, or no SMTP in
     development), deferred (over today's cap; they go out on a later run).
     """
     now = now or now_utc()
+    ready = _ready(now) if only is None else _ready(now) & only
     sent_recently = (
         db.scalar(
             select(func.count())
@@ -180,11 +184,11 @@ def deliver_pending_emails(db: Session, *, now: datetime | None = None) -> dict[
         or 0
     )
     budget = max(0, DAILY_EMAIL_CAP - sent_recently)
-    ready_total = db.scalar(select(func.count()).select_from(Notification).where(_ready(now))) or 0
+    ready_total = db.scalar(select(func.count()).select_from(Notification).where(ready)) or 0
     rows = db.execute(
         select(Notification, User.email)
         .join(User, User.id == Notification.user_id)
-        .where(_ready(now))
+        .where(ready)
         .order_by(Notification.created_at)
         .limit(budget)
     ).all()

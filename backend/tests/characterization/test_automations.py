@@ -269,7 +269,24 @@ def test_rules_pause_when_the_tenant_leaves_enterprise(db_session, seed_owner):
     assert db_session.query(AutomationRule).one().enabled is True
 
 
-def test_send_test_reaches_only_the_person_who_asked(auth_client, db_session, seed_owner):
-    assert auth_client.post("/api/automations/owner_digest/test").json() == {"sent": 1}
+def test_send_test_reaches_only_the_person_who_asked(auth_client, db_session, seed_owner, monkeypatch):
+    sent_to: list[str] = []
+    monkeypatch.setattr("app.core.mailer.Mailer.send", lambda self, **kw: sent_to.append(kw["to"]) or True)
+    # Emailed straight away: on a server whose jobs runner never ticks, it would never go.
+    assert auth_client.post("/api/automations/owner_digest/test").json() == {
+        "sent": 1,
+        "email": "sent",
+        "to": "owner@test.local",
+    }
+    assert sent_to == ["owner@test.local"]
     titles = [n["title"] for n in auth_client.get("/api/notifications/").json()["items"]]
     assert len(titles) == 1 and titles[0].startswith("Yesterday at ")
+
+
+def test_send_test_says_when_email_is_not_set_up(auth_client):
+    # No SMTP in tests: the notice is under the bell, and the page says why no email came.
+    assert auth_client.post("/api/automations/owner_digest/test").json() == {
+        "sent": 1,
+        "email": "not_set_up",
+        "to": None,
+    }

@@ -41,6 +41,7 @@ import {
   type AutomationGroup,
   type AutomationRun,
   type AutomationsHealth,
+  type TestResult,
 } from "../services/AutomationsService";
 
 type Params = Automation["params"];
@@ -594,13 +595,11 @@ function AutomationCard({
 
   const test = useMutation({
     mutationFn: () => automationsService.sendTest(automation.code),
-    onSuccess: ({ sent }) =>
+    onSuccess: ({ sent, email, to }) =>
       setTestNote(
         sent === 0
           ? "Nothing to report right now, so nothing was sent. It will tell you when there is."
-          : params.email
-            ? "Sent to you. It's under the bell now, and the email follows within 15 minutes."
-            : "Sent to you. It's under the bell now.",
+          : `Sent to you. It's under the bell now.${email ? ` ${TEST_EMAIL_NOTE[email](to)}` : ""}`,
       ),
   });
 
@@ -1000,6 +999,14 @@ function StarterSets({ startOpen }: { startOpen: boolean }) {
   );
 }
 
+const TEST_EMAIL_NOTE: Record<NonNullable<TestResult["email"]>, (to: string | null) => string> = {
+  sent: (to) => `The email went to ${to}.`,
+  no_address: () => "No email went out: your account has no email address.",
+  not_set_up: () => "No email went out: this server isn't set up to send email.",
+  later: () => "Today's email limit is reached, so the email goes out later.",
+  failed: () => "The email couldn't be sent just now. It will be tried again.",
+};
+
 function HealthNotice({ health }: { health: AutomationsHealth }) {
   const { failed, retrying } = health.emails;
   if (health.scheduler_running && failed === 0 && retrying === 0) return null;
@@ -1022,7 +1029,7 @@ function HealthNotice({ health }: { health: AutomationsHealth }) {
             {health.last_tick
               ? ` They last ran ${whenLabel(health.last_tick)}.`
               : " They haven't run yet."}{" "}
-            "Send me a test" still works.
+            "Send me a test" still works, email included.
           </span>
         </p>
       )}
