@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { GoogleLogin } from "@react-oauth/google";
 import { googleSignInEnabled } from "../utils/googleSignIn";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -256,6 +257,7 @@ function ResolvedNotice({ request, onDone }: { request: UpgradeRequest; onDone: 
 
 function BillingTab() {
   const qc = useQueryClient();
+  const navigate = useNavigate();
   const plan = useCurrentPlan();
   const user = useAuthStore((s) => s.user);
   const features = (user?.features as string[] | undefined) || [];
@@ -293,17 +295,11 @@ function BillingTab() {
     setDismissedIds((prev) => [...prev, resolvedRequest.id]);
   };
 
-  const requestUpgrade = useMutation({
-    mutationFn: (plan_id: string) =>
-      billingService.createUpgradeRequest({
-        plan_id,
-        request_type: isOnPaidPlan ? "change" : "upgrade",
-        billing_interval: billingInterval,
-      }),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["billing-my-request"] });
-    },
-  });
+  // Picking a plan opens checkout, which sends the request once it's paid for.
+  const goToCheckout = (plan_id: string) =>
+    navigate(
+      `/settings/checkout?${new URLSearchParams({ plan: plan_id, interval: billingInterval })}`,
+    );
 
   const cancelRequest = useMutation({
     mutationFn: (id: string) => billingService.cancelUpgradeRequest(id),
@@ -335,11 +331,6 @@ function BillingTab() {
       : plan.status === "expired" || plan.status === "past_due"
         ? "bg-rose-400"
         : "bg-amber-400";
-
-  const requestErrorMessage =
-    typeof (requestUpgrade.error as any)?.response?.data?.detail === "string"
-      ? (requestUpgrade.error as any).response.data.detail
-      : null;
 
   return (
     <div className="space-y-5">
@@ -632,8 +623,8 @@ function BillingTab() {
                   ) : (
                     <>
                       <button
-                        onClick={() => requestUpgrade.mutate(p.id)}
-                        disabled={!canRequest || requestUpgrade.isPending || !!pendingRequest}
+                        onClick={() => goToCheckout(p.id)}
+                        disabled={!canRequest || !!pendingRequest}
                         className="btn-primary w-full"
                         title={
                           !canRequest
@@ -643,15 +634,7 @@ function BillingTab() {
                               : undefined
                         }
                       >
-                        {requestUpgrade.isPending ? (
-                          <>
-                            <Loader2 size={14} className="animate-spin" /> Requesting…
-                          </>
-                        ) : isOnPaidPlan ? (
-                          "Change Plan"
-                        ) : (
-                          `Get ${p.name}`
-                        )}
+                        {isOnPaidPlan ? "Change Plan" : `Get ${p.name}`}
                       </button>
                       {isOnPaidPlan && (
                         <p className="text-[11px] text-center text-slate-600 dark:text-slate-400 mt-1.5">
@@ -665,11 +648,6 @@ function BillingTab() {
             );
           })}
         </div>
-        {requestErrorMessage && (
-          <p className="text-sm font-medium text-rose-600 dark:text-rose-400 mt-3">
-            {requestErrorMessage}
-          </p>
-        )}
       </div>
 
       <div className="card">

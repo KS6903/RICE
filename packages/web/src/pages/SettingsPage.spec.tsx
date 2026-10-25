@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { MemoryRouter } from "react-router-dom";
+import { fireEvent, render, screen } from "@testing-library/react";
+import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { SubscriptionPlan, User } from "@rice-mill/shared";
 import SettingsPage from "./SettingsPage";
@@ -40,13 +40,21 @@ const plan = (over: Partial<SubscriptionPlan>): SubscriptionPlan => ({
   ...over,
 });
 
+function Checkout() {
+  const { search } = useLocation();
+  return <p>checkout{search}</p>;
+}
+
 const draw = () =>
   render(
     <QueryClientProvider
       client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}
     >
-      <MemoryRouter>
-        <SettingsPage />
+      <MemoryRouter initialEntries={["/settings"]}>
+        <Routes>
+          <Route path="/settings" element={<SettingsPage />} />
+          <Route path="/settings/checkout" element={<Checkout />} />
+        </Routes>
       </MemoryRouter>
     </QueryClientProvider>,
   );
@@ -90,16 +98,14 @@ describe("Billing tab: monthly / annual switch", () => {
     expect(screen.queryByText("₱0")).not.toBeInTheDocument();
   });
 
-  it("sends the chosen interval with the upgrade request", async () => {
+  it("opens checkout for the plan and interval picked", async () => {
     draw();
     await screen.findByText(/₱999$/);
     fireEvent.click(screen.getByRole("button", { name: "Annual" }));
     fireEvent.click(screen.getByRole("button", { name: "Get Basic" }));
 
-    await waitFor(() =>
-      expect(billingService.createUpgradeRequest).toHaveBeenCalledWith(
-        expect.objectContaining({ plan_id: "basic", billing_interval: "annual" }),
-      ),
-    );
+    expect(await screen.findByText("checkout?plan=basic&interval=annual")).toBeInTheDocument();
+    // Nothing is asked for until the plan is paid for.
+    expect(billingService.createUpgradeRequest).not.toHaveBeenCalled();
   });
 });

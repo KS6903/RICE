@@ -33,6 +33,7 @@ import MaintenancePage from "./pages/MaintenancePage";
 import UsersPage from "./pages/UsersPage";
 import EmployeesPage from "./pages/EmployeesPage";
 import SettingsPage from "./pages/SettingsPage";
+import CheckoutPage from "./pages/CheckoutPage";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import AdminTenants from "./pages/admin/AdminTenants";
 import AdminTenantDetail from "./pages/admin/AdminTenantDetail";
@@ -372,6 +373,14 @@ function AppRoutes() {
           }
         />
         <Route path="settings" element={<SettingsPage />} />
+        <Route
+          path="settings/checkout"
+          element={
+            <RoleGate section="settings">
+              <CheckoutPage />
+            </RoleGate>
+          }
+        />
       </Route>
     </Routes>
   );
