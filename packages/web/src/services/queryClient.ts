@@ -13,14 +13,17 @@ export function sessionQueryKeyHash(queryKey: QueryKey): string {
 }
 
 /** How long a query's data counts as fresh unless it sets its own staleTime.
- *  Opening a page refreshes the queries on this default (PageLoadingBar). */
+ *  Stale results remain visible while the query refreshes in the background. */
 export const DEFAULT_STALE_TIME = 1000 * 60 * 5;
+/** Keep visited pages' data ready when someone comes back to them. */
+export const SESSION_CACHE_TIME = 1000 * 60 * 30;
 
 export function createSessionQueryClient(): QueryClient {
   return new QueryClient({
     defaultOptions: {
       queries: {
         staleTime: DEFAULT_STALE_TIME,
+        gcTime: SESSION_CACHE_TIME,
         retry: 1,
         queryKeyHashFn: sessionQueryKeyHash,
       },

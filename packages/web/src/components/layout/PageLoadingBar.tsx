@@ -1,6 +1,4 @@
-import { useEffect } from "react";
-import { useLocation } from "react-router-dom";
-import { useIsFetching, useQueryClient, type Query } from "@tanstack/react-query";
+import { useIsFetching, type Query } from "@tanstack/react-query";
 import { useAfterDelay } from "../../hooks/useAfterDelay";
 import { DEFAULT_STALE_TIME } from "../../services/queryClient";
 
@@ -11,27 +9,15 @@ import { DEFAULT_STALE_TIME } from "../../services/queryClient";
 const isPageData = (query: Query) =>
   (query.options as { staleTime?: unknown }).staleTime === DEFAULT_STALE_TIME;
 
-/**
- * Opening a page refreshes it. The page still shows what it had a moment ago,
- * but its data is asked for again, so what someone else just entered (a sale, a
- * purchase) shows up rather than a copy up to 5 minutes old.
- *
- * While a page's data is on its way, a thin bar runs across the top of the
- * screen, so a slow answer reads as loading and not as an empty or broken page.
- */
+/** A thin bar marks first loads; cached data stays on screen during background
+ *  refreshes so switching back to a page never waits for its network request. */
 export default function PageLoadingBar() {
-  const { pathname } = useLocation();
-  const queryClient = useQueryClient();
-
-  // After the new page's queries have mounted (children's effects run first):
-  // refetch the ones on screen, mark the rest stale for when they are next
-  // shown, and leave a fetch already under way alone rather than restart it.
-  useEffect(() => {
-    void queryClient.invalidateQueries({ predicate: isPageData }, { cancelRefetch: false });
-  }, [pathname, queryClient]);
-
-  const loading = useIsFetching({ predicate: isPageData }) > 0;
-  // A quick answer shows nothing, so a fast page doesn't flicker.
+  // Cached pages stay visible while TanStack Query refreshes stale data in the
+  // background. Only show the bar when a page has no cached data yet.
+  const loading =
+    useIsFetching({
+      predicate: (query) => isPageData(query) && query.state.data === undefined,
+    }) > 0;
   const show = useAfterDelay(loading, 200);
   if (!show) return null;
 
