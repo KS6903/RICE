@@ -18,8 +18,6 @@ const isPageData = (query: Query) =>
  *
  * While a page's data is on its way, a thin bar runs across the top of the
  * screen, so a slow answer reads as loading and not as an empty or broken page.
- * A load still going after 5 seconds is almost always the server waking up
- * after a quiet spell, and a note says so.
  */
 export default function PageLoadingBar() {
   const { pathname } = useLocation();
@@ -35,7 +33,6 @@ export default function PageLoadingBar() {
   const loading = useIsFetching({ predicate: isPageData }) > 0;
   // A quick answer shows nothing, so a fast page doesn't flicker.
   const show = useAfterDelay(loading, 200);
-  const slow = useAfterDelay(loading, 5000);
   if (!show) return null;
 
   return (
@@ -44,11 +41,6 @@ export default function PageLoadingBar() {
       <div className="fixed inset-x-0 top-0 z-[70] h-0.5 overflow-hidden" aria-hidden>
         <div className="h-full w-full animate-shimmer bg-gradient-to-r from-transparent via-emerald-500 to-transparent motion-reduce:animate-none" />
       </div>
-      {slow && (
-        <p className="fixed bottom-4 left-1/2 z-[70] w-max max-w-[calc(100vw-2rem)] -translate-x-1/2 rounded-full glass px-4 py-2 text-center text-sm font-medium text-secondary shadow-lg">
-          Still loading. The server may be waking up, which can take up to 20 seconds.
-        </p>
-      )}
     </div>
   );
 }

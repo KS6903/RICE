@@ -135,7 +135,7 @@ describe("LoginPage when the server is slow or doesn't answer", () => {
     expect(screen.queryByText("Invalid username or password.")).toBeNull();
   });
 
-  it("says the server is still starting when the Worker couldn't wake it", async () => {
+  it("asks to try again, not that the password is wrong, when the server didn't answer", async () => {
     vi.spyOn(authService, "login").mockRejectedValue({
       request: {},
       response: {
@@ -145,7 +145,8 @@ describe("LoginPage when the server is slow or doesn't answer", () => {
     });
     draw(["/login"]);
     signIn();
-    expect(await screen.findByText(/still starting up/)).toBeInTheDocument();
+    expect(await screen.findByText("Something went wrong. Please try again.")).toBeInTheDocument();
+    expect(screen.queryByText("Invalid username or password.")).toBeNull();
   });
 
   it("shows a loading page while signing in, and lifts it to say a password is wrong", async () => {

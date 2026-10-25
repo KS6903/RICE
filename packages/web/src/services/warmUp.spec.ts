@@ -6,7 +6,7 @@ describe("serverUnreachableMessage", () => {
     expect(serverUnreachableMessage({ request: {} })).toMatch(/Couldn't reach the server/);
   });
 
-  it("says the server is starting for a gateway error or the Worker's upstream_unavailable", () => {
+  it("asks to try again for a gateway error or the Worker's upstream_unavailable", () => {
     for (const response of [
       { status: 502, data: {} },
       { status: 504, data: "" },
@@ -15,7 +15,9 @@ describe("serverUnreachableMessage", () => {
         data: { detail: "Service temporarily unavailable", code: "upstream_unavailable" },
       },
     ]) {
-      expect(serverUnreachableMessage({ request: {}, response })).toMatch(/still starting up/);
+      expect(serverUnreachableMessage({ request: {}, response })).toBe(
+        "Something went wrong. Please try again.",
+      );
     }
   });
 

@@ -22,10 +22,10 @@ export function warmUpApi(): void {
 
 /**
  * What to say when a sign-in or sign-up got no real answer: the browser couldn't
- * reach the server, or the server was still booting (a gateway error, or the
+ * reach the server, or the server didn't answer in time (a gateway error, or the
  * Worker's "upstream_unavailable"). Null when the server did answer, so the
- * caller shows the server's own message. Without this, a cold start could read
- * as "Invalid username or password."
+ * caller shows the server's own message. Without this, a server that wasn't
+ * ready could read as "Invalid username or password."
  */
 export function serverUnreachableMessage(err: any): string | null {
   const res = err?.response;
@@ -35,7 +35,7 @@ export function serverUnreachableMessage(err: any): string | null {
       : null;
   }
   if (res.status === 502 || res.status === 504 || res.data?.code === "upstream_unavailable") {
-    return "The server is still starting up. Wait a few seconds, then try again.";
+    return "Something went wrong. Please try again.";
   }
   return null;
 }
