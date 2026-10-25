@@ -52,6 +52,14 @@
     box-sizing: border-box;
   }
 
+  /* One size across pages, tables and dialogs. The type selector outranks
+     local sizing utilities; flex labels must not squeeze the checkbox. */
+  input[type="checkbox"] {
+    width: 1.25rem;
+    height: 1.25rem;
+    flex-shrink: 0;
+  }
+
   html,
   body {
     height: 100%;
