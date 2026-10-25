@@ -5,6 +5,7 @@ import RecordDialog from "./RecordDialog";
 import { salesService, type ChangeEntry } from "../../services/SalesService";
 import { paddyService } from "../../services/PaddyService";
 import { costsService } from "../../services/CostsService";
+import { millingService } from "../../services/MillingService";
 
 /** The saved records whose corrections are logged (edit power). */
 export type RecordKind =
@@ -14,7 +15,8 @@ export type RecordKind =
   | "palay_purchase"
   | "rice_purchase"
   | "byproduct_purchase"
-  | "expense";
+  | "expense"
+  | "milling_batch";
 
 /** Each kind in words, and where its history comes from. */
 const KINDS: Record<RecordKind, { noun: string; load: (id: string) => Promise<ChangeEntry[]> }> = {
@@ -28,6 +30,7 @@ const KINDS: Record<RecordKind, { noun: string; load: (id: string) => Promise<Ch
     load: (id) => paddyService.history("byproduct_purchase", id),
   },
   expense: { noun: "expense", load: (id) => costsService.history(id) },
+  milling_batch: { noun: "batch", load: (id) => millingService.history(id) },
 };
 
 /** Every logged change to one saved record: who, when, and each field from its

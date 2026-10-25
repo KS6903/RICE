@@ -4,7 +4,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { millingService, type ClientArrangement } from "../services/MillingService";
 import { MillingMapper, estimateOutputs, DEFAULT_RECOVERY_PCT } from "../mappers/MillingMapper";
 import { paddyService } from "../services/PaddyService";
-import { Factory, Plus, X } from "lucide-react";
+import { Factory, History, Pencil, Plus, X } from "lucide-react";
 import { format } from "date-fns";
 import QuickAdd from "../components/QuickAdd";
 import { useAccess } from "../hooks/useAccess";
@@ -14,6 +14,9 @@ import LoadingRows from "../components/LoadingRows";
 import FieldCaption from "../components/FieldCaption";
 import Select from "../components/Select";
 import DateTimePicker from "../components/DateTimePicker";
+import EditBatchDialog from "../components/milling/EditBatchDialog";
+import RecordHistory from "../components/sales/RecordHistory";
+import { useCanEditSavedRecords } from "../hooks/useRecordEditor";
 
 function StatusBadge({ status }: { status: string }) {
   const map: Record<string, string> = {
@@ -62,6 +65,12 @@ const arrangementLabel = Object.fromEntries(ARRANGEMENTS.map((a) => [a.value, a.
 export default function MillingPage() {
   const qc = useQueryClient();
   const { canEdit } = useAccess();
+  // Correcting a saved batch needs edit power; its history, either that or
+  // the right to start batches.
+  const canCorrect = useCanEditSavedRecords();
+  const canSeeHistory = canCorrect || canEdit("milling");
+  const [editing, setEditing] = useState<any | null>(null);
+  const [historyOf, setHistoryOf] = useState<any | null>(null);
   const [showForm, setShowForm] = useOpenOnArrival();
   useEscapeKey(() => setShowForm(false), showForm);
 
@@ -555,6 +564,7 @@ export default function MillingPage() {
                 "Inputs (kg)",
                 "Milled Rice (kg)",
                 "Recovery %",
+                "",
               ].map((h) => (
                 <th
                   key={h}
@@ -604,19 +614,45 @@ export default function MillingPage() {
                   <td className="px-4 py-3">
                     {recovery != null ? `${recovery.toFixed(1)}%` : "—"}
                   </td>
+                  <td className="px-4 py-3">
+                    <div className="flex justify-end gap-3">
+                      {canCorrect && (
+                        <button
+                          type="button"
+                          aria-label={`Edit batch ${b.batch_no}`}
+                          onClick={() => setEditing(b)}
+                          className="text-xs font-semibold inline-flex items-center gap-1 text-secondary hover:text-primary"
+                        >
+                          <Pencil size={12} aria-hidden />
+                          Edit
+                        </button>
+                      )}
+                      {canSeeHistory && (
+                        <button
+                          type="button"
+                          aria-label={`History of batch ${b.batch_no}`}
+                          onClick={() => setHistoryOf(b)}
+                          className="text-xs font-semibold inline-flex items-center gap-1 text-secondary hover:text-primary"
+                        >
+                          <History size={12} aria-hidden />
+                          History
+                        </button>
+                      )}
+                    </div>
+                  </td>
                 </tr>
               );
             })}
             {batchesLoading ? (
               <tr>
-                <td colSpan={7}>
+                <td colSpan={8}>
                   <LoadingRows />
                 </td>
               </tr>
             ) : (
               batches.length === 0 && (
                 <tr>
-                  <td colSpan={7}>
+                  <td colSpan={8}>
                     <EmptyState
                       icon={Factory}
                       title="No milling batches yet"
@@ -634,6 +670,24 @@ export default function MillingPage() {
           </tbody>
         </table>
       </div>
+
+      {editing && (
+        <EditBatchDialog
+          batch={editing}
+          equipment={equipment}
+          varieties={varieties}
+          clients={clients}
+          onClose={() => setEditing(null)}
+        />
+      )}
+      {historyOf && (
+        <RecordHistory
+          kind="milling_batch"
+          id={historyOf.id}
+          label={historyOf.batch_no}
+          onClose={() => setHistoryOf(null)}
+        />
+      )}
     </div>
   );
 }

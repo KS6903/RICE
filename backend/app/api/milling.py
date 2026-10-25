@@ -2,6 +2,7 @@
 
 import uuid
 from datetime import datetime
+from typing import Literal
 
 from fastapi import APIRouter, Depends, status
 from sqlalchemy.orm import Session
@@ -15,8 +16,10 @@ from ..repositories.inventory import (
 from ..repositories.milling import MillingBatchRepository, MillingEquipmentRepository
 from ..repositories.paddy import PalayInventoryRepository
 from ..repositories.sales import CustomerRepository
-from ..schemas.milling import BatchCreate, BatchOutputIn, ClientCreate, EquipmentCreate, EquipmentUpdate
+from ..schemas.milling import BatchCreate, BatchEdit, BatchOutputIn, ClientCreate, EquipmentCreate, EquipmentUpdate
+from ..services.activity_service import ActivityService
 from ..services.milling_service import MillingService
+from ..services.record_changes import require_record_editor
 
 router = APIRouter(
     dependencies=[
@@ -119,3 +122,20 @@ def complete_batch(
     svc: MillingService = Depends(get_milling_service),
 ):
     return svc.complete_batch(batch_id, end_datetime, outputs)
+
+
+@router.patch("/batches/{batch_id}", dependencies=[Depends(require_record_editor)])
+def edit_batch(batch_id: uuid.UUID, body: BatchEdit, svc: MillingService = Depends(get_milling_service)):
+    """Correct a saved batch (edit power), every change logged."""
+    return svc.edit_batch(batch_id, body)
+
+
+@router.get("/history/{entity_type}/{entity_id}")
+def batch_history(
+    entity_type: Literal["milling_batch"],
+    entity_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    """Every logged change to one batch, newest first."""
+    return ActivityService(db, current_user).list_for_entity(current_user.company_id, entity_type, entity_id)

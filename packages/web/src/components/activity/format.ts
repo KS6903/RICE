@@ -28,6 +28,7 @@ const ACTION_VERBS: Record<string, string> = {
   "rice_purchase.edit": "Edited rice purchase",
   "byproduct_purchase.edit": "Edited by-product purchase",
   "expense.edit": "Edited expense",
+  "milling_batch.edit": "Edited milling batch",
   // The Boss closing the mill's account, and opening it again.
   "account.paused": "Paused the account of",
   "account.reopened": "Switched back on the account of",

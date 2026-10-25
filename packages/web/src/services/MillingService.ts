@@ -1,5 +1,6 @@
 // MillingService — typed API client for the milling domain (Phase F).
 import api from "./api";
+import type { ChangeEntry } from "./SalesService";
 
 export type BatchInputForm = {
   variety_id: string;
@@ -94,6 +95,17 @@ export class MillingService {
     return this.http
       .post("/milling/batches", MillingService.toBatchPayload(form))
       .then((r) => r.data);
+  }
+
+  /** Correct a saved batch (edit power); inputs and outputs sent replace the
+   *  old ones, and stock follows. */
+  editBatch(id: string, body: Record<string, unknown>): Promise<any> {
+    return this.http.patch(`/milling/batches/${id}`, body).then((r) => r.data);
+  }
+
+  /** Every logged change to one batch, newest first. */
+  history(id: string): Promise<ChangeEntry[]> {
+    return this.http.get(`/milling/history/milling_batch/${id}`).then((r) => r.data);
   }
 }
 

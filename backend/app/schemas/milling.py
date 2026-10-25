@@ -39,6 +39,23 @@ class BatchCreate(BaseModel):
     outputs: list[BatchOutputIn] = []
 
 
+class BatchEdit(BaseModel):
+    """A correction to a saved batch, by someone with edit power
+    (services/record_changes.py). Only the fields sent change; inputs or
+    outputs sent replace the old ones, and stock follows."""
+
+    equipment_id: uuid.UUID | None = None
+    operator_id: uuid.UUID | None = None
+    customer_id: uuid.UUID | None = None
+    client_arrangement: ClientArrangement | None = None
+    client_notes: str | None = Field(default=None, max_length=1000)
+    start_datetime: datetime | None = None
+    end_datetime: datetime | None = None
+    remarks: str | None = Field(default=None, max_length=2000)
+    inputs: list[BatchInputIn] | None = Field(default=None, min_length=1)
+    outputs: list[BatchOutputIn] | None = None
+
+
 class ClientCreate(BaseModel):
     """A walk-in client for custom milling: who they are and how to reach them."""
 
