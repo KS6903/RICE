@@ -1,11 +1,59 @@
+import { useState } from "react";
 import { Cloud, CloudSunRain, Droplets, Loader2, Wind } from "lucide-react";
+import { clsx } from "clsx";
 import { useActiveLocation } from "../hooks/useActiveLocation";
 import { useWeather, useForecast } from "../hooks/useWeather";
-import { WEATHER_ICONS as ICONS, weatherIconClass as iconClass } from "./weatherIcons";
+import { weatherIcon, weatherIconClass as iconClass } from "./weatherIcons";
+import DailyForecastStrip from "./DailyForecastStrip";
 import DryingAdvisor from "./DryingAdvisor";
 import { rainOutlook } from "../utils/dryingAdvice";
 
 type Variant = "compact" | "expanded";
+type View = "today" | "week";
+
+const PROVIDER_NAMES = { google: "Google Weather", "open-meteo": "Open-Meteo" } as const;
+
+/** Where the reading comes from, at the card's top corner. */
+function Attribution({ name, testid }: { name: string; testid: string }) {
+  return (
+    <p className="text-xs font-medium text-muted" data-testid={testid}>
+      Powered by {name}
+    </p>
+  );
+}
+
+/** Today / 7 days: which of the card's two views is showing. */
+function ViewSwitch({ view, onChange }: { view: View; onChange: (v: View) => void }) {
+  const options: { id: View; label: string }[] = [
+    { id: "today", label: "Today" },
+    { id: "week", label: "7 days" },
+  ];
+  return (
+    <div
+      role="group"
+      aria-label="Forecast range"
+      className="inline-flex rounded-xl bg-slate-500/10 p-0.5"
+      data-testid="weather-view-switch"
+    >
+      {options.map((o) => (
+        <button
+          key={o.id}
+          type="button"
+          aria-pressed={view === o.id}
+          onClick={() => onChange(o.id)}
+          className={clsx(
+            "rounded-[0.65rem] px-3 py-1 text-xs font-semibold transition-colors",
+            view === o.id
+              ? "bg-white text-primary shadow-sm dark:bg-slate-700"
+              : "text-muted hover:text-primary",
+          )}
+        >
+          {o.label}
+        </button>
+      ))}
+    </div>
+  );
+}
 
 export default function WeatherWidget({ variant = "compact" }: { variant?: Variant }) {
   // Source-of-truth resolver: saved default > browser GPS > backend IP fallback.
@@ -18,6 +66,7 @@ export default function WeatherWidget({ variant = "compact" }: { variant?: Varia
   // The hourly forecast, for when rain is next likely and the drying advice:
   // the expanded card only, so the compact top-bar pill skips the fetch.
   const fc = useForecast(coords, { enabled: variant === "expanded" });
+  const [view, setView] = useState<View>("today");
 
   // ── Loading state ──
   if (w.isLoading) {
@@ -45,7 +94,7 @@ export default function WeatherWidget({ variant = "compact" }: { variant?: Varia
   }
 
   const p = w.data;
-  const Icon = ICONS[p.condition_code] ?? Cloud;
+  const Icon = weatherIcon(p.condition_code, p.is_daytime);
   const tint = iconClass(p.condition_code, p.is_daytime);
   const tempLabel = p.temp_c != null ? `${Math.round(p.temp_c)}°` : "—";
   // The saved-favorite's label wins over whatever the backend echoed (saved
@@ -83,48 +132,76 @@ export default function WeatherWidget({ variant = "compact" }: { variant?: Varia
   // Expanded dashboard card: the reading on the left, humidity, wind and the
   // rain outlook on the right, the drying advice underneath.
   const rain = fc.data ? rainOutlook(fc.data.hourly) : null;
+  const providerName = PROVIDER_NAMES[p.provider] ?? p.provider;
   return (
     <div data-testid="weather-widget" className="card">
-      <div className="flex flex-wrap items-center gap-x-8 gap-y-4">
-        <div className="flex min-w-0 items-center gap-4">
-          <Icon size={44} className={`${tint} shrink-0`} data-testid="weather-icon" />
-          <div className="min-w-0">
-            <p
-              className="text-4xl font-extrabold leading-none text-primary tabular-nums"
-              data-testid="weather-temp"
-            >
-              {tempLabel}C
-            </p>
-            <p className="mt-1.5 text-sm text-secondary sm:truncate">
-              <span data-testid="weather-condition">{p.condition}</span>
-              {" · "}
-              <span data-testid="weather-location">{placeLabel}</span>
-            </p>
-          </div>
-        </div>
-        <ul className="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-secondary sm:ml-auto">
-          {p.humidity_pct != null && (
-            <li className="inline-flex items-center gap-1.5">
-              <Droplets size={16} className="shrink-0" aria-hidden />
-              Humidity {p.humidity_pct}%
-            </li>
-          )}
-          {p.wind_kph != null && (
-            <li className="inline-flex items-center gap-1.5">
-              <Wind size={16} className="shrink-0" aria-hidden />
-              Wind {Math.round(p.wind_kph)} km/h
-            </li>
-          )}
-          {rain && (
-            <li className="inline-flex items-center gap-1.5" data-testid="weather-rain">
-              <CloudSunRain size={16} className="shrink-0" aria-hidden />
-              {rain}
-            </li>
-          )}
-        </ul>
+      <div className="mb-4 flex items-center justify-between gap-3">
+        <ViewSwitch view={view} onChange={setView} />
+        <Attribution
+          name={view === "week" ? PROVIDER_NAMES["open-meteo"] : providerName}
+          testid="weather-attribution"
+        />
       </div>
 
-      <DryingAdvisor coords={coords} hourly={fc.data?.hourly} />
+      {view === "today" ? (
+        <>
+          <div className="flex flex-wrap items-center gap-x-8 gap-y-4">
+            <div className="flex min-w-0 items-center gap-4">
+              <Icon size={44} className={`${tint} shrink-0`} data-testid="weather-icon" />
+              <div className="min-w-0">
+                <p
+                  className="text-4xl font-extrabold leading-none text-primary tabular-nums"
+                  data-testid="weather-temp"
+                >
+                  {tempLabel}C
+                </p>
+                <p className="mt-1.5 text-sm text-secondary sm:truncate">
+                  <span data-testid="weather-condition">{p.condition}</span>
+                  {" · "}
+                  <span data-testid="weather-location">{placeLabel}</span>
+                </p>
+              </div>
+            </div>
+            <ul className="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-secondary sm:ml-auto">
+              {p.humidity_pct != null && (
+                <li className="inline-flex items-center gap-1.5">
+                  <Droplets size={16} className="shrink-0" aria-hidden />
+                  Humidity {p.humidity_pct}%
+                </li>
+              )}
+              {p.wind_kph != null && (
+                <li className="inline-flex items-center gap-1.5">
+                  <Wind size={16} className="shrink-0" aria-hidden />
+                  Wind {Math.round(p.wind_kph)} km/h
+                </li>
+              )}
+              {rain && (
+                <li className="inline-flex items-center gap-1.5" data-testid="weather-rain">
+                  <CloudSunRain size={16} className="shrink-0" aria-hidden />
+                  {rain}
+                </li>
+              )}
+            </ul>
+          </div>
+
+          <DryingAdvisor coords={coords} hourly={fc.data?.hourly} />
+        </>
+      ) : (
+        <div data-testid="weather-week">
+          <p className="mb-1 text-sm text-secondary">
+            Next 7 days · <span data-testid="weather-location">{placeLabel}</span>
+          </p>
+          {fc.isLoading ? (
+            <p className="flex items-center gap-2 py-6 text-sm text-muted">
+              <Loader2 size={16} className="animate-spin" /> Loading forecast…
+            </p>
+          ) : fc.isError || !fc.data ? (
+            <p className="py-6 text-sm text-muted">Forecast unavailable</p>
+          ) : (
+            <DailyForecastStrip daily={fc.data.daily} />
+          )}
+        </div>
+      )}
     </div>
   );
 }

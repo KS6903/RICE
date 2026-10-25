@@ -1,15 +1,16 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { CloudDrizzle, CloudRain, Info, Lock, Sun } from "lucide-react";
+import { CloudDrizzle, CloudRain, Info, Lock } from "lucide-react";
 import { clsx } from "clsx";
 import { useFeature } from "../hooks/useFeature";
 import { useDryingBanner } from "../hooks/useDryingBanner";
 import type { Coords } from "../hooks/useGeolocation";
 import type { HourlyForecast } from "../hooks/useWeather";
 import type { DryingVerdict } from "../utils/dryingAdvice";
+import AiSunIcon from "./AiSunIcon";
 
 const VERDICT_ICON: Record<DryingVerdict, React.ElementType> = {
-  good: Sun,
+  good: AiSunIcon,
   caution: CloudDrizzle,
   poor: CloudRain,
 };
@@ -138,7 +139,7 @@ function Advice({
   const banner = useDryingBanner(coords, hourly);
   // Nothing to go on yet (or at all): leave the space out rather than say so.
   if (!banner) return null;
-  const Icon = VERDICT_ICON[banner.verdict] ?? Sun;
+  const Icon = VERDICT_ICON[banner.verdict] ?? AiSunIcon;
   const styles = VERDICT_STYLES[banner.verdict] ?? VERDICT_STYLES.good;
   return (
     <div
@@ -147,7 +148,11 @@ function Advice({
       data-verdict={banner.verdict}
       data-source={banner.source}
     >
-      <Icon size={18} className={clsx("shrink-0", styles.icon)} aria-hidden />
+      <Icon
+        size={banner.verdict === "good" ? 26 : 18}
+        className={clsx("shrink-0", styles.icon)}
+        aria-hidden
+      />
       <p
         className="min-w-0 flex-1 text-sm leading-relaxed line-clamp-3 sm:line-clamp-2"
         title={`${banner.headline} ${banner.detail}`}

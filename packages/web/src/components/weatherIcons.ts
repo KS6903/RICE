@@ -12,6 +12,10 @@ import {
   CloudLightning,
   CloudSnow,
   CloudHail,
+  CloudMoon,
+  CloudMoonRain,
+  CloudSunRain,
+  Moon,
   Wind,
 } from "lucide-react";
 import type { WeatherConditionCode } from "../hooks/useWeather";
@@ -39,6 +43,17 @@ export const WEATHER_ICONS: Record<WeatherConditionCode, React.ElementType> = {
   thunderstorm: CloudLightning,
   unknown: Cloud,
 };
+
+/** The icon for what the sky is doing now: a moon after dark, a sun behind the
+ *  cloud or the rain by day. Everything else looks the same day and night. */
+export function weatherIcon(code: WeatherConditionCode, isDay: boolean): React.ElementType {
+  if (code === "clear" || code === "mostly_clear") return isDay ? Sun : Moon;
+  if (code === "partly_cloudy") return isDay ? CloudSun : CloudMoon;
+  if (code === "rain_chance" || code === "rain_scattered") {
+    return isDay ? CloudSunRain : CloudMoonRain;
+  }
+  return WEATHER_ICONS[code] ?? Cloud;
+}
 
 /** Pick a tint so the icon reads at a glance — warm for clear, blue for rain,
  *  violet for thunder, slate for everything else. */
