@@ -6,6 +6,9 @@ import type { SubscriptionPlan, User } from "@rice-mill/shared";
 import CheckoutPage from "./CheckoutPage";
 import { useAuthStore } from "../stores/authStore";
 import { billingService } from "../services/BillingService";
+import { redirectTo } from "../utils/redirect";
+
+vi.mock("../utils/redirect", () => ({ redirectTo: vi.fn() }));
 
 const owner: User = {
   id: "u1",
@@ -62,6 +65,10 @@ describe("Checkout", () => {
     vi.spyOn(billingService, "getPlans").mockResolvedValue([basic]);
     vi.spyOn(billingService, "getMyRequest").mockResolvedValue({ request: null });
     vi.spyOn(billingService, "createUpgradeRequest").mockResolvedValue({});
+    vi.spyOn(billingService, "getPaymentOptions").mockResolvedValue({
+      paymongo: false,
+      paypal: false,
+    });
   });
 
   afterEach(() => {
@@ -123,5 +130,42 @@ describe("Checkout", () => {
     draw();
     expect(await screen.findByText("You already have a request waiting")).toBeInTheDocument();
     expect(screen.queryByLabelText("Payment reference")).not.toBeInTheDocument();
+  });
+
+  it("pays online through PayMongo, or PayPal in dollars", async () => {
+    vi.spyOn(billingService, "getPaymentOptions").mockResolvedValue({ paymongo: true, paypal: true });
+    vi.spyOn(billingService, "getPlans").mockResolvedValue([
+      { ...basic, monthly_price_usd: 20, annual_price_usd: 200 },
+    ]);
+    vi.spyOn(billingService, "startCheckout").mockResolvedValue({
+      payment_id: "pay1",
+      checkout_url: "https://checkout.paymongo.com/cs_1",
+    });
+    draw();
+
+    expect(await screen.findByText("Or pay by bank transfer")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Pay \$20 USD/ })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /Pay ₱999/ }));
+
+    await waitFor(() =>
+      expect(billingService.startCheckout).toHaveBeenCalledWith({
+        plan_id: "basic",
+        billing_interval: "monthly",
+        provider: "paymongo",
+      }),
+    );
+    await waitFor(() => expect(redirectTo).toHaveBeenCalledWith("https://checkout.paymongo.com/cs_1"));
+  });
+
+  it("leaves PayPal out for a plan with no dollar price", async () => {
+    vi.spyOn(billingService, "getPaymentOptions").mockResolvedValue({ paymongo: true, paypal: true });
+    draw();
+    expect(await screen.findByRole("button", { name: /Pay ₱999/ })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /USD/ })).not.toBeInTheDocument();
+  });
+
+  it("says so when the payment was cancelled", async () => {
+    draw("/settings/checkout?plan=basic&interval=monthly&cancelled=1");
+    expect(await screen.findByText(/The payment was cancelled/)).toBeInTheDocument();
   });
 });

@@ -273,10 +273,28 @@ export interface SubscriptionPlan {
   features: string[];
   is_active: boolean;
   sort_order: number;
+  /** US dollars, for paying through PayPal from abroad. 0 = not offered in dollars. */
+  monthly_price_usd?: number;
+  annual_price_usd?: number;
   /** The account a mill pays this plan into, shown at checkout. Null = none yet. */
   payment_bank?: string | null;
   payment_account_name?: string | null;
   payment_account_number?: string | null;
+}
+
+export type PaymentProvider = "paymongo" | "paypal";
+
+/** An online payment for a plan (backend services/payment_service.py). */
+export interface PlanPayment {
+  id: string;
+  plan_id: string;
+  plan_name: string;
+  billing_interval: BillingInterval;
+  provider: PaymentProvider;
+  currency: "PHP" | "USD";
+  amount: number;
+  status: "pending" | "paid" | "failed";
+  paid_at: string | null;
 }
 
 export type UpgradeRequestStatus = "pending" | "approved" | "rejected" | "cancelled";

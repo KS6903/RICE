@@ -39,6 +39,11 @@ export interface Env {
   GOOGLE_WEATHER_API_KEY?: string;
   DEEPSEEK_API_KEY?: string;
   DEEPSEEK_AUTOMATIONS_API_KEY?: string;
+  PAYMONGO_SECRET_KEY?: string;
+  PAYMONGO_WEBHOOK_SECRET?: string;
+  PAYPAL_CLIENT_ID?: string;
+  PAYPAL_CLIENT_SECRET?: string;
+  PAYPAL_ENV?: string;
   UPSTASH_API_EMAIL?: string;
   UPSTASH_API_KEY?: string;
   UPSTASH_DATABASE_ID?: string;

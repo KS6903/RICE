@@ -10,7 +10,7 @@ from typing import Any
 from sqlalchemy.orm import Session
 
 from ..core.exceptions import BadRequestError, ConflictError, NotFoundError
-from ..models.subscription import SubscriptionPlan
+from ..models.subscription import Subscription, SubscriptionPlan
 from ..models.upgrade_request import UpgradeRequest
 from ..repositories.billing import (
     SubscriptionPlanRepository,
@@ -48,6 +48,8 @@ class BillingService(BaseService):
             "description": p.description,
             "monthly_price": float(p.monthly_price),
             "annual_price": float(p.annual_price),
+            "monthly_price_usd": float(p.monthly_price_usd),
+            "annual_price_usd": float(p.annual_price_usd),
             "max_users": p.max_users,
             "max_branches": p.max_branches,
             "features": list(p.features or []),
@@ -114,11 +116,14 @@ class BillingService(BaseService):
 
     # ── writes ────────────────────────────────────────────────────────────────
 
-    def create_upgrade_request(self, data) -> dict:
+    def requestable_plan(self, plan_id: uuid.UUID) -> tuple[SubscriptionPlan, Subscription | None]:
+        """The plan the mill may ask for or pay for now, and its current
+        subscription. Asking (create_upgrade_request) and paying online
+        (payment_service.start_checkout) refuse the same things."""
         if not self.current_user.company_id:
             raise BadRequestError("No company on this user")
 
-        plan = self.plans.get(data.plan_id)
+        plan = self.plans.get(plan_id)
         if not plan or not plan.is_active:
             raise NotFoundError("Plan not found")
         if plan.code == "free":
@@ -135,6 +140,10 @@ class BillingService(BaseService):
         current_sub = self.subscriptions.get_by_company(self.current_user.company_id)
         if current_sub and current_sub.plan_id == plan.id:
             raise BadRequestError("You are already on this plan.")
+        return plan, current_sub
+
+    def create_upgrade_request(self, data) -> dict:
+        plan, current_sub = self.requestable_plan(data.plan_id)
 
         req = UpgradeRequest(
             company_id=self.current_user.company_id,

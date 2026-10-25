@@ -148,6 +148,16 @@ class Settings(BaseSettings):
     # The Pro model, for an AI automation marked ai_model="pro" (none today;
     # automations/ai.py says why).
     DEEPSEEK_AUTOMATIONS_MODEL: str = "deepseek-v4-pro"
+    # Online plan payments (services/payment_service.py). Each provider is offered
+    # at checkout only when its keys are set; bank transfer is always there.
+    # PayMongo: pesos (GCash, Maya, QR Ph, cards, online banking). The webhook
+    # secret comes from creating the webhook (dashboard, Developers > Webhooks).
+    PAYMONGO_SECRET_KEY: SecretStr | None = None
+    PAYMONGO_WEBHOOK_SECRET: SecretStr | None = None
+    # PayPal: US dollars, for mills paying from abroad. "sandbox" for test keys.
+    PAYPAL_CLIENT_ID: str | None = None
+    PAYPAL_CLIENT_SECRET: SecretStr | None = None
+    PAYPAL_ENV: Literal["sandbox", "live"] = "sandbox"
     # Advisory calls cost money per request; kept tight since the endpoint is
     # also cached server-side for hours per location/day (see TTL_DRYING_ADVISORY).
     RATE_LIMIT_DRYING_ADVISOR: str = "10/hour"

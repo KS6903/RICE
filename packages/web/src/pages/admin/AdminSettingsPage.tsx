@@ -42,6 +42,8 @@ type Plan = {
   monthly_price: number;
   annual_price: number;
   annual_discount_percent: number;
+  monthly_price_usd?: number;
+  annual_price_usd?: number;
   features: string[];
   max_branches: number | null;
   max_users: number | null;
@@ -130,6 +132,7 @@ const EMPTY_PLAN = {
   description: "" as string,
   monthly_price: 0,
   annual_discount_percent: 0,
+  monthly_price_usd: 0,
   features: [] as string[],
   max_branches: null as number | null,
   max_users: null as number | null,
@@ -195,6 +198,7 @@ function PlansTab() {
       description: p.description ?? "",
       monthly_price: p.monthly_price,
       annual_discount_percent: p.annual_discount_percent,
+      monthly_price_usd: p.monthly_price_usd ?? 0,
       features: p.features,
       max_branches: p.max_branches,
       max_users: p.max_users,
@@ -210,6 +214,7 @@ function PlansTab() {
 
   const pricesValid =
     form.monthly_price >= 0 &&
+    form.monthly_price_usd >= 0 &&
     form.annual_discount_percent >= 0 &&
     form.annual_discount_percent < 100;
   const twelveMonths = form.monthly_price * 12;
@@ -347,6 +352,36 @@ function PlansTab() {
                   including) 100%.
                 </p>
               )}
+            </div>
+            <div>
+              <label htmlFor="plan-monthly-price-usd" className={LABEL}>
+                Monthly price in US dollars ($)
+              </label>
+              <input
+                id="plan-monthly-price-usd"
+                type="number"
+                min={0}
+                step="any"
+                className={INPUT}
+                value={form.monthly_price_usd}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, monthly_price_usd: Number(e.target.value) }))
+                }
+                aria-describedby="plan-monthly-price-usd-hint"
+              />
+              <p id="plan-monthly-price-usd-hint" className="text-xs text-muted mt-1">
+                For mills paying from abroad through PayPal. 0 = pesos only.
+                {form.monthly_price_usd > 0 && pricesValid && (
+                  <>
+                    {" "}
+                    A year is{" "}
+                    <span className="font-semibold text-secondary tabular-nums">
+                      ${annualPrice(form.monthly_price_usd, form.annual_discount_percent).toLocaleString()}
+                    </span>
+                    , with the same discount.
+                  </>
+                )}
+              </p>
             </div>
             <div>
               <label className={LABEL}>Sort order</label>

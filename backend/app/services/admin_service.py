@@ -83,6 +83,8 @@ class AdminService(BaseService):
             "monthly_price": float(p.monthly_price),
             "annual_price": float(p.annual_price),
             "annual_discount_percent": float(p.annual_discount_percent),
+            "monthly_price_usd": float(p.monthly_price_usd),
+            "annual_price_usd": float(p.annual_price_usd),
             "max_users": p.max_users,
             "max_branches": p.max_branches,
             "features": list(p.features or []),
@@ -146,6 +148,8 @@ class AdminService(BaseService):
             monthly_price=data.monthly_price,
             annual_discount_percent=annual_discount(data.annual_discount_percent),
             annual_price=annual_price(data.monthly_price, data.annual_discount_percent),
+            monthly_price_usd=data.monthly_price_usd,
+            annual_price_usd=annual_price(data.monthly_price_usd, data.annual_discount_percent),
             max_users=data.max_users,
             max_branches=data.max_branches,
             features=data.features,
@@ -173,6 +177,8 @@ class AdminService(BaseService):
             plan.monthly_price = data.monthly_price
             plan.annual_discount_percent = annual_discount(data.annual_discount_percent)
             plan.annual_price = annual_price(data.monthly_price, data.annual_discount_percent)
+            plan.monthly_price_usd = data.monthly_price_usd
+            plan.annual_price_usd = annual_price(data.monthly_price_usd, data.annual_discount_percent)
             plan.max_users = data.max_users
             plan.max_branches = data.max_branches
             plan.features = data.features

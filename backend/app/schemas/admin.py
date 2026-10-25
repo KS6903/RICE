@@ -13,6 +13,8 @@ class PlanUpsert(BaseModel):
     monthly_price: float = Field(0, ge=0)
     # The annual price isn't sent: the server works it out from these two.
     annual_discount_percent: float = Field(0, ge=0, lt=100)
+    # US dollars, for PayPal. 0 = not offered in dollars.
+    monthly_price_usd: float = Field(0, ge=0)
     max_users: int | None = None
     max_branches: int | None = None
     features: list[str] = []

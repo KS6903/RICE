@@ -55,6 +55,7 @@ PUBLIC_TABLE_NAMES: frozenset[str] = frozenset(
         "subscription_plans",
         "subscriptions",
         "subscription_upgrade_requests",
+        "plan_payments",  # online plan payments; webhooks carry no tenant
         "byproduct_types",  # global byproduct catalog (no company_id)
         "user_locations",  # per-user UI state (FK -> users only)
         "legal_acceptances",  # consent evidence: must outlive a tenant schema

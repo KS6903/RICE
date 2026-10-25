@@ -7,18 +7,37 @@ import {
   CheckCircle2,
   Clock,
   CreditCard,
+  Globe,
   Landmark,
   Loader2,
+  Lock,
   ShieldCheck,
+  Wallet,
+  XCircle,
 } from "lucide-react";
-import type { BillingInterval, SubscriptionPlan, UpgradeRequest } from "@rice-mill/shared";
+import type {
+  BillingInterval,
+  PaymentProvider,
+  SubscriptionPlan,
+  UpgradeRequest,
+} from "@rice-mill/shared";
 import { billingService } from "../services/BillingService";
 import { useCurrentPlan } from "../hooks/useFeature";
 import { useAccess } from "../hooks/useAccess";
+import { redirectTo } from "../utils/redirect";
 
 const LABEL = "block text-sm font-semibold text-secondary mb-1.5";
 
 const peso = (n: number) => `₱${n.toLocaleString()}`;
+const dollars = (n: number) =>
+  `$${n.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
+
+/** The price in US dollars, for PayPal. 0 when the plan isn't offered in dollars. */
+function usdPriceFor(p: SubscriptionPlan, interval: BillingInterval) {
+  const monthly = p.monthly_price_usd ?? 0;
+  if (interval === "monthly") return monthly;
+  return (p.annual_price_usd ?? 0) > 0 ? (p.annual_price_usd as number) : monthly * 12;
+}
 
 /** A plan with no annual price set is billed as 12 months. */
 function priceFor(p: SubscriptionPlan, interval: BillingInterval) {
@@ -49,6 +68,7 @@ export default function CheckoutPage() {
   const current = useCurrentPlan();
   const canRequest = useAccess().canEdit("settings");
   const [reference, setReference] = useState("");
+  const cancelled = params.get("cancelled") === "1";
 
   const plansQuery = useQuery<SubscriptionPlan[]>({
     queryKey: ["billing-plans"],
@@ -57,6 +77,10 @@ export default function CheckoutPage() {
   const { data: requestData } = useQuery<{ request: UpgradeRequest | null }>({
     queryKey: ["billing-my-request"],
     queryFn: () => billingService.getMyRequest(),
+  });
+  const { data: online = { paymongo: false, paypal: false } } = useQuery({
+    queryKey: ["billing-payment-options"],
+    queryFn: () => billingService.getPaymentOptions(),
   });
 
   const plan = plansQuery.data?.find((p) => p.id === planId);
@@ -90,11 +114,25 @@ export default function CheckoutPage() {
     },
   });
 
+  // Paying online: the provider's page takes over, and sends the mill back to
+  // /settings/checkout/return, which confirms the payment (CheckoutReturnPage).
+  const payOnline = useMutation({
+    mutationFn: (provider: PaymentProvider) =>
+      billingService.startCheckout({ plan_id: planId, billing_interval: interval, provider }),
+    onSuccess: ({ checkout_url }) => redirectTo(checkout_url),
+  });
+
   const errorMessage =
     typeof (submit.error as any)?.response?.data?.detail === "string"
       ? (submit.error as any).response.data.detail
       : submit.isError
         ? "The request could not be sent. Try again."
+        : null;
+  const onlineError =
+    typeof (payOnline.error as any)?.response?.data?.detail === "string"
+      ? (payOnline.error as any).response.data.detail
+      : payOnline.isError
+        ? "The payment page could not be opened. Try again."
         : null;
 
   const header = (
@@ -187,18 +225,93 @@ export default function CheckoutPage() {
   }
 
   const { price, savingsPct } = priceFor(plan, interval);
+  const usdPrice = usdPriceFor(plan, interval);
+  const offerPaypal = online.paypal && usdPrice > 0;
+  const anyOnline = online.paymongo || offerPaypal;
   const needsReference = paymentReady;
   const canSubmit = !submit.isPending && (!needsReference || reference.trim() !== "");
+  const leaving = payOnline.isPending || payOnline.isSuccess;
 
   return (
     <div className="space-y-6">
       {backLink}
       {header}
 
+      {cancelled && (
+        <div className="flex gap-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 ring-1 ring-slate-200 dark:ring-slate-700 px-4 py-3 text-sm text-secondary">
+          <XCircle size={16} className="shrink-0 mt-0.5" />
+          The payment was cancelled and nothing was charged. You can try again below.
+        </div>
+      )}
+
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 items-start">
-        <section className="card lg:col-span-3 space-y-5" aria-label="Payment">
+        <div className="lg:col-span-3 space-y-6">
+        {anyOnline && (
+          <section className="card space-y-4" aria-label="Pay online">
+            <div>
+              <h3 className="text-lg font-bold text-primary">Pay online</h3>
+              <p className="text-sm text-secondary mt-0.5">
+                Your plan turns on as soon as the payment goes through.
+              </p>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {online.paymongo && (
+                <button
+                  type="button"
+                  onClick={() => payOnline.mutate("paymongo")}
+                  disabled={leaving}
+                  className="btn-primary !h-auto !py-3 flex-col !items-start text-left"
+                >
+                  <span className="flex items-center gap-2 text-base">
+                    {payOnline.isPending && payOnline.variables === "paymongo" ? (
+                      <Loader2 size={16} className="animate-spin" />
+                    ) : (
+                      <Wallet size={16} />
+                    )}
+                    Pay {peso(price)}
+                  </span>
+                  <span className="text-xs font-medium opacity-90">
+                    GCash, Maya, QR Ph, card or online banking
+                  </span>
+                </button>
+              )}
+              {offerPaypal && (
+                <button
+                  type="button"
+                  onClick={() => payOnline.mutate("paypal")}
+                  disabled={leaving}
+                  className="btn-secondary !h-auto !py-3 flex-col !items-start text-left"
+                >
+                  <span className="flex items-center gap-2 text-base">
+                    {payOnline.isPending && payOnline.variables === "paypal" ? (
+                      <Loader2 size={16} className="animate-spin" />
+                    ) : (
+                      <Globe size={16} />
+                    )}
+                    Pay {dollars(usdPrice)} USD
+                  </span>
+                  <span className="text-xs font-medium text-secondary">
+                    From abroad: PayPal or card, in US dollars
+                  </span>
+                </button>
+              )}
+            </div>
+            {onlineError && (
+              <p className="text-sm font-medium text-rose-600 dark:text-rose-400">{onlineError}</p>
+            )}
+            <p className="flex items-start gap-1.5 text-xs text-muted">
+              <Lock size={14} className="shrink-0 mt-px" />
+              You'll pay on {online.paymongo && offerPaypal ? "PayMongo's or PayPal's" : online.paymongo ? "PayMongo's" : "PayPal's"}{" "}
+              secure page, then come back here. Card details never reach us.
+            </p>
+          </section>
+        )}
+
+        <section className="card space-y-5" aria-label="Payment">
           <div>
-            <h3 className="text-lg font-bold text-primary">Pay by bank transfer</h3>
+            <h3 className="text-lg font-bold text-primary">
+              {anyOnline ? "Or pay by bank transfer" : "Pay by bank transfer"}
+            </h3>
             <p className="text-sm text-secondary mt-0.5">
               {paymentReady
                 ? `Send ${peso(price)} to this account, then enter the reference from your receipt.`
@@ -266,7 +379,11 @@ export default function CheckoutPage() {
           <button
             onClick={() => submit.mutate()}
             disabled={!canSubmit}
-            className="btn-primary w-full"
+            className={
+              anyOnline
+                ? "btn-secondary w-full disabled:opacity-60 disabled:cursor-not-allowed"
+                : "btn-primary w-full"
+            }
           >
             {submit.isPending ? (
               <>
@@ -280,9 +397,11 @@ export default function CheckoutPage() {
           </button>
           <p className="flex items-start gap-1.5 text-xs text-muted">
             <ShieldCheck size={14} className="shrink-0 mt-px" />
-            Your plan changes once the payment is confirmed. You'll get an email either way.
+            We check bank transfers by hand. Your plan changes once the payment is confirmed, and
+            you'll get an email either way.
           </p>
         </section>
+        </div>
 
         <aside className="card lg:col-span-2 space-y-4" aria-label="Order summary">
           <h3 className="text-lg font-bold text-primary">Order summary</h3>
@@ -343,9 +462,16 @@ export default function CheckoutPage() {
               Save {savingsPct}% vs monthly
             </p>
           )}
+          {offerPaypal && (
+            <p className="text-xs text-secondary -mt-2 text-right">
+              or {dollars(usdPrice)} USD through PayPal
+            </p>
+          )}
           {isOnPaidPlan && (
             <p className="text-xs text-secondary">
-              The new plan takes effect at the end of your current billing period.
+              {anyOnline
+                ? "Paid online, the new plan starts right away. By bank transfer, it starts when your current billing period ends."
+                : "The new plan takes effect at the end of your current billing period."}
             </p>
           )}
         </aside>

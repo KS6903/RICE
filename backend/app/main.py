@@ -151,6 +151,7 @@ app.include_router(sync.router, prefix="/api/sync", tags=["Sync"], dependencies=
 app.include_router(admin.router, prefix="/api/admin", tags=["Platform Admin"], dependencies=mfa_gate)
 app.include_router(employees.router, prefix="/api/employees", tags=["Employees"], dependencies=mfa_gate)
 app.include_router(billing.router, prefix="/api/billing", tags=["Billing"], dependencies=mfa_gate)
+app.include_router(billing.webhooks, prefix="/api/billing/webhooks", tags=["Billing webhooks"])
 app.include_router(canva.router, prefix="/api", tags=["Warehouse Canva"], dependencies=mfa_gate)
 app.include_router(canva.ws_router, tags=["Warehouse Canva (Realtime)"])
 app.include_router(dispatch.router, prefix="/api", tags=["Dispatch"], dependencies=mfa_gate)

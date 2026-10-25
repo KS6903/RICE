@@ -9,6 +9,8 @@ PLAN_KEYS = {
     "description",
     "monthly_price",
     "annual_price",
+    "monthly_price_usd",
+    "annual_price_usd",
     "max_users",
     "max_branches",
     "features",

@@ -15,6 +15,7 @@ from sqlalchemy.orm import Session
 from ..core.config import settings
 from ..core.email import send_account_email
 from ..core.ratelimit import LockoutState
+from ..models.plan_payment import PlanPayment
 from ..models.upgrade_request import UpgradeRequest
 from ..models.user import User
 
@@ -216,3 +217,25 @@ def upgrade_request_decided(db: Session, request: UpgradeRequest, *, plan: str, 
     )
     subject = f"Your {plan} plan request was {'approved' if approved else 'not approved'}"
     return _send(requester.email, subject, text)
+
+
+def plan_payment_received(db: Session, payment: PlanPayment, *, amount: str, until: str) -> int:
+    """Tell whoever paid that the plan is on, and every platform admin that money came in."""
+    payer = db.get(User, payment.created_by) if payment.created_by else None
+    sent = 0
+    if payer is not None:
+        text = (
+            f"Hello {payer.full_name or payer.username},\n\n"
+            f"We received your payment of {amount} for the {payment.plan_name} plan. "
+            f"Your mill is on it now, paid until {until}.\n\n"
+            f"See your plan in Settings: {_app_link('/settings')}\n"
+        )
+        sent += _send(payer.email, f"Payment received: you're on {payment.plan_name}", text)
+    admins = db.query(User).filter(User.is_platform_admin.is_(True), User.is_active.is_(True)).all()
+    text = (
+        f"{payment.company_name} paid {amount} for the {payment.plan_name} plan ({payment.billing_interval}) "
+        f"through {'PayPal' if payment.provider == 'paypal' else 'PayMongo'}, reference "
+        f"{payment.provider_payment_id or payment.provider_ref}. The plan is on until {until}.\n"
+    )
+    sent += sum(_send(a.email, f"Payment received: {payment.company_name}, {amount}", text) for a in admins)
+    return sent

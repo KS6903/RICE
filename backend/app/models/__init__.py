@@ -25,6 +25,7 @@ from .milling import (
 from .notification import Notification, NotificationAttachment
 from .paddy import DryingRecord, PalayInventory, PalayInventoryMovement, PalayPurchase, PalayPurchaseItem
 from .password_reset import PasswordResetToken
+from .plan_payment import PlanPayment
 from .reference import ByproductKind, ByproductType, QualityGrade, RiceVariety
 from .sales import Invoice, Payment, PriceList, SalesOrder, SalesOrderItem
 from .stock_count import StockCount, StockCountLine
@@ -59,6 +60,7 @@ __all__ = [
     "Role",
     "AuthSession",
     "PasswordResetToken",
+    "PlanPayment",
     "RicePurchase",
     "RicePurchaseItem",
     "RiceVariety",

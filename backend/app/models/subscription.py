@@ -30,6 +30,10 @@ class SubscriptionPlan(Base):
     features: Mapped[list] = mapped_column(JSONB, default=list)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     sort_order: Mapped[int] = mapped_column(Integer, default=0)
+    # The price for overseas mills paying in US dollars through PayPal. 0 = not
+    # offered in dollars. The annual one is worked out with the same discount.
+    monthly_price_usd: Mapped[Decimal] = mapped_column(Numeric(10, 2), default=0, server_default="0")
+    annual_price_usd: Mapped[Decimal] = mapped_column(Numeric(10, 2), default=0, server_default="0")
     # Where a mill sends the money for this plan, shown on its checkout page.
     # Kept here, not in the code, so the account numbers stay out of the repo.
     payment_bank: Mapped[str | None] = mapped_column(String(100))
