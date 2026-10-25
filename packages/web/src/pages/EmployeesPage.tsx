@@ -11,6 +11,7 @@ import LegalNotice from "../components/LegalNotice";
 import UserAvatar from "../components/UserAvatar";
 import { useAccess } from "../hooks/useAccess";
 import GovernmentIdsNotice from "../components/GovernmentIdsNotice";
+import SalaryBreakdown from "../components/SalaryBreakdown";
 import Select from "../components/Select";
 import DatePicker from "../components/DatePicker";
 import ComboInput from "../components/ComboInput";
@@ -558,6 +559,7 @@ function EmployeesPageInner() {
                 </p>
               </div>
             </div>
+            <SalaryBreakdown monthly={monthly} className="mt-3" />
           </div>
 
           <div>
@@ -1102,11 +1104,15 @@ function EmployeeProfile({
     return () => window.removeEventListener("keydown", onKey);
   }, [editing, onClose]);
 
+  // Worked out from the rate, as the edit form does: records saved before the
+  // rate drove it may have no stored monthly figure.
+  const monthly = monthlyForForm(editing ? form : toForm(e), e.daily_rate != null);
+
   const branchOptions = branches.map((b: any) => ({ value: String(b.id), label: b.name }));
   const optionsFor = (f: FieldSpec) => (f.key === "branch_id" ? branchOptions : (f.options ?? []));
 
   const shown = (f: FieldSpec): string => {
-    const raw = e[f.key];
+    const raw = f.key === "monthly_salary" ? monthly : e[f.key];
     if (raw == null || raw === "") return "—";
     if (f.key === "branch_id") return e.branch?.name ?? "—";
     if (f.kind === "select")
@@ -1294,6 +1300,9 @@ function EmployeeProfile({
                     </div>
                   ))}
                 </dl>
+              )}
+              {section.title === "Employment" && (
+                <SalaryBreakdown monthly={monthly} className="mt-4" />
               )}
             </section>
           ))}
