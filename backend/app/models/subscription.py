@@ -30,6 +30,11 @@ class SubscriptionPlan(Base):
     features: Mapped[list] = mapped_column(JSONB, default=list)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     sort_order: Mapped[int] = mapped_column(Integer, default=0)
+    # Where a mill sends the money for this plan, shown on its checkout page.
+    # Kept here, not in the code, so the account numbers stay out of the repo.
+    payment_bank: Mapped[str | None] = mapped_column(String(100))
+    payment_account_name: Mapped[str | None] = mapped_column(String(150))
+    payment_account_number: Mapped[str | None] = mapped_column(String(50))
 
 
 class Subscription(Base, TimestampMixin):

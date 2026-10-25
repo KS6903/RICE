@@ -53,6 +53,9 @@ class BillingService(BaseService):
             "features": list(p.features or []),
             "is_active": p.is_active,
             "sort_order": p.sort_order,
+            "payment_bank": p.payment_bank,
+            "payment_account_name": p.payment_account_name,
+            "payment_account_number": p.payment_account_number,
         }
 
     @staticmethod

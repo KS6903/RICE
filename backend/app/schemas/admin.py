@@ -18,6 +18,10 @@ class PlanUpsert(BaseModel):
     features: list[str] = []
     is_active: bool = True
     sort_order: int = 0
+    # The account a mill pays this plan into. Blank = none yet.
+    payment_bank: str | None = Field(None, max_length=100)
+    payment_account_name: str | None = Field(None, max_length=150)
+    payment_account_number: str | None = Field(None, max_length=50)
 
 
 class SubscriptionAssign(BaseModel):

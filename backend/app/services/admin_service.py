@@ -52,6 +52,10 @@ from . import data_backup, platform_emails
 ALLOWED_SUB_STATUSES = {"active", "trial", "past_due", "cancelled", "expired"}
 
 
+def _blank_to_none(value: str | None) -> str | None:
+    return (value or "").strip() or None
+
+
 class AdminService(BaseService):
     def __init__(
         self,
@@ -84,6 +88,9 @@ class AdminService(BaseService):
             "features": list(p.features or []),
             "is_active": p.is_active,
             "sort_order": p.sort_order,
+            "payment_bank": p.payment_bank,
+            "payment_account_name": p.payment_account_name,
+            "payment_account_number": p.payment_account_number,
         }
 
     @staticmethod
@@ -144,6 +151,9 @@ class AdminService(BaseService):
             features=data.features,
             is_active=data.is_active,
             sort_order=data.sort_order,
+            payment_bank=_blank_to_none(data.payment_bank),
+            payment_account_name=_blank_to_none(data.payment_account_name),
+            payment_account_number=_blank_to_none(data.payment_account_number),
         )
         with self.transaction():
             self.plans.add(plan)
@@ -168,6 +178,9 @@ class AdminService(BaseService):
             plan.features = data.features
             plan.is_active = data.is_active
             plan.sort_order = data.sort_order
+            plan.payment_bank = _blank_to_none(data.payment_bank)
+            plan.payment_account_name = _blank_to_none(data.payment_account_name)
+            plan.payment_account_number = _blank_to_none(data.payment_account_number)
         self.db.refresh(plan)
         # Editing a plan's features changes entitlements for every company on it.
         for cid in self.subscriptions.company_ids_on_plan(plan.id):

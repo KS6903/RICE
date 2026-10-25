@@ -12,6 +12,7 @@ from app.models.company import Company
 from app.models.subscription import SubscriptionPlan
 from app.models.upgrade_request import UpgradeRequest
 from app.models.user import User
+from app.services.billing_service import BillingService
 from app.services.legal_service import LegalService
 
 STATS_KEYS = {
@@ -68,6 +69,38 @@ def test_plan_annual_price_is_worked_out_from_the_discount(admin_client):
 
     no_discount = admin_client.put(f"/api/admin/plans/{plan['id']}", json={**body, "annual_discount_percent": 0})
     assert no_discount.json()["annual_price"] == 17988.0
+
+
+def test_plan_keeps_its_payment_account(admin_client, db_session):
+    body = {
+        "code": "adm_pay",
+        "name": "Pay",
+        "payment_bank": " Test Bank ",
+        "payment_account_name": "Oraiza Test",
+        "payment_account_number": "0000 1111 2222",
+    }
+    created = admin_client.post("/api/admin/plans", json=body)
+    assert created.status_code == 201, created.text
+    plan = created.json()
+    assert plan["payment_bank"] == "Test Bank"
+    assert plan["payment_account_number"] == "0000 1111 2222"
+
+    # Mills read it from /billing/plans for their checkout page.
+    row = db_session.get(SubscriptionPlan, uuid.UUID(plan["id"]))
+    db_session.refresh(row)
+    shown = BillingService._serialize_plan(row)
+    assert shown["payment_account_name"] == "Oraiza Test"
+    assert shown["payment_account_number"] == "0000 1111 2222"
+
+    # Blanked out, it's gone rather than an empty string.
+    upd = admin_client.put(
+        f"/api/admin/plans/{plan['id']}",
+        json={**body, "payment_bank": "", "payment_account_name": "  ", "payment_account_number": ""},
+    )
+    assert upd.status_code == 200, upd.text
+    assert upd.json()["payment_bank"] is None
+    assert upd.json()["payment_account_name"] is None
+    assert upd.json()["payment_account_number"] is None
 
 
 def test_plan_discount_and_price_must_be_in_range(admin_client):

@@ -6,7 +6,6 @@ import type { SubscriptionPlan, User } from "@rice-mill/shared";
 import CheckoutPage from "./CheckoutPage";
 import { useAuthStore } from "../stores/authStore";
 import { billingService } from "../services/BillingService";
-import type { PaymentMethod } from "../utils/paymentMethods";
 
 const owner: User = {
   id: "u1",
@@ -26,7 +25,7 @@ const owner: User = {
   },
 };
 
-const basic: SubscriptionPlan = {
+const unpaid: SubscriptionPlan = {
   id: "basic",
   code: "basic",
   name: "Basic",
@@ -39,24 +38,20 @@ const basic: SubscriptionPlan = {
   is_active: true,
   sort_order: 1,
 };
-
-const gcash: PaymentMethod = {
-  id: "gcash",
-  label: "GCash",
-  provider: "GCash",
-  accountName: "Oraiza Test",
-  accountNumber: "0917 000 0000",
-  referenceHint: "The reference number on your GCash receipt",
+const basic: SubscriptionPlan = {
+  ...unpaid,
+  payment_bank: "Test Bank",
+  payment_account_name: "Oraiza Test",
+  payment_account_number: "0000 1111 2222",
 };
-const notYet: PaymentMethod = { ...gcash, accountName: "", accountNumber: "" };
 
-const draw = (methods: PaymentMethod[], entry = "/settings/checkout?plan=basic&interval=monthly") =>
+const draw = (entry = "/settings/checkout?plan=basic&interval=monthly") =>
   render(
     <QueryClientProvider
       client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}
     >
       <MemoryRouter initialEntries={[entry]}>
-        <CheckoutPage methods={methods} />
+        <CheckoutPage />
       </MemoryRouter>
     </QueryClientProvider>,
   );
@@ -75,8 +70,10 @@ describe("Checkout", () => {
   });
 
   it("shows the account to pay and needs a reference before sending", async () => {
-    draw([gcash]);
-    expect(await screen.findByText("0917 000 0000")).toBeInTheDocument();
+    draw();
+    expect(await screen.findByText("0000 1111 2222")).toBeInTheDocument();
+    expect(screen.getByText("Test Bank")).toBeInTheDocument();
+    expect(screen.getByText("Oraiza Test")).toBeInTheDocument();
     const send = screen.getByRole("button", { name: "I've paid, send for confirmation" });
     expect(send).toBeDisabled();
 
@@ -90,14 +87,14 @@ describe("Checkout", () => {
         plan_id: "basic",
         request_type: "upgrade",
         billing_interval: "monthly",
-        note: "Paid by GCash, reference 1234567890123",
+        note: "Paid to Test Bank, reference 1234567890123",
       }),
     );
     expect(await screen.findByText("Request sent")).toBeInTheDocument();
   });
 
   it("carries the interval over and can switch it", async () => {
-    draw([gcash], "/settings/checkout?plan=basic&interval=annual");
+    draw("/settings/checkout?plan=basic&interval=annual");
     expect(await screen.findByText("Save 17% vs monthly")).toBeInTheDocument();
     expect(screen.getByText("/yr")).toBeInTheDocument();
 
@@ -106,8 +103,9 @@ describe("Checkout", () => {
     expect(screen.queryByText("Save 17% vs monthly")).not.toBeInTheDocument();
   });
 
-  it("still sends the request while no payment details are published", async () => {
-    draw([notYet]);
+  it("still sends the request while the plan has no payment account", async () => {
+    vi.spyOn(billingService, "getPlans").mockResolvedValue([unpaid]);
+    draw();
     expect(await screen.findByText(/Payment details are coming soon/)).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Send request" }));
 
@@ -122,7 +120,7 @@ describe("Checkout", () => {
     vi.spyOn(billingService, "getMyRequest").mockResolvedValue({
       request: { id: "r1", status: "pending", requested_plan_name: "Pro" },
     });
-    draw([gcash]);
+    draw();
     expect(await screen.findByText("You already have a request waiting")).toBeInTheDocument();
     expect(screen.queryByLabelText("Payment reference")).not.toBeInTheDocument();
   });

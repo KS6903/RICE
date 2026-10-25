@@ -47,6 +47,9 @@ type Plan = {
   max_users: number | null;
   is_active: boolean;
   sort_order: number;
+  payment_bank?: string | null;
+  payment_account_name?: string | null;
+  payment_account_number?: string | null;
 };
 
 const peso = (n: number) => `₱${n.toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
@@ -132,6 +135,9 @@ const EMPTY_PLAN = {
   max_users: null as number | null,
   is_active: true,
   sort_order: 0,
+  payment_bank: "",
+  payment_account_name: "",
+  payment_account_number: "",
 };
 
 const PLAN_COLS = ["Name", "Code", "Price", "Max branches", "Max users", "Features", "Actions"];
@@ -194,6 +200,9 @@ function PlansTab() {
       max_users: p.max_users,
       is_active: p.is_active,
       sort_order: p.sort_order,
+      payment_bank: p.payment_bank ?? "",
+      payment_account_name: p.payment_account_name ?? "",
+      payment_account_number: p.payment_account_number ?? "",
     });
     setFeaturesRaw(p.features.join(", "));
     setShowForm(true);
@@ -396,6 +405,56 @@ function PlansTab() {
               Feature codes that tenants on this plan can access.
             </p>
           </div>
+          <fieldset className="rounded-lg ring-1 ring-line px-4 pt-3 pb-4">
+            <legend className="px-1 text-sm font-semibold text-secondary">Payment account</legend>
+            <p className="text-xs text-muted mb-3">
+              Where tenants send the money for this plan. It shows on their checkout page. Leave
+              blank until there is one.
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div>
+                <label htmlFor="plan-payment-bank" className={LABEL}>
+                  Bank
+                </label>
+                <input
+                  id="plan-payment-bank"
+                  className={INPUT}
+                  maxLength={100}
+                  value={form.payment_bank}
+                  onChange={(e) => setForm((f) => ({ ...f, payment_bank: e.target.value }))}
+                  placeholder="e.g. BDO"
+                />
+              </div>
+              <div>
+                <label htmlFor="plan-payment-account-name" className={LABEL}>
+                  Account name
+                </label>
+                <input
+                  id="plan-payment-account-name"
+                  className={INPUT}
+                  maxLength={150}
+                  value={form.payment_account_name}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, payment_account_name: e.target.value }))
+                  }
+                />
+              </div>
+              <div>
+                <label htmlFor="plan-payment-account-number" className={LABEL}>
+                  Account number
+                </label>
+                <input
+                  id="plan-payment-account-number"
+                  className={`${INPUT} font-mono`}
+                  maxLength={50}
+                  value={form.payment_account_number}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, payment_account_number: e.target.value }))
+                  }
+                />
+              </div>
+            </div>
+          </fieldset>
           <label className="flex items-center gap-2 cursor-pointer select-none">
             <input
               type="checkbox"

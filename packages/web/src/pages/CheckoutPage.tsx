@@ -10,18 +10,11 @@ import {
   Landmark,
   Loader2,
   ShieldCheck,
-  Smartphone,
 } from "lucide-react";
 import type { BillingInterval, SubscriptionPlan, UpgradeRequest } from "@rice-mill/shared";
 import { billingService } from "../services/BillingService";
 import { useCurrentPlan } from "../hooks/useFeature";
 import { useAccess } from "../hooks/useAccess";
-import {
-  PAYMENT_METHODS,
-  anyPaymentReady,
-  hasDetails,
-  type PaymentMethod,
-} from "../utils/paymentMethods";
 
 const LABEL = "block text-sm font-semibold text-secondary mb-1.5";
 
@@ -39,17 +32,13 @@ function priceFor(p: SubscriptionPlan, interval: BillingInterval) {
   return { price, savingsPct };
 }
 
-function methodIcon(id: string) {
-  if (id === "bank") return <Landmark size={18} />;
-  return <Smartphone size={18} />;
-}
-
 /**
- * Pays for a plan picked on Settings > Billing. The mill sends the money to one
- * of the accounts in PAYMENT_METHODS, types the reference from its receipt, and
- * that goes to BossAdmin as the upgrade request's note to check and approve.
+ * Pays for a plan picked on Settings > Billing. The mill sends the money to the
+ * plan's bank account (set by BossAdmin on the plan), types the reference from
+ * its receipt, and that goes to BossAdmin as the upgrade request's note to check
+ * and approve.
  */
-export default function CheckoutPage({ methods = PAYMENT_METHODS }: { methods?: PaymentMethod[] }) {
+export default function CheckoutPage() {
   const qc = useQueryClient();
   const navigate = useNavigate();
   const [params] = useSearchParams();
@@ -59,10 +48,6 @@ export default function CheckoutPage({ methods = PAYMENT_METHODS }: { methods?: 
   );
   const current = useCurrentPlan();
   const canRequest = useAccess().canEdit("settings");
-  const paymentReady = anyPaymentReady(methods);
-  const [methodId, setMethodId] = useState<string>(
-    () => (methods.find(hasDetails) ?? methods[0])?.id ?? "",
-  );
   const [reference, setReference] = useState("");
 
   const plansQuery = useQuery<SubscriptionPlan[]>({
@@ -75,7 +60,9 @@ export default function CheckoutPage({ methods = PAYMENT_METHODS }: { methods?: 
   });
 
   const plan = plansQuery.data?.find((p) => p.id === planId);
-  const method = methods.find((m) => m.id === methodId);
+  // No account on the plan yet: the request goes without a reference and
+  // BossAdmin sorts out payment with the mill.
+  const paymentReady = !!plan?.payment_account_number;
   const isOnPaidPlan =
     !!current &&
     current.monthly_price > 0 &&
@@ -86,8 +73,8 @@ export default function CheckoutPage({ methods = PAYMENT_METHODS }: { methods?: 
     mutationFn: () => {
       const ref = reference.trim();
       const note =
-        paymentReady && method
-          ? `Paid by ${method.label}, reference ${ref}`
+        paymentReady && plan
+          ? `Paid to ${plan.payment_bank || "the bank account"}, reference ${ref}`
           : ref
             ? `Payment reference ${ref}`
             : undefined;
@@ -211,88 +198,46 @@ export default function CheckoutPage({ methods = PAYMENT_METHODS }: { methods?: 
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 items-start">
         <section className="card lg:col-span-3 space-y-5" aria-label="Payment">
           <div>
-            <h3 className="text-lg font-bold text-primary">Payment method</h3>
+            <h3 className="text-lg font-bold text-primary">Pay by bank transfer</h3>
             <p className="text-sm text-secondary mt-0.5">
               {paymentReady
-                ? `Send ${peso(price)} to one of these accounts, then enter the reference from your receipt.`
-                : `Choose how you'd like to pay the ${peso(price)}.`}
+                ? `Send ${peso(price)} to this account, then enter the reference from your receipt.`
+                : `Total to pay: ${peso(price)}.`}
             </p>
           </div>
 
-          {!paymentReady && (
+          {paymentReady ? (
+            <div className="rounded-xl border border-slate-200 dark:border-slate-700 p-4">
+              <div className="flex items-center gap-2 mb-3 text-emerald-600 dark:text-emerald-400">
+                <Landmark size={18} />
+                <span className="font-bold text-primary">{plan.payment_bank}</span>
+              </div>
+              <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5 text-sm">
+                {plan.payment_account_name && (
+                  <>
+                    <dt className="text-secondary">Account name</dt>
+                    <dd className="font-semibold text-primary">{plan.payment_account_name}</dd>
+                  </>
+                )}
+                <dt className="text-secondary">Account number</dt>
+                <dd className="font-semibold text-primary font-mono">
+                  {plan.payment_account_number}
+                </dd>
+                <dt className="text-secondary">Amount</dt>
+                <dd className="font-semibold text-primary">{peso(price)}</dd>
+              </dl>
+              <p className="text-xs text-muted mt-3">
+                Pay from any bank or e-wallet (GCash, Maya and others) through InstaPay or
+                PESONet, or deposit over the counter.
+              </p>
+            </div>
+          ) : (
             <div className="flex gap-2.5 rounded-xl bg-amber-50 dark:bg-amber-950/30 ring-1 ring-amber-200 dark:ring-amber-800 px-4 py-3 text-sm text-amber-900 dark:text-amber-200">
               <Clock size={16} className="shrink-0 mt-0.5" />
               <span>
-                Payment details are coming soon. You can send your request now and we'll contact you
-                about how to pay.
+                Payment details for {plan.name} are coming soon. You can send your request now and
+                we'll contact you about how to pay.
               </span>
-            </div>
-          )}
-
-          <div
-            className="grid grid-cols-1 sm:grid-cols-3 gap-2.5"
-            role="radiogroup"
-            aria-label="Payment method"
-          >
-            {methods.map((m) => {
-              const active = m.id === methodId;
-              return (
-                <button
-                  key={m.id}
-                  type="button"
-                  role="radio"
-                  aria-checked={active}
-                  onClick={() => setMethodId(m.id)}
-                  className={`flex items-center gap-2.5 rounded-xl border-2 px-3.5 py-3 text-left text-sm font-semibold transition-colors ${
-                    active
-                      ? "border-emerald-500 bg-emerald-50/60 dark:bg-emerald-950/30 text-primary"
-                      : "border-slate-200 dark:border-slate-700 text-secondary hover:border-slate-300 dark:hover:border-slate-600"
-                  }`}
-                >
-                  <span
-                    className={active ? "text-emerald-600 dark:text-emerald-400" : "text-muted"}
-                  >
-                    {methodIcon(m.id)}
-                  </span>
-                  {m.label}
-                </button>
-              );
-            })}
-          </div>
-
-          {method && (
-            <div className="rounded-xl border border-slate-200 dark:border-slate-700 p-4">
-              {hasDetails(method) ? (
-                <div className="flex flex-col sm:flex-row gap-4">
-                  <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5 text-sm flex-1">
-                    {method.provider && (
-                      <>
-                        <dt className="text-secondary">
-                          {method.id === "bank" ? "Bank" : "Wallet"}
-                        </dt>
-                        <dd className="font-semibold text-primary">{method.provider}</dd>
-                      </>
-                    )}
-                    <dt className="text-secondary">Account name</dt>
-                    <dd className="font-semibold text-primary">{method.accountName}</dd>
-                    <dt className="text-secondary">Account number</dt>
-                    <dd className="font-semibold text-primary font-mono">{method.accountNumber}</dd>
-                    <dt className="text-secondary">Amount</dt>
-                    <dd className="font-semibold text-primary">{peso(price)}</dd>
-                  </dl>
-                  {method.qrImage && (
-                    <img
-                      src={method.qrImage}
-                      alt={`${method.label} QR code`}
-                      className="w-36 h-36 rounded-lg border border-slate-200 dark:border-slate-700 object-contain bg-white self-center"
-                    />
-                  )}
-                </div>
-              ) : (
-                <p className="text-sm text-secondary">
-                  {method.label} account details are coming soon.
-                </p>
-              )}
             </div>
           )}
 
@@ -309,7 +254,9 @@ export default function CheckoutPage({ methods = PAYMENT_METHODS }: { methods?: 
               onChange={(e) => setReference(e.target.value)}
               placeholder="e.g. 1234567890123"
             />
-            {method && <p className="text-xs text-muted mt-1">{method.referenceHint}</p>}
+            <p className="text-xs text-muted mt-1">
+              The reference or confirmation number on your transfer receipt
+            </p>
           </div>
 
           {errorMessage && (

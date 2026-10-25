@@ -273,6 +273,10 @@ export interface SubscriptionPlan {
   features: string[];
   is_active: boolean;
   sort_order: number;
+  /** The account a mill pays this plan into, shown at checkout. Null = none yet. */
+  payment_bank?: string | null;
+  payment_account_name?: string | null;
+  payment_account_number?: string | null;
 }
 
 export type UpgradeRequestStatus = "pending" | "approved" | "rejected" | "cancelled";
