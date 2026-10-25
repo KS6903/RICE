@@ -148,18 +148,16 @@ describe("LoginPage when the server is slow or doesn't answer", () => {
     expect(await screen.findByText(/still starting up/)).toBeInTheDocument();
   });
 
-  it("explains a long wait instead of leaving the button looking stuck", () => {
-    vi.useFakeTimers();
-    vi.spyOn(authService, "login").mockReturnValue(new Promise(() => {}));
+  it("shows a loading page while signing in, and lifts it to say a password is wrong", async () => {
+    let fail!: (err: unknown) => void;
+    vi.spyOn(authService, "login").mockReturnValue(new Promise((_, reject) => (fail = reject)));
     draw(["/login"]);
     signIn();
-    expect(screen.getByRole("button", { name: "Signing in…" })).toBeDisabled();
-    expect(screen.queryByText(/server may be waking up/)).toBeNull();
+    expect(screen.getByRole("status")).toHaveTextContent("Signing in…");
 
-    act(() => {
-      vi.advanceTimersByTime(3000);
-    });
-    expect(screen.getByText(/server may be waking up/)).toBeInTheDocument();
+    act(() => fail({ response: { status: 401, data: {} } }));
+    expect(await screen.findByText("Invalid username or password.")).toBeInTheDocument();
+    expect(screen.queryByText("Signing in…")).toBeNull();
   });
 });
 

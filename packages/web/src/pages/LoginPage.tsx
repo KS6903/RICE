@@ -17,8 +17,7 @@ import { googleSignInEnabled } from "../utils/googleSignIn";
 import riceLogo from "../assets/Rice_Logo.svg";
 import { enterApp, safeNext, withNext } from "../utils/next";
 import { serverUnreachableMessage, warmUpApi } from "../services/warmUp";
-import { useAfterDelay } from "../hooks/useAfterDelay";
-import ServerWakingHint from "../components/ServerWakingHint";
+import AuthLoadingScreen from "../components/AuthLoadingScreen";
 
 export default function LoginPage() {
   // Boot a sleeping API while the person types, not after they press Sign in.
@@ -37,8 +36,6 @@ export default function LoginPage() {
     text: "",
   });
   const [loading, setLoading] = useState(false);
-  // A sign-in still going after 3 seconds is almost always the server waking up.
-  const slow = useAfterDelay(loading, 3000);
   // Two-step MFA login: when set, the password step passed and we're waiting
   // for the authenticator code.
   const [mfaChallenge, setMfaChallenge] = useState<string | null>(null);
@@ -66,7 +63,7 @@ export default function LoginPage() {
     else navigate("/");
   };
 
-  // The button stays busy on success: the page is being replaced by the app.
+  // The loading page stays up on success: the page is being replaced by the app.
   const finishLogin = async (data: any) => {
     setTokens(data?.access_token, data?.refresh_token);
     const me = await authService.me();
@@ -156,6 +153,9 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen w-full grid lg:grid-cols-2 relative overflow-hidden">
+      {/* Signing in shows a loading page, not a busy button: it opens the app, or
+          lifts to show why not. */}
+      {loading && <AuthLoadingScreen label={mfaChallenge ? "Verifying…" : "Signing in…"} />}
       {/* LEFT — marketing */}
       <div className="relative hidden lg:flex flex-col justify-between p-12 overflow-hidden">
         <div
@@ -326,7 +326,6 @@ export default function LoginPage() {
               >
                 {loading ? "Verifying…" : "Verify"}
               </button>
-              {slow && <ServerWakingHint />}
 
               <button
                 type="button"
@@ -451,7 +450,6 @@ export default function LoginPage() {
               <button type="submit" className="btn-primary w-full" disabled={loading || lockedOut}>
                 {loading ? "Signing in…" : "Sign in"}
               </button>
-              {slow && <ServerWakingHint />}
 
               {/* Google sign-in only when it is set up: see googleSignIn.ts. */}
               {googleSignInEnabled() && (

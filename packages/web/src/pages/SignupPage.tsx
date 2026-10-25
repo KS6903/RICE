@@ -11,8 +11,7 @@ import { legalService } from "../services/LegalService";
 import TurnstileWidget, { type TurnstileHandle } from "../components/TurnstileWidget";
 import { enterApp, safeNext, withNext } from "../utils/next";
 import { serverUnreachableMessage, warmUpApi } from "../services/warmUp";
-import { useAfterDelay } from "../hooks/useAfterDelay";
-import ServerWakingHint from "../components/ServerWakingHint";
+import AuthLoadingScreen from "../components/AuthLoadingScreen";
 
 // A new account's username, email and password are never a saved one, so no
 // browser or password manager may fill them in. "off" keeps Chrome's autofill
@@ -48,8 +47,6 @@ export default function SignupPage() {
     confirm: "",
   });
   const [loading, setLoading] = useState(false);
-  // Still going after 3 seconds is almost always the server waking up.
-  const slow = useAfterDelay(loading, 3000);
   const [error, setError] = useState("");
   const [acceptedTerms, setAcceptedTerms] = useState(false);
   // The version on screen travels with the acceptance. If the terms change
@@ -133,7 +130,7 @@ export default function SignupPage() {
       setTokens(data?.access_token, data?.refresh_token);
       const me = await authService.me();
       setUser(me);
-      // The button stays busy: the page is being replaced by the app.
+      // The loading page stays up: the page is being replaced by the app.
       enterApp(next ?? "/", navigate);
     } catch (e: any) {
       setLoading(false);
@@ -175,6 +172,8 @@ export default function SignupPage() {
     // the form panel would, in a window too short to fit it. Phones keep normal
     // scrolling so the on-screen keyboard can't hide the field being typed in.
     <div className="min-h-screen w-full grid lg:grid-cols-2 lg:h-screen lg:grid-rows-[minmax(0,1fr)] relative overflow-hidden">
+      {/* A loading page while the account is made: see LoginPage. */}
+      {loading && <AuthLoadingScreen label="Creating your account…" />}
       {/* Back — shares LoginPage's .btn-back component (index.css). Positioned
           just right of the seam on desktop, level with the Oraiza logo (p-12 +
           a 44px logo, the same height as this pill, so top-12 lines them up);
@@ -514,7 +513,6 @@ export default function SignupPage() {
                   {!loading && <ArrowRight size={16} />}
                 </button>
               </div>
-              {slow && <ServerWakingHint />}
 
               {/* Google sign-up only when it is set up: see googleSignIn.ts. */}
               {googleSignInEnabled() && (
