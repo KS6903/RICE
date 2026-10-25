@@ -1,46 +1,46 @@
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
-import { useEffect } from "react";
+import { lazy, Suspense, useEffect, type ComponentType } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useAuthStore } from "./stores/authStore";
 import { useIdleLogout } from "./hooks/useIdleLogout";
 import { authService } from "./services/AuthService";
 import AppShell from "./components/layout/AppShell";
 import AdminShell from "./components/layout/AdminShell";
-import HomePage from "./pages/HomePage";
-import LoginPage from "./pages/LoginPage";
-import SignupPage from "./pages/SignupPage";
-import ForgotPasswordPage from "./pages/ForgotPasswordPage";
-import ResetPasswordPage from "./pages/ResetPasswordPage";
-import VerifyEmailPage from "./pages/VerifyEmailPage";
-import HomeRoute from "./components/HomeRoute";
-import PaddyPage from "./pages/PaddyPage";
-import RicePurchasesPage from "./pages/RicePurchasesPage";
-import ByproductPurchasesPage from "./pages/ByproductPurchasesPage";
-import MillingPage from "./pages/MillingPage";
-import InventoryPage from "./pages/InventoryPage";
-import SalesPage from "./pages/SalesPage";
-import DispatchPage from "./pages/DispatchPage";
-import FieldOperatorsPage from "./pages/FieldOperatorsPage";
-import CostsPage from "./pages/CostsPage";
-import ReportsPage from "./pages/ReportsPage";
-import AutomationsPage from "./pages/AutomationsPage";
-import TasksPage from "./pages/TasksPage";
-import CollectionsPage from "./pages/CollectionsPage";
-import CashCountPage from "./pages/CashCountPage";
-import StockCountPage from "./pages/StockCountPage";
-import CatalogPage from "./pages/CatalogPage";
-import MaintenancePage from "./pages/MaintenancePage";
-import UsersPage from "./pages/UsersPage";
-import EmployeesPage from "./pages/EmployeesPage";
-import SettingsPage from "./pages/SettingsPage";
-import CheckoutPage from "./pages/CheckoutPage";
-import CheckoutReturnPage from "./pages/CheckoutReturnPage";
-import AdminDashboard from "./pages/admin/AdminDashboard";
-import AdminTenants from "./pages/admin/AdminTenants";
-import AdminTenantDetail from "./pages/admin/AdminTenantDetail";
-import AdminUsers from "./pages/admin/AdminUsers";
-import AdminUpgradeRequests from "./pages/admin/AdminUpgradeRequests";
-import AdminSettingsPage from "./pages/admin/AdminSettingsPage";
+const HomePage = lazy(() => import("./pages/HomePage"));
+const LoginPage = lazy(() => import("./pages/LoginPage"));
+const SignupPage = lazy(() => import("./pages/SignupPage"));
+const ForgotPasswordPage = lazy(() => import("./pages/ForgotPasswordPage"));
+const ResetPasswordPage = lazy(() => import("./pages/ResetPasswordPage"));
+const VerifyEmailPage = lazy(() => import("./pages/VerifyEmailPage"));
+const HomeRoute = lazy(() => import("./components/HomeRoute"));
+const PaddyPage = lazy(() => import("./pages/PaddyPage"));
+const RicePurchasesPage = lazy(() => import("./pages/RicePurchasesPage"));
+const ByproductPurchasesPage = lazy(() => import("./pages/ByproductPurchasesPage"));
+const MillingPage = lazy(() => import("./pages/MillingPage"));
+const InventoryPage = lazy(() => import("./pages/InventoryPage"));
+const SalesPage = lazy(() => import("./pages/SalesPage"));
+const DispatchPage = lazy(() => import("./pages/DispatchPage"));
+const FieldOperatorsPage = lazy(() => import("./pages/FieldOperatorsPage"));
+const CostsPage = lazy(() => import("./pages/CostsPage"));
+const ReportsPage = lazy(() => import("./pages/ReportsPage"));
+const AutomationsPage = lazy(() => import("./pages/AutomationsPage"));
+const TasksPage = lazy(() => import("./pages/TasksPage"));
+const CollectionsPage = lazy(() => import("./pages/CollectionsPage"));
+const CashCountPage = lazy(() => import("./pages/CashCountPage"));
+const StockCountPage = lazy(() => import("./pages/StockCountPage"));
+const CatalogPage = lazy(() => import("./pages/CatalogPage"));
+const MaintenancePage = lazy(() => import("./pages/MaintenancePage"));
+const UsersPage = lazy(() => import("./pages/UsersPage"));
+const EmployeesPage = lazy(() => import("./pages/EmployeesPage"));
+const SettingsPage = lazy(() => import("./pages/SettingsPage"));
+const CheckoutPage = lazy(() => import("./pages/CheckoutPage"));
+const CheckoutReturnPage = lazy(() => import("./pages/CheckoutReturnPage"));
+const AdminDashboard = lazy(() => import("./pages/admin/AdminDashboard"));
+const AdminTenants = lazy(() => import("./pages/admin/AdminTenants"));
+const AdminTenantDetail = lazy(() => import("./pages/admin/AdminTenantDetail"));
+const AdminUsers = lazy(() => import("./pages/admin/AdminUsers"));
+const AdminUpgradeRequests = lazy(() => import("./pages/admin/AdminUpgradeRequests"));
+const AdminSettingsPage = lazy(() => import("./pages/admin/AdminSettingsPage"));
 import FeatureGate from "./components/FeatureGate";
 import RoleGate from "./components/RoleGate";
 import MfaEnrollmentGate from "./components/MfaEnrollmentGate";
@@ -48,8 +48,26 @@ import AccountClosedGate from "./components/AccountClosedGate";
 import PasswordChangeGate from "./components/PasswordChangeGate";
 import EmailVerificationGate from "./components/EmailVerificationGate";
 import LegalAcceptanceGate from "./components/LegalAcceptanceGate";
-import LegalPage from "./pages/LegalPage";
-import RetrieveDataPage from "./pages/RetrieveDataPage";
+const LegalPage = lazy(() => import("./pages/LegalPage"));
+const RetrieveDataPage = lazy(() => import("./pages/RetrieveDataPage"));
+
+function LazyPage({ component: Page }: { component: ComponentType<any> }) {
+  return (
+    <Suspense
+      fallback={
+        <div
+          className="mx-auto flex min-h-[40vh] w-full max-w-7xl items-center justify-center p-6"
+          role="status"
+          aria-label="Loading page"
+        >
+          <span className="h-9 w-9 animate-spin rounded-full border-4 border-emerald-600 border-t-transparent" />
+        </div>
+      }
+    >
+      <Page />
+    </Suspense>
+  );
+}
 
 function AuthSessionSync() {
   const hasAccessToken = useAuthStore((s) => !!s.accessToken);
@@ -103,7 +121,7 @@ function TenantRoute({ children }: { children: React.ReactNode }) {
   const { pathname } = useLocation();
   if (!isAuthenticated) {
     if (pathname !== "/") return <Navigate to="/" replace />;
-    return <HomePage />;
+    return <LazyPage component={HomePage} />;
   }
   if (user?.is_platform_admin) return <Navigate to="/admin" replace />;
   return <>{children}</>;
@@ -143,16 +161,16 @@ function AppRoutes() {
   if (mustAccept && !onLegalPage) return <LegalAcceptanceGate />;
   return (
     <Routes>
-      <Route path="/login" element={<LoginPage />} />
-      <Route path="/signup" element={<SignupPage />} />
-      <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-      <Route path="/reset-password" element={<ResetPasswordPage />} />
-      <Route path="/verify-email" element={<VerifyEmailPage />} />
-      <Route path="/legal" element={<LegalPage />} />
-      <Route path="/legal/:key" element={<LegalPage />} />
+      <Route path="/login" element={<LazyPage component={LoginPage} />} />
+      <Route path="/signup" element={<LazyPage component={SignupPage} />} />
+      <Route path="/forgot-password" element={<LazyPage component={ForgotPasswordPage} />} />
+      <Route path="/reset-password" element={<LazyPage component={ResetPasswordPage} />} />
+      <Route path="/verify-email" element={<LazyPage component={VerifyEmailPage} />} />
+      <Route path="/legal" element={<LazyPage component={LegalPage} />} />
+      <Route path="/legal/:key" element={<LazyPage component={LegalPage} />} />
       {/* Open to anyone: it explains the steps, or takes the backup once the
           owner of a new, empty account is signed in. */}
-      <Route path="/retrieve-data" element={<RetrieveDataPage />} />
+      <Route path="/retrieve-data" element={<LazyPage component={RetrieveDataPage} />} />
       {/* The address people guess for loading a backup file. */}
       <Route path="/upload" element={<Navigate to="/retrieve-data" replace />} />
 
@@ -164,12 +182,12 @@ function AppRoutes() {
           </AdminRoute>
         }
       >
-        <Route index element={<AdminDashboard />} />
-        <Route path="tenants" element={<AdminTenants />} />
-        <Route path="tenants/:id" element={<AdminTenantDetail />} />
-        <Route path="users" element={<AdminUsers />} />
-        <Route path="upgrade-requests" element={<AdminUpgradeRequests />} />
-        <Route path="settings" element={<AdminSettingsPage />} />
+        <Route index element={<LazyPage component={AdminDashboard} />} />
+        <Route path="tenants" element={<LazyPage component={AdminTenants} />} />
+        <Route path="tenants/:id" element={<LazyPage component={AdminTenantDetail} />} />
+        <Route path="users" element={<LazyPage component={AdminUsers} />} />
+        <Route path="upgrade-requests" element={<LazyPage component={AdminUpgradeRequests} />} />
+        <Route path="settings" element={<LazyPage component={AdminSettingsPage} />} />
       </Route>
 
       <Route
@@ -180,13 +198,13 @@ function AppRoutes() {
           </TenantRoute>
         }
       >
-        <Route index element={<HomeRoute />} />
+        <Route index element={<LazyPage component={HomeRoute} />} />
         <Route
           path="paddy"
           element={
             <RoleGate section="paddy">
               <FeatureGate code="paddy" label="Paddy procurement">
-                <PaddyPage />
+              <LazyPage component={PaddyPage} />
               </FeatureGate>
             </RoleGate>
           }
@@ -196,7 +214,7 @@ function AppRoutes() {
           element={
             <RoleGate section="paddy">
               <FeatureGate code="paddy" label="Rice purchases">
-                <RicePurchasesPage />
+              <LazyPage component={RicePurchasesPage} />
               </FeatureGate>
             </RoleGate>
           }
@@ -206,7 +224,7 @@ function AppRoutes() {
           element={
             <RoleGate section="paddy">
               <FeatureGate code="paddy" label="By-product purchases">
-                <ByproductPurchasesPage />
+              <LazyPage component={ByproductPurchasesPage} />
               </FeatureGate>
             </RoleGate>
           }
@@ -216,7 +234,7 @@ function AppRoutes() {
           element={
             <RoleGate section="milling">
               <FeatureGate code="milling" label="Milling" requires="Basic or higher">
-                <MillingPage />
+              <LazyPage component={MillingPage} />
               </FeatureGate>
             </RoleGate>
           }
@@ -226,7 +244,7 @@ function AppRoutes() {
           element={
             <RoleGate section="inventory">
               <FeatureGate code="inventory" label="Inventory">
-                <InventoryPage />
+              <LazyPage component={InventoryPage} />
               </FeatureGate>
             </RoleGate>
           }
@@ -236,7 +254,7 @@ function AppRoutes() {
           element={
             <RoleGate section="sales">
               <FeatureGate code="sales" label="Sales">
-                <SalesPage />
+              <LazyPage component={SalesPage} />
               </FeatureGate>
             </RoleGate>
           }
@@ -246,7 +264,7 @@ function AppRoutes() {
           element={
             <RoleGate section="dispatch">
               <FeatureGate code="dispatch" label="Dispatch" requires="Basic or higher">
-                <DispatchPage />
+              <LazyPage component={DispatchPage} />
               </FeatureGate>
             </RoleGate>
           }
@@ -260,7 +278,7 @@ function AppRoutes() {
                 label="Field Operators"
                 requires="Pro or Enterprise"
               >
-                <FieldOperatorsPage />
+              <LazyPage component={FieldOperatorsPage} />
               </FeatureGate>
             </RoleGate>
           }
@@ -270,7 +288,7 @@ function AppRoutes() {
           element={
             <RoleGate section="expenses">
               <FeatureGate code="expenses" label="Expenses">
-                <CostsPage />
+              <LazyPage component={CostsPage} />
               </FeatureGate>
             </RoleGate>
           }
@@ -280,7 +298,7 @@ function AppRoutes() {
           element={
             <RoleGate section="reports">
               <FeatureGate code="dashboard" label="Reports">
-                <ReportsPage />
+              <LazyPage component={ReportsPage} />
               </FeatureGate>
             </RoleGate>
           }
@@ -290,7 +308,7 @@ function AppRoutes() {
           element={
             <RoleGate section="users">
               <FeatureGate code="users" label="Users">
-                <UsersPage />
+              <LazyPage component={UsersPage} />
               </FeatureGate>
             </RoleGate>
           }
@@ -300,7 +318,7 @@ function AppRoutes() {
           element={
             <RoleGate section="employees">
               <FeatureGate code="employees" label="Employees" requires="Pro or Enterprise">
-                <EmployeesPage />
+              <LazyPage component={EmployeesPage} />
               </FeatureGate>
             </RoleGate>
           }
@@ -310,7 +328,7 @@ function AppRoutes() {
           element={
             <RoleGate section="automations">
               <FeatureGate code="automations" label="Automations" requires="Enterprise">
-                <AutomationsPage />
+              <LazyPage component={AutomationsPage} />
               </FeatureGate>
             </RoleGate>
           }
@@ -320,7 +338,7 @@ function AppRoutes() {
           element={
             <RoleGate section="milling">
               <FeatureGate code="automations" label="Maintenance" requires="Enterprise">
-                <MaintenancePage />
+              <LazyPage component={MaintenancePage} />
               </FeatureGate>
             </RoleGate>
           }
@@ -329,7 +347,7 @@ function AppRoutes() {
           path="catalog"
           element={
             <RoleGate section="settings">
-              <CatalogPage />
+              <LazyPage component={CatalogPage} />
             </RoleGate>
           }
         />
@@ -338,7 +356,7 @@ function AppRoutes() {
           element={
             <RoleGate section="inventory">
               <FeatureGate code="automations" label="Stock count" requires="Enterprise">
-                <StockCountPage />
+              <LazyPage component={StockCountPage} />
               </FeatureGate>
             </RoleGate>
           }
@@ -348,7 +366,7 @@ function AppRoutes() {
           element={
             <RoleGate section="sales">
               <FeatureGate code="cash_count" label="Cash count" requires="Pro or Enterprise">
-                <CashCountPage />
+              <LazyPage component={CashCountPage} />
               </FeatureGate>
             </RoleGate>
           }
@@ -358,7 +376,7 @@ function AppRoutes() {
           element={
             <RoleGate section="sales">
               <FeatureGate code="collections" label="Collections" requires="Pro or Enterprise">
-                <CollectionsPage />
+              <LazyPage component={CollectionsPage} />
               </FeatureGate>
             </RoleGate>
           }
@@ -368,17 +386,17 @@ function AppRoutes() {
           element={
             <RoleGate section="tasks">
               <FeatureGate code="automations" label="To do" requires="Enterprise">
-                <TasksPage />
+              <LazyPage component={TasksPage} />
               </FeatureGate>
             </RoleGate>
           }
         />
-        <Route path="settings" element={<SettingsPage />} />
+        <Route path="settings" element={<LazyPage component={SettingsPage} />} />
         <Route
           path="settings/checkout"
           element={
             <RoleGate section="settings">
-              <CheckoutPage />
+              <LazyPage component={CheckoutPage} />
             </RoleGate>
           }
         />
@@ -386,7 +404,7 @@ function AppRoutes() {
           path="settings/checkout/return"
           element={
             <RoleGate section="settings">
-              <CheckoutReturnPage />
+              <LazyPage component={CheckoutReturnPage} />
             </RoleGate>
           }
         />
