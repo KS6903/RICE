@@ -19,6 +19,7 @@ PLAN_KEYS = {
     "payment_bank",
     "payment_account_name",
     "payment_account_number",
+    "payment_qr_key",
 }
 
 

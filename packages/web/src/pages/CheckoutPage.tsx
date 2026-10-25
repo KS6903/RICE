@@ -6,7 +6,9 @@ import {
   Check,
   CheckCircle2,
   Clock,
+  Copy,
   CreditCard,
+  Download,
   Globe,
   Landmark,
   Loader2,
@@ -24,6 +26,7 @@ import type {
 import { billingService } from "../services/BillingService";
 import { useCurrentPlan } from "../hooks/useFeature";
 import { useAccess } from "../hooks/useAccess";
+import { mediaUrl } from "../utils/media";
 import { redirectTo } from "../utils/redirect";
 
 const LABEL = "block text-sm font-semibold text-secondary mb-1.5";
@@ -49,6 +52,38 @@ function priceFor(p: SubscriptionPlan, interval: BillingInterval) {
       ? Math.round((1 - p.annual_price / (p.monthly_price * 12)) * 100)
       : 0;
   return { price, savingsPct };
+}
+
+/** Copies the text (an account number, without its spaces) and says so. */
+function CopyButton({ text, label }: { text: string; label: string }) {
+  const [copied, setCopied] = useState(false);
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      setCopied(false);
+    }
+  };
+  return (
+    <button
+      type="button"
+      onClick={copy}
+      aria-label={label}
+      className="inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-semibold ring-1 ring-slate-200 dark:ring-slate-700 text-secondary hover:text-primary hover:bg-slate-100 dark:hover:bg-slate-700/40 transition-colors"
+    >
+      {copied ? (
+        <>
+          <Check size={12} className="text-emerald-600" /> Copied
+        </>
+      ) : (
+        <>
+          <Copy size={12} /> Copy
+        </>
+      )}
+    </button>
+  );
 }
 
 /**
@@ -328,24 +363,55 @@ export default function CheckoutPage() {
 
             {paymentReady ? (
               <div className="rounded-xl border border-slate-200 dark:border-slate-700 p-4">
-                <div className="flex items-center gap-2 mb-3 text-emerald-600 dark:text-emerald-400">
-                  <Landmark size={18} />
-                  <span className="font-bold text-primary">{plan.payment_bank}</span>
-                </div>
-                <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5 text-sm">
-                  {plan.payment_account_name && (
-                    <>
-                      <dt className="text-secondary">Account name</dt>
-                      <dd className="font-semibold text-primary">{plan.payment_account_name}</dd>
-                    </>
+                <div className="flex flex-col sm:flex-row gap-4">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-3 text-emerald-600 dark:text-emerald-400">
+                      <Landmark size={18} />
+                      <span className="font-bold text-primary">{plan.payment_bank}</span>
+                    </div>
+                    <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5 text-sm items-center">
+                      {plan.payment_account_name && (
+                        <>
+                          <dt className="text-secondary">Account name</dt>
+                          <dd className="font-semibold text-primary">
+                            {plan.payment_account_name}
+                          </dd>
+                        </>
+                      )}
+                      <dt className="text-secondary">Account number</dt>
+                      <dd className="flex items-center gap-2 flex-wrap">
+                        <span className="font-semibold text-primary font-mono">
+                          {plan.payment_account_number}
+                        </span>
+                        <CopyButton
+                          text={(plan.payment_account_number ?? "").replace(/\s+/g, "")}
+                          label="Copy account number"
+                        />
+                      </dd>
+                      <dt className="text-secondary">Amount</dt>
+                      <dd className="font-semibold text-primary">{peso(price)}</dd>
+                    </dl>
+                  </div>
+                  {plan.payment_qr_key && (
+                    <div className="sm:w-44 shrink-0 text-center">
+                      <img
+                        src={mediaUrl(plan.payment_qr_key)}
+                        alt={`QR code to pay ${plan.payment_bank ?? ""}`}
+                        className="w-44 h-44 mx-auto rounded-lg border border-slate-200 dark:border-slate-700 object-contain bg-white"
+                      />
+                      <a
+                        href={mediaUrl(plan.payment_qr_key)}
+                        download={`oraiza-${plan.code}-qr`}
+                        className="mt-2 inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-700 dark:text-emerald-400 hover:underline"
+                      >
+                        <Download size={13} /> Save QR code
+                      </a>
+                      <p className="text-[11px] text-muted mt-0.5">
+                        Scan it, or save it and open it in your bank or e-wallet app.
+                      </p>
+                    </div>
                   )}
-                  <dt className="text-secondary">Account number</dt>
-                  <dd className="font-semibold text-primary font-mono">
-                    {plan.payment_account_number}
-                  </dd>
-                  <dt className="text-secondary">Amount</dt>
-                  <dd className="font-semibold text-primary">{peso(price)}</dd>
-                </dl>
+                </div>
                 <p className="text-xs text-muted mt-3">
                   Pay from any bank or e-wallet (GCash, Maya and others) through InstaPay or
                   PESONet, or deposit over the counter.

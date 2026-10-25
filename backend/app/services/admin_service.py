@@ -16,7 +16,7 @@ from sqlalchemy import func, true
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import Session
 
-from ..core import account_status, legal, provisioning
+from ..core import account_status, legal, media_store, provisioning
 from ..core.exceptions import AppException, BadRequestError, ConflictError, NotFoundError
 from ..core.security import invalidate_company_features
 from ..core.tenancy import tenant_session
@@ -56,6 +56,22 @@ def _blank_to_none(value: str | None) -> str | None:
     return (value or "").strip() or None
 
 
+# A plan's payment QR code: a photo or screenshot of it, never an SVG (which can
+# carry script). Checked by its first bytes, not by what the browser claims.
+QR_MAX_BYTES = 3 * 1024 * 1024
+MEDIA_TYPES = {"png": "image/png", "jpg": "image/jpeg", "webp": "image/webp"}
+
+
+def picture_type(data: bytes) -> str | None:
+    if data.startswith(b"\x89PNG\r\n\x1a\n"):
+        return "png"
+    if data.startswith(b"\xff\xd8\xff"):
+        return "jpg"
+    if data[:4] == b"RIFF" and data[8:12] == b"WEBP":
+        return "webp"
+    return None
+
+
 class AdminService(BaseService):
     def __init__(
         self,
@@ -93,6 +109,7 @@ class AdminService(BaseService):
             "payment_bank": p.payment_bank,
             "payment_account_name": p.payment_account_name,
             "payment_account_number": p.payment_account_number,
+            "payment_qr_key": p.payment_qr_key,
         }
 
     @staticmethod
@@ -184,13 +201,63 @@ class AdminService(BaseService):
             plan.features = data.features
             plan.is_active = data.is_active
             plan.sort_order = data.sort_order
-            plan.payment_bank = _blank_to_none(data.payment_bank)
-            plan.payment_account_name = _blank_to_none(data.payment_account_name)
-            plan.payment_account_number = _blank_to_none(data.payment_account_number)
+            # Settings > Payment accounts owns these now; a plan saved without
+            # them (the Edit plan form) keeps what it has.
+            if "payment_bank" in data.model_fields_set:
+                plan.payment_bank = _blank_to_none(data.payment_bank)
+            if "payment_account_name" in data.model_fields_set:
+                plan.payment_account_name = _blank_to_none(data.payment_account_name)
+            if "payment_account_number" in data.model_fields_set:
+                plan.payment_account_number = _blank_to_none(data.payment_account_number)
         self.db.refresh(plan)
         # Editing a plan's features changes entitlements for every company on it.
         for cid in self.subscriptions.company_ids_on_plan(plan.id):
             invalidate_company_features(cid)
+        return self._plan_payload(plan)
+
+    # ── payment accounts (Settings > Payment accounts) ────────────────────────
+
+    def update_payment_account(self, plan_id: uuid.UUID, data) -> dict:
+        plan = self.plans.get(plan_id)
+        if not plan:
+            raise NotFoundError("Plan not found")
+        with self.transaction():
+            plan.payment_bank = _blank_to_none(data.payment_bank)
+            plan.payment_account_name = _blank_to_none(data.payment_account_name)
+            plan.payment_account_number = _blank_to_none(data.payment_account_number)
+        self.db.refresh(plan)
+        return self._plan_payload(plan)
+
+    def set_payment_qr(self, plan_id: uuid.UUID, data: bytes) -> dict:
+        """Store the plan's QR picture (PNG, JPEG or WebP) and drop the old one."""
+        plan = self.plans.get(plan_id)
+        if not plan:
+            raise NotFoundError("Plan not found")
+        ext = picture_type(data)
+        if ext is None:
+            raise BadRequestError("Upload a PNG, JPEG or WebP picture of the QR code.")
+        if len(data) > QR_MAX_BYTES:
+            raise BadRequestError(f"The picture is over {QR_MAX_BYTES // (1024 * 1024)} MB. Use a smaller one.")
+        key = f"payment-qr/{plan.id}/{uuid.uuid4().hex}.{ext}"
+        media_store.put(key, data, MEDIA_TYPES[ext])
+        old = plan.payment_qr_key
+        with self.transaction():
+            plan.payment_qr_key = key
+        if old:
+            media_store.delete(old)
+        self.db.refresh(plan)
+        return self._plan_payload(plan)
+
+    def remove_payment_qr(self, plan_id: uuid.UUID) -> dict:
+        plan = self.plans.get(plan_id)
+        if not plan:
+            raise NotFoundError("Plan not found")
+        old = plan.payment_qr_key
+        with self.transaction():
+            plan.payment_qr_key = None
+        if old:
+            media_store.delete(old)
+        self.db.refresh(plan)
         return self._plan_payload(plan)
 
     def delete_plan(self, plan_id: uuid.UUID) -> dict:

@@ -58,6 +58,7 @@ class BillingService(BaseService):
             "payment_bank": p.payment_bank,
             "payment_account_name": p.payment_account_name,
             "payment_account_number": p.payment_account_number,
+            "payment_qr_key": p.payment_qr_key,
         }
 
     @staticmethod

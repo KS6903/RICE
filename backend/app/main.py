@@ -33,6 +33,7 @@ from .api import (
     legal,
     locations,
     maintenance,
+    media,
     milling,
     notifications,
     paddy,
@@ -152,6 +153,7 @@ app.include_router(admin.router, prefix="/api/admin", tags=["Platform Admin"], d
 app.include_router(employees.router, prefix="/api/employees", tags=["Employees"], dependencies=mfa_gate)
 app.include_router(billing.router, prefix="/api/billing", tags=["Billing"], dependencies=mfa_gate)
 app.include_router(billing.webhooks, prefix="/api/billing/webhooks", tags=["Billing webhooks"])
+app.include_router(media.router, prefix="/api/media", tags=["Media"])
 app.include_router(canva.router, prefix="/api", tags=["Warehouse Canva"], dependencies=mfa_gate)
 app.include_router(canva.ws_router, tags=["Warehouse Canva (Realtime)"])
 app.include_router(dispatch.router, prefix="/api", tags=["Dispatch"], dependencies=mfa_gate)

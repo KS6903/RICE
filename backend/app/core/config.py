@@ -158,6 +158,15 @@ class Settings(BaseSettings):
     PAYPAL_CLIENT_ID: str | None = None
     PAYPAL_CLIENT_SECRET: SecretStr | None = None
     PAYPAL_ENV: Literal["sandbox", "live"] = "sandbox"
+    # Uploaded pictures (core/media_store.py): Cloudflare R2 through its S3 API.
+    # An R2 API token with Object Read & Write on the bucket gives the key pair.
+    # Unset, local development keeps them in MEDIA_DIR; a deployed site refuses
+    # uploads instead (its disk doesn't survive a restart).
+    R2_ACCOUNT_ID: str | None = None
+    R2_ACCESS_KEY_ID: str | None = None
+    R2_SECRET_ACCESS_KEY: SecretStr | None = None
+    R2_BUCKET: str | None = None
+    MEDIA_DIR: str = "media"
     # Advisory calls cost money per request; kept tight since the endpoint is
     # also cached server-side for hours per location/day (see TTL_DRYING_ADVISORY).
     RATE_LIMIT_DRYING_ADVISOR: str = "10/hour"

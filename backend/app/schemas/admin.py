@@ -26,6 +26,14 @@ class PlanUpsert(BaseModel):
     payment_account_number: str | None = Field(None, max_length=50)
 
 
+class PaymentAccountUpdate(BaseModel):
+    """Settings > Payment accounts: where mills send the money for one plan."""
+
+    payment_bank: str | None = Field(None, max_length=100)
+    payment_account_name: str | None = Field(None, max_length=150)
+    payment_account_number: str | None = Field(None, max_length=50)
+
+
 class SubscriptionAssign(BaseModel):
     plan_id: uuid.UUID
     status: str = "active"  # active, trial, past_due, cancelled, expired

@@ -280,6 +280,8 @@ export interface SubscriptionPlan {
   payment_bank?: string | null;
   payment_account_name?: string | null;
   payment_account_number?: string | null;
+  /** Its QR code, read at /api/media/<key> (web: utils/media.ts). */
+  payment_qr_key?: string | null;
 }
 
 export type PaymentProvider = "paymongo" | "paypal";

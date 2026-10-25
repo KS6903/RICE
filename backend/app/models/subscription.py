@@ -39,6 +39,8 @@ class SubscriptionPlan(Base):
     payment_bank: Mapped[str | None] = mapped_column(String(100))
     payment_account_name: Mapped[str | None] = mapped_column(String(150))
     payment_account_number: Mapped[str | None] = mapped_column(String(50))
+    # Its QR code: a picture in R2 (core/media_store.py), served at /api/media/<key>.
+    payment_qr_key: Mapped[str | None] = mapped_column(String(200))
 
 
 class Subscription(Base, TimestampMixin):

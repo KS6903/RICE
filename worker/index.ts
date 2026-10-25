@@ -44,6 +44,10 @@ export interface Env {
   PAYPAL_CLIENT_ID?: string;
   PAYPAL_CLIENT_SECRET?: string;
   PAYPAL_ENV?: string;
+  R2_ACCOUNT_ID?: string;
+  R2_ACCESS_KEY_ID?: string;
+  R2_SECRET_ACCESS_KEY?: string;
+  R2_BUCKET?: string;
   UPSTASH_API_EMAIL?: string;
   UPSTASH_API_KEY?: string;
   UPSTASH_DATABASE_ID?: string;

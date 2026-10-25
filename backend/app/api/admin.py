@@ -18,13 +18,14 @@ from ..repositories.billing import (
     UpgradeRequestRepository,
 )
 from ..schemas.admin import (
+    PaymentAccountUpdate,
     PlanUpsert,
     SubscriptionActivate,
     SubscriptionAssign,
     TenantActiveToggle,
     UpgradeRequestResolution,
 )
-from ..services.admin_service import AdminService
+from ..services.admin_service import QR_MAX_BYTES, AdminService
 from .data_backup import check_upload_size
 
 router = APIRouter()
@@ -64,6 +65,27 @@ def update_plan(plan_id: uuid.UUID, body: PlanUpsert, svc: AdminService = Depend
 @router.delete("/plans/{plan_id}")
 def delete_plan(plan_id: uuid.UUID, svc: AdminService = Depends(get_admin_service)):
     return svc.delete_plan(plan_id)
+
+
+# ── Payment accounts (where mills pay for each plan) ──────────────────────────
+
+
+@router.put("/plans/{plan_id}/payment-account")
+def update_payment_account(
+    plan_id: uuid.UUID, body: PaymentAccountUpdate, svc: AdminService = Depends(get_admin_service)
+):
+    return svc.update_payment_account(plan_id, body)
+
+
+@router.post("/plans/{plan_id}/payment-qr")
+def upload_payment_qr(plan_id: uuid.UUID, file: UploadFile = File(...), svc: AdminService = Depends(get_admin_service)):
+    # One byte over the limit is enough to refuse it, without reading a huge file.
+    return svc.set_payment_qr(plan_id, file.file.read(QR_MAX_BYTES + 1))
+
+
+@router.delete("/plans/{plan_id}/payment-qr")
+def remove_payment_qr(plan_id: uuid.UUID, svc: AdminService = Depends(get_admin_service)):
+    return svc.remove_payment_qr(plan_id)
 
 
 # ── Tenant subscriptions ──────────────────────────────────────────────────────

@@ -76,6 +76,19 @@ export class AdminService {
     return this.http.delete(`/admin/plans/${id}`).then((r) => r.data);
   }
 
+  // ── payment accounts (where mills pay for each plan) ────────────────────────
+  updatePaymentAccount(id: string, body: Record<string, unknown>): Promise<any> {
+    return this.http.put(`/admin/plans/${id}/payment-account`, body).then((r) => r.data);
+  }
+  uploadPaymentQr(id: string, file: File): Promise<any> {
+    const form = new FormData();
+    form.append("file", file);
+    return this.http.post(`/admin/plans/${id}/payment-qr`, form, MULTIPART).then((r) => r.data);
+  }
+  removePaymentQr(id: string): Promise<any> {
+    return this.http.delete(`/admin/plans/${id}/payment-qr`).then((r) => r.data);
+  }
+
   // ── tenants ─────────────────────────────────────────────────────────────────
   getTenants(): Promise<any[]> {
     return this.http.get("/admin/tenants").then((r) => r.data);

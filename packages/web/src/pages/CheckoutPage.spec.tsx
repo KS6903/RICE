@@ -178,4 +178,24 @@ describe("Checkout", () => {
     draw("/settings/checkout?plan=basic&interval=monthly&cancelled=1");
     expect(await screen.findByText(/The payment was cancelled/)).toBeInTheDocument();
   });
+
+  it("copies the account number without spaces and shows the QR code", async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, "clipboard", { value: { writeText }, configurable: true });
+    vi.spyOn(billingService, "getPlans").mockResolvedValue([
+      { ...basic, payment_qr_key: "payment-qr/basic/abc.png" },
+    ]);
+    draw();
+
+    fireEvent.click(await screen.findByRole("button", { name: "Copy account number" }));
+    await waitFor(() => expect(writeText).toHaveBeenCalledWith("000011112222"));
+    expect(await screen.findByText("Copied")).toBeInTheDocument();
+
+    const qr = screen.getByRole("img", { name: /QR code to pay Test Bank/ });
+    expect(qr).toHaveAttribute("src", "/api/media/payment-qr/basic/abc.png");
+    expect(screen.getByRole("link", { name: /Save QR code/ })).toHaveAttribute(
+      "href",
+      "/api/media/payment-qr/basic/abc.png",
+    );
+  });
 });
