@@ -246,161 +246,168 @@ export default function CheckoutPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 items-start">
         <div className="lg:col-span-3 space-y-6">
-        {anyOnline && (
-          <section className="card space-y-4" aria-label="Pay online">
+          {anyOnline && (
+            <section className="card space-y-4" aria-label="Pay online">
+              <div>
+                <h3 className="text-lg font-bold text-primary">Pay online</h3>
+                <p className="text-sm text-secondary mt-0.5">
+                  Your plan turns on as soon as the payment goes through.
+                </p>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {online.paymongo && (
+                  <button
+                    type="button"
+                    onClick={() => payOnline.mutate("paymongo")}
+                    disabled={leaving}
+                    className="btn-primary !h-auto !py-3 flex-col !items-start text-left"
+                  >
+                    <span className="flex items-center gap-2 text-base">
+                      {payOnline.isPending && payOnline.variables === "paymongo" ? (
+                        <Loader2 size={16} className="animate-spin" />
+                      ) : (
+                        <Wallet size={16} />
+                      )}
+                      Pay {peso(price)}
+                    </span>
+                    <span className="text-xs font-medium opacity-90">
+                      GCash, Maya, QR Ph, card or online banking
+                    </span>
+                  </button>
+                )}
+                {offerPaypal && (
+                  <button
+                    type="button"
+                    onClick={() => payOnline.mutate("paypal")}
+                    disabled={leaving}
+                    className="btn-secondary !h-auto !py-3 flex-col !items-start text-left"
+                  >
+                    <span className="flex items-center gap-2 text-base">
+                      {payOnline.isPending && payOnline.variables === "paypal" ? (
+                        <Loader2 size={16} className="animate-spin" />
+                      ) : (
+                        <Globe size={16} />
+                      )}
+                      Pay {dollars(usdPrice)} USD
+                    </span>
+                    <span className="text-xs font-medium text-secondary">
+                      From abroad: PayPal or card, in US dollars
+                    </span>
+                  </button>
+                )}
+              </div>
+              {onlineError && (
+                <p className="text-sm font-medium text-rose-600 dark:text-rose-400">
+                  {onlineError}
+                </p>
+              )}
+              <p className="flex items-start gap-1.5 text-xs text-muted">
+                <Lock size={14} className="shrink-0 mt-px" />
+                You'll pay on{" "}
+                {online.paymongo && offerPaypal
+                  ? "PayMongo's or PayPal's"
+                  : online.paymongo
+                    ? "PayMongo's"
+                    : "PayPal's"}{" "}
+                secure page, then come back here. Card details never reach us.
+              </p>
+            </section>
+          )}
+
+          <section className="card space-y-5" aria-label="Payment">
             <div>
-              <h3 className="text-lg font-bold text-primary">Pay online</h3>
+              <h3 className="text-lg font-bold text-primary">
+                {anyOnline ? "Or pay by bank transfer" : "Pay by bank transfer"}
+              </h3>
               <p className="text-sm text-secondary mt-0.5">
-                Your plan turns on as soon as the payment goes through.
+                {paymentReady
+                  ? `Send ${peso(price)} to this account, then enter the reference from your receipt.`
+                  : `Total to pay: ${peso(price)}.`}
               </p>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {online.paymongo && (
-                <button
-                  type="button"
-                  onClick={() => payOnline.mutate("paymongo")}
-                  disabled={leaving}
-                  className="btn-primary !h-auto !py-3 flex-col !items-start text-left"
-                >
-                  <span className="flex items-center gap-2 text-base">
-                    {payOnline.isPending && payOnline.variables === "paymongo" ? (
-                      <Loader2 size={16} className="animate-spin" />
-                    ) : (
-                      <Wallet size={16} />
-                    )}
-                    Pay {peso(price)}
-                  </span>
-                  <span className="text-xs font-medium opacity-90">
-                    GCash, Maya, QR Ph, card or online banking
-                  </span>
-                </button>
-              )}
-              {offerPaypal && (
-                <button
-                  type="button"
-                  onClick={() => payOnline.mutate("paypal")}
-                  disabled={leaving}
-                  className="btn-secondary !h-auto !py-3 flex-col !items-start text-left"
-                >
-                  <span className="flex items-center gap-2 text-base">
-                    {payOnline.isPending && payOnline.variables === "paypal" ? (
-                      <Loader2 size={16} className="animate-spin" />
-                    ) : (
-                      <Globe size={16} />
-                    )}
-                    Pay {dollars(usdPrice)} USD
-                  </span>
-                  <span className="text-xs font-medium text-secondary">
-                    From abroad: PayPal or card, in US dollars
-                  </span>
-                </button>
-              )}
-            </div>
-            {onlineError && (
-              <p className="text-sm font-medium text-rose-600 dark:text-rose-400">{onlineError}</p>
+
+            {paymentReady ? (
+              <div className="rounded-xl border border-slate-200 dark:border-slate-700 p-4">
+                <div className="flex items-center gap-2 mb-3 text-emerald-600 dark:text-emerald-400">
+                  <Landmark size={18} />
+                  <span className="font-bold text-primary">{plan.payment_bank}</span>
+                </div>
+                <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5 text-sm">
+                  {plan.payment_account_name && (
+                    <>
+                      <dt className="text-secondary">Account name</dt>
+                      <dd className="font-semibold text-primary">{plan.payment_account_name}</dd>
+                    </>
+                  )}
+                  <dt className="text-secondary">Account number</dt>
+                  <dd className="font-semibold text-primary font-mono">
+                    {plan.payment_account_number}
+                  </dd>
+                  <dt className="text-secondary">Amount</dt>
+                  <dd className="font-semibold text-primary">{peso(price)}</dd>
+                </dl>
+                <p className="text-xs text-muted mt-3">
+                  Pay from any bank or e-wallet (GCash, Maya and others) through InstaPay or
+                  PESONet, or deposit over the counter.
+                </p>
+              </div>
+            ) : (
+              <div className="flex gap-2.5 rounded-xl bg-amber-50 dark:bg-amber-950/30 ring-1 ring-amber-200 dark:ring-amber-800 px-4 py-3 text-sm text-amber-900 dark:text-amber-200">
+                <Clock size={16} className="shrink-0 mt-0.5" />
+                <span>
+                  Payment details for {plan.name} are coming soon. You can send your request now and
+                  we'll contact you about how to pay.
+                </span>
+              </div>
             )}
+
+            <div>
+              <label htmlFor="payment-reference" className={LABEL}>
+                Payment reference{!needsReference && " (optional)"}
+              </label>
+              <input
+                id="payment-reference"
+                className="input font-mono"
+                value={reference}
+                maxLength={100}
+                autoComplete="off"
+                onChange={(e) => setReference(e.target.value)}
+                placeholder="e.g. 1234567890123"
+              />
+              <p className="text-xs text-muted mt-1">
+                The reference or confirmation number on your transfer receipt
+              </p>
+            </div>
+
+            {errorMessage && (
+              <p className="text-sm font-medium text-rose-600 dark:text-rose-400">{errorMessage}</p>
+            )}
+
+            <button
+              onClick={() => submit.mutate()}
+              disabled={!canSubmit}
+              className={
+                anyOnline
+                  ? "btn-secondary w-full disabled:opacity-60 disabled:cursor-not-allowed"
+                  : "btn-primary w-full"
+              }
+            >
+              {submit.isPending ? (
+                <>
+                  <Loader2 size={14} className="animate-spin" /> Sending…
+                </>
+              ) : paymentReady ? (
+                "I've paid, send for confirmation"
+              ) : (
+                "Send request"
+              )}
+            </button>
             <p className="flex items-start gap-1.5 text-xs text-muted">
-              <Lock size={14} className="shrink-0 mt-px" />
-              You'll pay on {online.paymongo && offerPaypal ? "PayMongo's or PayPal's" : online.paymongo ? "PayMongo's" : "PayPal's"}{" "}
-              secure page, then come back here. Card details never reach us.
+              <ShieldCheck size={14} className="shrink-0 mt-px" />
+              We check bank transfers by hand. Your plan changes once the payment is confirmed, and
+              you'll get an email either way.
             </p>
           </section>
-        )}
-
-        <section className="card space-y-5" aria-label="Payment">
-          <div>
-            <h3 className="text-lg font-bold text-primary">
-              {anyOnline ? "Or pay by bank transfer" : "Pay by bank transfer"}
-            </h3>
-            <p className="text-sm text-secondary mt-0.5">
-              {paymentReady
-                ? `Send ${peso(price)} to this account, then enter the reference from your receipt.`
-                : `Total to pay: ${peso(price)}.`}
-            </p>
-          </div>
-
-          {paymentReady ? (
-            <div className="rounded-xl border border-slate-200 dark:border-slate-700 p-4">
-              <div className="flex items-center gap-2 mb-3 text-emerald-600 dark:text-emerald-400">
-                <Landmark size={18} />
-                <span className="font-bold text-primary">{plan.payment_bank}</span>
-              </div>
-              <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5 text-sm">
-                {plan.payment_account_name && (
-                  <>
-                    <dt className="text-secondary">Account name</dt>
-                    <dd className="font-semibold text-primary">{plan.payment_account_name}</dd>
-                  </>
-                )}
-                <dt className="text-secondary">Account number</dt>
-                <dd className="font-semibold text-primary font-mono">
-                  {plan.payment_account_number}
-                </dd>
-                <dt className="text-secondary">Amount</dt>
-                <dd className="font-semibold text-primary">{peso(price)}</dd>
-              </dl>
-              <p className="text-xs text-muted mt-3">
-                Pay from any bank or e-wallet (GCash, Maya and others) through InstaPay or
-                PESONet, or deposit over the counter.
-              </p>
-            </div>
-          ) : (
-            <div className="flex gap-2.5 rounded-xl bg-amber-50 dark:bg-amber-950/30 ring-1 ring-amber-200 dark:ring-amber-800 px-4 py-3 text-sm text-amber-900 dark:text-amber-200">
-              <Clock size={16} className="shrink-0 mt-0.5" />
-              <span>
-                Payment details for {plan.name} are coming soon. You can send your request now and
-                we'll contact you about how to pay.
-              </span>
-            </div>
-          )}
-
-          <div>
-            <label htmlFor="payment-reference" className={LABEL}>
-              Payment reference{!needsReference && " (optional)"}
-            </label>
-            <input
-              id="payment-reference"
-              className="input font-mono"
-              value={reference}
-              maxLength={100}
-              autoComplete="off"
-              onChange={(e) => setReference(e.target.value)}
-              placeholder="e.g. 1234567890123"
-            />
-            <p className="text-xs text-muted mt-1">
-              The reference or confirmation number on your transfer receipt
-            </p>
-          </div>
-
-          {errorMessage && (
-            <p className="text-sm font-medium text-rose-600 dark:text-rose-400">{errorMessage}</p>
-          )}
-
-          <button
-            onClick={() => submit.mutate()}
-            disabled={!canSubmit}
-            className={
-              anyOnline
-                ? "btn-secondary w-full disabled:opacity-60 disabled:cursor-not-allowed"
-                : "btn-primary w-full"
-            }
-          >
-            {submit.isPending ? (
-              <>
-                <Loader2 size={14} className="animate-spin" /> Sending…
-              </>
-            ) : paymentReady ? (
-              "I've paid, send for confirmation"
-            ) : (
-              "Send request"
-            )}
-          </button>
-          <p className="flex items-start gap-1.5 text-xs text-muted">
-            <ShieldCheck size={14} className="shrink-0 mt-px" />
-            We check bank transfers by hand. Your plan changes once the payment is confirmed, and
-            you'll get an email either way.
-          </p>
-        </section>
         </div>
 
         <aside className="card lg:col-span-2 space-y-4" aria-label="Order summary">

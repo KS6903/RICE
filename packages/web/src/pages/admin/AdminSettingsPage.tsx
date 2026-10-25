@@ -376,7 +376,11 @@ function PlansTab() {
                     {" "}
                     A year is{" "}
                     <span className="font-semibold text-secondary tabular-nums">
-                      ${annualPrice(form.monthly_price_usd, form.annual_discount_percent).toLocaleString()}
+                      $
+                      {annualPrice(
+                        form.monthly_price_usd,
+                        form.annual_discount_percent,
+                      ).toLocaleString()}
                     </span>
                     , with the same discount.
                   </>
@@ -469,9 +473,7 @@ function PlansTab() {
                   className={INPUT}
                   maxLength={150}
                   value={form.payment_account_name}
-                  onChange={(e) =>
-                    setForm((f) => ({ ...f, payment_account_name: e.target.value }))
-                  }
+                  onChange={(e) => setForm((f) => ({ ...f, payment_account_name: e.target.value }))}
                 />
               </div>
               <div>

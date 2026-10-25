@@ -82,9 +82,7 @@ def start_checkout(body: CheckoutCreate, svc: BillingService = Depends(get_billi
 
 
 @router.post("/payments/{payment_id}/confirm", dependencies=SETTINGS_WRITE)
-def confirm_payment(
-    payment_id: uuid.UUID, db: Session = Depends(get_db), current_user=Depends(get_current_user)
-):
+def confirm_payment(payment_id: uuid.UUID, db: Session = Depends(get_db), current_user=Depends(get_current_user)):
     return payment_service.confirm(db, current_user, payment_id)
 
 

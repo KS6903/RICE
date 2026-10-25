@@ -113,7 +113,9 @@ describe("Checkout", () => {
   it("still sends the request while the plan has no payment account", async () => {
     vi.spyOn(billingService, "getPlans").mockResolvedValue([unpaid]);
     draw();
-    expect(await screen.findByText(/Payment details for Basic are coming soon/)).toBeInTheDocument();
+    expect(
+      await screen.findByText(/Payment details for Basic are coming soon/),
+    ).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Send request" }));
 
     await waitFor(() =>
@@ -133,7 +135,10 @@ describe("Checkout", () => {
   });
 
   it("pays online through PayMongo, or PayPal in dollars", async () => {
-    vi.spyOn(billingService, "getPaymentOptions").mockResolvedValue({ paymongo: true, paypal: true });
+    vi.spyOn(billingService, "getPaymentOptions").mockResolvedValue({
+      paymongo: true,
+      paypal: true,
+    });
     vi.spyOn(billingService, "getPlans").mockResolvedValue([
       { ...basic, monthly_price_usd: 20, annual_price_usd: 200 },
     ]);
@@ -154,11 +159,16 @@ describe("Checkout", () => {
         provider: "paymongo",
       }),
     );
-    await waitFor(() => expect(redirectTo).toHaveBeenCalledWith("https://checkout.paymongo.com/cs_1"));
+    await waitFor(() =>
+      expect(redirectTo).toHaveBeenCalledWith("https://checkout.paymongo.com/cs_1"),
+    );
   });
 
   it("leaves PayPal out for a plan with no dollar price", async () => {
-    vi.spyOn(billingService, "getPaymentOptions").mockResolvedValue({ paymongo: true, paypal: true });
+    vi.spyOn(billingService, "getPaymentOptions").mockResolvedValue({
+      paymongo: true,
+      paypal: true,
+    });
     draw();
     expect(await screen.findByRole("button", { name: /Pay ₱999/ })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /USD/ })).not.toBeInTheDocument();
