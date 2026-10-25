@@ -207,7 +207,7 @@ class BuyingService(BaseService):
     # ── corrections ───────────────────────────────────────────────────────────
 
     def _own(self, model: type[Purchase], purchase_id: uuid.UUID) -> Any:
-        p = self.db.get(model, purchase_id)
+        p: Any = self.db.get(model, purchase_id)
         if p is None or p.company_id != self.current_user.company_id:
             raise NotFoundError("Purchase not found")
         return p
