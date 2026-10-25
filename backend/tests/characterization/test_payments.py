@@ -15,6 +15,7 @@ import pytest
 from pydantic import SecretStr
 
 from app.core.config import settings
+from app.models.company import Company
 from app.models.plan_payment import PlanPayment
 from app.models.subscription import Subscription, SubscriptionPlan
 from app.models.upgrade_request import UpgradeRequest
@@ -176,12 +177,25 @@ def test_paypal_webhook_only_prompts_a_lookup(auth_client, db_session, basic, ke
     assert (row.status, row.provider_payment_id) == ("paid", "CAP1")
 
 
-def test_another_mill_cannot_confirm_a_payment(auth_client, make_auth_client, basic, keys, made):
-    pid = auth_client.post("/api/billing/checkout", json={"plan_id": str(basic.id), "provider": "paymongo"}).json()[
-        "payment_id"
-    ]
-    other = make_auth_client(features=[], username="othermill")
-    assert other.post(f"/api/billing/payments/{pid}/confirm").status_code == 404
+def test_another_mill_cannot_confirm_a_payment(auth_client, db_session, basic):
+    other = Company(name="Other Mill")
+    db_session.add(other)
+    db_session.flush()
+    theirs = PlanPayment(
+        company_id=other.id,
+        company_name=other.name,
+        plan_id=basic.id,
+        plan_name=basic.name,
+        billing_interval="monthly",
+        provider="paymongo",
+        currency="PHP",
+        amount=999,
+        status="pending",
+        provider_ref="cs_theirs",
+    )
+    db_session.add(theirs)
+    db_session.flush()
+    assert auth_client.post(f"/api/billing/payments/{theirs.id}/confirm").status_code == 404
 
 
 def test_signature_check():
