@@ -106,7 +106,7 @@ describe("Checkout", () => {
   it("still sends the request while the plan has no payment account", async () => {
     vi.spyOn(billingService, "getPlans").mockResolvedValue([unpaid]);
     draw();
-    expect(await screen.findByText(/Payment details are coming soon/)).toBeInTheDocument();
+    expect(await screen.findByText(/Payment details for Basic are coming soon/)).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Send request" }));
 
     await waitFor(() =>

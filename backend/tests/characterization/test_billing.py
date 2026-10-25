@@ -14,6 +14,9 @@ PLAN_KEYS = {
     "features",
     "is_active",
     "sort_order",
+    "payment_bank",
+    "payment_account_name",
+    "payment_account_number",
 }
 
 
