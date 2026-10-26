@@ -172,9 +172,9 @@ export default function GovernmentIdsNotice({
               aria-hidden
             />
             <span>
+              {headline}{" "}
               {t(
-                "{{headline}} You need SSS, PhilHealth, Pag-IBIG and TIN numbers to remit contributions and withholding tax.",
-                { headline },
+                "You need SSS, PhilHealth, Pag-IBIG and TIN numbers to remit contributions and withholding tax.",
               )}
             </span>
           </p>

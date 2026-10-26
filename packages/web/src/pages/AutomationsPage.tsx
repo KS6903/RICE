@@ -43,9 +43,8 @@ import {
   type AutomationsHealth,
   type TestResult,
 } from "../services/AutomationsService";
-import { currentLocale, t } from "../i18n";
+import { currentLocale, t, textKey } from "../i18n";
 import { tx } from "../i18n/tx";
-import { roleLabel as sharedRoleLabel } from "@rice-mill/shared";
 
 type Params = Automation["params"];
 
@@ -119,8 +118,17 @@ function errorText(error: unknown, fallback: string): string {
   return typeof detail === "string" ? detail : fallback;
 }
 
+// The built-in roles as this page names them ("owner", "mill operator"),
+// marked so they reach the language files.
+textKey("owner");
+textKey("admin");
+textKey("mill operator");
+textKey("accountant");
+textKey("cashier");
+textKey("encoder");
+
 function roleLabel(role: string | null): string {
-  return role ? t(sharedRoleLabel(role)) : "";
+  return role ? t(role.replace("_", " ")) : "";
 }
 
 function whenLabel(iso: string): string {
