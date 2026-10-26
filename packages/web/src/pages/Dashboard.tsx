@@ -107,6 +107,28 @@ function StatCard({
   );
 }
 
+function DashboardClock() {
+  const [currentTime, setCurrentTime] = useState(() => new Date());
+
+  useEffect(() => {
+    const timer = setInterval(() => setCurrentTime(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/20 ring-1 ring-white/30 text-xs font-bold uppercase tracking-wide backdrop-blur-md">
+        <Calendar size={12} />
+        {format(currentTime, "EEE, MMM d, yyyy")}
+      </div>
+      <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/20 ring-1 ring-white/30 text-xs font-bold uppercase tracking-wide backdrop-blur-md">
+        <Clock size={12} />
+        {format(currentTime, "h:mm a")}
+      </div>
+    </div>
+  );
+}
+
 export default function Dashboard() {
   const today = format(new Date(), "yyyy-MM-dd");
   const monthStart = format(startOfMonth(new Date()), "yyyy-MM-dd");
@@ -114,12 +136,6 @@ export default function Dashboard() {
   const theme = useThemeStore((s) => s.theme);
   const isDark = theme === "dark";
   const canViewReports = useAccess().canView("reports");
-
-  const [currentTime, setCurrentTime] = useState(() => new Date());
-  useEffect(() => {
-    const timer = setInterval(() => setCurrentTime(new Date()), 1000);
-    return () => clearInterval(timer);
-  }, []);
 
   // The same cache entry as Inventory's "All warehouses" view, so both pages
   // always show the same stock.
@@ -174,16 +190,7 @@ export default function Dashboard() {
 
           <div className="relative flex flex-col lg:flex-row lg:items-end lg:justify-between gap-4">
             <div className="text-white max-w-xl">
-              <div className="flex flex-wrap items-center gap-2">
-                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/20 ring-1 ring-white/30 text-xs font-bold uppercase tracking-wide backdrop-blur-md">
-                  <Calendar size={12} />
-                  {format(currentTime, "EEE, MMM d, yyyy")}
-                </div>
-                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/20 ring-1 ring-white/30 text-xs font-bold uppercase tracking-wide backdrop-blur-md">
-                  <Clock size={12} />
-                  {format(currentTime, "h:mm a")}
-                </div>
-              </div>
+              <DashboardClock />
               <h1 className="mt-2 text-3xl lg:text-4xl font-extrabold tracking-tight leading-[1.05]">
                 {pnl ? signedPeso(Number(pnl.net_profit)) : "—"}
               </h1>

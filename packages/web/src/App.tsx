@@ -6,6 +6,14 @@ import { useIdleLogout } from "./hooks/useIdleLogout";
 import { authService } from "./services/AuthService";
 import AppShell from "./components/layout/AppShell";
 import AdminShell from "./components/layout/AdminShell";
+import FeatureGate from "./components/FeatureGate";
+import RoleGate from "./components/RoleGate";
+import MfaEnrollmentGate from "./components/MfaEnrollmentGate";
+import AccountClosedGate from "./components/AccountClosedGate";
+import PasswordChangeGate from "./components/PasswordChangeGate";
+import EmailVerificationGate from "./components/EmailVerificationGate";
+import LegalAcceptanceGate from "./components/LegalAcceptanceGate";
+
 const HomePage = lazy(() => import("./pages/HomePage"));
 const LoginPage = lazy(() => import("./pages/LoginPage"));
 const SignupPage = lazy(() => import("./pages/SignupPage"));
@@ -41,13 +49,6 @@ const AdminTenantDetail = lazy(() => import("./pages/admin/AdminTenantDetail"));
 const AdminUsers = lazy(() => import("./pages/admin/AdminUsers"));
 const AdminUpgradeRequests = lazy(() => import("./pages/admin/AdminUpgradeRequests"));
 const AdminSettingsPage = lazy(() => import("./pages/admin/AdminSettingsPage"));
-import FeatureGate from "./components/FeatureGate";
-import RoleGate from "./components/RoleGate";
-import MfaEnrollmentGate from "./components/MfaEnrollmentGate";
-import AccountClosedGate from "./components/AccountClosedGate";
-import PasswordChangeGate from "./components/PasswordChangeGate";
-import EmailVerificationGate from "./components/EmailVerificationGate";
-import LegalAcceptanceGate from "./components/LegalAcceptanceGate";
 const LegalPage = lazy(() => import("./pages/LegalPage"));
 const RetrieveDataPage = lazy(() => import("./pages/RetrieveDataPage"));
 
