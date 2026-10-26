@@ -10,24 +10,24 @@ import DryingAdvisor from "./DryingAdvisor";
 import { rainOutlook } from "../utils/dryingAdvice";
 
 type Variant = "compact" | "expanded";
-type View = "today" | "week";
+type View = "today" | "hourly" | "week";
 
 const PROVIDER_NAMES = { google: "Google Weather", "open-meteo": "Open-Meteo" } as const;
 
-/** Where what's showing comes from, at the card's top corner: every source,
- *  when the reading and the forecast come from different ones. */
-function Attribution({ names, testid }: { names: string[]; testid: string }) {
+/** Where the reading comes from, at the card's top corner. */
+function Attribution({ name, testid }: { name: string; testid: string }) {
   return (
     <p className="text-xs font-medium text-muted" data-testid={testid}>
-      Powered by {[...new Set(names)].join(" and ")}
+      Powered by {name}
     </p>
   );
 }
 
-/** Today / 7 days: which of the card's two views is showing. */
+/** Today / Hourly / 7 days: which of the card's three views is showing. */
 function ViewSwitch({ view, onChange }: { view: View; onChange: (v: View) => void }) {
   const options: { id: View; label: string }[] = [
     { id: "today", label: "Today" },
+    { id: "hourly", label: "Hourly" },
     { id: "week", label: "7 days" },
   ];
   return (
@@ -65,7 +65,7 @@ export default function WeatherWidget({ variant = "compact" }: { variant?: Varia
   const coords =
     active.lat != null && active.lon != null ? { lat: active.lat, lon: active.lon } : null;
   const w = useWeather(coords);
-  // The hourly forecast, for the hour-by-hour strip, when rain is next likely
+  // The forecast, for the Hourly and 7 days views, when rain is next likely
   // and the drying advice: the expanded card only, so the compact top-bar pill
   // skips the fetch.
   const fc = useForecast(coords, { enabled: variant === "expanded" });
@@ -133,22 +133,15 @@ export default function WeatherWidget({ variant = "compact" }: { variant?: Varia
   }
 
   // Expanded dashboard card: the reading on the left, humidity, wind and the
-  // rain outlook on the right, the coming hours and the drying advice underneath.
+  // rain outlook on the right, the drying advice underneath.
   const rain = fc.data ? rainOutlook(fc.data.hourly) : null;
   const providerName = PROVIDER_NAMES[p.provider] ?? p.provider;
-  const forecastName = PROVIDER_NAMES["open-meteo"];
   return (
     <div data-testid="weather-widget" className="card">
       <div className="mb-4 flex items-center justify-between gap-3">
         <ViewSwitch view={view} onChange={setView} />
         <Attribution
-          names={
-            view === "week"
-              ? [forecastName]
-              : fc.data?.hourly.length
-                ? [providerName, forecastName]
-                : [providerName]
-          }
+          name={view === "today" ? providerName : PROVIDER_NAMES["open-meteo"]}
           testid="weather-attribution"
         />
       </div>
@@ -194,18 +187,13 @@ export default function WeatherWidget({ variant = "compact" }: { variant?: Varia
             </ul>
           </div>
 
-          {fc.data && fc.data.hourly.length > 0 && (
-            <div className="mt-4">
-              <HourlyForecastStrip hourly={fc.data.hourly} />
-            </div>
-          )}
-
           <DryingAdvisor coords={coords} hourly={fc.data?.hourly} />
         </>
       ) : (
-        <div data-testid="weather-week">
+        <div data-testid={view === "hourly" ? "weather-hourly" : "weather-week"}>
           <p className="mb-1 text-sm text-secondary">
-            Next 7 days · <span data-testid="weather-location">{placeLabel}</span>
+            {view === "hourly" ? "Hour by hour" : "Next 7 days"} ·{" "}
+            <span data-testid="weather-location">{placeLabel}</span>
           </p>
           {fc.isLoading ? (
             <p className="flex items-center gap-2 py-6 text-sm text-muted">
@@ -213,6 +201,8 @@ export default function WeatherWidget({ variant = "compact" }: { variant?: Varia
             </p>
           ) : fc.isError || !fc.data ? (
             <p className="py-6 text-sm text-muted">Forecast unavailable</p>
+          ) : view === "hourly" ? (
+            <HourlyForecastStrip hourly={fc.data.hourly} />
           ) : (
             <DailyForecastStrip daily={fc.data.daily} />
           )}

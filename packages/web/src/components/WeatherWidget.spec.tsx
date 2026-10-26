@@ -69,19 +69,25 @@ vi.mock("../hooks/useWeather", () => ({
 vi.mock("./DryingAdvisor", () => ({ default: () => <div data-testid="drying-advisor" /> }));
 
 describe("WeatherWidget expanded card", () => {
-  it("names where the weather comes from, the reading's and the forecast's", () => {
+  it("names where the weather comes from", () => {
     render(<WeatherWidget variant="expanded" />);
     expect(screen.getByTestId("weather-attribution")).toHaveTextContent(
-      "Powered by Google Weather and Open-Meteo",
+      "Powered by Google Weather",
     );
   });
 
-  it("shows today hour by hour, starting now", () => {
+  it("shows the hours, starting now, behind the Hourly switch", () => {
     render(<WeatherWidget variant="expanded" />);
+    expect(screen.queryByTestId("hourly-forecast")).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: "Hourly" }));
     const hours = screen.getByTestId("hourly-forecast");
     expect(hours.children).toHaveLength(2);
     expect(hours).toHaveTextContent("Now");
     expect(hours).toHaveTextContent("2 PM");
+    expect(screen.queryByTestId("drying-advisor")).toBeNull();
+    expect(screen.queryByTestId("daily-forecast")).toBeNull();
+    expect(screen.getByTestId("weather-attribution")).toHaveTextContent("Powered by Open-Meteo");
   });
 
   it("switches between today and the next 7 days", () => {

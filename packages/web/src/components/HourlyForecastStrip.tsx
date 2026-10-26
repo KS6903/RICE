@@ -13,7 +13,7 @@ function hourLabel(iso: string, isFirst: boolean): string {
 }
 
 /** The coming hours as a row of tiles, sliding sideways when they don't fit.
- *  The weather card's Today view; the 7 days are DailyForecastStrip. */
+ *  The weather card's Hourly view; the 7 days are DailyForecastStrip. */
 export default function HourlyForecastStrip({ hourly }: { hourly: HourlyForecast[] }) {
   return (
     <div

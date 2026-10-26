@@ -59,9 +59,8 @@ describe("DryingAdvisor", () => {
     );
     expect(line).toHaveAttribute("data-source", "forecast");
     expect(screen.queryByText(/unavailable/i)).not.toBeInTheDocument();
-    // Worked out from the forecast, so its icon doesn't claim to be the AI's.
-    expect(screen.getByTestId("drying-advisor-icon")).toHaveAttribute("data-ai", "false");
-    expect(line).not.toHaveTextContent("AI");
+    // The forecast's stand-in carries the AI cloud too.
+    expect(screen.getByTestId("drying-advisor-icon")).toHaveTextContent("AI");
   });
 
   it("shows the AI's answer when it has one", async () => {
@@ -78,9 +77,7 @@ describe("DryingAdvisor", () => {
     const line = await screen.findByText("Dry until early afternoon.");
     expect(line.closest("[data-testid=drying-advisor]")).toHaveAttribute("data-source", "ai");
     // The AI's answer carries "AI" in its rain cloud.
-    const icon = screen.getByTestId("drying-advisor-icon");
-    expect(icon).toHaveAttribute("data-ai", "true");
-    expect(icon).toHaveTextContent("AI");
+    expect(screen.getByTestId("drying-advisor-icon")).toHaveTextContent("AI");
   });
 
   it("keeps the advice for an hour, so a reload doesn't ask again", async () => {

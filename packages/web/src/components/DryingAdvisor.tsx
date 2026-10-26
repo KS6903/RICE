@@ -1,21 +1,20 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { CloudDrizzle, CloudRain, Info, Lock, Sun } from "lucide-react";
+import { Info, Lock } from "lucide-react";
 import { clsx } from "clsx";
 import { useFeature } from "../hooks/useFeature";
 import { useDryingBanner } from "../hooks/useDryingBanner";
 import type { Coords } from "../hooks/useGeolocation";
 import type { HourlyForecast } from "../hooks/useWeather";
-import type { DryingBanner } from "../hooks/useDryingBanner";
 import type { DryingVerdict } from "../utils/dryingAdvice";
 import AiSunIcon from "./AiSunIcon";
 import { AiCloudDrizzleIcon, AiCloudRainIcon } from "./AiCloudIcon";
 
-/** The AI advisor's answer carries "AI" in its icon. The stand-in worked out
- *  from the forecast doesn't, so it is never passed off as the AI's. */
-const VERDICT_ICON: Record<DryingBanner["source"], Record<DryingVerdict, React.ElementType>> = {
-  ai: { good: AiSunIcon, caution: AiCloudDrizzleIcon, poor: AiCloudRainIcon },
-  forecast: { good: Sun, caution: CloudDrizzle, poor: CloudRain },
+/** Every drying-advice icon carries "AI", whatever the weather. */
+const VERDICT_ICON: Record<DryingVerdict, React.ElementType> = {
+  good: AiSunIcon,
+  caution: AiCloudDrizzleIcon,
+  poor: AiCloudRainIcon,
 };
 
 const VERDICT_STYLES: Record<DryingVerdict, { box: string; icon: string }> = {
@@ -142,8 +141,7 @@ function Advice({
   const banner = useDryingBanner(coords, hourly);
   // Nothing to go on yet (or at all): leave the space out rather than say so.
   if (!banner) return null;
-  const isAi = banner.source === "ai";
-  const Icon = VERDICT_ICON[banner.source]?.[banner.verdict] ?? (isAi ? AiSunIcon : Sun);
+  const Icon = VERDICT_ICON[banner.verdict] ?? AiSunIcon;
   const styles = VERDICT_STYLES[banner.verdict] ?? VERDICT_STYLES.good;
   return (
     <div
@@ -153,11 +151,10 @@ function Advice({
       data-source={banner.source}
     >
       <Icon
-        size={isAi ? 26 : 18}
+        size={26}
         className={clsx("shrink-0", styles.icon)}
         aria-hidden
         data-testid="drying-advisor-icon"
-        data-ai={isAi}
       />
       <p
         className="min-w-0 flex-1 text-sm leading-relaxed line-clamp-3 sm:line-clamp-2"
