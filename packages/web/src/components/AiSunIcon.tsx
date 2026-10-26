@@ -1,9 +1,13 @@
 /** The drying advice's sun, with "AI" in the middle: the advice comes from the
  *  AI advisor. Drawn like the other (lucide) icons: a 24 box, stroked in the
  *  current colour, but with a bigger disc so the letters fit. */
-export default function AiSunIcon({ size = 24, className }: { size?: number; className?: string }) {
+export default function AiSunIcon({
+  size = 24,
+  ...rest
+}: React.ComponentPropsWithoutRef<"svg"> & { size?: number }) {
   return (
     <svg
+      {...rest}
       width={size}
       height={size}
       viewBox="0 0 24 24"
@@ -11,7 +15,6 @@ export default function AiSunIcon({ size = 24, className }: { size?: number; cla
       stroke="currentColor"
       strokeWidth={1.75}
       strokeLinecap="round"
-      className={className}
       aria-hidden
     >
       <circle cx="12" cy="12" r="6.25" />

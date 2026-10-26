@@ -16,7 +16,6 @@ import {
 import WeatherWidget from "../components/WeatherWidget";
 import GettingStarted from "../components/GettingStarted";
 import LoadingRows from "../components/LoadingRows";
-import WeatherForecast from "../components/WeatherForecast";
 import {
   Area,
   AreaChart,
@@ -390,12 +389,6 @@ export default function Dashboard() {
             </div>
           )}
         </div>
-      </section>
-
-      {/* Detailed forecast — hourly + 7-day, secondary context placed last so
-          the business summary leads. */}
-      <section data-testid="dashboard-forecast">
-        <WeatherForecast />
       </section>
     </div>
   );

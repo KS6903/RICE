@@ -1,6 +1,6 @@
-// Shared weather icon + tint mapping, used by both the current-conditions
-// WeatherWidget and the WeatherForecast (hourly/daily) panel so the visual
-// language stays identical across the dashboard.
+// Shared weather icon + tint mapping, used by the current-conditions
+// WeatherWidget and its hourly and daily strips so the visual language stays
+// identical across the dashboard.
 import {
   Sun,
   Cloud,

@@ -5,6 +5,7 @@ import { useActiveLocation } from "../hooks/useActiveLocation";
 import { useWeather, useForecast } from "../hooks/useWeather";
 import { weatherIcon, weatherIconClass as iconClass } from "./weatherIcons";
 import DailyForecastStrip from "./DailyForecastStrip";
+import HourlyForecastStrip from "./HourlyForecastStrip";
 import DryingAdvisor from "./DryingAdvisor";
 import { rainOutlook } from "../utils/dryingAdvice";
 
@@ -13,11 +14,12 @@ type View = "today" | "week";
 
 const PROVIDER_NAMES = { google: "Google Weather", "open-meteo": "Open-Meteo" } as const;
 
-/** Where the reading comes from, at the card's top corner. */
-function Attribution({ name, testid }: { name: string; testid: string }) {
+/** Where what's showing comes from, at the card's top corner: every source,
+ *  when the reading and the forecast come from different ones. */
+function Attribution({ names, testid }: { names: string[]; testid: string }) {
   return (
     <p className="text-xs font-medium text-muted" data-testid={testid}>
-      Powered by {name}
+      Powered by {[...new Set(names)].join(" and ")}
     </p>
   );
 }
@@ -63,8 +65,9 @@ export default function WeatherWidget({ variant = "compact" }: { variant?: Varia
   const coords =
     active.lat != null && active.lon != null ? { lat: active.lat, lon: active.lon } : null;
   const w = useWeather(coords);
-  // The hourly forecast, for when rain is next likely and the drying advice:
-  // the expanded card only, so the compact top-bar pill skips the fetch.
+  // The hourly forecast, for the hour-by-hour strip, when rain is next likely
+  // and the drying advice: the expanded card only, so the compact top-bar pill
+  // skips the fetch.
   const fc = useForecast(coords, { enabled: variant === "expanded" });
   const [view, setView] = useState<View>("today");
 
@@ -130,15 +133,22 @@ export default function WeatherWidget({ variant = "compact" }: { variant?: Varia
   }
 
   // Expanded dashboard card: the reading on the left, humidity, wind and the
-  // rain outlook on the right, the drying advice underneath.
+  // rain outlook on the right, the coming hours and the drying advice underneath.
   const rain = fc.data ? rainOutlook(fc.data.hourly) : null;
   const providerName = PROVIDER_NAMES[p.provider] ?? p.provider;
+  const forecastName = PROVIDER_NAMES["open-meteo"];
   return (
     <div data-testid="weather-widget" className="card">
       <div className="mb-4 flex items-center justify-between gap-3">
         <ViewSwitch view={view} onChange={setView} />
         <Attribution
-          name={view === "week" ? PROVIDER_NAMES["open-meteo"] : providerName}
+          names={
+            view === "week"
+              ? [forecastName]
+              : fc.data?.hourly.length
+                ? [providerName, forecastName]
+                : [providerName]
+          }
           testid="weather-attribution"
         />
       </div>
@@ -183,6 +193,12 @@ export default function WeatherWidget({ variant = "compact" }: { variant?: Varia
               )}
             </ul>
           </div>
+
+          {fc.data && fc.data.hourly.length > 0 && (
+            <div className="mt-4">
+              <HourlyForecastStrip hourly={fc.data.hourly} />
+            </div>
+          )}
 
           <DryingAdvisor coords={coords} hourly={fc.data?.hourly} />
         </>
