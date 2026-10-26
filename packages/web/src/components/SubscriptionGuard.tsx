@@ -2,6 +2,7 @@ import { Link, useLocation } from "react-router-dom";
 import { Lock, AlertOctagon, Sparkles, CreditCard } from "lucide-react";
 import { useAuthStore } from "../stores/authStore";
 import { useAccess } from "../hooks/useAccess";
+import { t } from "../i18n";
 
 type SubLockReason =
   "no_subscription" | "expired" | "cancelled" | "past_due" | "no_features" | null;
@@ -27,29 +28,39 @@ export function useSubLock(): SubLockReason {
 
 const COPY: Record<NonNullable<SubLockReason>, { title: string; body: string; cta: string }> = {
   no_subscription: {
-    title: "No active subscription",
-    body: "Your company doesn't have a subscription yet. Choose a plan to unlock the rice mill management features.",
-    cta: "Choose a plan",
+    title: t("No active subscription"),
+    body: t(
+      "Your company doesn't have a subscription yet. Choose a plan to unlock the rice mill management features.",
+    ),
+    cta: t("Choose a plan"),
   },
   expired: {
-    title: "Your subscription has expired",
-    body: "Access to milling, sales, inventory, and other features is paused until your subscription is renewed.",
-    cta: "Renew subscription",
+    title: t("Your subscription has expired"),
+    body: t(
+      "Access to milling, sales, inventory, and other features is paused until your subscription is renewed.",
+    ),
+    cta: t("Renew subscription"),
   },
   cancelled: {
-    title: "Your subscription was cancelled",
-    body: "Your plan has been cancelled. Pick a plan to restore access to your data and operations.",
-    cta: "Reactivate subscription",
+    title: t("Your subscription was cancelled"),
+    body: t(
+      "Your plan has been cancelled. Pick a plan to restore access to your data and operations.",
+    ),
+    cta: t("Reactivate subscription"),
   },
   past_due: {
-    title: "Your subscription is past due",
-    body: "Payment for your subscription is overdue. Please contact your platform administrator to settle the balance.",
-    cta: "View billing",
+    title: t("Your subscription is past due"),
+    body: t(
+      "Payment for your subscription is overdue. Please contact your platform administrator to settle the balance.",
+    ),
+    cta: t("View billing"),
   },
   no_features: {
-    title: "No features assigned to your plan",
-    body: "Your current plan doesn't include any features. Please contact your platform administrator.",
-    cta: "View billing",
+    title: t("No features assigned to your plan"),
+    body: t(
+      "Your current plan doesn't include any features. Please contact your platform administrator.",
+    ),
+    cta: t("View billing"),
   },
 };
 
@@ -79,8 +90,9 @@ export default function SubscriptionGuard({ children }: { children: React.ReactN
         <div className="bg-rose-50 dark:bg-rose-900/30 border border-rose-200 dark:border-rose-800 rounded-lg p-3 text-left text-sm text-rose-900 dark:text-rose-200 mb-5 flex items-start gap-2">
           <Lock size={16} className="text-rose-500 shrink-0 mt-0.5" />
           <span>
-            All operational modules (paddy, milling, inventory, sales, expenses, users, reports) are
-            locked while your account is inactive.
+            {t(
+              "All operational modules (paddy, milling, inventory, sales, expenses, users, reports) are locked while your account is inactive.",
+            )}
           </span>
         </div>
 
@@ -93,7 +105,9 @@ export default function SubscriptionGuard({ children }: { children: React.ReactN
           <div className="bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-800 rounded-lg p-3 text-left text-sm text-amber-900 dark:text-amber-200 flex items-start gap-2">
             <Sparkles size={16} className="text-amber-500 shrink-0 mt-0.5" />
             <span>
-              Ask the company owner or administrator to renew the subscription on the billing page.
+              {t(
+                "Ask the company owner or administrator to renew the subscription on the billing page.",
+              )}
             </span>
           </div>
         )}

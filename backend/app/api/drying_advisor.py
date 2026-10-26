@@ -35,6 +35,7 @@ def get_drying_advisory(
 ) -> dict[str, Any]:
     """Sun-drying recommendation for the client's location (IP-resolved unless
     explicit lat/lon are passed), derived from the same forecast the weather
-    widget shows. Cached for hours per location/day; rate-limited since each
-    fresh call costs a DeepSeek request."""
-    return svc.get_advisory(request, lat, lon)
+    widget shows, in the account's language. Cached for hours per
+    location/day/language; rate-limited since each fresh call costs a DeepSeek
+    request."""
+    return svc.get_advisory(request, lat, lon, getattr(_user, "language", None))

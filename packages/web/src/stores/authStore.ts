@@ -3,6 +3,7 @@ import { persist } from "zustand/middleware";
 import type { User } from "@rice-mill/shared";
 import { clearSessionQueryCache, securityContextFingerprint } from "../services/sessionCache";
 import { isElectronRuntime, setDesktopSyncToken } from "../services/runtime";
+import { followAccountLanguage } from "../i18n";
 
 interface AuthState {
   user: User | null;
@@ -48,6 +49,8 @@ export const useAuthStore = create<AuthState>()(
           clearSessionQueryCache();
         }
         set({ user });
+        // The account's language, if it chose one, on whatever device it's on.
+        followAccountLanguage(user.language);
       },
       requireReauthentication: () => set({ reauthenticationRequired: true }),
       logout: () => {

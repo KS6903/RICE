@@ -6,6 +6,7 @@ import RecordDialog from "../sales/RecordDialog";
 import Select from "../Select";
 import DatePicker from "../DatePicker";
 import { costsService } from "../../services/CostsService";
+import { t } from "../../i18n";
 
 export default function EditExpenseDialog({
   expense,
@@ -49,7 +50,7 @@ export default function EditExpenseDialog({
   const error = (save.error as any)?.response?.data?.detail;
 
   const batchOptions = [
-    { value: "", label: "No batch" },
+    { value: "", label: t("No batch") },
     ...batches.map((b) => ({ value: b.id, label: b.batch_no })),
   ];
   if (batchId && !batches.some((b) => b.id === batchId))
@@ -57,8 +58,8 @@ export default function EditExpenseDialog({
 
   return (
     <RecordDialog
-      title="Edit expense"
-      subtitle="Every change you save is logged in the expense's history."
+      title={t("Edit expense")}
+      subtitle={t("Every change you save is logged in the expense's history.")}
       onClose={onClose}
       busy={save.isPending}
       testId="edit-expense"
@@ -70,7 +71,7 @@ export default function EditExpenseDialog({
             onClick={onClose}
             disabled={save.isPending}
           >
-            Cancel
+            {t("Cancel")}
           </button>
           <button
             type="button"
@@ -78,7 +79,7 @@ export default function EditExpenseDialog({
             onClick={() => save.mutate()}
             disabled={!valid || save.isPending}
           >
-            {save.isPending ? "Saving…" : "Save changes"}
+            {save.isPending ? t("Saving…") : t("Save changes")}
           </button>
         </>
       }
@@ -86,35 +87,35 @@ export default function EditExpenseDialog({
       <div className="space-y-4">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <label className="block">
-            <span className="block mb-1 text-xs font-medium text-secondary">Category</span>
+            <span className="block mb-1 text-xs font-medium text-secondary">{t("Category")}</span>
             <Select
-              aria-label="Category"
+              aria-label={t("Category")}
               value={categoryId}
               onChange={setCategoryId}
               options={categories.map((c) => ({ value: c.id, label: c.name }))}
             />
           </label>
           <label className="block">
-            <span className="block mb-1 text-xs font-medium text-secondary">Date</span>
-            <DatePicker value={date} onChange={setDate} aria-label="Expense date" />
+            <span className="block mb-1 text-xs font-medium text-secondary">{t("Date")}</span>
+            <DatePicker value={date} onChange={setDate} aria-label={t("Expense date")} />
           </label>
           <label className="block">
-            <span className="block mb-1 text-xs font-medium text-secondary">Amount (₱)</span>
+            <span className="block mb-1 text-xs font-medium text-secondary">{t("Amount (₱)")}</span>
             <input
               className="input"
               type="number"
               min={0}
               step="0.01"
-              aria-label="Amount"
+              aria-label={t("Amount")}
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
             />
           </label>
           {batches.length > 0 || batchId ? (
             <label className="block">
-              <span className="block mb-1 text-xs font-medium text-secondary">Batch</span>
+              <span className="block mb-1 text-xs font-medium text-secondary">{t("Batch")}</span>
               <Select
-                aria-label="Batch"
+                aria-label={t("Batch")}
                 value={batchId}
                 onChange={setBatchId}
                 options={batchOptions}
@@ -122,21 +123,23 @@ export default function EditExpenseDialog({
             </label>
           ) : null}
           <label className="block">
-            <span className="block mb-1 text-xs font-medium text-secondary">Reference no.</span>
+            <span className="block mb-1 text-xs font-medium text-secondary">
+              {t("Reference no.")}
+            </span>
             <input
               className="input"
               maxLength={50}
-              aria-label="Reference no."
+              aria-label={t("Reference no.")}
               value={referenceNo}
               onChange={(e) => setReferenceNo(e.target.value)}
             />
           </label>
         </div>
         <label className="block">
-          <span className="block mb-1 text-xs font-medium text-secondary">Description</span>
+          <span className="block mb-1 text-xs font-medium text-secondary">{t("Description")}</span>
           <textarea
             className="input min-h-[4rem]"
-            aria-label="Description"
+            aria-label={t("Description")}
             value={description}
             onChange={(e) => setDescription(e.target.value)}
           />
@@ -144,7 +147,9 @@ export default function EditExpenseDialog({
 
         {error && (
           <p role="alert" className="text-sm text-rose-600 dark:text-rose-400">
-            {typeof error === "string" ? error : "Couldn't save. Check the fields and try again."}
+            {typeof error === "string"
+              ? error
+              : t("Couldn't save. Check the fields and try again.")}
           </p>
         )}
       </div>

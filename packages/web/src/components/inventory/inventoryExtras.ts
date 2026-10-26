@@ -1,3 +1,4 @@
+import { t } from "../../i18n";
 // Helpers for the Add Inventory modal's quantity units. Custom units persist
 // client-side (localStorage) so they survive reloads without a schema
 // migration. Server-persisted concepts (warehouses, varieties, grades,
@@ -13,10 +14,10 @@ export type QuantityUnit = {
 // Conversions to kilograms. Cavan (50 kg) is the canonical Philippine rice
 // sack used across the app; the others are common warehouse units.
 export const BUILTIN_UNITS: QuantityUnit[] = [
-  { code: "kg", label: "Kilogram (kg)", kgPerUnit: 1, builtin: true },
-  { code: "cavan", label: "Cavan (50 kg)", kgPerUnit: 50, builtin: true },
-  { code: "sack", label: "Sack (25 kg)", kgPerUnit: 25, builtin: true },
-  { code: "ton", label: "Metric ton (t)", kgPerUnit: 1000, builtin: true },
+  { code: "kg", label: t("Kilogram (kg)"), kgPerUnit: 1, builtin: true },
+  { code: "cavan", label: t("Cavan (50 kg)"), kgPerUnit: 50, builtin: true },
+  { code: "sack", label: t("Sack (25 kg)"), kgPerUnit: 25, builtin: true },
+  { code: "ton", label: t("Metric ton (t)"), kgPerUnit: 1000, builtin: true },
 ];
 
 const UNITS_KEY = "rice-mill-custom-units";

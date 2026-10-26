@@ -21,6 +21,8 @@ import {
   saleLineName,
   type TradeKind,
 } from "./trade";
+import { t } from "../../i18n";
+import { statusText } from "../../utils/statusText";
 
 export default function SaleColumn({ kind }: { kind: TradeKind }) {
   const { canView, canEdit } = useAccess();
@@ -38,16 +40,17 @@ export default function SaleColumn({ kind }: { kind: TradeKind }) {
   const total = orders.reduce((s, o) => s + linesOf(o, kind).amount, 0);
 
   return (
-    <section className="space-y-2 min-w-0" data-testid="sales-column" aria-label="Sales">
+    <section className="space-y-2 min-w-0" data-testid="sales-column" aria-label={t("Sales")}>
       <div className="flex items-center justify-between gap-2">
         <div>
-          <h3 className="text-sm font-bold text-gray-900 dark:text-slate-100">Sales</h3>
+          <h3 className="text-sm font-bold text-gray-900 dark:text-slate-100">{t("Sales")}</h3>
           <p className="text-xs text-muted tabular-nums">
             {isLoading ? (
-              "Loading…"
+              t("Loading…")
             ) : allowed ? (
               <>
-                {orders.length} sold{orders.length > 0 && <> · {peso(total)}</>}
+                {t("{{ordersCount}} sold", { ordersCount: orders.length })}
+                {orders.length > 0 && <> · {peso(total)}</>}
               </>
             ) : (
               "—"
@@ -56,30 +59,33 @@ export default function SaleColumn({ kind }: { kind: TradeKind }) {
         </div>
         {canSell && (
           <button onClick={() => setSelling(true)} className="btn-primary">
-            <Plus size={16} /> New Sale
+            <Plus size={16} /> {t("New Sale")}
           </button>
         )}
       </div>
       <div className="card overflow-hidden p-0">
         {!hasSales ? (
           <p className="px-4 py-8 text-center text-sm text-muted">
-            Selling is part of the Sales feature, on plans that include it.
+            {t("Selling is part of the Sales feature, on plans that include it.")}
           </p>
         ) : !canView("sales") ? (
           <p className="px-4 py-8 text-center text-sm text-muted">
-            Your role doesn't see sales. The owner can change that in Users.
+            {t("Your role doesn't see sales. The owner can change that in Users.")}
           </p>
         ) : isLoading ? (
           <LoadingRows />
         ) : orders.length === 0 ? (
           <EmptyState
             icon={ShoppingCart}
-            title={`No ${GOODS[kind]} sold yet`}
-            action={canSell ? "Record a sale" : undefined}
+            title={t("No {{GOODS}} sold yet", { GOODS: GOODS[kind] })}
+            action={canSell ? t("Record a sale") : undefined}
             onAction={() => setSelling(true)}
             next="It also shows on the Sales page, ready to invoice."
           >
-            Each time you sell {GOODS[kind]} to a customer, record the weight and the price here.
+            {t(
+              "Each time you sell {{GOODS}} to a customer, record the weight and the price here.",
+              { GOODS: GOODS[kind] },
+            )}
           </EmptyState>
         ) : (
           <ul className="divide-y divide-gray-100 dark:divide-slate-700">
@@ -95,7 +101,7 @@ export default function SaleColumn({ kind }: { kind: TradeKind }) {
                     <div className="min-w-0">
                       <p className="font-mono text-xs text-muted">{o.order_no}</p>
                       <p className="truncate font-semibold text-gray-900 dark:text-slate-100">
-                        {o.customer?.name ?? "No customer"}
+                        {o.customer?.name ?? t("No customer")}
                       </p>
                       <p className="truncate text-xs text-muted">
                         {o.order_date} · {mine.lines.map(saleLineName).join(", ")}
@@ -103,13 +109,13 @@ export default function SaleColumn({ kind }: { kind: TradeKind }) {
                     </div>
                     <div className="shrink-0 text-right">
                       <p className="font-semibold tabular-nums text-gray-900 dark:text-slate-100">
-                        {mine.kg.toLocaleString()} kg
+                        {t("{{kg}} kg", { kg: mine.kg.toLocaleString() })}
                       </p>
                       <p className="text-xs tabular-nums text-muted">{peso(mine.amount)}</p>
                       <span
                         className={`mt-1 inline-block ${STATUS_BADGE[o.status] || "badge-gray"}`}
                       >
-                        {o.status}
+                        {statusText(o.status)}
                       </span>
                     </div>
                   </button>
@@ -139,18 +145,18 @@ export function SaleDetails({
   const mine = linesOf(o, kind);
   const inv = o.invoice;
   const facts: [string, React.ReactNode][] = [
-    ["Date", o.order_date],
-    ["Customer", o.customer?.name ?? "—"],
+    [t("Date"), o.order_date],
+    [t("Customer"), o.customer?.name ?? "—"],
     [
-      "Status",
+      t("Status"),
       <span key="s" className={STATUS_BADGE[o.status] || "badge-gray"}>
-        {o.status}
+        {statusText(o.status)}
       </span>,
     ],
-    ["Delivery date", o.delivery_date ?? "—"],
-    ["Invoice", inv ? `${inv.invoice_no} (${inv.status})` : "Not billed yet"],
+    [t("Delivery date"), o.delivery_date ?? "—"],
+    [t("Invoice"), inv ? `${inv.invoice_no} (${statusText(inv.status)})` : t("Not billed yet")],
     [
-      "Paid",
+      t("Paid"),
       inv ? `${peso(Number(inv.paid_amount ?? 0))} of ${peso(Number(inv.total_amount ?? 0))}` : "—",
     ],
   ];
@@ -158,13 +164,13 @@ export function SaleDetails({
     <Modal
       open
       size="lg"
-      title={`Sale ${o.order_no}`}
+      title={t("Sale {{order_no}}", { order_no: o.order_no })}
       subtitle={o.customer?.address ?? undefined}
       onClose={onClose}
       testId="sale-details"
       footer={
         <Link to="/sales" className="btn-secondary">
-          Open in Sales
+          {t("Open in Sales")}
         </Link>
       }
     >
@@ -184,7 +190,7 @@ export function SaleDetails({
         <table className="w-full text-sm">
           <thead className="bg-gray-50 dark:bg-slate-900/50">
             <tr>
-              {["Item", "Weight", "Per kg", "Amount"].map((h, i) => (
+              {[t("Item"), t("Weight"), t("Per kg"), t("Amount")].map((h, i) => (
                 <th
                   key={h}
                   className={`px-3 py-2 font-medium text-gray-600 dark:text-slate-300 ${i ? "text-right" : "text-left"}`}
@@ -199,7 +205,9 @@ export function SaleDetails({
               <tr key={l.id}>
                 <td className="px-3 py-2">{saleLineName(l)}</td>
                 <td className="px-3 py-2 text-right tabular-nums">
-                  {Number(l.quantity_kg).toLocaleString()} kg
+                  {t("{{toLocaleString}} kg", {
+                    toLocaleString: Number(l.quantity_kg).toLocaleString(),
+                  })}
                 </td>
                 <td className="px-3 py-2 text-right tabular-nums">
                   {peso(Number(l.unit_price_per_kg ?? 0))}
@@ -216,22 +224,27 @@ export function SaleDetails({
       <div className="mt-3 space-y-1 text-sm text-right">
         {mine.others > 0 && (
           <p className="text-muted">
-            The order also has {mine.others} other line{mine.others === 1 ? "" : "s"}; open it in
-            Sales for the whole order.
+            {t("The order also has {{count}} other lines; open it in Sales for the whole order.", {
+              count: mine.others,
+            })}
           </p>
         )}
         {Number(o.discount_pct) > 0 && (
-          <p className="text-muted">Discount {Number(o.discount_pct)}% on the whole order</p>
+          <p className="text-muted">
+            {t("Discount {{discount_pct}}% on the whole order", {
+              discount_pct: Number(o.discount_pct),
+            })}
+          </p>
         )}
         <p className="text-primary">
-          Order total:{" "}
+          {t("Order total:")}{" "}
           <span className="font-bold tabular-nums">{peso(Number(o.total_amount ?? 0))}</span>
         </p>
       </div>
 
       {o.remarks && (
         <p className="mt-4 text-sm text-secondary">
-          <span className="font-semibold text-primary">Remarks:</span> {o.remarks}
+          <span className="font-semibold text-primary">{t("Remarks:")}</span> {o.remarks}
         </p>
       )}
     </Modal>

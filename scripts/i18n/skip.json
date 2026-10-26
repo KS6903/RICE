@@ -1,0 +1,36 @@
+{
+  "$comment": "files: never marked. strings: text that is data, not shown (\"file:text\" for one file only), or that has its own handling (weekday and AM/PM names come from Intl).",
+  "files": [
+    "packages/web/src/utils/phPaymentProviders.ts",
+    "packages/web/src/main.tsx",
+    "packages/web/src/boot.tsx"
+  ],
+  "strings": [
+    "SameSite={{same_site}}",
+    "Path {{path}}",
+    "AM",
+    "PM",
+    "Su",
+    "Mo",
+    "Tu",
+    "We",
+    "Th",
+    "Fr",
+    "Sa",
+    "Sun",
+    "Mon",
+    "Tue",
+    "Wed",
+    "Thu",
+    "Fri",
+    "Sat",
+    "packages/web/src/pages/CheckoutPage.tsx:the bank account",
+    "packages/web/src/pages/CheckoutPage.tsx:Payment reference {{ref}}",
+    "owner@mill.ph",
+    "admin@example.com",
+    "you@company.com",
+    "REG-0001",
+    "app.ricemillsystem.com/dashboard",
+    "09xx xxx xxxx"
+  ]
+}

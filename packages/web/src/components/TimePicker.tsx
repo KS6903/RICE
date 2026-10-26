@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import Select from "./Select";
 import type { SelectOption } from "./Select";
+import { t } from "../i18n";
 
 type Props = {
   /** "HH:mm" in 24 hours, the same as an <input type="time">. */
@@ -36,7 +37,7 @@ export default function TimePicker({
   value,
   onChange,
   stepMinutes = 15,
-  placeholder = "Choose a time",
+  placeholder = t("Choose a time"),
   ...rest
 }: Props) {
   const options = useMemo(() => {

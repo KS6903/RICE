@@ -23,6 +23,7 @@ import {
   CartesianGrid,
 } from "recharts";
 import { format } from "date-fns";
+import { t } from "../../i18n";
 
 function StatCard({
   label,
@@ -92,8 +93,10 @@ export default function AdminDashboard() {
   return (
     <div className="space-y-8">
       <div>
-        <h2 className="text-2xl font-bold text-primary">Platform overview</h2>
-        <p className="text-sm text-muted">All tenants, users, and activity across your SaaS</p>
+        <h2 className="text-2xl font-bold text-primary">{t("Platform overview")}</h2>
+        <p className="text-sm text-muted">
+          {t("All tenants, users, and activity across your SaaS")}
+        </p>
       </div>
 
       {pendingCount > 0 && (
@@ -106,66 +109,66 @@ export default function AdminDashboard() {
           </div>
           <div className="flex-1">
             <p className="font-semibold text-primary">
-              {pendingCount} pending upgrade request{pendingCount === 1 ? "" : "s"}
+              {t("{{count}} pending upgrade requests", { count: pendingCount })}
             </p>
             <p className="text-sm text-muted">
-              Tenants are waiting for plan changes — review and approve.
+              {t("Tenants are waiting for plan changes — review and approve.")}
             </p>
           </div>
           <span className="link text-sm group-hover:translate-x-0.5 transition-transform">
-            Review →
+            {t("Review →")}
           </span>
         </Link>
       )}
 
       <section>
-        <GroupLabel>Platform</GroupLabel>
+        <GroupLabel>{t("Platform")}</GroupLabel>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <StatCard
-            label="Total tenants"
+            label={t("Total tenants")}
             value={stats?.total_tenants ?? 0}
             icon={Building2}
-            sublabel={`${stats?.new_tenants_30d ?? 0} new in 30 days`}
+            sublabel={t("{{count}} new in 30 days", { count: stats?.new_tenants_30d ?? 0 })}
             loading={loading}
           />
           <StatCard
-            label="Total users"
+            label={t("Total users")}
             value={stats?.total_users ?? 0}
             icon={Users}
-            sublabel={`${stats?.active_users_7d ?? 0} active in 7 days`}
+            sublabel={t("{{count}} active in 7 days", { count: stats?.active_users_7d ?? 0 })}
             loading={loading}
           />
           <StatCard
-            label="Total branches"
+            label={t("Total branches")}
             value={stats?.total_branches ?? 0}
             icon={Building2}
             loading={loading}
           />
           <StatCard
-            label="Active 7 days"
+            label={t("Active 7 days")}
             value={stats?.active_users_7d ?? 0}
             icon={Activity}
-            sublabel="users with recent login"
+            sublabel={t("users with recent login")}
             loading={loading}
           />
         </div>
       </section>
 
       <section>
-        <GroupLabel>Subscriptions</GroupLabel>
+        <GroupLabel>{t("Subscriptions")}</GroupLabel>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           <StatCard
-            label="Subscribed users"
+            label={t("Subscribed users")}
             value={stats?.subscribed_users ?? 0}
             icon={CreditCard}
-            sublabel="on a paid plan"
+            sublabel={t("on a paid plan")}
             loading={loading}
           />
           <StatCard
-            label="Unsubscribed users"
+            label={t("Unsubscribed users")}
             value={stats?.unsubscribed_users ?? 0}
             icon={CreditCard}
-            sublabel="on Free or none"
+            sublabel={t("on Free or none")}
             loading={loading}
           />
           <Link
@@ -173,33 +176,33 @@ export default function AdminDashboard() {
             className="rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400"
           >
             <StatCard
-              label="Plan requests"
+              label={t("Plan requests")}
               value={pendingCount}
               icon={Inbox}
               tone={pendingCount > 0 ? "amber" : "neutral"}
-              sublabel={pendingCount > 0 ? "awaiting review" : "no pending requests"}
+              sublabel={pendingCount > 0 ? t("awaiting review") : t("no pending requests")}
             />
           </Link>
         </div>
       </section>
 
       <section>
-        <GroupLabel>Operations volume</GroupLabel>
+        <GroupLabel>{t("Operations volume")}</GroupLabel>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <StatCard
-            label="Total purchases"
+            label={t("Total purchases")}
             value={stats?.total_purchases ?? 0}
             icon={Wheat}
             loading={loading}
           />
           <StatCard
-            label="Total batches"
+            label={t("Total batches")}
             value={stats?.total_batches ?? 0}
             icon={Factory}
             loading={loading}
           />
           <StatCard
-            label="Total orders"
+            label={t("Total orders")}
             value={stats?.total_orders ?? 0}
             icon={ShoppingCart}
             loading={loading}
@@ -210,8 +213,8 @@ export default function AdminDashboard() {
       <div className="card">
         <div className="flex items-center justify-between mb-5">
           <div>
-            <h3 className="font-semibold text-primary">New tenant signups</h3>
-            <p className="text-xs text-muted">Last 30 days</p>
+            <h3 className="font-semibold text-primary">{t("New tenant signups")}</h3>
+            <p className="text-xs text-muted">{t("Last 30 days")}</p>
           </div>
           <span className="icon-chip icon-chip-brand">
             <TrendingUp size={18} />
@@ -250,7 +253,7 @@ export default function AdminDashboard() {
                 cursor={{ stroke: "rgb(16 185 129 / 0.4)" }}
                 contentStyle={{
                   background: "rgb(var(--surface-raised))",
-                  border: "1px solid rgb(var(--line))",
+                  border: t("1px solid rgb(var(--line))"),
                   borderRadius: "0.75rem",
                   boxShadow: "0 8px 24px -8px rgba(15,23,42,0.25)",
                   fontSize: 12,
@@ -274,8 +277,8 @@ export default function AdminDashboard() {
             <span className="icon-chip mb-3">
               <TrendingUp size={18} />
             </span>
-            <p className="text-sm font-medium text-secondary">No signups in this window</p>
-            <p className="text-xs text-muted mt-0.5">New tenant signups will chart here.</p>
+            <p className="text-sm font-medium text-secondary">{t("No signups in this window")}</p>
+            <p className="text-xs text-muted mt-0.5">{t("New tenant signups will chart here.")}</p>
           </div>
         )}
       </div>

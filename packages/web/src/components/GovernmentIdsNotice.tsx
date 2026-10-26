@@ -9,12 +9,13 @@ import { useFeature } from "../hooks/useFeature";
 import { useAccess } from "../hooks/useAccess";
 import { automationsService } from "../services/AutomationsService";
 import { useAuthStore } from "../stores/authStore";
+import { t } from "../i18n";
 
 export const GOVERNMENT_IDS = [
-  ["sss_no", "SSS"],
+  ["sss_no", t("SSS")],
   ["philhealth_no", "PhilHealth"],
-  ["pagibig_no", "Pag-IBIG"],
-  ["tin", "TIN"],
+  ["pagibig_no", t("Pag-IBIG")],
+  ["tin", t("TIN")],
 ] as const;
 
 type Employee = {
@@ -94,14 +95,14 @@ function MonthlyReminder() {
       />
       <span>
         <span className="flex items-center gap-1.5 text-sm font-semibold text-primary">
-          <BellRing size={14} aria-hidden /> Remind me on the 1st of each month
+          <BellRing size={14} aria-hidden /> {t("Remind me on the 1st of each month")}
         </span>
         <span className="block text-xs text-secondary">
-          A notice under the bell, and by email, while anyone is still missing a number.
+          {t("A notice under the bell, and by email, while anyone is still missing a number.")}
         </span>
         {save.isError && (
           <span className="block text-xs text-rose-600 dark:text-rose-400" role="alert">
-            Couldn't change the reminder. Try again.
+            {t("Couldn't change the reminder. Try again.")}
           </span>
         )}
       </span>
@@ -128,8 +129,7 @@ export default function GovernmentIdsNotice({
 
   const headline = (
     <strong>
-      {missing.length} active {missing.length === 1 ? "employee is" : "employees are"} missing
-      government numbers.
+      {t("{{count}} active employees are missing government numbers.", { count: missing.length })}
     </strong>
   );
 
@@ -137,7 +137,7 @@ export default function GovernmentIdsNotice({
   if (minimized) {
     return (
       <section
-        aria-label="Missing government numbers"
+        aria-label={t("Missing government numbers")}
         className="card !py-2 flex items-center justify-between gap-3 border border-amber-300 dark:border-amber-800/60"
       >
         <p className="flex items-center gap-2 text-sm text-primary">
@@ -147,8 +147,8 @@ export default function GovernmentIdsNotice({
         <button
           type="button"
           className="btn-ghost !p-1.5 -mr-1.5 shrink-0"
-          aria-label="Expand"
-          title="Expand"
+          aria-label={t("Expand")}
+          title={t("Expand")}
           aria-expanded={false}
           onClick={() => setMinimized(false)}
         >
@@ -160,7 +160,7 @@ export default function GovernmentIdsNotice({
 
   return (
     <section
-      aria-label="Missing government numbers"
+      aria-label={t("Missing government numbers")}
       className="card space-y-3 border border-amber-300 dark:border-amber-800/60"
     >
       <div className="flex items-start gap-3">
@@ -172,8 +172,10 @@ export default function GovernmentIdsNotice({
               aria-hidden
             />
             <span>
-              {headline} You need SSS, PhilHealth, Pag-IBIG and TIN numbers to remit contributions
-              and withholding tax.
+              {t(
+                "{{headline}} You need SSS, PhilHealth, Pag-IBIG and TIN numbers to remit contributions and withholding tax.",
+                { headline },
+              )}
             </span>
           </p>
           <button
@@ -187,15 +189,15 @@ export default function GovernmentIdsNotice({
               className={`transition-transform ${open ? "rotate-180" : ""}`}
               aria-hidden
             />
-            {open ? "Hide who" : "Show who"}
+            {open ? t("Hide who") : t("Show who")}
           </button>
         </div>
         {/* The top right corner, whatever the width. */}
         <button
           type="button"
           className="btn-ghost !p-1.5 -mr-1.5 -mt-1.5 shrink-0"
-          aria-label="Minimize"
-          title="Minimize"
+          aria-label={t("Minimize")}
+          title={t("Minimize")}
           onClick={() => setMinimized(true)}
         >
           <Minus size={16} aria-hidden />
@@ -212,7 +214,7 @@ export default function GovernmentIdsNotice({
               >
                 {employee.full_name}
               </button>
-              <span className="text-secondary">: no {ids.join(", ")}</span>
+              <span className="text-secondary">{t(": no {{ids}}", { ids: ids.join(", ") })}</span>
             </li>
           ))}
         </ul>

@@ -4,6 +4,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { RotateCcw } from "lucide-react";
 import { adminService } from "../../services/AdminService";
+import { t } from "../../i18n";
 
 export type ProvisioningInfo = {
   state: "provisioned" | "queued" | "retrying" | "failed" | "not_requested";
@@ -18,15 +19,18 @@ export type ProvisioningInfo = {
 /** Nothing for a set-up tenant; otherwise where its setup stands. */
 export function ProvisioningBadge({ info }: { info?: ProvisioningInfo }) {
   if (!info || info.state === "provisioned") return null;
-  if (info.state === "failed") return <span className="badge-red">Setup failed</span>;
+  if (info.state === "failed") return <span className="badge-red">{t("Setup failed")}</span>;
   if (info.state === "retrying")
     return (
       <span className="badge-yellow">
-        Setup retrying ({info.attempts}/{info.max_attempts})
+        {t("Setup retrying ({{attempts}}/{{max_attempts}})", {
+          attempts: info.attempts,
+          max_attempts: info.max_attempts,
+        })}
       </span>
     );
-  if (info.state === "queued") return <span className="badge-yellow">Setting up</span>;
-  return <span className="badge-gray">Not set up</span>;
+  if (info.state === "queued") return <span className="badge-yellow">{t("Setting up")}</span>;
+  return <span className="badge-gray">{t("Not set up")}</span>;
 }
 
 export function ProvisioningPanel({
@@ -54,25 +58,28 @@ export function ProvisioningPanel({
     >
       <div className="flex items-center gap-3 flex-wrap">
         <h3 id="provisioning-h" className="font-semibold text-primary">
-          Account setup
+          {t("Account setup")}
         </h3>
         <ProvisioningBadge info={info} />
       </div>
       <dl className="grid gap-x-6 gap-y-1 text-sm sm:grid-cols-3">
         <div>
-          <dt className="text-muted">Requested</dt>
+          <dt className="text-muted">{t("Requested")}</dt>
           <dd className="text-primary">{when(info.requested_at)}</dd>
         </div>
         <div>
-          <dt className="text-muted">Attempts</dt>
+          <dt className="text-muted">{t("Attempts")}</dt>
           <dd className="text-primary tabular-nums">
-            {info.attempts} of {info.max_attempts}
+            {t("{{attempts}} of {{max_attempts}}", {
+              attempts: info.attempts,
+              max_attempts: info.max_attempts,
+            })}
           </dd>
         </div>
         <div>
-          <dt className="text-muted">Next attempt</dt>
+          <dt className="text-muted">{t("Next attempt")}</dt>
           <dd className="text-primary">
-            {info.state === "failed" ? "None: retries used up" : when(info.next_attempt_at)}
+            {info.state === "failed" ? t("None: retries used up") : when(info.next_attempt_at)}
           </dd>
         </div>
       </dl>
@@ -85,15 +92,15 @@ export function ProvisioningPanel({
           disabled={retry.isPending}
         >
           <RotateCcw size={15} />
-          {retry.isPending ? "Starting…" : "Retry setup now"}
+          {retry.isPending ? t("Starting…") : t("Retry setup now")}
         </button>
         <span className="text-xs text-muted">
-          Clears the failures and starts the provisioner straight away.
+          {t("Clears the failures and starts the provisioner straight away.")}
         </span>
       </div>
       {retry.isError && (
         <p className="text-sm text-rose-600 dark:text-rose-400" role="alert">
-          Couldn't start the retry. Try again in a moment.
+          {t("Couldn't start the retry. Try again in a moment.")}
         </p>
       )}
     </section>

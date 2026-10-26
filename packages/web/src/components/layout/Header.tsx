@@ -11,6 +11,7 @@ import UserAvatar from "../UserAvatar";
 import { roleLabel } from "@rice-mill/shared";
 import { NavDrawerButton } from "./NavDrawer";
 import { useAccess } from "../../hooks/useAccess";
+import { t } from "../../i18n";
 
 function PlanBadge() {
   const plan = useCurrentPlan();
@@ -19,10 +20,10 @@ function PlanBadge() {
       <Link
         to="/settings"
         className="badge-yellow hover:opacity-80 transition-opacity"
-        title="No subscription assigned"
+        title={t("No subscription assigned")}
       >
         <AlertCircle size={12} />
-        No plan
+        {t("No plan")}
       </Link>
     );
   }
@@ -55,7 +56,7 @@ function PlanBadge() {
     <Link
       to="/settings"
       className={`${tone} hover:opacity-80 transition-opacity`}
-      title={`Plan: ${plan.name} · Status: ${plan.status}`}
+      title={t("Plan: {{name}} · Status: {{status}}", { name: plan.name, status: plan.status })}
     >
       <Icon size={12} />
       {/* A phone's header has room for the icon alone; the title names it. */}
@@ -99,7 +100,7 @@ export default function Header({ menuOpen, onMenu }: { menuOpen: boolean; onMenu
 
         <span className={`hidden xl:inline-flex ${isOnline ? "badge-green" : "badge-yellow"}`}>
           {isOnline ? <Wifi size={12} /> : <WifiOff size={12} />}
-          {isOnline ? "Online" : "Offline"}
+          {isOnline ? t("Online") : t("Offline")}
         </span>
 
         {/* The tiniest screens (a fold phone's cover) need the room; Settings shows the plan. */}
@@ -118,7 +119,7 @@ export default function Header({ menuOpen, onMenu }: { menuOpen: boolean; onMenu
               {user?.full_name}
             </p>
             <p className="text-xs text-muted font-medium">
-              {user?.role_label || roleLabel(user?.role)}
+              {user?.role_label || t(roleLabel(user?.role))}
             </p>
           </div>
         </div>
@@ -126,8 +127,8 @@ export default function Header({ menuOpen, onMenu }: { menuOpen: boolean; onMenu
         <button
           onClick={handleLogout}
           className="h-9 w-9 grid place-items-center rounded-xl text-secondary hover:text-rose-500 hover:bg-rose-500/10 transition-colors"
-          title="Sign out"
-          aria-label="Sign out"
+          title={t("Sign out")}
+          aria-label={t("Sign out")}
         >
           <LogOut size={16} />
         </button>

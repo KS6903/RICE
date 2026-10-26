@@ -17,6 +17,7 @@ import FieldCaption from "../FieldCaption";
 import QuickAdd from "../QuickAdd";
 import { peso } from "./money";
 import { GOODS, SALE_ITEM_TYPE, gradeLabel, type TradeKind } from "./trade";
+import { t } from "../../i18n";
 
 type Line = {
   variety_id: string;
@@ -39,15 +40,15 @@ const apiError = (error: unknown) => {
   const data = (error as ApiError)?.response?.data;
   return {
     message:
-      typeof data?.detail === "string" ? data.detail : "The sale couldn't be saved. Try again.",
+      typeof data?.detail === "string" ? data.detail : t("The sale couldn't be saved. Try again."),
     code: data?.code,
   };
 };
 
 const TITLE: Record<TradeKind, string> = {
-  palay: "New Palay Sale",
-  rice: "New Rice Sale",
-  byproduct: "New By-product Sale",
+  palay: t("New Palay Sale"),
+  rice: t("New Rice Sale"),
+  byproduct: t("New By-product Sale"),
 };
 
 export default function NewSaleModal({ kind, onClose }: { kind: TradeKind; onClose: () => void }) {
@@ -77,7 +78,7 @@ export default function NewSaleModal({ kind, onClose }: { kind: TradeKind; onClo
       kind === "rice"
         ? MILLED_GRADES.map((g) => ({ value: g, label: gradeLabel(g) }))
         : [
-            { value: "", label: "No grade" },
+            { value: "", label: t("No grade") },
             ...grades.map((g: any) => ({ value: g.code, label: g.code })),
           ],
     [kind, grades],
@@ -130,25 +131,31 @@ export default function NewSaleModal({ kind, onClose }: { kind: TradeKind; onClo
       open
       size="xl"
       title={TITLE[kind]}
-      subtitle={`A sales order for ${GOODS[kind]}. It also shows on the Sales page, ready to invoice.`}
+      subtitle={t(
+        "A sales order for {{GOODS}}. It also shows on the Sales page, ready to invoice.",
+        { GOODS: GOODS[kind] },
+      )}
       onClose={onClose}
       testId="new-sale"
       footer={
         <>
           <p className="mr-auto text-sm text-gray-600 dark:text-slate-300" data-testid="sale-total">
-            Total: <span className="font-semibold tabular-nums">{totalKg.toLocaleString()} kg</span>
+            {t("Total:")}{" "}
+            <span className="font-semibold tabular-nums">
+              {t("{{totalKg}} kg", { totalKg: totalKg.toLocaleString() })}
+            </span>
             {" · "}
             <span className="font-semibold tabular-nums">{peso(totalPeso)}</span>
           </p>
           <button onClick={onClose} className="btn-secondary">
-            Cancel
+            {t("Cancel")}
           </button>
           <button
             onClick={() => save.mutate(false)}
             className="btn-primary"
             disabled={save.isPending || !ready}
           >
-            {save.isPending ? "Saving…" : "Save Sale"}
+            {save.isPending ? t("Saving…") : t("Save Sale")}
           </button>
         </>
       }
@@ -158,29 +165,29 @@ export default function NewSaleModal({ kind, onClose }: { kind: TradeKind; onClo
           <div>
             <div className="mb-1 flex items-baseline justify-between">
               <label className="block text-sm font-medium text-gray-700 dark:text-slate-200">
-                Customer
+                {t("Customer")}
               </label>
               <QuickAdd
-                label="New customer"
+                label={t("New customer")}
                 endpoint="/sales/customers"
                 queryKey={["customers"]}
                 fields={[
-                  { key: "name", label: "Name", required: true, full: true },
+                  { key: "name", label: t("Name"), required: true, full: true },
                   {
                     key: "customer_type",
-                    label: "Type",
+                    label: t("Type"),
                     type: "select",
-                    options: CUSTOMER_TYPES.map((t) => ({ value: t.value, label: t.label })),
+                    options: CUSTOMER_TYPES.map((c) => ({ value: c.value, label: t(c.label) })),
                     default: "wholesaler",
                   },
-                  { key: "phone", label: "Phone" },
+                  { key: "phone", label: t("Phone") },
                 ]}
                 onCreated={(c) => setForm((f) => ({ ...f, customer_id: c.id }))}
               />
             </div>
             <Select
-              aria-label="Customer"
-              placeholder="Choose a customer"
+              aria-label={t("Customer")}
+              placeholder={t("Choose a customer")}
               value={form.customer_id}
               onChange={(v) => setForm((f) => ({ ...f, customer_id: v }))}
               options={customers.map((c: any) => ({ value: c.id, label: c.name }))}
@@ -188,10 +195,10 @@ export default function NewSaleModal({ kind, onClose }: { kind: TradeKind; onClo
           </div>
           <div>
             <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-slate-200">
-              Sale Date
+              {t("Sale Date")}
             </label>
             <DatePicker
-              aria-label="Sale date"
+              aria-label={t("Sale date")}
               value={form.order_date}
               onChange={(v) => setForm((f) => ({ ...f, order_date: v }))}
             />
@@ -200,12 +207,14 @@ export default function NewSaleModal({ kind, onClose }: { kind: TradeKind; onClo
 
         <div className="space-y-3">
           <div className="flex items-center justify-between">
-            <p className="text-sm font-medium text-gray-700 dark:text-slate-200">Sale Items</p>
+            <p className="text-sm font-medium text-gray-700 dark:text-slate-200">
+              {t("Sale Items")}
+            </p>
             <button
               onClick={() => setForm((f) => ({ ...f, items: [...f.items, newLine(kind)] }))}
               className="text-sm text-brand-600 dark:text-brand-400 hover:text-brand-700 dark:hover:text-brand-300"
             >
-              + Add Item
+              {t("+ Add Item")}
             </button>
           </div>
           {form.items.map((item, idx) => (
@@ -214,9 +223,9 @@ export default function NewSaleModal({ kind, onClose }: { kind: TradeKind; onClo
               className={`grid grid-cols-2 gap-2 rounded-lg bg-gray-50 p-3 dark:bg-slate-900/50 ${kind === "byproduct" ? "sm:grid-cols-3" : "sm:grid-cols-4"}`}
             >
               {kind === "byproduct" ? (
-                <FieldCaption label="By-product" className="col-span-2 sm:col-span-1">
+                <FieldCaption label={t("By-product")} className="col-span-2 sm:col-span-1">
                   <Select
-                    aria-label="By-product"
+                    aria-label={t("By-product")}
                     value={item.byproduct_type}
                     onChange={(v) => setLine(idx, { byproduct_type: v })}
                     options={byproductKinds.map((k) => ({ value: k.code, label: k.name }))}
@@ -224,18 +233,18 @@ export default function NewSaleModal({ kind, onClose }: { kind: TradeKind; onClo
                 </FieldCaption>
               ) : (
                 <>
-                  <FieldCaption label="Variety">
+                  <FieldCaption label={t("Variety")}>
                     <Select
-                      aria-label="Variety"
-                      placeholder="Variety"
+                      aria-label={t("Variety")}
+                      placeholder={t("Variety")}
                       value={item.variety_id}
                       onChange={(v) => setLine(idx, { variety_id: v })}
                       options={varieties.map((v: any) => ({ value: v.id, label: v.code }))}
                     />
                   </FieldCaption>
-                  <FieldCaption label="Grade">
+                  <FieldCaption label={t("Grade")}>
                     <Select
-                      aria-label="Grade"
+                      aria-label={t("Grade")}
                       value={item.grade_name}
                       onChange={(v) => setLine(idx, { grade_name: v })}
                       options={gradeOptions}
@@ -243,7 +252,7 @@ export default function NewSaleModal({ kind, onClose }: { kind: TradeKind; onClo
                   </FieldCaption>
                 </>
               )}
-              <FieldCaption label="Weight (kg)">
+              <FieldCaption label={t("Weight (kg)")}>
                 <input
                   className="input"
                   placeholder="kg"
@@ -253,10 +262,10 @@ export default function NewSaleModal({ kind, onClose }: { kind: TradeKind; onClo
                   onChange={(e) => setLine(idx, { quantity_kg: e.target.value })}
                 />
               </FieldCaption>
-              <FieldCaption label="Price per kg (₱)">
+              <FieldCaption label={t("Price per kg (₱)")}>
                 <input
                   className="input"
-                  placeholder="₱/kg"
+                  placeholder={t("₱/kg")}
                   type="number"
                   min="0"
                   value={item.unit_price_per_kg}
@@ -280,7 +289,7 @@ export default function NewSaleModal({ kind, onClose }: { kind: TradeKind; onClo
                 onClick={() => save.mutate(true)}
                 disabled={save.isPending}
               >
-                Approve over the limit
+                {t("Approve over the limit")}
               </button>
             )}
           </div>

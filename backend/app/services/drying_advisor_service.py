@@ -70,7 +70,11 @@ class DryingAdvisorService:
     def __init__(self) -> None:
         self._weather = WeatherService()
 
-    def get_advisory(self, request: Request, lat: float | None, lon: float | None) -> dict[str, Any]:
+    def get_advisory(
+        self, request: Request, lat: float | None, lon: float | None, language: str | None = None
+    ) -> dict[str, Any]:
+        """The advisory, written in `language` (a language code, e.g. "tl"; the
+        account's choice) when it isn't English."""
         if not settings.DEEPSEEK_API_KEY:
             raise NotConfiguredError("The Drying Advisor is not configured on this server.")
 
@@ -78,13 +82,14 @@ class DryingAdvisorService:
         location = forecast["location"]
         today = (forecast.get("daily") or [{}])[0].get("date") or datetime.now(timezone.utc).date().isoformat()
 
-        cache_key = self._cache_key(location["lat"], location["lon"], today)
+        language = language if language and language != "en" else None
+        cache_key = self._cache_key(location["lat"], location["lon"], today, language)
         cached = cache.get_json(cache_key)
         if cached is not None:
             return {**cached, "cached": True}
 
         summary = self._summarize_forecast(forecast, today)
-        advisory = self._ask_deepseek(summary, location)
+        advisory = self._ask_deepseek(summary, location, language)
         payload = advisory.model_dump(mode="json")
         cache.set_json(cache_key, payload, ttl=TTL_DRYING_ADVISORY)
         return payload
@@ -92,8 +97,10 @@ class DryingAdvisorService:
     # ── cache ─────────────────────────────────────────────────────────────────
 
     @staticmethod
-    def _cache_key(lat: float, lon: float, local_date: str) -> str:
-        return f"drying-advisory:{round(lat, 2)}:{round(lon, 2)}:{local_date}"
+    def _cache_key(lat: float, lon: float, local_date: str, language: str | None = None) -> str:
+        key = f"drying-advisory:{round(lat, 2)}:{round(lon, 2)}:{local_date}"
+        # Each language its own answer; English keeps the key it always had.
+        return f"{key}:{language}" if language else key
 
     # ── prompt construction ──────────────────────────────────────────────────
 
@@ -130,7 +137,9 @@ class DryingAdvisorService:
 
     # ── DeepSeek call ─────────────────────────────────────────────────────────
 
-    def _ask_deepseek(self, forecast_summary: str, location: dict[str, Any]) -> DryingAdvisory:
+    def _ask_deepseek(
+        self, forecast_summary: str, location: dict[str, Any], language: str | None = None
+    ) -> DryingAdvisory:
         url = f"{settings.DEEPSEEK_BASE_URL.rstrip('/')}/chat/completions"
         key = settings.DEEPSEEK_API_KEY
         if key is None:  # get_advisory refuses first; this keeps the call honest
@@ -142,7 +151,7 @@ class DryingAdvisorService:
         body = {
             "model": settings.DEEPSEEK_MODEL,
             "messages": [
-                {"role": "system", "content": _SYSTEM_PROMPT},
+                {"role": "system", "content": _SYSTEM_PROMPT + _language_rule(language)},
                 {"role": "user", "content": forecast_summary},
             ],
             "response_format": {"type": "json_object"},
@@ -195,6 +204,18 @@ class DryingAdvisorService:
         except ValidationError as e:
             logger.warning("DeepSeek response failed schema validation: %s", e)
             raise HTTPException(status_code=502, detail="Drying advisory is temporarily unavailable")
+
+
+def _language_rule(language: str | None) -> str:
+    """The prompt's line on the language to answer in. The code comes from the
+    account (letters and hyphens only, checked when it was saved)."""
+    if not language:
+        return ""
+    return (
+        f'\n\nWrite "headline", "reasoning" and "best_window" in the language whose code is '
+        f'"{language}" (Google Translate\'s codes: "tl" is Tagalog, "ceb" Cebuano, "ilo" Ilocano, '
+        f'"hil" Hiligaynon). Keep the JSON keys, and the verdict values, in English.'
+    )
 
 
 def _fmt_temp(value: float | None) -> str:

@@ -15,6 +15,7 @@ import { CheckCircle2, Circle } from "lucide-react";
 import { useAccess } from "../hooks/useAccess";
 import { useAuthStore } from "../stores/authStore";
 import { stockCountService, type SheetLine, type StockCount } from "../services/StockCountService";
+import { t } from "../i18n";
 
 const kg = (n: number) => `${n.toLocaleString(undefined, { maximumFractionDigits: 1 })} kg`;
 const day = (iso: string) =>
@@ -27,9 +28,9 @@ const key = (line: SheetLine) => `${line.kind}:${line.inventory_id}`;
 const digits = (raw: string) => raw.replace(/[^\d.]/g, "");
 
 const KINDS: { kind: SheetLine["kind"]; title: string }[] = [
-  { kind: "milled_rice", title: "Milled rice" },
-  { kind: "palay", title: "Palay" },
-  { kind: "byproduct", title: "By-products" },
+  { kind: "milled_rice", title: t("Milled rice") },
+  { kind: "palay", title: t("Palay") },
+  { kind: "byproduct", title: t("By-products") },
 ];
 
 type Unit = "sacks" | "kg";
@@ -76,28 +77,29 @@ function CountCard({ count, manager }: { count: StockCount; manager: boolean }) 
   });
   const out = count.lines.filter((l) => l.out);
   return (
-    <article aria-label={`Count of ${day(count.date)}`} className="card !p-4 space-y-2">
+    <article
+      aria-label={t("Count of {{date}}", { date: day(count.date) })}
+      className="card !p-4 space-y-2"
+    >
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <span className="font-semibold text-primary">
           {day(count.date)}
           {count.counted_by ? `, by ${count.counted_by}` : ""}
         </span>
         {out.length === 0 ? (
-          <span className="badge-green">All within the allowance</span>
+          <span className="badge-green">{t("All within the allowance")}</span>
         ) : (
-          <span className="badge-red">
-            {out.length} {out.length === 1 ? "line" : "lines"} out
-          </span>
+          <span className="badge-red">{t("{{count}} lines out", { count: out.length })}</span>
         )}
       </div>
       {out.length > 0 && (
         <table className="w-full text-sm">
           <thead>
             <tr className="text-left text-xs text-secondary">
-              <th className="py-1 font-semibold">Item</th>
-              <th className="py-1 font-semibold text-right">Records</th>
-              <th className="py-1 font-semibold text-right">Counted</th>
-              <th className="py-1 font-semibold text-right">Difference</th>
+              <th className="py-1 font-semibold">{t("Item")}</th>
+              <th className="py-1 font-semibold text-right">{t("Records")}</th>
+              <th className="py-1 font-semibold text-right">{t("Counted")}</th>
+              <th className="py-1 font-semibold text-right">{t("Difference")}</th>
             </tr>
           </thead>
           <tbody>
@@ -118,14 +120,17 @@ function CountCard({ count, manager }: { count: StockCount; manager: boolean }) 
       {count.note && <p className="text-sm text-secondary">"{count.note}"</p>}
       {count.reviewed_by && (
         <p className="text-sm text-primary">
-          Reviewed by {count.reviewed_by}: {count.review_note}
+          {t("Reviewed by {{reviewed_by}}: {{review_note}}", {
+            reviewed_by: count.reviewed_by,
+            review_note: count.review_note,
+          })}
         </p>
       )}
       {count.needs_review && manager && (
         <div className="flex flex-wrap items-end gap-2">
           <div className="flex-1 min-w-[12rem]">
             <label htmlFor={`stock-review-${count.id}`} className="form-label">
-              What you found
+              {t("What you found")}
             </label>
             <input
               id={`stock-review-${count.id}`}
@@ -141,13 +146,13 @@ function CountCard({ count, manager }: { count: StockCount; manager: boolean }) 
             disabled={!note.trim() || review.isPending}
             onClick={() => review.mutate()}
           >
-            Mark reviewed
+            {t("Mark reviewed")}
           </button>
         </div>
       )}
       {count.needs_review && !manager && (
         <p className="text-xs text-amber-700 dark:text-amber-400">
-          Waiting for the owner to review.
+          {t("Waiting for the owner to review.")}
         </p>
       )}
     </article>
@@ -200,12 +205,14 @@ function CountRow({
               onChange={(e) => onChange({ ...entry, sacks: e.target.value.replace(/\D/g, "") })}
               onKeyDown={onEnter}
             />
-            <span className="text-xs text-secondary">sacks +</span>
+            <span className="text-xs text-secondary">{t("sacks +")}</span>
           </>
         )}
         <input
           data-count-input
-          aria-label={unit === "sacks" ? `${line.label}, loose kg` : line.label}
+          aria-label={
+            unit === "sacks" ? t("{{label}}, loose kg", { label: line.label }) : line.label
+          }
           inputMode="decimal"
           enterKeyHint="next"
           className={`${field} ${unit === "sacks" ? "w-20" : "w-32"}`}
@@ -213,7 +220,7 @@ function CountRow({
           onChange={(e) => onChange({ ...entry, kg: digits(e.target.value) })}
           onKeyDown={onEnter}
         />
-        <span className="text-xs text-secondary">kg</span>
+        <span className="text-xs text-secondary">{t("kg")}</span>
       </span>
       {unit === "sacks" && (
         <span className="w-24 text-right text-sm tabular-nums text-secondary" aria-live="polite">
@@ -295,7 +302,7 @@ export default function StockCountPage() {
     return (
       <div className="card">
         <p className="text-secondary">
-          {errorText(page.error, "The stock count couldn't load. Try again in a moment.")}
+          {errorText(page.error, t("The stock count couldn't load. Try again in a moment."))}
         </p>
       </div>
     );
@@ -308,33 +315,35 @@ export default function StockCountPage() {
   return (
     <div className="space-y-6">
       <header>
-        <h1 className="text-2xl font-bold text-primary">Stock count</h1>
+        <h1 className="text-2xl font-bold text-primary">{t("Stock count")}</h1>
         <p className="text-secondary mt-1 max-w-2xl">
-          Count what's on the floor. The records stay hidden until it's saved, so the count stays
-          honest. Lines out by more than {tolerance_pct}% go to the owner; stock is corrected in{" "}
+          {t(
+            "Count what's on the floor. The records stay hidden until it's saved, so the count stays honest. Lines out by more than {{tolerance_pct}}% go to the owner; stock is corrected in",
+            { tolerance_pct },
+          )}{" "}
           <Link to="/inventory" className="link">
-            Inventory
+            {t("Inventory")}
           </Link>
           .
         </p>
       </header>
 
       {canEdit("inventory") ? (
-        <section ref={sheetRef} aria-label="Count sheet" className="card space-y-5">
+        <section ref={sheetRef} aria-label={t("Count sheet")} className="card space-y-5">
           {sheet.length === 0 ? (
-            <p className="text-sm text-secondary">There's no stock on record to count.</p>
+            <p className="text-sm text-secondary">{t("There's no stock on record to count.")}</p>
           ) : (
             <>
               <div className="flex flex-wrap items-center gap-3">
                 <div
                   role="radiogroup"
-                  aria-label="Count in"
+                  aria-label={t("Count in")}
                   className="inline-flex rounded-xl p-1 ring-1 ring-soft"
                 >
                   {(
                     [
-                      ["sacks", "Sacks + kg"],
-                      ["kg", "Kilos only"],
+                      ["sacks", t("Sacks + kg")],
+                      ["kg", t("Kilos only")],
                     ] as const
                   ).map(([value, label]) => (
                     <button
@@ -355,15 +364,15 @@ export default function StockCountPage() {
                 </div>
                 {unit === "sacks" && (
                   <label className="flex items-center gap-2 text-sm text-secondary">
-                    One sack is
+                    {t("One sack is")}
                     <input
-                      aria-label="Kilos per sack"
+                      aria-label={t("Kilos per sack")}
                       inputMode="decimal"
                       className="input !py-1.5 w-20 text-right tabular-nums"
                       value={sackKg}
                       onChange={(e) => setSackKg(digits(e.target.value))}
                     />
-                    kg
+                    {t("kg")}
                   </label>
                 )}
               </div>
@@ -392,7 +401,7 @@ export default function StockCountPage() {
                             {title}
                           </h3>
                           <span className="text-xs text-muted tabular-nums">
-                            {done} of {lines.length}
+                            {t("{{done}} of {{linesCount}}", { done, linesCount: lines.length })}
                           </span>
                         </div>
                         <ul className="divide-y divide-slate-100 dark:divide-slate-800">
@@ -419,7 +428,7 @@ export default function StockCountPage() {
           )}
           <div>
             <label htmlFor="stock-note" className="form-label">
-              Note (optional)
+              {t("Note (optional)")}
             </label>
             <input
               id="stock-note"
@@ -431,13 +440,13 @@ export default function StockCountPage() {
           </div>
           {save.isError && (
             <p className="text-sm text-rose-600 dark:text-rose-400" role="alert">
-              {errorText(save.error, "Couldn't save the count. Try again.")}
+              {errorText(save.error, t("Couldn't save the count. Try again."))}
             </p>
           )}
           <div className="sticky bottom-3 z-10 -mx-2 flex items-center gap-3 rounded-xl glass-strong px-3 py-2.5 shadow-lg ring-1 ring-soft">
             <div className="min-w-0 flex-1">
               <p className="text-sm font-semibold text-primary tabular-nums">
-                {filled} of {sheet.length} counted
+                {t("{{filled}} of {{sheetCount}} counted", { filled, sheetCount: sheet.length })}
               </p>
               <div className="mt-1 h-1.5 rounded-full bg-slate-200 dark:bg-slate-700">
                 <div
@@ -447,7 +456,7 @@ export default function StockCountPage() {
               </div>
               {sacksWithoutSize && (
                 <p className="mt-1 text-xs text-amber-700 dark:text-amber-400">
-                  Enter how many kilos one sack holds.
+                  {t("Enter how many kilos one sack holds.")}
                 </p>
               )}
             </div>
@@ -457,18 +466,20 @@ export default function StockCountPage() {
               disabled={filled === 0 || sacksWithoutSize || save.isPending}
               onClick={() => save.mutate(sheet)}
             >
-              {save.isPending ? "Saving…" : "Save the count"}
+              {save.isPending ? t("Saving…") : t("Save the count")}
             </button>
           </div>
         </section>
       ) : (
-        <p className="text-sm text-secondary">Only staff who manage the stock can count it.</p>
+        <p className="text-sm text-secondary">
+          {t("Only staff who manage the stock can count it.")}
+        </p>
       )}
 
-      <section aria-label="Recent counts" className="space-y-3">
-        <h2 className="font-bold text-primary">Recent counts</h2>
+      <section aria-label={t("Recent counts")} className="space-y-3">
+        <h2 className="font-bold text-primary">{t("Recent counts")}</h2>
         {counts.length === 0 ? (
-          <p className="text-sm text-secondary">No counts yet.</p>
+          <p className="text-sm text-secondary">{t("No counts yet.")}</p>
         ) : (
           counts.map((c) => <CountCard key={c.id} count={c} manager={manager} />)
         )}

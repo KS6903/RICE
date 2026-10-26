@@ -12,6 +12,7 @@
 // forty distinct ones.
 import { createContext, useContext, useMemo, type ReactNode } from "react";
 import type { ItemLocation, UnifiedItem } from "../../mappers/InventoryMapper";
+import { t } from "../../i18n";
 
 /** What the split views need from an item (the detail window passes its own shape). */
 type SplitItem = Pick<UnifiedItem, "type" | "quantity_kg" | "locations">;
@@ -233,7 +234,7 @@ export function LocationKey({
   const hidden = locations.length - rows.length;
   return (
     <ul
-      aria-label="Stock by warehouse"
+      aria-label={t("Stock by warehouse")}
       className={`${inline ? "flex flex-wrap gap-x-3 gap-y-1" : "space-y-1"} ${className}`}
     >
       {rows.map((l, idx) => (
@@ -246,7 +247,7 @@ export function LocationKey({
             <span className="truncate">{l.branchName}</span>
           </span>
           <span className="shrink-0 font-semibold tabular-nums text-primary">
-            {l.quantity_kg.toLocaleString()} kg
+            {t("{{quantity_kg}} kg", { quantity_kg: l.quantity_kg.toLocaleString() })}
           </span>
         </li>
       ))}
@@ -258,7 +259,7 @@ export function LocationKey({
             .map((l) => l.branchName)
             .join(", ")}
         >
-          +{hidden} more warehouse{hidden === 1 ? "" : "s"}, open for the full list
+          {t("+{{count}} more warehouses, open for the full list", { count: hidden })}
         </li>
       )}
     </ul>
@@ -297,7 +298,7 @@ export function WarehouseLegend({
       className="flex flex-wrap items-center gap-2 rounded-xl glass px-3 py-2"
     >
       <span className="text-[11px] font-bold uppercase tracking-wide text-muted">
-        {warehouses.length} warehouses
+        {t("{{warehousesCount}} warehouses", { warehousesCount: warehouses.length })}
       </span>
       {warehouses.map((w, idx) =>
         w.branchId ? (
@@ -305,12 +306,14 @@ export function WarehouseLegend({
             key={w.branchId}
             type="button"
             onClick={() => onPick(w.branchId!)}
-            title={`Show only ${w.branchName}`}
+            title={t("Show only {{branchName}}", { branchName: w.branchName })}
             className="inline-flex items-center gap-1.5 rounded-lg px-2 py-1 text-xs ring-1 ring-soft bg-white/60 dark:bg-slate-800/50 hover:bg-white dark:hover:bg-slate-800 transition-colors"
           >
             <WarehouseSwatch colors={KINDS.map((k) => colorOf(k, w, idx))} />
             <span className="font-semibold text-primary">{w.branchName}</span>
-            <span className="tabular-nums text-muted">{w.quantity_kg.toLocaleString()} kg</span>
+            <span className="tabular-nums text-muted">
+              {t("{{quantity_kg}} kg", { quantity_kg: w.quantity_kg.toLocaleString() })}
+            </span>
           </button>
         ) : (
           <span
@@ -319,7 +322,9 @@ export function WarehouseLegend({
           >
             <WarehouseSwatch colors={KINDS.map((k) => colorOf(k, w, idx))} />
             <span className="font-semibold text-primary">{w.branchName}</span>
-            <span className="tabular-nums text-muted">{w.quantity_kg.toLocaleString()} kg</span>
+            <span className="tabular-nums text-muted">
+              {t("{{quantity_kg}} kg", { quantity_kg: w.quantity_kg.toLocaleString() })}
+            </span>
           </span>
         ),
       )}

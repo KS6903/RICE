@@ -12,6 +12,8 @@ import { STATUS_BADGE, byproductName, gradeLabel, type TradeKind } from "./trade
 import EditPurchaseDialog from "./EditPurchaseDialog";
 import RecordHistory, { type RecordKind } from "../sales/RecordHistory";
 import { useCanEditSavedRecords } from "../../hooks/useRecordEditor";
+import { t } from "../../i18n";
+import { statusText } from "../../utils/statusText";
 
 const HISTORY_KIND: Record<TradeKind, RecordKind> = {
   palay: "palay_purchase",
@@ -45,23 +47,28 @@ export default function PurchaseColumn({
   const total = purchases.reduce((s, p) => s + Number(p.total_amount ?? 0), 0);
 
   return (
-    <section className="space-y-2 min-w-0" data-testid="purchases-column" aria-label="Purchases">
+    <section
+      className="space-y-2 min-w-0"
+      data-testid="purchases-column"
+      aria-label={t("Purchases")}
+    >
       <div className="flex items-center justify-between gap-2">
         <div>
-          <h3 className="text-sm font-bold text-gray-900 dark:text-slate-100">Purchases</h3>
+          <h3 className="text-sm font-bold text-gray-900 dark:text-slate-100">{t("Purchases")}</h3>
           <p className="text-xs text-muted tabular-nums">
             {loading ? (
-              "Loading…"
+              t("Loading…")
             ) : (
               <>
-                {purchases.length} bought{purchases.length > 0 && <> · {peso(total)}</>}
+                {t("{{purchasesCount}} bought", { purchasesCount: purchases.length })}
+                {purchases.length > 0 && <> · {peso(total)}</>}
               </>
             )}
           </p>
         </div>
         {canBuy && (
           <button onClick={onNew} className="btn-primary shrink-0">
-            <Plus size={16} /> New Purchase
+            <Plus size={16} /> {t("New Purchase")}
           </button>
         )}
       </div>
@@ -82,23 +89,28 @@ export default function PurchaseColumn({
                   <div className="min-w-0">
                     <p className="font-mono text-xs text-muted">{p.reference_no}</p>
                     <p className="truncate font-semibold text-gray-900 dark:text-slate-100">
-                      {p.supplier?.name ?? "No supplier"}
+                      {p.supplier?.name ?? t("No supplier")}
                     </p>
                     <p className="truncate text-xs text-muted">
                       {p.purchase_date}
                       {several && p.branch?.name && <> · {p.branch.name}</>}
-                      {p.created_by_name && <> · by {p.created_by_name}</>}
+                      {p.created_by_name && (
+                        <>
+                          {" "}
+                          {t("· by {{created_by_name}}", { created_by_name: p.created_by_name })}
+                        </>
+                      )}
                     </p>
                   </div>
                   <div className="shrink-0 text-right">
                     <p className="font-semibold tabular-nums text-gray-900 dark:text-slate-100">
-                      {Number(p.total_kg ?? 0).toLocaleString()} kg
+                      {Number(p.total_kg ?? 0).toLocaleString()} {t("kg")}
                     </p>
                     <p className="text-xs tabular-nums text-muted">
                       {peso(Number(p.total_amount ?? 0))}
                     </p>
                     <span className={`mt-1 inline-block ${STATUS_BADGE[p.status] || "badge-gray"}`}>
-                      {p.status}
+                      {statusText(p.status)}
                     </span>
                   </div>
                 </button>
@@ -153,37 +165,37 @@ const kg = (v: unknown) => `${Number(v ?? 0).toLocaleString()} kg`;
 
 const LINE_COLUMNS: Record<TradeKind, Col[]> = {
   palay: [
-    { label: "Variety", value: (l) => l.variety_code ?? "—" },
-    { label: "Grade", value: (l) => l.grade_code ?? "—" },
-    { label: "Gross", value: (l) => kg(l.gross_weight_kg), numeric: true },
-    { label: "Tare", value: (l) => kg(l.tare_weight_kg), numeric: true },
-    { label: "Net", value: (l) => kg(l.net_weight_kg), numeric: true },
+    { label: t("Variety"), value: (l) => l.variety_code ?? "—" },
+    { label: t("Grade"), value: (l) => l.grade_code ?? "—" },
+    { label: t("Gross"), value: (l) => kg(l.gross_weight_kg), numeric: true },
+    { label: t("Tare"), value: (l) => kg(l.tare_weight_kg), numeric: true },
+    { label: t("Net"), value: (l) => kg(l.net_weight_kg), numeric: true },
     {
-      label: "Moisture",
+      label: t("Moisture"),
       value: (l) => (l.moisture_content_pct != null ? `${Number(l.moisture_content_pct)}%` : "—"),
       numeric: true,
     },
-    { label: "Per cavan", value: (l) => peso(Number(l.price_per_cavan ?? 0)), numeric: true },
+    { label: t("Per cavan"), value: (l) => peso(Number(l.price_per_cavan ?? 0)), numeric: true },
   ],
   rice: [
-    { label: "Variety", value: (l) => l.variety_code ?? "—" },
-    { label: "Grade", value: (l) => gradeLabel(l.grade_name) },
-    { label: "Sacks", value: (l) => Number(l.sack_count).toLocaleString(), numeric: true },
+    { label: t("Variety"), value: (l) => l.variety_code ?? "—" },
+    { label: t("Grade"), value: (l) => gradeLabel(l.grade_name) },
+    { label: t("Sacks"), value: (l) => Number(l.sack_count).toLocaleString(), numeric: true },
     { label: "Kg/sack", value: (l) => Number(l.kg_per_sack).toLocaleString(), numeric: true },
-    { label: "Weight", value: (l) => kg(l.weight_kg), numeric: true },
-    { label: "Per sack", value: (l) => peso(Number(l.price_per_sack ?? 0)), numeric: true },
+    { label: t("Weight"), value: (l) => kg(l.weight_kg), numeric: true },
+    { label: t("Per sack"), value: (l) => peso(Number(l.price_per_sack ?? 0)), numeric: true },
   ],
   byproduct: [
-    { label: "By-product", value: (l) => byproductName(l.byproduct_type) },
-    { label: "Weight", value: (l) => kg(l.weight_kg), numeric: true },
-    { label: "Per kg", value: (l) => peso(Number(l.price_per_kg ?? 0)), numeric: true },
+    { label: t("By-product"), value: (l) => byproductName(l.byproduct_type) },
+    { label: t("Weight"), value: (l) => kg(l.weight_kg), numeric: true },
+    { label: t("Per kg"), value: (l) => peso(Number(l.price_per_kg ?? 0)), numeric: true },
   ],
 };
 
 const DELIVERY: Record<string, string> = {
-  delivered: "Delivered",
-  farm_gate: "Farm gate",
-  picked_up: "Picked up",
+  delivered: t("Delivered"),
+  farm_gate: t("Farm gate"),
+  picked_up: t("Picked up"),
 };
 
 export function PurchaseDetails({
@@ -203,20 +215,20 @@ export function PurchaseDetails({
 }) {
   const cols = LINE_COLUMNS[kind];
   const facts: [string, ReactNode][] = [
-    ["Date", p.purchase_date],
-    ["Supplier", p.supplier?.name ?? "—"],
-    ["Warehouse", p.branch?.name ?? "—"],
-    ["Delivery", p.delivery_type ? (DELIVERY[p.delivery_type] ?? p.delivery_type) : "—"],
+    [t("Date"), p.purchase_date],
+    [t("Supplier"), p.supplier?.name ?? "—"],
+    [t("Warehouse"), p.branch?.name ?? "—"],
+    [t("Delivery"), p.delivery_type ? (DELIVERY[p.delivery_type] ?? p.delivery_type) : "—"],
     [
-      "Status",
+      t("Status"),
       <span key="s" className={STATUS_BADGE[p.status] || "badge-gray"}>
-        {p.status}
+        {statusText(p.status)}
       </span>,
     ],
     [
-      "Recorded by",
+      t("Recorded by"),
       p.created_by_name
-        ? `${p.created_by_name}${p.created_by_role ? ` (${roleLabel(p.created_by_role)})` : ""}`
+        ? `${p.created_by_name}${p.created_by_role ? ` (${t(roleLabel(p.created_by_role))})` : ""}`
         : "—",
     ],
   ];
@@ -224,7 +236,7 @@ export function PurchaseDetails({
     <Modal
       open
       size="xl"
-      title={`Purchase ${p.reference_no}`}
+      title={t("Purchase {{reference_no}}", { reference_no: p.reference_no })}
       subtitle={`${p.item_count ?? p.items?.length ?? 0} item(s)`}
       onClose={onClose}
       testId="purchase-details"
@@ -233,12 +245,12 @@ export function PurchaseDetails({
           <div className="flex justify-end gap-2">
             {onHistory && (
               <button type="button" className="btn-secondary" onClick={onHistory}>
-                <History size={15} aria-hidden /> History
+                <History size={15} aria-hidden /> {t("History")}
               </button>
             )}
             {onEdit && (
               <button type="button" className="btn-primary" onClick={onEdit}>
-                <Pencil size={15} aria-hidden /> Edit
+                <Pencil size={15} aria-hidden /> {t("Edit")}
               </button>
             )}
           </div>
@@ -261,7 +273,7 @@ export function PurchaseDetails({
         <table className="w-full text-sm">
           <thead className="bg-gray-50 dark:bg-slate-900/50">
             <tr>
-              {[...cols, { label: "Amount", numeric: true }].map((c) => (
+              {[...cols, { label: t("Amount"), numeric: true }].map((c) => (
                 <th
                   key={c.label}
                   className={`px-3 py-2 font-medium text-gray-600 dark:text-slate-300 ${c.numeric ? "text-right" : "text-left"}`}
@@ -291,7 +303,7 @@ export function PurchaseDetails({
           <tfoot className="border-t border-soft">
             <tr>
               <td colSpan={cols.length} className="px-3 py-2 text-right text-muted">
-                Total · {kg(p.total_kg)}
+                {t("Total · {{total_kg}}", { total_kg: kg(p.total_kg) })}
               </td>
               <td className="px-3 py-2 text-right font-bold tabular-nums text-primary">
                 {peso(Number(p.total_amount ?? 0))}
@@ -303,7 +315,7 @@ export function PurchaseDetails({
 
       {p.remarks && (
         <p className="mt-4 text-sm text-secondary">
-          <span className="font-semibold text-primary">Remarks:</span> {p.remarks}
+          <span className="font-semibold text-primary">{t("Remarks:")}</span> {p.remarks}
         </p>
       )}
     </Modal>

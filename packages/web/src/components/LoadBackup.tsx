@@ -15,6 +15,8 @@ import {
 import ConfirmItsYou from "./ConfirmItsYou";
 import { useAuthStore } from "../stores/authStore";
 import { DONE_TEXT, ERROR_TEXT, madeOn, problem } from "../utils/backup";
+import { t } from "../i18n";
+import { tx } from "../i18n/tx";
 
 export default function LoadBackup() {
   const qc = useQueryClient();
@@ -33,7 +35,7 @@ export default function LoadBackup() {
     onError: (e) => {
       // A turned-down password or code is asked for again, in the popup.
       if (isAxiosError(e) && e.response?.data?.code === "confirm_failed") {
-        setAsking({ error: problem(e, "That didn't work.") });
+        setAsking({ error: problem(e, t("That didn't work.")) });
       }
     },
   });
@@ -55,10 +57,11 @@ export default function LoadBackup() {
           <Upload size={18} aria-hidden />
         </div>
         <div className="min-w-0">
-          <p className="font-semibold text-primary">Upload your data</p>
+          <p className="font-semibold text-primary">{t("Upload your data")}</p>
           <p className="text-sm text-secondary">
-            Choose the .oraiza backup from your old account. We check the whole file before anything
-            is loaded.
+            {t(
+              "Choose the .oraiza backup from your old account. We check the whole file before anything is loaded.",
+            )}
           </p>
         </div>
       </div>
@@ -66,9 +69,9 @@ export default function LoadBackup() {
       <div className="flex items-start gap-2 px-3 py-2.5 rounded-xl bg-sky-500/10 ring-1 ring-inset ring-sky-500/30 text-sm text-sky-900 dark:text-sky-100">
         <Info size={16} className="mt-0.5 shrink-0" />
         <span>
-          The backup&apos;s records come into this account: purchases, milling, stock, sales,
-          employees and the rest, with their branches. Staff logins don&apos;t come with it, so add
-          your staff again under Users afterwards.
+          {t(
+            "The backup's records come into this account: purchases, milling, stock, sales, employees and the rest, with their branches. Staff logins don't come with it, so add your staff again under Users afterwards.",
+          )}
         </span>
       </div>
 
@@ -92,7 +95,7 @@ export default function LoadBackup() {
             onClick={() => picker.current?.click()}
             disabled={inspect.isPending || load.isPending}
           >
-            <Upload size={16} /> {file ? "Choose another file" : "Choose a backup file"}
+            <Upload size={16} /> {file ? t("Choose another file") : t("Choose a backup file")}
           </button>
           {file && (
             <span className="text-sm text-secondary truncate max-w-full" title={file.name}>
@@ -104,21 +107,35 @@ export default function LoadBackup() {
 
       {inspect.isPending && (
         <p className="text-sm text-secondary inline-flex items-center gap-2" role="status">
-          <Loader2 size={16} className="animate-spin" /> Checking the file…
+          <Loader2 size={16} className="animate-spin" /> {t("Checking the file…")}
         </p>
       )}
       {inspect.isError && (
         <p className={ERROR_TEXT} role="alert">
-          {problem(inspect.error, "Couldn't check that file. Try again in a moment.")}
+          {problem(inspect.error, t("Couldn't check that file. Try again in a moment."))}
         </p>
       )}
 
       {summary && !loaded && (
         <div className="space-y-3">
           <p className="text-sm text-primary" role="status">
-            A backup of <strong>{summary.company}</strong>, made {madeOn(summary.created_at)} by{" "}
-            {summary.created_by}: {summary.rows.toLocaleString("en-PH")} records
-            {summary.branches > 1 ? ` in ${summary.branches} branches` : ""}.
+            {summary.branches > 1
+              ? tx(
+                  "A backup of {{company}}, made {{date}} by {{created_by}}: {{rows}} records in {{branches}} branches.",
+                  {
+                    company: <strong>{summary.company}</strong>,
+                    date: madeOn(summary.created_at),
+                    created_by: summary.created_by,
+                    rows: summary.rows.toLocaleString("en-PH"),
+                    branches: summary.branches,
+                  },
+                )
+              : tx("A backup of {{company}}, made {{date}} by {{created_by}}: {{rows}} records.", {
+                  company: <strong>{summary.company}</strong>,
+                  date: madeOn(summary.created_at),
+                  created_by: summary.created_by,
+                  rows: summary.rows.toLocaleString("en-PH"),
+                })}
           </p>
           <button
             type="button"
@@ -131,29 +148,35 @@ export default function LoadBackup() {
             ) : (
               <RotateCcw size={16} />
             )}
-            {load.isPending ? "Loading your records…" : "Load this backup"}
+            {load.isPending ? t("Loading your records…") : t("Load this backup")}
           </button>
         </div>
       )}
 
       {load.isError && !asking && (
         <p className={ERROR_TEXT} role="alert">
-          {problem(load.error, "Couldn't load the backup. Nothing was changed.")}
+          {problem(load.error, t("Couldn't load the backup. Nothing was changed."))}
         </p>
       )}
       {loaded && (
         <div className="space-y-3">
           <p className={`${DONE_TEXT} inline-flex items-start gap-2`} role="status">
             <CheckCircle2 size={16} className="mt-0.5 shrink-0" />
-            Loaded {loaded.rows.toLocaleString("en-PH")} records from {loaded.company}&apos;s
-            backup, made {madeOn(loaded.created_at)}. Add your staff again under Users.
+            {t(
+              "Loaded {{rows}} records from {{company}}'s backup, made {{date}}. Add your staff again under Users.",
+              {
+                rows: loaded.rows.toLocaleString("en-PH"),
+                company: loaded.company,
+                date: madeOn(loaded.created_at),
+              },
+            )}
           </p>
           <div className="flex gap-2 flex-wrap">
             <Link to="/" className="btn-primary">
-              Go to your dashboard
+              {t("Go to your dashboard")}
             </Link>
             <Link to="/users" className="btn-secondary">
-              Add your staff
+              {t("Add your staff")}
             </Link>
           </div>
         </div>
@@ -161,7 +184,7 @@ export default function LoadBackup() {
 
       <ConfirmItsYou
         open={!!asking}
-        reason="Loading puts the backup's records into this account."
+        reason={t("Loading puts the backup's records into this account.")}
         usesCode={usesCode}
         error={asking?.error}
         onConfirm={(p) => {

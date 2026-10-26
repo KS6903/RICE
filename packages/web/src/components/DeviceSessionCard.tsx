@@ -10,6 +10,7 @@ import {
   Tablet,
 } from "lucide-react";
 import type { DeviceSession, SessionCookie } from "../services/AuthService";
+import { t } from "../i18n";
 
 const ICONS = {
   Phone: Smartphone,
@@ -26,12 +27,12 @@ const when = (iso: string | null) => {
 };
 
 const cookieLife = (c: SessionCookie) =>
-  c.lasts ?? (c.expires_at ? `until ${when(c.expires_at)}` : "for this browser session");
+  c.lasts ?? (c.expires_at ? `until ${when(c.expires_at)}` : t("for this browser session"));
 
 const cookieFlags = (c: SessionCookie) =>
   [
-    c.http_only ? "Hidden from the page's scripts" : "Readable by the page",
-    c.secure ? "HTTPS only" : null,
+    c.http_only ? t("Hidden from the page's scripts") : t("Readable by the page"),
+    c.secure ? t("HTTPS only") : null,
     `SameSite=${c.same_site}`,
     `Path ${c.path}`,
   ]
@@ -72,7 +73,7 @@ export default function DeviceSessionCard({
               {s.device_name ?? s.client}
               {s.current && (
                 <span className="text-xs font-bold px-1.5 py-0.5 rounded-md bg-emerald-500/15 text-emerald-700 dark:text-emerald-300">
-                  This device
+                  {t("This device")}
                 </span>
               )}
             </p>
@@ -86,29 +87,34 @@ export default function DeviceSessionCard({
             disabled={revoking}
             className="shrink-0 text-sm font-semibold text-rose-600 dark:text-rose-400 hover:opacity-80"
           >
-            Revoke
+            {t("Revoke")}
           </button>
         )}
       </div>
 
       <dl className="grid grid-cols-1 gap-x-6 gap-y-1.5 px-4 pb-3 text-xs sm:grid-cols-2">
-        <Fact label="IP address">
-          {s.ip_address ?? "Not recorded"}
+        <Fact label={t("IP address")}>
+          {s.ip_address ?? t("Not recorded")}
           {s.signed_in_ip && s.signed_in_ip !== s.ip_address && (
-            <span className="text-muted"> (signed in from {s.signed_in_ip})</span>
+            <span className="text-muted">
+              {" "}
+              {t("(signed in from {{signed_in_ip}})", { signed_in_ip: s.signed_in_ip })}
+            </span>
           )}
         </Fact>
-        <Fact label="Session ID">
+        <Fact label={t("Session ID")}>
           <span className="font-mono">{s.id.slice(0, 8)}</span>
         </Fact>
-        <Fact label="Signed in">{when(s.signed_in_at)}</Fact>
-        <Fact label="Last active">{when(s.last_active)}</Fact>
-        <Fact label="Signs out by itself">{when(s.expires_at)}</Fact>
+        <Fact label={t("Signed in")}>{when(s.signed_in_at)}</Fact>
+        <Fact label={t("Last active")}>{when(s.last_active)}</Fact>
+        <Fact label={t("Signs out by itself")}>{when(s.expires_at)}</Fact>
       </dl>
 
       {!recorded && (
         <p className="px-4 pb-3 text-xs text-muted">
-          This device signed in before Oraiza kept device details. Sign in on it again to see them.
+          {t(
+            "This device signed in before Oraiza kept device details. Sign in on it again to see them.",
+          )}
         </p>
       )}
 
@@ -120,7 +126,7 @@ export default function DeviceSessionCard({
         className="flex w-full items-center justify-between border-t border-soft px-4 py-2 text-xs font-semibold text-secondary hover:text-primary"
       >
         <span className="inline-flex items-center gap-1.5">
-          <Cookie size={13} aria-hidden /> Cookies and details
+          <Cookie size={13} aria-hidden /> {t("Cookies and details")}
         </span>
         {open ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
       </button>
@@ -130,8 +136,8 @@ export default function DeviceSessionCard({
           {s.cookies.length === 0 ? (
             <p className="text-secondary">
               {s.device_type === "Desktop app"
-                ? "The desktop app keeps its sign-in itself, not in browser cookies."
-                : "No cookies are kept for this session."}
+                ? t("The desktop app keeps its sign-in itself, not in browser cookies.")
+                : t("No cookies are kept for this session.")}
             </p>
           ) : (
             <ul className="space-y-2">
@@ -142,16 +148,16 @@ export default function DeviceSessionCard({
                     <span className="text-secondary">: {c.purpose}</span>
                   </p>
                   <p className="text-muted">
-                    Lasts {cookieLife(c)}. {cookieFlags(c)}
+                    {t("Lasts")} {cookieLife(c)}. {cookieFlags(c)}
                   </p>
                 </li>
               ))}
             </ul>
           )}
           <div>
-            <p className="font-semibold text-secondary">What the device sent (User-Agent)</p>
+            <p className="font-semibold text-secondary">{t("What the device sent (User-Agent)")}</p>
             <p className="mt-0.5 break-all font-mono text-muted">
-              {s.user_agent ?? "Not recorded"}
+              {s.user_agent ?? t("Not recorded")}
             </p>
           </div>
         </div>

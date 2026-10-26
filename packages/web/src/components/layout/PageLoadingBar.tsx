@@ -1,6 +1,7 @@
 import { useIsFetching, type Query } from "@tanstack/react-query";
 import { useAfterDelay } from "../../hooks/useAfterDelay";
 import { DEFAULT_STALE_TIME } from "../../services/queryClient";
+import { t } from "../../i18n";
 
 /** A page's own data: the queries on the default freshness. The ones that set
  *  their own staleTime (the session check, notifications, weather, places, the
@@ -23,7 +24,7 @@ export default function PageLoadingBar() {
 
   return (
     <div role="status" data-testid="page-loading">
-      <span className="sr-only">Loading</span>
+      <span className="sr-only">{t("Loading")}</span>
       <div className="fixed inset-x-0 top-0 z-[70] h-0.5 overflow-hidden" aria-hidden>
         <div className="h-full w-full animate-shimmer bg-gradient-to-r from-transparent via-emerald-500 to-transparent motion-reduce:animate-none" />
       </div>

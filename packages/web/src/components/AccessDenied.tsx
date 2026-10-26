@@ -2,6 +2,8 @@ import { ShieldX } from "lucide-react";
 import { Link } from "react-router-dom";
 import { roleLabel as labelFor } from "@rice-mill/shared";
 import { useAuthStore } from "../stores/authStore";
+import { t } from "../i18n";
+import { tx } from "../i18n/tx";
 
 /**
  * Shown when a signed-in user navigates to a section their role can't access.
@@ -10,7 +12,7 @@ import { useAuthStore } from "../stores/authStore";
  */
 export default function AccessDenied({ section }: { section?: string }) {
   const user = useAuthStore((s) => s.user);
-  const roleLabel = labelFor(user?.role) || "your role";
+  const roleLabel = labelFor(user?.role) || t("your role");
 
   return (
     <div className="flex items-center justify-center py-16">
@@ -19,25 +21,31 @@ export default function AccessDenied({ section }: { section?: string }) {
           <ShieldX size={24} className="text-slate-500 dark:text-slate-400" />
         </div>
         <h2 className="text-xl font-bold text-gray-900 dark:text-slate-100 mb-2">
-          No access to this section
+          {t("No access to this section")}
         </h2>
         <p className="text-sm text-gray-600 dark:text-slate-300 mb-1">
           {section ? (
             <>
-              The <span className="font-semibold capitalize">{section}</span> section isn't
-              available to your account.
+              {tx("The {{section}} section isn't available to your account.", {
+                section: <span className="font-semibold capitalize">{section}</span>,
+              })}
             </>
           ) : (
-            <>This section isn't available to your account.</>
+            <>{t("This section isn't available to your account.")}</>
           )}
         </p>
         <p className="text-xs text-gray-400 mb-4">
-          You're signed in as{" "}
-          <span className="font-semibold text-gray-700 dark:text-slate-200">{roleLabel}</span>. If
-          you need access, ask the mill owner or an admin to update your role.
+          {tx(
+            "You're signed in as {{role}}. If you need access, ask the mill owner or an admin to update your role.",
+            {
+              role: (
+                <span className="font-semibold text-gray-700 dark:text-slate-200">{roleLabel}</span>
+              ),
+            },
+          )}
         </p>
         <Link to="/" className="btn-primary w-full justify-center">
-          Back to dashboard
+          {t("Back to dashboard")}
         </Link>
       </div>
     </div>

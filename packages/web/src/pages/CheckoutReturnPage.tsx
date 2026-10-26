@@ -4,6 +4,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { CheckCircle2, Clock, CreditCard, Loader2, XCircle } from "lucide-react";
 import type { PlanPayment } from "@rice-mill/shared";
 import { billingService } from "../services/BillingService";
+import { t } from "../i18n";
 
 /** How long the page keeps asking before it says the payment is still on its way. */
 const POLL_MS = 3000;
@@ -51,26 +52,31 @@ export default function CheckoutReturnPage() {
   const gaveUp = stillPending && tries.current >= GIVE_UP_AFTER;
 
   let icon = <Loader2 size={40} className="mx-auto text-emerald-500 animate-spin" />;
-  let title = "Checking your payment…";
-  let body = "This takes a few seconds. Please keep this page open.";
+  let title = t("Checking your payment…");
+  let body = t("This takes a few seconds. Please keep this page open.");
   if (!paymentId || isError) {
     icon = <XCircle size={40} className="mx-auto text-rose-500" />;
-    title = "We couldn't find that payment";
-    body =
-      "If money left your account, it is safe: we'll match it and turn your plan on. Contact us if it isn't on within a day.";
+    title = t("We couldn't find that payment");
+    body = t(
+      "If money left your account, it is safe: we'll match it and turn your plan on. Contact us if it isn't on within a day.",
+    );
   } else if (paid) {
     icon = <CheckCircle2 size={40} className="mx-auto text-emerald-500" />;
-    title = `You're on ${payment.plan_name}`;
-    body = `We received ${amountOf(payment)}. Your plan is on now, and a receipt is on its way to your email.`;
+    title = t("You're on {{plan_name}}", { plan_name: payment.plan_name });
+    body = t(
+      "We received {{payment}}. Your plan is on now, and a receipt is on its way to your email.",
+      { payment: amountOf(payment) },
+    );
   } else if (payment?.status === "failed") {
     icon = <XCircle size={40} className="mx-auto text-rose-500" />;
-    title = "The payment didn't go through";
-    body = "Nothing was charged. You can try again, or pick another way to pay.";
+    title = t("The payment didn't go through");
+    body = t("Nothing was charged. You can try again, or pick another way to pay.");
   } else if (gaveUp) {
     icon = <Clock size={40} className="mx-auto text-amber-500" />;
-    title = "Your payment is still on its way";
-    body =
-      "Some payments take a few minutes to confirm. Your plan turns on by itself once it does, and we'll email you. You can leave this page.";
+    title = t("Your payment is still on its way");
+    body = t(
+      "Some payments take a few minutes to confirm. Your plan turns on by itself once it does, and we'll email you. You can leave this page.",
+    );
   }
 
   return (
@@ -80,8 +86,8 @@ export default function CheckoutReturnPage() {
           <CreditCard size={20} className="text-white" />
         </div>
         <div>
-          <h2 className="text-2xl font-bold tracking-tight text-primary">Checkout</h2>
-          <p className="text-sm text-secondary">Pay for your plan</p>
+          <h2 className="text-2xl font-bold tracking-tight text-primary">{t("Checkout")}</h2>
+          <p className="text-sm text-secondary">{t("Pay for your plan")}</p>
         </div>
       </div>
       <div className="card max-w-xl text-center py-8" role="status" aria-live="polite">
@@ -95,11 +101,11 @@ export default function CheckoutReturnPage() {
                 to={`/settings/checkout?plan=${payment.plan_id}&interval=${payment.billing_interval}`}
                 className="btn-primary"
               >
-                Try again
+                {t("Try again")}
               </Link>
             )}
             <Link to="/settings" className={paid ? "btn-primary" : "btn-secondary"}>
-              Back to Billing
+              {t("Back to Billing")}
             </Link>
           </div>
         )}

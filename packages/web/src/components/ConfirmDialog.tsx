@@ -4,6 +4,7 @@ import { createPortal } from "react-dom";
 import { AlertTriangle } from "lucide-react";
 import { clsx } from "clsx";
 import { useEscapeKey } from "../hooks/useEscapeKey";
+import { t } from "../i18n";
 
 type Props = {
   open: boolean;
@@ -28,8 +29,8 @@ export default function ConfirmDialog({
   open,
   title,
   children,
-  confirmLabel = "Confirm",
-  cancelLabel = "Cancel",
+  confirmLabel = t("Confirm"),
+  cancelLabel = t("Cancel"),
   danger = false,
   busy = false,
   onConfirm,

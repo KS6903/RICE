@@ -25,6 +25,7 @@ import {
 } from "lucide-react";
 import { useFeature } from "../hooks/useFeature";
 import { useThemeStore } from "../stores/themeStore";
+import { t } from "../i18n";
 
 export default function ReportsPage() {
   const [dateRange, setDateRange] = useState({
@@ -45,7 +46,7 @@ export default function ReportsPage() {
   const tooltipStyle = {
     contentStyle: {
       backgroundColor: "rgb(var(--surface-raised))",
-      border: "1px solid rgb(var(--line))",
+      border: t("1px solid rgb(var(--line))"),
       borderRadius: 12,
       boxShadow: "0 8px 24px -8px rgba(15,23,42,0.25)",
       fontWeight: 500,
@@ -76,45 +77,47 @@ export default function ReportsPage() {
 
   const pnlData = pnl
     ? [
-        { name: "Revenue", amount: pnl.revenue },
-        { name: "Cost of Goods", amount: pnl.cost_of_goods },
-        { name: "Gross Profit", amount: pnl.gross_profit },
-        { name: "Expenses", amount: pnl.operating_expenses },
-        { name: "Net Profit", amount: pnl.net_profit },
+        { name: t("Revenue"), amount: pnl.revenue },
+        { name: t("Cost of Goods"), amount: pnl.cost_of_goods },
+        { name: t("Gross Profit"), amount: pnl.gross_profit },
+        { name: t("Expenses"), amount: pnl.operating_expenses },
+        { name: t("Net Profit"), amount: pnl.net_profit },
       ]
     : [];
 
   const arData = arAging
     ? [
-        { bucket: "Current", amount: arAging.current },
-        { bucket: "1-30 days", amount: arAging["1_30"] },
-        { bucket: "31-60 days", amount: arAging["31_60"] },
-        { bucket: "61-90 days", amount: arAging["61_90"] },
-        { bucket: "Over 90", amount: arAging.over_90 },
+        { bucket: t("Current"), amount: arAging.current },
+        { bucket: t("1-30 days"), amount: arAging["1_30"] },
+        { bucket: t("31-60 days"), amount: arAging["31_60"] },
+        { bucket: t("61-90 days"), amount: arAging["61_90"] },
+        { bucket: t("Over 90"), amount: arAging.over_90 },
       ]
     : [];
 
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-xl font-bold text-gray-900 dark:text-slate-100">Reports & Analytics</h2>
+        <h2 className="text-xl font-bold text-gray-900 dark:text-slate-100">
+          {t("Reports & Analytics")}
+        </h2>
         <p className="text-sm text-gray-500 dark:text-slate-400">
-          Profit & Loss, AR aging, inventory valuation, compliance
+          {t("Profit & Loss, AR aging, inventory valuation, compliance")}
         </p>
       </div>
 
       <div className="card space-y-4">
         <div className="flex items-center gap-4 flex-wrap">
-          <h3 className="font-semibold text-gray-900 dark:text-slate-100">Profit & Loss</h3>
+          <h3 className="font-semibold text-gray-900 dark:text-slate-100">{t("Profit & Loss")}</h3>
           <DatePicker
-            aria-label="From date"
+            aria-label={t("From date")}
             className="!w-44"
             value={dateRange.start}
             onChange={(v) => setDateRange((r) => ({ ...r, start: v }))}
           />
-          <span className="text-gray-400">to</span>
+          <span className="text-gray-400">{t("to")}</span>
           <DatePicker
-            aria-label="To date"
+            aria-label={t("To date")}
             className="!w-44"
             value={dateRange.end}
             onChange={(v) => setDateRange((r) => ({ ...r, end: v }))}
@@ -126,19 +129,19 @@ export default function ReportsPage() {
             <div className="grid grid-cols-1 min-[480px]:grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-4">
               {[
                 {
-                  label: "Revenue",
+                  label: t("Revenue"),
                   value: pnl.revenue,
                   color: "text-green-600 dark:text-green-400",
                 },
-                { label: "Cost of Goods", value: pnl.cost_of_goods, color: "text-red-500" },
+                { label: t("Cost of Goods"), value: pnl.cost_of_goods, color: "text-red-500" },
                 {
-                  label: "Gross Profit",
+                  label: t("Gross Profit"),
                   value: pnl.gross_profit,
                   color: "text-blue-600 dark:text-blue-400",
                 },
-                { label: "Expenses", value: pnl.operating_expenses, color: "text-red-500" },
+                { label: t("Expenses"), value: pnl.operating_expenses, color: "text-red-500" },
                 {
-                  label: "Net Profit",
+                  label: t("Net Profit"),
                   value: pnl.net_profit,
                   color:
                     pnl.net_profit >= 0
@@ -156,7 +159,7 @@ export default function ReportsPage() {
               ))}
             </div>
             <div className="text-right text-sm text-gray-500 dark:text-slate-400">
-              Gross Margin:{" "}
+              {t("Gross Margin:")}{" "}
               <span className="font-semibold text-gray-900 dark:text-slate-100">
                 {pnl.gross_margin_pct}%
               </span>
@@ -177,7 +180,7 @@ export default function ReportsPage() {
                   tickFormatter={(v) => `₱${(v / 1000).toFixed(0)}k`}
                 />
                 <Tooltip
-                  formatter={(v: number) => [`₱${v.toLocaleString()}`, "Amount"]}
+                  formatter={(v: number) => [`₱${v.toLocaleString()}`, t("Amount")]}
                   {...tooltipStyle}
                 />
                 <Bar dataKey="amount" fill="#16a34a" radius={[4, 4, 0, 0]} />
@@ -191,8 +194,10 @@ export default function ReportsPage() {
       <div className="card space-y-4">
         <div className="flex items-center justify-between flex-wrap gap-3">
           <div>
-            <h3 className="font-semibold text-primary">Annual Revenue</h3>
-            <p className="text-sm text-secondary mt-0.5">Monthly revenue for {revenueYear}</p>
+            <h3 className="font-semibold text-primary">{t("Annual Revenue")}</h3>
+            <p className="text-sm text-secondary mt-0.5">
+              {t("Monthly revenue for {{revenueYear}}", { revenueYear })}
+            </p>
           </div>
           <div className="flex items-center gap-3 flex-wrap">
             {/* Bar / line toggle */}
@@ -205,7 +210,7 @@ export default function ReportsPage() {
                     : "text-secondary hover:text-primary"
                 }`}
               >
-                <BarChart3 size={14} /> Bar
+                <BarChart3 size={14} /> {t("Bar")}
               </button>
               <button
                 onClick={() => setRevenueChart("line")}
@@ -215,7 +220,7 @@ export default function ReportsPage() {
                     : "text-secondary hover:text-primary"
                 }`}
               >
-                <LineChartIcon size={14} /> Line
+                <LineChartIcon size={14} /> {t("Line")}
               </button>
             </div>
             {/* Year picker */}
@@ -270,7 +275,7 @@ export default function ReportsPage() {
                     tickFormatter={(v) => `₱${(v / 1000).toFixed(0)}k`}
                   />
                   <Tooltip
-                    formatter={(v: number) => [`₱${v.toLocaleString()}`, "Revenue"]}
+                    formatter={(v: number) => [`₱${v.toLocaleString()}`, t("Revenue")]}
                     {...tooltipStyle}
                   />
                   <ReferenceLine
@@ -303,7 +308,7 @@ export default function ReportsPage() {
                     tickFormatter={(v) => `₱${(v / 1000).toFixed(0)}k`}
                   />
                   <Tooltip
-                    formatter={(v: number) => [`₱${v.toLocaleString()}`, "Revenue"]}
+                    formatter={(v: number) => [`₱${v.toLocaleString()}`, t("Revenue")]}
                     {...tooltipStyle}
                   />
                   <ReferenceLine
@@ -325,7 +330,7 @@ export default function ReportsPage() {
               )}
             </ResponsiveContainer>
             <p className="text-right text-sm text-secondary">
-              Total:{" "}
+              {t("Total:")}{" "}
               <span className="font-semibold text-primary">
                 ₱{revenueAnnual.reduce((sum, m) => sum + m.revenue, 0).toLocaleString()}
               </span>
@@ -337,21 +342,23 @@ export default function ReportsPage() {
       <div className="card">
         <div className="flex items-center justify-between mb-4">
           <h3 className="font-semibold text-gray-900 dark:text-slate-100">
-            Accounts Receivable Aging
+            {t("Accounts Receivable Aging")}
           </h3>
           {!hasAdvanced && (
             <span className="inline-flex items-center gap-1 text-xs font-medium text-amber-700 dark:text-amber-300 bg-amber-100 dark:bg-amber-900/40 px-2 py-1 rounded-full">
-              <Lock size={11} /> Pro plan required
+              <Lock size={11} /> {t("Pro plan required")}
             </span>
           )}
         </div>
         {!hasAdvanced ? (
           <p className="text-sm text-gray-500 dark:text-slate-400 text-center py-8">
-            Upgrade to Pro to unlock AR aging, inventory valuation, and other advanced reports.
+            {t(
+              "Upgrade to Pro to unlock AR aging, inventory valuation, and other advanced reports.",
+            )}
           </p>
         ) : arLoading ? (
           <div className="skeleton h-[200px] rounded-xl" aria-busy="true">
-            <span className="sr-only">Loading</span>
+            <span className="sr-only">{t("Loading")}</span>
           </div>
         ) : arData.length > 0 ? (
           <ResponsiveContainer width="100%" height={200}>
@@ -370,14 +377,16 @@ export default function ReportsPage() {
                 tickFormatter={(v) => `₱${(v / 1000).toFixed(0)}k`}
               />
               <Tooltip
-                formatter={(v: number) => [`₱${v.toLocaleString()}`, "Owed"]}
+                formatter={(v: number) => [`₱${v.toLocaleString()}`, t("Owed")]}
                 {...tooltipStyle}
               />
               <Bar dataKey="amount" fill="#f59e0b" radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         ) : (
-          <p className="text-sm text-gray-400 text-center py-8">No outstanding receivables</p>
+          <p className="text-sm text-gray-400 text-center py-8">
+            {t("No outstanding receivables")}
+          </p>
         )}
       </div>
 

@@ -1169,6 +1169,8 @@ class AuthService(BaseService):
             "branch_id": str(user.branch_id) if user.branch_id else None,
             # Where the branch picker opens: "main", "all", or a branch id.
             "branch_view_default": user.default_branch_view or "main",
+            # The language chosen under Settings > Appearance; null if never chosen.
+            "language": user.language,
             "is_platform_admin": user.is_platform_admin,
             "subscription": plan_info,
             "features": features,

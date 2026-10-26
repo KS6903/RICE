@@ -7,8 +7,18 @@ import TemporaryPasswordDialog from "../../components/TemporaryPasswordDialog";
 import { format } from "date-fns";
 import { roleLabel } from "@rice-mill/shared";
 import { useAuthStore } from "../../stores/authStore";
+import { t } from "../../i18n";
 
-const COLS = ["Username", "Full name", "Email", "Tenant", "Role", "Status", "Last login", ""];
+const COLS = [
+  t("Username"),
+  t("Full name"),
+  t("Email"),
+  t("Tenant"),
+  t("Role"),
+  t("Status"),
+  t("Last login"),
+  "",
+];
 
 export default function AdminUsers() {
   const [search, setSearch] = useState("");
@@ -36,9 +46,12 @@ export default function AdminUsers() {
     <div className="space-y-6">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <h2 className="text-2xl font-bold text-primary">All users</h2>
+          <h2 className="text-2xl font-bold text-primary">{t("All users")}</h2>
           <p className="text-sm text-muted">
-            {users.length} total · {filtered.length} shown · across all tenants
+            {t("{{usersCount}} total · {{filteredCount}} shown · across all tenants", {
+              usersCount: users.length,
+              filteredCount: filtered.length,
+            })}
           </p>
         </div>
         <div className="relative">
@@ -48,7 +61,7 @@ export default function AdminUsers() {
           />
           <input
             className="input pl-9 w-72"
-            placeholder="Search by name, email, or company…"
+            placeholder={t("Search by name, email, or company…")}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
@@ -81,7 +94,9 @@ export default function AdminUsers() {
                   <td className="font-mono text-xs text-secondary">{u.username}</td>
                   <td className="font-medium text-primary">
                     {u.full_name}
-                    {u.id === myId && <span className="ml-1 font-normal text-muted">(you)</span>}
+                    {u.id === myId && (
+                      <span className="ml-1 font-normal text-muted">{t("(you)")}</span>
+                    )}
                   </td>
                   <td>{u.email || "—"}</td>
                   <td>
@@ -93,16 +108,16 @@ export default function AdminUsers() {
                       <span className="text-muted">—</span>
                     )}
                   </td>
-                  <td>{roleLabel(u.role) || "—"}</td>
+                  <td>{u.role ? t(roleLabel(u.role)) : "—"}</td>
                   <td>
                     {u.is_active ? (
-                      <span className="badge-green">Active</span>
+                      <span className="badge-green">{t("Active")}</span>
                     ) : (
-                      <span className="badge-gray">Inactive</span>
+                      <span className="badge-gray">{t("Inactive")}</span>
                     )}
                   </td>
                   <td className="text-xs text-muted">
-                    {u.last_login ? format(new Date(u.last_login), "MMM d, HH:mm") : "Never"}
+                    {u.last_login ? format(new Date(u.last_login), "MMM d, HH:mm") : t("Never")}
                   </td>
                   <td className="text-right">
                     {u.is_active && (
@@ -110,10 +125,14 @@ export default function AdminUsers() {
                         type="button"
                         onClick={() => setTempFor(u)}
                         className="btn-ghost !px-2 !py-1.5 text-xs"
-                        title={`Give ${u.username} a temporary password`}
-                        aria-label={`Give ${u.username} a temporary password`}
+                        title={t("Give {{username}} a temporary password", {
+                          username: u.username,
+                        })}
+                        aria-label={t("Give {{username}} a temporary password", {
+                          username: u.username,
+                        })}
                       >
-                        <KeyRound size={14} /> Temporary password
+                        <KeyRound size={14} /> {t("Temporary password")}
                       </button>
                     )}
                   </td>
@@ -124,7 +143,7 @@ export default function AdminUsers() {
                 <td colSpan={COLS.length} className="!py-12 text-center">
                   <UsersIcon size={24} className="mx-auto mb-2 text-muted opacity-60" />
                   <p className="text-sm font-medium text-secondary">
-                    {search ? "No users match your search." : "No users yet."}
+                    {search ? t("No users match your search.") : t("No users yet.")}
                   </p>
                 </td>
               </tr>

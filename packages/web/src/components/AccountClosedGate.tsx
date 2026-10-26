@@ -3,6 +3,7 @@ import { LogOut, PauseCircle, RotateCcw, Trash2 } from "lucide-react";
 import { authService } from "../services/AuthService";
 import { useAuthStore } from "../stores/authStore";
 import DataExport from "./DataExport";
+import { t } from "../i18n";
 
 const day = (iso: string | null | undefined) =>
   iso ? new Date(iso).toLocaleDateString(undefined, { dateStyle: "long" }) : "";
@@ -29,7 +30,7 @@ export default function AccountClosedGate() {
       await authService.reopenAccount();
       setUser(await authService.me());
     } catch (e: any) {
-      setError(e?.response?.data?.detail || "Couldn't reopen the account.");
+      setError(e?.response?.data?.detail || t("Couldn't reopen the account."));
     } finally {
       setBusy(false);
     }
@@ -48,12 +49,16 @@ export default function AccountClosedGate() {
           </div>
           <div>
             <h1 className="text-xl font-bold text-primary">
-              {deleting ? "This account is set to be deleted" : "This account is paused"}
+              {deleting ? t("This account is set to be deleted") : t("This account is paused")}
             </h1>
             <p className="text-sm text-secondary">
               {deleting
-                ? `You asked on ${day(account?.deletion_requested_at)} for the mill's account to be deleted.`
-                : `You paused it on ${day(account?.closed_at)}. Nobody but you can sign in.`}
+                ? t("You asked on {{date}} for the mill's account to be deleted.", {
+                    date: day(account?.deletion_requested_at),
+                  })
+                : t("You paused it on {{date}}. Nobody but you can sign in.", {
+                    date: day(account?.closed_at),
+                  })}
             </p>
           </div>
         </div>
@@ -61,15 +66,16 @@ export default function AccountClosedGate() {
         {deleting ? (
           <>
             <p className="text-sm text-secondary">
-              Until {day(account?.export_until)} you can download the mill&apos;s data, or take the
-              request back and keep using the app. After that, Oraiza deletes the mill&apos;s
-              records.
+              {t("Until")} {day(account?.export_until)}{" "}
+              {t(
+                "you can download the mill's data, or take the request back and keep using the app. After that, Oraiza deletes the mill's records.",
+              )}
             </p>
             <DataExport />
           </>
         ) : (
           <p className="text-sm text-secondary">
-            Switch it back on to open the app for everyone again. Nothing was deleted.
+            {t("Switch it back on to open the app for everyone again. Nothing was deleted.")}
           </p>
         )}
 
@@ -83,14 +89,14 @@ export default function AccountClosedGate() {
             onClick={reopen}
           >
             <RotateCcw size={15} aria-hidden />
-            {deleting ? "Keep my account" : "Switch it back on"}
+            {deleting ? t("Keep my account") : t("Switch it back on")}
           </button>
           <button
             type="button"
             className="btn-secondary inline-flex items-center gap-1.5"
             onClick={() => void logout()}
           >
-            <LogOut size={15} aria-hidden /> Sign out
+            <LogOut size={15} aria-hidden /> {t("Sign out")}
           </button>
         </div>
       </div>

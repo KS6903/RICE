@@ -3,6 +3,7 @@
 // whenever the forecast does; the dashboard uses it when the AI advisor has no
 // answer.
 import type { HourlyForecast } from "../hooks/useWeather";
+import { currentLocale, t } from "../i18n";
 
 /** A slot counts as rainy from this chance of rain up. */
 export const RAIN_LIKELY_PCT = 50;
@@ -27,11 +28,13 @@ const rainy = (h: HourlyForecast) => (h.precip_pct ?? 0) >= RAIN_LIKELY_PCT;
 const hourOf = (h: HourlyForecast) => Number(h.time.slice(11, 13));
 const dateOf = (h: HourlyForecast) => h.time.slice(0, 10);
 
-/** "4 PM", "12 PM", "9 AM" from a local ISO hour like "2026-10-22T16:00". */
+/** "4 PM", "12 PM", "9 AM" from a local ISO hour like "2026-10-22T16:00", the
+ *  way the language on screen writes an hour. */
 export function hourLabel(time: string): string {
   const h = Number(time.slice(11, 13));
-  const twelve = h % 12 === 0 ? 12 : h % 12;
-  return `${twelve} ${h < 12 ? "AM" : "PM"}`;
+  return new Intl.DateTimeFormat(currentLocale(), { hour: "numeric" })
+    .format(new Date(2000, 0, 1, h))
+    .replace(/\u202f/g, " ");
 }
 
 /** The short line beside humidity and wind: when rain is next likely, within
@@ -40,10 +43,11 @@ export function rainOutlook(hourly: HourlyForecast[]): string | null {
   if (hourly.length === 0) return null;
   const today = dateOf(hourly[0]);
   const next = hourly.find(rainy);
-  if (!next) return "No rain expected";
-  if (next === hourly[0]) return "Rain likely now";
-  if (dateOf(next) === today) return `Rain likely after ${hourLabel(next.time)}`;
-  return `Rain likely tomorrow from ${hourLabel(next.time)}`;
+  if (!next) return t("No rain expected");
+  if (next === hourly[0]) return t("Rain likely now");
+  if (dateOf(next) === today)
+    return t("Rain likely after {{time}}", { time: hourLabel(next.time) });
+  return t("Rain likely tomorrow from {{time}}", { time: hourLabel(next.time) });
 }
 
 /** Whether to spread palay, and until when. Looks at today's remaining
@@ -56,10 +60,10 @@ export function dryingAdvice(hourly: HourlyForecast[]): DryingAdvice | null {
     const dryAgain = hourly.find((h) => !rainy(h) && h.is_daytime && dateOf(h) === dateOf(now));
     return {
       verdict: "poor",
-      headline: "Rain likely now.",
+      headline: t("Rain likely now."),
       detail: dryAgain
-        ? `Keep the palay covered. It may clear by ${hourLabel(dryAgain.time)}.`
-        : "Keep the palay covered today.",
+        ? t("Keep the palay covered. It may clear by {{time}}.", { time: hourLabel(dryAgain.time) })
+        : t("Keep the palay covered today."),
     };
   }
 
@@ -70,7 +74,6 @@ export function dryingAdvice(hourly: HourlyForecast[]): DryingAdvice | null {
     ? daylightToday
     : hourly.filter((h) => h.is_daytime && dateOf(h) !== dateOf(now));
   if (day.length === 0) return null;
-  const when = onToday ? "today" : "tomorrow";
 
   // From when spreading makes sense: 9 AM, or now if that's already past
   // (the forecast starts at the current hour).
@@ -81,32 +84,43 @@ export function dryingAdvice(hourly: HourlyForecast[]): DryingAdvice | null {
   // With rain coming, stop an hour before it, to leave time to bring it in.
   const lastOut = firstRain ? usable[rainAt - 1] : null;
   const hours = firstRain ? rainAt - 1 : usable.length;
-  const spread =
-    onToday && hourOf(now) >= SPREAD_HOUR ? "Spread the palay now" : "Spread the palay by 9 AM";
-  const tomorrow = onToday ? "" : " tomorrow";
+  // Whole sentences, so each language can say them its own way.
+  const spreadNow = onToday && hourOf(now) >= SPREAD_HOUR;
+  const beforeRain = spreadNow
+    ? t("Spread the palay now and bring it in before the rain.")
+    : t("Spread the palay by 9 AM and bring it in before the rain.");
+  const beforeDark = spreadNow
+    ? t("Spread the palay now and bring it in before dark.")
+    : t("Spread the palay by 9 AM and bring it in before dark.");
 
   if (hours < MIN_DRYING_HOURS || (firstRain && !lastOut)) {
     return {
       verdict: "poor",
-      headline: `Not a good drying day ${when}.`,
+      headline: onToday ? t("Not a good drying day today.") : t("Not a good drying day tomorrow."),
       detail: firstRain
-        ? `Rain is likely from ${hourLabel(firstRain.time)}. Keep the palay covered.`
-        : "Too little daylight left. Keep the palay covered.",
+        ? t("Rain is likely from {{time}}. Keep the palay covered.", {
+            time: hourLabel(firstRain.time),
+          })
+        : t("Too little daylight left. Keep the palay covered."),
     };
   }
   if (firstRain && lastOut) {
     const short = hours < GOOD_DRYING_HOURS;
-    return {
-      verdict: short ? "caution" : "good",
-      headline: short
-        ? `Only a short drying window, until ${hourLabel(lastOut.time)}${tomorrow}.`
-        : `Good drying weather until ${hourLabel(lastOut.time)}${tomorrow}.`,
-      detail: `${spread} and bring it in before the rain.`,
-    };
+    const time = hourLabel(lastOut.time);
+    let headline: string;
+    if (short)
+      headline = onToday
+        ? t("Only a short drying window, until {{time}}.", { time })
+        : t("Only a short drying window, until {{time}} tomorrow.", { time });
+    else
+      headline = onToday
+        ? t("Good drying weather until {{time}}.", { time })
+        : t("Good drying weather until {{time}} tomorrow.", { time });
+    return { verdict: short ? "caution" : "good", headline, detail: beforeRain };
   }
   return {
     verdict: "good",
-    headline: `Good drying weather ${when}.`,
-    detail: `${spread} and bring it in before dark.`,
+    headline: onToday ? t("Good drying weather today.") : t("Good drying weather tomorrow."),
+    detail: beforeDark,
   };
 }

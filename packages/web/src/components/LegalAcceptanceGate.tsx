@@ -4,6 +4,7 @@ import { FileText, AlertCircle, LogOut, Check } from "lucide-react";
 import { legalService } from "../services/LegalService";
 import { authService } from "../services/AuthService";
 import { useAuthStore } from "../stores/authStore";
+import { t } from "../i18n";
 
 /** Mandatory re-acceptance screen.
  *
@@ -30,7 +31,7 @@ export default function LegalAcceptanceGate() {
       // Refetching /me clears legal_acceptance_required, and the gate lifts.
       useAuthStore.getState().setUser(await authService.me());
     } catch (e: any) {
-      setError(e?.response?.data?.detail || "Could not record your acceptance. Try again.");
+      setError(e?.response?.data?.detail || t("Could not record your acceptance. Try again."));
     } finally {
       setLoading(false);
     }
@@ -47,14 +48,15 @@ export default function LegalAcceptanceGate() {
             <FileText size={20} className="text-white" />
           </div>
           <div>
-            <h1 className="text-lg font-bold text-primary">Our terms have been updated</h1>
-            <p className="text-sm text-secondary">Please review and accept to continue.</p>
+            <h1 className="text-lg font-bold text-primary">{t("Our terms have been updated")}</h1>
+            <p className="text-sm text-secondary">{t("Please review and accept to continue.")}</p>
           </div>
         </div>
 
         <p className="text-sm text-secondary leading-relaxed">
-          Take a moment to read these before you accept. They cover what Oraiza is and is not, how
-          we handle personal information, and the limit on our liability.
+          {t(
+            "Take a moment to read these before you accept. They cover what Oraiza is and is not, how we handle personal information, and the limit on our liability.",
+          )}
         </p>
 
         <Link
@@ -63,8 +65,8 @@ export default function LegalAcceptanceGate() {
           rel="noopener noreferrer"
           className="flex items-center justify-between gap-2 px-3 py-2.5 rounded-xl border border-soft hover:border-soft-strong transition-colors"
         >
-          <span className="text-sm font-medium text-primary">Terms and policies</span>
-          <span className="text-xs text-muted">Read</span>
+          <span className="text-sm font-medium text-primary">{t("Terms and policies")}</span>
+          <span className="text-xs text-muted">{t("Read")}</span>
         </Link>
 
         {/* Same wording as the signup checkbox, so an existing account accepts
@@ -78,8 +80,9 @@ export default function LegalAcceptanceGate() {
             data-testid="legal-gate-checkbox"
           />
           <span className="text-sm text-secondary leading-snug">
-            I have read and accept the Terms of Service and Privacy Policy, and I am authorised to
-            accept them for my company.
+            {t(
+              "I have read and accept the Terms of Service and Privacy Policy, and I am authorised to accept them for my company.",
+            )}
           </span>
         </label>
 
@@ -96,13 +99,13 @@ export default function LegalAcceptanceGate() {
           className="btn-primary w-full"
           data-testid="legal-gate-accept"
         >
-          {loading ? "Saving…" : "Accept and continue"}
+          {loading ? t("Saving…") : t("Accept and continue")}
           {!loading && <Check size={16} />}
         </button>
 
         <button onClick={() => logout()} className="btn-ghost w-full text-sm">
           <LogOut size={15} />
-          Sign out instead
+          {t("Sign out instead")}
         </button>
       </div>
     </div>

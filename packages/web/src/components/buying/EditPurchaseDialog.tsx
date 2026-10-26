@@ -13,25 +13,26 @@ import { useByproductKinds } from "../../hooks/useByproductKinds";
 import { MILLED_GRADES } from "../../mappers/InventoryMapper";
 import { peso } from "./money";
 import { gradeLabel, type TradeKind } from "./trade";
+import { t } from "../../i18n";
 
 type Line = Record<string, string>;
 
 /** The numbers on a line, as each kind's create takes them. */
 const NUMBERS: Record<TradeKind, { key: string; label: string; optional?: boolean }[]> = {
   palay: [
-    { key: "gross_weight_kg", label: "Gross kg" },
-    { key: "tare_weight_kg", label: "Tare kg" },
-    { key: "moisture_content_pct", label: "Moisture %", optional: true },
-    { key: "price_per_cavan", label: "₱ per cavan" },
+    { key: "gross_weight_kg", label: t("Gross kg") },
+    { key: "tare_weight_kg", label: t("Tare kg") },
+    { key: "moisture_content_pct", label: t("Moisture %"), optional: true },
+    { key: "price_per_cavan", label: t("₱ per cavan") },
   ],
   rice: [
-    { key: "sack_count", label: "Sacks" },
-    { key: "kg_per_sack", label: "Kg per sack" },
-    { key: "price_per_sack", label: "₱ per sack" },
+    { key: "sack_count", label: t("Sacks") },
+    { key: "kg_per_sack", label: t("Kg per sack") },
+    { key: "price_per_sack", label: t("₱ per sack") },
   ],
   byproduct: [
-    { key: "weight_kg", label: "Kilos" },
-    { key: "price_per_kg", label: "₱ per kg" },
+    { key: "weight_kg", label: t("Kilos") },
+    { key: "price_per_kg", label: t("₱ per kg") },
   ],
 };
 
@@ -56,16 +57,16 @@ const BLANK: Record<TradeKind, Line> = {
 
 const DELIVERY: Record<TradeKind, { value: string; label: string }[]> = {
   palay: [
-    { value: "delivered", label: "Delivered" },
-    { value: "farm_gate", label: "Farm Gate" },
+    { value: "delivered", label: t("Delivered") },
+    { value: "farm_gate", label: t("Farm Gate") },
   ],
   rice: [
-    { value: "delivered", label: "Delivered" },
-    { value: "picked_up", label: "Picked up" },
+    { value: "delivered", label: t("Delivered") },
+    { value: "picked_up", label: t("Picked up") },
   ],
   byproduct: [
-    { value: "delivered", label: "Delivered" },
-    { value: "picked_up", label: "Picked up" },
+    { value: "delivered", label: t("Delivered") },
+    { value: "picked_up", label: t("Picked up") },
   ],
 };
 
@@ -191,18 +192,18 @@ export default function EditPurchaseDialog({
 
   const supplierOptions = withCurrent(
     [
-      { value: "", label: "No supplier" },
+      { value: "", label: t("No supplier") },
       ...suppliers.map((s: any) => ({ value: String(s.id), label: s.name })),
     ],
     supplierId,
     purchase.supplier?.name,
   );
   const varietyOptions = [
-    { value: "", label: "Any variety" },
+    { value: "", label: t("Any variety") },
     ...varieties.map((v: any) => ({ value: v.id, label: v.code })),
   ];
   const gradeOptions = [
-    { value: "", label: "No grade" },
+    { value: "", label: t("No grade") },
     ...grades.map((g: any) => ({ value: g.id, label: g.code })),
   ];
   const byproductOptions = byproductKinds.map((k) => ({ value: k.code, label: k.name }));
@@ -212,7 +213,7 @@ export default function EditPurchaseDialog({
     if (kind === "byproduct")
       return (
         <Select
-          aria-label={`By-product of line ${i + 1}`}
+          aria-label={t("By-product of line {{value}}", { value: i + 1 })}
           value={l.byproduct_type}
           onChange={(v) => setLine(i, { byproduct_type: v })}
           options={withCurrent(byproductOptions, l.byproduct_type, l.byproduct_type)}
@@ -221,21 +222,21 @@ export default function EditPurchaseDialog({
     return (
       <div className="grid grid-cols-2 gap-2">
         <Select
-          aria-label={`Variety of line ${i + 1}`}
+          aria-label={t("Variety of line {{value}}", { value: i + 1 })}
           value={l.variety_id}
           onChange={(v) => setLine(i, { variety_id: v })}
           options={withCurrent(varietyOptions, l.variety_id, saved?.variety_code)}
         />
         {kind === "palay" ? (
           <Select
-            aria-label={`Grade of line ${i + 1}`}
+            aria-label={t("Grade of line {{value}}", { value: i + 1 })}
             value={l.grade_id}
             onChange={(v) => setLine(i, { grade_id: v })}
             options={withCurrent(gradeOptions, l.grade_id, saved?.grade_code)}
           />
         ) : (
           <Select
-            aria-label={`Grade of line ${i + 1}`}
+            aria-label={t("Grade of line {{value}}", { value: i + 1 })}
             value={l.grade_name}
             onChange={(v) => setLine(i, { grade_name: v })}
             options={MILLED_GRADES.map((g) => ({ value: g, label: gradeLabel(g) }))}
@@ -247,8 +248,10 @@ export default function EditPurchaseDialog({
 
   return (
     <RecordDialog
-      title={`Edit purchase ${purchase.reference_no}`}
-      subtitle="Stock follows the lines you save, and every change goes in the purchase's history."
+      title={t("Edit purchase {{reference_no}}", { reference_no: purchase.reference_no })}
+      subtitle={t(
+        "Stock follows the lines you save, and every change goes in the purchase's history.",
+      )}
       onClose={onClose}
       busy={save.isPending}
       testId="edit-purchase"
@@ -260,7 +263,7 @@ export default function EditPurchaseDialog({
             onClick={onClose}
             disabled={save.isPending}
           >
-            Cancel
+            {t("Cancel")}
           </button>
           <button
             type="button"
@@ -268,7 +271,7 @@ export default function EditPurchaseDialog({
             onClick={() => save.mutate()}
             disabled={!valid || save.isPending}
           >
-            {save.isPending ? "Saving…" : "Save changes"}
+            {save.isPending ? t("Saving…") : t("Save changes")}
           </button>
         </>
       }
@@ -276,22 +279,22 @@ export default function EditPurchaseDialog({
       <div className="space-y-4">
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <label className="block">
-            <span className="block mb-1 text-xs font-medium text-secondary">Date</span>
-            <DatePicker value={date} onChange={setDate} aria-label="Purchase date" />
+            <span className="block mb-1 text-xs font-medium text-secondary">{t("Date")}</span>
+            <DatePicker value={date} onChange={setDate} aria-label={t("Purchase date")} />
           </label>
           <label className="block">
-            <span className="block mb-1 text-xs font-medium text-secondary">Supplier</span>
+            <span className="block mb-1 text-xs font-medium text-secondary">{t("Supplier")}</span>
             <Select
-              aria-label="Supplier"
+              aria-label={t("Supplier")}
               value={supplierId}
               onChange={setSupplierId}
               options={supplierOptions}
             />
           </label>
           <label className="block">
-            <span className="block mb-1 text-xs font-medium text-secondary">Delivery</span>
+            <span className="block mb-1 text-xs font-medium text-secondary">{t("Delivery")}</span>
             <Select
-              aria-label="Delivery"
+              aria-label={t("Delivery")}
               value={delivery}
               onChange={setDelivery}
               options={withCurrent(DELIVERY[kind], delivery, delivery)}
@@ -300,7 +303,7 @@ export default function EditPurchaseDialog({
         </div>
 
         <div>
-          <p className="mb-1.5 text-xs font-medium text-secondary">Lines</p>
+          <p className="mb-1.5 text-xs font-medium text-secondary">{t("Lines")}</p>
           <div className="space-y-3">
             {lines.map((l, i) => (
               <div
@@ -313,7 +316,7 @@ export default function EditPurchaseDialog({
                   <button
                     type="button"
                     className="btn-ghost !p-2"
-                    aria-label={`Remove line ${i + 1}`}
+                    aria-label={t("Remove line {{value}}", { value: i + 1 })}
                     disabled={lines.length === 1}
                     onClick={() => setLines((ls) => ls.filter((_, j) => j !== i))}
                   >
@@ -328,7 +331,10 @@ export default function EditPurchaseDialog({
                         className="input"
                         type="number"
                         min={0}
-                        aria-label={`${n.label} of line ${i + 1}`}
+                        aria-label={t("{{label}} of line {{value}}", {
+                          label: n.label,
+                          value: i + 1,
+                        })}
                         value={l[n.key]}
                         onChange={(e) => setLine(i, { [n.key]: e.target.value })}
                       />
@@ -344,16 +350,16 @@ export default function EditPurchaseDialog({
               className="btn-ghost text-sm"
               onClick={() => setLines((ls) => [...ls, { ...BLANK[kind] }])}
             >
-              <Plus size={15} /> Add line
+              <Plus size={15} /> {t("Add line")}
             </button>
             <p className="text-sm text-secondary">
-              New total: <span className="font-semibold text-primary">{peso(total)}</span>
+              {t("New total:")} <span className="font-semibold text-primary">{peso(total)}</span>
             </p>
           </div>
         </div>
 
         <label className="block">
-          <span className="block mb-1 text-xs font-medium text-secondary">Remarks</span>
+          <span className="block mb-1 text-xs font-medium text-secondary">{t("Remarks")}</span>
           <textarea
             className="input min-h-[4rem]"
             value={remarks}
@@ -363,7 +369,9 @@ export default function EditPurchaseDialog({
 
         {error && (
           <p role="alert" className="text-sm text-rose-600 dark:text-rose-400">
-            {typeof error === "string" ? error : "Couldn't save. Check the fields and try again."}
+            {typeof error === "string"
+              ? error
+              : t("Couldn't save. Check the fields and try again.")}
           </p>
         )}
       </div>

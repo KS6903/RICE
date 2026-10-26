@@ -1,16 +1,15 @@
 import { Cloud, Droplets } from "lucide-react";
 import type { DailyForecast } from "../hooks/useWeather";
-import { WEATHER_ICONS, weatherIconClass } from "./weatherIcons";
-
-const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+import { conditionText, WEATHER_ICONS, weatherIconClass } from "./weatherIcons";
+import { currentLocale, t } from "../i18n";
 
 /** Format a local date ("2026-06-15") as "Today" or a weekday name. */
 function dayLabel(date: string, isFirst: boolean): string {
-  if (isFirst) return "Today";
+  if (isFirst) return t("Today");
   // Parse as local date (no TZ shift): the parts are already location-local.
   const [y, m, d] = date.split("-").map(Number);
   const dt = new Date(y, (m ?? 1) - 1, d ?? 1);
-  return DAY_NAMES[dt.getDay()] ?? date;
+  return new Intl.DateTimeFormat(currentLocale(), { weekday: "short" }).format(dt);
 }
 
 /** The next 7 days as a row of tiles, sliding sideways when they don't fit. */
@@ -27,7 +26,7 @@ export default function DailyForecastStrip({ daily }: { daily: DailyForecast[] }
           <div
             key={d.date}
             className="shrink-0 w-[4.5rem] flex-1 min-w-[4.5rem] rounded-2xl ring-1 ring-soft bg-white/50 dark:bg-slate-800/50 px-2 py-3 flex flex-col items-center gap-1.5"
-            title={d.condition}
+            title={conditionText(d.condition_code, d.condition)}
           >
             <span className="text-[11px] font-semibold text-muted whitespace-nowrap">
               {dayLabel(d.date, i === 0)}

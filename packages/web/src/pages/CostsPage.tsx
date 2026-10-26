@@ -17,6 +17,7 @@ import CodeValue from "../components/CodeValue";
 import EditExpenseDialog from "../components/costs/EditExpenseDialog";
 import RecordHistory from "../components/sales/RecordHistory";
 import { useCanEditSavedRecords } from "../hooks/useRecordEditor";
+import { t } from "../i18n";
 
 export default function CostsPage() {
   const qc = useQueryClient();
@@ -75,31 +76,33 @@ export default function CostsPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between gap-3">
         <div>
-          <h2 className="text-xl font-bold text-gray-900 dark:text-slate-100">Expenses & Costs</h2>
+          <h2 className="text-xl font-bold text-gray-900 dark:text-slate-100">
+            {t("Expenses & Costs")}
+          </h2>
           <p className="text-sm text-gray-500 dark:text-slate-400">
-            Track fuel, electricity, labor, maintenance, and more
+            {t("Track fuel, electricity, labor, maintenance, and more")}
           </p>
         </div>
         <button onClick={() => setShowForm(!showForm)} className="btn-primary shrink-0">
-          <Plus size={16} /> Add Expense
+          <Plus size={16} /> {t("Add Expense")}
         </button>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div className="card">
-          <p className="text-sm text-gray-500 dark:text-slate-400">Production Costs</p>
+          <p className="text-sm text-gray-500 dark:text-slate-400">{t("Production Costs")}</p>
           <p className="text-2xl font-bold text-gray-900 dark:text-slate-100 mt-1">
             ₱{totalProduction.toLocaleString()}
           </p>
         </div>
         <div className="card">
-          <p className="text-sm text-gray-500 dark:text-slate-400">Overhead</p>
+          <p className="text-sm text-gray-500 dark:text-slate-400">{t("Overhead")}</p>
           <p className="text-2xl font-bold text-gray-900 dark:text-slate-100 mt-1">
             ₱{totalOverhead.toLocaleString()}
           </p>
         </div>
         <div className="card">
-          <p className="text-sm text-gray-500 dark:text-slate-400">Total Expenses</p>
+          <p className="text-sm text-gray-500 dark:text-slate-400">{t("Total Expenses")}</p>
           <p className="text-2xl font-bold text-red-600 dark:text-red-400 mt-1">
             ₱{(totalProduction + totalOverhead).toLocaleString()}
           </p>
@@ -108,39 +111,39 @@ export default function CostsPage() {
 
       {showForm && (
         <div className="card space-y-4">
-          <h3 className="font-semibold text-gray-900 dark:text-slate-100">Add Expense</h3>
+          <h3 className="font-semibold text-gray-900 dark:text-slate-100">{t("Add Expense")}</h3>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div>
               <div className="flex items-baseline justify-between mb-1">
                 <label className="block text-sm font-medium text-gray-700 dark:text-slate-200">
-                  Category
+                  {t("Category")}
                 </label>
                 <QuickAdd
-                  label="New category"
+                  label={t("New category")}
                   endpoint="/costs/categories"
                   queryKey={["expense-categories"]}
                   fields={[
                     {
                       key: "name",
-                      label: "Name",
+                      label: t("Name"),
                       required: true,
                       full: true,
-                      placeholder: "e.g. Sack/Packaging",
+                      placeholder: t("e.g. Sack/Packaging"),
                     },
                     {
                       key: "is_production_cost",
-                      label: "Production cost",
+                      label: t("Production cost"),
                       type: "checkbox",
                       default: true,
-                      placeholder: "Production cost (vs. overhead)",
+                      placeholder: t("Production cost (vs. overhead)"),
                     },
                   ]}
                   onCreated={(c) => setForm((f) => ({ ...f, category_id: c.id }))}
                 />
               </div>
               <Select
-                aria-label="Category"
-                placeholder="Select category…"
+                aria-label={t("Category")}
+                placeholder={t("Select category…")}
                 value={form.category_id}
                 onChange={(v) => setForm((f) => ({ ...f, category_id: v }))}
                 options={categories.map((c: any) => ({ value: c.id, label: c.name }))}
@@ -148,17 +151,17 @@ export default function CostsPage() {
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-slate-200 mb-1">
-                Date
+                {t("Date")}
               </label>
               <DatePicker
-                aria-label="Expense date"
+                aria-label={t("Expense date")}
                 value={form.expense_date}
                 onChange={(v) => setForm((f) => ({ ...f, expense_date: v }))}
               />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-slate-200 mb-1">
-                Amount (₱)
+                {t("Amount (₱)")}
               </label>
               <input
                 type="number"
@@ -170,14 +173,14 @@ export default function CostsPage() {
             {hasMilling && (
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-slate-200 mb-1">
-                  Milling Batch (optional)
+                  {t("Milling Batch (optional)")}
                 </label>
                 <Select
-                  aria-label="Milling batch"
+                  aria-label={t("Milling batch")}
                   value={form.batch_id}
                   onChange={(v) => setForm((f) => ({ ...f, batch_id: v }))}
                   options={[
-                    { value: "", label: "Not batch-specific" },
+                    { value: "", label: t("Not batch-specific") },
                     ...batches.map((b: any) => ({ value: b.id, label: b.batch_no })),
                   ]}
                 />
@@ -185,7 +188,7 @@ export default function CostsPage() {
             )}
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-slate-200 mb-1">
-                Description
+                {t("Description")}
               </label>
               <input
                 className="input"
@@ -195,7 +198,7 @@ export default function CostsPage() {
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-slate-200 mb-1">
-                Reference No.
+                {t("Reference No.")}
               </label>
               <input
                 className="input"
@@ -206,14 +209,14 @@ export default function CostsPage() {
           </div>
           <div className="flex gap-2 justify-end">
             <button onClick={() => setShowForm(false)} className="btn-secondary">
-              Cancel
+              {t("Cancel")}
             </button>
             <button
               onClick={() => createExpense.mutate(form)}
               className="btn-primary"
               disabled={createExpense.isPending}
             >
-              {createExpense.isPending ? "Saving…" : "Save Expense"}
+              {createExpense.isPending ? t("Saving…") : t("Save Expense")}
             </button>
           </div>
         </div>
@@ -223,14 +226,16 @@ export default function CostsPage() {
         <table className="w-full text-sm">
           <thead className="bg-gray-50 dark:bg-slate-900/50 border-b border-gray-200 dark:border-slate-700">
             <tr>
-              {["Date", "Category", "Batch", "Amount", "Description", ""].map((h) => (
-                <th
-                  key={h}
-                  className="px-4 py-3 text-left font-medium text-gray-600 dark:text-slate-300"
-                >
-                  {h}
-                </th>
-              ))}
+              {[t("Date"), t("Category"), t("Batch"), t("Amount"), t("Description"), ""].map(
+                (h) => (
+                  <th
+                    key={h}
+                    className="px-4 py-3 text-left font-medium text-gray-600 dark:text-slate-300"
+                  >
+                    {h}
+                  </th>
+                ),
+              )}
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100 dark:divide-slate-700">
@@ -254,23 +259,27 @@ export default function CostsPage() {
                     {canCorrect && (
                       <button
                         type="button"
-                        aria-label={`Edit the expense of ${e.expense_date}`}
+                        aria-label={t("Edit the expense of {{expense_date}}", {
+                          expense_date: e.expense_date,
+                        })}
                         onClick={() => setEditing(e)}
                         className="text-xs font-semibold inline-flex items-center gap-1 text-secondary hover:text-primary"
                       >
                         <Pencil size={12} aria-hidden />
-                        Edit
+                        {t("Edit")}
                       </button>
                     )}
                     {canSeeHistory && (
                       <button
                         type="button"
-                        aria-label={`History of the expense of ${e.expense_date}`}
+                        aria-label={t("History of the expense of {{expense_date}}", {
+                          expense_date: e.expense_date,
+                        })}
                         onClick={() => setHistoryOf(e)}
                         className="text-xs font-semibold inline-flex items-center gap-1 text-secondary hover:text-primary"
                       >
                         <History size={12} aria-hidden />
-                        History
+                        {t("History")}
                       </button>
                     )}
                   </div>
@@ -289,17 +298,20 @@ export default function CostsPage() {
                   <td colSpan={6}>
                     <EmptyState
                       icon={Receipt}
-                      title="No expenses recorded"
-                      action={canEdit("expenses") ? "Add your first expense" : undefined}
+                      title={t("No expenses recorded")}
+                      action={canEdit("expenses") ? t("Add your first expense") : undefined}
                       onAction={() => setShowForm(true)}
                       next={
                         hasMilling
-                          ? "Production costs can be linked to a milling batch to see what each batch really cost."
+                          ? t(
+                              "Production costs can be linked to a milling batch to see what each batch really cost.",
+                            )
                           : undefined
                       }
                     >
-                      Fuel, electricity, labor, repairs: anything the mill pays for. Without them
-                      the profit on your dashboard only counts sales.
+                      {t(
+                        "Fuel, electricity, labor, repairs: anything the mill pays for. Without them the profit on your dashboard only counts sales.",
+                      )}
                     </EmptyState>
                   </td>
                 </tr>
@@ -321,7 +333,7 @@ export default function CostsPage() {
         <RecordHistory
           kind="expense"
           id={historyOf.id}
-          label={`the expense of ${historyOf.expense_date}`}
+          label={t("the expense of {{expense_date}}", { expense_date: historyOf.expense_date })}
           onClose={() => setHistoryOf(null)}
         />
       )}

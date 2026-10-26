@@ -43,6 +43,7 @@ import {
 import { useInventorySort } from "../hooks/useInventorySort";
 import { useReorderableTabs } from "../hooks/useReorderableTabs";
 import Select from "../components/Select";
+import { t } from "../i18n";
 
 type ViewMode = "classic" | "spreadsheet" | "cards" | "bins" | "warehouse";
 
@@ -72,11 +73,11 @@ const TYPE_COLORS: Record<
 
 // The tabs as first shown; each account can drag them into its own order.
 const VIEWS: { key: ViewMode; label: string; icon: React.ElementType }[] = [
-  { key: "cards", label: "Cards", icon: LayoutGrid },
-  { key: "bins", label: "Bins", icon: BarChart3 },
-  { key: "warehouse", label: "Warehouse", icon: Warehouse },
-  { key: "classic", label: "Classic", icon: List },
-  { key: "spreadsheet", label: "Spreadsheet", icon: Table2 },
+  { key: "cards", label: t("Cards"), icon: LayoutGrid },
+  { key: "bins", label: t("Bins"), icon: BarChart3 },
+  { key: "warehouse", label: t("Warehouse"), icon: Warehouse },
+  { key: "classic", label: t("Classic"), icon: List },
+  { key: "spreadsheet", label: t("Spreadsheet"), icon: Table2 },
 ];
 
 export default function InventoryPage() {
@@ -152,8 +153,10 @@ export default function InventoryPage() {
       <div className="space-y-6">
         <div className="flex items-center justify-between flex-wrap gap-3">
           <div>
-            <h2 className="text-2xl font-bold tracking-tight text-primary">Inventory</h2>
-            <p className="text-sm text-secondary">Stock of palay, milled rice, and by-products</p>
+            <h2 className="text-2xl font-bold tracking-tight text-primary">{t("Inventory")}</h2>
+            <p className="text-sm text-secondary">
+              {t("Stock of palay, milled rice, and by-products")}
+            </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <WarehousePicker
@@ -163,7 +166,7 @@ export default function InventoryPage() {
             />
             <Select
               className="!w-auto min-w-[13rem]"
-              aria-label="Sort inventory by"
+              aria-label={t("Sort inventory by")}
               value={sort}
               onChange={(v) => isInventorySort(v) && setSort(v)}
               options={INVENTORY_SORTS}
@@ -175,7 +178,7 @@ export default function InventoryPage() {
                 onClick={() => setShowAdd(true)}
                 className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-grad-brand text-white text-sm font-semibold shadow-grad-glow hover:opacity-90 transition-opacity whitespace-nowrap"
               >
-                <Plus size={15} /> Add inventory
+                <Plus size={15} /> {t("Add inventory")}
               </button>
             )}
           </div>
@@ -184,7 +187,7 @@ export default function InventoryPage() {
         {/* View switcher: drag a tab to rearrange (press and hold on a touch screen) */}
         <div
           {...tabs.containerProps}
-          title="Drag a tab to rearrange. On a touch screen, press and hold first."
+          title={t("Drag a tab to rearrange. On a touch screen, press and hold first.")}
           className="tab-strip flex items-center gap-1 p-1 rounded-xl glass overflow-x-auto"
         >
           {orderedViews.map(({ key, label, icon: Icon }) => {
@@ -274,8 +277,9 @@ export default function InventoryPage() {
 
 /** Stock mostly follows from purchases and milling; what a new mill already
  *  holds goes in once through "Add inventory". */
-const EMPTY_INVENTORY =
-  "Inventory is empty. Stock comes in as you record palay purchases and milling batches. Already have rice or palay in the warehouse? Enter it with Add inventory.";
+const EMPTY_INVENTORY = t(
+  "Inventory is empty. Stock comes in as you record palay purchases and milling batches. Already have rice or palay in the warehouse? Enter it with Add inventory.",
+);
 
 /* ─── 1. CLASSIC ─── the original 3-column card list */
 
@@ -284,23 +288,25 @@ function ClassicView({ palay, milled, byproducts, summary, branchFilter }: any) 
     <>
       {summary?.by_branch && summary.by_branch.length > 0 && !branchFilter && (
         <div className="card">
-          <h3 className="font-semibold text-primary mb-3">Stock by warehouse</h3>
+          <h3 className="font-semibold text-primary mb-3">{t("Stock by warehouse")}</h3>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead className="border-b border-slate-200 dark:border-slate-700">
                 <tr className="text-left text-secondary">
-                  <th className="px-3 py-2 font-medium">Warehouse</th>
-                  <th className="px-3 py-2 font-medium text-right">Palay (kg)</th>
-                  <th className="px-3 py-2 font-medium text-right">Milled Rice (kg)</th>
-                  <th className="px-3 py-2 font-medium text-right">By-products (kg)</th>
+                  <th className="px-3 py-2 font-medium">{t("Warehouse")}</th>
+                  <th className="px-3 py-2 font-medium text-right">{t("Palay (kg)")}</th>
+                  <th className="px-3 py-2 font-medium text-right">{t("Milled Rice (kg)")}</th>
+                  <th className="px-3 py-2 font-medium text-right">{t("By-products (kg)")}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                 {summary.by_branch.map((row: any, i: number) => (
                   <tr key={i} className="hover:bg-slate-50 dark:hover:bg-slate-800/40">
                     <td className="px-3 py-2 font-medium text-primary">
-                      {row.branch?.name || "Unassigned"}
-                      {row.branch?.is_main_branch && <span className="badge-green ml-2">Main</span>}
+                      {row.branch?.name || t("Unassigned")}
+                      {row.branch?.is_main_branch && (
+                        <span className="badge-green ml-2">{t("Main")}</span>
+                      )}
                     </td>
                     <td className="px-3 py-2 text-right">{row.palay_kg.toLocaleString()}</td>
                     <td className="px-3 py-2 text-right">{row.milled_kg.toLocaleString()}</td>
@@ -316,24 +322,26 @@ function ClassicView({ palay, milled, byproducts, summary, branchFilter }: any) 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <ClassicCard
           icon={<Wheat size={18} className="text-amber-500" />}
-          title="Palay (Paddy) Stock"
+          title={t("Palay (Paddy) Stock")}
           rows={palay}
           kind="palay"
-          emptyText="No palay in stock. It arrives when you record a purchase on Paddy / Palay."
+          emptyText={t(
+            "No palay in stock. It arrives when you record a purchase on Paddy / Palay.",
+          )}
         />
         <ClassicCard
           icon={<Package size={18} className="text-emerald-500" />}
-          title="Milled Rice (Bigas)"
+          title={t("Milled Rice (Bigas)")}
           rows={milled}
           kind="milled"
-          emptyText="No milled rice yet. It arrives when you record a milling batch."
+          emptyText={t("No milled rice yet. It arrives when you record a milling batch.")}
         />
         <ClassicCard
           icon={<Package size={18} className="text-slate-500 dark:text-slate-400" />}
-          title="By-products"
+          title={t("By-products")}
           rows={byproducts}
           kind="byproduct"
-          emptyText="No by-products yet. Hull, bran and broken rice come from milling batches."
+          emptyText={t("No by-products yet. Hull, bran and broken rice come from milling batches.")}
         />
       </div>
     </>
@@ -371,7 +379,7 @@ function ClassicCard({
               ) : (
                 <>
                   <span className="font-medium text-sm text-primary">
-                    {inv.variety?.code || "Unknown"}
+                    {inv.variety?.code || t("Unknown")}
                   </span>
                   <span className="text-xs text-muted ml-1">
                     ({kind === "milled" ? inv.grade_name || "—" : inv.grade?.code || "—"})
@@ -386,11 +394,13 @@ function ClassicCard({
             </div>
             <div className="text-right">
               <p className="font-semibold text-sm text-primary">
-                {Number(inv.quantity_kg).toLocaleString()} kg
+                {t("{{toLocaleString}} kg", {
+                  toLocaleString: Number(inv.quantity_kg).toLocaleString(),
+                })}
               </p>
               {kind !== "byproduct" && (
                 <p className="text-xs text-muted">
-                  {(Number(inv.quantity_kg) / 50).toFixed(1)} cavans
+                  {t("{{toFixed}} cavans", { toFixed: (Number(inv.quantity_kg) / 50).toFixed(1) })}
                 </p>
               )}
             </div>
@@ -462,25 +472,28 @@ function SpreadsheetView({ items }: { items: UnifiedItem[] }) {
         <Search size={15} className="text-muted" />
         <input
           className="input w-full max-w-md"
-          placeholder="Search variety, warehouse, or type…"
+          placeholder={t("Search variety, warehouse, or type…")}
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
         <span className="ml-auto text-xs text-muted">
-          {filtered.length} of {items.length} rows
+          {t("{{filteredCount}} of {{itemsCount}} rows", {
+            filteredCount: filtered.length,
+            itemsCount: items.length,
+          })}
         </span>
       </div>
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead className="bg-slate-50 dark:bg-slate-800/60 border-b border-slate-200 dark:border-slate-700">
             <tr>
-              {TH("typeLabel", "Type")}
-              {TH("variety", "Variety / Item")}
-              {TH("grade", "Grade")}
-              {TH("branchName", "Warehouse")}
-              {TH("quantity_kg", "Quantity (kg)")}
+              {TH("typeLabel", t("Type"))}
+              {TH("variety", t("Variety / Item"))}
+              {TH("grade", t("Grade"))}
+              {TH("branchName", t("Warehouse"))}
+              {TH("quantity_kg", t("Quantity (kg)"))}
               <th className="px-4 py-3 text-right text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                Cavans (50kg)
+                {t("Cavans (50kg)")}
               </th>
             </tr>
           </thead>
@@ -513,7 +526,7 @@ function SpreadsheetView({ items }: { items: UnifiedItem[] }) {
             {filtered.length === 0 && (
               <tr>
                 <td colSpan={6} className="px-4 py-10 text-center text-muted">
-                  No matching items.
+                  {t("No matching items.")}
                 </td>
               </tr>
             )}
@@ -526,15 +539,19 @@ function SpreadsheetView({ items }: { items: UnifiedItem[] }) {
 
 // The three kinds of stock, in the order the Cards and Bins views list them.
 const INVENTORY_SECTIONS: { type: UnifiedItem["type"]; label: string; icon: React.ReactNode }[] = [
-  { type: "palay", label: "Palay (Paddy)", icon: <Wheat size={16} className="text-amber-500" /> },
+  {
+    type: "palay",
+    label: t("Palay (Paddy)"),
+    icon: <Wheat size={16} className="text-amber-500" />,
+  },
   {
     type: "milled",
-    label: "Milled Rice (Bigas)",
+    label: t("Milled Rice (Bigas)"),
     icon: <Package size={16} className="text-emerald-500" />,
   },
   {
     type: "byproduct",
-    label: "By-products",
+    label: t("By-products"),
     icon: <Package size={16} className="text-slate-500 dark:text-slate-400" />,
   },
 ];
@@ -592,11 +609,11 @@ function CardsView({
               {icon}
               <h3 className="font-semibold text-primary">{label}</h3>
               <span className="ml-auto inline-flex items-center gap-1.5 text-[11px] font-semibold text-secondary bg-white dark:bg-slate-800/60 ring-1 ring-slate-200/80 dark:ring-slate-700 px-2 py-0.5 rounded-md tabular-nums">
-                {list.length} item{list.length === 1 ? "" : "s"}
+                {t("{{count}} items", { count: list.length })}
                 {list.length > 0 && (
                   <>
                     <span className="text-muted">·</span>
-                    {sectionTotal.toLocaleString()} kg
+                    {t("{{sectionTotal}} kg", { sectionTotal: sectionTotal.toLocaleString() })}
                   </>
                 )}
               </span>
@@ -650,7 +667,8 @@ function CardsView({
                             {i.variety}
                           </p>
                           <p className="text-xs text-muted mt-0.5">
-                            Grade <span className="font-semibold text-secondary">{i.grade}</span>
+                            {t("Grade")}{" "}
+                            <span className="font-semibold text-secondary">{i.grade}</span>
                           </p>
                         </div>
                       </div>
@@ -659,10 +677,10 @@ function CardsView({
                       <div className="mt-4">
                         <p className="text-[26px] font-extrabold text-primary tabular-nums leading-none">
                           {i.quantity_kg.toLocaleString()}
-                          <span className="text-sm font-medium text-muted ml-1">kg</span>
+                          <span className="text-sm font-medium text-muted ml-1">{t("kg")}</span>
                         </p>
                         <p className="text-xs text-muted mt-1 tabular-nums">
-                          {cavans.toFixed(1)} cavans
+                          {t("{{cavans}} cavans", { cavans: cavans.toFixed(1) })}
                         </p>
                       </div>
 
@@ -673,7 +691,7 @@ function CardsView({
                           aria-valuenow={Math.round(pct)}
                           aria-valuemin={0}
                           aria-valuemax={100}
-                          aria-label={`${pct.toFixed(1)}% of total stock`}
+                          aria-label={t("{{pct}}% of total stock", { pct: pct.toFixed(1) })}
                           className={`h-full transition-[width] duration-500 ${isSplit(i) ? "" : `bg-gradient-to-r ${grad}`}`}
                           style={{ width: `${Math.max(pct, 1.5)}%` }}
                         >
@@ -715,9 +733,9 @@ const SECTION_UNDERLINE: Record<UnifiedItem["type"], string> = {
 };
 
 const SECTION_EMPTY: Record<UnifiedItem["type"], string> = {
-  palay: "No palay in stock",
-  milled: "No milled rice in stock",
-  byproduct: "No by-products on hand",
+  palay: t("No palay in stock"),
+  milled: t("No milled rice in stock"),
+  byproduct: t("No by-products on hand"),
 };
 
 function BinsView({
@@ -752,11 +770,11 @@ function BinsView({
               {icon}
               <h3 className="font-semibold text-primary">{label}</h3>
               <span className="ml-auto inline-flex items-center gap-1.5 text-[11px] font-semibold text-secondary bg-slate-100 dark:bg-slate-800/60 ring-1 ring-slate-200/80 dark:ring-slate-700 px-2 py-0.5 rounded-md tabular-nums">
-                {list.length} bin{list.length === 1 ? "" : "s"}
+                {t("{{count}} bins", { count: list.length })}
                 {list.length > 0 && (
                   <>
                     <span className="text-muted">·</span>
-                    {sectionTotal.toLocaleString()} kg
+                    {t("{{sectionTotal}} kg", { sectionTotal: sectionTotal.toLocaleString() })}
                   </>
                 )}
               </span>
@@ -797,10 +815,13 @@ function BinsView({
                         <div className="text-right shrink-0">
                           <p className="font-bold text-sm text-primary tabular-nums leading-none">
                             {i.quantity_kg.toLocaleString()}{" "}
-                            <span className="text-xs font-medium text-muted">kg</span>
+                            <span className="text-xs font-medium text-muted">{t("kg")}</span>
                           </p>
                           <p className="text-[10px] text-muted tabular-nums mt-0.5">
-                            {(i.quantity_kg / 50).toFixed(0)} cavans · {sectionPct.toFixed(1)}%
+                            {t("{{toFixed}} cavans · {{sectionPct}}%", {
+                              toFixed: (i.quantity_kg / 50).toFixed(0),
+                              sectionPct: sectionPct.toFixed(1),
+                            })}
                           </p>
                         </div>
                       </div>
@@ -838,22 +859,23 @@ export function CanvaUpsellCard() {
       </div>
       <h3 className="text-xl font-bold text-primary mb-1.5">
         <Sparkles size={16} className="inline -mt-0.5 mr-1 text-amber-500" />
-        Visual Warehouse Canva — a Pro feature
+        {t("Visual Warehouse Canva — a Pro feature")}
       </h3>
       <p className="text-sm text-secondary max-w-md mx-auto leading-relaxed">
-        Drag-and-drop your pallets across a floor plan of your warehouse. See aging at a glance,
-        stack visually, dispatch oldest-first, and watch live moves from any device.
+        {t(
+          "Drag-and-drop your pallets across a floor plan of your warehouse. See aging at a glance, stack visually, dispatch oldest-first, and watch live moves from any device.",
+        )}
       </p>
       <div className="mt-5 flex items-center justify-center gap-2">
         <Link
           to="/settings"
           className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-grad-brand text-white text-sm font-semibold shadow-grad-glow hover:opacity-90 transition-opacity"
         >
-          Upgrade plan <ArrowRight size={14} />
+          {t("Upgrade plan")} <ArrowRight size={14} />
         </Link>
       </div>
       <p className="text-[11px] uppercase tracking-wider font-bold text-muted mt-4">
-        Available on Pro and Enterprise
+        {t("Available on Pro and Enterprise")}
       </p>
     </div>
   );

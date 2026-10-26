@@ -57,6 +57,9 @@ class User(Base, TimestampMixin):
     # Which branch the top bar's picker opens on for a Boss or Admin: NULL for
     # the main branch, "all" for every branch together, or a branch id.
     default_branch_view: Mapped[str | None] = mapped_column(String(36))
+    # The language the web app shows this account ("tl", "ceb", "en"…); NULL
+    # until chosen under Settings > Appearance.
+    language: Mapped[str | None] = mapped_column(String(16))
     username: Mapped[str] = mapped_column(String(50), unique=True, nullable=False)
     email: Mapped[str | None] = mapped_column(String(100), unique=True)
     password_hash: Mapped[str] = mapped_column(String(255), nullable=False)

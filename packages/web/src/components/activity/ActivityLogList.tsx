@@ -1,5 +1,6 @@
 import { History } from "lucide-react";
 import { formatActivity, activityActor, activityTone, type ActivityRow } from "./format";
+import { t } from "../../i18n";
 
 const DOT: Record<ReturnType<typeof activityTone>, string> = {
   rose: "bg-rose-500",
@@ -12,7 +13,7 @@ function timeAgo(iso: string | null): string {
   const d = new Date(iso);
   const diff = Date.now() - d.getTime();
   const mins = Math.round(diff / 60000);
-  if (mins < 1) return "just now";
+  if (mins < 1) return t("just now");
   if (mins < 60) return `${mins}m ago`;
   const hrs = Math.round(mins / 60);
   if (hrs < 24) return `${hrs}h ago`;
@@ -24,14 +25,14 @@ function timeAgo(iso: string | null): string {
 export default function ActivityLogList({
   rows,
   loading,
-  emptyText = "No activity yet.",
+  emptyText = t("No activity yet."),
 }: {
   rows: ActivityRow[];
   loading?: boolean;
   emptyText?: string;
 }) {
   if (loading) {
-    return <p className="text-sm text-muted py-6 text-center">Loading activity…</p>;
+    return <p className="text-sm text-muted py-6 text-center">{t("Loading activity…")}</p>;
   }
   if (rows.length === 0) {
     return (

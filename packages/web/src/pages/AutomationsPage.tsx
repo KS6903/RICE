@@ -43,6 +43,9 @@ import {
   type AutomationsHealth,
   type TestResult,
 } from "../services/AutomationsService";
+import { currentLocale, t } from "../i18n";
+import { tx } from "../i18n/tx";
+import { roleLabel as sharedRoleLabel } from "@rice-mill/shared";
 
 type Params = Automation["params"];
 
@@ -56,45 +59,46 @@ const CARD_GRID = "group/grid grid grid-cols-[repeat(auto-fill,minmax(min(17rem,
 const GROUPS: { key: AutomationGroup; title: string; blurb: string; icon: LucideIcon }[] = [
   {
     key: "reports",
-    title: "Reports and summaries",
-    blurb: "The numbers you'd ask for, sent on a schedule.",
+    title: t("Reports and summaries"),
+    blurb: t("The numbers you'd ask for, sent on a schedule."),
     icon: Sunrise,
   },
   {
     key: "receivables",
-    title: "Collections and credit",
-    blurb: "Who owes you, and who is buying beyond their limit.",
+    title: t("Collections and credit"),
+    blurb: t("Who owes you, and who is buying beyond their limit."),
     icon: HandCoins,
   },
   {
     key: "production",
-    title: "Milling and drying",
-    blurb: "Batches and palay that need attention.",
+    title: t("Milling and drying"),
+    blurb: t("Batches and palay that need attention."),
     icon: Factory,
   },
   {
     key: "stock",
-    title: "Stock and warehouse",
-    blurb: "Running low, getting old, or rain on the way.",
+    title: t("Stock and warehouse"),
+    blurb: t("Running low, getting old, or rain on the way."),
     icon: Warehouse,
   },
   {
     key: "deliveries",
-    title: "Deliveries",
-    blurb: "Orders that are late or still need a truck.",
+    title: t("Deliveries"),
+    blurb: t("Orders that are late or still need a truck."),
     icon: Truck,
   },
   {
     key: "watch",
-    title: "Owner watch",
-    blurb: "Entries worth a second look, within 15 minutes of being made.",
+    title: t("Owner watch"),
+    blurb: t("Entries worth a second look, within 15 minutes of being made."),
     icon: ShieldAlert,
   },
   {
     key: "advisor",
-    title: "AI advisor",
-    blurb:
+    title: t("AI advisor"),
+    blurb: t(
       "Advice written by AI from your own figures: what to do today, what to buy, where money leaks.",
+    ),
     icon: Sparkles,
   },
 ];
@@ -104,7 +108,7 @@ const SECTION_NAMES: Record<string, string> = {
   sales: "sales",
   inventory: "inventory",
   milling: "milling",
-  paddy: "palay buying",
+  paddy: t("palay buying"),
   dispatch: "dispatch",
   employees: "employees",
   expenses: "expenses",
@@ -116,7 +120,7 @@ function errorText(error: unknown, fallback: string): string {
 }
 
 function roleLabel(role: string | null): string {
-  return role ? role.replace("_", " ") : "";
+  return role ? t(sharedRoleLabel(role)) : "";
 }
 
 function whenLabel(iso: string): string {
@@ -146,7 +150,7 @@ function RunLine({ run }: { run: AutomationRun }) {
         <Clock size={15} className="mt-0.5 shrink-0 text-amber-500" aria-hidden />
       )}
       <span>
-        {ok ? "Last ran" : failed ? "Failed" : "Running"} {whenLabel(run.started_at)}
+        {ok ? t("Last ran") : failed ? t("Failed") : t("Running")} {whenLabel(run.started_at)}
         {failed && run.detail && <span className="text-muted"> · {run.detail}</span>}
       </span>
     </span>
@@ -332,7 +336,7 @@ function Switch({
   return (
     <div className="flex items-center gap-2 shrink-0">
       <span className="text-sm font-semibold text-secondary" aria-hidden>
-        {checked ? "On" : "Off"}
+        {checked ? t("On") : t("Off")}
       </span>
       <button
         type="button"
@@ -468,12 +472,12 @@ function trackingOf(a: Automation): Tracking {
 }
 
 const DUE_WITHIN: { hours: number; label: string }[] = [
-  { hours: 2, label: "2 hours" },
-  { hours: 6, label: "6 hours" },
-  { hours: 24, label: "1 day" },
-  { hours: 48, label: "2 days" },
-  { hours: 72, label: "3 days" },
-  { hours: 168, label: "1 week" },
+  { hours: 2, label: t("2 hours") },
+  { hours: 6, label: t("6 hours") },
+  { hours: 24, label: t("1 day") },
+  { hours: 48, label: t("2 days") },
+  { hours: 72, label: t("3 days") },
+  { hours: 168, label: t("1 week") },
 ];
 
 /** Follow-through: each alert becomes a task someone is given, due within a
@@ -494,7 +498,7 @@ function TrackingFields({
   const set = (change: Partial<Tracking>) => onChange({ ...tracking, ...change });
   return (
     <fieldset className="space-y-3">
-      <legend className="form-label">Follow-through</legend>
+      <legend className="form-label">{t("Follow-through")}</legend>
       <label htmlFor={`${code}-track`} className="flex items-start gap-3 cursor-pointer">
         <input
           id={`${code}-track`}
@@ -506,10 +510,10 @@ function TrackingFields({
         />
         <span>
           <span className="block text-sm font-semibold text-primary">
-            Make each alert a task until it's resolved
+            {t("Make each alert a task until it's resolved")}
           </span>
           <span className="block text-xs text-secondary">
-            It goes on the To do page. Still open after its time, the owner hears about it.
+            {t("It goes on the To do page. Still open after its time, the owner hears about it.")}
           </span>
         </span>
       </label>
@@ -517,7 +521,7 @@ function TrackingFields({
         <div className="flex flex-wrap gap-4 pl-8">
           <div>
             <label htmlFor={`${code}-track-assignee`} className="form-label">
-              Give it to
+              {t("Give it to")}
             </label>
             <Select
               id={`${code}-track-assignee`}
@@ -526,14 +530,14 @@ function TrackingFields({
               disabled={disabled}
               onChange={(v) => set({ track_assignee: v || null })}
               options={[
-                { value: "", label: "An owner or admin assigns it" },
+                { value: "", label: t("An owner or admin assigns it") },
                 ...candidates.map((c) => ({ value: c.id, label: c.name })),
               ]}
             />
           </div>
           <div>
             <label htmlFor={`${code}-track-due`} className="form-label">
-              Due within
+              {t("Due within")}
             </label>
             <Select
               id={`${code}-track-due`}
@@ -598,8 +602,9 @@ function AutomationCard({
     onSuccess: ({ sent, email, to }) =>
       setTestNote(
         sent === 0
-          ? "Nothing to report right now, so nothing was sent. It will tell you when there is."
-          : `Sent to you. It's under the bell now.${email ? ` ${TEST_EMAIL_NOTE[email](to)}` : ""}`,
+          ? t("Nothing to report right now, so nothing was sent. It will tell you when there is.")
+          : t("Sent to you. It's under the bell now.") +
+              (email ? ` ${TEST_EMAIL_NOTE[email](to)}` : ""),
       ),
   });
 
@@ -644,10 +649,14 @@ function AutomationCard({
             <span className="whitespace-nowrap">
               {titleEnd}
               <span className="ml-1.5 inline-block align-middle">
-                <InfoTip label={`What ${automation.title} does`}>{automation.description}</InfoTip>
+                <InfoTip label={t("What {{title}} does", { title: automation.title })}>
+                  {automation.description}
+                </InfoTip>
               </span>
             </span>
-            {automation.uses_ai && <span className="badge-violet ml-2 align-middle">AI</span>}
+            {automation.uses_ai && (
+              <span className="badge-violet ml-2 align-middle">{t("AI")}</span>
+            )}
           </h3>
         </div>
         <Switch
@@ -666,14 +675,14 @@ function AutomationCard({
           {aiOff ? (
             <span className="text-sm text-muted">
               {automation.enabled
-                ? "Paused: AI is switched off."
-                : "Switch on AI above to use this."}
+                ? t("Paused: AI is switched off.")
+                : t("Switch on AI above to use this.")}
             </span>
           ) : automation.last_run ? (
             <RunLine run={automation.last_run} />
           ) : (
             <span className="text-sm text-muted">
-              {automation.enabled ? "Hasn't run yet." : "Off."}
+              {automation.enabled ? t("Hasn't run yet.") : t("Off.")}
             </span>
           )}
         </div>
@@ -689,13 +698,13 @@ function AutomationCard({
             className={`transition-transform ${open ? "rotate-180" : ""}`}
             aria-hidden
           />
-          {open ? "Hide settings" : "Settings"}
+          {open ? t("Hide settings") : t("Settings")}
         </button>
       </div>
 
       {save.isError && (
         <p className="text-sm text-rose-600 dark:text-rose-400" role="alert">
-          {errorText(save.error, "Couldn't save. Check the settings and try again.")}
+          {errorText(save.error, t("Couldn't save. Check the settings and try again."))}
         </p>
       )}
 
@@ -716,10 +725,13 @@ function AutomationCard({
           </div>
 
           <fieldset>
-            <legend className="form-label">Who receives it</legend>
+            <legend className="form-label">{t("Who receives it")}</legend>
             {automation.candidates.length === 0 ? (
               <p className="text-sm text-secondary">
-                Nobody on your team can receive this yet: it needs access to {sectionName}.
+                {t(
+                  "Nobody on your team can receive this yet: it needs access to {{sectionName}}.",
+                  { sectionName },
+                )}
               </p>
             ) : (
               <ul className="space-y-1.5">
@@ -742,8 +754,12 @@ function AutomationCard({
             )}
             {recipients.length === 0 && defaultNames.length > 0 && (
               <p className="text-xs text-secondary mt-2">
-                Nobody ticked, so it goes to the{" "}
-                {automation.default_roles.map(roleLabel).join(" and ")}: {defaultNames.join(", ")}.
+                {t("Nobody ticked, so it goes to the {{join}}: {{defaultNames}}.", {
+                  join: new Intl.ListFormat(currentLocale(), { type: "conjunction" }).format(
+                    automation.default_roles.map(roleLabel),
+                  ),
+                  defaultNames: defaultNames.join(", "),
+                })}
               </p>
             )}
           </fieldset>
@@ -763,7 +779,7 @@ function AutomationCard({
               onClick={() => setShowRuns((s) => !s)}
             >
               <History size={15} />
-              {showRuns ? "Hide history" : "History"}
+              {showRuns ? t("Hide history") : t("History")}
             </button>
             {!readOnly && (
               <div className="ml-auto flex flex-wrap justify-end gap-2">
@@ -774,7 +790,7 @@ function AutomationCard({
                   disabled={test.isPending}
                 >
                   <Send size={15} />
-                  {test.isPending ? "Sending…" : "Send me a test"}
+                  {test.isPending ? t("Sending…") : t("Send me a test")}
                 </button>
                 <button
                   type="button"
@@ -782,7 +798,7 @@ function AutomationCard({
                   onClick={() => save.mutate(automation.enabled)}
                   disabled={!dirty || save.isPending}
                 >
-                  {save.isPending ? "Saving…" : "Save"}
+                  {save.isPending ? t("Saving…") : t("Save")}
                 </button>
               </div>
             )}
@@ -790,12 +806,12 @@ function AutomationCard({
 
           {save.isSuccess && !dirty && (
             <p className="text-sm text-emerald-700 dark:text-emerald-400" role="status">
-              Saved.
+              {t("Saved.")}
             </p>
           )}
           {test.isError && (
             <p className="text-sm text-rose-600 dark:text-rose-400" role="alert">
-              {errorText(test.error, "The test couldn't be sent. Try again in a moment.")}
+              {errorText(test.error, t("The test couldn't be sent. Try again in a moment."))}
             </p>
           )}
           {testNote && !test.isError && (
@@ -812,7 +828,7 @@ function AutomationCard({
                   <div className="skeleton h-5 w-1/2 rounded" />
                 </div>
               ) : (runs.data?.runs.length ?? 0) === 0 ? (
-                <p className="text-sm text-secondary">No runs yet.</p>
+                <p className="text-sm text-secondary">{t("No runs yet.")}</p>
               ) : (
                 <ul className="space-y-1.5">
                   {runs.data?.runs.map((run) => (
@@ -853,41 +869,45 @@ function AISettingsCard({ ai, isOwner }: { ai: AISettings; isOwner: boolean }) {
 
   return (
     <section
-      aria-label="AI settings"
+      aria-label={t("AI settings")}
       className="card space-y-4 border border-violet-200 dark:border-violet-900/50"
     >
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div className="max-w-prose space-y-2">
           <p className="flex items-center gap-2 font-semibold text-primary">
-            {ai.enabled ? "AI is on for your automations." : "AI is off."}
-            <InfoTip label="What the AI sends and what it doesn't" tone="alert" width={384}>
-              When it's on, the AI recipes below send your mill's figures to Oraiza's AI, a
-              third-party AI service hosted outside the Philippines, to write their advice: sales,
-              purchases, stock, and the names of customers, suppliers and staff. Phone numbers,
-              addresses, TINs, government ID numbers and anything typed into notes are never sent.
-              Oraiza works out every number itself, and each message shows those figures so you can
-              check the advice. AI can still be wrong: check before you act.
+            {ai.enabled ? t("AI is on for your automations.") : t("AI is off.")}
+            <InfoTip label={t("What the AI sends and what it doesn't")} tone="alert" width={384}>
+              {t(
+                "When it's on, the AI recipes below send your mill's figures to Oraiza's AI, a third-party AI service hosted outside the Philippines, to write their advice: sales, purchases, stock, and the names of customers, suppliers and staff. Phone numbers, addresses, TINs, government ID numbers and anything typed into notes are never sent. Oraiza works out every number itself, and each message shows those figures so you can check the advice. AI can still be wrong: check before you act.",
+              )}
             </InfoTip>
           </p>
           {ai.enabled && ai.changed_by && since && (
             <p className="text-xs text-muted">
-              Switched on by {ai.changed_by} on {since}.
+              {t("Switched on by {{changed_by}} on {{since}}.", {
+                changed_by: ai.changed_by,
+                since,
+              })}
             </p>
           )}
           {!ai.configured && (
             <p className="text-xs text-amber-700 dark:text-amber-400">
-              AI isn't set up on this server yet, so these send their figures without the advice.
+              {t(
+                "AI isn't set up on this server yet, so these send their figures without the advice.",
+              )}
             </p>
           )}
           {!isOwner && (
-            <p className="text-xs text-muted">Only the mill's owner can switch AI on or off.</p>
+            <p className="text-xs text-muted">
+              {t("Only the mill's owner can switch AI on or off.")}
+            </p>
           )}
         </div>
         {isOwner && (
           <div className="flex flex-wrap items-end gap-x-4 gap-y-3">
             <div>
               <label htmlFor="ai-language" className="form-label">
-                Write the advice in
+                {t("Write the advice in")}
               </label>
               <Select
                 id="ai-language"
@@ -906,14 +926,14 @@ function AISettingsCard({ ai, isOwner }: { ai: AISettings; isOwner: boolean }) {
               onClick={() => save.mutate({ enabled: !ai.enabled })}
             >
               <Sparkles size={15} aria-hidden />
-              {enabled ? "Turn AI off" : "Turn AI on"}
+              {enabled ? t("Turn AI off") : t("Turn AI on")}
             </button>
           </div>
         )}
       </div>
       {save.isError && (
         <p className="text-sm text-rose-600 dark:text-rose-400" role="alert">
-          {errorText(save.error, "Couldn't change the AI setting. Try again.")}
+          {errorText(save.error, t("Couldn't change the AI setting. Try again."))}
         </p>
       )}
     </section>
@@ -937,13 +957,14 @@ function StarterSets({ startOpen }: { startOpen: boolean }) {
     (sets.data?.presets ?? []).flatMap((p) => p.recipes.map((r) => [r.code, r.title] as const)),
   );
   return (
-    <section aria-label="Starter sets" className="card space-y-4">
+    <section aria-label={t("Starter sets")} className="card space-y-4">
       <div className="flex items-start justify-between gap-3 flex-wrap">
         <div>
-          <p className="font-semibold text-primary">Not sure where to start?</p>
+          <p className="font-semibold text-primary">{t("Not sure where to start?")}</p>
           <p className="text-sm text-secondary">
-            Switch on the set that fits your mill. It only switches things on: what you've set up
-            stays as it is.
+            {t(
+              "Switch on the set that fits your mill. It only switches things on: what you've set up stays as it is.",
+            )}
           </p>
         </div>
         <button
@@ -957,7 +978,7 @@ function StarterSets({ startOpen }: { startOpen: boolean }) {
             className={`transition-transform ${open ? "rotate-180" : ""}`}
             aria-hidden
           />
-          {open ? "Hide the sets" : "Show the sets"}
+          {open ? t("Hide the sets") : t("Show the sets")}
         </button>
       </div>
       {open && (
@@ -970,14 +991,16 @@ function StarterSets({ startOpen }: { startOpen: boolean }) {
             >
               <h3 className="font-bold text-primary">{p.title}</h3>
               <p className="text-sm text-secondary">{p.description}</p>
-              <p className="text-xs text-muted">{p.recipes.length} automations</p>
+              <p className="text-xs text-muted">
+                {t("{{recipesCount}} automations", { recipesCount: p.recipes.length })}
+              </p>
               <button
                 type="button"
                 className="btn-secondary mt-auto self-start"
                 disabled={apply.isPending}
                 onClick={() => apply.mutate(p.code)}
               >
-                Switch these on
+                {t("Switch these on")}
               </button>
             </article>
           ))}
@@ -986,13 +1009,15 @@ function StarterSets({ startOpen }: { startOpen: boolean }) {
       {apply.isSuccess && (
         <p className="text-sm text-emerald-700 dark:text-emerald-400" role="status">
           {apply.data.switched_on.length === 0
-            ? "Everything in that set was already on."
-            : `Switched on: ${apply.data.switched_on.map((c) => titles.get(c) ?? c).join(", ")}.`}
+            ? t("Everything in that set was already on.")
+            : t("Switched on: {{list}}.", {
+                list: apply.data.switched_on.map((c) => titles.get(c) ?? c).join(", "),
+              })}
         </p>
       )}
       {apply.isError && (
         <p className="text-sm text-rose-600 dark:text-rose-400" role="alert">
-          {errorText(apply.error, "Couldn't switch the set on. Try again.")}
+          {errorText(apply.error, t("Couldn't switch the set on. Try again."))}
         </p>
       )}
     </section>
@@ -1000,20 +1025,19 @@ function StarterSets({ startOpen }: { startOpen: boolean }) {
 }
 
 const TEST_EMAIL_NOTE: Record<NonNullable<TestResult["email"]>, (to: string | null) => string> = {
-  sent: (to) => `The email went to ${to}.`,
-  no_address: () => "No email went out: your account has no email address.",
-  not_set_up: () => "No email went out: this server isn't set up to send email.",
-  later: () => "Today's email limit is reached, so the email goes out later.",
-  failed: () => "The email couldn't be sent just now. It will be tried again.",
+  sent: (to) => t("The email went to {{to}}.", { to }),
+  no_address: () => t("No email went out: your account has no email address."),
+  not_set_up: () => t("No email went out: this server isn't set up to send email."),
+  later: () => t("Today's email limit is reached, so the email goes out later."),
+  failed: () => t("The email couldn't be sent just now. It will be tried again."),
 };
 
 function HealthNotice({ health }: { health: AutomationsHealth }) {
   const { failed, retrying } = health.emails;
   if (health.scheduler_running && failed === 0 && retrying === 0) return null;
-  const emails = (n: number) => `${n} email${n === 1 ? "" : "s"}`;
   return (
     <section
-      aria-label="Automation problems"
+      aria-label={t("Automation problems")}
       className="card space-y-2 border border-amber-300 dark:border-amber-800/60"
     >
       {!health.scheduler_running && (
@@ -1024,12 +1048,16 @@ function HealthNotice({ health }: { health: AutomationsHealth }) {
             aria-hidden
           />
           <span>
-            <strong>Automatic runs are paused on this server,</strong> so switched-on automations
-            won't send anything until they start again.
+            {tx(
+              "{{paused}} so switched-on automations won't send anything until they start again.",
+              {
+                paused: <strong>{t("Automatic runs are paused on this server,")}</strong>,
+              },
+            )}
             {health.last_tick
-              ? ` They last ran ${whenLabel(health.last_tick)}.`
-              : " They haven't run yet."}{" "}
-            "Send me a test" still works, email included.
+              ? t(" They last ran {{last_tick}}.", { last_tick: whenLabel(health.last_tick) })
+              : t(" They haven't run yet.")}{" "}
+            {t('"Send me a test" still works, email included.')}
           </span>
         </p>
       )}
@@ -1037,9 +1065,10 @@ function HealthNotice({ health }: { health: AutomationsHealth }) {
         <p className="flex items-start gap-2 text-sm text-primary">
           <MailWarning size={16} className="mt-0.5 shrink-0 text-rose-500" aria-hidden />
           <span>
-            {emails(failed)} from your automations couldn't be delivered this week, even after
-            trying again. They are still under the bell. Check the email addresses on the Users
-            page.
+            {t(
+              "{{count}} emails from your automations couldn't be delivered this week, even after trying again. They are still under the bell. Check the email addresses on the Users page.",
+              { count: failed },
+            )}
           </span>
         </p>
       )}
@@ -1047,7 +1076,10 @@ function HealthNotice({ health }: { health: AutomationsHealth }) {
         <p className="flex items-start gap-2 text-sm text-secondary">
           <Clock size={16} className="mt-0.5 shrink-0 text-amber-500" aria-hidden />
           <span>
-            {emails(retrying)} didn't go through the first time and will be tried again shortly.
+            {t(
+              "{{count}} emails didn't go through the first time and will be tried again shortly.",
+              { count: retrying },
+            )}
           </span>
         </p>
       )}
@@ -1096,17 +1128,22 @@ export default function AutomationsPage() {
     <div className="space-y-8">
       <header>
         <div className="flex items-center gap-3 flex-wrap">
-          <h1 className="text-2xl font-bold text-primary">Automations</h1>
-          <span className="badge-yellow">Enterprise</span>
+          <h1 className="text-2xl font-bold text-primary">{t("Automations")}</h1>
+          <span className="badge-yellow">{t("Enterprise")}</span>
         </div>
         <p className="text-secondary mt-1 max-w-2xl">
-          Reports and alerts that run by themselves. Each one shows up under the bell, and by email
-          if you choose.
-          {recipes.length > 0 && ` ${onCount} of ${recipes.length} switched on.`}
+          {t(
+            "Reports and alerts that run by themselves. Each one shows up under the bell, and by email if you choose.",
+          )}
+          {recipes.length > 0 &&
+            t(" {{onCount}} of {{recipesCount}} switched on.", {
+              onCount,
+              recipesCount: recipes.length,
+            })}
         </p>
         {readOnly && (
           <p className="text-sm text-secondary mt-2">
-            You can see these, but only an owner or admin can change them.
+            {t("You can see these, but only an owner or admin can change them.")}
           </p>
         )}
       </header>
@@ -1124,7 +1161,7 @@ export default function AutomationsPage() {
       ) : list.isError ? (
         <div className="card">
           <p className="text-secondary">
-            {errorText(list.error, "Automations couldn't load. Try again in a moment.")}
+            {errorText(list.error, t("Automations couldn't load. Try again in a moment."))}
           </p>
         </div>
       ) : (
@@ -1135,7 +1172,7 @@ export default function AutomationsPage() {
             <>
               <div
                 role="tablist"
-                aria-label="Automation groups"
+                aria-label={t("Automation groups")}
                 className="seg max-w-full overflow-x-auto"
               >
                 {tabs.map((group, index) => {
@@ -1175,11 +1212,16 @@ export default function AutomationsPage() {
                 )}
                 {current.key === "receivables" && (
                   <p className="text-sm text-secondary">
-                    These alerts lead to the{" "}
-                    <Link to="/collections" className="link font-semibold">
-                      collections list
-                    </Link>
-                    : who to call first, a reminder to send, and what they promised.
+                    {tx(
+                      "These alerts lead to the {{list}}: who to call first, a reminder to send, and what they promised.",
+                      {
+                        list: (
+                          <Link to="/collections" className="link font-semibold">
+                            {t("collections list")}
+                          </Link>
+                        ),
+                      },
+                    )}
                   </p>
                 )}
                 <div className={CARD_GRID}>

@@ -1,3 +1,4 @@
+import { t } from "../i18n";
 // How an employee's rate turns into a monthly figure. The server works the same
 // figure out when it saves (backend/app/services/employee_service.py:
 // monthly_from_rate); this is only so the form can show it before saving.
@@ -18,19 +19,19 @@ export function isVariablePay(employmentType: string): boolean {
 export function rateBasis(employmentType: string): string {
   switch (employmentType) {
     case "monthly":
-      return "per month";
+      return t("per month");
     case "biweekly":
-      return "per pay, twice a month";
+      return t("per pay, twice a month");
     case "weekly":
-      return "per week";
+      return t("per week");
     case "hourly":
-      return "per hour";
+      return t("per hour");
     case "piece_rate":
-      return "per piece or unit of work";
+      return t("per piece or unit of work");
     case "commission":
-      return "per sale or target met";
+      return t("per sale or target met");
     default:
-      return "per day";
+      return t("per day");
   }
 }
 

@@ -100,7 +100,7 @@ export default defineConfig({
     cspMetaPlugin(),
     VitePWA({
       registerType: "autoUpdate",
-      // Registered from src/main.tsx, on http(s) pages only: the desktop app runs
+      // Registered from src/boot.tsx, on http(s) pages only: the desktop app runs
       // at app://oraiza, where a service worker can't register (the injected
       // script's rejection went uncaught) and isn't wanted (it syncs via SQLite).
       injectRegister: false,
@@ -135,6 +135,14 @@ export default defineConfig({
         navigateFallback: null,
         directoryIndex: null,
         runtimeCaching: [
+          // The language files (public/locales): far too many to precache, so
+          // each is kept once fetched, and the app still opens in the
+          // person's language offline. A new version has a new ?v=.
+          {
+            urlPattern: ({ url }) => url.pathname.startsWith("/locales/"),
+            handler: "StaleWhileRevalidate",
+            options: { cacheName: "locales", expiration: { maxEntries: 4 } },
+          },
           {
             urlPattern: ({ request, url }) =>
               request.mode === "navigate" && !url.pathname.startsWith("/api/"),

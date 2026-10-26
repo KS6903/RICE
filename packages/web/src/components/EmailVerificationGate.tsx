@@ -3,6 +3,8 @@ import { useQueryClient } from "@tanstack/react-query";
 import { authService } from "../services/AuthService";
 import { useAuthStore } from "../stores/authStore";
 import { MailCheck, AlertCircle, Check, LogOut, RefreshCw } from "lucide-react";
+import { t } from "../i18n";
+import { tx } from "../i18n/tx";
 
 /** Full-screen blocker shown (in place of the app) when /me reports
  *  email_verification_required — i.e. REQUIRE_EMAIL_VERIFICATION is on and the
@@ -21,9 +23,9 @@ export default function EmailVerificationGate() {
     setMsg(null);
     try {
       await authService.resendVerification();
-      setMsg({ type: "ok", text: "Verification email sent. Check your inbox." });
+      setMsg({ type: "ok", text: t("Verification email sent. Check your inbox.") });
     } catch {
-      setMsg({ type: "err", text: "Couldn't send the email. Try again shortly." });
+      setMsg({ type: "err", text: t("Couldn't send the email. Try again shortly.") });
     } finally {
       setBusy(false);
     }
@@ -40,11 +42,13 @@ export default function EmailVerificationGate() {
             <MailCheck size={20} className="text-white" />
           </div>
           <div>
-            <h1 className="text-lg font-bold text-primary">Verify your email</h1>
+            <h1 className="text-lg font-bold text-primary">{t("Verify your email")}</h1>
             <p className="text-sm text-secondary">
-              We sent a link to{" "}
-              {email ? <span className="font-semibold">{email}</span> : "your email"}. Click it to
-              continue.
+              {email
+                ? tx("We sent a link to {{email}}. Click it to continue.", {
+                    email: <span className="font-semibold">{email}</span>,
+                  })
+                : t("We sent a link to your email. Click it to continue.")}
             </p>
           </div>
         </div>
@@ -71,10 +75,10 @@ export default function EmailVerificationGate() {
             onClick={refresh}
             className="btn-primary flex-1 inline-flex items-center justify-center gap-1.5"
           >
-            <RefreshCw size={15} /> I&apos;ve verified
+            <RefreshCw size={15} /> {t("I've verified")}
           </button>
           <button onClick={resend} disabled={busy} className="btn-secondary flex-1">
-            {busy ? "Sending…" : "Resend email"}
+            {busy ? t("Sending…") : t("Resend email")}
           </button>
         </div>
 
@@ -82,7 +86,7 @@ export default function EmailVerificationGate() {
           onClick={logout}
           className="inline-flex items-center gap-1.5 text-sm font-semibold text-muted hover:text-primary transition-colors"
         >
-          <LogOut size={14} /> Sign out
+          <LogOut size={14} /> {t("Sign out")}
         </button>
       </div>
     </div>

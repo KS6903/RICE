@@ -12,6 +12,8 @@ import TurnstileWidget, { type TurnstileHandle } from "../components/TurnstileWi
 import { enterApp, safeNext, withNext } from "../utils/next";
 import { serverUnreachableMessage, warmUpApi } from "../services/warmUp";
 import AuthLoadingScreen from "../components/AuthLoadingScreen";
+import { t } from "../i18n";
+import { tx } from "../i18n/tx";
 
 // A new account's username, email and password are never a saved one, so no
 // browser or password manager may fill them in. "off" keeps Chrome's autofill
@@ -25,7 +27,7 @@ const NO_AUTOFILL = {
   "data-form-type": "other",
 };
 
-const TICK_TERMS = "Tick the box to accept the Terms of Service and policies first.";
+const TICK_TERMS = t("Tick the box to accept the Terms of Service and policies first.");
 
 export default function SignupPage() {
   useEffect(() => warmUpApi(), []);
@@ -108,8 +110,8 @@ export default function SignupPage() {
 
   const submit = async () => {
     setError("");
-    if (form.password !== form.confirm) return setError("Passwords do not match.");
-    if (form.password.length < 8) return setError("Password must be at least 8 characters.");
+    if (form.password !== form.confirm) return setError(t("Passwords do not match."));
+    if (form.password.length < 8) return setError(t("Password must be at least 8 characters."));
     if (!acceptedTerms) return setError(TICK_TERMS);
     setLoading(true);
     try {
@@ -136,7 +138,7 @@ export default function SignupPage() {
       setLoading(false);
       setError(
         serverUnreachableMessage(e) ??
-          (e.response?.data?.detail || "Signup failed. Please try again."),
+          (e.response?.data?.detail || t("Signup failed. Please try again.")),
       );
       // A Turnstile token works once: get a fresh one for the next try.
       turnstile.current?.reset();
@@ -162,7 +164,7 @@ export default function SignupPage() {
     } catch (err: any) {
       setLoading(false);
       setError(
-        serverUnreachableMessage(err) ?? (err.response?.data?.detail || "Google signup failed."),
+        serverUnreachableMessage(err) ?? (err.response?.data?.detail || t("Google signup failed.")),
       );
     }
   };
@@ -173,7 +175,7 @@ export default function SignupPage() {
     // scrolling so the on-screen keyboard can't hide the field being typed in.
     <div className="auth-viewport auth-fixed w-full grid lg:grid-cols-2 lg:grid-rows-[minmax(0,1fr)] relative overflow-hidden">
       {/* A loading page while the account is made: see LoginPage. */}
-      {loading && <AuthLoadingScreen label="Creating your account…" />}
+      {loading && <AuthLoadingScreen label={t("Creating your account…")} />}
       {/* Back — shares LoginPage's .btn-back component (index.css). Positioned
           just right of the seam on desktop, level with the Oraiza logo (p-12 +
           a 44px logo, the same height as this pill, so top-12 lines them up);
@@ -188,7 +190,7 @@ export default function SignupPage() {
           <ArrowLeft size={18} />
           <ArrowLeft size={18} />
         </span>
-        Back
+        {t("Back")}
       </button>
 
       <div className="relative hidden lg:flex flex-col justify-between p-12 overflow-hidden">
@@ -217,33 +219,34 @@ export default function SignupPage() {
             <div className="h-11 w-11 rounded-xl bg-white/15 grid place-items-center ring-1 ring-white/30">
               <img
                 src={riceLogo}
-                alt="Oraiza"
+                alt={t("Oraiza")}
                 className="h-full w-full object-contain brightness-0 invert"
               />
             </div>
-            <p className="text-lg font-bold tracking-tight">Oraiza</p>
+            <p className="text-lg font-bold tracking-tight">{t("Oraiza")}</p>
           </Link>
         </div>
 
         <div className="relative text-white max-w-md">
           <h2 className="text-4xl xl:text-5xl font-bold leading-[1.05] tracking-tight">
-            Start free.
+            {t("Start free.")}
             <br />
             <span className="bg-gradient-to-r from-white via-cyan-200 to-emerald-200 bg-clip-text text-transparent">
-              No card required.
+              {t("No card required.")}
             </span>
           </h2>
           <p className="mt-5 text-white text-base leading-relaxed">
-            Set up your mill in under two minutes. We&rsquo;ll get your books, batches, and
-            inventory online in one place.
+            {t(
+              "Set up your mill in under two minutes. We’ll get your books, batches, and inventory online in one place.",
+            )}
           </p>
 
           <ul className="mt-10 space-y-3 text-base text-white font-medium">
             {[
-              "Unlimited transactions on the free tier",
-              "Offline-first, works at the mill site",
-              "NFA & DA reports built in",
-              "Cloud sync across all your devices",
+              t("Unlimited transactions on the free tier"),
+              t("Offline-first, works at the mill site"),
+              t("NFA & DA reports built in"),
+              t("Cloud sync across all your devices"),
             ].map((line) => (
               <li key={line} className="flex items-center gap-3">
                 <div className="h-6 w-6 rounded-full bg-white/20 grid place-items-center ring-1 ring-white/30">
@@ -256,7 +259,9 @@ export default function SignupPage() {
         </div>
 
         <p className="relative text-sm text-white/75">
-          © {new Date().getFullYear()} Oraiza by K Systematics
+          {t("© {{getFullYear}} Oraiza by K Systematics", {
+            getFullYear: new Date().getFullYear(),
+          })}
         </p>
       </div>
 
@@ -272,17 +277,19 @@ export default function SignupPage() {
             <div className="h-11 w-11 rounded-xl bg-grad-brand grid place-items-center shadow-grad-glow">
               <img
                 src={riceLogo}
-                alt="Oraiza"
+                alt={t("Oraiza")}
                 className="h-full w-full object-contain brightness-0 invert"
               />
             </div>
-            <p className="text-lg font-bold tracking-tight text-primary">Oraiza</p>
+            <p className="text-lg font-bold tracking-tight text-primary">{t("Oraiza")}</p>
           </Link>
 
-          <h1 className="text-3xl font-bold tracking-tight text-primary">Create your account</h1>
+          <h1 className="text-3xl font-bold tracking-tight text-primary">
+            {t("Create your account")}
+          </h1>
           {/* Desktop hides this: the gradient panel beside it already says so. */}
           <p className="mt-1 text-base text-secondary lg:hidden">
-            Free to start. No credit card required.
+            {t("Free to start. No credit card required.")}
           </p>
 
           {/* Step indicator */}
@@ -296,41 +303,41 @@ export default function SignupPage() {
               />
             ))}
             <p className="ml-3 text-sm font-semibold text-secondary whitespace-nowrap">
-              Step {step} of 2
+              {t("Step {{step}} of 2", { step })}
             </p>
           </div>
 
           {step === 1 && (
             <div className="mt-5 space-y-4">
               <div>
-                <label className="form-label">Company name *</label>
+                <label className="form-label">{t("Company name *")}</label>
                 <input
                   className="input"
                   value={form.company_name}
                   onChange={(e) => update("company_name", e.target.value)}
-                  placeholder="ABC Rice Mill Corp."
+                  placeholder={t("ABC Rice Mill Corp.")}
                 />
               </div>
 
               {config?.invite_required && (
                 <div>
-                  <label className="form-label">Invite code</label>
+                  <label className="form-label">{t("Invite code")}</label>
                   <input
                     className="input font-mono"
                     value={form.invite_code}
                     onChange={(e) => update("invite_code", e.target.value)}
                     autoComplete="off"
                     spellCheck={false}
-                    placeholder="Enter the code from your invitation"
+                    placeholder={t("Enter the code from your invitation")}
                   />
                   <p className="mt-1.5 text-xs text-muted">
-                    Required when public signup is restricted by your deployment.
+                    {t("Required when public signup is restricted by your deployment.")}
                   </p>
                 </div>
               )}
 
               <div>
-                <label className="form-label">Branch configuration</label>
+                <label className="form-label">{t("Branch configuration")}</label>
                 <div className="grid grid-cols-2 gap-3">
                   <button
                     type="button"
@@ -342,8 +349,8 @@ export default function SignupPage() {
                     }`}
                   >
                     <Building size={20} className="text-emerald-600 dark:text-emerald-400 mb-2" />
-                    <p className="font-bold text-primary">Single location</p>
-                    <p className="text-sm text-secondary mt-0.5">One mill site</p>
+                    <p className="font-bold text-primary">{t("Single location")}</p>
+                    <p className="text-sm text-secondary mt-0.5">{t("One mill site")}</p>
                   </button>
                   <button
                     type="button"
@@ -355,8 +362,8 @@ export default function SignupPage() {
                     }`}
                   >
                     <Building2 size={20} className="text-emerald-600 dark:text-emerald-400 mb-2" />
-                    <p className="font-bold text-primary">Multi-branch</p>
-                    <p className="text-sm text-secondary mt-0.5">Two or more sites</p>
+                    <p className="font-bold text-primary">{t("Multi-branch")}</p>
+                    <p className="text-sm text-secondary mt-0.5">{t("Two or more sites")}</p>
                   </button>
                 </div>
               </div>
@@ -366,17 +373,17 @@ export default function SignupPage() {
                 className="btn-primary w-full"
                 disabled={!form.company_name.trim()}
               >
-                Continue
+                {t("Continue")}
                 <ArrowRight size={16} />
               </button>
 
               <p className="text-center text-base text-secondary">
-                Already have an account?{" "}
+                {t("Already have an account?")}{" "}
                 <Link
                   to={withNext("/login", next)}
                   className="font-semibold text-grad-brand hover:opacity-80 transition-opacity"
                 >
-                  Sign in
+                  {t("Sign in")}
                 </Link>
               </p>
             </div>
@@ -385,18 +392,18 @@ export default function SignupPage() {
           {step === 2 && (
             <div className="mt-5 space-y-3">
               <div>
-                <label className="form-label">Full name *</label>
+                <label className="form-label">{t("Full name *")}</label>
                 <input
                   className="input"
                   value={form.full_name}
                   onChange={(e) => update("full_name", e.target.value)}
-                  placeholder="Juan Dela Cruz"
+                  placeholder={t("Juan Dela Cruz")}
                   autoComplete="name"
                 />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="form-label">Username *</label>
+                  <label className="form-label">{t("Username *")}</label>
                   <input
                     className="input"
                     value={form.username}
@@ -407,7 +414,7 @@ export default function SignupPage() {
                   />
                 </div>
                 <div>
-                  <label className="form-label">Email *</label>
+                  <label className="form-label">{t("Email *")}</label>
                   <input
                     type="email"
                     className="input"
@@ -421,18 +428,18 @@ export default function SignupPage() {
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="form-label">Password *</label>
+                  <label className="form-label">{t("Password *")}</label>
                   <PasswordInput
                     className="input"
                     value={form.password}
                     onChange={(e) => update("password", e.target.value)}
-                    placeholder="8+ characters"
+                    placeholder={t("8+ characters")}
                     autoComplete="new-password"
                     {...NO_AUTOFILL}
                   />
                 </div>
                 <div>
-                  <label className="form-label">Confirm *</label>
+                  <label className="form-label">{t("Confirm *")}</label>
                   <PasswordInput
                     className="input"
                     value={form.confirm}
@@ -465,25 +472,31 @@ export default function SignupPage() {
                   data-testid="signup-accept-terms"
                 />
                 <span className="text-sm text-secondary leading-snug">
-                  I have read and accept the{" "}
-                  <Link
-                    to="/legal/terms"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="link"
-                  >
-                    Terms of Service
-                  </Link>{" "}
-                  and{" "}
-                  <Link
-                    to="/legal/privacy"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="link"
-                  >
-                    Privacy Policy
-                  </Link>
-                  , and I am authorised to accept them for my company.
+                  {tx(
+                    "I have read and accept the {{terms}} and {{privacy}}, and I am authorised to accept them for my company.",
+                    {
+                      terms: (
+                        <Link
+                          to="/legal/terms"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="link"
+                        >
+                          {t("Terms of Service")}
+                        </Link>
+                      ),
+                      privacy: (
+                        <Link
+                          to="/legal/privacy"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="link"
+                        >
+                          {t("Privacy Policy")}
+                        </Link>
+                      ),
+                    },
+                  )}
                 </span>
               </label>
 
@@ -509,7 +522,7 @@ export default function SignupPage() {
                     (!!config?.turnstile_site_key && !turnstileToken)
                   }
                 >
-                  {loading ? "Creating…" : "Create account"}
+                  {loading ? t("Creating…") : t("Create account")}
                   {!loading && <ArrowRight size={16} />}
                 </button>
               </div>
@@ -519,14 +532,14 @@ export default function SignupPage() {
                 <>
                   <div className="relative flex items-center">
                     <div className="flex-grow border-t border-slate-200 dark:border-slate-800"></div>
-                    <span className="flex-shrink-0 mx-4 text-sm text-secondary">or</span>
+                    <span className="flex-shrink-0 mx-4 text-sm text-secondary">{t("or")}</span>
                     <div className="flex-grow border-t border-slate-200 dark:border-slate-800"></div>
                   </div>
 
                   <div className="relative flex justify-center w-full [&>div]:w-full">
                     <GoogleLogin
                       onSuccess={handleGoogleSuccess}
-                      onError={() => setError("Google signup failed.")}
+                      onError={() => setError(t("Google signup failed."))}
                     />
                     {/* Until the box is ticked, a click here says so straight away
                         rather than after the visitor has been through Google's
@@ -536,7 +549,7 @@ export default function SignupPage() {
                         type="button"
                         onClick={() => setError(TICK_TERMS)}
                         className="absolute inset-0 cursor-pointer"
-                        aria-label="Sign up with Google"
+                        aria-label={t("Sign up with Google")}
                       />
                     )}
                   </div>

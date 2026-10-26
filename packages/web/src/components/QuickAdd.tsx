@@ -5,6 +5,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Plus, X } from "lucide-react";
 import api from "../services/api";
 import Select from "./Select";
+import { t } from "../i18n";
 
 export interface QuickAddField {
   key: string;
@@ -106,7 +107,7 @@ export default function QuickAdd({
         >
           <button
             type="button"
-            aria-label="Close"
+            aria-label={t("Close")}
             className="absolute inset-0 bg-slate-900/45 backdrop-blur-sm"
             onClick={close}
           />
@@ -122,7 +123,12 @@ export default function QuickAdd({
               <h3 id={`${uid}-title`} className="text-lg font-bold text-primary">
                 {label}
               </h3>
-              <button type="button" aria-label="Close" onClick={close} className="btn-ghost !p-1.5">
+              <button
+                type="button"
+                aria-label={t("Close")}
+                onClick={close}
+                className="btn-ghost !p-1.5"
+              >
                 <X size={16} />
               </button>
             </div>
@@ -141,7 +147,7 @@ export default function QuickAdd({
                     {f.type === "select" ? (
                       <Select
                         id={id}
-                        placeholder="Select…"
+                        placeholder={t("Select…")}
                         value={String(form[f.key] ?? "")}
                         onChange={(v) => setForm((s) => ({ ...s, [f.key]: v }))}
                         options={f.options ?? []}
@@ -178,16 +184,16 @@ export default function QuickAdd({
 
             {create.isError && (
               <p role="alert" className="mt-3 text-sm text-red-600 dark:text-red-400">
-                {(create.error as any)?.response?.data?.detail || "Failed to add."}
+                {(create.error as any)?.response?.data?.detail || t("Failed to add.")}
               </p>
             )}
 
             <div className="mt-5 flex justify-end gap-2">
               <button type="button" onClick={close} className="btn-secondary">
-                Cancel
+                {t("Cancel")}
               </button>
               <button type="submit" disabled={!canSave} className="btn-primary">
-                {create.isPending ? "Saving…" : "Save"}
+                {create.isPending ? t("Saving…") : t("Save")}
               </button>
             </div>
           </form>

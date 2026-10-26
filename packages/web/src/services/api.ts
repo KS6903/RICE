@@ -4,6 +4,7 @@ import { useBranchStore } from "../stores/branchStore";
 import { useBillingNoticeStore } from "../stores/billingNoticeStore";
 import { isElectronRuntime } from "./runtime";
 import { createSingleFlight } from "./singleFlight";
+import { t } from "../i18n";
 
 /** Only the non-httpOnly CSRF cookie is intentionally visible to JavaScript. */
 function getCookie(name: string): string | null {
@@ -83,6 +84,15 @@ const NO_REFRESH_PATHS = [
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
+    // The server's messages are in English: shown in the language on screen
+    // (one with no translation stays as it is). The English is kept in
+    // detail_en for code that checks what a message says.
+    const data = error.response?.data;
+    if (data && typeof data.detail === "string" && data.detail_en === undefined) {
+      data.detail_en = data.detail;
+      data.detail = t(data.detail);
+    }
+
     const original = error.config as (AxiosRequestConfig & { _retry?: boolean }) | undefined;
     const isSessionEstablishment = NO_REFRESH_PATHS.some((path) => original?.url?.includes(path));
 
@@ -101,7 +111,8 @@ api.interceptors.response.use(
 
     if (error.response?.status === 402) {
       const detail = error.response?.data?.detail;
-      const message = typeof detail === "string" ? detail : "This action requires a plan upgrade.";
+      const message =
+        typeof detail === "string" ? detail : t("This action requires a plan upgrade.");
       useBillingNoticeStore.getState().show(message);
     }
     return Promise.reject(error);

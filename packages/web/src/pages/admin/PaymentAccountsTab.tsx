@@ -4,6 +4,7 @@ import { AlertCircle, Check, ImagePlus, Landmark, Loader2, QrCode, Trash2 } from
 import type { SubscriptionPlan } from "@rice-mill/shared";
 import { adminService } from "../../services/AdminService";
 import { mediaUrl } from "../../utils/media";
+import { t } from "../../i18n";
 
 const LABEL = "form-label";
 const ERROR_BOX =
@@ -28,19 +29,20 @@ export default function PaymentAccountsTab() {
   return (
     <div className="space-y-5">
       <div>
-        <h3 className="text-lg font-bold text-primary">Payment accounts</h3>
+        <h3 className="text-lg font-bold text-primary">{t("Payment accounts")}</h3>
         <p className="text-sm text-muted mt-0.5">
-          Where mills send the money for each plan. They see it, with the QR code, on their checkout
-          page.
+          {t(
+            "Where mills send the money for each plan. They see it, with the QR code, on their checkout page.",
+          )}
         </p>
       </div>
       {isLoading ? (
         <div className="card flex items-center gap-2 text-sm text-secondary">
-          <Loader2 size={15} className="animate-spin" /> Loading the plans…
+          <Loader2 size={15} className="animate-spin" /> {t("Loading the plans…")}
         </div>
       ) : paid.length === 0 ? (
         <div className="card text-sm text-secondary">
-          No paid plans yet. Give a plan a price in Plans first.
+          {t("No paid plans yet. Give a plan a price in Plans first.")}
         </div>
       ) : (
         paid.map((p) => <AccountCard key={p.id} plan={p} />)
@@ -96,7 +98,10 @@ function AccountCard({ plan }: { plan: SubscriptionPlan }) {
   const id = (field: string) => `pay-${plan.id}-${field}`;
 
   return (
-    <section className="card space-y-4" aria-label={`${plan.name} payment account`}>
+    <section
+      className="card space-y-4"
+      aria-label={t("{{name}} payment account", { name: plan.name })}
+    >
       <div className="flex items-center gap-2">
         <Landmark size={18} className="text-emerald-600 dark:text-emerald-400" />
         <h4 className="font-bold text-primary">{plan.name}</h4>
@@ -106,7 +111,7 @@ function AccountCard({ plan }: { plan: SubscriptionPlan }) {
         <div className="flex-1 space-y-4">
           <div>
             <label htmlFor={id("bank")} className={LABEL}>
-              Bank or e-wallet
+              {t("Bank or e-wallet")}
             </label>
             <input
               id={id("bank")}
@@ -114,12 +119,12 @@ function AccountCard({ plan }: { plan: SubscriptionPlan }) {
               maxLength={100}
               value={form.payment_bank}
               onChange={(e) => setForm((f) => ({ ...f, payment_bank: e.target.value }))}
-              placeholder="e.g. BDO"
+              placeholder={t("e.g. BDO")}
             />
           </div>
           <div>
             <label htmlFor={id("name")} className={LABEL}>
-              Account name
+              {t("Account name")}
             </label>
             <input
               id={id("name")}
@@ -131,7 +136,7 @@ function AccountCard({ plan }: { plan: SubscriptionPlan }) {
           </div>
           <div>
             <label htmlFor={id("number")} className={LABEL}>
-              Account number
+              {t("Account number")}
             </label>
             <input
               id={id("number")}
@@ -142,13 +147,13 @@ function AccountCard({ plan }: { plan: SubscriptionPlan }) {
               placeholder="e.g. 0019 9057 4325"
             />
             <p className="text-xs text-muted mt-1">
-              Shown as typed. Mills copy it without the spaces.
+              {t("Shown as typed. Mills copy it without the spaces.")}
             </p>
           </div>
           {save.isError && (
             <div className={ERROR_BOX}>
               <AlertCircle size={15} className="mt-0.5 shrink-0" />
-              {detail(save.error, "Failed to save the account.")}
+              {detail(save.error, t("Failed to save the account."))}
             </div>
           )}
           <div className="flex items-center gap-3">
@@ -162,29 +167,29 @@ function AccountCard({ plan }: { plan: SubscriptionPlan }) {
               ) : (
                 <Check size={14} />
               )}
-              Save account
+              {t("Save account")}
             </button>
             {saved && (
               <span className="text-sm font-semibold text-emerald-600 dark:text-emerald-400 inline-flex items-center gap-1">
-                <Check size={14} /> Saved
+                <Check size={14} /> {t("Saved")}
               </span>
             )}
           </div>
         </div>
 
         <div className="md:w-56 shrink-0 space-y-2">
-          <p className={LABEL}>QR code</p>
+          <p className={LABEL}>{t("QR code")}</p>
           <div className="aspect-square w-full max-w-[14rem] rounded-xl border border-dashed border-slate-300 dark:border-slate-600 bg-white grid place-items-center overflow-hidden">
             {plan.payment_qr_key ? (
               <img
                 src={mediaUrl(plan.payment_qr_key)}
-                alt={`${plan.name} payment QR code`}
+                alt={t("{{name}} payment QR code", { name: plan.name })}
                 className="w-full h-full object-contain"
               />
             ) : (
               <div className="text-center text-slate-400 px-4">
                 <QrCode size={36} className="mx-auto" />
-                <p className="text-xs mt-1.5">No QR code yet</p>
+                <p className="text-xs mt-1.5">{t("No QR code yet")}</p>
               </div>
             )}
           </div>
@@ -193,7 +198,7 @@ function AccountCard({ plan }: { plan: SubscriptionPlan }) {
             type="file"
             accept="image/png,image/jpeg,image/webp"
             className="sr-only"
-            aria-label={`Upload ${plan.name} QR code`}
+            aria-label={t("Upload {{name}} QR code", { name: plan.name })}
             onChange={(e) => {
               const file = e.target.files?.[0];
               if (file) upload.mutate(file);
@@ -212,7 +217,7 @@ function AccountCard({ plan }: { plan: SubscriptionPlan }) {
               ) : (
                 <ImagePlus size={14} />
               )}
-              {plan.payment_qr_key ? "Replace" : "Upload"}
+              {plan.payment_qr_key ? t("Replace") : t("Upload")}
             </button>
             {plan.payment_qr_key && (
               <button
@@ -220,18 +225,18 @@ function AccountCard({ plan }: { plan: SubscriptionPlan }) {
                 onClick={() => remove.mutate()}
                 disabled={remove.isPending}
                 className="btn-secondary !px-3 !text-sm"
-                aria-label={`Remove ${plan.name} QR code`}
-                title="Remove"
+                aria-label={t("Remove {{name}} QR code", { name: plan.name })}
+                title={t("Remove")}
               >
                 <Trash2 size={14} />
               </button>
             )}
           </div>
-          <p className="text-xs text-muted">PNG, JPEG or WebP, up to 3 MB.</p>
+          <p className="text-xs text-muted">{t("PNG, JPEG or WebP, up to 3 MB.")}</p>
           {(upload.isError || remove.isError) && (
             <div className={ERROR_BOX}>
               <AlertCircle size={15} className="mt-0.5 shrink-0" />
-              {detail(upload.error ?? remove.error, "The QR code couldn't be saved.")}
+              {detail(upload.error ?? remove.error, t("The QR code couldn't be saved."))}
             </div>
           )}
         </div>

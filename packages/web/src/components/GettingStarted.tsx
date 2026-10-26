@@ -9,6 +9,7 @@ import { useAccess } from "../hooks/useAccess";
 import { planHas } from "../hooks/useFeature";
 import { checklistHidden, setChecklistHidden, useHelpStore } from "../stores/helpStore";
 import { gettingStartedService, type StepKey } from "../services/GettingStartedService";
+import { t } from "../i18n";
 
 type Step = {
   key: StepKey;
@@ -27,46 +28,48 @@ const STEPS: Step[] = [
     key: "paddy",
     section: "paddy",
     feature: "paddy",
-    title: "Record the palay you bought",
-    why: "Enter the weight, moisture and price. It becomes your palay stock.",
+    title: t("Record the palay you bought"),
+    why: t("Enter the weight, moisture and price. It becomes your palay stock."),
     to: "/paddy?new=1",
-    cta: "Record a purchase",
+    cta: t("Record a purchase"),
   },
   {
     key: "milling",
     section: "milling",
     feature: "milling",
-    title: "Mill a batch",
-    why: "Say how much palay went in and how much rice came out. Oraiza works out the recovery rate.",
+    title: t("Mill a batch"),
+    why: t(
+      "Say how much palay went in and how much rice came out. Oraiza works out the recovery rate.",
+    ),
     to: "/milling?new=1",
-    cta: "Start a batch",
+    cta: t("Start a batch"),
   },
   {
     key: "sales",
     section: "sales",
     feature: "sales",
-    title: "Sell some rice",
-    why: "Create an order for a customer, then turn it into an invoice.",
+    title: t("Sell some rice"),
+    why: t("Create an order for a customer, then turn it into an invoice."),
     to: "/sales?new=1",
-    cta: "Create an order",
+    cta: t("Create an order"),
   },
   {
     key: "expenses",
     section: "expenses",
     feature: "expenses",
-    title: "Log an expense",
-    why: "Fuel, power, labor: with costs in, the profit on this page is real.",
+    title: t("Log an expense"),
+    why: t("Fuel, power, labor: with costs in, the profit on this page is real."),
     to: "/costs?new=1",
-    cta: "Add an expense",
+    cta: t("Add an expense"),
   },
   {
     key: "users",
     section: "users",
     feature: "users",
-    title: "Give your staff their own login",
-    why: "Your cashier, encoder or accountant each see only what their job needs.",
+    title: t("Give your staff their own login"),
+    why: t("Your cashier, encoder or accountant each see only what their job needs."),
     to: "/users?new=1",
-    cta: "Add a user",
+    cta: t("Add a user"),
   },
 ];
 
@@ -120,10 +123,13 @@ export default function GettingStarted() {
       <div className="flex items-start justify-between gap-4">
         <div>
           <h2 id="getting-started-title" className="text-lg font-bold text-primary">
-            Get your mill running
+            {t("Get your mill running")}
           </h2>
           <p className="text-sm text-secondary mt-0.5">
-            {doneCount} of {shown.length} done. Each step opens the form you need.
+            {t("{{doneCount}} of {{shownCount}} done. Each step opens the form you need.", {
+              doneCount,
+              shownCount: shown.length,
+            })}
           </p>
         </div>
         <div className="shrink-0 flex items-center gap-3">
@@ -132,15 +138,15 @@ export default function GettingStarted() {
             onClick={startTour}
             className="inline-flex items-center gap-1 text-xs font-medium text-emerald-700 hover:text-emerald-800 dark:text-emerald-400 dark:hover:text-emerald-300"
           >
-            <MapIcon size={14} /> Take the tour
+            <MapIcon size={14} /> {t("Take the tour")}
           </button>
           <button
             type="button"
             onClick={() => setChecklistHidden(userId, true)}
-            title="Bring it back at the end of the tour (the ? button)"
+            title={t("Bring it back at the end of the tour (the ? button)")}
             className="inline-flex items-center gap-1 text-xs font-medium text-muted hover:text-primary"
           >
-            <X size={14} /> Hide
+            <X size={14} /> {t("Hide")}
           </button>
         </div>
       </div>
@@ -166,7 +172,7 @@ export default function GettingStarted() {
                   : "ring-1 ring-inset ring-slate-300 text-secondary dark:ring-slate-600",
               )}
             >
-              {s.done ? <Check size={14} aria-label="Done" /> : i + 1}
+              {s.done ? <Check size={14} aria-label={t("Done")} /> : i + 1}
             </span>
             <div className="min-w-0 flex-1">
               <p
@@ -199,12 +205,12 @@ export default function GettingStarted() {
       {/* A fresh mill's Boss may be starting over with a backup of the old one. */}
       {doneCount === 0 && user?.role === "owner" && (
         <p className="mt-2 border-t border-slate-200/70 dark:border-slate-700/70 pt-3 text-sm text-secondary">
-          Starting over from an old account?{" "}
+          {t("Starting over from an old account?")}{" "}
           <Link
             to="/retrieve-data"
             className="font-semibold text-emerald-700 hover:text-emerald-800 dark:text-emerald-400"
           >
-            Retrieve your data from a backup
+            {t("Retrieve your data from a backup")}
           </Link>
         </p>
       )}

@@ -7,14 +7,15 @@ import { AlertTriangle, Clock, Copy, MessageSquare, Phone } from "lucide-react";
 import { useAccess } from "../hooks/useAccess";
 import DatePicker from "../components/DatePicker";
 import { collectionsService, type Debtor, type Outcome } from "../services/CollectionsService";
+import { t } from "../i18n";
 
 const OUTCOMES: { value: Outcome; label: string }[] = [
-  { value: "promised", label: "Promised to pay" },
-  { value: "called", label: "Called, no promise yet" },
-  { value: "no_answer", label: "No answer" },
-  { value: "reminder_sent", label: "Sent the reminder" },
-  { value: "paid", label: "Paid" },
-  { value: "disputed", label: "Disputes the bill" },
+  { value: "promised", label: t("Promised to pay") },
+  { value: "called", label: t("Called, no promise yet") },
+  { value: "no_answer", label: t("No answer") },
+  { value: "reminder_sent", label: t("Sent the reminder") },
+  { value: "paid", label: t("Paid") },
+  { value: "disputed", label: t("Disputes the bill") },
 ];
 
 const php = (n: number) =>
@@ -90,7 +91,10 @@ function DebtorDetail({ debtor, canRecord }: { debtor: Debtor; canRecord: boolea
   const phone = debtor.customer.phone?.replace(/[^\d+]/g, "");
 
   return (
-    <div className="card space-y-6" aria-label={`Collecting from ${debtor.customer.name}`}>
+    <div
+      className="card space-y-6"
+      aria-label={t("Collecting from {{name}}", { name: debtor.customer.name })}
+    >
       <div>
         <h2 className="text-lg font-bold text-primary">{debtor.customer.name}</h2>
         {debtor.customer.phone && (
@@ -101,13 +105,13 @@ function DebtorDetail({ debtor, canRecord }: { debtor: Debtor; canRecord: boolea
         )}
       </div>
 
-      <Step n={2} title="What they owe">
+      <Step n={2} title={t("What they owe")}>
         <table className="w-full text-sm">
           <thead>
             <tr className="text-left text-xs text-secondary">
-              <th className="py-1 font-semibold">Invoice</th>
-              <th className="py-1 font-semibold">Due</th>
-              <th className="py-1 font-semibold text-right">Balance</th>
+              <th className="py-1 font-semibold">{t("Invoice")}</th>
+              <th className="py-1 font-semibold">{t("Due")}</th>
+              <th className="py-1 font-semibold text-right">{t("Balance")}</th>
             </tr>
           </thead>
           <tbody>
@@ -116,7 +120,7 @@ function DebtorDetail({ debtor, canRecord }: { debtor: Debtor; canRecord: boolea
                 <td className="py-1.5">{i.invoice_no}</td>
                 <td className={`py-1.5 ${i.days_late ? "text-rose-600 dark:text-rose-400" : ""}`}>
                   {day(i.due)}
-                  {i.days_late ? `, ${i.days_late} days late` : ""}
+                  {i.days_late ? t(", {{days_late}} days late", { days_late: i.days_late }) : ""}
                 </td>
                 <td className="py-1.5 text-right font-semibold">{php(i.balance)}</td>
               </tr>
@@ -124,13 +128,15 @@ function DebtorDetail({ debtor, canRecord }: { debtor: Debtor; canRecord: boolea
           </tbody>
         </table>
         <p className="text-xs text-secondary mt-2">
-          {debtor.last_paid ? `Last paid ${day(debtor.last_paid)}.` : "No payment on record yet."}
+          {debtor.last_paid
+            ? t("Last paid {{last_paid}}.", { last_paid: day(debtor.last_paid) })
+            : t("No payment on record yet.")}
         </p>
       </Step>
 
-      <Step n={3} title="Reminder to send">
+      <Step n={3} title={t("Reminder to send")}>
         <textarea
-          aria-label="Reminder message"
+          aria-label={t("Reminder message")}
           className="input min-h-[7rem]"
           value={message}
           onChange={(e) => setMessage(e.target.value)}
@@ -138,23 +144,23 @@ function DebtorDetail({ debtor, canRecord }: { debtor: Debtor; canRecord: boolea
         <div className="flex flex-wrap gap-2 mt-2">
           <button type="button" className="btn-secondary" onClick={copy}>
             <Copy size={15} aria-hidden />
-            {copied ? "Copied" : "Copy"}
+            {copied ? t("Copied") : t("Copy")}
           </button>
           {phone && (
             <a className="btn-secondary" href={`sms:${phone}?body=${encodeURIComponent(message)}`}>
               <MessageSquare size={15} aria-hidden />
-              Open in Messages
+              {t("Open in Messages")}
             </a>
           )}
         </div>
-        <p className="text-xs text-secondary mt-1">Read it before you send it.</p>
+        <p className="text-xs text-secondary mt-1">{t("Read it before you send it.")}</p>
       </Step>
 
-      <Step n={4} title="What happened">
+      <Step n={4} title={t("What happened")}>
         {canRecord && (
           <div className="space-y-3">
             <fieldset className="flex flex-wrap gap-2">
-              <legend className="sr-only">Outcome</legend>
+              <legend className="sr-only">{t("Outcome")}</legend>
               {OUTCOMES.map((o) => (
                 <label
                   key={o.value}
@@ -175,7 +181,7 @@ function DebtorDetail({ debtor, canRecord }: { debtor: Debtor; canRecord: boolea
               <div className="flex flex-wrap gap-4">
                 <div>
                   <label htmlFor="promised-date" className="form-label">
-                    Pay by
+                    {t("Pay by")}
                   </label>
                   <DatePicker
                     id="promised-date"
@@ -186,7 +192,7 @@ function DebtorDetail({ debtor, canRecord }: { debtor: Debtor; canRecord: boolea
                 </div>
                 <div>
                   <label htmlFor="promised-amount" className="form-label">
-                    How much (optional)
+                    {t("How much (optional)")}
                   </label>
                   <input
                     id="promised-amount"
@@ -200,7 +206,7 @@ function DebtorDetail({ debtor, canRecord }: { debtor: Debtor; canRecord: boolea
             )}
             <div>
               <label htmlFor="follow-up-note" className="form-label">
-                Note (optional)
+                {t("Note (optional)")}
               </label>
               <input
                 id="follow-up-note"
@@ -216,16 +222,16 @@ function DebtorDetail({ debtor, canRecord }: { debtor: Debtor; canRecord: boolea
               disabled={record.isPending}
               onClick={() => record.mutate()}
             >
-              {record.isPending ? "Saving…" : "Save what happened"}
+              {record.isPending ? t("Saving…") : t("Save what happened")}
             </button>
             {record.isError && (
               <p className="text-sm text-rose-600 dark:text-rose-400" role="alert">
-                {errorText(record.error, "Couldn't save. Try again.")}
+                {errorText(record.error, t("Couldn't save. Try again."))}
               </p>
             )}
           </div>
         )}
-        <ul className="mt-4 space-y-1.5" aria-label="Earlier follow-ups">
+        <ul className="mt-4 space-y-1.5" aria-label={t("Earlier follow-ups")}>
           {(history.data?.follow_ups ?? []).map((f) => (
             <li key={f.id} className="text-sm">
               <span className="text-muted">
@@ -240,7 +246,7 @@ function DebtorDetail({ debtor, canRecord }: { debtor: Debtor; canRecord: boolea
             </li>
           ))}
           {history.data && history.data.follow_ups.length === 0 && (
-            <li className="text-sm text-secondary">Nothing recorded yet.</li>
+            <li className="text-sm text-secondary">{t("Nothing recorded yet.")}</li>
           )}
         </ul>
       </Step>
@@ -258,10 +264,15 @@ export default function CollectionsPage() {
   return (
     <div className="space-y-6">
       <header>
-        <h1 className="text-2xl font-bold text-primary">Collections</h1>
+        <h1 className="text-2xl font-bold text-primary">{t("Collections")}</h1>
         <p className="text-secondary mt-1 max-w-2xl">
-          Who to chase for money first, what they owe, a reminder ready to send, and what happened.
-          {list.data && ` ${php(list.data.overdue_total)} overdue in all.`}
+          {t(
+            "Who to chase for money first, what they owe, a reminder ready to send, and what happened.",
+          )}
+          {list.data &&
+            t(" {{overdue_total}} overdue in all.", {
+              overdue_total: php(list.data.overdue_total),
+            })}
         </p>
       </header>
 
@@ -270,19 +281,19 @@ export default function CollectionsPage() {
       ) : list.isError ? (
         <div className="card">
           <p className="text-secondary">
-            {errorText(list.error, "Collections couldn't load. Try again in a moment.")}
+            {errorText(list.error, t("Collections couldn't load. Try again in a moment."))}
           </p>
         </div>
       ) : customers.length === 0 ? (
         <div className="card text-center py-10">
-          <p className="font-semibold text-primary">Nobody owes you anything overdue.</p>
+          <p className="font-semibold text-primary">{t("Nobody owes you anything overdue.")}</p>
           <p className="text-sm text-secondary mt-1">
-            Customers show up here when an invoice is overdue or due within a week.
+            {t("Customers show up here when an invoice is overdue or due within a week.")}
           </p>
         </div>
       ) : (
         <div className="grid gap-5 lg:grid-cols-[minmax(16rem,22rem)_1fr] [&>*]:min-w-0">
-          <Step n={1} title="Who to call first">
+          <Step n={1} title={t("Who to call first")}>
             <ol className="space-y-2">
               {customers.map((d) => {
                 const active = current?.customer.id === d.customer.id;
@@ -306,12 +317,14 @@ export default function CollectionsPage() {
                       </span>
                       <span className="block text-xs text-secondary mt-0.5">
                         {d.overdue
-                          ? `Overdue, oldest ${d.oldest_days_late} days`
-                          : "Due within the week"}
+                          ? t("Overdue, oldest {{oldest_days_late}} days", {
+                              oldest_days_late: d.oldest_days_late,
+                            })
+                          : t("Due within the week")}
                       </span>
                       {d.promise === "broken" && (
                         <span className="mt-1 inline-flex items-center gap-1 text-xs font-semibold text-rose-600 dark:text-rose-400">
-                          <AlertTriangle size={12} aria-hidden /> Promise not kept
+                          <AlertTriangle size={12} aria-hidden /> {t("Promise not kept")}
                         </span>
                       )}
                       {d.promise === "waiting" && (

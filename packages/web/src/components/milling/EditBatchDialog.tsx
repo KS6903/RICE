@@ -10,6 +10,7 @@ import RecordDialog from "../sales/RecordDialog";
 import Select from "../Select";
 import DateTimePicker from "../DateTimePicker";
 import { millingService, type ClientArrangement } from "../../services/MillingService";
+import { t } from "../../i18n";
 
 type Input = {
   variety_id: string;
@@ -25,16 +26,16 @@ type Output = {
 };
 
 const OUTPUT_TYPES = [
-  { value: "milled_rice", label: "Milled Rice (Bigas)" },
-  { value: "ipa", label: "Ipa (Rice Hull)" },
-  { value: "darak", label: "Darak (Rice Bran)" },
-  { value: "binlid", label: "Binlid (Broken Rice)" },
+  { value: "milled_rice", label: t("Milled Rice (Bigas)") },
+  { value: "ipa", label: t("Ipa (Rice Hull)") },
+  { value: "darak", label: t("Darak (Rice Bran)") },
+  { value: "binlid", label: t("Binlid (Broken Rice)") },
 ];
 
 const ARRANGEMENTS: { value: ClientArrangement; label: string }[] = [
-  { value: "client_takes_all", label: "Client takes everything" },
-  { value: "mill_keeps_byproducts", label: "We keep the ipa and darak" },
-  { value: "contracted", label: "Contracted" },
+  { value: "client_takes_all", label: t("Client takes everything") },
+  { value: "mill_keeps_byproducts", label: t("We keep the ipa and darak") },
+  { value: "contracted", label: t("Contracted") },
 ];
 
 const text = (v: unknown) => (v === null || v === undefined ? "" : String(Number(v)));
@@ -141,14 +142,16 @@ export default function EditBatchDialog({
     setOutputs((xs) => xs.map((x, j) => (j === i ? { ...x, ...patch } : x)));
 
   const varietyOptions = [
-    { value: "", label: "Any variety" },
+    { value: "", label: t("Any variety") },
     ...varieties.map((v) => ({ value: v.id, label: v.code })),
   ];
 
   return (
     <RecordDialog
-      title={`Edit batch ${batch.batch_no}`}
-      subtitle="Stock follows the palay and outputs you save, and every change goes in the batch's history."
+      title={t("Edit batch {{batch_no}}", { batch_no: batch.batch_no })}
+      subtitle={t(
+        "Stock follows the palay and outputs you save, and every change goes in the batch's history.",
+      )}
       onClose={onClose}
       busy={save.isPending}
       testId="edit-batch"
@@ -160,7 +163,7 @@ export default function EditBatchDialog({
             onClick={onClose}
             disabled={save.isPending}
           >
-            Cancel
+            {t("Cancel")}
           </button>
           <button
             type="button"
@@ -168,7 +171,7 @@ export default function EditBatchDialog({
             onClick={() => save.mutate()}
             disabled={!valid || save.isPending}
           >
-            {save.isPending ? "Saving…" : "Save changes"}
+            {save.isPending ? t("Saving…") : t("Save changes")}
           </button>
         </>
       }
@@ -176,25 +179,27 @@ export default function EditBatchDialog({
       <div className="space-y-4">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <label className="block">
-            <span className="block mb-1 text-xs font-medium text-secondary">Machine</span>
+            <span className="block mb-1 text-xs font-medium text-secondary">{t("Machine")}</span>
             <Select
-              aria-label="Machine"
+              aria-label={t("Machine")}
               value={equipmentId}
               onChange={setEquipmentId}
               options={[
-                { value: "", label: "No machine" },
+                { value: "", label: t("No machine") },
                 ...equipment.map((e) => ({ value: e.id, label: e.name })),
               ]}
             />
           </label>
           <label className="block">
-            <span className="block mb-1 text-xs font-medium text-secondary">Whose palay</span>
+            <span className="block mb-1 text-xs font-medium text-secondary">
+              {t("Whose palay")}
+            </span>
             <Select
-              aria-label="Client"
+              aria-label={t("Client")}
               value={customerId}
               onChange={setCustomerId}
               options={[
-                { value: "", label: "The mill's own" },
+                { value: "", label: t("The mill's own") },
                 ...clients.map((c) => ({ value: c.id, label: c.name })),
               ]}
             />
@@ -202,20 +207,24 @@ export default function EditBatchDialog({
           {customerId && (
             <>
               <label className="block">
-                <span className="block mb-1 text-xs font-medium text-secondary">Arrangement</span>
+                <span className="block mb-1 text-xs font-medium text-secondary">
+                  {t("Arrangement")}
+                </span>
                 <Select
-                  aria-label="Arrangement"
+                  aria-label={t("Arrangement")}
                   value={arrangement}
                   onChange={(v) => setArrangement(v as ClientArrangement)}
                   options={ARRANGEMENTS}
                 />
               </label>
               <label className="block">
-                <span className="block mb-1 text-xs font-medium text-secondary">Client notes</span>
+                <span className="block mb-1 text-xs font-medium text-secondary">
+                  {t("Client notes")}
+                </span>
                 <input
                   className="input"
                   maxLength={1000}
-                  aria-label="Client notes"
+                  aria-label={t("Client notes")}
                   value={clientNotes}
                   onChange={(e) => setClientNotes(e.target.value)}
                 />
@@ -223,19 +232,19 @@ export default function EditBatchDialog({
             </>
           )}
           <div>
-            <span className="block mb-1 text-xs font-medium text-secondary">Started</span>
-            <DateTimePicker label="Started" value={start} onChange={setStart} />
+            <span className="block mb-1 text-xs font-medium text-secondary">{t("Started")}</span>
+            <DateTimePicker label={t("Started")} value={start} onChange={setStart} />
           </div>
           {batch.end_datetime && (
             <div>
-              <span className="block mb-1 text-xs font-medium text-secondary">Finished</span>
-              <DateTimePicker label="Finished" value={end} onChange={setEnd} />
+              <span className="block mb-1 text-xs font-medium text-secondary">{t("Finished")}</span>
+              <DateTimePicker label={t("Finished")} value={end} onChange={setEnd} />
             </div>
           )}
         </div>
 
         <div>
-          <p className="mb-1.5 text-xs font-medium text-secondary">Palay in</p>
+          <p className="mb-1.5 text-xs font-medium text-secondary">{t("Palay in")}</p>
           <div className="space-y-2">
             {inputs.map((inp, i) => (
               <div
@@ -243,29 +252,29 @@ export default function EditBatchDialog({
                 className="grid grid-cols-2 sm:grid-cols-[minmax(0,1fr)_7rem_6rem_auto] items-end gap-2"
               >
                 <Select
-                  aria-label={`Variety of palay ${i + 1}`}
+                  aria-label={t("Variety of palay {{value}}", { value: i + 1 })}
                   value={inp.variety_id}
                   onChange={(v) => setInput(i, { variety_id: v })}
                   options={varietyOptions}
                 />
                 <label className="block">
-                  <span className="block mb-1 text-[11px] text-muted">Kilos</span>
+                  <span className="block mb-1 text-[11px] text-muted">{t("Kilos")}</span>
                   <input
                     className="input"
                     type="number"
                     min={0}
-                    aria-label={`Kilos of palay ${i + 1}`}
+                    aria-label={t("Kilos of palay {{value}}", { value: i + 1 })}
                     value={inp.input_weight_kg}
                     onChange={(e) => setInput(i, { input_weight_kg: e.target.value })}
                   />
                 </label>
                 <label className="block">
-                  <span className="block mb-1 text-[11px] text-muted">Moisture %</span>
+                  <span className="block mb-1 text-[11px] text-muted">{t("Moisture %")}</span>
                   <input
                     className="input"
                     type="number"
                     min={0}
-                    aria-label={`Moisture of palay ${i + 1}`}
+                    aria-label={t("Moisture of palay {{value}}", { value: i + 1 })}
                     value={inp.moisture_content_pct}
                     onChange={(e) => setInput(i, { moisture_content_pct: e.target.value })}
                   />
@@ -273,7 +282,7 @@ export default function EditBatchDialog({
                 <button
                   type="button"
                   className="btn-ghost !p-2 mb-0.5"
-                  aria-label={`Remove palay ${i + 1}`}
+                  aria-label={t("Remove palay {{value}}", { value: i + 1 })}
                   disabled={inputs.length === 1}
                   onClick={() => setInputs((xs) => xs.filter((_, j) => j !== i))}
                 >
@@ -292,12 +301,12 @@ export default function EditBatchDialog({
               ])
             }
           >
-            <Plus size={15} /> Add palay
+            <Plus size={15} /> {t("Add palay")}
           </button>
         </div>
 
         <div>
-          <p className="mb-1.5 text-xs font-medium text-secondary">What came out</p>
+          <p className="mb-1.5 text-xs font-medium text-secondary">{t("What came out")}</p>
           <div className="space-y-2">
             {outputs.map((out, i) => (
               <div
@@ -305,14 +314,14 @@ export default function EditBatchDialog({
                 className="grid grid-cols-2 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_7rem_auto] items-end gap-2"
               >
                 <Select
-                  aria-label={`Output ${i + 1}`}
+                  aria-label={t("Output {{value}}", { value: i + 1 })}
                   value={out.output_type}
                   onChange={(v) => setOutput(i, { output_type: v })}
                   options={OUTPUT_TYPES}
                 />
                 {out.output_type === "milled_rice" ? (
                   <Select
-                    aria-label={`Variety of output ${i + 1}`}
+                    aria-label={t("Variety of output {{value}}", { value: i + 1 })}
                     value={out.variety_id}
                     onChange={(v) => setOutput(i, { variety_id: v })}
                     options={varietyOptions}
@@ -321,12 +330,12 @@ export default function EditBatchDialog({
                   <span />
                 )}
                 <label className="block">
-                  <span className="block mb-1 text-[11px] text-muted">Kilos</span>
+                  <span className="block mb-1 text-[11px] text-muted">{t("Kilos")}</span>
                   <input
                     className="input"
                     type="number"
                     min={0}
-                    aria-label={`Kilos of output ${i + 1}`}
+                    aria-label={t("Kilos of output {{value}}", { value: i + 1 })}
                     value={out.output_weight_kg}
                     onChange={(e) => setOutput(i, { output_weight_kg: e.target.value })}
                   />
@@ -334,7 +343,7 @@ export default function EditBatchDialog({
                 <button
                   type="button"
                   className="btn-ghost !p-2 mb-0.5"
-                  aria-label={`Remove output ${i + 1}`}
+                  aria-label={t("Remove output {{value}}", { value: i + 1 })}
                   onClick={() => setOutputs((xs) => xs.filter((_, j) => j !== i))}
                 >
                   <Trash2 size={15} />
@@ -357,15 +366,15 @@ export default function EditBatchDialog({
               ])
             }
           >
-            <Plus size={15} /> Add output
+            <Plus size={15} /> {t("Add output")}
           </button>
         </div>
 
         <label className="block">
-          <span className="block mb-1 text-xs font-medium text-secondary">Remarks</span>
+          <span className="block mb-1 text-xs font-medium text-secondary">{t("Remarks")}</span>
           <textarea
             className="input min-h-[4rem]"
-            aria-label="Remarks"
+            aria-label={t("Remarks")}
             value={remarks}
             onChange={(e) => setRemarks(e.target.value)}
           />
@@ -373,7 +382,9 @@ export default function EditBatchDialog({
 
         {error && (
           <p role="alert" className="text-sm text-rose-600 dark:text-rose-400">
-            {typeof error === "string" ? error : "Couldn't save. Check the fields and try again."}
+            {typeof error === "string"
+              ? error
+              : t("Couldn't save. Check the fields and try again.")}
           </p>
         )}
       </div>

@@ -22,6 +22,7 @@ import TruncatedText from "../components/TruncatedText";
 import { useAccess } from "../hooks/useAccess";
 import { useFeature } from "../hooks/useFeature";
 import CodeValue from "../components/CodeValue";
+import { t } from "../i18n";
 
 type Agent = {
   id: string;
@@ -75,10 +76,10 @@ const LABEL = "block text-xs font-bold uppercase tracking-wider text-muted mb-1"
 
 // The agent type is optional: the first option leaves it blank.
 const AGENT_TYPE_OPTIONS = [
-  { value: "", label: "None" },
-  { value: "broker", label: "Broker" },
-  { value: "freelancer", label: "Freelancer" },
-  { value: "logistics_co", label: "Logistics company" },
+  { value: "", label: t("None") },
+  { value: "broker", label: t("Broker") },
+  { value: "freelancer", label: t("Freelancer") },
+  { value: "logistics_co", label: t("Logistics company") },
 ];
 
 function formatDate(iso: string | null): string {
@@ -97,7 +98,7 @@ function StatusDot({ active, name }: { active: boolean; name: string }) {
     <span
       role="img"
       aria-label={`${name} is ${state}`}
-      title={active ? "Active" : "Deactivated"}
+      title={active ? t("Active") : t("Deactivated")}
       data-testid="status-dot"
       data-status={state}
       className={`inline-block h-3.5 w-3.5 shrink-0 rounded-full ${active ? "bg-emerald-500" : "bg-rose-500"}`}
@@ -117,20 +118,20 @@ function TypeBadge({ kind }: { kind: OperatorKind }) {
       data-testid={`type-badge-${kind}`}
     >
       <Icon size={10} />
-      {kind === "agent" ? "Agent" : "Miller"}
+      {kind === "agent" ? t("Agent") : t("Miller")}
     </span>
   );
 }
 
 function SupplierTypeBadge({ type }: { type: string | null }) {
-  const meta = SUPPLIER_TYPES.find((t) => t.value === type);
+  const meta = SUPPLIER_TYPES.find((s) => s.value === type);
   return (
     <span
       className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200"
       data-testid="type-badge-supplier"
     >
       <Sprout size={10} />
-      {meta?.label ?? "Supplier"}
+      {meta ? t(meta.label) : t("Supplier")}
     </span>
   );
 }
@@ -143,9 +144,9 @@ export default function FieldOperatorsPage() {
           <HardHat size={20} className="text-white" />
         </div>
         <div>
-          <h2 className="text-2xl font-bold tracking-tight text-primary">Field Operators</h2>
+          <h2 className="text-2xl font-bold tracking-tight text-primary">{t("Field Operators")}</h2>
           <p className="text-sm text-secondary">
-            Manage delivery agents, third-party millers, and palay suppliers.
+            {t("Manage delivery agents, third-party millers, and palay suppliers.")}
           </p>
         </div>
       </div>
@@ -184,11 +185,11 @@ export function FieldOperatorsContent() {
     const base = [
       {
         key: "all" as TypeTab,
-        label: "All",
+        label: t("All"),
         count: activeAgents + activeMillers + activeSuppliers,
       },
-      { key: "agent" as TypeTab, label: "Agents", count: activeAgents },
-      { key: "miller" as TypeTab, label: "Millers", count: activeMillers },
+      { key: "agent" as TypeTab, label: t("Agents"), count: activeAgents },
+      { key: "miller" as TypeTab, label: t("Millers"), count: activeMillers },
     ];
     if (hasPaddy) {
       base.push({ key: "supplier" as TypeTab, label: "Suppliers", count: activeSuppliers });
@@ -235,7 +236,7 @@ export function FieldOperatorsContent() {
           className={`${tabClass(typeTab === "deactivated")} ml-auto`}
         >
           <span aria-hidden className="h-2 w-2 rounded-full bg-rose-500" />
-          Deactivated
+          {t("Deactivated")}
           <span className={countClass(typeTab === "deactivated")}>{tabs.deactivated}</span>
         </button>
       </div>
@@ -249,7 +250,7 @@ export function FieldOperatorsContent() {
             />
             <input
               className="input !pl-8"
-              placeholder="Search by name…"
+              placeholder={t("Search by name…")}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               data-testid="deactivated-search"
@@ -258,7 +259,7 @@ export function FieldOperatorsContent() {
               <button
                 type="button"
                 onClick={() => setSearch("")}
-                aria-label="Clear search"
+                aria-label={t("Clear search")}
                 className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted hover:text-primary"
               >
                 <XIcon size={13} />
@@ -267,7 +268,9 @@ export function FieldOperatorsContent() {
           </div>
 
           <div className="space-y-2">
-            {hasPaddy && <h3 className="text-sm font-bold text-primary">Agents and millers</h3>}
+            {hasPaddy && (
+              <h3 className="text-sm font-bold text-primary">{t("Agents and millers")}</h3>
+            )}
             <OperatorsPanel
               typeTab="all"
               status="deactivated"
@@ -280,7 +283,7 @@ export function FieldOperatorsContent() {
 
           {hasPaddy && (
             <div className="space-y-2">
-              <h3 className="text-sm font-bold text-primary">Suppliers</h3>
+              <h3 className="text-sm font-bold text-primary">{t("Suppliers")}</h3>
               <SuppliersPanel
                 status="deactivated"
                 search={search}
@@ -293,7 +296,7 @@ export function FieldOperatorsContent() {
       ) : typeTab === "all" && hasPaddy ? (
         <div className="space-y-6">
           <div className="space-y-2">
-            <h3 className="text-sm font-bold text-primary">Agents and millers</h3>
+            <h3 className="text-sm font-bold text-primary">{t("Agents and millers")}</h3>
             <OperatorsPanel
               typeTab="all"
               status="active"
@@ -304,7 +307,7 @@ export function FieldOperatorsContent() {
             />
           </div>
           <div className="space-y-2">
-            <h3 className="text-sm font-bold text-primary">Suppliers</h3>
+            <h3 className="text-sm font-bold text-primary">{t("Suppliers")}</h3>
             <SuppliersPanel
               status="active"
               search=""
@@ -400,14 +403,24 @@ function OperatorsPanel({
       setEditingId(null);
       setError(null);
     },
-    onError: (e: any) => setError(e?.response?.data?.detail ?? "Action failed."),
+    onError: (e: any) => setError(e?.response?.data?.detail ?? t("Action failed.")),
   });
 
   const colSpan = status === "active" ? 8 : 9;
   const headers =
     status === "active"
-      ? ["", "Name", "Type", "Contact", "Phone", "Details", "Status", ""]
-      : ["", "Name", "Type", "Contact", "Phone", "Details", "Deactivated on", "Deactivated by", ""];
+      ? ["", t("Name"), t("Type"), t("Contact"), t("Phone"), t("Details"), t("Status"), ""]
+      : [
+          "",
+          t("Name"),
+          t("Type"),
+          t("Contact"),
+          t("Phone"),
+          t("Details"),
+          t("Deactivated on"),
+          t("Deactivated by"),
+          "",
+        ];
 
   const renderRow = (row: OperatorRow) => {
     if (status === "deactivated") {
@@ -486,7 +499,7 @@ function OperatorsPanel({
             className="btn-primary ml-auto"
             data-testid="add-operator"
           >
-            <Plus size={16} /> Add field operator
+            <Plus size={16} /> {t("Add field operator")}
           </button>
         )}
       </div>
@@ -532,10 +545,10 @@ function OperatorsPanel({
               <tr>
                 <td colSpan={colSpan} className="px-4 py-8 text-center text-muted font-medium">
                   {status === "active"
-                    ? `No active ${typeTab === "all" ? "operators" : typeTab + "s"} yet${canEdit ? ". Add one above." : "."}`
+                    ? `No active ${typeTab === "all" ? "operators" : typeTab + "s"} yet${canEdit ? t(". Add one above.") : "."}`
                     : search
-                      ? "No deactivated operators match your search."
-                      : "No deactivated operators."}
+                      ? t("No deactivated operators match your search.")
+                      : t("No deactivated operators.")}
                 </td>
               </tr>
             ) : typeTab === "all" ? (
@@ -547,13 +560,17 @@ function OperatorsPanel({
                     <>
                       {agentRows.length > 0 && (
                         <>
-                          <GroupHeader label="Agents" count={agentRows.length} tone="agent" />
+                          <GroupHeader label={t("Agents")} count={agentRows.length} tone="agent" />
                           {agentRows.map(renderRow)}
                         </>
                       )}
                       {millerRows.length > 0 && (
                         <>
-                          <GroupHeader label="Millers" count={millerRows.length} tone="miller" />
+                          <GroupHeader
+                            label={t("Millers")}
+                            count={millerRows.length}
+                            tone="miller"
+                          />
                           {millerRows.map(renderRow)}
                         </>
                       )}
@@ -606,7 +623,7 @@ function ViewOperatorRow({
       <td className="px-4 py-3 text-secondary">{row.phone || "—"}</td>
       <td className="px-4 py-3 text-secondary tabular-nums">{details}</td>
       <td className="px-4 py-3">
-        <span className="badge-green">Active</span>
+        <span className="badge-green">{t("Active")}</span>
       </td>
       <td className="px-4 py-3 text-right">
         <div className="flex items-center justify-end gap-1.5">
@@ -618,14 +635,14 @@ function ViewOperatorRow({
                 data-testid={`edit-operator-${row.id}`}
                 className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-semibold text-secondary hover:text-primary hover:bg-slate-100 dark:hover:bg-slate-700/40"
               >
-                <Pencil size={12} /> Edit
+                <Pencil size={12} /> {t("Edit")}
               </button>
               <button
                 type="button"
                 onClick={onDeactivate}
                 className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-semibold text-rose-600 dark:text-rose-400 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-950/30"
               >
-                <Power size={12} /> Deactivate
+                <Power size={12} /> {t("Deactivate")}
               </button>
             </>
           )}
@@ -685,7 +702,7 @@ function DeactivatedOperatorRow({
             data-testid={`reactivate-operator-${row.id}`}
             className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-semibold text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 hover:bg-emerald-50 dark:hover:bg-emerald-950/30"
           >
-            <Power size={12} /> Activate
+            <Power size={12} /> {t("Activate")}
           </button>
         )}
       </td>
@@ -741,7 +758,7 @@ function EditOperatorRow({
       return dispatchService.updateOperator(row.kind, row.id, body);
     },
     onSuccess: () => onSaved(),
-    onError: (e: any) => setError(e?.response?.data?.detail ?? "Save failed."),
+    onError: (e: any) => setError(e?.response?.data?.detail ?? t("Save failed.")),
   });
 
   return (
@@ -764,7 +781,7 @@ function EditOperatorRow({
         <input
           className="input !py-1 text-sm"
           value={contact}
-          placeholder="Contact person"
+          placeholder={t("Contact person")}
           onChange={(e) => setContact(e.target.value)}
         />
       </td>
@@ -772,7 +789,7 @@ function EditOperatorRow({
         <input
           className="input !py-1 text-sm"
           value={phone}
-          placeholder="Phone"
+          placeholder={t("Phone")}
           onChange={(e) => setPhone(e.target.value)}
         />
       </td>
@@ -781,7 +798,7 @@ function EditOperatorRow({
           <div className="flex items-center gap-1.5">
             <Select
               className="!py-1 text-sm !w-auto min-w-[10rem]"
-              aria-label="Agent type"
+              aria-label={t("Agent type")}
               value={agentType}
               onChange={setAgentType}
               options={AGENT_TYPE_OPTIONS}
@@ -809,7 +826,7 @@ function EditOperatorRow({
               className="input !py-1 text-sm w-20"
               type="number"
               step="0.0001"
-              placeholder="₱/kg"
+              placeholder={t("₱/kg")}
               value={fee}
               onChange={(e) => setFee(e.target.value)}
             />
@@ -817,7 +834,7 @@ function EditOperatorRow({
         )}
       </td>
       <td className="px-4 py-3">
-        <span className="badge-green">Active</span>
+        <span className="badge-green">{t("Active")}</span>
       </td>
       <td className="px-4 py-3 text-right">
         <div className="flex items-center justify-end gap-1">
@@ -828,7 +845,7 @@ function EditOperatorRow({
             data-testid={`save-operator-${row.id}`}
             className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-semibold text-emerald-700 dark:text-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 disabled:opacity-50"
           >
-            <Check size={12} /> {save.isPending ? "Saving…" : "Save"}
+            <Check size={12} /> {save.isPending ? t("Saving…") : t("Save")}
           </button>
           <button
             type="button"
@@ -836,7 +853,7 @@ function EditOperatorRow({
             data-testid={`cancel-operator-${row.id}`}
             className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-semibold text-secondary hover:text-primary hover:bg-slate-100 dark:hover:bg-slate-700/40"
           >
-            <XIcon size={12} /> Cancel
+            <XIcon size={12} /> {t("Cancel")}
           </button>
         </div>
       </td>
@@ -889,20 +906,25 @@ function NewOperatorForm({
     onSuccess: () => {
       onSaved();
     },
-    onError: (e: any) => setError(e?.response?.data?.detail ?? "Failed to add operator."),
+    onError: (e: any) => setError(e?.response?.data?.detail ?? t("Failed to add operator.")),
   });
 
   return (
     <div className="card space-y-4" data-testid="new-operator-form">
       <div className="flex items-center justify-between">
-        <h3 className="text-lg font-bold text-primary">New field operator</h3>
-        <button type="button" onClick={onClose} className="btn-ghost !p-1.5" aria-label="Close">
+        <h3 className="text-lg font-bold text-primary">{t("New field operator")}</h3>
+        <button
+          type="button"
+          onClick={onClose}
+          className="btn-ghost !p-1.5"
+          aria-label={t("Close")}
+        >
           <XIcon size={16} />
         </button>
       </div>
 
       <div>
-        <label className={LABEL}>Type</label>
+        <label className={LABEL}>{t("Type")}</label>
         <div className="inline-flex p-1 rounded-lg bg-slate-100 dark:bg-slate-800/60 ring-1 ring-soft">
           {(["agent", "miller"] as const).map((k) => (
             <button
@@ -916,7 +938,7 @@ function NewOperatorForm({
                   : "text-secondary hover:text-primary"
               }`}
             >
-              {k === "agent" ? "Agent" : "Miller"}
+              {k === "agent" ? t("Agent") : t("Miller")}
             </button>
           ))}
         </div>
@@ -924,7 +946,7 @@ function NewOperatorForm({
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
-          <label className={LABEL}>Name *</label>
+          <label className={LABEL}>{t("Name *")}</label>
           <input
             className="input"
             data-testid="new-operator-name"
@@ -933,15 +955,15 @@ function NewOperatorForm({
           />
         </div>
         <div>
-          <label className={LABEL}>Contact person</label>
+          <label className={LABEL}>{t("Contact person")}</label>
           <input className="input" value={contact} onChange={(e) => setContact(e.target.value)} />
         </div>
         <div>
-          <label className={LABEL}>Phone</label>
+          <label className={LABEL}>{t("Phone")}</label>
           <input className="input" value={phone} onChange={(e) => setPhone(e.target.value)} />
         </div>
         <div className="sm:col-span-2">
-          <label className={LABEL}>Address</label>
+          <label className={LABEL}>{t("Address")}</label>
           <input className="input" value={address} onChange={(e) => setAddress(e.target.value)} />
         </div>
 
@@ -949,7 +971,7 @@ function NewOperatorForm({
           <>
             <div>
               <label className={LABEL} htmlFor="new-operator-agent-type">
-                Agent type
+                {t("Agent type")}
               </label>
               <Select
                 id="new-operator-agent-type"
@@ -959,7 +981,7 @@ function NewOperatorForm({
               />
             </div>
             <div>
-              <label className={LABEL}>Commission %</label>
+              <label className={LABEL}>{t("Commission %")}</label>
               <input
                 className="input"
                 type="number"
@@ -972,7 +994,7 @@ function NewOperatorForm({
         ) : (
           <>
             <div>
-              <label className={LABEL}>Capacity (kg/hr)</label>
+              <label className={LABEL}>{t("Capacity (kg/hr)")}</label>
               <input
                 className="input"
                 type="number"
@@ -982,7 +1004,7 @@ function NewOperatorForm({
               />
             </div>
             <div>
-              <label className={LABEL}>Milling fee per kg (₱)</label>
+              <label className={LABEL}>{t("Milling fee per kg (₱)")}</label>
               <input
                 className="input"
                 type="number"
@@ -997,7 +1019,7 @@ function NewOperatorForm({
 
       <div className="flex gap-2 justify-end">
         <button onClick={onClose} className="btn-secondary">
-          Cancel
+          {t("Cancel")}
         </button>
         <button
           onClick={() => create.mutate()}
@@ -1005,7 +1027,7 @@ function NewOperatorForm({
           className="btn-primary"
           data-testid="save-new-operator"
         >
-          {create.isPending ? "Saving…" : "Save operator"}
+          {create.isPending ? t("Saving…") : t("Save operator")}
         </button>
       </div>
     </div>
@@ -1051,14 +1073,33 @@ function SuppliersPanel({
       invalidate();
       setError(null);
     },
-    onError: (e: any) => setError(e?.response?.data?.detail ?? "Action failed."),
+    onError: (e: any) => setError(e?.response?.data?.detail ?? t("Action failed.")),
   });
 
   const colSpan = status === "active" ? 9 : 8;
   const headers =
     status === "active"
-      ? ["", "Name", "Type", "Municipality", "Province", "Phone", "Farmer ID", "Status", ""]
-      : ["", "Name", "Type", "Municipality", "Province", "Phone", "Farmer ID", ""];
+      ? [
+          "",
+          t("Name"),
+          t("Type"),
+          t("Municipality"),
+          t("Province"),
+          t("Phone"),
+          t("Farmer ID"),
+          t("Status"),
+          "",
+        ]
+      : [
+          "",
+          t("Name"),
+          t("Type"),
+          t("Municipality"),
+          t("Province"),
+          t("Phone"),
+          t("Farmer ID"),
+          "",
+        ];
 
   return (
     <div className="space-y-4">
@@ -1074,7 +1115,7 @@ function SuppliersPanel({
             className="btn-primary ml-auto"
             data-testid="add-supplier"
           >
-            <Plus size={16} /> Add supplier
+            <Plus size={16} /> {t("Add supplier")}
           </button>
         )}
       </div>
@@ -1125,10 +1166,12 @@ function SuppliersPanel({
               <tr>
                 <td colSpan={colSpan} className="px-4 py-8 text-center text-muted font-medium">
                   {status === "active"
-                    ? `No active suppliers yet${canEdit ? ". Add one above." : "."}`
+                    ? canEdit
+                      ? t("No active suppliers yet. Add one above.")
+                      : t("No active suppliers yet.")
                     : search
-                      ? "No deactivated suppliers match your search."
-                      : "No deactivated suppliers."}
+                      ? t("No deactivated suppliers match your search.")
+                      : t("No deactivated suppliers.")}
                 </td>
               </tr>
             ) : (
@@ -1188,7 +1231,7 @@ function SupplierRow({
       </td>
       {!deactivated && (
         <td className="px-4 py-3">
-          <span className="badge-green">Active</span>
+          <span className="badge-green">{t("Active")}</span>
         </td>
       )}
       <td className="px-4 py-3 text-right">
@@ -1201,14 +1244,14 @@ function SupplierRow({
                 data-testid={`edit-supplier-${supplier.id}`}
                 className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-semibold text-secondary hover:text-primary hover:bg-slate-100 dark:hover:bg-slate-700/40"
               >
-                <Pencil size={12} /> Edit
+                <Pencil size={12} /> {t("Edit")}
               </button>
               <button
                 type="button"
                 onClick={() => onToggle(false)}
                 className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-semibold text-rose-600 dark:text-rose-400 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-950/30"
               >
-                <Power size={12} /> Deactivate
+                <Power size={12} /> {t("Deactivate")}
               </button>
             </>
           )}
@@ -1219,7 +1262,7 @@ function SupplierRow({
               data-testid={`reactivate-supplier-${supplier.id}`}
               className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-semibold text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 hover:bg-emerald-50 dark:hover:bg-emerald-950/30"
             >
-              <Power size={12} /> Activate
+              <Power size={12} /> {t("Activate")}
             </button>
           )}
         </div>
@@ -1266,23 +1309,28 @@ function SupplierForm({
         : paddyService.createSupplier(body);
     },
     onSuccess: () => onSaved(),
-    onError: (e: any) => setError(e?.response?.data?.detail ?? "Failed to save supplier."),
+    onError: (e: any) => setError(e?.response?.data?.detail ?? t("Failed to save supplier.")),
   });
 
   return (
     <div className="card space-y-4" data-testid="supplier-form">
       <div className="flex items-center justify-between">
         <h3 className="text-lg font-bold text-primary">
-          {initial ? "Edit supplier" : "New supplier"}
+          {initial ? t("Edit supplier") : t("New supplier")}
         </h3>
-        <button type="button" onClick={onClose} className="btn-ghost !p-1.5" aria-label="Close">
+        <button
+          type="button"
+          onClick={onClose}
+          className="btn-ghost !p-1.5"
+          aria-label={t("Close")}
+        >
           <XIcon size={16} />
         </button>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
-          <label className={LABEL}>Name *</label>
+          <label className={LABEL}>{t("Name *")}</label>
           <input
             className="input"
             data-testid="supplier-name"
@@ -1291,24 +1339,24 @@ function SupplierForm({
           />
         </div>
         <div>
-          <label className={LABEL}>Type</label>
+          <label className={LABEL}>{t("Type")}</label>
           <Select
-            aria-label="Type"
+            aria-label={t("Type")}
             value={supplierType}
             onChange={setSupplierType}
-            options={SUPPLIER_TYPES.map((t) => ({ value: t.value, label: t.label }))}
+            options={SUPPLIER_TYPES.map((s) => ({ value: s.value, label: t(s.label) }))}
           />
         </div>
         <div>
-          <label className={LABEL}>Contact person</label>
+          <label className={LABEL}>{t("Contact person")}</label>
           <input className="input" value={contact} onChange={(e) => setContact(e.target.value)} />
         </div>
         <div>
-          <label className={LABEL}>Phone</label>
+          <label className={LABEL}>{t("Phone")}</label>
           <input className="input" value={phone} onChange={(e) => setPhone(e.target.value)} />
         </div>
         <div>
-          <label className={LABEL}>Municipality</label>
+          <label className={LABEL}>{t("Municipality")}</label>
           <input
             className="input"
             value={municipality}
@@ -1316,22 +1364,22 @@ function SupplierForm({
           />
         </div>
         <div>
-          <label className={LABEL}>Province</label>
+          <label className={LABEL}>{t("Province")}</label>
           <input className="input" value={province} onChange={(e) => setProvince(e.target.value)} />
         </div>
         <div>
-          <label className={LABEL}>Farmer ID (RSBSA / PhilSys)</label>
+          <label className={LABEL}>{t("Farmer ID (RSBSA / PhilSys)")}</label>
           <input className="input" value={farmerId} onChange={(e) => setFarmerId(e.target.value)} />
         </div>
         <div>
-          <label className={LABEL}>Address</label>
+          <label className={LABEL}>{t("Address")}</label>
           <input className="input" value={address} onChange={(e) => setAddress(e.target.value)} />
         </div>
       </div>
 
       <div className="flex gap-2 justify-end">
         <button onClick={onClose} className="btn-secondary">
-          Cancel
+          {t("Cancel")}
         </button>
         <button
           onClick={() => save.mutate()}
@@ -1339,7 +1387,7 @@ function SupplierForm({
           className="btn-primary"
           data-testid="save-supplier"
         >
-          {save.isPending ? "Saving…" : initial ? "Save changes" : "Save supplier"}
+          {save.isPending ? t("Saving…") : initial ? t("Save changes") : t("Save supplier")}
         </button>
       </div>
     </div>

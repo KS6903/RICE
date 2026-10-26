@@ -24,6 +24,7 @@ import {
   startOfMonth,
   startOfWeek,
 } from "date-fns";
+import { currentLanguage, currentLocale, DEFAULT_LANGUAGE, t } from "../i18n";
 
 type Props = {
   /** "yyyy-MM-dd", the same as an <input type="date">. */
@@ -45,7 +46,14 @@ type Props = {
 
 const WIDTH = 288; // w-72
 const HEIGHT = 376;
-const WEEKDAYS = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
+/** Sunday first: the language's short day names, two letters in English (Su, Mo). */
+const WEEKDAYS = Array.from({ length: 7 }, (_, i) => {
+  // 1 January 2023 was a Sunday.
+  const name = new Intl.DateTimeFormat(currentLocale(), { weekday: "short" }).format(
+    new Date(2023, 0, 1 + i),
+  );
+  return currentLanguage().code === DEFAULT_LANGUAGE ? name.slice(0, 2) : name;
+});
 const ISO = "yyyy-MM-dd";
 const YEARS_PER_PAGE = 12;
 
@@ -78,7 +86,7 @@ export default function DatePicker({
   id,
   disabled,
   className,
-  placeholder = "Choose a date",
+  placeholder = t("Choose a date"),
   min,
   max,
   clearable = false,
@@ -285,7 +293,7 @@ export default function DatePicker({
             ref={panelRef}
             id={dialogId}
             role="dialog"
-            aria-label="Choose a date"
+            aria-label={t("Choose a date")}
             className="fixed z-[70] overflow-y-auto overscroll-contain rounded-xl bg-white p-3 shadow-2xl ring-1 ring-soft animate-panel-in dark:bg-slate-900"
             style={place}
             onKeyDown={onPanelKeyDown}
@@ -293,7 +301,7 @@ export default function DatePicker({
             <div className="mb-2 flex items-center justify-between gap-1">
               <button
                 type="button"
-                aria-label={`Previous ${unit}`}
+                aria-label={t("Previous {{unit}}", { unit })}
                 onClick={stepBack}
                 className="btn-ghost !p-1.5"
               >
@@ -301,12 +309,12 @@ export default function DatePicker({
               </button>
               {view === "years" ? (
                 <span className="text-sm font-bold tabular-nums text-primary">
-                  {pageStart} to {pageStart + YEARS_PER_PAGE - 1}
+                  {t("{{pageStart}} to", { pageStart })} {pageStart + YEARS_PER_PAGE - 1}
                 </span>
               ) : (
                 <button
                   type="button"
-                  aria-label={view === "days" ? "Choose month and year" : "Choose year"}
+                  aria-label={view === "days" ? t("Choose month and year") : t("Choose year")}
                   onClick={() => setView(view === "days" ? "months" : "years")}
                   className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-sm font-bold text-primary transition-colors hover:bg-slate-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 dark:hover:bg-slate-700/40"
                 >
@@ -316,7 +324,7 @@ export default function DatePicker({
               )}
               <button
                 type="button"
-                aria-label={`Next ${unit}`}
+                aria-label={t("Next {{unit}}", { unit })}
                 onClick={stepForward}
                 className="btn-ghost !p-1.5"
               >
@@ -329,8 +337,8 @@ export default function DatePicker({
               {view === "days" && (
                 <>
                   <div className="grid grid-cols-7 text-center text-[10px] font-bold uppercase tracking-wide text-muted">
-                    {WEEKDAYS.map((w) => (
-                      <span key={w} className="py-1">
+                    {WEEKDAYS.map((w, i) => (
+                      <span key={i} className="py-1">
                         {w}
                       </span>
                     ))}
@@ -413,7 +421,7 @@ export default function DatePicker({
               )}
 
               {view === "years" && (
-                <div role="group" aria-label="Years" className="grid grid-cols-3 gap-2 pt-1">
+                <div role="group" aria-label={t("Years")} className="grid grid-cols-3 gap-2 pt-1">
                   {Array.from({ length: YEARS_PER_PAGE }, (_, i) => {
                     const year = pageStart + i;
                     const first = new Date(year, 0, 1);
@@ -454,7 +462,7 @@ export default function DatePicker({
                 onClick={() => pick(today)}
                 className="btn-ghost text-xs disabled:cursor-not-allowed disabled:opacity-40"
               >
-                Today
+                {t("Today")}
               </button>
               <div className="flex items-center gap-1">
                 {clearable && selected && (
@@ -466,11 +474,11 @@ export default function DatePicker({
                     }}
                     className="btn-ghost text-xs"
                   >
-                    Clear
+                    {t("Clear")}
                   </button>
                 )}
                 <button type="button" onClick={() => close()} className="btn-ghost text-xs">
-                  Close
+                  {t("Close")}
                 </button>
               </div>
             </div>

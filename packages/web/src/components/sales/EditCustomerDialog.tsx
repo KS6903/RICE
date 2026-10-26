@@ -4,15 +4,16 @@ import { CUSTOMER_TYPES } from "@rice-mill/shared";
 import RecordDialog from "./RecordDialog";
 import Select from "../Select";
 import { salesService } from "../../services/SalesService";
+import { t } from "../../i18n";
 
 const FIELDS: { key: string; label: string; type?: "number"; full?: boolean }[] = [
-  { key: "name", label: "Name", full: true },
-  { key: "contact_person", label: "Contact person" },
-  { key: "phone", label: "Phone" },
-  { key: "address", label: "Address", full: true },
-  { key: "tin", label: "TIN" },
-  { key: "credit_limit", label: "Credit limit (₱)", type: "number" },
-  { key: "payment_terms_days", label: "Payment terms (days)", type: "number" },
+  { key: "name", label: t("Name"), full: true },
+  { key: "contact_person", label: t("Contact person") },
+  { key: "phone", label: t("Phone") },
+  { key: "address", label: t("Address"), full: true },
+  { key: "tin", label: t("TIN") },
+  { key: "credit_limit", label: t("Credit limit (₱)"), type: "number" },
+  { key: "payment_terms_days", label: t("Payment terms (days)"), type: "number" },
 ];
 
 /** Edit a customer's details. Every change is logged in its history. */
@@ -56,8 +57,8 @@ export default function EditCustomerDialog({
 
   return (
     <RecordDialog
-      title={`Edit ${customer.name}`}
-      subtitle="Every change you save is logged in the customer's history."
+      title={t("Edit {{name}}", { name: customer.name })}
+      subtitle={t("Every change you save is logged in the customer's history.")}
       onClose={onClose}
       busy={save.isPending}
       testId="edit-customer"
@@ -69,7 +70,7 @@ export default function EditCustomerDialog({
             onClick={onClose}
             disabled={save.isPending}
           >
-            Cancel
+            {t("Cancel")}
           </button>
           <button
             type="button"
@@ -77,19 +78,19 @@ export default function EditCustomerDialog({
             onClick={() => save.mutate()}
             disabled={!form.name.trim() || save.isPending}
           >
-            {save.isPending ? "Saving…" : "Save changes"}
+            {save.isPending ? t("Saving…") : t("Save changes")}
           </button>
         </>
       }
     >
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <label className="block">
-          <span className="block mb-1 text-xs font-medium text-secondary">Type</span>
+          <span className="block mb-1 text-xs font-medium text-secondary">{t("Type")}</span>
           <Select
-            aria-label="Customer type"
+            aria-label={t("Customer type")}
             value={form.customer_type}
             onChange={(v) => setForm((f) => ({ ...f, customer_type: v }))}
-            options={CUSTOMER_TYPES.map((t) => ({ value: t.value, label: t.label }))}
+            options={CUSTOMER_TYPES.map((c) => ({ value: c.value, label: t(c.label) }))}
           />
         </label>
         {FIELDS.map((f) => (
@@ -105,7 +106,9 @@ export default function EditCustomerDialog({
         ))}
         {error && (
           <p role="alert" className="sm:col-span-2 text-sm text-rose-600 dark:text-rose-400">
-            {typeof error === "string" ? error : "Couldn't save. Check the fields and try again."}
+            {typeof error === "string"
+              ? error
+              : t("Couldn't save. Check the fields and try again.")}
           </p>
         )}
       </div>

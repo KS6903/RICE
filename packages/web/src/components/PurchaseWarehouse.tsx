@@ -6,6 +6,7 @@ import { useQuery } from "@tanstack/react-query";
 import { inventoryService } from "../services/InventoryService";
 import { useAuthStore } from "../stores/authStore";
 import Select from "./Select";
+import { t } from "../i18n";
 
 export function usePurchaseWarehouse() {
   const user = useAuthStore((s) => s.user);
@@ -48,15 +49,15 @@ export function PurchaseWarehouseField({
   return (
     <div>
       <label className="block text-sm font-medium text-gray-700 dark:text-slate-200 mb-1">
-        Store in warehouse
+        {t("Store in warehouse")}
       </label>
       <Select
-        aria-label="Store in warehouse"
+        aria-label={t("Store in warehouse")}
         value={warehouse.value}
         onChange={warehouse.setValue}
         options={warehouse.branches.map((b: any) => ({
           value: b.id,
-          label: `${b.name}${b.is_main_branch ? " (Main)" : ""}`,
+          label: `${b.name}${b.is_main_branch ? t(" (Main)") : ""}`,
         }))}
       />
     </div>

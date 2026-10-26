@@ -1,4 +1,5 @@
 import { monthlyPayslip } from "../utils/payrollDeductions";
+import { t } from "../i18n";
 
 const money = (n: number) =>
   `₱${n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -18,26 +19,26 @@ export default function SalaryBreakdown({
 
   const rows: { agency: string; detail: string; employee: number; employer: number | null }[] = [
     {
-      agency: "SSS",
-      detail: `5% of the ${money(slip.sssCredit)} salary credit`,
+      agency: t("SSS"),
+      detail: t("5% of the {{sssCredit}} salary credit", { sssCredit: money(slip.sssCredit) }),
       employee: slip.sss.employee,
       employer: slip.sss.employer,
     },
     {
       agency: "PhilHealth",
-      detail: "2.5% of basic pay",
+      detail: t("2.5% of basic pay"),
       employee: slip.philhealth.employee,
       employer: slip.philhealth.employer,
     },
     {
-      agency: "Pag-IBIG",
-      detail: "2% of pay up to ₱10,000",
+      agency: t("Pag-IBIG"),
+      detail: t("2% of pay up to ₱10,000"),
       employee: slip.pagibig.employee,
       employer: slip.pagibig.employer,
     },
     {
-      agency: "BIR withholding tax",
-      detail: `On ${money(slip.taxable)} taxable pay`,
+      agency: t("BIR withholding tax"),
+      detail: t("On {{taxable}} taxable pay", { taxable: money(slip.taxable) }),
       employee: slip.withholdingTax,
       employer: null,
     },
@@ -51,20 +52,20 @@ export default function SalaryBreakdown({
       <div
         className="overflow-auto overscroll-x-contain"
         role="region"
-        aria-label="Monthly salary breakdown"
+        aria-label={t("Monthly salary breakdown")}
         tabIndex={0}
       >
         <table className="w-full break-normal text-sm tabular-nums">
           <thead>
             <tr className="text-xs text-muted">
-              <th className="pb-2 text-left font-medium">Monthly pay</th>
-              <th className="pb-2 text-right font-medium">Employee</th>
-              <th className="pb-2 pl-3 text-right font-medium">Employer adds</th>
+              <th className="pb-2 text-left font-medium">{t("Monthly pay")}</th>
+              <th className="pb-2 text-right font-medium">{t("Employee")}</th>
+              <th className="pb-2 pl-3 text-right font-medium">{t("Employer adds")}</th>
             </tr>
           </thead>
           <tbody>
             <tr className="border-b border-soft">
-              <td className="py-1.5 font-semibold text-primary">Gross pay</td>
+              <td className="py-1.5 font-semibold text-primary">{t("Gross pay")}</td>
               <td className="py-1.5 text-right whitespace-nowrap font-semibold text-primary">
                 {money(slip.gross)}
               </td>
@@ -89,7 +90,7 @@ export default function SalaryBreakdown({
               </tr>
             ))}
             <tr className="border-t border-soft">
-              <td className="py-1.5 text-secondary">Total deductions</td>
+              <td className="py-1.5 text-secondary">{t("Total deductions")}</td>
               <td className="py-1.5 text-right whitespace-nowrap text-rose-600 dark:text-rose-400">
                 −{money(slip.totalDeductions)}
               </td>
@@ -98,7 +99,7 @@ export default function SalaryBreakdown({
               </td>
             </tr>
             <tr className="border-t border-soft">
-              <td className="pt-2 font-bold text-primary">Net pay</td>
+              <td className="pt-2 font-bold text-primary">{t("Net pay")}</td>
               <td className="pt-2 text-right whitespace-nowrap text-base font-bold text-emerald-700 dark:text-emerald-400">
                 {money(slip.net)}
               </td>
@@ -108,9 +109,9 @@ export default function SalaryBreakdown({
         </table>
       </div>
       <p className="mt-3 text-[11px] leading-snug text-muted">
-        2026 rates: SSS Circular 2024-006, PhilHealth 5% (RA 11223), Pag-IBIG Circular 460 and the
-        BIR withholding table (TRAIN). The employer column includes SSS EC. Overtime, holiday pay,
-        absences and loans are not counted.
+        {t(
+          "2026 rates: SSS Circular 2024-006, PhilHealth 5% (RA 11223), Pag-IBIG Circular 460 and the BIR withholding table (TRAIN). The employer column includes SSS EC. Overtime, holiday pay, absences and loans are not counted.",
+        )}
       </p>
     </div>
   );

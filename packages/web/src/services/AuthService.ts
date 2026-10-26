@@ -178,6 +178,11 @@ export class AuthService {
     return this.http.put("/auth/branch-view", { view }).then((r) => r.data);
   }
 
+  /** Show the app in this language on every device this account signs in on. */
+  setLanguage(language: string): Promise<{ language: string | null }> {
+    return this.http.put("/auth/language", { language }).then((r) => r.data);
+  }
+
   // ── Closing the mill's account (the Boss) ───────────────────────────────────
 
   /** The account's state, and what (if anything) stops it closing now. */

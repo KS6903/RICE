@@ -4,6 +4,7 @@ import { usePopoverPosition } from "../../hooks/usePopoverPosition";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Building2, ChevronDown, Pencil, Plus, Check, X as XIcon, Star, Globe } from "lucide-react";
 import { branchesService } from "../../services/BranchesService";
+import { t } from "../../i18n";
 
 export type WarehouseBranch = {
   id: string;
@@ -76,7 +77,7 @@ function WarehousePickerInner({
       setRenamingId(null);
       setError(null);
     },
-    onError: (e: any) => setError(e?.response?.data?.detail || "Rename failed."),
+    onError: (e: any) => setError(e?.response?.data?.detail || t("Rename failed.")),
   });
 
   const createMutation = useMutation({
@@ -93,15 +94,15 @@ function WarehousePickerInner({
       // a brand-new branch was added but the page is still showing the old one.
       if (created?.id) onSelect(created.id);
     },
-    onError: (e: any) => setError(e?.response?.data?.detail || "Could not add warehouse."),
+    onError: (e: any) => setError(e?.response?.data?.detail || t("Could not add warehouse.")),
   });
 
   const selected = branches.find((b) => b.id === selectedId);
   const label = selectedId
     ? selected
       ? selected.name
-      : "Unknown warehouse"
-    : `All warehouses (${branches.length})`;
+      : t("Unknown warehouse")
+    : t("All warehouses ({{branchesCount}})", { branchesCount: branches.length });
 
   return (
     <div data-testid="warehouse-picker" className="relative min-w-0 max-w-full">
@@ -125,7 +126,7 @@ function WarehousePickerInner({
         <span className="truncate max-w-[160px]">{label}</span>
         {selected?.is_main_branch && (
           <span className="text-[10px] font-bold text-amber-600 dark:text-amber-400 bg-amber-100 dark:bg-amber-950/40 px-1.5 py-0.5 rounded-md">
-            Main
+            {t("Main")}
           </span>
         )}
         <ChevronDown size={14} className={`text-muted ${open ? "rotate-180" : ""}`} />
@@ -162,7 +163,7 @@ function WarehousePickerInner({
                   }`}
                 >
                   <Globe size={14} />
-                  <span className="flex-1">All warehouses</span>
+                  <span className="flex-1">{t("All warehouses")}</span>
                   <span className="text-[11px] text-muted tabular-nums">{branches.length}</span>
                 </button>
               )}
@@ -170,7 +171,9 @@ function WarehousePickerInner({
               <div className="my-1 border-t border-soft" />
 
               {branches.length === 0 && !adding && (
-                <p className="text-xs text-muted text-center py-3 italic">No warehouses yet.</p>
+                <p className="text-xs text-muted text-center py-3 italic">
+                  {t("No warehouses yet.")}
+                </p>
               )}
 
               {branches.map((b) => {
@@ -206,7 +209,7 @@ function WarehousePickerInner({
                         <button
                           type="submit"
                           className="p-1 text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300"
-                          aria-label="Save name"
+                          aria-label={t("Save name")}
                         >
                           <Check size={14} />
                         </button>
@@ -214,7 +217,7 @@ function WarehousePickerInner({
                           type="button"
                           onClick={() => setRenamingId(null)}
                           className="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
-                          aria-label="Cancel rename"
+                          aria-label={t("Cancel rename")}
                         >
                           <XIcon size={14} />
                         </button>
@@ -236,13 +239,13 @@ function WarehousePickerInner({
                             size={11}
                             className="text-amber-400 shrink-0"
                             fill="currentColor"
-                            aria-label="Main branch"
+                            aria-label={t("Main branch")}
                           />
                         )}
                         <button
                           type="button"
-                          title="Rename warehouse"
-                          aria-label={`Rename ${b.name}`}
+                          title={t("Rename warehouse")}
+                          aria-label={t("Rename {{name}}", { name: b.name })}
                           onClick={(e) => {
                             e.stopPropagation();
                             setRenamingId(b.id);
@@ -276,7 +279,7 @@ function WarehousePickerInner({
                     <input
                       autoFocus
                       className="input !py-1 !px-2 text-sm flex-1"
-                      placeholder="Warehouse name…"
+                      placeholder={t("Warehouse name…")}
                       value={newName}
                       onChange={(e) => setNewName(e.target.value)}
                       onKeyDown={(e) => e.key === "Escape" && setAdding(false)}
@@ -286,7 +289,7 @@ function WarehousePickerInner({
                       disabled={!newName.trim() || createMutation.isPending}
                       className="px-3 py-1 rounded-lg bg-grad-brand text-white text-xs font-semibold disabled:opacity-50"
                     >
-                      {createMutation.isPending ? "Adding…" : "Add"}
+                      {createMutation.isPending ? t("Adding…") : t("Add")}
                     </button>
                     <button
                       type="button"
@@ -296,7 +299,7 @@ function WarehousePickerInner({
                         setError(null);
                       }}
                       className="p-1 text-muted hover:text-primary"
-                      aria-label="Cancel"
+                      aria-label={t("Cancel")}
                     >
                       <XIcon size={14} />
                     </button>
@@ -307,7 +310,7 @@ function WarehousePickerInner({
                     onClick={() => setAdding(true)}
                     className="w-full flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-sm font-semibold text-emerald-700 dark:text-emerald-300 hover:bg-emerald-500/10 transition-colors"
                   >
-                    <Plus size={14} /> Add warehouse
+                    <Plus size={14} /> {t("Add warehouse")}
                   </button>
                 )}
                 {error && (

@@ -4,6 +4,7 @@ import { useAuthStore } from "../stores/authStore";
 import { ShieldCheck, AlertCircle, Check, LogOut } from "lucide-react";
 import BackupCodes from "./BackupCodes";
 import TotpSetup from "./TotpSetup";
+import { t } from "../i18n";
 
 /** Full-screen mandatory MFA enrollment.
  *
@@ -27,7 +28,7 @@ export default function MfaEnrollmentGate() {
     try {
       setEnroll(await authService.mfaEnroll());
     } catch (e: any) {
-      setError(e.response?.data?.detail || "Could not start enrollment.");
+      setError(e.response?.data?.detail || t("Could not start enrollment."));
     } finally {
       setLoading(false);
     }
@@ -42,7 +43,7 @@ export default function MfaEnrollmentGate() {
       setBackupCodes(res.backup_codes);
       requireReauthentication();
     } catch (e: any) {
-      setError(e.response?.data?.detail || "Invalid code. Check your authenticator app.");
+      setError(e.response?.data?.detail || t("Invalid code. Check your authenticator app."));
     } finally {
       setLoading(false);
     }
@@ -60,9 +61,11 @@ export default function MfaEnrollmentGate() {
             <ShieldCheck size={20} className="text-white" />
           </div>
           <div>
-            <h1 className="text-lg font-bold text-primary">Two-factor authentication required</h1>
+            <h1 className="text-lg font-bold text-primary">
+              {t("Two-factor authentication required")}
+            </h1>
             <p className="text-sm text-secondary">
-              Your role requires 2FA before you can continue.
+              {t("Your role requires 2FA before you can continue.")}
             </p>
           </div>
         </div>
@@ -71,12 +74,12 @@ export default function MfaEnrollmentGate() {
           <div className="space-y-4">
             <BackupCodes codes={backupCodes} />
             <button onClick={finish} className="btn-primary w-full">
-              I&apos;ve saved my codes, sign in again
+              {t("I've saved my codes, sign in again")}
             </button>
           </div>
         ) : !enroll ? (
           <button onClick={start} className="btn-primary w-full" disabled={loading}>
-            {loading ? "Starting…" : "Set up two-factor authentication"}
+            {loading ? t("Starting…") : t("Set up two-factor authentication")}
           </button>
         ) : (
           <div className="space-y-4">
@@ -95,7 +98,7 @@ export default function MfaEnrollmentGate() {
               className="btn-primary w-full"
               disabled={loading || code.length < 6}
             >
-              {loading ? "Verifying…" : "Confirm & enable"}
+              {loading ? t("Verifying…") : t("Confirm & enable")}
             </button>
           </div>
         )}
@@ -109,13 +112,13 @@ export default function MfaEnrollmentGate() {
 
         <div className="flex items-center justify-between pt-1">
           <span className="inline-flex items-center gap-1.5 text-xs text-muted">
-            <Check size={13} /> Stored securely, encrypted at rest
+            <Check size={13} /> {t("Stored securely, encrypted at rest")}
           </span>
           <button
             onClick={logout}
             className="inline-flex items-center gap-1.5 text-sm font-semibold text-muted hover:text-primary transition-colors"
           >
-            <LogOut size={14} /> Sign out
+            <LogOut size={14} /> {t("Sign out")}
           </button>
         </div>
       </div>

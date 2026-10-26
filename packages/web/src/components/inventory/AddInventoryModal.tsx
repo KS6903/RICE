@@ -10,13 +10,14 @@ import Select from "../Select";
 import { MILLED_GRADES } from "../../mappers/InventoryMapper";
 import { useByproductKinds } from "../../hooks/useByproductKinds";
 import { useEscapeKey } from "../../hooks/useEscapeKey";
+import { t } from "../../i18n";
 
 type StockType = "palay" | "milled_rice" | "byproduct";
 
 const BUILTIN_TABS: { key: StockType; label: string; icon: React.ElementType }[] = [
-  { key: "palay", label: "Palay", icon: Wheat },
-  { key: "milled_rice", label: "Milled Rice", icon: Package },
-  { key: "byproduct", label: "By-product", icon: Boxes },
+  { key: "palay", label: t("Palay"), icon: Wheat },
+  { key: "milled_rice", label: t("Milled Rice"), icon: Package },
+  { key: "byproduct", label: t("By-product"), icon: Boxes },
 ];
 
 /* ── Inline "pick or create" select ──────────────────────────────────────────
@@ -55,7 +56,7 @@ function InlineCreateSelect({
       setText("");
       setAdding(false);
     } catch (e: any) {
-      setErr(e?.response?.data?.detail || e?.message || "Couldn't add that.");
+      setErr(e?.response?.data?.detail || e?.message || t("Couldn't add that."));
     } finally {
       setBusy(false);
     }
@@ -65,7 +66,7 @@ function InlineCreateSelect({
     <div>
       <label className="block text-[10px] font-bold uppercase tracking-wider text-muted mb-1">
         {label}
-        {optional && <span className="font-normal normal-case text-muted"> (optional)</span>}
+        {optional && <span className="font-normal normal-case text-muted"> {t("(optional)")}</span>}
       </label>
       {adding ? (
         <div className="flex items-center gap-1.5">
@@ -92,7 +93,7 @@ function InlineCreateSelect({
             disabled={busy || !text.trim()}
             onClick={submit}
             className="shrink-0 p-2 rounded-lg bg-emerald-500 text-white disabled:opacity-50"
-            title="Save"
+            title={t("Save")}
           >
             <Check size={14} />
           </button>
@@ -103,7 +104,7 @@ function InlineCreateSelect({
               setErr(null);
             }}
             className="shrink-0 p-2 rounded-lg btn-secondary"
-            title="Cancel"
+            title={t("Cancel")}
           >
             <XIcon size={14} />
           </button>
@@ -128,9 +129,9 @@ function InlineCreateSelect({
               setErr(null);
             }}
             className="shrink-0 inline-flex items-center gap-1 px-2.5 py-2 rounded-lg btn-secondary text-xs font-semibold whitespace-nowrap"
-            title={`Add new ${label.toLowerCase()}`}
+            title={t("Add new {{label}}", { label: label.toLowerCase() })}
           >
-            <Plus size={13} /> New
+            <Plus size={13} /> {t("New")}
           </button>
         </div>
       )}
@@ -269,9 +270,11 @@ export default function AddInventoryModal({
     const err = mutation.error as any;
     const detail = err?.response?.data?.detail;
     if (typeof detail === "string") return detail;
-    if (err?.response?.status === 403) return "Only owners and admins can add inventory.";
-    if (!err?.response) return "Can't reach the server. Is the backend running?";
-    return `Server returned ${err?.response?.status ?? "an error"}.`;
+    if (err?.response?.status === 403) return t("Only owners and admins can add inventory.");
+    if (!err?.response) return t("Can't reach the server. Is the backend running?");
+    return err?.response?.status
+      ? t("Server returned {{status}}.", { status: err.response.status })
+      : t("Server returned an error.");
   }, [mutation.isError, mutation.error]);
 
   return createPortal(
@@ -283,7 +286,7 @@ export default function AddInventoryModal({
     >
       <button
         type="button"
-        aria-label="Close"
+        aria-label={t("Close")}
         className="absolute inset-0 bg-slate-900/45 backdrop-blur-sm"
         onClick={onClose}
       />
@@ -294,13 +297,18 @@ export default function AddInventoryModal({
         <div className="flex items-start justify-between mb-3">
           <div>
             <h3 id="add-inventory-title" className="text-lg font-bold text-primary">
-              Add inventory
+              {t("Add inventory")}
             </h3>
             <p className="text-xs text-muted mt-0.5">
-              Manually add stock on hand. Repeated adds to the same item accumulate.
+              {t("Manually add stock on hand. Repeated adds to the same item accumulate.")}
             </p>
           </div>
-          <button type="button" aria-label="Close" onClick={onClose} className="btn-ghost !p-1.5">
+          <button
+            type="button"
+            aria-label={t("Close")}
+            onClick={onClose}
+            className="btn-ghost !p-1.5"
+          >
             <XIcon size={16} />
           </button>
         </div>
@@ -315,7 +323,7 @@ export default function AddInventoryModal({
           {/* Stock type — builtin + custom, with "+ New type" */}
           <div>
             <label className="block text-[10px] font-bold uppercase tracking-wider text-muted mb-1.5">
-              Stock type
+              {t("Stock type")}
             </label>
             <div className="grid grid-cols-3 gap-2">
               {BUILTIN_TABS.map(({ key, label, icon: Icon }) => {
@@ -342,14 +350,14 @@ export default function AddInventoryModal({
 
           {/* Warehouse — with inline create */}
           <InlineCreateSelect
-            label="Warehouse"
+            label={t("Warehouse")}
             value={branchId}
             onChange={setBranchId}
-            placeholder="Unassigned"
-            newPlaceholder="New warehouse name…"
+            placeholder={t("Unassigned")}
+            newPlaceholder={t("New warehouse name…")}
             options={branches.map((b: any) => ({
               value: b.id,
-              label: `${b.name}${b.is_main_branch ? " (Main)" : ""}`,
+              label: `${b.name}${b.is_main_branch ? t(" (Main)") : ""}`,
             }))}
             onCreate={createBranch}
           />
@@ -357,11 +365,11 @@ export default function AddInventoryModal({
           {/* Variety — palay + milled, with inline create */}
           {needsVariety && (
             <InlineCreateSelect
-              label="Variety"
+              label={t("Variety")}
               value={varietyId}
               onChange={setVarietyId}
-              placeholder="Select a variety…"
-              newPlaceholder="New variety (e.g. RC222 — Tubigan)…"
+              placeholder={t("Select a variety…")}
+              newPlaceholder={t("New variety (e.g. RC222 — Tubigan)…")}
               options={varieties.map((v: any) => ({ value: v.id, label: `${v.code} — ${v.name}` }))}
               onCreate={createVariety}
             />
@@ -370,12 +378,12 @@ export default function AddInventoryModal({
           {/* Grade */}
           {type === "palay" && (
             <InlineCreateSelect
-              label="Grade"
+              label={t("Grade")}
               optional
               value={gradeId}
               onChange={setGradeId}
-              placeholder="No grade"
-              newPlaceholder="New grade code (e.g. Grade A)…"
+              placeholder={t("No grade")}
+              newPlaceholder={t("New grade code (e.g. Grade A)…")}
               options={grades.map((g: any) => ({ value: g.id, label: g.code }))}
               onCreate={createGrade}
             />
@@ -383,10 +391,10 @@ export default function AddInventoryModal({
           {type === "milled_rice" && (
             <div>
               <label className="block text-[10px] font-bold uppercase tracking-wider text-muted mb-1">
-                Grade
+                {t("Grade")}
               </label>
               <Select
-                aria-label="Grade"
+                aria-label={t("Grade")}
                 className="w-full text-sm capitalize"
                 value={gradeName}
                 onChange={setGradeName}
@@ -398,10 +406,10 @@ export default function AddInventoryModal({
           {/* By-product — with inline create */}
           {type === "byproduct" && (
             <InlineCreateSelect
-              label="By-product"
+              label={t("By-product")}
               value={byproductType}
               onChange={setByproductType}
-              newPlaceholder="New by-product name…"
+              newPlaceholder={t("New by-product name…")}
               options={byproductOptions}
               onCreate={createByproduct}
             />
@@ -410,7 +418,7 @@ export default function AddInventoryModal({
           {/* Quantity + unit selector + add custom unit */}
           <div>
             <label className="block text-[10px] font-bold uppercase tracking-wider text-muted mb-1">
-              Quantity
+              {t("Quantity")}
             </label>
             <div className="flex items-center gap-1.5">
               <input
@@ -424,7 +432,7 @@ export default function AddInventoryModal({
                 onChange={(e) => setQuantity(e.target.value)}
               />
               <Select
-                aria-label="Unit"
+                aria-label={t("Unit")}
                 className="text-sm shrink-0 max-w-[44%]"
                 value={unitCode}
                 onChange={setUnitCode}
@@ -432,7 +440,7 @@ export default function AddInventoryModal({
               />
               <button
                 type="button"
-                title="Add a unit"
+                title={t("Add a unit")}
                 onClick={() => setAddingUnit((v) => !v)}
                 className="shrink-0 p-2 rounded-lg btn-secondary"
               >
@@ -443,7 +451,7 @@ export default function AddInventoryModal({
               <div className="mt-2 flex items-center gap-1.5 p-2 rounded-lg ring-1 ring-emerald-300 bg-emerald-500/5">
                 <input
                   className="input w-full text-sm"
-                  placeholder="Unit name (e.g. Drum)"
+                  placeholder={t("Unit name (e.g. Drum)")}
                   value={newUnitLabel}
                   onChange={(e) => setNewUnitLabel(e.target.value)}
                 />
@@ -462,14 +470,16 @@ export default function AddInventoryModal({
                   onClick={addUnit}
                   disabled={!newUnitLabel.trim() || !(Number(newUnitKg) > 0)}
                   className="shrink-0 p-2 rounded-lg bg-emerald-500 text-white disabled:opacity-50"
-                  title="Save unit"
+                  title={t("Save unit")}
                 >
                   <Check size={14} />
                 </button>
               </div>
             )}
             {qtyValid && unit.code !== "kg" && (
-              <p className="text-[11px] text-muted mt-1 tabular-nums">= {kg.toLocaleString()} kg</p>
+              <p className="text-[11px] text-muted mt-1 tabular-nums">
+                {t("= {{kg}} kg", { kg: kg.toLocaleString() })}
+              </p>
             )}
           </div>
 
@@ -484,14 +494,14 @@ export default function AddInventoryModal({
 
           <div className="flex flex-wrap items-center justify-end gap-2 pt-1 border-t border-soft -mx-5 px-5 -mb-5 py-3 mt-4 sticky bottom-0 bg-[rgb(var(--surface-raised))]">
             <button type="button" onClick={onClose} className="btn-secondary !py-1.5 !px-3 text-sm">
-              Cancel
+              {t("Cancel")}
             </button>
             <button
               type="submit"
               disabled={!formValid || mutation.isPending}
               className="btn-primary !py-1.5 !px-3 text-sm disabled:opacity-50"
             >
-              {mutation.isPending ? "Adding…" : "Add stock"}
+              {mutation.isPending ? t("Adding…") : t("Add stock")}
             </button>
           </div>
         </form>

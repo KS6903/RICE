@@ -6,6 +6,8 @@ import { authService } from "../services/AuthService";
 import { useAuthStore } from "../stores/authStore";
 import ConfirmDialog from "./ConfirmDialog";
 import PasswordInput from "./PasswordInput";
+import { t } from "../i18n";
+import { tx } from "../i18n/tx";
 
 type Mode = "pause" | "delete";
 
@@ -64,12 +66,16 @@ export default function AccountClosureCard() {
   return (
     <div className="card space-y-4 ring-1 ring-inset ring-rose-500/20">
       <div>
-        <h3 className="text-lg font-bold text-primary">Close the mill&apos;s account</h3>
+        <h3 className="text-lg font-bold text-primary">{t("Close the mill's account")}</h3>
         <p className="text-sm text-secondary">
-          <strong>Pause</strong> it to stop everyone using it for a while. Nothing is deleted, and
-          you switch it back on when you next sign in. Or ask Oraiza to <strong>delete</strong> it:
-          for {days} days you can still sign in to download your data or change your mind, and after
-          that Oraiza deletes the mill&apos;s records.
+          {tx(
+            "{{pause}} it to stop everyone using it for a while. Nothing is deleted, and you switch it back on when you next sign in. Or ask Oraiza to {{remove}} it: for {{days}} days you can still sign in to download your data or change your mind, and after that Oraiza deletes the mill's records.",
+            {
+              pause: <strong>{t("Pause")}</strong>,
+              remove: <strong>{t("delete")}</strong>,
+              days,
+            },
+          )}
         </p>
       </div>
 
@@ -80,7 +86,7 @@ export default function AccountClosureCard() {
         >
           <AlertTriangle size={16} className="mt-0.5 shrink-0 text-amber-600" aria-hidden />
           <div className="space-y-1 text-sm text-amber-800 dark:text-amber-200">
-            <p className="font-semibold">Before you can close the account:</p>
+            <p className="font-semibold">{t("Before you can close the account:")}</p>
             <ul className="list-disc space-y-0.5 pl-4">
               {blockers.map((b) => (
                 <li key={b.code}>{b.message}</li>
@@ -97,7 +103,7 @@ export default function AccountClosureCard() {
           disabled={!info || blockers.length > 0}
           onClick={() => open("pause")}
         >
-          <PauseCircle size={15} aria-hidden /> Pause account
+          <PauseCircle size={15} aria-hidden /> {t("Pause account")}
         </button>
         <button
           type="button"
@@ -105,7 +111,7 @@ export default function AccountClosureCard() {
           disabled={!info || blockers.length > 0}
           onClick={() => open("delete")}
         >
-          <Trash2 size={15} aria-hidden /> Delete account
+          <Trash2 size={15} aria-hidden /> {t("Delete account")}
         </button>
       </div>
 
@@ -113,21 +119,28 @@ export default function AccountClosureCard() {
         open={mode !== null}
         danger
         busy={close.isPending || !ready}
-        title={mode === "delete" ? "Delete the mill's account?" : "Pause the mill's account?"}
-        confirmLabel={mode === "delete" ? "Ask to delete it" : "Pause it"}
+        title={mode === "delete" ? t("Delete the mill's account?") : t("Pause the mill's account?")}
+        confirmLabel={mode === "delete" ? t("Ask to delete it") : t("Pause it")}
         onCancel={() => setMode(null)}
         onConfirm={() => mode && close.mutate(mode)}
       >
         <div className="space-y-3">
           <p>
             {mode === "delete"
-              ? `Everyone is signed out and nobody else can sign in. For ${days} days you can sign in to download your data or take the request back; after that Oraiza deletes the mill's records.`
-              : "Everyone is signed out and nobody else can sign in until you switch the account back on. Nothing is deleted."}
+              ? t(
+                  "Everyone is signed out and nobody else can sign in. For {{days}} days you can sign in to download your data or take the request back; after that Oraiza deletes the mill's records.",
+                  { days },
+                )
+              : t(
+                  "Everyone is signed out and nobody else can sign in until you switch the account back on. Nothing is deleted.",
+                )}
           </p>
           {mode === "delete" && (
             <div>
               <label htmlFor="close-name" className="form-label">
-                Type the mill&apos;s name, <strong>{info?.company_name}</strong>, to confirm
+                {tx("Type the mill's name, {{name}}, to confirm", {
+                  name: <strong>{info?.company_name}</strong>,
+                })}
               </label>
               <input
                 id="close-name"
@@ -140,7 +153,7 @@ export default function AccountClosureCard() {
           )}
           <div>
             <label htmlFor="close-password" className="form-label">
-              Your password
+              {t("Your password")}
             </label>
             <PasswordInput
               id="close-password"
@@ -152,7 +165,7 @@ export default function AccountClosureCard() {
           {user?.mfa_enabled && (
             <div>
               <label htmlFor="close-code" className="form-label">
-                Authenticator code
+                {t("Authenticator code")}
               </label>
               <input
                 id="close-code"
@@ -167,7 +180,7 @@ export default function AccountClosureCard() {
           )}
           {close.isError && (
             <p className="font-medium text-rose-600 dark:text-rose-400">
-              {(close.error as any)?.response?.data?.detail || "Couldn't close the account."}
+              {(close.error as any)?.response?.data?.detail || t("Couldn't close the account.")}
             </p>
           )}
         </div>

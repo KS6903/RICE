@@ -28,6 +28,8 @@ import { useCurrentPlan } from "../hooks/useFeature";
 import { useAccess } from "../hooks/useAccess";
 import { mediaUrl } from "../utils/media";
 import { redirectTo } from "../utils/redirect";
+import { t } from "../i18n";
+import { tx } from "../i18n/tx";
 
 const LABEL = "block text-sm font-semibold text-secondary mb-1.5";
 
@@ -75,11 +77,11 @@ function CopyButton({ text, label }: { text: string; label: string }) {
     >
       {copied ? (
         <>
-          <Check size={12} className="text-emerald-600" /> Copied
+          <Check size={12} className="text-emerald-600" /> {t("Copied")}
         </>
       ) : (
         <>
-          <Copy size={12} /> Copy
+          <Copy size={12} /> {t("Copy")}
         </>
       )}
     </button>
@@ -161,13 +163,13 @@ export default function CheckoutPage() {
     typeof (submit.error as any)?.response?.data?.detail === "string"
       ? (submit.error as any).response.data.detail
       : submit.isError
-        ? "The request could not be sent. Try again."
+        ? t("The request could not be sent. Try again.")
         : null;
   const onlineError =
     typeof (payOnline.error as any)?.response?.data?.detail === "string"
       ? (payOnline.error as any).response.data.detail
       : payOnline.isError
-        ? "The payment page could not be opened. Try again."
+        ? t("The payment page could not be opened. Try again.")
         : null;
 
   const header = (
@@ -176,8 +178,8 @@ export default function CheckoutPage() {
         <CreditCard size={20} className="text-white" />
       </div>
       <div>
-        <h2 className="text-2xl font-bold tracking-tight text-primary">Checkout</h2>
-        <p className="text-sm text-secondary">Pay for your plan</p>
+        <h2 className="text-2xl font-bold tracking-tight text-primary">{t("Checkout")}</h2>
+        <p className="text-sm text-secondary">{t("Pay for your plan")}</p>
       </div>
     </div>
   );
@@ -187,7 +189,7 @@ export default function CheckoutPage() {
       to="/settings"
       className="inline-flex items-center gap-1.5 text-sm font-semibold text-secondary hover:text-primary"
     >
-      <ArrowLeft size={15} /> Back to Billing
+      <ArrowLeft size={15} /> {t("Back to Billing")}
     </Link>
   );
 
@@ -199,7 +201,7 @@ export default function CheckoutPage() {
         <h3 className="text-lg font-bold text-primary">{title}</h3>
         <div className="text-sm text-secondary mt-1.5">{body}</div>
         <Link to="/settings" className="btn-secondary mt-4 inline-flex">
-          Back to Billing
+          {t("Back to Billing")}
         </Link>
       </div>
     </div>
@@ -211,7 +213,7 @@ export default function CheckoutPage() {
         {backLink}
         {header}
         <div className="card flex items-center gap-2 text-sm text-secondary">
-          <Loader2 size={15} className="animate-spin" /> Loading the plan…
+          <Loader2 size={15} className="animate-spin" /> {t("Loading the plan…")}
         </div>
       </div>
     );
@@ -223,14 +225,20 @@ export default function CheckoutPage() {
         {header}
         <div className="card max-w-xl text-center py-8">
           <CheckCircle2 size={40} className="mx-auto text-emerald-500" />
-          <h3 className="text-xl font-bold text-primary mt-3">Request sent</h3>
+          <h3 className="text-xl font-bold text-primary mt-3">{t("Request sent")}</h3>
           <p className="text-sm text-secondary mt-1.5">
             {paymentReady
-              ? `We'll check your payment and turn on ${plan?.name} once it's confirmed. You'll get an email when it's done.`
-              : `We'll contact you about payment for ${plan?.name}. You'll get an email when the plan is turned on.`}
+              ? t(
+                  "We'll check your payment and turn on {{plan}} once it's confirmed. You'll get an email when it's done.",
+                  { plan: plan?.name },
+                )
+              : t(
+                  "We'll contact you about payment for {{plan}}. You'll get an email when the plan is turned on.",
+                  { plan: plan?.name },
+                )}
           </p>
           <button onClick={() => navigate("/settings")} className="btn-primary mt-5">
-            Back to Billing
+            {t("Back to Billing")}
           </button>
         </div>
       </div>
@@ -239,22 +247,27 @@ export default function CheckoutPage() {
 
   if (!canRequest) {
     return notice(
-      "Only the Boss or an admin can change the plan",
-      "Ask the mill's owner to pick a plan in Settings.",
+      t("Only the Boss or an admin can change the plan"),
+      t("Ask the mill's owner to pick a plan in Settings."),
     );
   }
   if (!plan || plan.code === "free") {
-    return notice("That plan isn't available", "Pick a plan again from the list in Billing.");
+    return notice(t("That plan isn't available"), t("Pick a plan again from the list in Billing."));
   }
   if (current?.code === plan.code) {
-    return notice(`You're already on ${plan.name}`, "There's nothing to pay for this plan.");
+    return notice(
+      t("You're already on {{name}}", { name: plan.name }),
+      t("There's nothing to pay for this plan."),
+    );
   }
   if (pending) {
     return notice(
-      "You already have a request waiting",
+      t("You already have a request waiting"),
       <>
-        Your request for <span className="font-semibold">{pending.requested_plan_name}</span> is
-        still waiting for approval. Cancel it in Billing first to pick another plan.
+        {tx(
+          "Your request for {{plan}} is still waiting for approval. Cancel it in Billing first to pick another plan.",
+          { plan: <span className="font-semibold">{pending.requested_plan_name}</span> },
+        )}
       </>,
     );
   }
@@ -275,18 +288,18 @@ export default function CheckoutPage() {
       {cancelled && (
         <div className="flex gap-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 ring-1 ring-slate-200 dark:ring-slate-700 px-4 py-3 text-sm text-secondary">
           <XCircle size={16} className="shrink-0 mt-0.5" />
-          The payment was cancelled and nothing was charged. You can try again below.
+          {t("The payment was cancelled and nothing was charged. You can try again below.")}
         </div>
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 items-start">
         <div className="lg:col-span-3 space-y-6">
           {anyOnline && (
-            <section className="card space-y-4" aria-label="Pay online">
+            <section className="card space-y-4" aria-label={t("Pay online")}>
               <div>
-                <h3 className="text-lg font-bold text-primary">Pay online</h3>
+                <h3 className="text-lg font-bold text-primary">{t("Pay online")}</h3>
                 <p className="text-sm text-secondary mt-0.5">
-                  Your plan turns on as soon as the payment goes through.
+                  {t("Your plan turns on as soon as the payment goes through.")}
                 </p>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -303,10 +316,10 @@ export default function CheckoutPage() {
                       ) : (
                         <Wallet size={16} />
                       )}
-                      Pay {peso(price)}
+                      {t("Pay {{price}}", { price: peso(price) })}
                     </span>
                     <span className="text-xs font-medium opacity-90">
-                      GCash, Maya, QR Ph, card or online banking
+                      {t("GCash, Maya, QR Ph, card or online banking")}
                     </span>
                   </button>
                 )}
@@ -323,10 +336,10 @@ export default function CheckoutPage() {
                       ) : (
                         <Globe size={16} />
                       )}
-                      Pay {dollars(usdPrice)} USD
+                      {t("Pay")} {dollars(usdPrice)} {t("USD")}
                     </span>
                     <span className="text-xs font-medium text-secondary">
-                      From abroad: PayPal or card, in US dollars
+                      {t("From abroad: PayPal or card, in US dollars")}
                     </span>
                   </button>
                 )}
@@ -338,26 +351,29 @@ export default function CheckoutPage() {
               )}
               <p className="flex items-start gap-1.5 text-xs text-muted">
                 <Lock size={14} className="shrink-0 mt-px" />
-                You'll pay on{" "}
+                {t("You'll pay on")}{" "}
                 {online.paymongo && offerPaypal
-                  ? "PayMongo's or PayPal's"
+                  ? t("PayMongo's or PayPal's")
                   : online.paymongo
-                    ? "PayMongo's"
-                    : "PayPal's"}{" "}
-                secure page, then come back here. Card details never reach us.
+                    ? t("PayMongo's")
+                    : t("PayPal's")}{" "}
+                {t("secure page, then come back here. Card details never reach us.")}
               </p>
             </section>
           )}
 
-          <section className="card space-y-5" aria-label="Payment">
+          <section className="card space-y-5" aria-label={t("Payment")}>
             <div>
               <h3 className="text-lg font-bold text-primary">
-                {anyOnline ? "Or pay by bank transfer" : "Pay by bank transfer"}
+                {anyOnline ? t("Or pay by bank transfer") : t("Pay by bank transfer")}
               </h3>
               <p className="text-sm text-secondary mt-0.5">
                 {paymentReady
-                  ? `Send ${peso(price)} to this account, then enter the reference from your receipt.`
-                  : `Total to pay: ${peso(price)}.`}
+                  ? t(
+                      "Send {{price}} to this account, then enter the reference from your receipt.",
+                      { price: peso(price) },
+                    )
+                  : t("Total to pay: {{price}}.", { price: peso(price) })}
               </p>
             </div>
 
@@ -372,23 +388,23 @@ export default function CheckoutPage() {
                     <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5 text-sm items-center">
                       {plan.payment_account_name && (
                         <>
-                          <dt className="text-secondary">Account name</dt>
+                          <dt className="text-secondary">{t("Account name")}</dt>
                           <dd className="font-semibold text-primary">
                             {plan.payment_account_name}
                           </dd>
                         </>
                       )}
-                      <dt className="text-secondary">Account number</dt>
+                      <dt className="text-secondary">{t("Account number")}</dt>
                       <dd className="flex items-center gap-2 flex-wrap">
                         <span className="font-semibold text-primary font-mono">
                           {plan.payment_account_number}
                         </span>
                         <CopyButton
                           text={(plan.payment_account_number ?? "").replace(/\s+/g, "")}
-                          label="Copy account number"
+                          label={t("Copy account number")}
                         />
                       </dd>
-                      <dt className="text-secondary">Amount</dt>
+                      <dt className="text-secondary">{t("Amount")}</dt>
                       <dd className="font-semibold text-primary">{peso(price)}</dd>
                     </dl>
                   </div>
@@ -396,7 +412,7 @@ export default function CheckoutPage() {
                     <div className="sm:w-44 shrink-0 text-center">
                       <img
                         src={mediaUrl(plan.payment_qr_key)}
-                        alt={`QR code to pay ${plan.payment_bank ?? ""}`}
+                        alt={t("QR code to pay {{bank}}", { bank: plan.payment_bank ?? "" })}
                         className="w-44 h-44 mx-auto rounded-lg border border-slate-200 dark:border-slate-700 object-contain bg-white"
                       />
                       <a
@@ -404,32 +420,36 @@ export default function CheckoutPage() {
                         download={`oraiza-${plan.code}-qr`}
                         className="mt-2 inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-700 dark:text-emerald-400 hover:underline"
                       >
-                        <Download size={13} /> Save QR code
+                        <Download size={13} /> {t("Save QR code")}
                       </a>
                       <p className="text-[11px] text-muted mt-0.5">
-                        Scan it, or save it and open it in your bank or e-wallet app.
+                        {t("Scan it, or save it and open it in your bank or e-wallet app.")}
                       </p>
                     </div>
                   )}
                 </div>
                 <p className="text-xs text-muted mt-3">
-                  Pay from any bank or e-wallet (GCash, Maya and others) through InstaPay or
-                  PESONet, or deposit over the counter.
+                  {t(
+                    "Pay from any bank or e-wallet (GCash, Maya and others) through InstaPay or PESONet, or deposit over the counter.",
+                  )}
                 </p>
               </div>
             ) : (
               <div className="flex gap-2.5 rounded-xl bg-amber-50 dark:bg-amber-950/30 ring-1 ring-amber-200 dark:ring-amber-800 px-4 py-3 text-sm text-amber-900 dark:text-amber-200">
                 <Clock size={16} className="shrink-0 mt-0.5" />
                 <span>
-                  Payment details for {plan.name} are coming soon. You can send your request now and
-                  we'll contact you about how to pay.
+                  {t(
+                    "Payment details for {{name}} are coming soon. You can send your request now and we'll contact you about how to pay.",
+                    { name: plan.name },
+                  )}
                 </span>
               </div>
             )}
 
             <div>
               <label htmlFor="payment-reference" className={LABEL}>
-                Payment reference{!needsReference && " (optional)"}
+                {t("Payment reference")}
+                {!needsReference && t(" (optional)")}
               </label>
               <input
                 id="payment-reference"
@@ -441,7 +461,7 @@ export default function CheckoutPage() {
                 placeholder="e.g. 1234567890123"
               />
               <p className="text-xs text-muted mt-1">
-                The reference or confirmation number on your transfer receipt
+                {t("The reference or confirmation number on your transfer receipt")}
               </p>
             </div>
 
@@ -460,26 +480,27 @@ export default function CheckoutPage() {
             >
               {submit.isPending ? (
                 <>
-                  <Loader2 size={14} className="animate-spin" /> Sending…
+                  <Loader2 size={14} className="animate-spin" /> {t("Sending…")}
                 </>
               ) : paymentReady ? (
-                "I've paid, send for confirmation"
+                t("I've paid, send for confirmation")
               ) : (
-                "Send request"
+                t("Send request")
               )}
             </button>
             <p className="flex items-start gap-1.5 text-xs text-muted">
               <ShieldCheck size={14} className="shrink-0 mt-px" />
-              We check bank transfers by hand. Your plan changes once the payment is confirmed, and
-              you'll get an email either way.
+              {t(
+                "We check bank transfers by hand. Your plan changes once the payment is confirmed, and you'll get an email either way.",
+              )}
             </p>
           </section>
         </div>
 
-        <aside className="card lg:col-span-2 space-y-4" aria-label="Order summary">
-          <h3 className="text-lg font-bold text-primary">Order summary</h3>
+        <aside className="card lg:col-span-2 space-y-4" aria-label={t("Order summary")}>
+          <h3 className="text-lg font-bold text-primary">{t("Order summary")}</h3>
 
-          <div className="seg w-full" role="group" aria-label="Billing interval">
+          <div className="seg w-full" role="group" aria-label={t("Billing interval")}>
             {(["monthly", "annual"] as const).map((iv) => (
               <button
                 key={iv}
@@ -488,19 +509,22 @@ export default function CheckoutPage() {
                 aria-pressed={interval === iv}
                 className={`seg-btn flex-1 ${interval === iv ? "is-active" : ""}`}
               >
-                {iv === "monthly" ? "Monthly" : "Annual"}
+                {iv === "monthly" ? t("Monthly") : t("Annual")}
               </button>
             ))}
           </div>
 
           <div className="flex items-start justify-between gap-3">
             <div>
-              <p className="font-bold text-primary">{plan.name} plan</p>
+              <p className="font-bold text-primary">{t("{{name}} plan", { name: plan.name })}</p>
               <p className="text-xs text-secondary mt-0.5">
-                {plan.max_users ? `${plan.max_users} users` : "Unlimited users"} ·{" "}
+                {plan.max_users
+                  ? t("{{count}} users", { count: plan.max_users })
+                  : t("Unlimited users")}{" "}
+                ·{" "}
                 {plan.max_branches
-                  ? `${plan.max_branches} ${plan.max_branches === 1 ? "warehouse" : "warehouses"}`
-                  : "Unlimited warehouses"}
+                  ? t("{{count}} warehouses", { count: plan.max_branches })
+                  : t("Unlimited warehouses")}
               </p>
             </div>
             <p className="font-semibold text-primary whitespace-nowrap">{peso(price)}</p>
@@ -510,19 +534,19 @@ export default function CheckoutPage() {
             <ul className="text-sm text-secondary space-y-1">
               <li className="flex items-center gap-1.5">
                 <Check size={14} className="text-emerald-500 shrink-0" />
-                {plan.features.length} features included
+                {t("{{featuresCount}} features included", { featuresCount: plan.features.length })}
               </li>
               {current && (
                 <li className="flex items-center gap-1.5">
                   <Check size={14} className="text-emerald-500 shrink-0" />
-                  Replaces {current.name}
+                  {t("Replaces {{name}}", { name: current.name })}
                 </li>
               )}
             </ul>
           )}
 
           <div className="border-t border-slate-200 dark:border-slate-700 pt-3 flex items-baseline justify-between">
-            <span className="text-sm font-semibold text-secondary">Total due</span>
+            <span className="text-sm font-semibold text-secondary">{t("Total due")}</span>
             <span className="text-2xl font-extrabold text-primary">
               {peso(price)}
               <span className="text-sm font-semibold text-secondary">
@@ -532,19 +556,21 @@ export default function CheckoutPage() {
           </div>
           {savingsPct > 0 && (
             <p className="text-xs font-bold text-emerald-600 dark:text-emerald-400 -mt-2 text-right">
-              Save {savingsPct}% vs monthly
+              {t("Save {{savingsPct}}% vs monthly", { savingsPct })}
             </p>
           )}
           {offerPaypal && (
             <p className="text-xs text-secondary -mt-2 text-right">
-              or {dollars(usdPrice)} USD through PayPal
+              {t("or")} {dollars(usdPrice)} {t("USD through PayPal")}
             </p>
           )}
           {isOnPaidPlan && (
             <p className="text-xs text-secondary">
               {anyOnline
-                ? "Paid online, the new plan starts right away. By bank transfer, it starts when your current billing period ends."
-                : "The new plan takes effect at the end of your current billing period."}
+                ? t(
+                    "Paid online, the new plan starts right away. By bank transfer, it starts when your current billing period ends.",
+                  )
+                : t("The new plan takes effect at the end of your current billing period.")}
             </p>
           )}
         </aside>

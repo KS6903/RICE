@@ -4,11 +4,12 @@
 // keeps their names here. Records keep a by-product's code, so a code with no
 // name yet reads as itself: "darak_d1" → "Darak d1".
 import type { ByproductKind } from "../services/ByproductKindService";
+import { t } from "../i18n";
 
 export const BYPRODUCT_NAMES: Record<string, string> = {
-  ipa: "Ipa (Rice Hull)",
-  darak: "Darak (Rice Bran)",
-  binlid: "Binlid (Broken Rice)",
+  ipa: t("Ipa (Rice Hull)"),
+  darak: t("Darak (Rice Bran)"),
+  binlid: t("Binlid (Broken Rice)"),
 };
 
 const added: Record<string, string> = {};

@@ -9,6 +9,7 @@ import type { HourlyForecast } from "../hooks/useWeather";
 import type { DryingVerdict } from "../utils/dryingAdvice";
 import AiSunIcon from "./AiSunIcon";
 import { AiCloudDrizzleIcon, AiCloudRainIcon } from "./AiCloudIcon";
+import { t } from "../i18n";
 
 /** Every drying-advice icon carries "AI", whatever the weather. */
 const VERDICT_ICON: Record<DryingVerdict, React.ElementType> = {
@@ -32,10 +33,9 @@ const VERDICT_STYLES: Record<DryingVerdict, { box: string; icon: string }> = {
   },
 };
 
-const CAVEAT =
-  "Worked out from third-party weather forecasts. It can be wrong or out of date, and it isn't " +
-  "agronomic advice. Check the actual weather before laying out or moving palay. See the Terms " +
-  "of Service.";
+const CAVEAT = t(
+  "Worked out from third-party weather forecasts. It can be wrong or out of date, and it isn't agronomic advice. Check the actual weather before laying out or moving palay. See the Terms of Service.",
+);
 
 const TOOLTIP_WIDTH = 260;
 const VIEWPORT_MARGIN = 12;
@@ -82,7 +82,7 @@ function CaveatTooltip() {
         onFocus={show}
         onBlur={hide}
         className="shrink-0 opacity-60 hover:opacity-100 focus:opacity-100"
-        aria-label="About this advice"
+        aria-label={t("About this advice")}
         data-testid="drying-advisor-info"
       >
         <Info size={15} />
@@ -124,7 +124,7 @@ export default function DryingAdvisor({
         data-testid="drying-advisor-upsell"
       >
         <Lock size={16} className="shrink-0 text-amber-500" />
-        Palay drying advice comes with the Basic plan and up.
+        {t("Palay drying advice comes with the Basic plan and up.")}
       </p>
     );
   }

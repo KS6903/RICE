@@ -7,6 +7,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Pencil, Plus } from "lucide-react";
 import { maintenanceService, type Machine } from "../../services/MaintenanceService";
 import { AddMachine, errorText } from "../../pages/MaintenancePage";
+import { currentLocale, t } from "../../i18n";
 
 const TABLE_HEAD =
   "px-4 py-3 text-left text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400";
@@ -23,12 +24,16 @@ type IntervalEdit = {
 /** "500 running hours or 30 days": whichever comes first. */
 const every = (m: Machine) =>
   [
-    m.every_hours && `${m.every_hours.toLocaleString()} running hours`,
-    m.every_tonnes && `${m.every_tonnes.toLocaleString()} tonnes milled`,
-    m.every_days && `${m.every_days.toLocaleString()} days`,
-  ]
-    .filter(Boolean)
-    .join(" or ");
+    m.every_hours &&
+      t("{{every_hours}} running hours", { every_hours: m.every_hours.toLocaleString() }),
+    m.every_tonnes &&
+      t("{{every_tonnes}} tonnes milled", { every_tonnes: m.every_tonnes.toLocaleString() }),
+    m.every_days && t("{{every_days}} days", { every_days: m.every_days.toLocaleString() }),
+  ].filter(Boolean) as string[];
+
+/** "500 running hours or 30 days", with the language's own "or". */
+const everyText = (m: Machine) =>
+  new Intl.ListFormat(currentLocale(), { type: "disjunction" }).format(every(m));
 
 const digits = (v: string) => v.replace(/[^\d.]/g, "");
 const numberOrNull = (v: string) => (v ? Number(v) : null);
@@ -83,14 +88,15 @@ export function ServiceIntervalsList() {
   return (
     <div className="space-y-4">
       <p className="text-sm text-secondary">
-        Use the manufacturer's intervals, in running hours, tonnes of palay milled or days; the
-        machine is due at whichever comes first. Record each service on the Maintenance page.
+        {t(
+          "Use the manufacturer's intervals, in running hours, tonnes of palay milled or days; the machine is due at whichever comes first. Record each service on the Maintenance page.",
+        )}
       </p>
       {!adding && (
         <div className="flex justify-end">
           <button type="button" className="btn-primary" onClick={() => setAdding(true)}>
             <Plus size={16} aria-hidden />
-            Add a machine
+            {t("Add a machine")}
           </button>
         </div>
       )}
@@ -100,14 +106,14 @@ export function ServiceIntervalsList() {
         <div className="card skeleton h-40" aria-busy="true" />
       ) : list.isError ? (
         <p className="card text-secondary">
-          {errorText(list.error, "The machines couldn't load. Try again in a moment.")}
+          {errorText(list.error, t("The machines couldn't load. Try again in a moment."))}
         </p>
       ) : (
         <div className="card overflow-hidden p-0">
           <table className="w-full text-sm">
             <thead className="bg-gradient-to-r from-emerald-50/80 via-cyan-50/60 to-violet-50/80 dark:from-emerald-900/20 dark:via-cyan-900/10 dark:to-violet-900/20 border-b border-soft">
               <tr>
-                {["Machine", "Service every", "Status", ""].map((h) => (
+                {[t("Machine"), t("Service every"), t("Status"), ""].map((h) => (
                   <th key={h} className={TABLE_HEAD}>
                     {h}
                   </th>
@@ -121,7 +127,7 @@ export function ServiceIntervalsList() {
                     <td className="px-4 py-2.5 align-top">
                       <input
                         className="input"
-                        aria-label="Machine name"
+                        aria-label={t("Machine name")}
                         maxLength={120}
                         value={editing.name}
                         onChange={(e) => setEditing({ ...editing, name: e.target.value })}
@@ -129,13 +135,13 @@ export function ServiceIntervalsList() {
                     </td>
                     <td className="px-4 py-2.5 align-top">
                       <div className="flex flex-wrap items-center gap-2 text-xs text-secondary">
-                        {intervalInput("hours", "Every (running hours)")} hours
-                        {intervalInput("tonnes", "Every (tonnes of palay milled)")} tonnes
-                        {intervalInput("days", "Every (days)")} days
+                        {intervalInput("hours", t("Every (running hours)"))} {t("hours")}
+                        {intervalInput("tonnes", t("Every (tonnes of palay milled)"))} {t("tonnes")}
+                        {intervalInput("days", t("Every (days)"))} {t("days")}
                       </div>
                       {save.isError && (
                         <p className="mt-1 text-xs font-medium text-rose-600 dark:text-rose-400">
-                          {errorText(save.error, "Couldn't save the machine.")}
+                          {errorText(save.error, t("Couldn't save the machine."))}
                         </p>
                       )}
                     </td>
@@ -147,7 +153,7 @@ export function ServiceIntervalsList() {
                           checked={editing.inUse}
                           onChange={(e) => setEditing({ ...editing, inUse: e.target.checked })}
                         />
-                        In use
+                        {t("In use")}
                       </label>
                     </td>
                     <td className="px-4 py-2.5 align-top">
@@ -157,7 +163,7 @@ export function ServiceIntervalsList() {
                           onClick={() => setEditing(null)}
                           className="btn-secondary"
                         >
-                          Cancel
+                          {t("Cancel")}
                         </button>
                         <button
                           type="button"
@@ -169,7 +175,7 @@ export function ServiceIntervalsList() {
                             !(editing.hours || editing.tonnes || editing.days)
                           }
                         >
-                          {save.isPending ? "Saving…" : "Save"}
+                          {save.isPending ? t("Saving…") : t("Save")}
                         </button>
                       </div>
                     </td>
@@ -182,24 +188,24 @@ export function ServiceIntervalsList() {
                     }`}
                   >
                     <td className="px-4 py-3 font-semibold text-primary">{m.name}</td>
-                    <td className="px-4 py-3 text-secondary">{every(m)}</td>
+                    <td className="px-4 py-3 text-secondary">{everyText(m)}</td>
                     <td className="px-4 py-3">
                       {m.is_active ? (
-                        <span className="badge-green">In use</span>
+                        <span className="badge-green">{t("In use")}</span>
                       ) : (
-                        <span className="badge-gray">Not in use</span>
+                        <span className="badge-gray">{t("Not in use")}</span>
                       )}
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex justify-end">
                         <button
                           type="button"
-                          aria-label={`Edit ${m.name}`}
+                          aria-label={t("Edit {{name}}", { name: m.name })}
                           onClick={() => startEdit(m)}
                           className="text-xs font-semibold inline-flex items-center gap-1 text-secondary hover:text-primary"
                         >
                           <Pencil size={12} />
-                          Edit
+                          {t("Edit")}
                         </button>
                       </div>
                     </td>
@@ -209,7 +215,7 @@ export function ServiceIntervalsList() {
               {machines.length === 0 && (
                 <tr>
                   <td colSpan={4} className="px-4 py-8 text-center text-muted font-medium">
-                    No machines yet. Add your huller, polisher, dryer or engine.
+                    {t("No machines yet. Add your huller, polisher, dryer or engine.")}
                   </td>
                 </tr>
               )}

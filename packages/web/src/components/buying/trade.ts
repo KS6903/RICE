@@ -1,6 +1,7 @@
 // The three Buy & mill pages (palay, rice, by-products) share one layout:
 // purchases on the left, sales on the right. What differs per page lives here.
 import { byproductLabel } from "../../mappers/byproductNames";
+import { t } from "../../i18n";
 
 export type TradeKind = "palay" | "rice" | "byproduct";
 
@@ -28,7 +29,7 @@ export const saleLineName = (line: any) =>
   line.item_type === "byproduct"
     ? byproductName(line.byproduct_type)
     : [
-        line.variety_code || line.variety_name || "Any variety",
+        line.variety_code || line.variety_name || t("Any variety"),
         line.grade_name && gradeLabel(line.grade_name),
       ]
         .filter(Boolean)

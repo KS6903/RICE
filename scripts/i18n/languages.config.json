@@ -1,0 +1,59 @@
+{
+  "$comment": "Read by translate.mjs. groups: languages listed first in the picker, under that heading. names: how a language is called, where Google's name isn't the one people use. keep: words never translated (names of products, agencies and the like).",
+  "groups": [
+    {
+      "label": "Philippines",
+      "codes": ["tl", "ceb", "ilo", "hil"]
+    }
+  ],
+  "names": {
+    "tl": {
+      "name": "Tagalog",
+      "english": "Filipino"
+    },
+    "ceb": {
+      "name": "Bisaya",
+      "english": "Cebuano"
+    },
+    "ilo": {
+      "name": "Ilokano",
+      "english": "Ilocano"
+    },
+    "hil": {
+      "name": "Hiligaynon",
+      "english": "Ilonggo"
+    }
+  },
+  "keep": [
+    "Oraiza",
+    "Google Weather",
+    "Google Translate",
+    "Google",
+    "Open-Meteo",
+    "DeepSeek",
+    "GCash",
+    "Maya",
+    "PayMongo",
+    "PayPal",
+    "BossAdmin",
+    "SSS",
+    "PhilHealth",
+    "Pag-IBIG",
+    "BIR",
+    "TIN",
+    "NFA",
+    "BSP",
+    "QR",
+    "PDF",
+    "CSV",
+    "Excel",
+    "MFA",
+    "TOTP",
+    "MTD",
+    "YTD",
+    "ERP",
+    "VAT",
+    "NSIC",
+    "PSB"
+  ]
+}

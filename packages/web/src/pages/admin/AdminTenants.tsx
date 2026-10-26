@@ -20,8 +20,18 @@ import {
   Star,
   Infinity as InfinityIcon,
 } from "lucide-react";
+import { t } from "../../i18n";
 
-const COLS = ["Company", "Plan", "Signed up", "Users", "Branches", "Activity", "Status", ""];
+const COLS = [
+  t("Company"),
+  t("Plan"),
+  t("Signed up"),
+  t("Users"),
+  t("Branches"),
+  t("Activity"),
+  t("Status"),
+  "",
+];
 
 function planIcon(code: string | null, size = 12) {
   if (code === "enterprise") return <Crown size={size} />;
@@ -34,7 +44,7 @@ function planIcon(code: string | null, size = 12) {
 /** Plan tone mirrors the tenant Header's PlanBadge so plan colors mean the
  *  same thing across the whole product. */
 function planBadge(code: string | null, name: string | null) {
-  if (!code) return <span className="badge-red">No plan</span>;
+  if (!code) return <span className="badge-red">{t("No plan")}</span>;
   const tone =
     code === "enterprise"
       ? "badge-yellow"
@@ -72,7 +82,7 @@ function subStatusPill(status: string | null) {
 }
 
 function TenantRow({
-  t,
+  t: tenant,
   onToggle,
   busy,
 }: {
@@ -81,69 +91,81 @@ function TenantRow({
   busy: boolean;
 }) {
   return (
-    <tr className={!t.is_active ? "opacity-60" : ""}>
+    <tr className={!tenant.is_active ? "opacity-60" : ""}>
       <td>
-        <div className="font-medium text-primary">{t.name}</div>
-        {t.email && <div className="text-xs text-muted">{t.email}</div>}
+        <div className="font-medium text-primary">{tenant.name}</div>
+        {tenant.email && <div className="text-xs text-muted">{tenant.email}</div>}
       </td>
       <td>
         <div className="flex items-center gap-2 flex-wrap">
-          {planBadge(t.plan_code, t.plan_name)}
-          {subStatusPill(t.subscription_status)}
+          {planBadge(tenant.plan_code, tenant.plan_name)}
+          {subStatusPill(tenant.subscription_status)}
         </div>
-        {t.has_subscription !== false && (t.started_at || t.expires_at) && (
+        {tenant.has_subscription !== false && (tenant.started_at || tenant.expires_at) && (
           <div className="text-[11px] text-muted mt-1 leading-snug">
-            {t.started_at && <div>Started {format(new Date(t.started_at), "MMM d, yyyy")}</div>}
-            {t.expires_at ? (
-              <div>Until {format(new Date(t.expires_at), "MMM d, yyyy")}</div>
-            ) : t.subscription_status === "active" ? (
+            {tenant.started_at && (
+              <div>
+                {t("Started {{format}}", {
+                  format: format(new Date(tenant.started_at), "MMM d, yyyy"),
+                })}
+              </div>
+            )}
+            {tenant.expires_at ? (
+              <div>
+                {t("Until {{format}}", {
+                  format: format(new Date(tenant.expires_at), "MMM d, yyyy"),
+                })}
+              </div>
+            ) : tenant.subscription_status === "active" ? (
               <div className="inline-flex items-center gap-1 text-emerald-700 dark:text-emerald-300">
-                <InfinityIcon size={10} /> Permanent
+                <InfinityIcon size={10} /> {t("Permanent")}
               </div>
             ) : null}
           </div>
         )}
       </td>
-      <td>{t.created_at ? format(new Date(t.created_at), "MMM d, yyyy") : "—"}</td>
-      <td className="font-medium text-primary tabular-nums">{t.users_count}</td>
-      <td className="font-medium text-primary tabular-nums">{t.branches_count}</td>
+      <td>{tenant.created_at ? format(new Date(tenant.created_at), "MMM d, yyyy") : "—"}</td>
+      <td className="font-medium text-primary tabular-nums">{tenant.users_count}</td>
+      <td className="font-medium text-primary tabular-nums">{tenant.branches_count}</td>
       <td>
         <span className="text-xs tabular-nums">
-          {t.purchases_count}p · {t.orders_count}o
+          {tenant.purchases_count}p · {tenant.orders_count}o
         </span>
       </td>
       <td>
         <div className="flex flex-col items-start gap-1">
-          {t.is_active ? (
-            <span className="badge-green">Active</span>
+          {tenant.is_active ? (
+            <span className="badge-green">{t("Active")}</span>
           ) : (
-            <span className="badge-gray">Inactive</span>
+            <span className="badge-gray">{t("Inactive")}</span>
           )}
-          <ProvisioningBadge info={t.provisioning} />
+          <ProvisioningBadge info={tenant.provisioning} />
         </div>
       </td>
       <td>
         <div className="flex items-center gap-3 justify-end">
           <Link
-            to={`/admin/tenants/${t.id}`}
+            to={`/admin/tenants/${tenant.id}`}
             className="link inline-flex items-center gap-1 text-xs"
           >
-            <ExternalLink size={12} /> Open
+            <ExternalLink size={12} /> {t("Open")}
           </Link>
           <button
-            onClick={() => onToggle(!t.is_active)}
+            onClick={() => onToggle(!tenant.is_active)}
             disabled={busy}
             className={`inline-flex items-center gap-1 text-xs font-medium transition-colors disabled:opacity-50 ${
-              t.is_active
+              tenant.is_active
                 ? "text-rose-600 dark:text-rose-400 hover:text-rose-700 dark:hover:text-rose-300"
                 : "text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300"
             }`}
             title={
-              t.is_active ? "Deactivate this tenant (blocks all logins)" : "Reactivate this tenant"
+              tenant.is_active
+                ? t("Deactivate this tenant (blocks all logins)")
+                : t("Reactivate this tenant")
             }
           >
             <Power size={12} />
-            {t.is_active ? "Deactivate" : "Activate"}
+            {tenant.is_active ? t("Deactivate") : t("Activate")}
           </button>
         </div>
       </td>
@@ -216,25 +238,28 @@ export default function AdminTenants() {
     <div className="space-y-6">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <h2 className="text-2xl font-bold text-primary">Tenants</h2>
+          <h2 className="text-2xl font-bold text-primary">{t("Tenants")}</h2>
           <p className="text-sm text-muted">
-            {active.length} active · {inactive.length} deactivated
+            {t("{{activeCount}} active · {{inactiveCount}} deactivated", {
+              activeCount: active.length,
+              inactiveCount: inactive.length,
+            })}
           </p>
         </div>
         <div className="flex w-full flex-wrap items-center gap-3 sm:w-auto">
           {sweep.isSuccess && (
             <span className="text-xs font-medium text-emerald-600 dark:text-emerald-400">
-              {(sweep.data as any)?.data?.expired ?? 0} expired
+              {(sweep.data as any)?.data?.expired ?? 0} {t("expired")}
             </span>
           )}
           <button
             onClick={() => sweep.mutate()}
             disabled={sweep.isPending}
             className="btn-secondary !py-2 !text-sm"
-            title="Mark subscriptions whose expiry has passed as expired"
+            title={t("Mark subscriptions whose expiry has passed as expired")}
           >
             <ShieldOff size={14} />
-            {sweep.isPending ? "Sweeping…" : "Sweep expired"}
+            {sweep.isPending ? t("Sweeping…") : t("Sweep expired")}
           </button>
           <div className="relative min-w-0 w-full sm:w-64">
             <Search
@@ -243,7 +268,7 @@ export default function AdminTenants() {
             />
             <input
               className="input pl-9"
-              placeholder="Search by name or email…"
+              placeholder={t("Search by name or email…")}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
@@ -258,11 +283,12 @@ export default function AdminTenants() {
           </div>
           <div className="flex-1">
             <p className="font-semibold text-primary">
-              {missingCount} tenant{missingCount === 1 ? "" : "s"} without a subscription
+              {t("{{count}} tenants without a subscription", { count: missingCount })}
             </p>
             <p className="text-sm text-muted mt-0.5">
-              These tenants have no plan and no feature access. Assign the Free plan to restore
-              basic functionality.
+              {t(
+                "These tenants have no plan and no feature access. Assign the Free plan to restore basic functionality.",
+              )}
             </p>
           </div>
           <button
@@ -271,7 +297,9 @@ export default function AdminTenants() {
             className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-sm font-semibold bg-amber-600 text-white hover:bg-amber-700 active:scale-[0.98] transition disabled:opacity-60 shrink-0"
           >
             <Wand2 size={14} />
-            {backfill.isPending ? "Fixing…" : `Backfill Free plan (${missingCount})`}
+            {backfill.isPending
+              ? t("Fixing…")
+              : t("Backfill Free plan ({{missingCount}})", { missingCount })}
           </button>
         </div>
       )}
@@ -303,7 +331,9 @@ export default function AdminTenants() {
                 <td colSpan={COLS.length} className="!py-12 text-center">
                   <Search size={24} className="mx-auto mb-2 text-muted opacity-60" />
                   <p className="text-sm font-medium text-secondary">
-                    {search ? "No active tenants match your search." : "No active tenants yet."}
+                    {search
+                      ? t("No active tenants match your search.")
+                      : t("No active tenants yet.")}
                   </p>
                 </td>
               </tr>
@@ -319,7 +349,7 @@ export default function AdminTenants() {
             >
               <span className="inline-flex items-center gap-2">
                 <History size={14} />
-                Deactivated history ({inactive.length})
+                {t("Deactivated history ({{inactiveCount}})", { inactiveCount: inactive.length })}
               </span>
               {showHistory ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
             </button>

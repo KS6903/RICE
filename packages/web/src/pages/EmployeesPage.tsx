@@ -17,6 +17,7 @@ import DatePicker from "../components/DatePicker";
 import ComboInput from "../components/ComboInput";
 import { isVariablePay, monthlyForForm, rateBasis } from "../utils/employeePay";
 import { PH_BANKS, PH_EWALLETS } from "../utils/phPaymentProviders";
+import { t, textKey } from "../i18n";
 
 /** A dropdown list in alphabetical order. The labels named in `last` go at the
  *  end, in that order ("Other" after the rest, say); those in `first` go at the
@@ -26,61 +27,72 @@ const alphabetical = <T extends { label: string }>(
   last: string[] = [],
   first: string[] = [],
 ): T[] => {
+  // The labels are translated; `first` and `last` name them in English.
   const rank = (o: T) => {
-    const top = first.indexOf(o.label);
+    const top = first.map((l) => t(l)).indexOf(o.label);
     if (top >= 0) return top - first.length;
-    const i = last.indexOf(o.label);
+    const i = last.map((l) => t(l)).indexOf(o.label);
     return i < 0 ? 0 : i + 1;
   };
   return [...options].sort((a, b) => rank(a) - rank(b) || a.label.localeCompare(b.label));
 };
-/** A choice list whose values are their own labels, as the free text it replaces. */
+/** A choice list whose values are their own labels, as the free text it
+ *  replaces: kept in English, shown in the language on screen. */
 const choices = (labels: string[], last: string[] = []) =>
   alphabetical(
-    labels.map((l) => ({ value: l, label: l })),
+    labels.map((l) => ({ value: l, label: t(l) })),
     last,
   );
 // How the person is paid and engaged. Regular comes first, probationary and
 // contractual last.
 const EMPLOYMENT_TYPES = alphabetical(
   [
-    { value: "regular", label: "Regular" },
-    { value: "casual", label: "Casual" },
-    { value: "monthly", label: "Monthly" },
-    { value: "daily", label: "Daily" },
-    { value: "biweekly", label: "Bi-weekly" },
-    { value: "weekly", label: "Weekly" },
-    { value: "piece_rate", label: "Piece-rate" },
-    { value: "commission", label: "Commission-based" },
-    { value: "hourly", label: "Hourly" },
-    { value: "probationary", label: "Probationary" },
-    { value: "contractual", label: "Contractual" },
+    { value: "regular", label: t("Regular") },
+    { value: "casual", label: t("Casual") },
+    { value: "monthly", label: t("Monthly") },
+    { value: "daily", label: t("Daily") },
+    { value: "biweekly", label: t("Bi-weekly") },
+    { value: "weekly", label: t("Weekly") },
+    { value: "piece_rate", label: t("Piece-rate") },
+    { value: "commission", label: t("Commission-based") },
+    { value: "hourly", label: t("Hourly") },
+    { value: "probationary", label: t("Probationary") },
+    { value: "contractual", label: t("Contractual") },
   ],
   ["Probationary", "Contractual"],
   ["Regular"],
 );
 const DEPARTMENTS = choices([
-  "Operations",
-  "Milling",
-  "Drying",
-  "Warehouse",
-  "Logistics",
-  "Maintenance",
-  "Sales",
-  "Accounting",
-  "Office",
-  "Management",
+  textKey("Operations"),
+  textKey("Milling"),
+  textKey("Drying"),
+  textKey("Warehouse"),
+  textKey("Logistics"),
+  textKey("Maintenance"),
+  textKey("Sales"),
+  textKey("Accounting"),
+  textKey("Office"),
+  textKey("Management"),
 ]);
 const RELATIONS = choices(
-  ["Spouse", "Parent", "Child", "Sibling", "Other relative", "Partner", "Friend", "Other"],
+  [
+    textKey("Spouse"),
+    textKey("Parent"),
+    textKey("Child"),
+    textKey("Sibling"),
+    textKey("Other relative"),
+    textKey("Partner"),
+    textKey("Friend"),
+    textKey("Other"),
+  ],
   ["Other"],
 );
 const PAY_METHODS = alphabetical([
-  { value: "cash", label: "Cash" },
-  { value: "check", label: "Check" },
-  { value: "bank_transfer", label: "Bank transfer" },
-  { value: "e_wallet", label: "E-wallet (GCash, Maya)" },
-  { value: "payroll_card", label: "Payroll ATM card" },
+  { value: "cash", label: t("Cash") },
+  { value: "check", label: t("Check") },
+  { value: "bank_transfer", label: t("Bank transfer") },
+  { value: "e_wallet", label: t("E-wallet (GCash, Maya)") },
+  { value: "payroll_card", label: t("Payroll ATM card") },
 ]);
 /** What each way of paying needs, named as the person would. A check goes to a
  *  payee only; the others need the provider and the account (or card) number.
@@ -89,27 +101,27 @@ const PAY_DETAILS: Record<
   string,
   { provider?: string; holder: string; number?: string; suggestions?: string[] }
 > = {
-  check: { holder: "Payee name" },
+  check: { holder: t("Payee name") },
   bank_transfer: {
-    provider: "Bank name",
-    holder: "Account name",
-    number: "Account number",
+    provider: t("Bank name"),
+    holder: t("Account name"),
+    number: t("Account number"),
     suggestions: PH_BANKS,
   },
   e_wallet: {
-    provider: "E-wallet provider",
-    holder: "Account name",
-    number: "Account number",
+    provider: t("E-wallet provider"),
+    holder: t("Account name"),
+    number: t("Account number"),
     suggestions: PH_EWALLETS,
   },
   payroll_card: {
-    provider: "Bank or card issuer",
-    holder: "Cardholder name",
-    number: "Card or account number",
+    provider: t("Bank or card issuer"),
+    holder: t("Cardholder name"),
+    number: t("Card or account number"),
     suggestions: PH_BANKS,
   },
 };
-const HOLDER_PLACEHOLDER = "Defaults to the employee's name";
+const HOLDER_PLACEHOLDER = t("Defaults to the employee's name");
 /** The options, plus the stored value when it isn't one of them: older records
  *  hold free text, and an unlisted value must not read as blank. */
 const withCurrent = (options: { value: string; label: string }[], current: string) =>
@@ -123,9 +135,9 @@ const payIncomplete = (f: { pay_method: string; pay_provider: string; pay_accoun
 };
 const GENDERS = alphabetical(
   [
-    { value: "male", label: "Male" },
-    { value: "female", label: "Female" },
-    { value: "other", label: "Other" },
+    { value: "male", label: t("Male") },
+    { value: "female", label: t("Female") },
+    { value: "other", label: t("Other") },
   ],
   ["Other"],
 );
@@ -134,28 +146,28 @@ const CIVIL_STATUSES = ["single", "married", "widowed", "separated"];
 // production, logistics, maintenance.
 const POSITIONS = choices(
   [
-    "Manager",
-    "Supervisor",
-    "Foreman",
-    "Bookkeeper",
-    "Accountant",
-    "Cashier",
-    "Encoder",
-    "Office Staff",
-    "Mill Operator",
-    "Assistant Operator",
-    "Dryer Operator",
-    "Machine Helper",
-    "Laborer",
-    "Packer",
-    "Weigher",
-    "Warehouse Keeper",
-    "Driver",
-    "Truck Helper",
-    "Mechanic",
-    "Electrician",
-    "Security Guard",
-    "Other",
+    textKey("Manager"),
+    textKey("Supervisor"),
+    textKey("Foreman"),
+    textKey("Bookkeeper"),
+    textKey("Accountant"),
+    textKey("Cashier"),
+    textKey("Encoder"),
+    textKey("Office Staff"),
+    textKey("Mill Operator"),
+    textKey("Assistant Operator"),
+    textKey("Dryer Operator"),
+    textKey("Machine Helper"),
+    textKey("Laborer"),
+    textKey("Packer"),
+    textKey("Weigher"),
+    textKey("Warehouse Keeper"),
+    textKey("Driver"),
+    textKey("Truck Helper"),
+    textKey("Mechanic"),
+    textKey("Electrician"),
+    textKey("Security Guard"),
+    textKey("Other"),
   ],
   ["Other"],
 );
@@ -169,7 +181,16 @@ const positionToStore = (choice: string, typed: string) =>
 const customPosition = (stored: string) =>
   stored && !POSITIONS.some((p) => p.value === stored) ? stored : "";
 
-const COLS = ["Name", "Position", "Department", "Branch", "Type", "Hired", "Status", ""];
+const COLS = [
+  t("Name"),
+  t("Position"),
+  t("Department"),
+  t("Branch"),
+  t("Type"),
+  t("Hired"),
+  t("Status"),
+  "",
+];
 
 const EMPTY_FORM = {
   employee_no: "",
@@ -178,7 +199,7 @@ const EMPTY_FORM = {
   last_name: "",
   branch_id: "",
   position: "",
-  department: "Operations",
+  department: t("Operations"),
   employment_type: "regular",
   date_hired: format(new Date(), "yyyy-MM-dd"),
   date_terminated: "",
@@ -226,8 +247,10 @@ function EmployeeRow({
           </div>
         )}
       </td>
-      <td className="px-4 py-3">{e.position || "—"}</td>
-      <td className="px-4 py-3 text-gray-600 dark:text-slate-300">{e.department || "—"}</td>
+      <td className="px-4 py-3">{e.position ? t(e.position) : "—"}</td>
+      <td className="px-4 py-3 text-gray-600 dark:text-slate-300">
+        {e.department ? t(e.department) : "—"}
+      </td>
       <td className="px-4 py-3 text-gray-600 dark:text-slate-300">{e.branch?.name || "—"}</td>
       <td className="px-4 py-3">
         {EMPLOYMENT_TYPES.find((t) => t.value === e.employment_type)?.label ??
@@ -238,9 +261,9 @@ function EmployeeRow({
       </td>
       <td className="px-4 py-3">
         {e.is_active ? (
-          <span className="badge-green">Active</span>
+          <span className="badge-green">{t("Active")}</span>
         ) : (
-          <span className="badge-red">Inactive</span>
+          <span className="badge-red">{t("Inactive")}</span>
         )}
       </td>
       <td className="px-4 py-3" onClick={(ev) => ev.stopPropagation()}>
@@ -249,7 +272,7 @@ function EmployeeRow({
           className={`text-xs inline-flex items-center gap-1 ${e.is_active ? "text-rose-600 dark:text-rose-400 hover:text-rose-700 dark:hover:text-rose-300" : "text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300"}`}
         >
           <Power size={12} />
-          {e.is_active ? "Deactivate" : "Activate"}
+          {e.is_active ? t("Deactivate") : t("Activate")}
         </button>
       </td>
     </tr>
@@ -334,9 +357,12 @@ function EmployeesPageInner() {
     <div className="space-y-6">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <h2 className="text-xl font-bold text-gray-900 dark:text-slate-100">Employees</h2>
+          <h2 className="text-xl font-bold text-gray-900 dark:text-slate-100">{t("Employees")}</h2>
           <p className="text-sm text-gray-500 dark:text-slate-400">
-            {active.length} active · {inactive.length} deactivated
+            {t("{{activeCount}} active · {{inactiveCount}} deactivated", {
+              activeCount: active.length,
+              inactiveCount: inactive.length,
+            })}
           </p>
         </div>
         <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 w-full sm:w-auto">
@@ -344,23 +370,23 @@ function EmployeesPageInner() {
             <Search size={16} className="absolute left-3 top-2.5 text-gray-400" />
             <input
               className="input pl-9 sm:w-56"
-              placeholder="Search…"
+              placeholder={t("Search…")}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
           </div>
           <Select
-            aria-label="Branch"
+            aria-label={t("Branch")}
             className="flex-1 sm:flex-none sm:!w-auto min-w-[10rem]"
             value={branchFilter}
             onChange={setBranchFilter}
             options={[
-              { value: "", label: "All branches" },
+              { value: "", label: t("All branches") },
               ...branches.map((b: any) => ({ value: b.id, label: b.name })),
             ]}
           />
           <button onClick={() => setShowForm(!showForm)} className="btn-primary shrink-0">
-            <Plus size={16} /> Add employee
+            <Plus size={16} /> {t("Add employee")}
           </button>
         </div>
       </div>
@@ -369,29 +395,31 @@ function EmployeesPageInner() {
 
       {showForm && (
         <div className="card space-y-5">
-          <h3 className="font-semibold text-gray-900 dark:text-slate-100">New employee</h3>
+          <h3 className="font-semibold text-gray-900 dark:text-slate-100">{t("New employee")}</h3>
 
           <div>
-            <p className="text-sm font-medium text-gray-700 dark:text-slate-200 mb-2">Identity</p>
+            <p className="text-sm font-medium text-gray-700 dark:text-slate-200 mb-2">
+              {t("Identity")}
+            </p>
             <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
               <div>
                 <label
                   htmlFor="new-employee-no"
                   className="block text-xs text-gray-600 dark:text-slate-300 mb-1"
                 >
-                  Employee #
+                  {t("Employee #")}
                 </label>
                 <input
                   id="new-employee-no"
                   readOnly
                   className="input cursor-default font-mono text-sm"
-                  placeholder={nextNoFailed ? "Set when saved" : "Working it out…"}
+                  placeholder={nextNoFailed ? t("Set when saved") : t("Working it out…")}
                   value={nextNo?.employee_no ?? ""}
                 />
                 <p className="text-[10px] text-muted mt-1">
                   {nextNoFailed
-                    ? "Couldn't load the preview. The number is still set when saved."
-                    : "Preview, set from the employment type."}
+                    ? t("Couldn't load the preview. The number is still set when saved.")
+                    : t("Preview, set from the employment type.")}
                 </p>
               </div>
               <div>
@@ -399,7 +427,7 @@ function EmployeesPageInner() {
                   htmlFor="new-employee-first"
                   className="block text-xs text-gray-600 dark:text-slate-300 mb-1"
                 >
-                  First name *
+                  {t("First name *")}
                 </label>
                 <input
                   id="new-employee-first"
@@ -410,7 +438,7 @@ function EmployeesPageInner() {
               </div>
               <div>
                 <label className="block text-xs text-gray-600 dark:text-slate-300 mb-1">
-                  Middle name
+                  {t("Middle name")}
                 </label>
                 <input
                   className="input"
@@ -423,7 +451,7 @@ function EmployeesPageInner() {
                   htmlFor="new-employee-last"
                   className="block text-xs text-gray-600 dark:text-slate-300 mb-1"
                 >
-                  Last name *
+                  {t("Last name *")}
                 </label>
                 <input
                   id="new-employee-last"
@@ -436,15 +464,17 @@ function EmployeesPageInner() {
           </div>
 
           <div>
-            <p className="text-sm font-medium text-gray-700 dark:text-slate-200 mb-2">Employment</p>
+            <p className="text-sm font-medium text-gray-700 dark:text-slate-200 mb-2">
+              {t("Employment")}
+            </p>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div>
                 <label className="block text-xs text-gray-600 dark:text-slate-300 mb-1">
-                  Position
+                  {t("Position")}
                 </label>
                 <Select
-                  aria-label="Position"
-                  placeholder="Choose a position"
+                  aria-label={t("Position")}
+                  placeholder={t("Choose a position")}
                   value={form.position}
                   onChange={(v) => {
                     upd("position", v);
@@ -458,13 +488,13 @@ function EmployeesPageInner() {
                       htmlFor="new-employee-position-other"
                       className="block text-xs text-gray-600 dark:text-slate-300 mb-1"
                     >
-                      Specify the position (optional)
+                      {t("Specify the position (optional)")}
                     </label>
                     <input
                       id="new-employee-position-other"
                       className="input"
                       maxLength={100}
-                      placeholder='Leave blank to keep "Other"'
+                      placeholder={t('Leave blank to keep "Other"')}
                       value={otherPosition}
                       onChange={(e) => setOtherPosition(e.target.value)}
                     />
@@ -473,11 +503,11 @@ function EmployeesPageInner() {
               </div>
               <div>
                 <label className="block text-xs text-gray-600 dark:text-slate-300 mb-1">
-                  Department
+                  {t("Department")}
                 </label>
                 <Select
-                  aria-label="Department"
-                  placeholder="Choose a department"
+                  aria-label={t("Department")}
+                  placeholder={t("Choose a department")}
                   value={form.department}
                   onChange={(v) => upd("department", v)}
                   options={withCurrent(DEPARTMENTS, form.department)}
@@ -485,10 +515,10 @@ function EmployeesPageInner() {
               </div>
               <div>
                 <label className="block text-xs text-gray-600 dark:text-slate-300 mb-1">
-                  Employment type
+                  {t("Employment type")}
                 </label>
                 <Select
-                  aria-label="Employment type"
+                  aria-label={t("Employment type")}
                   value={form.employment_type}
                   onChange={(v) => upd("employment_type", v)}
                   options={EMPLOYMENT_TYPES}
@@ -496,24 +526,24 @@ function EmployeesPageInner() {
               </div>
               <div>
                 <label className="block text-xs text-gray-600 dark:text-slate-300 mb-1">
-                  Branch
+                  {t("Branch")}
                 </label>
                 <Select
-                  aria-label="Branch"
+                  aria-label={t("Branch")}
                   value={form.branch_id}
                   onChange={(v) => upd("branch_id", v)}
                   options={[
-                    { value: "", label: "Default" },
+                    { value: "", label: t("Default") },
                     ...branches.map((b: any) => ({ value: b.id, label: b.name })),
                   ]}
                 />
               </div>
               <div>
                 <label className="block text-xs text-gray-600 dark:text-slate-300 mb-1">
-                  Date hired
+                  {t("Date hired")}
                 </label>
                 <DatePicker
-                  aria-label="Date hired"
+                  aria-label={t("Date hired")}
                   clearable
                   value={form.date_hired}
                   onChange={(v) => upd("date_hired", v)}
@@ -524,7 +554,7 @@ function EmployeesPageInner() {
                   htmlFor="new-employee-rate"
                   className="block text-xs text-gray-600 dark:text-slate-300 mb-1"
                 >
-                  Rate (₱)
+                  {t("Rate (₱)")}
                 </label>
                 <input
                   id="new-employee-rate"
@@ -535,7 +565,7 @@ function EmployeesPageInner() {
                   onChange={(e) => upd("daily_rate", e.target.value)}
                 />
                 <p className="text-[10px] text-muted mt-1">
-                  Paid {rateBasis(form.employment_type)}.
+                  {t("Paid")} {rateBasis(form.employment_type)}.
                 </p>
               </div>
               <div>
@@ -543,19 +573,21 @@ function EmployeesPageInner() {
                   htmlFor="new-employee-monthly"
                   className="block text-xs text-gray-600 dark:text-slate-300 mb-1"
                 >
-                  Monthly salary (₱)
+                  {t("Monthly salary (₱)")}
                 </label>
                 <input
                   id="new-employee-monthly"
                   readOnly
                   className="input cursor-default"
-                  placeholder={isVariablePay(form.employment_type) ? "Varies" : "From the rate"}
+                  placeholder={
+                    isVariablePay(form.employment_type) ? t("Varies") : t("From the rate")
+                  }
                   value={monthly}
                 />
                 <p className="text-[10px] text-muted mt-1">
                   {isVariablePay(form.employment_type)
-                    ? "Pay follows output, so there is no fixed monthly figure."
-                    : "Worked out from the rate."}
+                    ? t("Pay follows output, so there is no fixed monthly figure.")
+                    : t("Worked out from the rate.")}
                 </p>
               </div>
             </div>
@@ -564,15 +596,15 @@ function EmployeesPageInner() {
 
           <div>
             <p className="text-sm font-medium text-gray-700 dark:text-slate-200 mb-2">
-              Salary payment
+              {t("Salary payment")}
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div>
                 <label className="block text-xs text-gray-600 dark:text-slate-300 mb-1">
-                  Paid by
+                  {t("Paid by")}
                 </label>
                 <Select
-                  aria-label="Paid by"
+                  aria-label={t("Paid by")}
                   value={form.pay_method}
                   onChange={changePayMethod}
                   options={PAY_METHODS}
@@ -630,12 +662,12 @@ function EmployeesPageInner() {
 
           <div>
             <p className="text-sm font-medium text-gray-700 dark:text-slate-200 mb-2">
-              Personal & contact
+              {t("Personal & contact")}
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div>
                 <label className="block text-xs text-gray-600 dark:text-slate-300 mb-1">
-                  Phone
+                  {t("Phone")}
                 </label>
                 <input
                   className="input"
@@ -646,7 +678,7 @@ function EmployeesPageInner() {
               </div>
               <div>
                 <label className="block text-xs text-gray-600 dark:text-slate-300 mb-1">
-                  Email
+                  {t("Email")}
                 </label>
                 <input
                   type="email"
@@ -657,10 +689,10 @@ function EmployeesPageInner() {
               </div>
               <div>
                 <label className="block text-xs text-gray-600 dark:text-slate-300 mb-1">
-                  Birthdate
+                  {t("Birthdate")}
                 </label>
                 <DatePicker
-                  aria-label="Birthdate"
+                  aria-label={t("Birthdate")}
                   clearable
                   max={format(new Date(), "yyyy-MM-dd")}
                   value={form.birthdate}
@@ -669,29 +701,29 @@ function EmployeesPageInner() {
               </div>
               <div>
                 <label className="block text-xs text-gray-600 dark:text-slate-300 mb-1">
-                  Gender
+                  {t("Gender")}
                 </label>
                 <Select
-                  aria-label="Gender"
+                  aria-label={t("Gender")}
                   value={form.gender}
                   onChange={(v) => upd("gender", v)}
-                  options={[{ value: "", label: "Not set" }, ...GENDERS]}
+                  options={[{ value: "", label: t("Not set") }, ...GENDERS]}
                 />
               </div>
               <div>
                 <label className="block text-xs text-gray-600 dark:text-slate-300 mb-1">
-                  Civil status
+                  {t("Civil status")}
                 </label>
                 <Select
-                  aria-label="Civil status"
+                  aria-label={t("Civil status")}
                   value={form.civil_status}
                   onChange={(v) => upd("civil_status", v)}
-                  options={[{ value: "", label: "Not set" }, ...CIVIL_OPTIONS]}
+                  options={[{ value: "", label: t("Not set") }, ...CIVIL_OPTIONS]}
                 />
               </div>
               <div className="sm:col-span-3">
                 <label className="block text-xs text-gray-600 dark:text-slate-300 mb-1">
-                  Address
+                  {t("Address")}
                 </label>
                 <input
                   className="input"
@@ -704,12 +736,14 @@ function EmployeesPageInner() {
 
           <div>
             <p className="text-sm font-medium text-gray-700 dark:text-slate-200 mb-2">
-              Government IDs
+              {t("Government IDs")}
             </p>
             <LegalNotice kind="employeeData" className="mb-3" />
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               <div>
-                <label className="block text-xs text-gray-600 dark:text-slate-300 mb-1">SSS</label>
+                <label className="block text-xs text-gray-600 dark:text-slate-300 mb-1">
+                  {t("SSS")}
+                </label>
                 <input
                   className="input font-mono text-sm"
                   value={form.sss_no}
@@ -718,7 +752,7 @@ function EmployeesPageInner() {
               </div>
               <div>
                 <label className="block text-xs text-gray-600 dark:text-slate-300 mb-1">
-                  PhilHealth
+                  {t("PhilHealth")}
                 </label>
                 <input
                   className="input font-mono text-sm"
@@ -728,7 +762,7 @@ function EmployeesPageInner() {
               </div>
               <div>
                 <label className="block text-xs text-gray-600 dark:text-slate-300 mb-1">
-                  Pag-IBIG
+                  {t("Pag-IBIG")}
                 </label>
                 <input
                   className="input font-mono text-sm"
@@ -737,7 +771,9 @@ function EmployeesPageInner() {
                 />
               </div>
               <div>
-                <label className="block text-xs text-gray-600 dark:text-slate-300 mb-1">TIN</label>
+                <label className="block text-xs text-gray-600 dark:text-slate-300 mb-1">
+                  {t("TIN")}
+                </label>
                 <input
                   className="input font-mono text-sm"
                   value={form.tin}
@@ -749,11 +785,13 @@ function EmployeesPageInner() {
 
           <div>
             <p className="text-sm font-medium text-gray-700 dark:text-slate-200 mb-2">
-              Emergency contact
+              {t("Emergency contact")}
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div>
-                <label className="block text-xs text-gray-600 dark:text-slate-300 mb-1">Name</label>
+                <label className="block text-xs text-gray-600 dark:text-slate-300 mb-1">
+                  {t("Name")}
+                </label>
                 <input
                   className="input"
                   value={form.emergency_contact_name}
@@ -762,7 +800,7 @@ function EmployeesPageInner() {
               </div>
               <div>
                 <label className="block text-xs text-gray-600 dark:text-slate-300 mb-1">
-                  Phone
+                  {t("Phone")}
                 </label>
                 <input
                   className="input"
@@ -772,11 +810,11 @@ function EmployeesPageInner() {
               </div>
               <div>
                 <label className="block text-xs text-gray-600 dark:text-slate-300 mb-1">
-                  Relation
+                  {t("Relation")}
                 </label>
                 <Select
-                  aria-label="Relation"
-                  placeholder="Choose a relation"
+                  aria-label={t("Relation")}
+                  placeholder={t("Choose a relation")}
                   value={form.emergency_contact_relation}
                   onChange={(v) => upd("emergency_contact_relation", v)}
                   options={withCurrent(RELATIONS, form.emergency_contact_relation)}
@@ -787,7 +825,7 @@ function EmployeesPageInner() {
 
           {create.isError && (
             <p className="text-sm text-red-600 dark:text-red-400">
-              {(create.error as any)?.response?.data?.detail || "Failed to save."}
+              {(create.error as any)?.response?.data?.detail || t("Failed to save.")}
             </p>
           )}
 
@@ -800,7 +838,7 @@ function EmployeesPageInner() {
               }}
               className="btn-secondary"
             >
-              Cancel
+              {t("Cancel")}
             </button>
             <button
               onClick={() =>
@@ -815,7 +853,7 @@ function EmployeesPageInner() {
                 create.isPending || !form.first_name || !form.last_name || payIncomplete(form)
               }
             >
-              {create.isPending ? "Saving…" : "Save employee"}
+              {create.isPending ? t("Saving…") : t("Save employee")}
             </button>
           </div>
         </div>
@@ -839,7 +877,7 @@ function EmployeesPageInner() {
             {isLoading && (
               <tr>
                 <td colSpan={COLS.length} className="px-4 py-8 text-center text-gray-400">
-                  Loading…
+                  {t("Loading…")}
                 </td>
               </tr>
             )}
@@ -856,8 +894,8 @@ function EmployeesPageInner() {
               <tr>
                 <td colSpan={COLS.length} className="px-4 py-8 text-center text-gray-400">
                   {search
-                    ? "No active employees match your search."
-                    : "No active employees yet — add the first one above."}
+                    ? t("No active employees match your search.")
+                    : t("No active employees yet — add the first one above.")}
                 </td>
               </tr>
             )}
@@ -872,7 +910,7 @@ function EmployeesPageInner() {
             >
               <span className="inline-flex items-center gap-2">
                 <History size={14} />
-                Deactivated history ({inactive.length})
+                {t("Deactivated history ({{inactiveCount}})", { inactiveCount: inactive.length })}
               </span>
               {showHistory ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
             </button>
@@ -940,77 +978,77 @@ const PROFILE_SECTIONS: {
   pay?: boolean;
 }[] = [
   {
-    title: "Name",
+    title: t("Name"),
     editOnly: true,
     fields: [
-      { key: "first_name", label: "First name *" },
-      { key: "last_name", label: "Last name *" },
-      { key: "middle_name", label: "Middle name" },
-      { key: "employee_no", label: "Employee #", mono: true, placeholder: "REG-0001" },
+      { key: "first_name", label: t("First name *") },
+      { key: "last_name", label: t("Last name *") },
+      { key: "middle_name", label: t("Middle name") },
+      { key: "employee_no", label: t("Employee #"), mono: true, placeholder: "REG-0001" },
     ],
   },
   {
-    title: "Employment",
+    title: t("Employment"),
     fields: [
-      { key: "position", label: "Position", kind: "select", options: POSITIONS },
-      { key: "department", label: "Department", kind: "select", options: DEPARTMENTS },
+      { key: "position", label: t("Position"), kind: "select", options: POSITIONS },
+      { key: "department", label: t("Department"), kind: "select", options: DEPARTMENTS },
       {
         key: "employment_type",
-        label: "Employment type",
+        label: t("Employment type"),
         kind: "select",
         options: EMPLOYMENT_TYPES,
       },
-      { key: "branch_id", label: "Branch", kind: "select" },
-      { key: "date_hired", label: "Date hired", kind: "date" },
-      { key: "date_terminated", label: "Date terminated", kind: "date" },
-      { key: "daily_rate", label: "Rate", kind: "money", placeholder: "500" },
-      { key: "monthly_salary", label: "Monthly salary", kind: "money", computed: true },
+      { key: "branch_id", label: t("Branch"), kind: "select" },
+      { key: "date_hired", label: t("Date hired"), kind: "date" },
+      { key: "date_terminated", label: t("Date terminated"), kind: "date" },
+      { key: "daily_rate", label: t("Rate"), kind: "money", placeholder: "500" },
+      { key: "monthly_salary", label: t("Monthly salary"), kind: "money", computed: true },
     ],
   },
   // Its fields depend on the way of paying: see payFields.
-  { title: "Salary payment", pay: true, fields: [] },
+  { title: t("Salary payment"), pay: true, fields: [] },
   {
-    title: "Contact",
+    title: t("Contact"),
     fields: [
-      { key: "phone", label: "Phone", placeholder: "09xx xxx xxxx" },
-      { key: "email", label: "Email", kind: "email" },
-      { key: "address", label: "Address", wide: true },
+      { key: "phone", label: t("Phone"), placeholder: "09xx xxx xxxx" },
+      { key: "email", label: t("Email"), kind: "email" },
+      { key: "address", label: t("Address"), wide: true },
     ],
   },
   {
-    title: "Personal",
+    title: t("Personal"),
     fields: [
-      { key: "birthdate", label: "Birthdate", kind: "date" },
-      { key: "gender", label: "Gender", kind: "select", options: GENDERS },
-      { key: "civil_status", label: "Civil status", kind: "select", options: CIVIL_OPTIONS },
+      { key: "birthdate", label: t("Birthdate"), kind: "date" },
+      { key: "gender", label: t("Gender"), kind: "select", options: GENDERS },
+      { key: "civil_status", label: t("Civil status"), kind: "select", options: CIVIL_OPTIONS },
     ],
   },
   {
-    title: "Government IDs",
+    title: t("Government IDs"),
     notice: true,
     fields: [
-      { key: "sss_no", label: "SSS", mono: true },
+      { key: "sss_no", label: t("SSS"), mono: true },
       { key: "philhealth_no", label: "PhilHealth", mono: true },
-      { key: "pagibig_no", label: "Pag-IBIG", mono: true },
-      { key: "tin", label: "TIN", mono: true },
+      { key: "pagibig_no", label: t("Pag-IBIG"), mono: true },
+      { key: "tin", label: t("TIN"), mono: true },
     ],
   },
   {
-    title: "Emergency contact",
+    title: t("Emergency contact"),
     fields: [
-      { key: "emergency_contact_name", label: "Name" },
-      { key: "emergency_contact_phone", label: "Phone" },
+      { key: "emergency_contact_name", label: t("Name") },
+      { key: "emergency_contact_phone", label: t("Phone") },
       {
         key: "emergency_contact_relation",
-        label: "Relation",
+        label: t("Relation"),
         kind: "select",
         options: RELATIONS,
       },
     ],
   },
   {
-    title: "Notes",
-    fields: [{ key: "notes", label: "Notes", kind: "textarea", wide: true }],
+    title: t("Notes"),
+    fields: [{ key: "notes", label: t("Notes"), kind: "textarea", wide: true }],
   },
 ];
 
@@ -1018,7 +1056,7 @@ const PROFILE_SECTIONS: {
  *  what it needs. */
 function payFields(method: string): FieldSpec[] {
   const fields: FieldSpec[] = [
-    { key: "pay_method", label: "Paid by", kind: "select", options: PAY_METHODS },
+    { key: "pay_method", label: t("Paid by"), kind: "select", options: PAY_METHODS },
   ];
   const d = PAY_DETAILS[method];
   if (!d) return fields;
@@ -1152,7 +1190,7 @@ function EmployeeProfile({
           id={common.id}
           readOnly
           className="input cursor-default"
-          placeholder={isVariablePay(form.employment_type) ? "Varies" : "From the rate"}
+          placeholder={isVariablePay(form.employment_type) ? t("Varies") : t("From the rate")}
           value={monthlyForForm(form, e.daily_rate != null)}
         />
       );
@@ -1164,7 +1202,7 @@ function EmployeeProfile({
           value={String(form[f.key] ?? "")}
           onChange={set}
           options={[
-            { value: "", label: f.key === "branch_id" ? "Default" : "Not set" },
+            { value: "", label: f.key === "branch_id" ? t("Default") : t("Not set") },
             ...withCurrent(optionsFor(f), String(form[f.key] ?? "")),
           ]}
         />
@@ -1175,10 +1213,10 @@ function EmployeeProfile({
           {select}
           <input
             id="emp-position-other"
-            aria-label="Specify the position (optional)"
+            aria-label={t("Specify the position (optional)")}
             className="input mt-2"
             maxLength={100}
-            placeholder='Specify the position (optional). Blank keeps "Other"'
+            placeholder={t('Specify the position (optional). Blank keeps "Other"')}
             value={otherPosition}
             onChange={(ev) => setOtherPosition(ev.target.value)}
           />
@@ -1217,7 +1255,7 @@ function EmployeeProfile({
     >
       <button
         type="button"
-        aria-label="Close"
+        aria-label={t("Close")}
         className="absolute inset-0 bg-slate-900/45 backdrop-blur-sm"
         onClick={() => !editing && onClose()}
       />
@@ -1230,14 +1268,14 @@ function EmployeeProfile({
               {e.full_name}
             </h3>
             <p className="text-sm text-secondary">
-              {e.position || "No position yet"}
-              {e.department ? ` · ${e.department}` : ""}
+              {e.position ? t(e.position) : t("No position yet")}
+              {e.department ? ` · ${t(e.department)}` : ""}
             </p>
             <div className="mt-2 flex flex-wrap items-center gap-1.5">
               {e.is_active ? (
-                <span className="badge-green">Active</span>
+                <span className="badge-green">{t("Active")}</span>
               ) : (
-                <span className="badge-red">Inactive</span>
+                <span className="badge-red">{t("Inactive")}</span>
               )}
               {e.employment_type && (
                 <span className="badge-gray">
@@ -1254,10 +1292,15 @@ function EmployeeProfile({
           <div className="flex w-full shrink-0 justify-end items-center gap-1 sm:w-auto">
             {mayEdit && !editing && (
               <button type="button" onClick={startEdit} className="btn-secondary !py-1.5 text-sm">
-                <Pencil size={14} /> Edit
+                <Pencil size={14} /> {t("Edit")}
               </button>
             )}
-            <button type="button" aria-label="Close" onClick={onClose} className="btn-ghost !p-1.5">
+            <button
+              type="button"
+              aria-label={t("Close")}
+              onClick={onClose}
+              className="btn-ghost !p-1.5"
+            >
               <X size={18} />
             </button>
           </div>
@@ -1313,11 +1356,11 @@ function EmployeeProfile({
           <div className="flex items-center justify-end gap-2 border-t border-soft px-6 py-4">
             {save.isError && (
               <p className="mr-auto text-sm font-medium text-rose-600 dark:text-rose-400">
-                {(save.error as any)?.response?.data?.detail || "Couldn't save the changes."}
+                {(save.error as any)?.response?.data?.detail || t("Couldn't save the changes.")}
               </p>
             )}
             <button type="button" onClick={() => setEditing(false)} className="btn-secondary">
-              Cancel
+              {t("Cancel")}
             </button>
             <button
               type="button"
@@ -1330,7 +1373,7 @@ function EmployeeProfile({
                 payIncomplete(form)
               }
             >
-              {save.isPending ? "Saving…" : "Save changes"}
+              {save.isPending ? t("Saving…") : t("Save changes")}
             </button>
           </div>
         )}

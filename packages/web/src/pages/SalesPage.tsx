@@ -33,6 +33,9 @@ import EditCustomerDialog from "../components/sales/EditCustomerDialog";
 import RecordHistory from "../components/sales/RecordHistory";
 import { useCanEditSavedRecords } from "../hooks/useRecordEditor";
 import type { RecordKind } from "../services/SalesService";
+import { t } from "../i18n";
+import { tx } from "../i18n/tx";
+import { statusText } from "../utils/statusText";
 
 type ApiError = { response?: { data?: { detail?: unknown; code?: string } } };
 
@@ -40,7 +43,7 @@ function apiError(error: unknown): { message: string; code?: string } {
   const data = (error as ApiError)?.response?.data;
   return {
     message:
-      typeof data?.detail === "string" ? data.detail : "The order couldn't be saved. Try again.",
+      typeof data?.detail === "string" ? data.detail : t("The order couldn't be saved. Try again."),
     code: data?.code,
   };
 }
@@ -63,7 +66,7 @@ function StatusBadge({ status }: { status: string }) {
     unpaid: "badge-red",
     partial: "badge-yellow",
   };
-  return <span className={map[status] || "badge-gray"}>{status}</span>;
+  return <span className={map[status] || "badge-gray"}>{statusText(status)}</span>;
 }
 
 /** A quiet text button for a table row's Edit and History. */
@@ -206,21 +209,21 @@ export default function SalesPage() {
   });
   const invoiceError = createInvoice.isError
     ? (((createInvoice.error as ApiError)?.response?.data?.detail as string | undefined) ??
-      "The invoice couldn't be generated. Try again.")
+      t("The invoice couldn't be generated. Try again."))
     : null;
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between gap-3">
         <div>
-          <h2 className="text-xl font-bold text-gray-900 dark:text-slate-100">Sales</h2>
+          <h2 className="text-xl font-bold text-gray-900 dark:text-slate-100">{t("Sales")}</h2>
           <p className="text-sm text-gray-500 dark:text-slate-400">
-            Orders, invoices, and customer management
+            {t("Orders, invoices, and customer management")}
           </p>
         </div>
         {tab === "orders" && (
           <button onClick={() => setShowOrderForm(!showOrderForm)} className="btn-primary shrink-0">
-            <Plus size={16} /> New Order
+            <Plus size={16} /> {t("New Order")}
           </button>
         )}
         {tab === "customers" && (
@@ -228,43 +231,45 @@ export default function SalesPage() {
             onClick={() => setShowCustomerForm(!showCustomerForm)}
             className="btn-primary shrink-0"
           >
-            <Plus size={16} /> New Customer
+            <Plus size={16} /> {t("New Customer")}
           </button>
         )}
       </div>
 
       {showOrderForm && tab === "orders" && (
         <div className="card space-y-4">
-          <h3 className="font-semibold text-gray-900 dark:text-slate-100">New Sales Order</h3>
+          <h3 className="font-semibold text-gray-900 dark:text-slate-100">
+            {t("New Sales Order")}
+          </h3>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div>
               <div className="flex items-baseline justify-between mb-1">
                 <label className="block text-sm font-medium text-gray-700 dark:text-slate-200">
-                  Customer
+                  {t("Customer")}
                 </label>
                 <QuickAdd
-                  label="New customer"
+                  label={t("New customer")}
                   endpoint="/sales/customers"
                   queryKey={["customers"]}
                   fields={[
-                    { key: "name", label: "Name", required: true, full: true },
+                    { key: "name", label: t("Name"), required: true, full: true },
                     {
                       key: "customer_type",
-                      label: "Type",
+                      label: t("Type"),
                       type: "select",
-                      options: CUSTOMER_TYPES.map((t) => ({ value: t.value, label: t.label })),
+                      options: CUSTOMER_TYPES.map((c) => ({ value: c.value, label: t(c.label) })),
                       default: "wholesaler",
                     },
-                    { key: "phone", label: "Phone" },
+                    { key: "phone", label: t("Phone") },
                     {
                       key: "credit_limit",
-                      label: "Credit limit (₱)",
+                      label: t("Credit limit (₱)"),
                       type: "number",
                       default: "0",
                     },
                     {
                       key: "payment_terms_days",
-                      label: "Payment terms (days)",
+                      label: t("Payment terms (days)"),
                       type: "number",
                       default: "0",
                     },
@@ -278,8 +283,8 @@ export default function SalesPage() {
                 />
               </div>
               <Select
-                aria-label="Customer"
-                placeholder="Select customer…"
+                aria-label={t("Customer")}
+                placeholder={t("Select customer…")}
                 value={orderForm.customer_id}
                 onChange={(v) => setOrderForm((f) => ({ ...f, customer_id: v }))}
                 options={activeCustomers.map((c: any) => ({ value: c.id, label: c.name }))}
@@ -287,17 +292,17 @@ export default function SalesPage() {
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-slate-200 mb-1">
-                Order Date
+                {t("Order Date")}
               </label>
               <DatePicker
-                aria-label="Order date"
+                aria-label={t("Order date")}
                 value={orderForm.order_date}
                 onChange={(v) => setOrderForm((f) => ({ ...f, order_date: v }))}
               />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-slate-200 mb-1">
-                Discount %
+                {t("Discount %")}
               </label>
               <input
                 type="number"
@@ -315,7 +320,9 @@ export default function SalesPage() {
           </div>
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <p className="text-sm font-medium text-gray-700 dark:text-slate-200">Order Items</p>
+              <p className="text-sm font-medium text-gray-700 dark:text-slate-200">
+                {t("Order Items")}
+              </p>
               <button
                 onClick={() =>
                   setOrderForm((f) => ({
@@ -334,15 +341,15 @@ export default function SalesPage() {
                 }
                 className="text-sm text-brand-600 dark:text-brand-400"
               >
-                + Add
+                {t("+ Add")}
               </button>
             </div>
             {orderForm.items.map((item, idx) => (
               <div key={idx} className="grid grid-cols-2 sm:grid-cols-5 gap-2">
-                <FieldCaption label="Rice in stock" className="col-span-2 sm:col-span-1">
+                <FieldCaption label={t("Rice in stock")} className="col-span-2 sm:col-span-1">
                   <Select
-                    aria-label="Rice in stock"
-                    placeholder="Variety"
+                    aria-label={t("Rice in stock")}
+                    placeholder={t("Variety")}
                     value={
                       (
                         milled.find(
@@ -364,14 +371,14 @@ export default function SalesPage() {
                     }}
                     options={milled.map((m: any) => ({
                       value: m.id,
-                      label: `${m.variety?.code ?? "Rice"} (${m.grade_name})`,
+                      label: `${m.variety?.code ?? t("Rice")} (${m.grade_name})`,
                     }))}
                   />
                 </FieldCaption>
-                <FieldCaption label="Quantity (kg)">
+                <FieldCaption label={t("Quantity (kg)")}>
                   <input
                     className="input"
-                    placeholder="Qty kg"
+                    placeholder={t("Qty kg")}
                     type="number"
                     min="0"
                     step="any"
@@ -384,10 +391,10 @@ export default function SalesPage() {
                     }}
                   />
                 </FieldCaption>
-                <FieldCaption label="Price per kg (₱)">
+                <FieldCaption label={t("Price per kg (₱)")}>
                   <input
                     className="input"
-                    placeholder="₱/kg"
+                    placeholder={t("₱/kg")}
                     type="number"
                     min="0"
                     step="any"
@@ -400,7 +407,7 @@ export default function SalesPage() {
                     }}
                   />
                 </FieldCaption>
-                <FieldCaption label="Amount" className="col-span-2 sm:col-span-1">
+                <FieldCaption label={t("Amount")} className="col-span-2 sm:col-span-1">
                   <span className="input block bg-gray-50 dark:bg-slate-900/50 text-gray-600 dark:text-slate-300">
                     ₱
                     {item.quantity_kg && item.unit_price_per_kg
@@ -414,11 +421,16 @@ export default function SalesPage() {
             ))}
             {milledLoaded && milled.length === 0 && (
               <p className="text-sm text-amber-700 dark:text-amber-400">
-                You have no milled rice in stock to sell yet.{" "}
-                <Link to="/milling?new=1" className="font-medium underline">
-                  Mill a batch first
-                </Link>
-                ; the rice it produces will show up here.
+                {tx(
+                  "You have no milled rice in stock to sell yet. {{mill}}; the rice it produces will show up here.",
+                  {
+                    mill: (
+                      <Link to="/milling?new=1" className="font-medium underline">
+                        {t("Mill a batch first")}
+                      </Link>
+                    ),
+                  },
+                )}
               </p>
             )}
           </div>
@@ -435,22 +447,22 @@ export default function SalesPage() {
                   onClick={() => createOrder.mutate({ ...orderForm, approve_over_limit: true })}
                   disabled={createOrder.isPending}
                 >
-                  Approve over the limit
+                  {t("Approve over the limit")}
                 </button>
               )}
             </div>
           )}
           <div className="flex gap-2 justify-end">
             <button onClick={() => setShowOrderForm(false)} className="btn-secondary">
-              Cancel
+              {t("Cancel")}
             </button>
             <button
               onClick={() => createOrder.mutate(orderForm)}
               className="btn-primary"
               disabled={createOrder.isPending || !orderForm.customer_id}
-              title={orderForm.customer_id ? undefined : "Choose the customer first"}
+              title={orderForm.customer_id ? undefined : t("Choose the customer first")}
             >
-              {createOrder.isPending ? "Saving…" : "Create Order"}
+              {createOrder.isPending ? t("Saving…") : t("Create Order")}
             </button>
           </div>
         </div>
@@ -473,7 +485,14 @@ export default function SalesPage() {
           <table className="w-full text-sm">
             <thead className="bg-gray-50 dark:bg-slate-900/50 border-b border-gray-200 dark:border-slate-700">
               <tr>
-                {["Order No.", "Date", "Customer", "Total", "Status", "Action"].map((h) => (
+                {[
+                  t("Order No."),
+                  t("Date"),
+                  t("Customer"),
+                  t("Total"),
+                  t("Status"),
+                  t("Action"),
+                ].map((h) => (
                   <th
                     key={h}
                     className="px-4 py-3 text-left font-medium text-gray-600 dark:text-slate-300"
@@ -516,13 +535,13 @@ export default function SalesPage() {
                         className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-lg bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700 ring-1 ring-emerald-200 transition hover:bg-emerald-100 hover:ring-emerald-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 dark:bg-emerald-950/30 dark:text-emerald-300 dark:ring-emerald-800/60 dark:hover:bg-emerald-950/50"
                       >
                         <FileText size={14} />
-                        Generate invoice
+                        {t("Generate invoice")}
                       </button>
                     )}
                     <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1">
                       {canCorrect && (
                         <RowButton icon={Pencil} onClick={() => setEditingOrder(o)}>
-                          Edit
+                          {t("Edit")}
                         </RowButton>
                       )}
                       {canSeeHistory && (
@@ -532,7 +551,7 @@ export default function SalesPage() {
                             setHistoryOf({ kind: "sales_order", id: o.id, label: o.order_no })
                           }
                         >
-                          History
+                          {t("History")}
                         </RowButton>
                       )}
                     </div>
@@ -544,13 +563,14 @@ export default function SalesPage() {
                   <td colSpan={6}>
                     <EmptyState
                       icon={ShoppingCart}
-                      title="No sales yet"
-                      action={canEdit("sales") ? "Create your first order" : undefined}
+                      title={t("No sales yet")}
+                      action={canEdit("sales") ? t("Create your first order") : undefined}
                       onAction={() => setShowOrderForm(true)}
                       next="Once an order is confirmed, use Generate Invoice to bill the customer."
                     >
-                      An order is what a customer is buying: which rice, how many kilos, at what
-                      price. You can add a new customer right from the order form.
+                      {t(
+                        "An order is what a customer is buying: which rice, how many kilos, at what price. You can add a new customer right from the order form.",
+                      )}
                     </EmptyState>
                   </td>
                 </tr>
@@ -564,7 +584,15 @@ export default function SalesPage() {
           <table className="w-full text-sm">
             <thead className="bg-gray-50 dark:bg-slate-900/50 border-b border-gray-200 dark:border-slate-700">
               <tr>
-                {["Invoice No.", "Date", "Due Date", "Total", "Paid", "Status", ""].map((h) => (
+                {[
+                  t("Invoice No."),
+                  t("Date"),
+                  t("Due Date"),
+                  t("Total"),
+                  t("Paid"),
+                  t("Status"),
+                  "",
+                ].map((h) => (
                   <th
                     key={h}
                     className="px-4 py-3 text-left font-medium text-gray-600 dark:text-slate-300"
@@ -591,7 +619,7 @@ export default function SalesPage() {
                     <div className="flex flex-wrap gap-x-3 gap-y-1">
                       {canCorrect && (
                         <RowButton icon={Pencil} onClick={() => setEditingInvoice(inv)}>
-                          Edit
+                          {t("Edit")}
                         </RowButton>
                       )}
                       {canSeeHistory && (
@@ -601,7 +629,7 @@ export default function SalesPage() {
                             setHistoryOf({ kind: "invoice", id: inv.id, label: inv.invoice_no })
                           }
                         >
-                          History
+                          {t("History")}
                         </RowButton>
                       )}
                     </div>
@@ -611,8 +639,9 @@ export default function SalesPage() {
               {invoices.length === 0 && (
                 <tr>
                   <td colSpan={7} className="px-4 py-8 text-center text-muted">
-                    No invoices yet. Create one from a confirmed order on the Orders tab with
-                    Generate Invoice.
+                    {t(
+                      "No invoices yet. Create one from a confirmed order on the Orders tab with Generate Invoice.",
+                    )}
                   </td>
                 </tr>
               )}
@@ -636,11 +665,13 @@ export default function SalesPage() {
         <>
           {showCustomerForm && (
             <div className="card space-y-3">
-              <h3 className="font-semibold text-gray-900 dark:text-slate-100">New customer</h3>
+              <h3 className="font-semibold text-gray-900 dark:text-slate-100">
+                {t("New customer")}
+              </h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-slate-200 mb-1">
-                    Name *
+                    {t("Name *")}
                   </label>
                   <input
                     className="input"
@@ -650,18 +681,18 @@ export default function SalesPage() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-slate-200 mb-1">
-                    Type
+                    {t("Type")}
                   </label>
                   <Select
-                    aria-label="Customer type"
+                    aria-label={t("Customer type")}
                     value={customerForm.customer_type}
                     onChange={(v) => setCustomerForm((f) => ({ ...f, customer_type: v }))}
-                    options={CUSTOMER_TYPES.map((t) => ({ value: t.value, label: t.label }))}
+                    options={CUSTOMER_TYPES.map((c) => ({ value: c.value, label: t(c.label) }))}
                   />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-slate-200 mb-1">
-                    Contact person
+                    {t("Contact person")}
                   </label>
                   <input
                     className="input"
@@ -673,7 +704,7 @@ export default function SalesPage() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-slate-200 mb-1">
-                    Phone
+                    {t("Phone")}
                   </label>
                   <input
                     className="input"
@@ -683,7 +714,7 @@ export default function SalesPage() {
                 </div>
                 <div className="sm:col-span-2">
                   <label className="block text-sm font-medium text-gray-700 dark:text-slate-200 mb-1">
-                    Address
+                    {t("Address")}
                   </label>
                   <input
                     className="input"
@@ -693,7 +724,7 @@ export default function SalesPage() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-slate-200 mb-1">
-                    TIN
+                    {t("TIN")}
                   </label>
                   <input
                     className="input"
@@ -703,7 +734,7 @@ export default function SalesPage() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-slate-200 mb-1">
-                    Credit limit (₱)
+                    {t("Credit limit (₱)")}
                   </label>
                   <input
                     className="input"
@@ -716,7 +747,7 @@ export default function SalesPage() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-slate-200 mb-1">
-                    Payment terms (days)
+                    {t("Payment terms (days)")}
                   </label>
                   <input
                     className="input"
@@ -730,14 +761,14 @@ export default function SalesPage() {
               </div>
               <div className="flex gap-2 justify-end">
                 <button onClick={() => setShowCustomerForm(false)} className="btn-secondary">
-                  Cancel
+                  {t("Cancel")}
                 </button>
                 <button
                   onClick={() => createCustomer.mutate(customerForm)}
                   className="btn-primary"
                   disabled={createCustomer.isPending || !customerForm.name}
                 >
-                  {createCustomer.isPending ? "Saving…" : "Save customer"}
+                  {createCustomer.isPending ? t("Saving…") : t("Save customer")}
                 </button>
               </div>
             </div>
@@ -747,14 +778,16 @@ export default function SalesPage() {
             <table className="w-full text-sm">
               <thead className="bg-gray-50 dark:bg-slate-900/50 border-b border-gray-200 dark:border-slate-700">
                 <tr>
-                  {["Name", "Type", "Phone", "Credit Limit", "Status", ""].map((h) => (
-                    <th
-                      key={h}
-                      className="px-4 py-3 text-left font-medium text-gray-600 dark:text-slate-300"
-                    >
-                      {h}
-                    </th>
-                  ))}
+                  {[t("Name"), t("Type"), t("Phone"), t("Credit Limit"), t("Status"), ""].map(
+                    (h) => (
+                      <th
+                        key={h}
+                        className="px-4 py-3 text-left font-medium text-gray-600 dark:text-slate-300"
+                      >
+                        {h}
+                      </th>
+                    ),
+                  )}
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100 dark:divide-slate-700">
@@ -767,13 +800,13 @@ export default function SalesPage() {
                     <td className="px-4 py-3">{c.phone || "—"}</td>
                     <td className="px-4 py-3">₱{Number(c.credit_limit).toLocaleString()}</td>
                     <td className="px-4 py-3">
-                      <span className="badge-green">Active</span>
+                      <span className="badge-green">{t("Active")}</span>
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
                         {canEdit("sales") && (
                           <RowButton icon={Pencil} onClick={() => setEditingCustomer(c)}>
-                            Edit
+                            {t("Edit")}
                           </RowButton>
                         )}
                         {canSeeHistory && (
@@ -783,14 +816,14 @@ export default function SalesPage() {
                               setHistoryOf({ kind: "customer", id: c.id, label: c.name })
                             }
                           >
-                            History
+                            {t("History")}
                           </RowButton>
                         )}
                         <button
                           onClick={() => toggleCustomer.mutate({ id: c.id, is_active: false })}
                           className="text-xs text-rose-600 dark:text-rose-400 hover:text-rose-700 dark:hover:text-rose-300 inline-flex items-center gap-1"
                         >
-                          <Power size={12} /> Deactivate
+                          <Power size={12} /> {t("Deactivate")}
                         </button>
                       </div>
                     </td>
@@ -799,7 +832,9 @@ export default function SalesPage() {
                 {activeCustomers.length === 0 && (
                   <tr>
                     <td colSpan={6} className="px-4 py-8 text-center text-muted">
-                      No customers yet. Add one with New Customer, or straight from a new order.
+                      {t(
+                        "No customers yet. Add one with New Customer, or straight from a new order.",
+                      )}
                     </td>
                   </tr>
                 )}
@@ -814,7 +849,9 @@ export default function SalesPage() {
                 >
                   <span className="inline-flex items-center gap-2">
                     <History size={14} />
-                    Deactivated history ({inactiveCustomers.length})
+                    {t("Deactivated history ({{inactiveCustomersCount}})", {
+                      inactiveCustomersCount: inactiveCustomers.length,
+                    })}
                   </span>
                   {showCustomerHistory ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
                 </button>
@@ -833,14 +870,14 @@ export default function SalesPage() {
                           <td className="px-4 py-3">{c.phone || "—"}</td>
                           <td className="px-4 py-3">₱{Number(c.credit_limit).toLocaleString()}</td>
                           <td className="px-4 py-3">
-                            <span className="badge-red">Inactive</span>
+                            <span className="badge-red">{t("Inactive")}</span>
                           </td>
                           <td className="px-4 py-3">
                             <button
                               onClick={() => toggleCustomer.mutate({ id: c.id, is_active: true })}
                               className="text-xs text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 inline-flex items-center gap-1"
                             >
-                              <Power size={12} /> Activate
+                              <Power size={12} /> {t("Activate")}
                             </button>
                           </td>
                         </tr>

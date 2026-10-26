@@ -19,6 +19,39 @@ import {
   Wind,
 } from "lucide-react";
 import type { WeatherConditionCode } from "../hooks/useWeather";
+import { currentLanguage, DEFAULT_LANGUAGE, t } from "../i18n";
+
+/** What each condition is called, for languages other than English. */
+const CONDITION_NAMES: Record<WeatherConditionCode, string> = {
+  clear: t("Clear"),
+  mostly_clear: t("Mostly clear"),
+  partly_cloudy: t("Partly cloudy"),
+  mostly_cloudy: t("Mostly cloudy"),
+  cloudy: t("Cloudy"),
+  fog: t("Fog"),
+  windy: t("Windy"),
+  wind_rain: t("Wind and rain"),
+  rain_light: t("Light rain"),
+  rain_chance: t("Chance of rain"),
+  rain_scattered: t("Scattered showers"),
+  rain: t("Rain"),
+  rain_heavy: t("Heavy rain"),
+  snow_light: t("Light snow"),
+  snow: t("Snow"),
+  snow_heavy: t("Heavy snow"),
+  snow_chance: t("Chance of snow"),
+  sleet: t("Sleet"),
+  hail: t("Hail"),
+  thunderstorm: t("Thunderstorm"),
+  unknown: t("Unknown"),
+};
+
+/** The condition in words. In English, the weather service's own words
+ *  ("Light rain"); in another language, the condition's name in it. */
+export function conditionText(code: WeatherConditionCode, providerText: string): string {
+  if (currentLanguage().code === DEFAULT_LANGUAGE) return providerText;
+  return CONDITION_NAMES[code] ?? providerText;
+}
 
 export const WEATHER_ICONS: Record<WeatherConditionCode, React.ElementType> = {
   clear: Sun,

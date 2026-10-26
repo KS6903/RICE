@@ -2,6 +2,7 @@ import type { AppSection, User } from "@rice-mill/shared";
 import { planHas } from "../../hooks/useFeature";
 import { NAV_GROUPS } from "../layout/navigation";
 import { PAGE_WHAT } from "./guide";
+import { t } from "../../i18n";
 
 export type TourStop = {
   key: string;
@@ -25,8 +26,10 @@ export function tourStops(
     {
       key: "welcome",
       target: null,
-      title: "Welcome to Oraiza",
-      body: "Let's take a quick look around. We'll open each part of the app and say what it's for. It takes about two minutes.",
+      title: t("Welcome to Oraiza"),
+      body: t(
+        "Let's take a quick look around. We'll open each part of the app and say what it's for. It takes about two minutes.",
+      ),
     },
   ];
   for (const group of NAV_GROUPS) {

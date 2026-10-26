@@ -6,6 +6,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AlertTriangle, CheckCircle2 } from "lucide-react";
 import { useAccess } from "../hooks/useAccess";
 import { cashService, type CashCount } from "../services/CashService";
+import { t } from "../i18n";
 
 const php = (n: number) =>
   `₱${n.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
@@ -31,15 +32,19 @@ function Difference({ value, tolerance }: { value: number; tolerance: number }) 
       <span className="inline-flex items-center gap-1.5 text-emerald-700 dark:text-emerald-400 font-semibold">
         <CheckCircle2 size={16} aria-hidden />
         {value === 0
-          ? "Balanced"
-          : `${value < 0 ? "Short" : "Over"} by ${php(Math.abs(value))}, within the allowance`}
+          ? t("Balanced")
+          : value < 0
+            ? t("Short by {{amount}}, within the allowance", { amount: php(Math.abs(value)) })
+            : t("Over by {{amount}}, within the allowance", { amount: php(Math.abs(value)) })}
       </span>
     );
   }
   return (
     <span className="inline-flex items-center gap-1.5 text-rose-600 dark:text-rose-400 font-semibold">
       <AlertTriangle size={16} aria-hidden />
-      {value < 0 ? "Short" : "Over"} by {php(Math.abs(value))}
+      {value < 0
+        ? t("Short by {{amount}}", { amount: php(Math.abs(value)) })
+        : t("Over by {{amount}}", { amount: php(Math.abs(value)) })}
     </span>
   );
 }
@@ -55,7 +60,7 @@ function ReviewForm({ count }: { count: CashCount }) {
     <div className="flex flex-wrap items-end gap-2 mt-2">
       <div className="flex-1 min-w-[12rem]">
         <label htmlFor={`review-${count.id}`} className="form-label">
-          What you found
+          {t("What you found")}
         </label>
         <input
           id={`review-${count.id}`}
@@ -71,7 +76,7 @@ function ReviewForm({ count }: { count: CashCount }) {
         disabled={!note.trim() || review.isPending}
         onClick={() => review.mutate()}
       >
-        Mark reviewed
+        {t("Mark reviewed")}
       </button>
     </div>
   );
@@ -96,7 +101,7 @@ export default function CashCountPage() {
     return (
       <div className="card">
         <p className="text-secondary">
-          {errorText(page.error, "The cash count couldn't load. Try again in a moment.")}
+          {errorText(page.error, t("The cash count couldn't load. Try again in a moment."))}
         </p>
       </div>
     );
@@ -109,23 +114,31 @@ export default function CashCountPage() {
   return (
     <div className="space-y-6">
       <header>
-        <h1 className="text-2xl font-bold text-primary">Cash count</h1>
+        <h1 className="text-2xl font-bold text-primary">{t("Cash count")}</h1>
         <p className="text-secondary mt-1 max-w-2xl">
-          Count the drawer at close. What should be there is the opening cash, plus the cash
-          received today, less what was paid out from it.
+          {t(
+            "Count the drawer at close. What should be there is the opening cash, plus the cash received today, less what was paid out from it.",
+          )}
         </p>
       </header>
 
-      <section aria-label={`Today, ${day(today.date)}`} className="card space-y-5">
-        <h2 className="font-bold text-primary">Today, {day(today.date)}</h2>
+      <section
+        aria-label={t("Today, {{date}}", { date: day(today.date) })}
+        className="card space-y-5"
+      >
+        <h2 className="font-bold text-primary">
+          {t("Today,")} {day(today.date)}
+        </h2>
         <dl className="grid gap-3 sm:grid-cols-3 text-sm">
           <div>
-            <dt className="text-secondary">Opening cash</dt>
+            <dt className="text-secondary">{t("Opening cash")}</dt>
             <dd className="text-lg font-bold text-primary">{php(today.opening)}</dd>
-            <dd className="text-xs text-muted">Yesterday's count, less what was taken out.</dd>
+            <dd className="text-xs text-muted">
+              {t("Yesterday's count, less what was taken out.")}
+            </dd>
           </div>
           <div>
-            <dt className="text-secondary">Cash received today</dt>
+            <dt className="text-secondary">{t("Cash received today")}</dt>
             <dd className="text-lg font-bold text-primary">{php(today.cash_in)}</dd>
             {today.cash_received.map((r) => (
               <dd key={r.who} className="text-xs text-muted">
@@ -134,7 +147,7 @@ export default function CashCountPage() {
             ))}
           </div>
           <div>
-            <dt className="text-secondary">Should be in the drawer</dt>
+            <dt className="text-secondary">{t("Should be in the drawer")}</dt>
             <dd className="text-lg font-bold text-primary" aria-live="polite">
               {php(expected)}
             </dd>
@@ -146,7 +159,7 @@ export default function CashCountPage() {
             <div className="grid gap-4 sm:grid-cols-3">
               <div>
                 <label htmlFor="cash-out" className="form-label">
-                  Paid out from the drawer
+                  {t("Paid out from the drawer")}
                 </label>
                 <input
                   id="cash-out"
@@ -156,14 +169,16 @@ export default function CashCountPage() {
                   onChange={(e) => setCashOut(money(e.target.value))}
                 />
                 <p className="text-xs text-secondary mt-1">
-                  Palay paid in cash, expenses, change for the truck.
+                  {t("Palay paid in cash, expenses, change for the truck.")}
                   {today.expenses_entered > 0 &&
-                    ` Expenses entered today: ${php(today.expenses_entered)}.`}
+                    t(" Expenses entered today: {{expenses_entered}}.", {
+                      expenses_entered: php(today.expenses_entered),
+                    })}
                 </p>
               </div>
               <div>
                 <label htmlFor="cash-counted" className="form-label">
-                  Counted in the drawer
+                  {t("Counted in the drawer")}
                 </label>
                 <input
                   id="cash-counted"
@@ -180,7 +195,7 @@ export default function CashCountPage() {
               </div>
               <div>
                 <label htmlFor="cash-taken" className="form-label">
-                  Taken out at close (optional)
+                  {t("Taken out at close (optional)")}
                 </label>
                 <input
                   id="cash-taken"
@@ -190,13 +205,13 @@ export default function CashCountPage() {
                   onChange={(e) => setTakenOut(money(e.target.value))}
                 />
                 <p className="text-xs text-secondary mt-1">
-                  Banked, or handed to the owner. Tomorrow opens without it.
+                  {t("Banked, or handed to the owner. Tomorrow opens without it.")}
                 </p>
               </div>
             </div>
             <div>
               <label htmlFor="cash-note" className="form-label">
-                Note (optional)
+                {t("Note (optional)")}
               </label>
               <input
                 id="cash-note"
@@ -212,31 +227,37 @@ export default function CashCountPage() {
               disabled={!counted || save.isPending}
               onClick={() => save.mutate()}
             >
-              {save.isPending ? "Saving…" : todays ? "Save the corrected count" : "Save the count"}
+              {save.isPending
+                ? t("Saving…")
+                : todays
+                  ? t("Save the corrected count")
+                  : t("Save the count")}
             </button>
             {todays && (
               <p className="text-xs text-secondary">
-                Counted already today by {todays.counted_by}: {php(todays.counted)}. Saving again
-                replaces it.
+                {t(
+                  "Counted already today by {{counted_by}}: {{counted}}. Saving again replaces it.",
+                  { counted_by: todays.counted_by, counted: php(todays.counted) },
+                )}
               </p>
             )}
             {save.isError && (
               <p className="text-sm text-rose-600 dark:text-rose-400" role="alert">
-                {errorText(save.error, "Couldn't save the count. Try again.")}
+                {errorText(save.error, t("Couldn't save the count. Try again."))}
               </p>
             )}
           </div>
         ) : (
           <p className="text-sm text-secondary">
-            Only staff who handle sales can count the drawer.
+            {t("Only staff who handle sales can count the drawer.")}
           </p>
         )}
       </section>
 
-      <section aria-label="Recent counts" className="space-y-3">
-        <h2 className="font-bold text-primary">Recent counts</h2>
+      <section aria-label={t("Recent counts")} className="space-y-3">
+        <h2 className="font-bold text-primary">{t("Recent counts")}</h2>
         {counts.length === 0 ? (
-          <p className="text-sm text-secondary">No counts yet.</p>
+          <p className="text-sm text-secondary">{t("No counts yet.")}</p>
         ) : (
           counts.map((c) => (
             <article key={c.id} aria-label={day(c.date)} className="card !p-4 space-y-1">
@@ -245,18 +266,24 @@ export default function CashCountPage() {
                 <Difference value={c.difference} tolerance={tolerance} />
               </div>
               <p className="text-sm text-secondary">
-                Expected {php(c.expected)}, counted {php(c.counted)}
+                {t("Expected {{expected}}, counted {{counted}}", {
+                  expected: php(c.expected),
+                  counted: php(c.counted),
+                })}
                 {c.counted_by ? ` by ${c.counted_by}` : ""}.{c.note ? ` "${c.note}"` : ""}
               </p>
               {c.reviewed_by && (
                 <p className="text-sm text-primary">
-                  Reviewed by {c.reviewed_by}: {c.review_note}
+                  {t("Reviewed by {{reviewed_by}}: {{review_note}}", {
+                    reviewed_by: c.reviewed_by,
+                    review_note: c.review_note,
+                  })}
                 </p>
               )}
               {c.needs_review && manager && <ReviewForm count={c} />}
               {c.needs_review && !manager && (
                 <p className="text-xs text-amber-700 dark:text-amber-400">
-                  Waiting for the owner to review.
+                  {t("Waiting for the owner to review.")}
                 </p>
               )}
             </article>

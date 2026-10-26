@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { QRCodeSVG } from "qrcode.react";
 import { Check, Copy, Smartphone } from "lucide-react";
+import { t } from "../i18n";
 
 /** The "add this account to your authenticator" step of TOTP enrollment.
  *
@@ -30,8 +31,9 @@ export default function TotpSetup({ secret, otpauthUri }: { secret: string; otpa
   return (
     <div className="space-y-4">
       <p className="text-sm text-secondary">
-        Scan this code with your authenticator app (Google Authenticator, Authy, 1Password…), then
-        enter the 6-digit code it shows.
+        {t(
+          "Scan this code with your authenticator app (Google Authenticator, Authy, 1Password…), then enter the 6-digit code it shows.",
+        )}
       </p>
 
       <div className="flex justify-center">
@@ -44,7 +46,7 @@ export default function TotpSetup({ secret, otpauthUri }: { secret: string; otpa
             // noticeably faster with it than with a code drawn edge to edge.
             marginSize={4}
             role="img"
-            aria-label="QR code for your authenticator app"
+            aria-label={t("QR code for your authenticator app")}
             data-testid="totp-qr"
           />
         </div>
@@ -54,12 +56,12 @@ export default function TotpSetup({ secret, otpauthUri }: { secret: string; otpa
         href={otpauthUri}
         className="sm:hidden btn-secondary w-full inline-flex items-center justify-center gap-1.5"
       >
-        <Smartphone size={14} /> Open in authenticator app
+        <Smartphone size={14} /> {t("Open in authenticator app")}
       </a>
 
       <div className="space-y-1.5">
         <p className="text-xs font-medium text-muted">
-          Can&apos;t scan it? Enter this key instead:
+          {t("Can't scan it? Enter this key instead:")}
         </p>
         <div className="flex items-center gap-2 pl-3 pr-1.5 py-1.5 rounded-xl bg-slate-500/10 ring-1 ring-inset ring-slate-500/30">
           <code className="flex-1 font-mono text-sm break-all select-all" data-testid="totp-key">
@@ -68,7 +70,7 @@ export default function TotpSetup({ secret, otpauthUri }: { secret: string; otpa
           <button
             type="button"
             onClick={copy}
-            aria-label={copied ? "Key copied" : "Copy key"}
+            aria-label={copied ? t("Key copied") : t("Copy key")}
             className="shrink-0 h-8 w-8 grid place-items-center rounded-lg text-muted hover:text-primary hover:bg-slate-500/10 transition-colors"
           >
             {copied ? <Check size={14} /> : <Copy size={14} />}

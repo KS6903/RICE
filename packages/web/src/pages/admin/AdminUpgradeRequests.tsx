@@ -6,10 +6,20 @@ import { format } from "date-fns";
 import { Check, X, MessageCircle, ArrowRight, Inbox, RefreshCw, TrendingUp } from "lucide-react";
 import { clsx } from "clsx";
 import type { UpgradeRequest } from "@rice-mill/shared";
+import { t } from "../../i18n";
+import { statusText } from "../../utils/statusText";
 
 type FilterStatus = "pending" | "approved" | "rejected" | "cancelled" | "all";
 
-const COLS = ["Tenant", "Type", "Plan", "Requested", "Note", "Status", "Action"];
+const COLS = [
+  t("Tenant"),
+  t("Type"),
+  t("Plan"),
+  t("Requested"),
+  t("Note"),
+  t("Status"),
+  t("Action"),
+];
 
 function statusBadge(s: string) {
   const map: Record<string, string> = {
@@ -53,10 +63,10 @@ function RequestRow({
           )}
         >
           {isPlanChange ? <RefreshCw size={12} /> : <TrendingUp size={12} />}
-          {isPlanChange ? "Plan change" : "Upgrade"}
+          {isPlanChange ? t("Plan change") : t("Upgrade")}
         </span>
         {isPlanChange && (
-          <p className="text-xs text-muted mt-1">Takes effect at end of billing period</p>
+          <p className="text-xs text-muted mt-1">{t("Takes effect at end of billing period")}</p>
         )}
       </td>
       <td>
@@ -65,7 +75,7 @@ function RequestRow({
           <ArrowRight size={12} className="text-muted" />
           <span className="font-semibold text-primary">{r.requested_plan_name || "—"}</span>
           {r.billing_interval === "annual" && (
-            <span className="badge-green !text-[10px] !py-0.5">Annual</span>
+            <span className="badge-green !text-[10px] !py-0.5">{t("Annual")}</span>
           )}
         </div>
       </td>
@@ -80,7 +90,7 @@ function RequestRow({
         )}
       </td>
       <td>
-        <span className={statusBadge(r.status)}>{r.status}</span>
+        <span className={statusBadge(r.status)}>{statusText(r.status)}</span>
       </td>
       <td>
         {r.status === "pending" ? (
@@ -89,7 +99,7 @@ function RequestRow({
               <textarea
                 value={note}
                 onChange={(e) => setNote(e.target.value)}
-                placeholder="Optional note to tenant…"
+                placeholder={t("Optional note to tenant…")}
                 rows={2}
                 className="input text-xs"
               />
@@ -101,26 +111,32 @@ function RequestRow({
                 className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-emerald-600 text-white text-xs font-semibold hover:bg-emerald-700 active:scale-[0.97] transition disabled:opacity-60"
               >
                 <Check size={12} />
-                {isPlanChange ? "Queue change" : "Approve"}
+                {isPlanChange ? t("Queue change") : t("Approve")}
               </button>
               <button
                 onClick={() => onReject(note || null)}
                 disabled={busy}
                 className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-rose-600 text-white text-xs font-semibold hover:bg-rose-700 active:scale-[0.97] transition disabled:opacity-60"
               >
-                <X size={12} /> Reject
+                <X size={12} /> {t("Reject")}
               </button>
               <button
                 onClick={() => setNoteOpen(!noteOpen)}
                 className="inline-flex items-center gap-1 text-xs text-muted hover:text-secondary transition-colors"
               >
-                <MessageCircle size={12} /> {noteOpen ? "Hide" : "Note"}
+                <MessageCircle size={12} /> {noteOpen ? t("Hide") : t("Note")}
               </button>
             </div>
           </div>
         ) : (
           <div className="text-xs text-muted">
-            {r.resolved_at && <div>Resolved {format(new Date(r.resolved_at), "MMM d, yyyy")}</div>}
+            {r.resolved_at && (
+              <div>
+                {t("Resolved {{format}}", {
+                  format: format(new Date(r.resolved_at), "MMM d, yyyy"),
+                })}
+              </div>
+            )}
             {r.admin_note && <div className="italic mt-0.5">"{r.admin_note}"</div>}
           </div>
         )}
@@ -162,8 +178,8 @@ export default function AdminUpgradeRequests() {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-2xl font-bold text-primary">Subscription requests</h2>
-        <p className="text-sm text-muted">Tenant upgrade requests and plan change queues</p>
+        <h2 className="text-2xl font-bold text-primary">{t("Subscription requests")}</h2>
+        <p className="text-sm text-muted">{t("Tenant upgrade requests and plan change queues")}</p>
       </div>
 
       <div className="seg">
@@ -203,10 +219,10 @@ export default function AdminUpgradeRequests() {
                 <td colSpan={COLS.length} className="!py-14 text-center">
                   <Inbox size={28} className="mx-auto mb-2 text-muted opacity-60" />
                   <p className="text-sm font-medium text-secondary">
-                    No {filter === "all" ? "" : filter} requests.
+                    {t("No")} {filter === "all" ? "" : filter} {t("requests.")}
                   </p>
                   <p className="text-xs text-muted mt-0.5">
-                    New requests from tenants will appear here.
+                    {t("New requests from tenants will appear here.")}
                   </p>
                 </td>
               </tr>

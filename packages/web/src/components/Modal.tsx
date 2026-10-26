@@ -4,6 +4,7 @@
 import { useEffect, useId, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { X as XIcon } from "lucide-react";
+import { t } from "../i18n";
 
 export default function Modal({
   open,
@@ -66,7 +67,7 @@ export default function Modal({
             type="button"
             onClick={onClose}
             className="btn-ghost !p-1.5 shrink-0"
-            aria-label="Close"
+            aria-label={t("Close")}
           >
             <XIcon size={18} />
           </button>

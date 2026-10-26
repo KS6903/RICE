@@ -1,3 +1,4 @@
+import { t } from "../i18n";
 type IconProps = React.ComponentPropsWithoutRef<"svg"> & { size?: number };
 
 /** Light dashes under the cloud for a drizzle, slanted streaks for rain. */
@@ -35,7 +36,7 @@ function AiCloudIcon({ drops, size = 24, ...rest }: IconProps & { drops: keyof t
         stroke="none"
         fontFamily="Inter, ui-sans-serif, system-ui, sans-serif"
       >
-        AI
+        {t("AI")}
       </text>
     </svg>
   );

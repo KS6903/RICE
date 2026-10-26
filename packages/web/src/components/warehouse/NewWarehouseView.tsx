@@ -31,6 +31,8 @@ import {
   type RackBatch,
   type AgingCounts,
 } from "./useRackView";
+import { t } from "../../i18n";
+import { tx } from "../../i18n/tx";
 
 /* ─── New Warehouse: a structured rack/grid alternative to the spatial canva.
    Same warehouse data, grouped by zone as scannable "racks" with occupancy bars,
@@ -44,10 +46,10 @@ const AGING_META: Record<
   RackPallet["aging_status"],
   { dot: string; badge: string; label: string }
 > = {
-  fresh: { dot: "bg-emerald-500", badge: "badge-green", label: "Fresh" },
-  warning: { dot: "bg-amber-500", badge: "badge-yellow", label: "Warning" },
-  critical: { dot: "bg-rose-500", badge: "badge-red", label: "Critical" },
-  expired: { dot: "bg-red-900", badge: "badge-gray", label: "Expired" },
+  fresh: { dot: "bg-emerald-500", badge: "badge-green", label: t("Fresh") },
+  warning: { dot: "bg-amber-500", badge: "badge-yellow", label: t("Warning") },
+  critical: { dot: "bg-rose-500", badge: "badge-red", label: t("Critical") },
+  expired: { dot: "bg-red-900", badge: "badge-gray", label: t("Expired") },
 };
 
 const fmtKg = (n: number) => `${Math.round(n).toLocaleString()} kg`;
@@ -108,7 +110,7 @@ export default function NewWarehouseView({
       <div className="card text-center py-12" data-testid="new-warehouse-no-branch">
         <Building2 size={26} className="mx-auto text-slate-400 mb-3" />
         <p className="text-sm text-secondary">
-          No warehouse selected. Create a branch first in Settings.
+          {t("No warehouse selected. Create a branch first in Settings.")}
         </p>
       </div>
     );
@@ -128,7 +130,9 @@ export default function NewWarehouseView({
     return (
       <div className="card text-center py-12" data-testid="new-warehouse-error">
         <AlertTriangle size={26} className="mx-auto text-rose-500 mb-3" />
-        <p className="text-sm text-secondary">Couldn't load the warehouse. Please try again.</p>
+        <p className="text-sm text-secondary">
+          {t("Couldn't load the warehouse. Please try again.")}
+        </p>
       </div>
     );
   }
@@ -150,7 +154,7 @@ export default function NewWarehouseView({
   // Flatten the currently-visible pallets (for CSV export), tagged with rack name.
   const visibleFlat: { pallet: RackPallet; rackName: string }[] = [
     ...racksToShow.flatMap((r) => r.pallets.map((p) => ({ pallet: p, rackName: r.name }))),
-    ...unzonedToShow.map((p) => ({ pallet: p, rackName: "Unassigned" })),
+    ...unzonedToShow.map((p) => ({ pallet: p, rackName: t("Unassigned") })),
   ];
 
   const exportCsv = () => {
@@ -207,8 +211,11 @@ export default function NewWarehouseView({
                 {data.layout.branch_name}
               </h3>
               <p className="text-xs text-muted">
-                {data.layout.name} · {data.summary.total_pallets} pallets ·{" "}
-                {fmtKg(data.summary.total_weight_kg)}
+                {t("{{name}} · {{total_pallets}} pallets · {{total_weight_kg}}", {
+                  name: data.layout.name,
+                  total_pallets: data.summary.total_pallets,
+                  total_weight_kg: fmtKg(data.summary.total_weight_kg),
+                })}
               </p>
             </div>
           </div>
@@ -216,7 +223,9 @@ export default function NewWarehouseView({
           {data.summary.capacity_kg ? (
             <div className="min-w-[180px]">
               <div className="flex items-center justify-between text-xs mb-1">
-                <span className="text-muted font-semibold uppercase tracking-wide">Occupancy</span>
+                <span className="text-muted font-semibold uppercase tracking-wide">
+                  {t("Occupancy")}
+                </span>
                 <span className="text-primary font-bold tabular-nums">
                   {data.summary.occupancy_pct ?? 0}%
                 </span>
@@ -247,49 +256,49 @@ export default function NewWarehouseView({
           <input
             className="input pl-9 w-full"
             style={{ paddingTop: "0.5rem", paddingBottom: "0.5rem" }}
-            placeholder="Search pallet, variety, or client…"
+            placeholder={t("Search pallet, variety, or client…")}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             data-testid="new-warehouse-search"
           />
         </div>
         <Select
-          aria-label="Variety"
+          aria-label={t("Variety")}
           className="!py-2 !w-auto min-w-[9rem]"
           value={variety}
           onChange={setVariety}
           data-testid="new-warehouse-variety"
           options={[
-            { value: "all", label: "All varieties" },
+            { value: "all", label: t("All varieties") },
             ...varieties.map((v) => ({ value: v, label: v })),
           ]}
         />
         <Select
-          aria-label="Age"
+          aria-label={t("Age")}
           className="!py-2 !w-auto min-w-[9rem]"
           value={aging}
           onChange={(v) => setAging(v as AgingFilter)}
           data-testid="new-warehouse-aging"
           options={[
-            { value: "all", label: "All ages" },
-            { value: "fresh", label: "Fresh" },
-            { value: "warning", label: "Warning" },
-            { value: "critical", label: "Critical" },
-            { value: "expired", label: "Expired" },
+            { value: "all", label: t("All ages") },
+            { value: "fresh", label: t("Fresh") },
+            { value: "warning", label: t("Warning") },
+            { value: "critical", label: t("Critical") },
+            { value: "expired", label: t("Expired") },
           ]}
         />
         <Select
-          aria-label="Sort"
+          aria-label={t("Sort")}
           className="!py-2 !w-auto min-w-[9rem]"
           value={sort}
           onChange={(v) => setSort(v as SortKey)}
           data-testid="new-warehouse-sort"
-          title="Sort"
+          title={t("Sort")}
           options={[
-            { value: "oldest", label: "Oldest first" },
-            { value: "newest", label: "Newest first" },
-            { value: "heaviest", label: "Heaviest first" },
-            { value: "fullest", label: "Fullest rack" },
+            { value: "oldest", label: t("Oldest first") },
+            { value: "newest", label: t("Newest first") },
+            { value: "heaviest", label: t("Heaviest first") },
+            { value: "fullest", label: t("Fullest rack") },
           ]}
         />
         <button
@@ -298,7 +307,7 @@ export default function NewWarehouseView({
           className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-grad-brand text-white text-sm font-semibold shadow-grad-glow hover:opacity-90 transition-opacity"
           data-testid="new-warehouse-fifo"
         >
-          <Zap size={15} /> Find oldest
+          <Zap size={15} /> {t("Find oldest")}
         </button>
         <button
           type="button"
@@ -306,9 +315,9 @@ export default function NewWarehouseView({
           disabled={visibleFlat.length === 0}
           className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl glass text-secondary hover:text-primary text-sm font-semibold disabled:opacity-50 transition-colors"
           data-testid="new-warehouse-export"
-          title="Export the visible pallets as CSV"
+          title={t("Export the visible pallets as CSV")}
         >
-          <Download size={15} /> Export
+          <Download size={15} /> {t("Export")}
         </button>
       </div>
 
@@ -320,14 +329,15 @@ export default function NewWarehouseView({
         >
           <Zap size={15} className="text-amber-500" />
           <span className="text-secondary font-medium">
-            {highlighted.size} pallet{highlighted.size > 1 ? "s" : ""} highlighted for dispatch
-            (oldest first).
+            {t("{{count}} pallets highlighted for dispatch (oldest first).", {
+              count: highlighted.size,
+            })}
           </span>
           <button
             type="button"
             onClick={() => setHighlighted(new Set())}
             className="ml-auto text-muted hover:text-primary"
-            title="Clear highlight"
+            title={t("Clear highlight")}
           >
             <XIcon size={15} />
           </button>
@@ -341,11 +351,15 @@ export default function NewWarehouseView({
             <Warehouse size={26} className="text-white" />
           </div>
           <h3 className="text-lg font-bold text-primary mb-1.5">
-            No pallets in this warehouse yet
+            {t("No pallets in this warehouse yet")}
           </h3>
           <p className="text-sm text-secondary max-w-md mx-auto leading-relaxed">
-            Stock pallets appear here once milling batches are recorded on the
-            <span className="font-semibold"> Milling </span> page.
+            {tx(
+              "Stock pallets appear here once milling batches are recorded on the {{page}} page.",
+              {
+                page: <span className="font-semibold">{t("Milling")}</span>,
+              },
+            )}
           </p>
         </div>
       ) : (
@@ -363,7 +377,7 @@ export default function NewWarehouseView({
             <RackCard
               rack={{
                 zone_id: "__unzoned__",
-                name: "Unassigned",
+                name: t("Unassigned"),
                 zone_type: "unassigned",
                 color_hex: "#94a3b8",
                 capacity_kg: null,
@@ -374,7 +388,7 @@ export default function NewWarehouseView({
                 pallets: unzonedToShow,
               }}
               highlighted={highlighted}
-              onSelect={(p) => setSelected({ pallet: p, rackName: "Unassigned" })}
+              onSelect={(p) => setSelected({ pallet: p, rackName: t("Unassigned") })}
             />
           )}
 
@@ -383,7 +397,7 @@ export default function NewWarehouseView({
               className="card text-center py-10 text-sm text-secondary"
               data-testid="new-warehouse-no-results"
             >
-              No pallets match your filters.
+              {t("No pallets match your filters.")}
             </div>
           )}
         </div>
@@ -490,7 +504,7 @@ function RackCard({
       {open && (
         <div className="divide-y divide-soft border-t border-soft">
           {rack.pallets.length === 0 ? (
-            <p className="px-4 py-4 text-sm text-muted italic">Empty rack.</p>
+            <p className="px-4 py-4 text-sm text-muted italic">{t("Empty rack.")}</p>
           ) : (
             rack.pallets.map((p) => (
               <PalletRow key={p.id} p={p} highlighted={highlighted.has(p.id)} onSelect={onSelect} />
@@ -583,14 +597,14 @@ function PalletDetailPanel({
               {pallet.pallet_code}
             </h3>
             <p className="text-xs text-muted">
-              {rackName} · {pallet.days_old} days old
+              {t("{{rackName}} · {{days_old}} days old", { rackName, days_old: pallet.days_old })}
             </p>
           </div>
           <button
             onClick={onClose}
             className="shrink-0 text-muted hover:text-primary p-1"
-            title="Close"
-            aria-label="Close"
+            title={t("Close")}
+            aria-label={t("Close")}
           >
             <XIcon size={18} />
           </button>
@@ -598,19 +612,19 @@ function PalletDetailPanel({
 
         <div className="p-5 space-y-4 overflow-y-auto">
           <div className="grid grid-cols-2 gap-3">
-            <Stat label="Total weight" value={fmtKg(pallet.weight_kg)} />
-            <Stat label="Sacks" value={String(pallet.sack_count)} />
-            <Stat label="Variety" value={pallet.variety_name ?? pallet.variety_code ?? "—"} />
-            <Stat label="Client" value={pallet.client_name ?? "—"} />
+            <Stat label={t("Total weight")} value={fmtKg(pallet.weight_kg)} />
+            <Stat label={t("Sacks")} value={String(pallet.sack_count)} />
+            <Stat label={t("Variety")} value={pallet.variety_name ?? pallet.variety_code ?? "—"} />
+            <Stat label={t("Client")} value={pallet.client_name ?? "—"} />
           </div>
 
           <div>
             <p className="text-xs font-bold uppercase tracking-wide text-muted mb-2">
-              Batches ({batches.length})
+              {t("Batches ({{batchesCount}})", { batchesCount: batches.length })}
             </p>
             <div className="space-y-2">
               {batches.length === 0 && (
-                <p className="text-sm text-muted italic">No batch records.</p>
+                <p className="text-sm text-muted italic">{t("No batch records.")}</p>
               )}
               {batches.map((b) => (
                 <BatchRow key={b.id} b={b} />
@@ -646,17 +660,25 @@ function BatchRow({ b }: { b: RackBatch }) {
       </div>
       <div className="mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted">
         <span className="flex items-center gap-1">
-          <Package size={12} /> {b.sack_count} sacks · {fmtKg(b.weight_kg)}
+          <Package size={12} />{" "}
+          {t("{{sack_count}} sacks · {{weight_kg}}", {
+            sack_count: b.sack_count,
+            weight_kg: fmtKg(b.weight_kg),
+          })}
         </span>
         <span className="flex items-center gap-1">
-          <Calendar size={12} /> milled {b.milling_date}
+          <Calendar size={12} /> {t("milled {{milling_date}}", { milling_date: b.milling_date })}
         </span>
         {b.moisture_pct != null && (
           <span className="flex items-center gap-1">
             <Droplets size={12} /> {b.moisture_pct}%
           </span>
         )}
-        {b.best_before_date && <span>best before {b.best_before_date}</span>}
+        {b.best_before_date && (
+          <span>
+            {t("best before {{best_before_date}}", { best_before_date: b.best_before_date })}
+          </span>
+        )}
         {b.client_name && (
           <span>
             {b.client_name}
@@ -733,43 +755,44 @@ function FifoPanel({
         <div className="flex items-center justify-between mb-1">
           <div className="flex items-center gap-2">
             <Zap size={18} className="text-amber-500" />
-            <h3 className="font-bold text-lg text-primary">Find oldest pallets (FIFO)</h3>
+            <h3 className="font-bold text-lg text-primary">{t("Find oldest pallets (FIFO)")}</h3>
           </div>
-          <button onClick={onClose} className="text-muted hover:text-primary" title="Close">
+          <button onClick={onClose} className="text-muted hover:text-primary" title={t("Close")}>
             <XIcon size={18} />
           </button>
         </div>
         <p className="text-sm text-secondary mb-5">
-          Picks pallets oldest-first by milling date until the weight you enter is covered, then
-          highlights them in the list. Leave the weight blank to list every pallet.
+          {t(
+            "Picks pallets oldest-first by milling date until the weight you enter is covered, then highlights them in the list. Leave the weight blank to list every pallet.",
+          )}
         </p>
 
         <div className="grid grid-cols-2 gap-3 mb-4">
           <div>
             <label className="block text-xs font-bold uppercase tracking-wide text-muted mb-1">
-              Variety
+              {t("Variety")}
             </label>
             <Select
-              aria-label="Variety"
+              aria-label={t("Variety")}
               value={varietyId}
               onChange={setVarietyId}
               options={[
-                { value: "", label: "Any variety" },
+                { value: "", label: t("Any variety") },
                 ...varieties.map((v) => ({ value: v.id, label: `${v.code}: ${v.name}` })),
               ]}
             />
           </div>
           <div>
             <label className="block text-xs font-bold uppercase tracking-wide text-muted mb-1">
-              Weight needed (kg){" "}
-              <span className="font-normal normal-case tracking-normal">(optional)</span>
+              {t("Weight needed (kg)")}{" "}
+              <span className="font-normal normal-case tracking-normal">{t("(optional)")}</span>
             </label>
             <input
               type="number"
               min="1"
               className="input"
-              aria-label="Weight needed (kg)"
-              placeholder="Any weight"
+              aria-label={t("Weight needed (kg)")}
+              placeholder={t("Any weight")}
               value={weight}
               onChange={(e) => setWeight(e.target.value)}
               // 0 (or less) means "no weight": show it as blank once the user leaves the box.
@@ -790,7 +813,7 @@ function FifoPanel({
           ) : (
             <Search size={14} />
           )}{" "}
-          Find oldest pallets
+          {t("Find oldest pallets")}
         </button>
 
         {result && (
@@ -798,33 +821,40 @@ function FifoPanel({
             <div className="rounded-xl bg-slate-50 dark:bg-slate-800/50 ring-1 ring-soft p-3 text-sm flex items-baseline gap-3 flex-wrap">
               {result.requested_kg != null ? (
                 <>
-                  <span className="text-muted">Requested:</span>
+                  <span className="text-muted">{t("Requested:")}</span>
                   <span className="font-bold text-primary tabular-nums">
-                    {result.requested_kg.toLocaleString()} kg
+                    {t("{{requested_kg}} kg", {
+                      requested_kg: result.requested_kg.toLocaleString(),
+                    })}
                   </span>
-                  <span className="text-muted">· Covered:</span>
+                  <span className="text-muted">{t("· Covered:")}</span>
                 </>
               ) : (
                 <>
-                  <span className="text-muted">Pallets:</span>
+                  <span className="text-muted">{t("Pallets:")}</span>
                   <span className="font-bold text-primary tabular-nums">
                     {result.pallets.length.toLocaleString()}
                   </span>
-                  <span className="text-muted">· Total:</span>
+                  <span className="text-muted">{t("· Total:")}</span>
                 </>
               )}
               <span className="font-bold text-emerald-600 dark:text-emerald-400 tabular-nums">
-                {result.total_kg.toLocaleString()} kg
+                {t("{{total_kg}} kg", { total_kg: result.total_kg.toLocaleString() })}
               </span>
               {result.shortfall_kg > 0 && (
                 <span className="font-bold text-rose-600 dark:text-rose-400 tabular-nums flex items-center gap-1">
-                  <AlertTriangle size={12} /> short {result.shortfall_kg.toLocaleString()} kg
+                  <AlertTriangle size={12} />{" "}
+                  {t("short {{shortfall_kg}} kg", {
+                    shortfall_kg: result.shortfall_kg.toLocaleString(),
+                  })}
                 </span>
               )}
             </div>
 
             {result.pallets.length === 0 ? (
-              <p className="text-sm text-muted text-center py-4">No matching pallets in stock.</p>
+              <p className="text-sm text-muted text-center py-4">
+                {t("No matching pallets in stock.")}
+              </p>
             ) : (
               <div className="max-h-56 overflow-y-auto rounded-xl ring-1 ring-soft divide-y divide-soft">
                 {result.pallets.map((p, i) => (
@@ -833,11 +863,15 @@ function FifoPanel({
                     <div className="flex-1 min-w-0">
                       <p className="font-bold text-primary">{p.pallet_code}</p>
                       <p className="text-xs text-muted">
-                        {p.variety_code || "—"} · milled {p.milling_date} ({p.days_old}d old)
+                        {p.variety_code || "—"}{" "}
+                        {t("· milled {{milling_date}} ({{days_old}}d old)", {
+                          milling_date: p.milling_date,
+                          days_old: p.days_old,
+                        })}
                       </p>
                     </div>
                     <p className="font-semibold text-primary tabular-nums shrink-0">
-                      {p.weight_kg.toLocaleString()} kg
+                      {t("{{weight_kg}} kg", { weight_kg: p.weight_kg.toLocaleString() })}
                     </p>
                   </div>
                 ))}
@@ -849,14 +883,14 @@ function FifoPanel({
                 onClick={onClose}
                 className="flex-1 px-4 py-2 rounded-xl ring-1 ring-soft text-sm font-semibold text-secondary hover:bg-slate-50 dark:hover:bg-slate-800/60"
               >
-                Cancel
+                {t("Cancel")}
               </button>
               <button
                 onClick={() => onApply(result.pallet_ids)}
                 disabled={result.pallets.length === 0}
                 className="flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-emerald-600 text-white text-sm font-semibold hover:bg-emerald-700 disabled:opacity-50"
               >
-                <ArrowDownToLine size={14} /> Highlight in list
+                <ArrowDownToLine size={14} /> {t("Highlight in list")}
               </button>
             </div>
           </div>
@@ -864,7 +898,7 @@ function FifoPanel({
 
         {recommend.isError && (
           <div className="mt-3 rounded-lg bg-rose-50 dark:bg-rose-950/30 text-rose-700 dark:text-rose-300 text-sm px-3 py-2 ring-1 ring-rose-200 dark:ring-rose-800/50">
-            Failed to fetch recommendation.
+            {t("Failed to fetch recommendation.")}
           </div>
         )}
       </div>

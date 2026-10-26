@@ -6,6 +6,7 @@ import { authService } from "../../services/AuthService";
 import { branchesService } from "../../services/BranchesService";
 import { useAuthStore } from "../../stores/authStore";
 import { useBranchStore } from "../../stores/branchStore";
+import { t } from "../../i18n";
 
 const ALL = "all";
 
@@ -69,7 +70,7 @@ export default function BranchPicker({ className = "" }: { className?: string })
       value: String(b.id),
       label: b.is_main_branch ? `${b.name} (main)` : String(b.name),
     })),
-    { value: ALL, label: "All branches" },
+    { value: ALL, label: t("All branches") },
   ];
   // With every branch showing, new records go to the user's own branch.
   const home = branches.find((b) => b.id === user.branch_id);
@@ -78,7 +79,7 @@ export default function BranchPicker({ className = "" }: { className?: string })
     <div className={`flex items-center gap-1.5 min-w-0 ${className}`}>
       <Building2 size={15} className="hidden sm:block shrink-0 text-muted" aria-hidden />
       <Select
-        aria-label="Branch"
+        aria-label={t("Branch")}
         value={view}
         onChange={(v) => {
           setView(v, user.id);
@@ -88,7 +89,7 @@ export default function BranchPicker({ className = "" }: { className?: string })
         className="flex-1 min-w-0"
         title={
           view === ALL && home
-            ? `Every branch added up. New records go to ${home.name}.`
+            ? t("Every branch added up. New records go to {{name}}.", { name: home.name })
             : undefined
         }
       />
@@ -99,7 +100,7 @@ export default function BranchPicker({ className = "" }: { className?: string })
           disabled={save.isPending}
           onClick={() => save.mutate(view)}
         >
-          Open here by default
+          {t("Open here by default")}
         </button>
       )}
     </div>

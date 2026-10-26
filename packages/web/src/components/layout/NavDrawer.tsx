@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useLocation } from "react-router-dom";
 import { Menu } from "lucide-react";
 import { clsx } from "clsx";
+import { t } from "../../i18n";
 
 /** Open/closed state for the sidebar on a phone or tablet. Following a link
  *  or pressing Escape closes it. */
@@ -71,7 +72,7 @@ export function NavDrawerButton({ open, onOpen }: { open: boolean; onOpen: () =>
       type="button"
       onClick={onOpen}
       className="lg:hidden -ml-1 h-10 w-10 shrink-0 grid place-items-center rounded-xl text-secondary hover:text-primary hover:bg-[rgb(var(--line)/0.45)] transition-colors"
-      aria-label="Open menu"
+      aria-label={t("Open menu")}
       aria-controls="app-nav"
       aria-expanded={open}
     >

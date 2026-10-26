@@ -4,6 +4,7 @@
 // transform is unit-testable in isolation. Pure: no React, no network.
 
 import { byproductLabel, type ByproductLabel } from "./byproductNames";
+import { t } from "../i18n";
 
 export type UnifiedItem = {
   id: string;
@@ -35,7 +36,7 @@ const BAR_COLOR: Record<UnifiedItem["type"], string> = {
 };
 
 const branchName = (row: { branch?: { name?: string } | null }): string =>
-  row.branch?.name || "Unassigned";
+  row.branch?.name || t("Unassigned");
 
 // The order a flat list shows the three kinds in.
 const TYPE_ORDER: Record<UnifiedItem["type"], number> = { palay: 0, milled: 1, byproduct: 2 };
@@ -46,10 +47,10 @@ const NO_GRADE = "—";
 export type InventorySort = "grade" | "most" | "least" | "variety";
 
 export const INVENTORY_SORTS: { value: InventorySort; label: string }[] = [
-  { value: "grade", label: "Grade, then most stock" },
-  { value: "most", label: "Most stock first" },
-  { value: "least", label: "Least stock first" },
-  { value: "variety", label: "Variety, A to Z" },
+  { value: "grade", label: t("Grade, then most stock") },
+  { value: "most", label: t("Most stock first") },
+  { value: "least", label: t("Least stock first") },
+  { value: "variety", label: t("Variety, A to Z") },
 ];
 
 export const DEFAULT_INVENTORY_SORT: InventorySort = "grade";

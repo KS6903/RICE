@@ -20,18 +20,19 @@ import { clsx } from "clsx";
 import UpgradeRequestToast from "../admin/UpgradeRequestToast";
 import BrandLogo from "../BrandLogo";
 import { NavDrawer, NavDrawerButton, useNavDrawer } from "./NavDrawer";
+import { t } from "../../i18n";
 
 const NAV = [
-  { to: "/admin", label: "Dashboard", icon: LayoutDashboard, end: true },
-  { to: "/admin/tenants", label: "Tenants", icon: Building2 },
+  { to: "/admin", label: t("Dashboard"), icon: LayoutDashboard, end: true },
+  { to: "/admin/tenants", label: t("Tenants"), icon: Building2 },
   {
     to: "/admin/upgrade-requests",
-    label: "Upgrade Requests",
+    label: t("Upgrade Requests"),
     icon: ArrowUpCircle,
     withBadge: "upgrades" as const,
   },
-  { to: "/admin/users", label: "All Users", icon: Users },
-  { to: "/admin/settings", label: "Settings", icon: Settings },
+  { to: "/admin/users", label: t("All Users"), icon: Users },
+  { to: "/admin/settings", label: t("Settings"), icon: Settings },
 ];
 
 function ThemeToggle() {
@@ -42,8 +43,8 @@ function ThemeToggle() {
     <button
       onClick={toggle}
       className="h-9 w-9 grid place-items-center rounded-xl glass text-secondary hover:text-primary transition-colors"
-      title={isDark ? "Switch to light mode" : "Switch to dark mode"}
-      aria-label="Toggle theme"
+      title={isDark ? t("Switch to light mode") : t("Switch to dark mode")}
+      aria-label={t("Toggle theme")}
     >
       {isDark ? <Sun size={16} /> : <Moon size={16} />}
     </button>
@@ -84,15 +85,17 @@ export default function AdminShell() {
             </div>
             <div className="min-w-0 flex-1">
               <h1 className="text-base font-bold tracking-tight text-primary leading-tight truncate">
-                Oraiza
+                {t("Oraiza")}
               </h1>
-              <p className="text-xs text-muted leading-tight font-medium">Platform console</p>
+              <p className="text-xs text-muted leading-tight font-medium">
+                {t("Platform console")}
+              </p>
             </div>
             <button
               type="button"
               onClick={() => nav.setOpen(false)}
               className="lg:hidden -mr-2 h-10 w-10 grid place-items-center rounded-xl text-secondary hover:text-primary"
-              aria-label="Close menu"
+              aria-label={t("Close menu")}
             >
               <X size={20} />
             </button>
@@ -101,7 +104,7 @@ export default function AdminShell() {
 
         <nav className="relative flex-1 px-3 py-4 space-y-1 overflow-y-auto">
           <p className="px-3 pb-2 text-[11px] font-bold uppercase tracking-[0.1em] text-muted">
-            Manage
+            {t("Manage")}
           </p>
           {NAV.map(({ to, label, icon: Icon, end, withBadge }) => (
             <NavLink
@@ -134,7 +137,7 @@ export default function AdminShell() {
         </nav>
 
         <div className="relative px-5 py-3 border-t border-soft text-xs text-muted font-medium">
-          v1.0.0 · BossAdmin
+          {t("v1.0.0 · BossAdmin")}
         </div>
       </NavDrawer>
 
@@ -143,7 +146,7 @@ export default function AdminShell() {
           <NavDrawerButton open={nav.open} onOpen={() => nav.setOpen(true)} />
           <span className="inline-flex items-center gap-1.5 badge-violet mr-auto lg:mr-0">
             <ShieldCheck size={12} />
-            Platform admin
+            {t("Platform admin")}
           </span>
 
           <div className="flex items-center gap-2 sm:gap-3">
@@ -162,14 +165,14 @@ export default function AdminShell() {
                 <p className="text-sm font-semibold text-primary truncate max-w-[10rem]">
                   {user?.full_name}
                 </p>
-                <p className="text-xs text-muted font-medium">BossAdmin</p>
+                <p className="text-xs text-muted font-medium">{t("BossAdmin")}</p>
               </div>
             </div>
 
             <button
               onClick={handleLogout}
               className="h-9 w-9 grid place-items-center rounded-xl text-secondary hover:text-rose-500 hover:bg-rose-500/10 transition-colors"
-              title="Sign out"
+              title={t("Sign out")}
             >
               <LogOut size={16} />
             </button>

@@ -1,3 +1,4 @@
+import { t } from "../i18n";
 /** The drying advice's sun, with "AI" in the middle: the advice comes from the
  *  AI advisor. Drawn like the other (lucide) icons: a 24 box, stroked in the
  *  current colour, but with a bigger disc so the letters fit. */
@@ -29,7 +30,7 @@ export default function AiSunIcon({
         stroke="none"
         fontFamily="Inter, ui-sans-serif, system-ui, sans-serif"
       >
-        AI
+        {t("AI")}
       </text>
     </svg>
   );

@@ -15,6 +15,7 @@ import {
 import { useLocations, useGeocodeSearch, type GeocodeHit } from "../hooks/useLocations";
 import { useActiveLocation } from "../hooks/useActiveLocation";
 import WeatherWidget from "./WeatherWidget";
+import { t } from "../i18n";
 
 /** Header dropdown: shows the current weather as a clickable pill that opens
  *  a panel listing the user's saved locations + a search box. The saved-default
@@ -108,15 +109,15 @@ export default function LocationPicker() {
             {/* Active location header */}
             <div className="px-4 py-3 border-b border-soft bg-slate-50/60 dark:bg-slate-800/40">
               <p className="text-[10px] font-bold uppercase tracking-wider text-muted">
-                Current location
+                {t("Current location")}
               </p>
               <p className="text-sm font-semibold text-primary truncate flex items-center gap-1.5 mt-0.5">
                 <MapPin size={13} className="text-emerald-500 shrink-0" />
                 {active.source === "saved"
                   ? active.label
                   : active.source === "gps"
-                    ? "Your device location"
-                    : "Detected from network"}
+                    ? t("Your device location")
+                    : t("Detected from network")}
               </p>
             </div>
 
@@ -124,12 +125,12 @@ export default function LocationPicker() {
             <div className="max-h-64 overflow-y-auto" style={{ scrollbarGutter: "stable" }}>
               {list.isLoading && (
                 <p className="text-xs text-muted px-3 py-3 inline-flex items-center gap-1.5">
-                  <Loader2 size={12} className="animate-spin" /> Loading favorites…
+                  <Loader2 size={12} className="animate-spin" /> {t("Loading favorites…")}
                 </p>
               )}
               {!list.isLoading && saved.length === 0 && (
                 <p className="text-xs text-muted px-3 py-3 italic">
-                  No favorites yet — search below to add one.
+                  {t("No favorites yet — search below to add one.")}
                 </p>
               )}
               {saved.map((s) => (
@@ -146,9 +147,13 @@ export default function LocationPicker() {
                     type="button"
                     onClick={() => setDefault.mutate(s.id)}
                     className={`shrink-0 ${s.is_default ? "text-amber-400" : "text-slate-300 dark:text-slate-600 hover:text-amber-400"}`}
-                    title={s.is_default ? "This is your default" : "Set as default"}
+                    title={s.is_default ? t("This is your default") : t("Set as default")}
                     data-testid={`star-${s.id}`}
-                    aria-label={s.is_default ? "Current default" : `Set ${s.label} as default`}
+                    aria-label={
+                      s.is_default
+                        ? t("Current default")
+                        : t("Set {{label}} as default", { label: s.label })
+                    }
                   >
                     <Star size={14} fill={s.is_default ? "currentColor" : "none"} />
                   </button>
@@ -169,9 +174,9 @@ export default function LocationPicker() {
                     type="button"
                     onClick={() => remove.mutate(s.id)}
                     className="shrink-0 p-1 rounded text-slate-400 hover:text-rose-500 hover:bg-rose-500/10"
-                    title="Remove favorite"
+                    title={t("Remove favorite")}
                     data-testid={`delete-${s.id}`}
-                    aria-label={`Remove ${s.label}`}
+                    aria-label={t("Remove {{label}}", { label: s.label })}
                   >
                     <Trash2 size={12} />
                   </button>
@@ -188,7 +193,7 @@ export default function LocationPicker() {
                 />
                 <input
                   className="input !py-1.5 !pl-7 !pr-7 text-sm w-full"
-                  placeholder="Search a city or place…"
+                  placeholder={t("Search a city or place…")}
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
                   data-testid="location-search-input"
@@ -200,7 +205,7 @@ export default function LocationPicker() {
                     type="button"
                     onClick={() => setQuery("")}
                     className="absolute right-1.5 top-1/2 -translate-y-1/2 text-muted hover:text-primary p-0.5 rounded"
-                    aria-label="Clear search"
+                    aria-label={t("Clear search")}
                   >
                     <XIcon size={12} />
                   </button>
@@ -211,17 +216,17 @@ export default function LocationPicker() {
                 <div className="mt-2 max-h-48 overflow-y-auto" data-testid="search-results">
                   {search.isLoading && (
                     <p className="text-xs text-muted py-2 inline-flex items-center gap-1.5">
-                      <Loader2 size={12} className="animate-spin" /> Searching…
+                      <Loader2 size={12} className="animate-spin" /> {t("Searching…")}
                     </p>
                   )}
                   {search.isError && (
                     <p className="text-xs text-rose-600 dark:text-rose-400 py-2 inline-flex items-center gap-1.5">
                       <AlertCircle size={12} />
-                      {(search.error as any)?.response?.data?.detail ?? "Search failed."}
+                      {(search.error as any)?.response?.data?.detail ?? t("Search failed.")}
                     </p>
                   )}
                   {search.data && search.data.length === 0 && (
-                    <p className="text-xs text-muted py-2 italic">No matches.</p>
+                    <p className="text-xs text-muted py-2 italic">{t("No matches.")}</p>
                   )}
                   {search.data?.map((hit, idx) => (
                     <button
@@ -244,7 +249,7 @@ export default function LocationPicker() {
               )}
               {!showSearchResults && (
                 <p className="text-[10px] text-muted mt-1.5 px-0.5">
-                  Search proxied via HTTPS · no third party gets your account info
+                  {t("Search proxied via HTTPS · no third party gets your account info")}
                 </p>
               )}
             </div>

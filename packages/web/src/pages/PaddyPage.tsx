@@ -19,6 +19,7 @@ import {
   inSeveralWarehouses,
   usePurchaseWarehouse,
 } from "../components/PurchaseWarehouse";
+import { t } from "../i18n";
 
 export default function PaddyPage() {
   const qc = useQueryClient();
@@ -94,9 +95,11 @@ export default function PaddyPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-xl font-bold text-gray-900 dark:text-slate-100">Palay (Paddy)</h2>
+          <h2 className="text-xl font-bold text-gray-900 dark:text-slate-100">
+            {t("Palay (Paddy)")}
+          </h2>
           <p className="text-sm text-gray-500 dark:text-slate-400">
-            Procurement and palay inventory
+            {t("Procurement and palay inventory")}
           </p>
         </div>
       </div>
@@ -104,7 +107,7 @@ export default function PaddyPage() {
       <Modal
         open={showForm}
         size="xl"
-        title="New Palay Purchase"
+        title={t("New Palay Purchase")}
         onClose={() => setShowForm(false)}
         testId="new-purchase"
       >
@@ -114,25 +117,25 @@ export default function PaddyPage() {
           >
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-slate-200 mb-1">
-                Purchase Date
+                {t("Purchase Date")}
               </label>
               <DatePicker
-                aria-label="Purchase date"
+                aria-label={t("Purchase date")}
                 value={form.purchase_date}
                 onChange={(v) => setForm((f) => ({ ...f, purchase_date: v }))}
               />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-slate-200 mb-1">
-                Delivery Type
+                {t("Delivery Type")}
               </label>
               <Select
-                aria-label="Delivery type"
+                aria-label={t("Delivery type")}
                 value={form.delivery_type}
                 onChange={(v) => setForm((f) => ({ ...f, delivery_type: v }))}
                 options={[
-                  { value: "delivered", label: "Delivered" },
-                  { value: "farm_gate", label: "Farm Gate" },
+                  { value: "delivered", label: t("Delivered") },
+                  { value: "farm_gate", label: t("Farm Gate") },
                 ]}
               />
             </div>
@@ -141,30 +144,30 @@ export default function PaddyPage() {
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <p className="text-sm font-medium text-gray-700 dark:text-slate-200">
-                Purchase Items
+                {t("Purchase Items")}
               </p>
               <div className="flex items-center gap-3">
                 <QuickAdd
-                  label="New variety"
+                  label={t("New variety")}
                   endpoint="/paddy/varieties"
                   queryKey={["varieties"]}
                   fields={[
-                    { key: "code", label: "Code", required: true, placeholder: "e.g. RC400" },
-                    { key: "name", label: "Name", required: true },
+                    { key: "code", label: t("Code"), required: true, placeholder: t("e.g. RC400") },
+                    { key: "name", label: t("Name"), required: true },
                     {
                       key: "category",
-                      label: "Category",
+                      label: t("Category"),
                       type: "select",
                       options: [
-                        { value: "inbred", label: "Inbred" },
-                        { value: "hybrid", label: "Hybrid" },
-                        { value: "local", label: "Local" },
+                        { value: "inbred", label: t("Inbred") },
+                        { value: "hybrid", label: t("Hybrid") },
+                        { value: "local", label: t("Local") },
                       ],
                       default: "inbred",
                     },
                     {
                       key: "typical_recovery_pct",
-                      label: "Recovery %",
+                      label: t("Recovery %"),
                       type: "number",
                       placeholder: "65",
                     },
@@ -181,7 +184,7 @@ export default function PaddyPage() {
                   onClick={addItem}
                   className="text-sm text-brand-600 dark:text-brand-400 hover:text-brand-700 dark:hover:text-brand-300"
                 >
-                  + Add Item
+                  {t("+ Add Item")}
                 </button>
               </div>
             </div>
@@ -190,10 +193,10 @@ export default function PaddyPage() {
                 key={idx}
                 className="grid grid-cols-2 sm:grid-cols-6 gap-2 p-3 bg-gray-50 dark:bg-slate-900/50 rounded-lg"
               >
-                <FieldCaption label="Variety" className="col-span-2 sm:col-span-1">
+                <FieldCaption label={t("Variety")} className="col-span-2 sm:col-span-1">
                   <Select
-                    aria-label="Variety"
-                    placeholder="Variety"
+                    aria-label={t("Variety")}
+                    placeholder={t("Variety")}
                     value={item.variety_id}
                     onChange={(v) => {
                       const items = [...form.items];
@@ -203,10 +206,10 @@ export default function PaddyPage() {
                     options={varieties.map((v: any) => ({ value: v.id, label: v.code }))}
                   />
                 </FieldCaption>
-                <FieldCaption label="Grade">
+                <FieldCaption label={t("Grade")}>
                   <Select
-                    aria-label="Grade"
-                    placeholder="Grade"
+                    aria-label={t("Grade")}
+                    placeholder={t("Grade")}
                     value={item.grade_id}
                     onChange={(v) => {
                       const items = [...form.items];
@@ -216,10 +219,10 @@ export default function PaddyPage() {
                     options={grades.map((g: any) => ({ value: g.id, label: g.code }))}
                   />
                 </FieldCaption>
-                <FieldCaption label="Gross weight (kg)">
+                <FieldCaption label={t("Gross weight (kg)")}>
                   <input
                     className="input"
-                    placeholder="Gross kg"
+                    placeholder={t("Gross kg")}
                     type="number"
                     value={item.gross_weight_kg}
                     onChange={(e) => {
@@ -229,10 +232,10 @@ export default function PaddyPage() {
                     }}
                   />
                 </FieldCaption>
-                <FieldCaption label="Tare: sacks (kg)">
+                <FieldCaption label={t("Tare: sacks (kg)")}>
                   <input
                     className="input"
-                    placeholder="Tare kg"
+                    placeholder={t("Tare kg")}
                     type="number"
                     value={item.tare_weight_kg}
                     onChange={(e) => {
@@ -242,10 +245,10 @@ export default function PaddyPage() {
                     }}
                   />
                 </FieldCaption>
-                <FieldCaption label="Moisture %">
+                <FieldCaption label={t("Moisture %")}>
                   <input
                     className="input"
-                    placeholder="Moisture %"
+                    placeholder={t("Moisture %")}
                     type="number"
                     value={item.moisture_content_pct}
                     onChange={(e) => {
@@ -255,10 +258,10 @@ export default function PaddyPage() {
                     }}
                   />
                 </FieldCaption>
-                <FieldCaption label="Price per cavan (₱)">
+                <FieldCaption label={t("Price per cavan (₱)")}>
                   <input
                     className="input"
-                    placeholder="₱/cavan"
+                    placeholder={t("₱/cavan")}
                     type="number"
                     value={item.price_per_cavan}
                     onChange={(e) => {
@@ -273,14 +276,14 @@ export default function PaddyPage() {
           </div>
           <div className="flex gap-2 justify-end">
             <button onClick={() => setShowForm(false)} className="btn-secondary">
-              Cancel
+              {t("Cancel")}
             </button>
             <button
               onClick={() => createMutation.mutate(form)}
               className="btn-primary"
               disabled={createMutation.isPending}
             >
-              {createMutation.isPending ? "Saving…" : "Save Purchase"}
+              {createMutation.isPending ? t("Saving…") : t("Save Purchase")}
             </button>
           </div>
         </div>
@@ -288,17 +291,19 @@ export default function PaddyPage() {
 
       {/* Stock index: what's on hand, always visible above the purchases */}
       <section className="space-y-2" data-testid="palay-stock-index">
-        <h3 className="text-sm font-bold text-gray-900 dark:text-slate-100">Palay in stock</h3>
+        <h3 className="text-sm font-bold text-gray-900 dark:text-slate-100">
+          {t("Palay in stock")}
+        </h3>
         <div className="card overflow-hidden p-0">
           <table className="w-full text-sm">
             <thead className="bg-gray-50 dark:bg-slate-900/50 border-b border-gray-200 dark:border-slate-700">
               <tr>
                 {[
-                  "Variety",
-                  "Grade",
-                  ...(stockInSeveralWarehouses ? ["Warehouse"] : []),
-                  "Stock (kg)",
-                  "Cavans",
+                  t("Variety"),
+                  t("Grade"),
+                  ...(stockInSeveralWarehouses ? [t("Warehouse")] : []),
+                  t("Stock (kg)"),
+                  t("Cavans"),
                 ].map((h) => (
                   <th
                     key={h}
@@ -315,13 +320,13 @@ export default function PaddyPage() {
                   <td className="px-4 py-3">{i.variety?.code || "—"}</td>
                   <td className="px-4 py-3">{i.grade?.code || "—"}</td>
                   {stockInSeveralWarehouses && (
-                    <td className="px-4 py-3">{i.branch?.name || "Unassigned"}</td>
+                    <td className="px-4 py-3">{i.branch?.name || t("Unassigned")}</td>
                   )}
                   <td className="px-4 py-3 font-medium">
                     {Number(i.quantity_kg).toLocaleString()}
                   </td>
                   <td className="px-4 py-3 text-gray-500 dark:text-slate-400">
-                    {(Number(i.quantity_kg) / 50).toFixed(1)} cv
+                    {t("{{toFixed}} cv", { toFixed: (Number(i.quantity_kg) / 50).toFixed(1) })}
                   </td>
                 </tr>
               ))}
@@ -338,7 +343,9 @@ export default function PaddyPage() {
                       colSpan={stockInSeveralWarehouses ? 5 : 4}
                       className="px-4 py-8 text-center text-muted"
                     >
-                      No palay in stock. Purchases you record show up here by variety and grade.
+                      {t(
+                        "No palay in stock. Purchases you record show up here by variety and grade.",
+                      )}
                     </td>
                   </tr>
                 )
@@ -359,13 +366,14 @@ export default function PaddyPage() {
           empty={
             <EmptyState
               icon={Wheat}
-              title="No palay bought yet"
-              action={canEdit("paddy") ? "Record your first purchase" : undefined}
+              title={t("No palay bought yet")}
+              action={canEdit("paddy") ? t("Record your first purchase") : undefined}
               onAction={() => setShowForm(true)}
               next="Next: mill it on the Milling page to turn it into rice."
             >
-              Each time a farmer or trader delivers palay, record the weight, moisture and price
-              here. It's added to your palay stock automatically.
+              {t(
+                "Each time a farmer or trader delivers palay, record the weight, moisture and price here. It's added to your palay stock automatically.",
+              )}
             </EmptyState>
           }
         />

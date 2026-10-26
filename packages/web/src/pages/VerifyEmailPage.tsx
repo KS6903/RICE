@@ -3,13 +3,14 @@ import { Link } from "react-router-dom";
 import { authService } from "../services/AuthService";
 import { consumeSensitiveUrlToken } from "../services/sensitiveUrl";
 import { Sparkles, CheckCircle2, AlertCircle, Loader2, ArrowLeft } from "lucide-react";
+import { t } from "../i18n";
 
 /** Lands from the emailed verification link (/verify-email#token=…) and confirms
  *  the address. Unauthenticated — anyone with the link can complete it. */
 export default function VerifyEmailPage() {
   const [token] = useState(() => consumeSensitiveUrlToken());
   const [state, setState] = useState<"loading" | "ok" | "error">(token ? "loading" : "error");
-  const [error, setError] = useState("This verification link is missing its token.");
+  const [error, setError] = useState(t("This verification link is missing its token."));
   const ran = useRef(false);
 
   useEffect(() => {
@@ -19,7 +20,9 @@ export default function VerifyEmailPage() {
       .verifyEmail(token)
       .then(() => setState("ok"))
       .catch((e: any) => {
-        setError(e.response?.data?.detail || "This verification link is invalid or has expired.");
+        setError(
+          e.response?.data?.detail || t("This verification link is invalid or has expired."),
+        );
         setState("error");
       });
   }, [token]);
@@ -31,19 +34,19 @@ export default function VerifyEmailPage() {
           <div className="h-11 w-11 rounded-xl bg-grad-brand grid place-items-center shadow-grad-glow">
             <Sparkles size={20} className="text-white" />
           </div>
-          <p className="text-lg font-bold tracking-tight text-primary">Oraiza</p>
+          <p className="text-lg font-bold tracking-tight text-primary">{t("Oraiza")}</p>
         </div>
 
         {state === "loading" && (
           <div className="flex items-center gap-2 text-sm text-secondary">
-            <Loader2 size={16} className="animate-spin" /> Verifying your email…
+            <Loader2 size={16} className="animate-spin" /> {t("Verifying your email…")}
           </div>
         )}
 
         {state === "ok" && (
           <div className="flex items-start gap-2 px-3 py-2.5 rounded-xl bg-emerald-500/15 ring-1 ring-inset ring-emerald-500/40 text-sm font-medium text-emerald-700 dark:text-emerald-300">
             <CheckCircle2 size={16} className="mt-0.5 shrink-0" />
-            <span>Your email is verified. You&apos;re all set.</span>
+            <span>{t("Your email is verified. You're all set.")}</span>
           </div>
         )}
 
@@ -58,7 +61,7 @@ export default function VerifyEmailPage() {
           to="/login"
           className="inline-flex items-center gap-1.5 text-sm font-semibold text-muted hover:text-primary"
         >
-          <ArrowLeft size={14} /> Back to sign in
+          <ArrowLeft size={14} /> {t("Back to sign in")}
         </Link>
       </div>
     </div>

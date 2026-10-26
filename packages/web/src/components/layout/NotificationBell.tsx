@@ -8,16 +8,17 @@ import { useAuthStore } from "../../stores/authStore";
 import { useFeature } from "../../hooks/useFeature";
 import { useAccess } from "../../hooks/useAccess";
 import { notificationService, type AppNotification } from "../../services/NotificationService";
+import { t } from "../../i18n";
 
 function timeAgo(iso: string): string {
   const seconds = Math.max(0, (Date.now() - new Date(iso).getTime()) / 1000);
-  if (seconds < 60) return "just now";
+  if (seconds < 60) return t("just now");
   const minutes = Math.floor(seconds / 60);
-  if (minutes < 60) return `${minutes} min ago`;
+  if (minutes < 60) return t("{{minutes}} min ago", { minutes });
   const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours} h ago`;
+  if (hours < 24) return t("{{hours}} h ago", { hours });
   const days = Math.floor(hours / 24);
-  return days === 1 ? "yesterday" : `${days} days ago`;
+  return days === 1 ? t("yesterday") : t("{{days}} days ago", { days });
 }
 
 /** Bell in the header: unread count from /auth/me (already polled), and the
@@ -111,8 +112,10 @@ export default function NotificationBell() {
         className="relative h-9 w-9 grid place-items-center rounded-xl glass text-secondary hover:text-primary transition-colors"
         aria-haspopup="dialog"
         aria-expanded={open}
-        aria-label={unread > 0 ? `Notifications, ${unread} unread` : "Notifications"}
-        title="Notifications"
+        aria-label={
+          unread > 0 ? t("Notifications, {{unread}} unread", { unread }) : t("Notifications")
+        }
+        title={t("Notifications")}
         data-testid="notification-bell"
       >
         <Bell size={16} />
@@ -134,11 +137,11 @@ export default function NotificationBell() {
             className="fixed z-50 bg-white dark:bg-slate-900 rounded-xl shadow-2xl ring-1 ring-soft overflow-y-auto overscroll-contain"
             style={place}
             role="dialog"
-            aria-label="Notifications"
+            aria-label={t("Notifications")}
           >
             <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-2.5 border-b border-soft">
               <span className="text-xs font-bold uppercase tracking-wide text-secondary">
-                Notifications
+                {t("Notifications")}
               </span>
               <button
                 type="button"
@@ -147,7 +150,7 @@ export default function NotificationBell() {
                 className="inline-flex items-center gap-1 text-xs font-semibold link disabled:opacity-40 disabled:cursor-default"
               >
                 <CheckCheck size={14} />
-                Mark all read
+                {t("Mark all read")}
               </button>
             </div>
 
@@ -160,13 +163,13 @@ export default function NotificationBell() {
                 </div>
               ) : list.isError ? (
                 <p className="p-4 text-sm text-secondary">
-                  Notifications couldn't load. Try again in a moment.
+                  {t("Notifications couldn't load. Try again in a moment.")}
                 </p>
               ) : items.length === 0 ? (
                 <div className="p-6 text-center">
-                  <p className="text-sm font-semibold text-primary">You're all caught up</p>
+                  <p className="text-sm font-semibold text-primary">{t("You're all caught up")}</p>
                   <p className="text-xs text-secondary mt-1">
-                    Reminders about your plan, invoices and scheduled reports show up here.
+                    {t("Reminders about your plan, invoices and scheduled reports show up here.")}
                   </p>
                 </div>
               ) : (
@@ -205,7 +208,7 @@ export default function NotificationBell() {
                           onClick={() => makeTask(n)}
                           className="absolute right-3 bottom-2.5 text-[11px] font-semibold link"
                         >
-                          Make it a task
+                          {t("Make it a task")}
                         </button>
                       )}
                     </li>

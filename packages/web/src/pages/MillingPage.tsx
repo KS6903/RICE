@@ -17,6 +17,8 @@ import DateTimePicker from "../components/DateTimePicker";
 import EditBatchDialog from "../components/milling/EditBatchDialog";
 import RecordHistory from "../components/sales/RecordHistory";
 import { useCanEditSavedRecords } from "../hooks/useRecordEditor";
+import { t } from "../i18n";
+import { statusText } from "../utils/statusText";
 
 function StatusBadge({ status }: { status: string }) {
   const map: Record<string, string> = {
@@ -24,7 +26,7 @@ function StatusBadge({ status }: { status: string }) {
     completed: "badge-green",
     cancelled: "badge-red",
   };
-  return <span className={map[status] || "badge-gray"}>{status.replace("_", " ")}</span>;
+  return <span className={map[status] || "badge-gray"}>{statusText(status)}</span>;
 }
 
 // Output types the estimate fills in; broken rice (binlid) is weighed, not estimated.
@@ -46,18 +48,18 @@ const fmtKg = (n: number) => n.toLocaleString(undefined, { maximumFractionDigits
 const ARRANGEMENTS: { value: ClientArrangement; label: string; stock: string }[] = [
   {
     value: "client_takes_all",
-    label: "Client takes everything",
-    stock: "Nothing goes into your stock.",
+    label: t("Client takes everything"),
+    stock: t("Nothing goes into your stock."),
   },
   {
     value: "mill_keeps_byproducts",
-    label: "We keep the ipa and darak",
-    stock: "The ipa and darak go into your Inventory; the bigas goes to the client.",
+    label: t("We keep the ipa and darak"),
+    stock: t("The ipa and darak go into your Inventory; the bigas goes to the client."),
   },
   {
     value: "contracted",
-    label: "Contracted",
-    stock: "Write the terms in the notes. Nothing goes into your stock by itself.",
+    label: t("Contracted"),
+    stock: t("Write the terms in the notes. Nothing goes into your stock by itself."),
   },
 ];
 const arrangementLabel = Object.fromEntries(ARRANGEMENTS.map((a) => [a.value, a.label]));
@@ -159,51 +161,53 @@ export default function MillingPage() {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-xl font-bold text-gray-900 dark:text-slate-100">
-            Milling Operations
+            {t("Milling Operations")}
           </h2>
           <p className="text-sm text-gray-500 dark:text-slate-400">
-            Track milling batches, recovery rate, and by-products
+            {t("Track milling batches, recovery rate, and by-products")}
           </p>
         </div>
         {canEdit("milling") && (
           <button onClick={() => setShowForm(!showForm)} className="btn-primary">
-            <Plus size={16} /> New Batch
+            <Plus size={16} /> {t("New Batch")}
           </button>
         )}
       </div>
 
       {showForm && (
         <div className="card space-y-4">
-          <h3 className="font-semibold text-gray-900 dark:text-slate-100">New Milling Batch</h3>
+          <h3 className="font-semibold text-gray-900 dark:text-slate-100">
+            {t("New Milling Batch")}
+          </h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="sm:col-span-2">
               <div className="flex items-baseline justify-between mb-1">
                 <label className="block text-sm font-medium text-gray-700 dark:text-slate-200">
-                  Client
+                  {t("Client")}
                 </label>
                 <QuickAdd
-                  label="New client"
+                  label={t("New client")}
                   endpoint="/milling/clients"
                   queryKey={["milling-clients"]}
                   fields={[
-                    { key: "name", label: "Name", required: true, full: true },
+                    { key: "name", label: t("Name"), required: true, full: true },
                     {
                       key: "phone",
-                      label: "Phone",
+                      label: t("Phone"),
                       required: true,
                       placeholder: "e.g. 0917 123 4567",
                     },
-                    { key: "address", label: "Address", placeholder: "Barangay, town" },
+                    { key: "address", label: t("Address"), placeholder: t("Barangay, town") },
                   ]}
                   onCreated={(c) => setForm((f) => ({ ...f, customer_id: c.id }))}
                 />
               </div>
               <Select
-                aria-label="Client"
+                aria-label={t("Client")}
                 value={form.customer_id}
                 onChange={(v) => setForm((f) => ({ ...f, customer_id: v }))}
                 options={[
-                  { value: "", label: "Our own palay" },
+                  { value: "", label: t("Our own palay") },
                   ...clients
                     .filter((c) => c.is_active)
                     .map((c) => ({ value: c.id, label: c.name })),
@@ -213,11 +217,11 @@ export default function MillingPage() {
                 <p className="text-xs text-secondary mt-1">
                   {[clientById[form.customer_id].phone, clientById[form.customer_id].address]
                     .filter(Boolean)
-                    .join(" · ") || "No phone or address on file."}
+                    .join(" · ") || t("No phone or address on file.")}
                 </p>
               ) : (
                 <p className="text-xs text-muted mt-1">
-                  Whose palay is being milled. A walk-in? Add them with New client.
+                  {t("Whose palay is being milled. A walk-in? Add them with New client.")}
                 </p>
               )}
             </div>
@@ -225,10 +229,10 @@ export default function MillingPage() {
               <div className="sm:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-slate-200 mb-1">
-                    Arrangement
+                    {t("Arrangement")}
                   </label>
                   <Select
-                    aria-label="Arrangement"
+                    aria-label={t("Arrangement")}
                     value={form.client_arrangement}
                     onChange={(v) =>
                       setForm((f) => ({ ...f, client_arrangement: v as ClientArrangement }))
@@ -236,8 +240,8 @@ export default function MillingPage() {
                     options={ARRANGEMENTS.map((a) => ({ value: a.value, label: a.label }))}
                   />
                   <p className="text-xs text-muted mt-1">
-                    {ARRANGEMENTS.find((a) => a.value === form.client_arrangement)?.stock} The
-                    client's palay isn't taken from your stock.
+                    {ARRANGEMENTS.find((a) => a.value === form.client_arrangement)?.stock}{" "}
+                    {t("The client's palay isn't taken from your stock.")}
                   </p>
                 </div>
                 <div>
@@ -245,7 +249,7 @@ export default function MillingPage() {
                     htmlFor="client-notes"
                     className="block text-sm font-medium text-gray-700 dark:text-slate-200 mb-1"
                   >
-                    Notes
+                    {t("Notes")}
                   </label>
                   <input
                     id="client-notes"
@@ -253,8 +257,8 @@ export default function MillingPage() {
                     maxLength={1000}
                     placeholder={
                       form.client_arrangement === "contracted"
-                        ? "e.g. ₱150 per cavan, paid on pickup"
-                        : "e.g. picks up tomorrow"
+                        ? t("e.g. ₱150 per cavan, paid on pickup")
+                        : t("e.g. picks up tomorrow")
                     }
                     value={form.client_notes}
                     onChange={(e) => setForm((f) => ({ ...f, client_notes: e.target.value }))}
@@ -265,24 +269,24 @@ export default function MillingPage() {
             <div>
               <div className="flex items-baseline justify-between mb-1">
                 <label className="block text-sm font-medium text-gray-700 dark:text-slate-200">
-                  Equipment
+                  {t("Equipment")}
                 </label>
                 <QuickAdd
-                  label="New equipment"
+                  label={t("New equipment")}
                   endpoint="/milling/equipment"
                   queryKey={["equipment"]}
                   fields={[
                     {
                       key: "name",
-                      label: "Name",
+                      label: t("Name"),
                       required: true,
                       full: true,
-                      placeholder: "e.g. Mill #1",
+                      placeholder: t("e.g. Mill #1"),
                     },
-                    { key: "model", label: "Model", placeholder: "e.g. SB-30" },
+                    { key: "model", label: t("Model"), placeholder: t("e.g. SB-30") },
                     {
                       key: "capacity_kg_per_hr",
-                      label: "Capacity (kg/hr)",
+                      label: t("Capacity (kg/hr)"),
                       type: "number",
                       placeholder: "500",
                     },
@@ -297,8 +301,8 @@ export default function MillingPage() {
                 />
               </div>
               <Select
-                aria-label="Equipment"
-                placeholder="Select equipment…"
+                aria-label={t("Equipment")}
+                placeholder={t("Select equipment…")}
                 value={form.equipment_id}
                 onChange={(v) => setForm((f) => ({ ...f, equipment_id: v }))}
                 options={equipment.map((eq: any) => ({ value: eq.id, label: eq.name }))}
@@ -306,10 +310,10 @@ export default function MillingPage() {
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-slate-200 mb-1">
-                Start Date/Time
+                {t("Start Date/Time")}
               </label>
               <DateTimePicker
-                label="Start"
+                label={t("Start")}
                 value={form.start_datetime}
                 onChange={(v) => setForm((f) => ({ ...f, start_datetime: v }))}
               />
@@ -320,32 +324,32 @@ export default function MillingPage() {
             <div className="flex items-center justify-between mb-2">
               <div>
                 <p className="text-sm font-medium text-gray-700 dark:text-slate-200">
-                  Palay Inputs
+                  {t("Palay Inputs")}
                 </p>
-                <p className="text-xs text-muted">The palay you put into the mill.</p>
+                <p className="text-xs text-muted">{t("The palay you put into the mill.")}</p>
               </div>
               <div className="flex items-center gap-3">
                 <QuickAdd
-                  label="New variety"
+                  label={t("New variety")}
                   endpoint="/paddy/varieties"
                   queryKey={["varieties"]}
                   fields={[
-                    { key: "code", label: "Code", required: true, placeholder: "e.g. RC400" },
-                    { key: "name", label: "Name", required: true },
+                    { key: "code", label: t("Code"), required: true, placeholder: t("e.g. RC400") },
+                    { key: "name", label: t("Name"), required: true },
                     {
                       key: "category",
-                      label: "Category",
+                      label: t("Category"),
                       type: "select",
                       options: [
-                        { value: "inbred", label: "Inbred" },
-                        { value: "hybrid", label: "Hybrid" },
-                        { value: "local", label: "Local" },
+                        { value: "inbred", label: t("Inbred") },
+                        { value: "hybrid", label: t("Hybrid") },
+                        { value: "local", label: t("Local") },
                       ],
                       default: "inbred",
                     },
                     {
                       key: "typical_recovery_pct",
-                      label: "Recovery %",
+                      label: t("Recovery %"),
                       type: "number",
                       placeholder: "65",
                     },
@@ -375,7 +379,7 @@ export default function MillingPage() {
                   }
                   className="text-sm text-brand-600 dark:text-brand-400"
                 >
-                  + Add
+                  {t("+ Add")}
                 </button>
               </div>
             </div>
@@ -384,10 +388,10 @@ export default function MillingPage() {
                 key={idx}
                 className="grid grid-cols-1 min-[400px]:grid-cols-2 lg:grid-cols-3 gap-2 mb-2"
               >
-                <FieldCaption label="Variety">
+                <FieldCaption label={t("Variety")}>
                   <Select
-                    aria-label="Variety"
-                    placeholder="Variety"
+                    aria-label={t("Variety")}
+                    placeholder={t("Variety")}
                     value={inp.variety_id}
                     onChange={(v) => {
                       const inputs = [...form.inputs];
@@ -397,10 +401,10 @@ export default function MillingPage() {
                     options={varieties.map((v: any) => ({ value: v.id, label: v.code }))}
                   />
                 </FieldCaption>
-                <FieldCaption label="Palay weight (kg)">
+                <FieldCaption label={t("Palay weight (kg)")}>
                   <input
                     className="input"
-                    placeholder="Weight kg"
+                    placeholder={t("Weight kg")}
                     type="number"
                     value={inp.input_weight_kg}
                     onChange={(e) => {
@@ -410,10 +414,10 @@ export default function MillingPage() {
                     }}
                   />
                 </FieldCaption>
-                <FieldCaption label="Moisture %">
+                <FieldCaption label={t("Moisture %")}>
                   <input
                     className="input"
-                    placeholder="Moisture %"
+                    placeholder={t("Moisture %")}
                     type="number"
                     value={inp.moisture_content_pct}
                     onChange={(e) => {
@@ -430,9 +434,13 @@ export default function MillingPage() {
           <div>
             <div className="flex items-center justify-between mb-2">
               <div>
-                <p className="text-sm font-medium text-gray-700 dark:text-slate-200">Outputs</p>
+                <p className="text-sm font-medium text-gray-700 dark:text-slate-200">
+                  {t("Outputs")}
+                </p>
                 <p className="text-xs text-muted">
-                  Worked out from the palay going in. Type the weighed kilos to replace an estimate.
+                  {t(
+                    "Worked out from the palay going in. Type the weighed kilos to replace an estimate.",
+                  )}
                 </p>
               </div>
               <button
@@ -444,7 +452,7 @@ export default function MillingPage() {
                 }
                 className="text-sm text-brand-600 dark:text-brand-400"
               >
-                + Add
+                {t("+ Add")}
               </button>
             </div>
             {form.outputs.map((out, idx) => {
@@ -454,24 +462,24 @@ export default function MillingPage() {
                   key={idx}
                   className="grid grid-cols-1 min-[400px]:grid-cols-2 lg:grid-cols-3 gap-2 mb-2 items-start"
                 >
-                  <FieldCaption label="What came out">
+                  <FieldCaption label={t("What came out")}>
                     <Select
-                      aria-label="What came out"
+                      aria-label={t("What came out")}
                       value={out.output_type}
                       onChange={(v) => setOutput(idx, { output_type: v })}
                       options={[
-                        { value: "milled_rice", label: "Milled Rice (Bigas)" },
-                        { value: "ipa", label: "Ipa (Rice Hull)" },
-                        { value: "darak", label: "Darak (Rice Bran)" },
-                        { value: "binlid", label: "Binlid (Broken Rice)" },
+                        { value: "milled_rice", label: t("Milled Rice (Bigas)") },
+                        { value: "ipa", label: t("Ipa (Rice Hull)") },
+                        { value: "darak", label: t("Darak (Rice Bran)") },
+                        { value: "binlid", label: t("Binlid (Broken Rice)") },
                       ]}
                     />
                   </FieldCaption>
                   <div>
-                    <FieldCaption label="Weight (kg)">
+                    <FieldCaption label={t("Weight (kg)")}>
                       <input
                         className="input"
-                        placeholder="Weight kg"
+                        placeholder={t("Weight kg")}
                         type="number"
                         value={weightShown(idx)}
                         onChange={(e) =>
@@ -492,17 +500,17 @@ export default function MillingPage() {
                           }
                           className="mt-1 text-xs text-brand-600 dark:text-brand-400"
                         >
-                          Use estimate ({fmtKg(est)} kg)
+                          {t("Use estimate ({{est}} kg)", { est: fmtKg(est) })}
                         </button>
                       ) : (
-                        <p className="mt-1 text-xs text-muted">Estimated</p>
+                        <p className="mt-1 text-xs text-muted">{t("Estimated")}</p>
                       ))}
                   </div>
                   {out.output_type === "milled_rice" && (
-                    <FieldCaption label="Broken rice %">
+                    <FieldCaption label={t("Broken rice %")}>
                       <input
                         className="input"
-                        placeholder="Broken rice %"
+                        placeholder={t("Broken rice %")}
                         type="number"
                         value={out.broken_rice_pct}
                         onChange={(e) => setOutput(idx, { broken_rice_pct: e.target.value })}
@@ -512,8 +520,8 @@ export default function MillingPage() {
                   {form.outputs.length > 1 && (
                     <button
                       type="button"
-                      aria-label="Remove this output"
-                      title="Remove this output"
+                      aria-label={t("Remove this output")}
+                      title={t("Remove this output")}
                       onClick={() =>
                         setForm((f) => ({ ...f, outputs: f.outputs.filter((_, i) => i !== idx) }))
                       }
@@ -528,20 +536,33 @@ export default function MillingPage() {
             {estimate.palayKg > 0 && (
               <div className="mt-3 rounded-md bg-gray-50 dark:bg-slate-900/50 px-3 py-2 text-xs text-secondary space-y-1">
                 <p>
-                  From {fmtKg(estimate.palayKg)} kg palay
+                  {t(
+                    "From {{palayKg}} kg palay, expect about {{milled_rice}} kg bigas, {{ipa}} kg ipa and {{darak}} kg darak.",
+                    {
+                      palayKg: fmtKg(estimate.palayKg),
+                      milled_rice: fmtKg(estimate.milled_rice),
+                      ipa: fmtKg(estimate.ipa),
+                      darak: fmtKg(estimate.darak),
+                    },
+                  )}
                   {estimate.adjustedKg !== estimate.palayKg &&
-                    ` (${fmtKg(estimate.adjustedKg)} kg once dried to 14% moisture)`}
-                  , expect about {fmtKg(estimate.milled_rice)} kg bigas
+                    " " +
+                      t("Dried to 14% moisture, the palay weighs {{adjustedKg}} kg.", {
+                        adjustedKg: fmtKg(estimate.adjustedKg),
+                      })}
                   {estimate.recoveryPct != null &&
-                    ` (${estimate.recoveryPct.toFixed(1)}% recovery)`}
-                  , {fmtKg(estimate.ipa)} kg ipa and {fmtKg(estimate.darak)} kg darak
+                    " " + t("Recovery: {{pct}}%.", { pct: estimate.recoveryPct.toFixed(1) })}
                   {estimate.lossKg > 0 &&
-                    `, with about ${fmtKg(estimate.lossKg)} kg lost as moisture and dust`}
-                  .
+                    " " +
+                      t("About {{lossKg}} kg is lost as moisture and dust.", {
+                        lossKg: fmtKg(estimate.lossKg),
+                      })}
                 </p>
                 <p className="text-muted">
-                  Bigas uses each variety's Recovery % ({DEFAULT_RECOVERY_PCT}% when it has none).
-                  Ipa is 20% of the palay and darak about 10%.
+                  {t(
+                    "Bigas uses each variety's Recovery % ({{pct}}% when it has none). Ipa is 20% of the palay and darak about 10%.",
+                    { pct: DEFAULT_RECOVERY_PCT },
+                  )}
                 </p>
               </div>
             )}
@@ -549,10 +570,10 @@ export default function MillingPage() {
 
           <div className="flex gap-2 justify-end">
             <button onClick={() => setShowForm(false)} className="btn-secondary">
-              Cancel
+              {t("Cancel")}
             </button>
             <button onClick={submit} className="btn-primary" disabled={createMutation.isPending}>
-              {createMutation.isPending ? "Saving…" : "Start Batch"}
+              {createMutation.isPending ? t("Saving…") : t("Start Batch")}
             </button>
           </div>
         </div>
@@ -563,13 +584,13 @@ export default function MillingPage() {
           <thead className="bg-gray-50 dark:bg-slate-900/50 border-b border-gray-200 dark:border-slate-700">
             <tr>
               {[
-                "Batch No.",
-                "Client",
-                "Start",
-                "Status",
-                "Inputs (kg)",
-                "Milled Rice (kg)",
-                "Recovery %",
+                t("Batch No."),
+                t("Client"),
+                t("Start"),
+                t("Status"),
+                t("Inputs (kg)"),
+                t("Milled Rice (kg)"),
+                t("Recovery %"),
                 "",
               ].map((h) => (
                 <th
@@ -625,23 +646,23 @@ export default function MillingPage() {
                       {canCorrect && (
                         <button
                           type="button"
-                          aria-label={`Edit batch ${b.batch_no}`}
+                          aria-label={t("Edit batch {{batch_no}}", { batch_no: b.batch_no })}
                           onClick={() => setEditing(b)}
                           className="text-xs font-semibold inline-flex items-center gap-1 text-secondary hover:text-primary"
                         >
                           <Pencil size={12} aria-hidden />
-                          Edit
+                          {t("Edit")}
                         </button>
                       )}
                       {canSeeHistory && (
                         <button
                           type="button"
-                          aria-label={`History of batch ${b.batch_no}`}
+                          aria-label={t("History of batch {{batch_no}}", { batch_no: b.batch_no })}
                           onClick={() => setHistoryOf(b)}
                           className="text-xs font-semibold inline-flex items-center gap-1 text-secondary hover:text-primary"
                         >
                           <History size={12} aria-hidden />
-                          History
+                          {t("History")}
                         </button>
                       )}
                     </div>
@@ -661,13 +682,14 @@ export default function MillingPage() {
                   <td colSpan={8}>
                     <EmptyState
                       icon={Factory}
-                      title="No milling batches yet"
-                      action={canEdit("milling") ? "Start your first batch" : undefined}
+                      title={t("No milling batches yet")}
+                      action={canEdit("milling") ? t("Start your first batch") : undefined}
                       onAction={() => setShowForm(true)}
                       next="The rice and by-products you enter go straight into Inventory, ready to sell."
                     >
-                      A batch records how much palay went into the mill and how much rice came out.
-                      Oraiza works out the recovery rate for you.
+                      {t(
+                        "A batch records how much palay went into the mill and how much rice came out. Oraiza works out the recovery rate for you.",
+                      )}
                     </EmptyState>
                   </td>
                 </tr>

@@ -24,6 +24,7 @@ import {
   inSeveralWarehouses,
   usePurchaseWarehouse,
 } from "../components/PurchaseWarehouse";
+import { t } from "../i18n";
 
 const newLine = (): ByproductLineForm => ({
   byproduct_type: "ipa",
@@ -92,9 +93,11 @@ export default function ByproductPurchasesPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-xl font-bold text-gray-900 dark:text-slate-100">By-products</h2>
+          <h2 className="text-xl font-bold text-gray-900 dark:text-slate-100">
+            {t("By-products")}
+          </h2>
           <p className="text-sm text-gray-500 dark:text-slate-400">
-            Ipa, darak and binlid you buy, and what's in stock
+            {t("Ipa, darak and binlid you buy, and what's in stock")}
           </p>
         </div>
       </div>
@@ -102,7 +105,7 @@ export default function ByproductPurchasesPage() {
       <Modal
         open={showForm}
         size="xl"
-        title="New By-product Purchase"
+        title={t("New By-product Purchase")}
         onClose={() => setShowForm(false)}
         testId="new-purchase"
       >
@@ -112,25 +115,25 @@ export default function ByproductPurchasesPage() {
           >
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-slate-200 mb-1">
-                Purchase Date
+                {t("Purchase Date")}
               </label>
               <DatePicker
-                aria-label="Purchase date"
+                aria-label={t("Purchase date")}
                 value={form.purchase_date}
                 onChange={(v) => setForm((f) => ({ ...f, purchase_date: v }))}
               />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-slate-200 mb-1">
-                Delivery Type
+                {t("Delivery Type")}
               </label>
               <Select
-                aria-label="Delivery type"
+                aria-label={t("Delivery type")}
                 value={form.delivery_type}
                 onChange={(v) => setForm((f) => ({ ...f, delivery_type: v }))}
                 options={[
-                  { value: "delivered", label: "Delivered" },
-                  { value: "picked_up", label: "Picked up" },
+                  { value: "delivered", label: t("Delivered") },
+                  { value: "picked_up", label: t("Picked up") },
                 ]}
               />
             </div>
@@ -139,13 +142,13 @@ export default function ByproductPurchasesPage() {
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <p className="text-sm font-medium text-gray-700 dark:text-slate-200">
-                Purchase Items
+                {t("Purchase Items")}
               </p>
               <button
                 onClick={() => setForm((f) => ({ ...f, items: [...f.items, newLine()] }))}
                 className="text-sm text-brand-600 dark:text-brand-400 hover:text-brand-700 dark:hover:text-brand-300"
               >
-                + Add Item
+                {t("+ Add Item")}
               </button>
             </div>
             {form.items.map((item, idx) => (
@@ -153,15 +156,15 @@ export default function ByproductPurchasesPage() {
                 key={idx}
                 className="grid grid-cols-2 sm:grid-cols-3 gap-2 p-3 bg-gray-50 dark:bg-slate-900/50 rounded-lg"
               >
-                <FieldCaption label="By-product" className="col-span-2 sm:col-span-1">
+                <FieldCaption label={t("By-product")} className="col-span-2 sm:col-span-1">
                   <Select
-                    aria-label="By-product"
+                    aria-label={t("By-product")}
                     value={item.byproduct_type}
                     onChange={(v) => setLine(idx, { byproduct_type: v })}
                     options={types}
                   />
                 </FieldCaption>
-                <FieldCaption label="Weight (kg)">
+                <FieldCaption label={t("Weight (kg)")}>
                   <input
                     className="input"
                     placeholder="kg"
@@ -171,10 +174,10 @@ export default function ByproductPurchasesPage() {
                     onChange={(e) => setLine(idx, { weight_kg: e.target.value })}
                   />
                 </FieldCaption>
-                <FieldCaption label="Price per kg (₱)">
+                <FieldCaption label={t("Price per kg (₱)")}>
                   <input
                     className="input"
-                    placeholder="₱/kg"
+                    placeholder={t("₱/kg")}
                     type="number"
                     min="0"
                     value={item.price_per_kg}
@@ -189,25 +192,27 @@ export default function ByproductPurchasesPage() {
               className="mr-auto text-sm text-gray-600 dark:text-slate-300"
               data-testid="byproduct-total"
             >
-              Total:{" "}
-              <span className="font-semibold tabular-nums">{totalKg.toLocaleString()} kg</span>
+              {t("Total:")}{" "}
+              <span className="font-semibold tabular-nums">
+                {t("{{totalKg}} kg", { totalKg: totalKg.toLocaleString() })}
+              </span>
               {" · "}
               <span className="font-semibold tabular-nums">{peso(totalPeso)}</span>
             </p>
             {createMutation.isError && (
               <p className="text-sm text-rose-600 dark:text-rose-400">
-                Couldn't save. Check each line has a weight and a price.
+                {t("Couldn't save. Check each line has a weight and a price.")}
               </p>
             )}
             <button onClick={() => setShowForm(false)} className="btn-secondary">
-              Cancel
+              {t("Cancel")}
             </button>
             <button
               onClick={() => createMutation.mutate(form)}
               className="btn-primary"
               disabled={createMutation.isPending}
             >
-              {createMutation.isPending ? "Saving…" : "Save Purchase"}
+              {createMutation.isPending ? t("Saving…") : t("Save Purchase")}
             </button>
           </div>
         </div>
@@ -216,16 +221,16 @@ export default function ByproductPurchasesPage() {
       {/* Stock index: what's on hand, always visible above the purchases */}
       <section className="space-y-2" data-testid="byproduct-stock-index">
         <h3 className="text-sm font-bold text-gray-900 dark:text-slate-100">
-          By-products in stock
+          {t("By-products in stock")}
         </h3>
         <div className="card overflow-hidden p-0">
           <table className="w-full text-sm">
             <thead className="bg-gray-50 dark:bg-slate-900/50 border-b border-gray-200 dark:border-slate-700">
               <tr>
                 {[
-                  "By-product",
-                  ...(stockInSeveralWarehouses ? ["Warehouse"] : []),
-                  "Stock (kg)",
+                  t("By-product"),
+                  ...(stockInSeveralWarehouses ? [t("Warehouse")] : []),
+                  t("Stock (kg)"),
                 ].map((h) => (
                   <th
                     key={h}
@@ -241,7 +246,7 @@ export default function ByproductPurchasesPage() {
                 <tr key={r.id} className="hover:bg-gray-50 dark:hover:bg-slate-900/50">
                   <td className="px-4 py-3">{byproductLabel(r.byproduct_type)}</td>
                   {stockInSeveralWarehouses && (
-                    <td className="px-4 py-3">{r.branch?.name || "Unassigned"}</td>
+                    <td className="px-4 py-3">{r.branch?.name || t("Unassigned")}</td>
                   )}
                   <td className="px-4 py-3 font-medium">
                     {Number(r.quantity_kg).toLocaleString()}
@@ -261,8 +266,9 @@ export default function ByproductPurchasesPage() {
                       colSpan={stockInSeveralWarehouses ? 3 : 2}
                       className="px-4 py-8 text-center text-muted"
                     >
-                      No by-products in stock. What you buy and what milling leaves over show up
-                      here.
+                      {t(
+                        "No by-products in stock. What you buy and what milling leaves over show up here.",
+                      )}
                     </td>
                   </tr>
                 )
@@ -283,13 +289,14 @@ export default function ByproductPurchasesPage() {
           empty={
             <EmptyState
               icon={Boxes}
-              title="No by-products bought yet"
-              action={canEdit("paddy") ? "Record your first purchase" : undefined}
+              title={t("No by-products bought yet")}
+              action={canEdit("paddy") ? t("Record your first purchase") : undefined}
               onAction={() => setShowForm(true)}
               next="Next: sell it from the Sales side."
             >
-              Each time you buy ipa, darak or binlid, record the weight and the price here. It's
-              added to your by-product stock automatically.
+              {t(
+                "Each time you buy ipa, darak or binlid, record the weight and the price here. It's added to your by-product stock automatically.",
+              )}
             </EmptyState>
           }
         />

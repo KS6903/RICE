@@ -16,6 +16,7 @@ import { DriversPanel, TrucksPanel } from "./DispatchPage";
 import { FieldOperatorsContent } from "./FieldOperatorsPage";
 import EmployeesPage from "./EmployeesPage";
 import { FEATURE_PLAN, PLAN_ORDER, type PlanName } from "../components/layout/navigation";
+import { t } from "../i18n";
 
 type List = {
   key: string;
@@ -32,48 +33,48 @@ type List = {
 const LISTS: List[] = [
   {
     key: "varieties",
-    label: "Rice varieties",
-    what: "The varieties and grades you buy, mill and sell. Hide one you no longer handle.",
+    label: t("Rice varieties"),
+    what: t("The varieties and grades you buy, mill and sell. Hide one you no longer handle."),
     feature: "paddy",
     section: "paddy",
     render: () => <VarietiesList />,
   },
   {
     key: "byproducts",
-    label: "By-products",
-    what: "Ipa, darak, binlid and the others you buy, keep or sell.",
+    label: t("By-products"),
+    what: t("Ipa, darak, binlid and the others you buy, keep or sell."),
     feature: "paddy",
     section: "paddy",
     render: () => <ByproductsList />,
   },
   {
     key: "categories",
-    label: "Expense categories",
-    what: "What the mill spends on, as the Expenses page groups it.",
+    label: t("Expense categories"),
+    what: t("What the mill spends on, as the Expenses page groups it."),
     feature: "expenses",
     section: "expenses",
     render: () => <ExpenseCategoriesList />,
   },
   {
     key: "machines",
-    label: "Machines",
-    what: "Hullers, polishers and dryers, picked on each milling batch.",
+    label: t("Machines"),
+    what: t("Hullers, polishers and dryers, picked on each milling batch."),
     feature: "milling",
     section: "milling",
     render: () => <MachinesList />,
   },
   {
     key: "service",
-    label: "Service intervals",
-    what: "The machines on the Maintenance page, and how often each is serviced.",
+    label: t("Service intervals"),
+    what: t("The machines on the Maintenance page, and how often each is serviced."),
     feature: "automations",
     section: "milling",
     render: () => <ServiceIntervalsList />,
   },
   {
     key: "fleet",
-    label: "Trucks & drivers",
-    what: "Who delivers, and in what, picked on the Dispatch page.",
+    label: t("Trucks & drivers"),
+    what: t("Who delivers, and in what, picked on the Dispatch page."),
     feature: "dispatch",
     section: "dispatch",
     render: () => (
@@ -85,16 +86,16 @@ const LISTS: List[] = [
   },
   {
     key: "operators",
-    label: "Agents, millers & suppliers",
-    what: "The people you deal with in the field.",
+    label: t("Agents, millers & suppliers"),
+    what: t("The people you deal with in the field."),
     feature: "field_operators",
     section: "operators",
     render: () => <FieldOperatorsContent />,
   },
   {
     key: "employees",
-    label: "Employees",
-    what: "Your staff records: positions, branches and pay.",
+    label: t("Employees"),
+    what: t("Your staff records: positions, branches and pay."),
     feature: "employees",
     section: "employees",
     render: () => <EmployeesPage />,
@@ -120,20 +121,21 @@ export default function CatalogPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-primary">Catalog</h1>
+        <h1 className="text-2xl font-bold text-primary">{t("Catalog")}</h1>
         <p className="text-secondary mt-1 max-w-2xl">
-          The lists you fill in once and every page picks from: varieties, by-products, categories,
-          machines, trucks, the people you deal with.
+          {t(
+            "The lists you fill in once and every page picks from: varieties, by-products, categories, machines, trucks, the people you deal with.",
+          )}
         </p>
       </div>
 
       {mine.length === 0 ? (
         <p className="card text-sm text-secondary">
-          Your role can't change any of these lists. The Boss can open them to it.
+          {t("Your role can't change any of these lists. The Boss can open them to it.")}
         </p>
       ) : (
         <>
-          <div role="tablist" aria-label="Lists" className="flex flex-wrap gap-2">
+          <div role="tablist" aria-label={t("Lists")} className="flex flex-wrap gap-2">
             {mine.map((l) => (
               <button
                 key={l.key}
@@ -169,7 +171,7 @@ export default function CatalogPage() {
             onClick={() => setShowOthers((o) => !o)}
             className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[0.1em] text-muted hover:text-secondary"
           >
-            More with other plans
+            {t("More with other plans")}
             <ChevronDown
               size={14}
               aria-hidden

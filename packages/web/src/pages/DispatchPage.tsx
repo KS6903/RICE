@@ -31,6 +31,8 @@ import DatePicker from "../components/DatePicker";
 import { useAuthStore } from "../stores/authStore";
 import { useAccess } from "../hooks/useAccess";
 import CodeValue from "../components/CodeValue";
+import { t } from "../i18n";
+import { statusText } from "../utils/statusText";
 
 type Agent = {
   id: string;
@@ -76,7 +78,7 @@ type DispatchOrder = {
   assigned_miller: Miller | null;
 };
 
-const COURIER_LABEL = { customer: "Customer", mill: "Rice mill courier" } as const;
+const COURIER_LABEL = { customer: t("Customer"), mill: t("Rice mill courier") } as const;
 const pastDeadline = (iso: string | null | undefined) => !!iso && Date.now() > Date.parse(iso);
 
 type PageTab = "orders" | "trips" | "fleet";
@@ -93,9 +95,9 @@ export default function DispatchPage() {
           <Truck size={20} className="text-white" />
         </div>
         <div>
-          <h2 className="text-2xl font-bold tracking-tight text-primary">Dispatch</h2>
+          <h2 className="text-2xl font-bold tracking-tight text-primary">{t("Dispatch")}</h2>
           <p className="text-sm text-secondary">
-            Assign couriers, log trips, and manage your fleet.
+            {t("Assign couriers, log trips, and manage your fleet.")}
           </p>
         </div>
       </div>
@@ -104,9 +106,9 @@ export default function DispatchPage() {
       <div className="tab-strip flex items-center gap-1 p-1 rounded-xl glass overflow-x-auto">
         {(
           [
-            { key: "orders" as PageTab, label: "Orders", icon: ClipboardList },
-            { key: "trips" as PageTab, label: "Trips", icon: Fuel },
-            { key: "fleet" as PageTab, label: "Fleet", icon: Car },
+            { key: "orders" as PageTab, label: t("Orders"), icon: ClipboardList },
+            { key: "trips" as PageTab, label: t("Trips"), icon: Fuel },
+            { key: "fleet" as PageTab, label: t("Fleet"), icon: Car },
           ] as const
         ).map(({ key, label, icon: Icon }) => {
           const active = tab === key;
@@ -164,20 +166,22 @@ function OrdersTab() {
     ((e as { response?: { data?: { detail?: unknown } } })?.response?.data?.detail as
       string | undefined) ?? fallback;
   const deliverError = markDelivered.isError
-    ? detail(markDelivered.error, "Couldn't mark the order delivered. Try again.")
+    ? detail(markDelivered.error, t("Couldn't mark the order delivered. Try again."))
     : unmarkDelivered.isError
-      ? detail(unmarkDelivered.error, "Couldn't take the delivery back. Try again.")
+      ? detail(unmarkDelivered.error, t("Couldn't take the delivery back. Try again."))
       : null;
 
   if (isLoading)
-    return <div className="card text-sm text-secondary text-center py-10">Loading orders…</div>;
+    return (
+      <div className="card text-sm text-secondary text-center py-10">{t("Loading orders…")}</div>
+    );
   if (orders.length === 0) {
     return (
       <div className="card text-center py-12">
         <Package size={36} className="mx-auto text-muted mb-3" />
-        <p className="text-secondary font-medium">No orders awaiting delivery.</p>
+        <p className="text-secondary font-medium">{t("No orders awaiting delivery.")}</p>
         <p className="text-xs text-muted mt-1">
-          Confirmed sales orders show up here so you can assign a courier.
+          {t("Confirmed sales orders show up here so you can assign a courier.")}
         </p>
       </div>
     );
@@ -199,7 +203,14 @@ function OrdersTab() {
           <table className="w-full text-sm" data-testid="dispatch-orders-table">
             <thead className="bg-slate-50 dark:bg-slate-800/60 border-b border-slate-200 dark:border-slate-700">
               <tr>
-                {["Order #", "Customer", "Courier", "Delivery date", "Status", ""].map((h) => (
+                {[
+                  t("Order #"),
+                  t("Customer"),
+                  t("Courier"),
+                  t("Delivery date"),
+                  t("Status"),
+                  "",
+                ].map((h) => (
                   <th
                     key={h}
                     className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400"
@@ -251,12 +262,12 @@ function OrdersTab() {
                           )}
                           {!o.courier_plate && o.status !== "delivered" && (
                             <p className="mt-0.5 text-xs text-amber-700 dark:text-amber-400">
-                              No plate number yet
+                              {t("No plate number yet")}
                             </p>
                           )}
                         </div>
                       ) : (
-                        <span className="text-muted italic">Not chosen</span>
+                        <span className="text-muted italic">{t("Not chosen")}</span>
                       )}
                     </td>
                     <td className="px-4 py-3 text-secondary">
@@ -275,7 +286,7 @@ function OrdersTab() {
                     <td className="px-4 py-3 text-right">
                       <div className="flex items-center justify-end gap-1.5">
                         {!canEdit("dispatch") && (
-                          <span className="text-xs text-muted">View only</span>
+                          <span className="text-xs text-muted">{t("View only")}</span>
                         )}
                         {canEdit("dispatch") && (
                           <button
@@ -284,7 +295,7 @@ function OrdersTab() {
                             onClick={() => setAssigning(o)}
                             className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-semibold text-secondary hover:text-primary hover:bg-slate-100 dark:hover:bg-slate-700/40"
                           >
-                            <Pencil size={12} /> Courier
+                            <Pencil size={12} /> {t("Courier")}
                           </button>
                         )}
                         {canEdit("dispatch") && o.status !== "delivered" && (
@@ -294,10 +305,10 @@ function OrdersTab() {
                             onClick={() => markDelivered.mutate(o.id)}
                             // Nothing is delivered until someone is assigned to deliver it.
                             disabled={markDelivered.isPending || !courier}
-                            title={courier ? undefined : "Choose who delivers it first"}
+                            title={courier ? undefined : t("Choose who delivers it first")}
                             className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-semibold text-emerald-700 dark:text-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 disabled:cursor-not-allowed disabled:opacity-45 disabled:hover:bg-transparent"
                           >
-                            <CheckCircle2 size={12} /> Mark delivered
+                            <CheckCircle2 size={12} /> {t("Mark delivered")}
                           </button>
                         )}
                         {undoOpen && (
@@ -306,18 +317,20 @@ function OrdersTab() {
                             data-testid={`unmark-delivered-${o.id}`}
                             onClick={() => unmarkDelivered.mutate(o.id)}
                             disabled={unmarkDelivered.isPending}
-                            title="Take the delivered mark off. Possible for 7 days."
+                            title={t("Take the delivered mark off. Possible for 7 days.")}
                             className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-semibold text-amber-700 dark:text-amber-300 hover:bg-amber-50 dark:hover:bg-amber-950/30 disabled:opacity-50"
                           >
-                            <Undo2 size={12} /> Unmark delivered
+                            <Undo2 size={12} /> {t("Unmark delivered")}
                           </button>
                         )}
                         {canUndo && !undoOpen && (
                           <span
                             className="inline-flex items-center gap-1 text-xs text-muted"
-                            title="Marked delivered more than 7 days ago, so it can no longer be changed."
+                            title={t(
+                              "Marked delivered more than 7 days ago, so it can no longer be changed.",
+                            )}
                           >
-                            <Lock size={11} /> Locked
+                            <Lock size={11} /> {t("Locked")}
                           </span>
                         )}
                       </div>
@@ -349,7 +362,7 @@ function StatusBadge({ status }: { status: string }) {
     <span
       className={`text-xs font-bold capitalize px-2 py-0.5 rounded-md ${styles[status] ?? "bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200"}`}
     >
-      {status.replace("_", " ")}
+      {statusText(status)}
     </span>
   );
 }
@@ -357,14 +370,14 @@ function StatusBadge({ status }: { status: string }) {
 const COURIER_OPTIONS = [
   {
     value: "customer",
-    label: "Customer",
-    hint: "The customer collects it, or sends their own vehicle.",
+    label: t("Customer"),
+    hint: t("The customer collects it, or sends their own vehicle."),
     icon: User,
   },
   {
     value: "mill",
-    label: "Rice mill courier",
-    hint: "The mill delivers it with one of its own trucks.",
+    label: t("Rice mill courier"),
+    hint: t("The mill delivers it with one of its own trucks."),
     icon: Truck,
   },
 ] as const;
@@ -421,7 +434,7 @@ function AssignCourierModal({ order, onClose }: { order: DispatchOrder; onClose:
     >
       <button
         type="button"
-        aria-label="Close"
+        aria-label={t("Close")}
         className="absolute inset-0 bg-slate-900/45 backdrop-blur-sm"
         onClick={onClose}
       />
@@ -432,19 +445,24 @@ function AssignCourierModal({ order, onClose }: { order: DispatchOrder; onClose:
         <div className="flex items-start justify-between mb-4">
           <div>
             <h3 id="assign-courier-title" className="text-lg font-bold text-primary">
-              Who delivers it
+              {t("Who delivers it")}
             </h3>
             <p className="text-xs text-muted mt-0.5">
-              Order <span className="font-mono">{order.order_no}</span>,{" "}
-              {order.customer?.name ?? "no customer"}
+              {t("Order")} <span className="font-mono">{order.order_no}</span>,{" "}
+              {order.customer?.name ?? t("no customer")}
             </p>
           </div>
-          <button type="button" aria-label="Close" onClick={onClose} className="btn-ghost !p-1.5">
+          <button
+            type="button"
+            aria-label={t("Close")}
+            onClick={onClose}
+            className="btn-ghost !p-1.5"
+          >
             <XIcon size={16} />
           </button>
         </div>
 
-        <div role="radiogroup" aria-label="Courier" className="grid grid-cols-1 gap-2">
+        <div role="radiogroup" aria-label={t("Courier")} className="grid grid-cols-1 gap-2">
           {COURIER_OPTIONS.map(({ value, label, hint, icon: Icon }) => {
             const on = choice === value;
             return (
@@ -478,7 +496,7 @@ function AssignCourierModal({ order, onClose }: { order: DispatchOrder; onClose:
           <div className="mt-4 space-y-3" data-testid="courier-details">
             {choice === "mill" && trucks.length > 0 && (
               <div>
-                <p className={LABEL}>Pick a truck</p>
+                <p className={LABEL}>{t("Pick a truck")}</p>
                 <div className="flex flex-wrap gap-1.5">
                   {trucks.map((t) => {
                     const on = plate.trim().toUpperCase() === t.plate_number.toUpperCase();
@@ -507,13 +525,13 @@ function AssignCourierModal({ order, onClose }: { order: DispatchOrder; onClose:
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div>
                 <label htmlFor="courier-plate" className={LABEL}>
-                  Plate number *
+                  {t("Plate number *")}
                 </label>
                 <ComboInput
                   id="courier-plate"
                   className="input font-mono uppercase"
                   maxLength={20}
-                  placeholder="ABC 1234"
+                  placeholder={t("ABC 1234")}
                   value={plate}
                   onChange={(v) => setPlate(v.toUpperCase())}
                   suggestions={choice === "mill" ? trucks.map((t) => t.plate_number) : []}
@@ -521,13 +539,13 @@ function AssignCourierModal({ order, onClose }: { order: DispatchOrder; onClose:
               </div>
               <div>
                 <label htmlFor="courier-driver" className={LABEL}>
-                  Driver's name *
+                  {t("Driver's name *")}
                 </label>
                 <ComboInput
                   id="courier-driver"
                   className="input"
                   maxLength={150}
-                  placeholder={choice === "customer" ? "Who picks it up" : "Who drives"}
+                  placeholder={choice === "customer" ? t("Who picks it up") : t("Who drives")}
                   value={driver}
                   onChange={takeDriver}
                   suggestions={choice === "mill" ? drivers.map((d) => d.name) : []}
@@ -535,7 +553,7 @@ function AssignCourierModal({ order, onClose }: { order: DispatchOrder; onClose:
               </div>
               <div>
                 <label htmlFor="courier-phone" className={LABEL}>
-                  Driver's phone
+                  {t("Driver's phone")}
                 </label>
                 <input
                   id="courier-phone"
@@ -551,14 +569,14 @@ function AssignCourierModal({ order, onClose }: { order: DispatchOrder; onClose:
             </div>
             <div>
               <label htmlFor="courier-notes" className={LABEL}>
-                Notes (optional)
+                {t("Notes (optional)")}
               </label>
               <textarea
                 id="courier-notes"
                 rows={2}
                 maxLength={500}
                 className="input"
-                placeholder="For example, the pickup time or the vehicle"
+                placeholder={t("For example, the pickup time or the vehicle")}
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
               />
@@ -569,7 +587,7 @@ function AssignCourierModal({ order, onClose }: { order: DispatchOrder; onClose:
         {assign.isError && (
           <p className="text-xs text-rose-600 dark:text-rose-400 font-medium mt-3 flex items-center gap-1">
             <AlertCircle size={12} />{" "}
-            {(assign.error as any)?.response?.data?.detail ?? "Couldn't save who delivers it."}
+            {(assign.error as any)?.response?.data?.detail ?? t("Couldn't save who delivers it.")}
           </p>
         )}
         <div className="flex items-center justify-between gap-2 pt-4 mt-4 border-t border-soft">
@@ -581,23 +599,25 @@ function AssignCourierModal({ order, onClose }: { order: DispatchOrder; onClose:
                 disabled={assign.isPending}
                 className="text-xs font-semibold text-rose-600 dark:text-rose-400 hover:underline"
               >
-                Clear
+                {t("Clear")}
               </button>
             )}
           </div>
           <div className="flex items-center gap-2">
             <button type="button" onClick={onClose} className="btn-secondary !py-1.5 !px-3 text-sm">
-              Cancel
+              {t("Cancel")}
             </button>
             <button
               type="button"
               data-testid="confirm-courier"
               onClick={() => assign.mutate({ choice })}
               disabled={assign.isPending || !ready}
-              title={ready || !choice ? undefined : "Enter the plate number and the driver's name"}
+              title={
+                ready || !choice ? undefined : t("Enter the plate number and the driver's name")
+              }
               className="btn-primary !py-1.5 !px-3 text-sm disabled:opacity-50"
             >
-              {assign.isPending ? "Saving…" : "Save"}
+              {assign.isPending ? t("Saving…") : t("Save")}
             </button>
           </div>
         </div>
@@ -630,7 +650,7 @@ function TripsTab() {
   });
   const statusError = updateStatus.isError
     ? (((updateStatus.error as { response?: { data?: { detail?: unknown } } })?.response?.data
-        ?.detail as string | undefined) ?? "Couldn't change the trip. Try again.")
+        ?.detail as string | undefined) ?? t("Couldn't change the trip. Try again."))
     : null;
 
   return (
@@ -645,7 +665,7 @@ function TripsTab() {
             className="btn-primary"
             data-testid="new-dispatch-btn"
           >
-            <Plus size={16} /> New Dispatch
+            <Plus size={16} /> {t("New Dispatch")}
           </button>
         </div>
       )}
@@ -678,9 +698,9 @@ function TripsTab() {
       {trips.length === 0 && !showForm ? (
         <div className="card text-center py-12">
           <Fuel size={36} className="mx-auto text-muted mb-3" />
-          <p className="text-secondary font-medium">No dispatch trips yet.</p>
+          <p className="text-secondary font-medium">{t("No dispatch trips yet.")}</p>
           <p className="text-xs text-muted mt-1">
-            Create a trip to log truck, driver, and fuel details.
+            {t("Create a trip to log truck, driver, and fuel details.")}
           </p>
         </div>
       ) : (
@@ -689,14 +709,14 @@ function TripsTab() {
             <thead className="bg-slate-50 dark:bg-slate-800/60 border-b border-slate-200 dark:border-slate-700">
               <tr>
                 {[
-                  "Trip #",
-                  "Date",
-                  "Truck",
-                  "Driver",
-                  "Fuel (L)",
-                  "Order",
-                  "Destination",
-                  "Status",
+                  t("Trip #"),
+                  t("Date"),
+                  t("Truck"),
+                  t("Driver"),
+                  t("Fuel (L)"),
+                  t("Order"),
+                  t("Destination"),
+                  t("Status"),
                   "",
                 ].map((h) => (
                   <th
@@ -709,38 +729,40 @@ function TripsTab() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-              {trips.map((t) => {
-                const locked = pastDeadline(t.edit_until);
+              {trips.map((trip) => {
+                const locked = pastDeadline(trip.edit_until);
                 return (
-                  <tr key={t.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/40">
-                    <td className="px-4 py-3 font-mono text-xs text-primary">{t.trip_no}</td>
-                    <td className="px-4 py-3 text-secondary">{t.dispatch_date}</td>
+                  <tr key={trip.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/40">
+                    <td className="px-4 py-3 font-mono text-xs text-primary">{trip.trip_no}</td>
+                    <td className="px-4 py-3 text-secondary">{trip.dispatch_date}</td>
                     <td className="px-4 py-3">
-                      <span className="font-medium text-primary">{t.truck_plate ?? "—"}</span>
-                      {t.truck_type && (
+                      <span className="font-medium text-primary">{trip.truck_plate ?? "—"}</span>
+                      {trip.truck_type && (
                         <span className="ml-1 text-[10px] text-muted uppercase">
-                          {t.truck_type.replace("_", " ")}
+                          {trip.truck_type.replace("_", " ")}
                         </span>
                       )}
                     </td>
-                    <td className="px-4 py-3 text-secondary">{t.driver_name ?? "—"}</td>
+                    <td className="px-4 py-3 text-secondary">{trip.driver_name ?? "—"}</td>
                     <td className="px-4 py-3 text-secondary tabular-nums">
-                      {t.fuel_used_l ?? "—"}
+                      {trip.fuel_used_l ?? "—"}
                     </td>
                     <td className="px-4 py-3 text-secondary">
-                      <CodeValue value={t.order_no} />
+                      <CodeValue value={trip.order_no} />
                     </td>
-                    <td className="px-4 py-3 text-secondary">{t.destination ?? "—"}</td>
+                    <td className="px-4 py-3 text-secondary">{trip.destination ?? "—"}</td>
                     <td className="px-4 py-3">
-                      <StatusBadge status={t.status} />
+                      <StatusBadge status={trip.status} />
                     </td>
                     <td className="px-4 py-3 text-right">
                       {canEdit("dispatch") && locked && (
                         <span
                           className="inline-flex items-center gap-1 text-xs text-muted"
-                          title="This trip left or arrived more than 7 days ago, so it can no longer be edited."
+                          title={t(
+                            "This trip left or arrived more than 7 days ago, so it can no longer be edited.",
+                          )}
                         >
-                          <Lock size={11} /> Locked
+                          <Lock size={11} /> {t("Locked")}
                         </span>
                       )}
                       {canEdit("dispatch") && !locked && (
@@ -749,52 +771,56 @@ function TripsTab() {
                             type="button"
                             onClick={() => {
                               setShowForm(false);
-                              setEditing(t);
+                              setEditing(trip);
                             }}
                             className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-semibold text-secondary hover:text-primary hover:bg-slate-100 dark:hover:bg-slate-700/40"
                           >
-                            <Pencil size={12} /> Edit
+                            <Pencil size={12} /> {t("Edit")}
                           </button>
-                          {t.status === "planned" && (
+                          {trip.status === "planned" && (
                             <button
                               type="button"
                               onClick={() =>
-                                updateStatus.mutate({ id: t.id, status: "in_transit" })
+                                updateStatus.mutate({ id: trip.id, status: "in_transit" })
                               }
                               className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-semibold text-sky-700 dark:text-sky-300 hover:bg-sky-50 dark:hover:bg-sky-950/30"
                             >
-                              <Truck size={12} /> Depart
+                              <Truck size={12} /> {t("Depart")}
                             </button>
                           )}
-                          {t.status === "in_transit" && (
-                            <button
-                              type="button"
-                              onClick={() => updateStatus.mutate({ id: t.id, status: "completed" })}
-                              className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-semibold text-emerald-700 dark:text-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-950/30"
-                            >
-                              <Check size={12} /> Complete
-                            </button>
-                          )}
-                          {isOwner && t.status === "in_transit" && (
-                            <button
-                              type="button"
-                              onClick={() => updateStatus.mutate({ id: t.id, status: "planned" })}
-                              title="Take the departed mark off. Possible for 7 days."
-                              className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-semibold text-amber-700 dark:text-amber-300 hover:bg-amber-50 dark:hover:bg-amber-950/30"
-                            >
-                              <Undo2 size={12} /> Undo depart
-                            </button>
-                          )}
-                          {isOwner && t.status === "completed" && (
+                          {trip.status === "in_transit" && (
                             <button
                               type="button"
                               onClick={() =>
-                                updateStatus.mutate({ id: t.id, status: "in_transit" })
+                                updateStatus.mutate({ id: trip.id, status: "completed" })
                               }
-                              title="Take the delivered mark off. Possible for 7 days."
+                              className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-semibold text-emerald-700 dark:text-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-950/30"
+                            >
+                              <Check size={12} /> {t("Complete")}
+                            </button>
+                          )}
+                          {isOwner && trip.status === "in_transit" && (
+                            <button
+                              type="button"
+                              onClick={() =>
+                                updateStatus.mutate({ id: trip.id, status: "planned" })
+                              }
+                              title={t("Take the departed mark off. Possible for 7 days.")}
                               className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-semibold text-amber-700 dark:text-amber-300 hover:bg-amber-50 dark:hover:bg-amber-950/30"
                             >
-                              <Undo2 size={12} /> Undo delivered
+                              <Undo2 size={12} /> {t("Undo depart")}
+                            </button>
+                          )}
+                          {isOwner && trip.status === "completed" && (
+                            <button
+                              type="button"
+                              onClick={() =>
+                                updateStatus.mutate({ id: trip.id, status: "in_transit" })
+                              }
+                              title={t("Take the delivered mark off. Possible for 7 days.")}
+                              className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-semibold text-amber-700 dark:text-amber-300 hover:bg-amber-50 dark:hover:bg-amber-950/30"
+                            >
+                              <Undo2 size={12} /> {t("Undo delivered")}
                             </button>
                           )}
                         </div>
@@ -873,14 +899,21 @@ function TripForm({
       return initial ? fleetService.updateTrip(initial.id, body) : fleetService.createTrip(body);
     },
     onSuccess: () => onSaved(),
-    onError: (e: any) => setError(e?.response?.data?.detail ?? "Failed to save trip."),
+    onError: (e: any) => setError(e?.response?.data?.detail ?? t("Failed to save trip.")),
   });
 
   return (
     <div className="card space-y-4" data-testid="trip-form">
       <div className="flex items-center justify-between">
-        <h3 className="text-lg font-bold text-primary">{initial ? "Edit trip" : "New dispatch"}</h3>
-        <button type="button" onClick={onClose} className="btn-ghost !p-1.5" aria-label="Close">
+        <h3 className="text-lg font-bold text-primary">
+          {initial ? t("Edit trip") : t("New dispatch")}
+        </h3>
+        <button
+          type="button"
+          onClick={onClose}
+          className="btn-ghost !p-1.5"
+          aria-label={t("Close")}
+        >
           <XIcon size={16} />
         </button>
       </div>
@@ -889,7 +922,7 @@ function TripForm({
         {initial && (
           <div className="sm:col-span-2">
             <label htmlFor="trip-no" className={LABEL}>
-              Trip number
+              {t("Trip number")}
             </label>
             <input
               id="trip-no"
@@ -900,15 +933,17 @@ function TripForm({
               onChange={(e) => setTripNo(e.target.value)}
             />
             {!isOwner && (
-              <p className="text-[10px] text-muted mt-1">Only the owner can change the number.</p>
+              <p className="text-[10px] text-muted mt-1">
+                {t("Only the owner can change the number.")}
+              </p>
             )}
           </div>
         )}
         <div>
-          <label className={LABEL}>Truck *</label>
+          <label className={LABEL}>{t("Truck *")}</label>
           <Select
-            aria-label="Truck"
-            placeholder="Select truck…"
+            aria-label={t("Truck")}
+            placeholder={t("Select truck…")}
             value={truckId}
             onChange={handleTruckChange}
             options={trucks.map((t) => ({
@@ -918,32 +953,32 @@ function TripForm({
           />
         </div>
         <div>
-          <label className={LABEL}>Driver *</label>
+          <label className={LABEL}>{t("Driver *")}</label>
           <Select
-            aria-label="Driver"
-            placeholder="Select driver…"
+            aria-label={t("Driver")}
+            placeholder={t("Select driver…")}
             value={driverId}
             onChange={setDriverId}
             options={drivers.map((d) => ({
               value: d.id,
-              label: `${d.name}${d.is_payroll ? " (payroll)" : ""}`,
+              label: `${d.name}${d.is_payroll ? t(" (payroll)") : ""}`,
             }))}
           />
           {truckId && trucks.find((t) => t.id === truckId)?.default_driver_name && (
             <p className="text-[10px] text-muted mt-1">
-              Default: {trucks.find((t) => t.id === truckId)?.default_driver_name}
+              {t("Default:")} {trucks.find((t) => t.id === truckId)?.default_driver_name}
               {driverId !== trucks.find((t) => t.id === truckId)?.default_driver_id && driverId && (
-                <span className="text-amber-600 dark:text-amber-400 ml-1">(overridden)</span>
+                <span className="text-amber-600 dark:text-amber-400 ml-1">{t("(overridden)")}</span>
               )}
             </p>
           )}
         </div>
         <div>
-          <label className={LABEL}>Dispatch date *</label>
-          <DatePicker aria-label="Dispatch date" value={date} onChange={setDate} />
+          <label className={LABEL}>{t("Dispatch date *")}</label>
+          <DatePicker aria-label={t("Dispatch date")} value={date} onChange={setDate} />
         </div>
         <div>
-          <label className={LABEL}>Fuel used (L)</label>
+          <label className={LABEL}>{t("Fuel used (L)")}</label>
           <input
             type="number"
             step="0.01"
@@ -954,19 +989,19 @@ function TripForm({
           />
           {truckId && trucks.find((t) => t.id === truckId)?.fuel_consumption_l_per_100km && (
             <p className="text-[10px] text-muted mt-1">
-              This truck: {trucks.find((t) => t.id === truckId)?.fuel_consumption_l_per_100km} L/100
-              km
+              {t("This truck:")}{" "}
+              {trucks.find((t) => t.id === truckId)?.fuel_consumption_l_per_100km} {t("L/100 km")}
             </p>
           )}
         </div>
         <div>
-          <label className={LABEL}>Linked order</label>
+          <label className={LABEL}>{t("Linked order")}</label>
           <Select
-            aria-label="Linked order"
+            aria-label={t("Linked order")}
             value={orderId}
             onChange={setOrderId}
             options={[
-              { value: "", label: "None" },
+              { value: "", label: t("None") },
               ...orders.map((o) => ({
                 value: o.id,
                 label: `${o.order_no}${o.customer ? `, ${o.customer.name}` : ""}`,
@@ -975,16 +1010,16 @@ function TripForm({
           />
         </div>
         <div>
-          <label className={LABEL}>Destination</label>
+          <label className={LABEL}>{t("Destination")}</label>
           <input
             className="input"
-            placeholder="e.g. Bayambang, Pangasinan"
+            placeholder={t("e.g. Bayambang, Pangasinan")}
             value={destination}
             onChange={(e) => setDestination(e.target.value)}
           />
         </div>
         <div className="sm:col-span-2">
-          <label className={LABEL}>Notes</label>
+          <label className={LABEL}>{t("Notes")}</label>
           <input className="input" value={notes} onChange={(e) => setNotes(e.target.value)} />
         </div>
       </div>
@@ -997,14 +1032,14 @@ function TripForm({
 
       <div className="flex gap-2 justify-end">
         <button onClick={onClose} className="btn-secondary">
-          Cancel
+          {t("Cancel")}
         </button>
         <button
           onClick={() => save.mutate()}
           disabled={!truckId || !driverId || !date || save.isPending}
           className="btn-primary"
         >
-          {save.isPending ? "Saving…" : initial ? "Save changes" : "Create dispatch"}
+          {save.isPending ? t("Saving…") : initial ? t("Save changes") : t("Create dispatch")}
         </button>
       </div>
     </div>
@@ -1064,7 +1099,7 @@ export function TrucksPanel() {
     mutationFn: ({ id, is_active }: { id: string; is_active: boolean }) =>
       fleetService.updateTruck(id, { is_active }),
     onSuccess: invalidate,
-    onError: (e: any) => setError(e?.response?.data?.detail ?? "Failed."),
+    onError: (e: any) => setError(e?.response?.data?.detail ?? t("Failed.")),
   });
 
   return (
@@ -1086,7 +1121,7 @@ export function TrucksPanel() {
             className="btn-primary"
             data-testid="add-truck-btn"
           >
-            <Plus size={16} /> Add truck
+            <Plus size={16} /> {t("Add truck")}
           </button>
         </div>
       )}
@@ -1112,12 +1147,12 @@ export function TrucksPanel() {
           <thead className="bg-slate-50 dark:bg-slate-800/60 border-b border-slate-200 dark:border-slate-700">
             <tr>
               {[
-                "Plate",
-                "Type",
-                "Fuel rate (L/100km)",
-                "Default driver",
-                "Notes",
-                "Status",
+                t("Plate"),
+                t("Type"),
+                t("Fuel rate (L/100km)"),
+                t("Default driver"),
+                t("Notes"),
+                t("Status"),
                 "",
               ].map((h) => (
                 <th
@@ -1133,31 +1168,36 @@ export function TrucksPanel() {
             {trucks.length === 0 ? (
               <tr>
                 <td colSpan={7} className="px-4 py-8 text-center text-muted">
-                  No trucks yet{canEdit("dispatch") ? " — add one above." : "."}
+                  {t("No trucks yet")}
+                  {canEdit("dispatch") ? t(" — add one above.") : "."}
                 </td>
               </tr>
             ) : (
-              trucks.map((t) => (
+              trucks.map((truck) => (
                 <tr
-                  key={t.id}
-                  className={`hover:bg-slate-50 dark:hover:bg-slate-800/40 ${!t.is_active ? "opacity-50" : ""}`}
+                  key={truck.id}
+                  className={`hover:bg-slate-50 dark:hover:bg-slate-800/40 ${!truck.is_active ? "opacity-50" : ""}`}
                 >
-                  <td className="px-4 py-3 font-mono font-bold text-primary">{t.plate_number}</td>
+                  <td className="px-4 py-3 font-mono font-bold text-primary">
+                    {truck.plate_number}
+                  </td>
                   <td className="px-4 py-3 capitalize text-secondary">
-                    {t.truck_type?.replace("_", " ") ?? "—"}
+                    {truck.truck_type?.replace("_", " ") ?? "—"}
                   </td>
                   <td className="px-4 py-3 tabular-nums text-secondary">
-                    {t.fuel_consumption_l_per_100km ?? "—"}
+                    {truck.fuel_consumption_l_per_100km ?? "—"}
                   </td>
                   <td className="px-4 py-3 text-secondary">
-                    {t.default_driver_name ?? <span className="text-muted italic">None</span>}
+                    {truck.default_driver_name ?? (
+                      <span className="text-muted italic">{t("None")}</span>
+                    )}
                   </td>
-                  <td className="px-4 py-3 text-secondary text-xs">{t.notes ?? "—"}</td>
+                  <td className="px-4 py-3 text-secondary text-xs">{truck.notes ?? "—"}</td>
                   <td className="px-4 py-3">
                     <span
-                      className={`text-xs font-bold px-2 py-0.5 rounded-md ${t.is_active ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200" : "bg-slate-100 text-slate-600"}`}
+                      className={`text-xs font-bold px-2 py-0.5 rounded-md ${truck.is_active ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200" : "bg-slate-100 text-slate-600"}`}
                     >
-                      {t.is_active ? "Active" : "Inactive"}
+                      {truck.is_active ? t("Active") : t("Inactive")}
                     </span>
                   </td>
                   <td className="px-4 py-3 text-right">
@@ -1167,19 +1207,21 @@ export function TrucksPanel() {
                           type="button"
                           onClick={() => {
                             setShowForm(false);
-                            setEditing(t);
+                            setEditing(truck);
                             setError(null);
                           }}
                           className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-semibold text-secondary hover:text-primary hover:bg-slate-100 dark:hover:bg-slate-700/40"
                         >
-                          <Pencil size={12} /> Edit
+                          <Pencil size={12} /> {t("Edit")}
                         </button>
                         <button
                           type="button"
-                          onClick={() => toggle.mutate({ id: t.id, is_active: !t.is_active })}
+                          onClick={() =>
+                            toggle.mutate({ id: truck.id, is_active: !truck.is_active })
+                          }
                           className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-semibold text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30"
                         >
-                          {t.is_active ? "Deactivate" : "Activate"}
+                          {truck.is_active ? t("Deactivate") : t("Activate")}
                         </button>
                       </div>
                     )}
@@ -1230,39 +1272,46 @@ function TruckForm({
       return initial ? fleetService.updateTruck(initial.id, body) : fleetService.createTruck(body);
     },
     onSuccess: () => onSaved(),
-    onError: (e: any) => setError(e?.response?.data?.detail ?? "Failed to save truck."),
+    onError: (e: any) => setError(e?.response?.data?.detail ?? t("Failed to save truck.")),
   });
 
   return (
     <div className="card space-y-4">
       <div className="flex items-center justify-between">
-        <h3 className="text-lg font-bold text-primary">{initial ? "Edit truck" : "Add truck"}</h3>
-        <button type="button" onClick={onClose} className="btn-ghost !p-1.5" aria-label="Close">
+        <h3 className="text-lg font-bold text-primary">
+          {initial ? t("Edit truck") : t("Add truck")}
+        </h3>
+        <button
+          type="button"
+          onClick={onClose}
+          className="btn-ghost !p-1.5"
+          aria-label={t("Close")}
+        >
           <XIcon size={16} />
         </button>
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
-          <label className={LABEL}>Plate number *</label>
+          <label className={LABEL}>{t("Plate number *")}</label>
           <input
             className="input"
-            placeholder="e.g. ABC 1234"
+            placeholder={t("e.g. ABC 1234")}
             value={plate}
             onChange={(e) => setPlate(e.target.value)}
           />
         </div>
         <div>
-          <label className={LABEL}>Truck type</label>
+          <label className={LABEL}>{t("Truck type")}</label>
           <Select
-            aria-label="Truck type"
-            placeholder="Select type…"
+            aria-label={t("Truck type")}
+            placeholder={t("Select type…")}
             value={type}
             onChange={setType}
             options={TRUCK_TYPES.map((t) => ({ value: t.value, label: t.label }))}
           />
         </div>
         <div>
-          <label className={LABEL}>Fuel consumption (L/100 km)</label>
+          <label className={LABEL}>{t("Fuel consumption (L/100 km)")}</label>
           <input
             type="number"
             step="0.01"
@@ -1273,32 +1322,32 @@ function TruckForm({
           />
         </div>
         <div>
-          <label className={LABEL}>Default driver</label>
+          <label className={LABEL}>{t("Default driver")}</label>
           <Select
-            aria-label="Default driver"
+            aria-label={t("Default driver")}
             value={defaultDriverId}
             onChange={setDefaultDriverId}
             options={[
-              { value: "", label: "None" },
+              { value: "", label: t("None") },
               ...drivers.map((d) => ({ value: d.id, label: d.name })),
             ]}
           />
         </div>
         <div className="sm:col-span-2">
-          <label className={LABEL}>Notes</label>
+          <label className={LABEL}>{t("Notes")}</label>
           <input className="input" value={notes} onChange={(e) => setNotes(e.target.value)} />
         </div>
       </div>
       <div className="flex gap-2 justify-end">
         <button onClick={onClose} className="btn-secondary">
-          Cancel
+          {t("Cancel")}
         </button>
         <button
           onClick={() => save.mutate()}
           disabled={!plate.trim() || save.isPending}
           className="btn-primary"
         >
-          {save.isPending ? "Saving…" : initial ? "Save changes" : "Add truck"}
+          {save.isPending ? t("Saving…") : initial ? t("Save changes") : t("Add truck")}
         </button>
       </div>
     </div>
@@ -1329,7 +1378,7 @@ export function DriversPanel() {
     mutationFn: ({ id, is_active }: { id: string; is_active: boolean }) =>
       fleetService.updateDriver(id, { is_active }),
     onSuccess: invalidate,
-    onError: (e: any) => setError(e?.response?.data?.detail ?? "Failed."),
+    onError: (e: any) => setError(e?.response?.data?.detail ?? t("Failed.")),
   });
 
   return (
@@ -1351,7 +1400,7 @@ export function DriversPanel() {
             className="btn-primary"
             data-testid="add-driver-btn"
           >
-            <Plus size={16} /> Add driver
+            <Plus size={16} /> {t("Add driver")}
           </button>
         </div>
       )}
@@ -1375,7 +1424,15 @@ export function DriversPanel() {
         <table className="w-full text-sm">
           <thead className="bg-slate-50 dark:bg-slate-800/60 border-b border-slate-200 dark:border-slate-700">
             <tr>
-              {["Name", "Phone", "License", "Type", "Employee link", "Status", ""].map((h) => (
+              {[
+                t("Name"),
+                t("Phone"),
+                t("License"),
+                t("Type"),
+                t("Employee link"),
+                t("Status"),
+                "",
+              ].map((h) => (
                 <th
                   key={h}
                   className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400"
@@ -1389,7 +1446,8 @@ export function DriversPanel() {
             {drivers.length === 0 ? (
               <tr>
                 <td colSpan={7} className="px-4 py-8 text-center text-muted">
-                  No drivers yet{canEdit("dispatch") ? " — add one above." : "."}
+                  {t("No drivers yet")}
+                  {canEdit("dispatch") ? t(" — add one above.") : "."}
                 </td>
               </tr>
             ) : (
@@ -1407,13 +1465,15 @@ export function DriversPanel() {
                     <span
                       className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded ${d.is_payroll ? "bg-violet-100 text-violet-800 dark:bg-violet-950/40 dark:text-violet-200" : "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300"}`}
                     >
-                      {d.is_payroll ? "Payroll" : "Independent"}
+                      {d.is_payroll ? t("Payroll") : t("Independent")}
                     </span>
                   </td>
                   <td className="px-4 py-3 text-secondary text-xs">
                     {d.is_payroll ? (
                       (d.employee_name ?? (
-                        <span className="text-amber-600 dark:text-amber-400">Not linked</span>
+                        <span className="text-amber-600 dark:text-amber-400">
+                          {t("Not linked")}
+                        </span>
                       ))
                     ) : (
                       <span className="text-muted italic">—</span>
@@ -1423,7 +1483,7 @@ export function DriversPanel() {
                     <span
                       className={`text-xs font-bold px-2 py-0.5 rounded-md ${d.is_active ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200" : "bg-slate-100 text-slate-600"}`}
                     >
-                      {d.is_active ? "Active" : "Inactive"}
+                      {d.is_active ? t("Active") : t("Inactive")}
                     </span>
                   </td>
                   <td className="px-4 py-3 text-right">
@@ -1438,14 +1498,14 @@ export function DriversPanel() {
                           }}
                           className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-semibold text-secondary hover:text-primary hover:bg-slate-100 dark:hover:bg-slate-700/40"
                         >
-                          <Pencil size={12} /> Edit
+                          <Pencil size={12} /> {t("Edit")}
                         </button>
                         <button
                           type="button"
                           onClick={() => toggle.mutate({ id: d.id, is_active: !d.is_active })}
                           className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-semibold text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30"
                         >
-                          {d.is_active ? "Deactivate" : "Activate"}
+                          {d.is_active ? t("Deactivate") : t("Activate")}
                         </button>
                       </div>
                     )}
@@ -1500,26 +1560,33 @@ function DriverForm({
         : fleetService.createDriver(body);
     },
     onSuccess: () => onSaved(),
-    onError: (e: any) => setError(e?.response?.data?.detail ?? "Failed to save driver."),
+    onError: (e: any) => setError(e?.response?.data?.detail ?? t("Failed to save driver.")),
   });
 
   return (
     <div className="card space-y-4">
       <div className="flex items-center justify-between">
-        <h3 className="text-lg font-bold text-primary">{initial ? "Edit driver" : "Add driver"}</h3>
-        <button type="button" onClick={onClose} className="btn-ghost !p-1.5" aria-label="Close">
+        <h3 className="text-lg font-bold text-primary">
+          {initial ? t("Edit driver") : t("Add driver")}
+        </h3>
+        <button
+          type="button"
+          onClick={onClose}
+          className="btn-ghost !p-1.5"
+          aria-label={t("Close")}
+        >
           <XIcon size={16} />
         </button>
       </div>
 
       {/* payroll toggle */}
       <div>
-        <label className={LABEL}>Employment type</label>
+        <label className={LABEL}>{t("Employment type")}</label>
         <div className="inline-flex p-1 rounded-lg bg-slate-100 dark:bg-slate-800/60 ring-1 ring-soft">
           {(
             [
-              { val: false, label: "Independent" },
-              { val: true, label: "On payroll" },
+              { val: false, label: t("Independent") },
+              { val: true, label: t("On payroll") },
             ] as const
           ).map(({ val, label }) => (
             <button
@@ -1540,37 +1607,37 @@ function DriverForm({
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
-          <label className={LABEL}>Name *</label>
+          <label className={LABEL}>{t("Name *")}</label>
           <input className="input" value={name} onChange={(e) => setName(e.target.value)} />
         </div>
         <div>
-          <label className={LABEL}>Phone</label>
+          <label className={LABEL}>{t("Phone")}</label>
           <input className="input" value={phone} onChange={(e) => setPhone(e.target.value)} />
         </div>
         <div>
-          <label className={LABEL}>License no.</label>
+          <label className={LABEL}>{t("License no.")}</label>
           <input
             className="input"
-            placeholder="e.g. PH-DL-12345"
+            placeholder={t("e.g. PH-DL-12345")}
             value={licenseNo}
             onChange={(e) => setLicenseNo(e.target.value)}
           />
         </div>
         {isPayroll && hasEmployees && (
           <div>
-            <label className={LABEL}>Link to employee</label>
+            <label className={LABEL}>{t("Link to employee")}</label>
             <Select
-              aria-label="Link to employee"
-              placeholder="Choose an employee…"
+              aria-label={t("Link to employee")}
+              placeholder={t("Choose an employee…")}
               value={employeeId}
               onChange={setEmployeeId}
               options={[
-                { value: "", label: "No employee" },
+                { value: "", label: t("No employee") },
                 ...employees.map((e: any) => ({ value: e.id, label: e.full_name })),
               ]}
             />
             <p className="text-[10px] text-muted mt-1">
-              Optional. Links payroll records to this driver.
+              {t("Optional. Links payroll records to this driver.")}
             </p>
           </div>
         )}
@@ -1578,14 +1645,14 @@ function DriverForm({
 
       <div className="flex gap-2 justify-end">
         <button onClick={onClose} className="btn-secondary">
-          Cancel
+          {t("Cancel")}
         </button>
         <button
           onClick={() => save.mutate()}
           disabled={!name.trim() || save.isPending}
           className="btn-primary"
         >
-          {save.isPending ? "Saving…" : initial ? "Save changes" : "Add driver"}
+          {save.isPending ? t("Saving…") : initial ? t("Save changes") : t("Add driver")}
         </button>
       </div>
     </div>

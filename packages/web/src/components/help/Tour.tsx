@@ -6,6 +6,7 @@ import { useAuthStore } from "../../stores/authStore";
 import { checklistHidden, setChecklistHidden, useHelpStore } from "../../stores/helpStore";
 import { useAccess } from "../../hooks/useAccess";
 import { tourStops } from "./tourStops";
+import { t } from "../../i18n";
 
 const GAP = 14;
 const EDGE = 16;
@@ -194,7 +195,7 @@ function TourRun() {
           type="button"
           onClick={() => finish(false)}
           className="absolute right-3 top-3 h-7 w-7 grid place-items-center rounded-lg text-muted hover:text-primary"
-          aria-label="End tour"
+          aria-label={t("End tour")}
         >
           <X size={16} />
         </button>
@@ -215,7 +216,7 @@ function TourRun() {
             }}
             className="mt-2 text-sm font-medium text-emerald-700 hover:underline dark:text-emerald-400"
           >
-            Bring back the getting-started checklist
+            {t("Bring back the getting-started checklist")}
           </button>
         )}
 
@@ -226,15 +227,15 @@ function TourRun() {
           <div className="flex gap-2">
             {first ? (
               <button type="button" onClick={() => finish(false)} className="btn-secondary">
-                Not now
+                {t("Not now")}
               </button>
             ) : (
               <button type="button" onClick={back} className="btn-secondary">
-                Back
+                {t("Back")}
               </button>
             )}
             <button ref={nextRef} type="button" onClick={next} className="btn-primary">
-              {first ? "Start tour" : last ? "Done" : "Next"}
+              {first ? t("Start tour") : last ? t("Done") : t("Next")}
             </button>
           </div>
         </div>

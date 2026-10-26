@@ -3,6 +3,8 @@ import { createPortal } from "react-dom";
 import { addDays, format } from "date-fns";
 import { AlertCircle, FileText, X as XIcon } from "lucide-react";
 import { byproductLabel } from "../../mappers/byproductNames";
+import { t } from "../../i18n";
+import { tx } from "../../i18n/tx";
 
 type OrderItem = {
   id: string;
@@ -47,9 +49,9 @@ const kg = (n: number | string) =>
 
 function describe(i: OrderItem): string {
   if (i.item_type === "byproduct") {
-    return i.byproduct_type ? byproductLabel(i.byproduct_type) : "By-product";
+    return i.byproduct_type ? byproductLabel(i.byproduct_type) : t("By-product");
   }
-  const rice = i.variety_name || "Milled rice";
+  const rice = i.variety_name || t("Milled rice");
   return i.grade_name ? `${rice}, ${i.grade_name}` : rice;
 }
 
@@ -80,7 +82,7 @@ export default function InvoicePreviewModal({ order, onClose, onGenerate, pendin
     >
       <button
         type="button"
-        aria-label="Close"
+        aria-label={t("Close")}
         className="absolute inset-0 bg-slate-900/50 backdrop-blur-sm"
         onClick={() => !pending && onClose()}
       />
@@ -92,12 +94,12 @@ export default function InvoicePreviewModal({ order, onClose, onGenerate, pendin
           <div className="flex items-center gap-2">
             <FileText size={18} className="text-emerald-600 dark:text-emerald-400" />
             <h3 id="invoice-preview-title" className="text-base font-bold text-primary">
-              Preview invoice
+              {t("Preview invoice")}
             </h3>
           </div>
           <button
             type="button"
-            aria-label="Close"
+            aria-label={t("Close")}
             onClick={onClose}
             disabled={pending}
             className="btn-ghost !p-1.5"
@@ -111,31 +113,33 @@ export default function InvoicePreviewModal({ order, onClose, onGenerate, pendin
           <div className="rounded-xl bg-white p-6 text-slate-900 shadow-sm ring-1 ring-slate-200 sm:p-8">
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div>
-                <p className="text-2xl font-extrabold tracking-tight">INVOICE</p>
+                <p className="text-2xl font-extrabold tracking-tight">{t("INVOICE")}</p>
                 <p className="mt-1 text-xs text-slate-500">
-                  Order <span className="font-mono">{order.order_no}</span>, placed{" "}
-                  {format(new Date(`${order.order_date}T00:00:00`), "MMM d, yyyy")}
+                  {tx("Order {{order}}, placed {{date}}", {
+                    order: <span className="font-mono">{order.order_no}</span>,
+                    date: format(new Date(`${order.order_date}T00:00:00`), "MMM d, yyyy"),
+                  })}
                 </p>
               </div>
               <div className="text-right text-xs">
                 <span className="inline-block rounded-md bg-amber-100 px-2 py-0.5 font-bold uppercase tracking-wider text-amber-800">
-                  Preview
+                  {t("Preview")}
                 </span>
                 <dl className="mt-2 space-y-0.5 text-slate-600">
                   <div className="flex justify-end gap-2">
-                    <dt className="text-slate-500">Invoice no.</dt>
-                    <dd className="font-medium">Assigned when generated</dd>
+                    <dt className="text-slate-500">{t("Invoice no.")}</dt>
+                    <dd className="font-medium">{t("Assigned when generated")}</dd>
                   </div>
                   <div className="flex justify-end gap-2">
-                    <dt className="text-slate-500">Date</dt>
+                    <dt className="text-slate-500">{t("Date")}</dt>
                     <dd className="font-medium">{format(today, "MMM d, yyyy")}</dd>
                   </div>
                   <div className="flex justify-end gap-2">
-                    <dt className="text-slate-500">Due</dt>
+                    <dt className="text-slate-500">{t("Due")}</dt>
                     <dd className="font-medium">
                       {format(due, "MMM d, yyyy")}
                       <span className="ml-1 font-normal text-slate-500">
-                        {terms > 0 ? `(${terms} days)` : "(on receipt)"}
+                        {terms > 0 ? `(${terms} days)` : t("(on receipt)")}
                       </span>
                     </dd>
                   </div>
@@ -145,16 +149,18 @@ export default function InvoicePreviewModal({ order, onClose, onGenerate, pendin
 
             <div className="mt-6 border-t border-slate-200 pt-4">
               <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
-                Bill to
+                {t("Bill to")}
               </p>
               <p className="mt-1 text-base font-semibold">
-                {order.customer?.name ?? "No customer on this order"}
+                {order.customer?.name ?? t("No customer on this order")}
               </p>
               {order.customer?.address && (
                 <p className="text-sm text-slate-600">{order.customer.address}</p>
               )}
               {order.customer?.tin && (
-                <p className="text-sm text-slate-600">TIN {order.customer.tin}</p>
+                <p className="text-sm text-slate-600">
+                  {t("TIN {{tin}}", { tin: order.customer.tin })}
+                </p>
               )}
             </div>
 
@@ -162,10 +168,10 @@ export default function InvoicePreviewModal({ order, onClose, onGenerate, pendin
               <table className="w-full min-w-[420px] text-sm">
                 <thead>
                   <tr className="border-b border-slate-300 text-left text-[11px] font-bold uppercase tracking-wide text-slate-500">
-                    <th className="py-2 pr-3">Item</th>
-                    <th className="py-2 px-3 text-right">Qty (kg)</th>
-                    <th className="py-2 px-3 text-right">Price / kg</th>
-                    <th className="py-2 pl-3 text-right">Amount</th>
+                    <th className="py-2 pr-3">{t("Item")}</th>
+                    <th className="py-2 px-3 text-right">{t("Qty (kg)")}</th>
+                    <th className="py-2 px-3 text-right">{t("Price / kg")}</th>
+                    <th className="py-2 pl-3 text-right">{t("Amount")}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
@@ -194,17 +200,20 @@ export default function InvoicePreviewModal({ order, onClose, onGenerate, pendin
 
             <dl className="mt-4 ml-auto w-full max-w-xs space-y-1.5 text-sm">
               <div className="flex justify-between text-slate-600">
-                <dt>Subtotal</dt>
+                <dt>{t("Subtotal")}</dt>
                 <dd className="tabular-nums">{peso(order.subtotal)}</dd>
               </div>
               {discount > 0 && (
                 <div className="flex justify-between text-slate-600">
-                  <dt>Discount ({Number(order.discount_pct ?? 0)}%)</dt>
+                  <dt>
+                    {t("Discount (")}
+                    {Number(order.discount_pct ?? 0)}%)
+                  </dt>
                   <dd className="tabular-nums">-{peso(discount)}</dd>
                 </div>
               )}
               <div className="flex justify-between border-t border-slate-300 pt-2 text-base font-extrabold">
-                <dt>Total due</dt>
+                <dt>{t("Total due")}</dt>
                 <dd className="tabular-nums">{peso(order.total_amount)}</dd>
               </div>
             </dl>
@@ -222,10 +231,10 @@ export default function InvoicePreviewModal({ order, onClose, onGenerate, pendin
             </div>
           )}
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <p className="text-xs text-muted">Nothing is invoiced until you generate it.</p>
+            <p className="text-xs text-muted">{t("Nothing is invoiced until you generate it.")}</p>
             <div className="flex w-full flex-wrap gap-2 sm:w-auto">
               <button type="button" onClick={onClose} disabled={pending} className="btn-secondary">
-                Cancel
+                {t("Cancel")}
               </button>
               <button
                 type="button"
@@ -235,7 +244,7 @@ export default function InvoicePreviewModal({ order, onClose, onGenerate, pendin
                 className="btn-primary"
               >
                 <FileText size={15} />
-                {pending ? "Generating…" : "Generate invoice"}
+                {pending ? t("Generating…") : t("Generate invoice")}
               </button>
             </div>
           </div>

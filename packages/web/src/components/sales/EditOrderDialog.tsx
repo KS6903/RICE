@@ -6,6 +6,7 @@ import Select from "../Select";
 import DatePicker from "../DatePicker";
 import { salesService } from "../../services/SalesService";
 import { byproductLabel } from "../../mappers/byproductNames";
+import { t } from "../../i18n";
 
 type Line = {
   item_type: string;
@@ -19,7 +20,7 @@ type Line = {
 
 const lineName = (l: Line) =>
   l.item_type === "byproduct"
-    ? (l.byproduct_type && byproductLabel(l.byproduct_type)) || "By-product"
+    ? (l.byproduct_type && byproductLabel(l.byproduct_type)) || t("By-product")
     : [l.variety_code, l.grade_name].filter(Boolean).join(" ") || l.item_type.replace("_", " ");
 
 const peso = (n: number) =>
@@ -96,12 +97,12 @@ export default function EditOrderDialog({
 
   const options = customers.some((c) => c.id === customerId)
     ? customers
-    : [...customers, { id: customerId, name: order.customer?.name ?? "This customer" }];
+    : [...customers, { id: customerId, name: order.customer?.name ?? t("This customer") }];
 
   return (
     <RecordDialog
-      title={`Edit order ${order.order_no}`}
-      subtitle="Every change you save is logged in the order's history."
+      title={t("Edit order {{order_no}}", { order_no: order.order_no })}
+      subtitle={t("Every change you save is logged in the order's history.")}
       onClose={onClose}
       busy={save.isPending}
       testId="edit-order"
@@ -113,7 +114,7 @@ export default function EditOrderDialog({
             onClick={onClose}
             disabled={save.isPending}
           >
-            Cancel
+            {t("Cancel")}
           </button>
           <button
             type="button"
@@ -121,7 +122,7 @@ export default function EditOrderDialog({
             onClick={() => save.mutate()}
             disabled={!valid || save.isPending}
           >
-            {save.isPending ? "Saving…" : "Save changes"}
+            {save.isPending ? t("Saving…") : t("Save changes")}
           </button>
         </>
       }
@@ -129,29 +130,31 @@ export default function EditOrderDialog({
       <div className="space-y-4">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <label className="block sm:col-span-2">
-            <span className="block mb-1 text-xs font-medium text-secondary">Customer</span>
+            <span className="block mb-1 text-xs font-medium text-secondary">{t("Customer")}</span>
             <Select
-              aria-label="Customer"
+              aria-label={t("Customer")}
               value={customerId}
               onChange={setCustomerId}
               options={options.map((c) => ({ value: c.id, label: c.name }))}
             />
           </label>
           <label className="block">
-            <span className="block mb-1 text-xs font-medium text-secondary">Order date</span>
-            <DatePicker value={orderDate} onChange={setOrderDate} aria-label="Order date" />
+            <span className="block mb-1 text-xs font-medium text-secondary">{t("Order date")}</span>
+            <DatePicker value={orderDate} onChange={setOrderDate} aria-label={t("Order date")} />
           </label>
           <label className="block">
-            <span className="block mb-1 text-xs font-medium text-secondary">Delivery date</span>
+            <span className="block mb-1 text-xs font-medium text-secondary">
+              {t("Delivery date")}
+            </span>
             <DatePicker
               value={deliveryDate}
               onChange={setDeliveryDate}
-              aria-label="Delivery date"
+              aria-label={t("Delivery date")}
               clearable
             />
           </label>
           <label className="block">
-            <span className="block mb-1 text-xs font-medium text-secondary">Discount %</span>
+            <span className="block mb-1 text-xs font-medium text-secondary">{t("Discount %")}</span>
             <input
               className="input"
               type="number"
@@ -164,29 +167,29 @@ export default function EditOrderDialog({
         </div>
 
         <div>
-          <p className="mb-1.5 text-xs font-medium text-secondary">Lines</p>
+          <p className="mb-1.5 text-xs font-medium text-secondary">{t("Lines")}</p>
           <div className="space-y-2">
             {lines.map((l, i) => (
               <div key={i} className="grid grid-cols-[1fr_6rem_6rem_auto] items-end gap-2">
                 <p className="pb-2 text-sm font-medium text-primary truncate">{lineName(l)}</p>
                 <label className="block">
-                  <span className="block mb-1 text-[11px] text-muted">Kilos</span>
+                  <span className="block mb-1 text-[11px] text-muted">{t("Kilos")}</span>
                   <input
                     className="input"
                     type="number"
                     min={0}
-                    aria-label={`Kilos of ${lineName(l)}`}
+                    aria-label={t("Kilos of {{l}}", { l: lineName(l) })}
                     value={l.quantity_kg}
                     onChange={(e) => setLine(i, { quantity_kg: e.target.value })}
                   />
                 </label>
                 <label className="block">
-                  <span className="block mb-1 text-[11px] text-muted">₱ per kg</span>
+                  <span className="block mb-1 text-[11px] text-muted">{t("₱ per kg")}</span>
                   <input
                     className="input"
                     type="number"
                     min={0}
-                    aria-label={`Price per kg of ${lineName(l)}`}
+                    aria-label={t("Price per kg of {{l}}", { l: lineName(l) })}
                     value={l.unit_price_per_kg}
                     onChange={(e) => setLine(i, { unit_price_per_kg: e.target.value })}
                   />
@@ -194,7 +197,7 @@ export default function EditOrderDialog({
                 <button
                   type="button"
                   className="btn-ghost !p-2 mb-0.5"
-                  aria-label={`Remove ${lineName(l)}`}
+                  aria-label={t("Remove {{l}}", { l: lineName(l) })}
                   disabled={lines.length === 1}
                   onClick={() => setLines((ls) => ls.filter((_, j) => j !== i))}
                 >
@@ -204,12 +207,12 @@ export default function EditOrderDialog({
             ))}
           </div>
           <p className="mt-2 text-right text-sm text-secondary">
-            New total: <span className="font-semibold text-primary">{peso(total)}</span>
+            {t("New total:")} <span className="font-semibold text-primary">{peso(total)}</span>
           </p>
         </div>
 
         <label className="block">
-          <span className="block mb-1 text-xs font-medium text-secondary">Remarks</span>
+          <span className="block mb-1 text-xs font-medium text-secondary">{t("Remarks")}</span>
           <textarea
             className="input min-h-[4rem]"
             value={remarks}
@@ -219,7 +222,9 @@ export default function EditOrderDialog({
 
         {error && (
           <p role="alert" className="text-sm text-rose-600 dark:text-rose-400">
-            {typeof error === "string" ? error : "Couldn't save. Check the fields and try again."}
+            {typeof error === "string"
+              ? error
+              : t("Couldn't save. Check the fields and try again.")}
           </p>
         )}
       </div>

@@ -4,6 +4,7 @@ import { ArrowLeft, ArrowUp } from "lucide-react";
 import Markdown from "../components/Markdown";
 import riceLogo from "../assets/Rice_Logo.svg";
 import { legalService, type LegalDocument, type LegalIndex } from "../services/LegalService";
+import { t } from "../i18n";
 
 /** Drop a document's own leading `# Title`.
  *
@@ -69,7 +70,7 @@ export default function LegalPage() {
         setDocs(all);
       })
       .catch(() => {
-        if (!cancelled) setError("The legal documents could not be loaded.");
+        if (!cancelled) setError(t("The legal documents could not be loaded."));
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -113,25 +114,25 @@ export default function LegalPage() {
     <div className="min-h-screen bg-[rgb(var(--surface))]">
       <header className="sticky top-0 z-10 border-b border-soft bg-[rgb(var(--surface))]">
         <div className="mx-auto max-w-3xl px-6 py-4 flex items-center justify-between gap-4">
-          <Link to="/" className="flex items-center gap-2.5" aria-label="Back to Oraiza">
+          <Link to="/" className="flex items-center gap-2.5" aria-label={t("Back to Oraiza")}>
             <div className="h-9 w-9 rounded-xl bg-grad-brand grid place-items-center shadow-grad-glow">
               <img
                 src={riceLogo}
-                alt="Oraiza"
+                alt={t("Oraiza")}
                 className="h-full w-full object-contain brightness-0 invert"
               />
             </div>
-            <span className="text-lg font-bold tracking-tight text-primary">Oraiza</span>
+            <span className="text-lg font-bold tracking-tight text-primary">{t("Oraiza")}</span>
           </Link>
           <Link to="/" className="btn-ghost text-sm">
             <ArrowLeft size={16} />
-            Back
+            {t("Back")}
           </Link>
         </div>
       </header>
 
       <main className="mx-auto max-w-3xl px-6 py-8 lg:py-12">
-        {loading && <p className="text-secondary">Loading the legal documents…</p>}
+        {loading && <p className="text-secondary">{t("Loading the legal documents…")}</p>}
 
         {!loading && error && (
           <div className="rounded-2xl border border-soft p-6">
@@ -141,14 +142,16 @@ export default function LegalPage() {
 
         {!loading && !error && index && (
           <>
-            <h1 className="text-2xl font-bold text-primary">Legal</h1>
+            <h1 className="text-2xl font-bold text-primary">{t("Legal")}</h1>
             <p className="mt-2 text-secondary">
-              The agreements that govern your use of Oraiza. Current agreement version{" "}
+              {t("The agreements that govern your use of Oraiza. Current agreement version")}{" "}
               <span className="font-semibold text-primary">{index.agreement_version}</span>.
             </p>
 
-            <nav aria-label="Contents" className="mt-6 rounded-2xl border border-soft p-5">
-              <p className="text-xs font-semibold uppercase tracking-wide text-muted">Contents</p>
+            <nav aria-label={t("Contents")} className="mt-6 rounded-2xl border border-soft p-5">
+              <p className="text-xs font-semibold uppercase tracking-wide text-muted">
+                {t("Contents")}
+              </p>
               <ol className="mt-3 space-y-2">
                 {docs.map((d) => (
                   <li key={d.key}>
@@ -169,12 +172,17 @@ export default function LegalPage() {
               >
                 <h2 className="text-2xl font-bold text-primary">{d.title}</h2>
                 <p className="mt-1.5 text-sm text-muted">
-                  Version {d.version} · effective {d.effective_date}
+                  {t("Version {{version}} · effective {{effective_date}}", {
+                    version: d.version,
+                    effective_date: d.effective_date,
+                  })}
                 </p>
                 {/* The hash is what an acceptance record stores. Publishing it
                     lets a customer confirm that the text they are reading is the
                     text they agreed to. */}
-                <p className="mt-1 text-xs text-muted font-mono break-all">sha256 {d.sha256}</p>
+                <p className="mt-1 text-xs text-muted font-mono break-all">
+                  {t("sha256 {{sha256}}", { sha256: d.sha256 })}
+                </p>
                 <div className="mt-6">
                   <Markdown source={stripLeadingTitle(d.markdown)} idPrefix={d.key} />
                 </div>
@@ -189,7 +197,7 @@ export default function LegalPage() {
       <button
         type="button"
         onClick={scrollToTop}
-        aria-label="Back to top"
+        aria-label={t("Back to top")}
         aria-hidden={!showUp}
         tabIndex={showUp ? 0 : -1}
         className={`fixed bottom-6 right-6 z-20 h-11 w-11 grid place-items-center rounded-xl border border-soft bg-[rgb(var(--surface))] text-secondary shadow-lg hover:text-primary hover:border-soft-strong transition duration-200 ease-out motion-reduce:transition-none ${

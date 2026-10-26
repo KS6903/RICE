@@ -7,6 +7,7 @@ import { Plus, Wrench } from "lucide-react";
 import { useAccess } from "../hooks/useAccess";
 import DatePicker from "../components/DatePicker";
 import { maintenanceService, type Machine } from "../services/MaintenanceService";
+import { t } from "../i18n";
 
 const isoToday = () => new Date().toLocaleDateString("en-CA");
 const day = (iso: string) =>
@@ -25,10 +26,10 @@ export function errorText(error: unknown, fallback: string): string {
 }
 
 const STATUS: Record<Machine["status"], { label: string; badge: string }> = {
-  due: { label: "Service due", badge: "badge-red" },
-  soon: { label: "Due soon", badge: "badge-yellow" },
-  ok: { label: "OK", badge: "badge-green" },
-  off: { label: "Not in use", badge: "badge-gray" },
+  due: { label: t("Service due"), badge: "badge-red" },
+  soon: { label: t("Due soon"), badge: "badge-yellow" },
+  ok: { label: t("OK"), badge: "badge-green" },
+  off: { label: t("Not in use"), badge: "badge-gray" },
 };
 
 function MachineCard({ machine, canEdit }: { machine: Machine; canEdit: boolean }) {
@@ -61,25 +62,25 @@ function MachineCard({ machine, canEdit }: { machine: Machine; canEdit: boolean 
         <span className={status.badge}>{status.label}</span>
       </div>
       <p className="text-sm text-secondary">
-        Since its last service on {day(machine.last_service_on)}: {machine.summary}.
+        {t("Since its last service on")} {day(machine.last_service_on)}: {machine.summary}.
       </p>
       {machine.notes && <p className="text-xs text-muted">{machine.notes}</p>}
       <div className="flex flex-wrap gap-2">
         {canEdit && (
           <button type="button" className="btn-primary" onClick={() => setServicing((s) => !s)}>
             <Wrench size={15} aria-hidden />
-            Record a service
+            {t("Record a service")}
           </button>
         )}
         <button type="button" className="btn-ghost" onClick={() => setShowLog((s) => !s)}>
-          {showLog ? "Hide services" : "Past services"}
+          {showLog ? t("Hide services") : t("Past services")}
         </button>
       </div>
       {servicing && (
         <div className="flex flex-wrap items-end gap-3 pt-3 border-t border-soft">
           <div>
             <label htmlFor={`done-${machine.id}`} className="form-label">
-              Done on
+              {t("Done on")}
             </label>
             <DatePicker
               id={`done-${machine.id}`}
@@ -91,7 +92,7 @@ function MachineCard({ machine, canEdit }: { machine: Machine; canEdit: boolean 
           </div>
           <div className="flex-1 min-w-[12rem]">
             <label htmlFor={`what-${machine.id}`} className="form-label">
-              What was done
+              {t("What was done")}
             </label>
             <input
               id={`what-${machine.id}`}
@@ -107,26 +108,29 @@ function MachineCard({ machine, canEdit }: { machine: Machine; canEdit: boolean 
             disabled={!doneOn || service.isPending}
             onClick={() => service.mutate()}
           >
-            Save
+            {t("Save")}
           </button>
         </div>
       )}
       {service.isError && (
         <p className="text-sm text-rose-600 dark:text-rose-400" role="alert">
-          {errorText(service.error, "Couldn't record the service. Try again.")}
+          {errorText(service.error, t("Couldn't record the service. Try again."))}
         </p>
       )}
       {showLog && (
-        <ul className="space-y-1 text-sm" aria-label={`Services of ${machine.name}`}>
+        <ul
+          className="space-y-1 text-sm"
+          aria-label={t("Services of {{name}}", { name: machine.name })}
+        >
           {(log.data?.log ?? []).map((entry) => (
             <li key={entry.id}>
               <span className="text-muted">{day(entry.done_on)}:</span>{" "}
-              <span className="text-primary">{entry.note ?? "Serviced"}</span>
+              <span className="text-primary">{entry.note ?? t("Serviced")}</span>
               {entry.done_by && <span className="text-secondary"> ({entry.done_by})</span>}
             </li>
           ))}
           {log.data && log.data.log.length === 0 && (
-            <li className="text-secondary">No services recorded here yet.</li>
+            <li className="text-secondary">{t("No services recorded here yet.")}</li>
           )}
         </ul>
       )}
@@ -158,32 +162,32 @@ export function AddMachine({ onDone }: { onDone: () => void }) {
   });
   const digits = (v: string) => v.replace(/[^\d.]/g, "");
   return (
-    <section aria-label="Add a machine" className="card space-y-4">
+    <section aria-label={t("Add a machine")} className="card space-y-4">
       <p className="text-sm text-secondary">
-        Use the manufacturer's service intervals; fill in any of them.
+        {t("Use the manufacturer's service intervals; fill in any of them.")}
       </p>
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <div>
           <label htmlFor="machine-name" className="form-label">
-            Machine
+            {t("Machine")}
           </label>
           <input
             id="machine-name"
             className="input"
-            placeholder="e.g. Rubber-roll huller"
+            placeholder={t("e.g. Rubber-roll huller")}
             value={name}
             onChange={(e) => setName(e.target.value)}
           />
         </div>
         <div>
           <label htmlFor="machine-last" className="form-label">
-            Last serviced on
+            {t("Last serviced on")}
           </label>
           <DatePicker id="machine-last" max={isoToday()} value={last} onChange={setLast} />
         </div>
         <div>
           <label htmlFor="machine-hours" className="form-label">
-            Every (running hours)
+            {t("Every (running hours)")}
           </label>
           <input
             id="machine-hours"
@@ -195,7 +199,7 @@ export function AddMachine({ onDone }: { onDone: () => void }) {
         </div>
         <div>
           <label htmlFor="machine-tonnes" className="form-label">
-            Every (tonnes of palay milled)
+            {t("Every (tonnes of palay milled)")}
           </label>
           <input
             id="machine-tonnes"
@@ -207,7 +211,7 @@ export function AddMachine({ onDone }: { onDone: () => void }) {
         </div>
         <div>
           <label htmlFor="machine-days" className="form-label">
-            Every (days)
+            {t("Every (days)")}
           </label>
           <input
             id="machine-days"
@@ -225,15 +229,15 @@ export function AddMachine({ onDone }: { onDone: () => void }) {
           disabled={!name.trim() || add.isPending}
           onClick={() => add.mutate()}
         >
-          Add the machine
+          {t("Add the machine")}
         </button>
         <button type="button" className="btn-secondary" onClick={onDone}>
-          Cancel
+          {t("Cancel")}
         </button>
       </div>
       {add.isError && (
         <p className="text-sm text-rose-600 dark:text-rose-400" role="alert">
-          {errorText(add.error, "Couldn't add the machine. Try again.")}
+          {errorText(add.error, t("Couldn't add the machine. Try again."))}
         </p>
       )}
     </section>
@@ -251,16 +255,17 @@ export default function MaintenancePage() {
     <div className="space-y-6">
       <header className="flex items-start justify-between gap-3 flex-wrap">
         <div>
-          <h1 className="text-2xl font-bold text-primary">Maintenance</h1>
+          <h1 className="text-2xl font-bold text-primary">{t("Maintenance")}</h1>
           <p className="text-secondary mt-1 max-w-2xl">
-            Each machine against its service interval, counted from the milling since its last
-            service.
+            {t(
+              "Each machine against its service interval, counted from the milling since its last service.",
+            )}
           </p>
         </div>
         {editable && !adding && (
           <button type="button" className="btn-primary" onClick={() => setAdding(true)}>
             <Plus size={16} aria-hidden />
-            Add a machine
+            {t("Add a machine")}
           </button>
         )}
       </header>
@@ -270,15 +275,15 @@ export default function MaintenancePage() {
       ) : list.isError ? (
         <div className="card">
           <p className="text-secondary">
-            {errorText(list.error, "Maintenance couldn't load. Try again in a moment.")}
+            {errorText(list.error, t("Maintenance couldn't load. Try again in a moment."))}
           </p>
         </div>
       ) : machines.length === 0 ? (
         <div className="card text-center py-10">
           <Wrench size={28} className="mx-auto text-emerald-600 dark:text-emerald-400" />
-          <p className="font-semibold text-primary mt-2">No machines yet.</p>
+          <p className="font-semibold text-primary mt-2">{t("No machines yet.")}</p>
           <p className="text-sm text-secondary mt-1">
-            Add your huller, polisher, dryer or engine with its service interval.
+            {t("Add your huller, polisher, dryer or engine with its service interval.")}
           </p>
         </div>
       ) : (

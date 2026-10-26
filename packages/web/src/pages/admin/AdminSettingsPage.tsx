@@ -25,6 +25,8 @@ import {
   Landmark,
 } from "lucide-react";
 import PaymentAccountsTab from "./PaymentAccountsTab";
+import { t } from "../../i18n";
+import { tx } from "../../i18n/tx";
 
 type Tab = "plans" | "payments" | "profile" | "password";
 
@@ -82,43 +84,49 @@ function PlanRow({
         <span className="flex items-center gap-2">
           <Icon size={15} className="text-emerald-500 shrink-0" />
           {plan.name}
-          {!plan.is_active && <span className="badge-gray !text-[10px] !py-0.5">inactive</span>}
+          {!plan.is_active && (
+            <span className="badge-gray !text-[10px] !py-0.5">{t("inactive")}</span>
+          )}
         </span>
       </td>
       <td className="font-mono text-xs text-secondary">{plan.code}</td>
       <td className="font-semibold text-primary tabular-nums">
         ₱{Number(plan.monthly_price).toLocaleString()}
-        <span className="text-xs font-normal text-muted">/mo</span>
+        <span className="text-xs font-normal text-muted">{t("/mo")}</span>
         {plan.annual_price > 0 && (
           <div className="text-xs font-normal text-muted">
-            ₱{Number(plan.annual_price).toLocaleString()}/yr
+            {t("₱{{toLocaleString}}/yr", {
+              toLocaleString: Number(plan.annual_price).toLocaleString(),
+            })}
             {plan.annual_discount_percent > 0 && (
               <span className="text-emerald-600 dark:text-emerald-400">
                 {" "}
-                · {percent(plan.annual_discount_percent)} off
+                {t("· {{annual_discount_percent}} off", {
+                  annual_discount_percent: percent(plan.annual_discount_percent),
+                })}
               </span>
             )}
           </div>
         )}
       </td>
       <td className="tabular-nums">
-        {plan.max_branches === null ? "Unlimited" : plan.max_branches}
+        {plan.max_branches === null ? t("Unlimited") : plan.max_branches}
       </td>
-      <td className="tabular-nums">{plan.max_users === null ? "Unlimited" : plan.max_users}</td>
+      <td className="tabular-nums">{plan.max_users === null ? t("Unlimited") : plan.max_users}</td>
       <td className="max-w-[200px] truncate text-muted">{plan.features.join(", ")}</td>
       <td className="text-right">
         <div className="flex items-center justify-end gap-1">
           <button
             onClick={() => onEdit(plan)}
             className="p-1.5 rounded-lg text-muted hover:bg-emerald-500/10 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors"
-            title="Edit plan"
+            title={t("Edit plan")}
           >
             <Pencil size={14} />
           </button>
           <button
             onClick={() => onDelete(plan.id)}
             className="p-1.5 rounded-lg text-muted hover:bg-rose-500/10 hover:text-rose-600 dark:hover:text-rose-400 transition-colors"
-            title="Delete plan"
+            title={t("Delete plan")}
           >
             <Trash2 size={14} />
           </button>
@@ -142,7 +150,15 @@ const EMPTY_PLAN = {
   sort_order: 0,
 };
 
-const PLAN_COLS = ["Name", "Code", "Price", "Max branches", "Max users", "Features", "Actions"];
+const PLAN_COLS = [
+  t("Name"),
+  t("Code"),
+  t("Price"),
+  t("Max branches"),
+  t("Max users"),
+  t("Features"),
+  t("Actions"),
+];
 
 function PlansTab() {
   const qc = useQueryClient();
@@ -232,18 +248,20 @@ function PlansTab() {
     <div className="space-y-5">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <h3 className="text-lg font-bold text-primary">Subscription plans</h3>
-          <p className="text-sm text-muted mt-0.5">Manage the plans available to your tenants</p>
+          <h3 className="text-lg font-bold text-primary">{t("Subscription plans")}</h3>
+          <p className="text-sm text-muted mt-0.5">
+            {t("Manage the plans available to your tenants")}
+          </p>
         </div>
         <div className="flex items-center gap-3">
           {saved && (
             <span className="text-sm font-semibold text-emerald-600 dark:text-emerald-400 inline-flex items-center gap-1">
-              <Check size={14} /> Saved
+              <Check size={14} /> {t("Saved")}
             </span>
           )}
           <button onClick={openNew} className="btn-primary !py-2 !text-sm">
             <Plus size={15} />
-            New plan
+            {t("New plan")}
           </button>
         </div>
       </div>
@@ -251,7 +269,7 @@ function PlansTab() {
       {showForm && (
         <div className="card space-y-4">
           <div className="flex items-center justify-between">
-            <h4 className="font-bold text-primary">{editingId ? "Edit plan" : "New plan"}</h4>
+            <h4 className="font-bold text-primary">{editingId ? t("Edit plan") : t("New plan")}</h4>
             <button
               onClick={() => setShowForm(false)}
               className="text-muted hover:text-primary transition-colors"
@@ -261,26 +279,26 @@ function PlansTab() {
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className={LABEL}>Plan code</label>
+              <label className={LABEL}>{t("Plan code")}</label>
               <input
                 className={INPUT}
                 value={form.code}
                 onChange={(e) => setForm((f) => ({ ...f, code: e.target.value }))}
-                placeholder="e.g. pro"
+                placeholder={t("e.g. pro")}
               />
             </div>
             <div>
-              <label className={LABEL}>Display name</label>
+              <label className={LABEL}>{t("Display name")}</label>
               <input
                 className={INPUT}
                 value={form.name}
                 onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-                placeholder="e.g. Pro Plan"
+                placeholder={t("e.g. Pro Plan")}
               />
             </div>
             <div>
               <label htmlFor="plan-monthly-price" className={LABEL}>
-                Monthly price (₱)
+                {t("Monthly price (₱)")}
               </label>
               <input
                 id="plan-monthly-price"
@@ -293,7 +311,7 @@ function PlansTab() {
             </div>
             <div>
               <label htmlFor="plan-annual-discount" className={LABEL}>
-                Annual discount (%)
+                {t("Annual discount (%)")}
               </label>
               <input
                 id="plan-annual-discount"
@@ -309,7 +327,7 @@ function PlansTab() {
                 aria-describedby="plan-annual-discount-hint"
               />
               <p id="plan-annual-discount-hint" className="text-xs text-muted mt-1">
-                Off 12 months, for tenants who pay yearly.{" "}
+                {t("Off 12 months, for tenants who pay yearly.")}{" "}
                 <button
                   type="button"
                   className="font-semibold text-emerald-600 dark:text-emerald-400 hover:underline"
@@ -317,7 +335,7 @@ function PlansTab() {
                     setForm((f) => ({ ...f, annual_discount_percent: TWO_MONTHS_FREE }))
                   }
                 >
-                  Use 2 months free
+                  {t("Use 2 months free")}
                 </button>
               </p>
             </div>
@@ -328,30 +346,31 @@ function PlansTab() {
               {pricesValid ? (
                 <>
                   <div className="flex items-baseline justify-between gap-3 flex-wrap">
-                    <span className="text-sm font-medium text-secondary">Annual price</span>
+                    <span className="text-sm font-medium text-secondary">{t("Annual price")}</span>
                     <span className="text-lg font-bold text-primary tabular-nums">
                       <span data-testid="annual-price">{peso(yearlyPrice)}</span>
-                      <span className="text-xs font-normal text-muted">/yr</span>
+                      <span className="text-xs font-normal text-muted">{t("/yr")}</span>
                     </span>
                   </div>
                   <p className="text-xs text-muted mt-1 tabular-nums">
                     {peso(form.monthly_price)} × 12 = {peso(twelveMonths)}
                     {form.annual_discount_percent > 0
                       ? `, less ${percent(form.annual_discount_percent)} (${peso(twelveMonths - yearlyPrice)})`
-                      : ", no discount"}
-                    . Worked out for you, to the nearest peso.
+                      : t(", no discount")}
+                    {t(". Worked out for you, to the nearest peso.")}
                   </p>
                 </>
               ) : (
                 <p className="text-sm text-rose-600 dark:text-rose-400" role="alert">
-                  The price can&apos;t be below ₱0, and the discount has to be from 0% up to (not
-                  including) 100%.
+                  {t(
+                    "The price can't be below ₱0, and the discount has to be from 0% up to (not including) 100%.",
+                  )}
                 </p>
               )}
             </div>
             <div>
               <label htmlFor="plan-monthly-price-usd" className={LABEL}>
-                Monthly price in US dollars ($)
+                {t("Monthly price in US dollars ($)")}
               </label>
               <input
                 id="plan-monthly-price-usd"
@@ -366,36 +385,38 @@ function PlansTab() {
                 aria-describedby="plan-monthly-price-usd-hint"
               />
               <p id="plan-monthly-price-usd-hint" className="text-xs text-muted mt-1">
-                For mills paying from abroad through PayPal. 0 = pesos only.
+                {t("For mills paying from abroad through PayPal. 0 = pesos only.")}
                 {form.monthly_price_usd > 0 && pricesValid && (
                   <>
                     {" "}
-                    A year is{" "}
-                    <span className="font-semibold text-secondary tabular-nums">
-                      $
-                      {annualPrice(
-                        form.monthly_price_usd,
-                        form.annual_discount_percent,
-                      ).toLocaleString()}
-                    </span>
-                    , with the same discount.
+                    {tx("A year is {{price}}, with the same discount.", {
+                      price: (
+                        <span className="font-semibold text-secondary tabular-nums">
+                          $
+                          {annualPrice(
+                            form.monthly_price_usd,
+                            form.annual_discount_percent,
+                          ).toLocaleString()}
+                        </span>
+                      ),
+                    })}
                   </>
                 )}
               </p>
             </div>
             <div>
-              <label className={LABEL}>Sort order</label>
+              <label className={LABEL}>{t("Sort order")}</label>
               <input
                 type="number"
                 min={0}
                 className={INPUT}
                 value={form.sort_order}
                 onChange={(e) => setForm((f) => ({ ...f, sort_order: Number(e.target.value) }))}
-                placeholder="Display order"
+                placeholder={t("Display order")}
               />
             </div>
             <div>
-              <label className={LABEL}>Max branches</label>
+              <label className={LABEL}>{t("Max branches")}</label>
               <input
                 type="number"
                 min={1}
@@ -407,11 +428,11 @@ function PlansTab() {
                     max_branches: e.target.value === "" ? null : Number(e.target.value),
                   }))
                 }
-                placeholder="Blank = unlimited"
+                placeholder={t("Blank = unlimited")}
               />
             </div>
             <div>
-              <label className={LABEL}>Max users</label>
+              <label className={LABEL}>{t("Max users")}</label>
               <input
                 type="number"
                 min={1}
@@ -423,21 +444,21 @@ function PlansTab() {
                     max_users: e.target.value === "" ? null : Number(e.target.value),
                   }))
                 }
-                placeholder="Blank = unlimited"
+                placeholder={t("Blank = unlimited")}
               />
             </div>
           </div>
           <div>
-            <label className={LABEL}>Features (comma-separated)</label>
+            <label className={LABEL}>{t("Features (comma-separated)")}</label>
             <textarea
               rows={2}
               className={INPUT}
               value={featuresRaw}
               onChange={(e) => setFeaturesRaw(e.target.value)}
-              placeholder="paddy, milling, inventory, reports, users"
+              placeholder={t("paddy, milling, inventory, reports, users")}
             />
             <p className="text-xs text-muted mt-1">
-              Feature codes that tenants on this plan can access.
+              {t("Feature codes that tenants on this plan can access.")}
             </p>
           </div>
           <label className="flex items-center gap-2 cursor-pointer select-none">
@@ -448,7 +469,7 @@ function PlansTab() {
               className="h-4 w-4 rounded border-line accent-emerald-600 cursor-pointer"
             />
             <span className="text-sm font-medium text-secondary">
-              Plan is active (visible to tenants)
+              {t("Plan is active (visible to tenants)")}
             </span>
           </label>
           {upsert.isError && (
@@ -457,12 +478,12 @@ function PlansTab() {
               {/* A rejected field comes back as a list, not a sentence. */}
               {typeof (upsert.error as any)?.response?.data?.detail === "string"
                 ? (upsert.error as any).response.data.detail
-                : "Failed to save plan."}
+                : t("Failed to save plan.")}
             </div>
           )}
           <div className="flex gap-2 pt-1">
             <button onClick={() => setShowForm(false)} className="btn-secondary flex-1">
-              Cancel
+              {t("Cancel")}
             </button>
             <button
               onClick={handleSubmit}
@@ -474,7 +495,7 @@ function PlansTab() {
               ) : (
                 <Check size={15} />
               )}
-              {editingId ? "Save changes" : "Create plan"}
+              {editingId ? t("Save changes") : t("Create plan")}
             </button>
           </div>
         </div>
@@ -492,9 +513,9 @@ function PlansTab() {
             <span className="icon-chip mb-3">
               <CreditCard size={18} />
             </span>
-            <p className="text-sm font-medium text-secondary">No plans configured yet</p>
+            <p className="text-sm font-medium text-secondary">{t("No plans configured yet")}</p>
             <p className="text-xs text-muted mt-0.5">
-              Create your first plan to start onboarding tenants.
+              {t("Create your first plan to start onboarding tenants.")}
             </p>
           </div>
         ) : (
@@ -549,22 +570,22 @@ function ProfileTab() {
   return (
     <div className="max-w-lg space-y-5">
       <div>
-        <h3 className="text-lg font-bold text-primary">My profile</h3>
-        <p className="text-sm text-muted mt-0.5">Update your admin display name and email</p>
+        <h3 className="text-lg font-bold text-primary">{t("My profile")}</h3>
+        <p className="text-sm text-muted mt-0.5">{t("Update your admin display name and email")}</p>
       </div>
 
       <div className="card space-y-4">
         <div>
-          <label className={LABEL}>Full name</label>
+          <label className={LABEL}>{t("Full name")}</label>
           <input
             className={INPUT}
             value={form.full_name}
             onChange={(e) => setForm((f) => ({ ...f, full_name: e.target.value }))}
-            placeholder="Your name"
+            placeholder={t("Your name")}
           />
         </div>
         <div>
-          <label className={LABEL}>Email</label>
+          <label className={LABEL}>{t("Email")}</label>
           <input
             type="email"
             className={INPUT}
@@ -574,12 +595,12 @@ function ProfileTab() {
           />
         </div>
         <div>
-          <label className={LABEL}>Username</label>
+          <label className={LABEL}>{t("Username")}</label>
           <input className={INPUT} value={user?.username ?? ""} disabled readOnly />
-          <p className="text-xs text-muted mt-1">Username cannot be changed.</p>
+          <p className="text-xs text-muted mt-1">{t("Username cannot be changed.")}</p>
         </div>
         <div>
-          <label className={LABEL}>Role</label>
+          <label className={LABEL}>{t("Role")}</label>
           <input
             className={INPUT}
             value={user?.is_platform_admin ? "BossAdmin" : (user?.role ?? "")}
@@ -591,18 +612,18 @@ function ProfileTab() {
         {save.isError && (
           <div className={ERROR_BOX}>
             <AlertCircle size={15} className="mt-0.5 shrink-0" />
-            {(save.error as any)?.response?.data?.detail || "Failed to save profile."}
+            {(save.error as any)?.response?.data?.detail || t("Failed to save profile.")}
           </div>
         )}
 
         <div className="flex items-center gap-3 pt-1">
           <button onClick={() => save.mutate()} disabled={save.isPending} className="btn-primary">
             {save.isPending ? <Loader2 size={14} className="animate-spin" /> : null}
-            Save profile
+            {t("Save profile")}
           </button>
           {saved && (
             <span className="text-sm font-semibold text-emerald-600 dark:text-emerald-400 inline-flex items-center gap-1">
-              <Check size={14} /> Saved
+              <Check size={14} /> {t("Saved")}
             </span>
           )}
         </div>
@@ -627,27 +648,27 @@ function PasswordTab() {
       setTimeout(() => setSaved(false), 2500);
     },
     onError: (e: any) => {
-      setErr(e.response?.data?.detail || "Failed to change password.");
+      setErr(e.response?.data?.detail || t("Failed to change password."));
     },
   });
 
   const handleSubmit = () => {
     setErr("");
-    if (form.next !== form.confirm) return setErr("New passwords do not match.");
-    if (form.next.length < 8) return setErr("Password must be at least 8 characters.");
+    if (form.next !== form.confirm) return setErr(t("New passwords do not match."));
+    if (form.next.length < 8) return setErr(t("Password must be at least 8 characters."));
     change.mutate();
   };
 
   return (
     <div className="max-w-lg space-y-5">
       <div>
-        <h3 className="text-lg font-bold text-primary">Change password</h3>
-        <p className="text-sm text-muted mt-0.5">Update your admin account password</p>
+        <h3 className="text-lg font-bold text-primary">{t("Change password")}</h3>
+        <p className="text-sm text-muted mt-0.5">{t("Update your admin account password")}</p>
       </div>
 
       <div className="card space-y-4">
         <div>
-          <label className={LABEL}>Current password</label>
+          <label className={LABEL}>{t("Current password")}</label>
           <PasswordInput
             className={INPUT}
             value={form.current}
@@ -656,7 +677,7 @@ function PasswordTab() {
           />
         </div>
         <div>
-          <label className={LABEL}>New password</label>
+          <label className={LABEL}>{t("New password")}</label>
           <PasswordInput
             className={INPUT}
             value={form.next}
@@ -665,7 +686,7 @@ function PasswordTab() {
           />
         </div>
         <div>
-          <label className={LABEL}>Confirm new password</label>
+          <label className={LABEL}>{t("Confirm new password")}</label>
           <PasswordInput
             className={INPUT}
             value={form.confirm}
@@ -673,7 +694,7 @@ function PasswordTab() {
             placeholder="••••••••"
           />
         </div>
-        <p className="text-xs text-muted">Minimum 8 characters.</p>
+        <p className="text-xs text-muted">{t("Minimum 8 characters.")}</p>
 
         {err && (
           <div className={ERROR_BOX}>
@@ -689,11 +710,11 @@ function PasswordTab() {
             className="btn-primary"
           >
             {change.isPending ? <Loader2 size={14} className="animate-spin" /> : null}
-            Update password
+            {t("Update password")}
           </button>
           {saved && (
             <span className="text-sm font-semibold text-emerald-600 dark:text-emerald-400 inline-flex items-center gap-1">
-              <Check size={14} /> Password updated
+              <Check size={14} /> {t("Password updated")}
             </span>
           )}
         </div>
@@ -708,10 +729,10 @@ export default function AdminSettingsPage() {
   const [tab, setTab] = useState<Tab>("plans");
 
   const tabs: { key: Tab; label: string; icon: React.ElementType }[] = [
-    { key: "plans", label: "Plans", icon: CreditCard },
-    { key: "payments", label: "Payment accounts", icon: Landmark },
-    { key: "profile", label: "My profile", icon: UserIcon },
-    { key: "password", label: "Password", icon: KeyRound },
+    { key: "plans", label: t("Plans"), icon: CreditCard },
+    { key: "payments", label: t("Payment accounts"), icon: Landmark },
+    { key: "profile", label: t("My profile"), icon: UserIcon },
+    { key: "password", label: t("Password"), icon: KeyRound },
   ];
 
   return (
@@ -721,8 +742,10 @@ export default function AdminSettingsPage() {
           <SettingsIcon size={20} className="text-white" />
         </div>
         <div>
-          <h2 className="text-2xl font-bold text-primary">Admin settings</h2>
-          <p className="text-sm text-muted">Manage subscription plans and your admin account</p>
+          <h2 className="text-2xl font-bold text-primary">{t("Admin settings")}</h2>
+          <p className="text-sm text-muted">
+            {t("Manage subscription plans and your admin account")}
+          </p>
         </div>
       </div>
 

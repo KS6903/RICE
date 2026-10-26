@@ -5,6 +5,7 @@ import { AlertTriangle, CheckCircle2, ClipboardCheck, Hand, UserRound } from "lu
 import { notificationService } from "../services/NotificationService";
 import { tasksService, type Task } from "../services/TasksService";
 import Select from "../components/Select";
+import { t } from "../i18n";
 
 type Tab = "mine" | "all" | "done";
 
@@ -32,9 +33,9 @@ function dueChoices(now = new Date()): { label: string; iso: string }[] {
     return d.toISOString();
   };
   const choices = [
-    { label: "Tomorrow, 5 pm", iso: at(1, 17) },
-    { label: "In 3 days", iso: at(3, 17) },
-    { label: "In a week", iso: at(7, 17) },
+    { label: t("Tomorrow, 5 pm"), iso: at(1, 17) },
+    { label: t("In 3 days"), iso: at(3, 17) },
+    { label: t("In a week"), iso: at(7, 17) },
   ];
   if (now.getHours() < 16) choices.unshift({ label: "Today, 5 pm", iso: at(0, 17) });
   return choices;
@@ -85,17 +86,17 @@ function NewTaskFromAlert({
     return (
       <div className="card">
         <p className="text-sm text-secondary">
-          That alert can't be made into a task: only alerts from your automations can.
+          {t("That alert can't be made into a task: only alerts from your automations can.")}
         </p>
       </div>
     );
   }
   const options = people.data?.people ?? [];
   return (
-    <section aria-label="New task" className="card space-y-4">
+    <section aria-label={t("New task")} className="card space-y-4">
       <div>
         <p className="text-xs font-bold uppercase tracking-wide text-secondary">
-          Make this alert a task
+          {t("Make this alert a task")}
         </p>
         <p className="font-semibold text-primary mt-1">{notice.title}</p>
         {notice.body && (
@@ -107,7 +108,7 @@ function NewTaskFromAlert({
       <div className="flex flex-wrap items-end gap-4">
         <div>
           <label htmlFor="task-assignee" className="form-label">
-            Who will fix it
+            {t("Who will fix it")}
           </label>
           <Select
             id="task-assignee"
@@ -115,7 +116,7 @@ function NewTaskFromAlert({
             value={assignee}
             onChange={setAssignee}
             options={[
-              { value: "", label: "Me" },
+              { value: "", label: t("Me") },
               ...options.map((p) => ({
                 value: p.id,
                 label: `${p.name}${p.role ? ` (${p.role.replace("_", " ")})` : ""}`,
@@ -125,7 +126,7 @@ function NewTaskFromAlert({
         </div>
         <div>
           <label htmlFor="task-due" className="form-label">
-            By when
+            {t("By when")}
           </label>
           <Select
             id="task-due"
@@ -142,16 +143,16 @@ function NewTaskFromAlert({
             disabled={create.isPending}
             onClick={() => create.mutate()}
           >
-            {create.isPending ? "Saving…" : "Make it a task"}
+            {create.isPending ? t("Saving…") : t("Make it a task")}
           </button>
           <button type="button" className="btn-secondary" onClick={onDone}>
-            Cancel
+            {t("Cancel")}
           </button>
         </div>
       </div>
       {create.isError && (
         <p className="text-sm text-rose-600 dark:text-rose-400" role="alert">
-          {errorText(create.error, "Couldn't make the task. Try again.")}
+          {errorText(create.error, t("Couldn't make the task. Try again."))}
         </p>
       )}
     </section>
@@ -198,23 +199,23 @@ function TaskCard({ task, manager }: { task: Task; manager: boolean }) {
           {task.title}
         </h3>
         {done ? (
-          <span className="badge-green">Resolved</span>
+          <span className="badge-green">{t("Resolved")}</span>
         ) : task.overdue ? (
-          <span className="badge-red">Overdue</span>
+          <span className="badge-red">{t("Overdue")}</span>
         ) : task.status === "acknowledged" ? (
-          <span className="badge-yellow">In progress</span>
+          <span className="badge-yellow">{t("In progress")}</span>
         ) : (
-          <span className="badge-gray">To do</span>
+          <span className="badge-gray">{t("To do")}</span>
         )}
       </div>
       <p className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-secondary">
         <span className="inline-flex items-center gap-1.5">
           <UserRound size={14} aria-hidden />
-          {task.assignee ? task.assignee.name : "Nobody yet"}
+          {task.assignee ? task.assignee.name : t("Nobody yet")}
         </span>
         {done ? (
           <span>
-            Resolved {task.resolved_at ? when(task.resolved_at) : ""}
+            {t("Resolved")} {task.resolved_at ? when(task.resolved_at) : ""}
             {task.resolved_by ? ` by ${task.resolved_by}` : ""}
           </span>
         ) : (
@@ -226,7 +227,7 @@ function TaskCard({ task, manager }: { task: Task; manager: boolean }) {
             }
           >
             {task.overdue && <AlertTriangle size={14} aria-hidden />}
-            Due {when(task.due_at)}
+            {t("Due")} {when(task.due_at)}
           </span>
         )}
       </p>
@@ -235,7 +236,7 @@ function TaskCard({ task, manager }: { task: Task; manager: boolean }) {
       )}
       {task.resolution && (
         <p className="text-sm text-primary">
-          <span className="font-semibold">What was done:</span> {task.resolution}
+          <span className="font-semibold">{t("What was done:")}</span> {task.resolution}
         </p>
       )}
 
@@ -243,7 +244,7 @@ function TaskCard({ task, manager }: { task: Task; manager: boolean }) {
         <div className="flex flex-wrap items-center gap-2 pt-1">
           {task.link && (
             <Link to={task.link} className="btn-ghost -ml-2">
-              Open
+              {t("Open")}
             </Link>
           )}
           <div className="ml-auto flex flex-wrap gap-2">
@@ -253,7 +254,7 @@ function TaskCard({ task, manager }: { task: Task; manager: boolean }) {
                 className="btn-secondary"
                 onClick={() => setAssigning((a) => !a)}
               >
-                {task.assignee ? "Reassign" : "Assign"}
+                {task.assignee ? t("Reassign") : t("Assign")}
               </button>
             )}
             {task.status === "open" && (
@@ -264,12 +265,12 @@ function TaskCard({ task, manager }: { task: Task; manager: boolean }) {
                 onClick={() => ack.mutate()}
               >
                 <Hand size={15} aria-hidden />
-                I'm on it
+                {t("I'm on it")}
               </button>
             )}
             <button type="button" className="btn-primary" onClick={() => setResolving((r) => !r)}>
               <CheckCircle2 size={15} aria-hidden />
-              Mark resolved
+              {t("Mark resolved")}
             </button>
           </div>
         </div>
@@ -279,12 +280,12 @@ function TaskCard({ task, manager }: { task: Task; manager: boolean }) {
         <div className="flex flex-wrap items-end gap-3 pt-3 border-t border-soft">
           <div>
             <label htmlFor={`assign-${task.id}`} className="form-label">
-              Give it to
+              {t("Give it to")}
             </label>
             <Select
               id={`assign-${task.id}`}
               className="w-64 max-w-full"
-              placeholder="Pick someone"
+              placeholder={t("Pick someone")}
               value={assignee}
               onChange={setAssignee}
               options={(people.data?.people ?? []).map((p) => ({ value: p.id, label: p.name }))}
@@ -296,7 +297,7 @@ function TaskCard({ task, manager }: { task: Task; manager: boolean }) {
             disabled={!assignee || assign.isPending}
             onClick={() => assign.mutate()}
           >
-            Save
+            {t("Save")}
           </button>
         </div>
       )}
@@ -304,14 +305,14 @@ function TaskCard({ task, manager }: { task: Task; manager: boolean }) {
       {resolving && (
         <div className="space-y-2 pt-3 border-t border-soft">
           <label htmlFor={`note-${task.id}`} className="form-label">
-            What was done (optional)
+            {t("What was done (optional)")}
           </label>
           <textarea
             id={`note-${task.id}`}
             className="input min-h-[4.5rem]"
             maxLength={500}
             value={note}
-            placeholder="e.g. Called Aling Nena: she pays ₱5,000 on Friday."
+            placeholder={t("e.g. Called Aling Nena: she pays ₱5,000 on Friday.")}
             onChange={(e) => setNote(e.target.value)}
           />
           <button
@@ -320,14 +321,14 @@ function TaskCard({ task, manager }: { task: Task; manager: boolean }) {
             disabled={resolve.isPending}
             onClick={() => resolve.mutate()}
           >
-            {resolve.isPending ? "Saving…" : "Resolved"}
+            {resolve.isPending ? t("Saving…") : t("Resolved")}
           </button>
         </div>
       )}
 
       {error && (
         <p className="text-sm text-rose-600 dark:text-rose-400" role="alert">
-          {errorText(error, "Couldn't save. Try again.")}
+          {errorText(error, t("Couldn't save. Try again."))}
         </p>
       )}
     </article>
@@ -345,18 +346,19 @@ export default function TasksPage() {
   const manager = list.data?.manager ?? false;
   const tasks = list.data?.tasks ?? [];
   const tabs: { key: Tab; label: string }[] = [
-    { key: "mine", label: "Mine" },
-    ...(manager ? [{ key: "all" as Tab, label: "Everyone's" }] : []),
-    { key: "done", label: "Done" },
+    { key: "mine", label: t("Mine") },
+    ...(manager ? [{ key: "all" as Tab, label: t("Everyone's") }] : []),
+    { key: "done", label: t("Done") },
   ];
 
   return (
     <div className="space-y-6">
       <header>
-        <h1 className="text-2xl font-bold text-primary">To do</h1>
+        <h1 className="text-2xl font-bold text-primary">{t("To do")}</h1>
         <p className="text-secondary mt-1 max-w-2xl">
-          Alerts someone is fixing: who, by when, and what was done. A task still open after its
-          time goes to the owner.
+          {t(
+            "Alerts someone is fixing: who, by when, and what was done. A task still open after its time goes to the owner.",
+          )}
         </p>
       </header>
 
@@ -364,12 +366,13 @@ export default function TasksPage() {
 
       {manager && (list.data?.unassigned ?? 0) > 0 && (
         <p className="text-sm text-amber-700 dark:text-amber-400">
-          {list.data?.unassigned} open {list.data?.unassigned === 1 ? "task has" : "tasks have"}{" "}
-          nobody on {list.data?.unassigned === 1 ? "it" : "them"} yet. See Everyone's.
+          {t("{{count}} open tasks have nobody on them yet. See Everyone's.", {
+            count: list.data?.unassigned ?? 0,
+          })}
         </p>
       )}
 
-      <div role="tablist" aria-label="Which tasks" className="seg max-w-full overflow-x-auto">
+      <div role="tablist" aria-label={t("Which tasks")} className="seg max-w-full overflow-x-auto">
         {tabs.map((t) => (
           <button
             key={t.key}
@@ -393,18 +396,19 @@ export default function TasksPage() {
       ) : list.isError ? (
         <div className="card">
           <p className="text-secondary">
-            {errorText(list.error, "Tasks couldn't load. Try again in a moment.")}
+            {errorText(list.error, t("Tasks couldn't load. Try again in a moment."))}
           </p>
         </div>
       ) : tasks.length === 0 ? (
         <div className="card text-center py-10">
           <ClipboardCheck size={28} className="mx-auto text-emerald-600 dark:text-emerald-400" />
           <p className="font-semibold text-primary mt-2">
-            {tab === "done" ? "Nothing resolved yet." : "Nothing to do."}
+            {tab === "done" ? t("Nothing resolved yet.") : t("Nothing to do.")}
           </p>
           <p className="text-sm text-secondary mt-1 max-w-md mx-auto">
-            Tasks come from alerts. Open an alert under the bell and choose "Make it a task", or set
-            an automation to track its alerts.
+            {t(
+              'Tasks come from alerts. Open an alert under the bell and choose "Make it a task", or set an automation to track its alerts.',
+            )}
           </p>
         </div>
       ) : (

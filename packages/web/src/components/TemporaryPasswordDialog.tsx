@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Check, Copy, KeyRound } from "lucide-react";
 import type { TemporaryPassword } from "../services/UsersService";
+import { t } from "../i18n";
+import { tx } from "../i18n/tx";
 
 function errorText(error: unknown, fallback: string): string {
   const detail = (error as { response?: { data?: { detail?: unknown } } })?.response?.data?.detail;
@@ -54,7 +56,7 @@ export default function TemporaryPasswordDialog({
     try {
       setGiven(await issue());
     } catch (e) {
-      setError(errorText(e, "Couldn't give a temporary password. Try again."));
+      setError(errorText(e, t("Couldn't give a temporary password. Try again.")));
     } finally {
       setBusy(false);
     }
@@ -94,19 +96,22 @@ export default function TemporaryPasswordDialog({
             <KeyRound size={18} className="text-white" />
           </div>
           <h3 id="temp-password-title" className="text-lg font-bold text-primary">
-            {given ? `Temporary password for ${name}` : `Give ${name} a temporary password?`}
+            {given
+              ? t("Temporary password for {{name}}", { name })
+              : t("Give {{name}} a temporary password?", { name })}
           </h3>
         </div>
 
         {!given ? (
           <>
             <p className="text-sm text-secondary">
-              Use this when {name} is locked out or has forgotten their password. It replaces their
-              password, unlocks their account and signs them out everywhere. They must choose their
-              own password the first time they sign in, and this one stops working after 24 hours.
+              {t(
+                "Use this when {{name}} is locked out or has forgotten their password. It replaces their password, unlocks their account and signs them out everywhere. They must choose their own password the first time they sign in, and this one stops working after 24 hours.",
+                { name },
+              )}
             </p>
             <p className="text-sm text-secondary">
-              You will see it once. Tell {name} yourself, in person or by phone.
+              {t("You will see it once. Tell {{name}} yourself, in person or by phone.", { name })}
             </p>
             {error && (
               <p className="text-sm font-semibold text-rose-600 dark:text-rose-400" role="alert">
@@ -121,10 +126,10 @@ export default function TemporaryPasswordDialog({
                 disabled={busy}
                 className="btn-primary flex-1"
               >
-                {busy ? "Working…" : "Give temporary password"}
+                {busy ? t("Working…") : t("Give temporary password")}
               </button>
               <button type="button" onClick={onClose} className="btn-secondary flex-1">
-                Cancel
+                {t("Cancel")}
               </button>
             </div>
           </>
@@ -132,7 +137,7 @@ export default function TemporaryPasswordDialog({
           <>
             <div className="flex items-center gap-2">
               <output
-                aria-label="Temporary password"
+                aria-label={t("Temporary password")}
                 className="flex-1 select-all break-all rounded-xl bg-slate-500/10 px-3 py-3 text-center font-mono text-xl font-bold tracking-wider text-primary ring-1 ring-inset ring-slate-500/30"
               >
                 {given.temporary_password}
@@ -141,18 +146,19 @@ export default function TemporaryPasswordDialog({
                 type="button"
                 onClick={copy}
                 className="btn-secondary !px-3"
-                aria-label="Copy the temporary password"
+                aria-label={t("Copy the temporary password")}
               >
                 {copied ? <Check size={16} /> : <Copy size={16} />}
               </button>
             </div>
             <p className="text-sm text-secondary">
-              This is the only time you will see it, so pass it on now: in person or by phone, not
-              in a group chat. It stops working on <strong>{expires}</strong>, and {name} chooses
-              their own password when they first sign in with it.
+              {tx(
+                "This is the only time you will see it, so pass it on now: in person or by phone, not in a group chat. It stops working on {{expires}}, and {{name}} chooses their own password when they first sign in with it.",
+                { expires: <strong>{expires}</strong>, name },
+              )}
             </p>
             <button ref={primary} type="button" onClick={onClose} className="btn-primary w-full">
-              Done
+              {t("Done")}
             </button>
           </>
         )}

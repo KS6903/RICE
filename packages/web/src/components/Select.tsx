@@ -4,6 +4,7 @@ import { createPortal } from "react-dom";
 import { Check, ChevronDown } from "lucide-react";
 import { clsx } from "clsx";
 import { observeViewport, positionPopover } from "../utils/popoverPosition";
+import { t } from "../i18n";
 
 export type SelectOption = { value: string; label: string };
 
@@ -45,7 +46,7 @@ export default function Select({
   id,
   disabled,
   className,
-  placeholder = "Choose…",
+  placeholder = t("Choose…"),
   ...aria
 }: Props) {
   // useId gives ":r0:"-style ids; keep them plain for aria references.

@@ -13,6 +13,8 @@ import {
 } from "lucide-react";
 import type { ItemLocation } from "../../mappers/InventoryMapper";
 import { LocationSegments, WarehouseDot, isSplit, useWarehouseColor } from "./locationShades";
+import { t } from "../../i18n";
+import { tx } from "../../i18n/tx";
 
 export type DrawerItem = {
   id: string;
@@ -110,7 +112,7 @@ export default function InventoryDetailDrawer({
       {/* Backdrop */}
       <button
         type="button"
-        aria-label="Close details"
+        aria-label={t("Close details")}
         onClick={onClose}
         className="absolute inset-0 bg-slate-900/45 backdrop-blur-sm animate-grad-fade-up"
         style={{ animationDuration: "180ms" }}
@@ -140,7 +142,7 @@ export default function InventoryDetailDrawer({
                 {item.variety}
               </h2>
               <p className="text-xs text-muted mt-0.5">
-                Grade <span className="font-semibold text-secondary">{item.grade}</span>
+                {t("Grade")} <span className="font-semibold text-secondary">{item.grade}</span>
               </p>
             </div>
           </div>
@@ -149,7 +151,7 @@ export default function InventoryDetailDrawer({
             type="button"
             onClick={onClose}
             className="btn-ghost !p-1.5 shrink-0"
-            aria-label="Close"
+            aria-label={t("Close")}
           >
             <XIcon size={18} />
           </button>
@@ -159,10 +161,12 @@ export default function InventoryDetailDrawer({
         <div className="flex-1 overflow-y-auto p-5 space-y-4">
           {/* Hero quantity */}
           <div className="rounded-2xl p-5 bg-gradient-to-br from-slate-50 to-white dark:from-slate-800/60 dark:to-slate-900/40 ring-1 ring-soft">
-            <p className="text-[10px] font-bold uppercase tracking-wider text-muted">On hand</p>
+            <p className="text-[10px] font-bold uppercase tracking-wider text-muted">
+              {t("On hand")}
+            </p>
             <p className="mt-1 text-4xl font-extrabold text-primary tabular-nums leading-none">
               {item.quantity_kg.toLocaleString()}
-              <span className="text-base font-medium text-muted ml-1.5">kg</span>
+              <span className="text-base font-medium text-muted ml-1.5">{t("kg")}</span>
             </p>
             <div
               className={`mt-3 h-2 rounded-full bg-slate-200/70 dark:bg-slate-700/60 overflow-hidden`}
@@ -184,12 +188,19 @@ export default function InventoryDetailDrawer({
                 <span className="tabular-nums font-semibold text-secondary">
                   {cavans.toFixed(1)}
                 </span>
-                <span>cavans</span>
+                <span>{t("cavans")}</span>
               </div>
               <div className="flex items-center gap-1.5 text-muted justify-end">
                 <Percent size={12} />
-                <span className="tabular-nums font-semibold text-secondary">{pct.toFixed(2)}%</span>
-                <span>of total stock</span>
+                <span>
+                  {tx("{{pct}} of total stock", {
+                    pct: (
+                      <span className="tabular-nums font-semibold text-secondary">
+                        {pct.toFixed(2)}%
+                      </span>
+                    ),
+                  })}
+                </span>
               </div>
             </div>
           </div>
@@ -202,7 +213,7 @@ export default function InventoryDetailDrawer({
             >
               <div className="px-4 py-2.5 bg-slate-50 dark:bg-slate-800/40 border-b border-soft">
                 <p className="text-[10px] font-bold uppercase tracking-wider text-muted">
-                  Stored in {item.locations!.length} warehouses
+                  {t("Stored in {{length}} warehouses", { length: item.locations!.length })}
                 </p>
               </div>
               <ul className="divide-y divide-soft">
@@ -219,10 +230,10 @@ export default function InventoryDetailDrawer({
                       </span>
                       <span className="shrink-0 text-right tabular-nums">
                         <span className="font-semibold text-primary">
-                          {l.quantity_kg.toLocaleString()} kg
+                          {t("{{quantity_kg}} kg", { quantity_kg: l.quantity_kg.toLocaleString() })}
                         </span>
                         <span className="block text-[11px] text-muted">
-                          {share.toFixed(0)}% of this stock
+                          {t("{{share}}% of this stock", { share: share.toFixed(0) })}
                         </span>
                       </span>
                       {onViewInWarehouse && l.branchId && (
@@ -230,8 +241,12 @@ export default function InventoryDetailDrawer({
                           type="button"
                           onClick={() => onViewInWarehouse(l.branchId)}
                           className="btn-ghost !p-1.5 shrink-0"
-                          aria-label={`Show ${l.branchName} in Warehouse`}
-                          title={`Show ${l.branchName} in Warehouse`}
+                          aria-label={t("Show {{branchName}} in Warehouse", {
+                            branchName: l.branchName,
+                          })}
+                          title={t("Show {{branchName}} in Warehouse", {
+                            branchName: l.branchName,
+                          })}
                         >
                           <ArrowRight size={14} />
                         </button>
@@ -251,13 +266,13 @@ export default function InventoryDetailDrawer({
             >
               <div className="px-4 py-2.5 bg-slate-50 dark:bg-slate-800/40 border-b border-soft">
                 <p className="text-[10px] font-bold uppercase tracking-wider text-muted">
-                  Pack-out estimate
+                  {t("Pack-out estimate")}
                 </p>
               </div>
               <div className="grid grid-cols-2 divide-x divide-soft">
                 {[
-                  { kg: 50, label: "50 kg sacks" },
-                  { kg: 25, label: "25 kg sacks" },
+                  { kg: 50, label: t("50 kg sacks") },
+                  { kg: 25, label: t("25 kg sacks") },
                 ].map(({ kg, label }) => {
                   const full = Math.floor(item.quantity_kg / kg);
                   const leftover = +(item.quantity_kg - full * kg).toFixed(2);
@@ -268,12 +283,12 @@ export default function InventoryDetailDrawer({
                     >
                       <p className="text-2xl font-extrabold text-primary tabular-nums leading-none">
                         {full.toLocaleString()}
-                        <span className="text-xs font-medium text-muted ml-1">sacks</span>
+                        <span className="text-xs font-medium text-muted ml-1">{t("sacks")}</span>
                       </p>
                       <p className="text-[11px] text-muted mt-1 font-medium">{label}</p>
                       {leftover > 0 && (
                         <p className="text-[10px] text-muted mt-0.5 tabular-nums">
-                          + {leftover} kg loose
+                          {t("+ {{leftover}} kg loose", { leftover })}
                         </p>
                       )}
                     </div>
@@ -287,27 +302,28 @@ export default function InventoryDetailDrawer({
           <dl className="rounded-2xl ring-1 ring-soft overflow-hidden divide-y divide-soft text-sm">
             <div className="flex items-center justify-between gap-3 px-4 py-3 bg-white/30 dark:bg-slate-800/30">
               <dt className="flex items-center gap-2 text-muted">
-                <Building2 size={14} /> Warehouse
+                <Building2 size={14} /> {t("Warehouse")}
               </dt>
               <dd className="font-semibold text-primary truncate text-right">{item.branchName}</dd>
             </div>
             <div className="flex items-center justify-between gap-3 px-4 py-3 bg-white/30 dark:bg-slate-800/30">
               <dt className="flex items-center gap-2 text-muted">
-                <Scale size={14} /> Unit weight
+                <Scale size={14} /> {t("Unit weight")}
               </dt>
-              <dd className="font-semibold text-primary">50 kg / cavan</dd>
+              <dd className="font-semibold text-primary">{t("50 kg / cavan")}</dd>
             </div>
             <div className="flex items-center justify-between gap-3 px-4 py-3 bg-white/30 dark:bg-slate-800/30">
               <dt className="flex items-center gap-2 text-muted">
-                <Package size={14} /> Item type
+                <Package size={14} /> {t("Item type")}
               </dt>
               <dd className="font-semibold text-primary">{item.typeLabel}</dd>
             </div>
           </dl>
 
           <p className="text-[11px] text-muted leading-relaxed px-1">
-            Recent movements coming soon. To see where this stock sits, open it in the Warehouse
-            view.
+            {t(
+              "Recent movements coming soon. To see where this stock sits, open it in the Warehouse view.",
+            )}
           </p>
         </div>
 
@@ -318,17 +334,21 @@ export default function InventoryDetailDrawer({
               type="button"
               onClick={() => onViewInWarehouse(warehouseId)}
               title={
-                split ? `Opens ${item.locations![0].branchName}, which holds the most` : undefined
+                split
+                  ? t("Opens {{branchName}}, which holds the most", {
+                      branchName: item.locations![0].branchName,
+                    })
+                  : undefined
               }
               className="btn-primary flex-1 !py-2"
             >
               <Warehouse size={15} />
-              Open in Warehouse
+              {t("Open in Warehouse")}
               <ArrowRight size={14} className="ml-0.5" />
             </button>
           )}
           <button type="button" onClick={onClose} className="btn-secondary !py-2">
-            Close
+            {t("Close")}
           </button>
         </footer>
       </aside>

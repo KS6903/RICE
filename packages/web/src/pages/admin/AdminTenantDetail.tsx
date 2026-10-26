@@ -33,6 +33,8 @@ import {
   ScrollText,
 } from "lucide-react";
 import CodeValue from "../../components/CodeValue";
+import { currentLocale, t } from "../../i18n";
+import { tx } from "../../i18n/tx";
 
 /* ─── Plan icon helper ─── */
 function PlanIcon({ code, size = 18 }: { code: string; size?: number }) {
@@ -65,9 +67,9 @@ function TenantActivityLog({ tenantId }: { tenantId: string }) {
 }
 
 const ACCEPTANCE_METHOD: Record<string, string> = {
-  signup: "At sign-up",
-  gate: "At sign-in",
-  invite: "Added by the Boss",
+  signup: t("At sign-up"),
+  gate: t("At sign-in"),
+  invite: t("Added by the Boss"),
 };
 
 /* ─── Terms-acceptance ledger: who agreed to which terms, read-only ─── */
@@ -84,15 +86,18 @@ function TenantLegalLedger({ tenantId }: { tenantId: string }) {
       <div className="px-6 py-4 border-b border-soft">
         <div className="flex items-center gap-2">
           <ScrollText size={16} className="text-muted" />
-          <h3 className="font-semibold text-primary">Terms acceptance ({rows.length})</h3>
+          <h3 className="font-semibold text-primary">
+            {t("Terms acceptance ({{rowsCount}})", { rowsCount: rows.length })}
+          </h3>
         </div>
         <p className="text-xs text-muted mt-1">
-          Every time someone at this mill agreed to the terms: which version, a fingerprint of the
-          exact text they were shown, how, when and from where. These records can't be changed.
+          {t(
+            "Every time someone at this mill agreed to the terms: which version, a fingerprint of the exact text they were shown, how, when and from where. These records can't be changed.",
+          )}
           {data && (
             <>
               {" "}
-              Current version: <span className="font-mono">{data.agreement_version}</span>.
+              {t("Current version:")} <span className="font-mono">{data.agreement_version}</span>.
             </>
           )}
         </p>
@@ -101,18 +106,20 @@ function TenantLegalLedger({ tenantId }: { tenantId: string }) {
         <div className="mx-6 mt-4 flex items-start gap-2 rounded-xl border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/30 px-4 py-3 text-sm text-amber-900 dark:text-amber-200">
           <AlertCircle size={16} className="shrink-0 mt-0.5" />
           <p>
-            Haven't accepted the current terms yet:{" "}
-            {pending.map((u) => u.full_name || u.username).join(", ")}. They're asked at their next
-            sign-in.
+            {t("Haven't accepted the current terms yet:")}{" "}
+            {pending.map((u) => u.full_name || u.username).join(", ")}
+            {t(". They're asked at their next sign-in.")}
           </p>
         </div>
       )}
       <table className="data-table">
         <thead>
           <tr>
-            {["User", "Version", "How", "When", "From", "Fingerprint"].map((h) => (
-              <th key={h}>{h}</th>
-            ))}
+            {[t("User"), t("Version"), t("How"), t("When"), t("From"), t("Fingerprint")].map(
+              (h) => (
+                <th key={h}>{h}</th>
+              ),
+            )}
           </tr>
         </thead>
         <tbody>
@@ -143,7 +150,7 @@ function TenantLegalLedger({ tenantId }: { tenantId: string }) {
           {!isLoading && rows.length === 0 && (
             <tr>
               <td colSpan={6} className="px-4 py-6 text-center text-muted">
-                No acceptances recorded yet.
+                {t("No acceptances recorded yet.")}
               </td>
             </tr>
           )}
@@ -155,11 +162,11 @@ function TenantLegalLedger({ tenantId }: { tenantId: string }) {
 
 /* ─── Tier dropdown options ─── */
 const TIER_OPTIONS: { value: string; label: string }[] = [
-  { value: "free", label: "Free" },
-  { value: "basic", label: "Basic" },
-  { value: "pro", label: "Pro" },
-  { value: "enterprise", label: "Enterprise" },
-  { value: "trial", label: "Trial (7 days)" },
+  { value: "free", label: t("Free") },
+  { value: "basic", label: t("Basic") },
+  { value: "pro", label: t("Pro") },
+  { value: "enterprise", label: t("Enterprise") },
+  { value: "trial", label: t("Trial (7 days)") },
 ];
 
 /* Default trial duration. Admin can override the expires_at field if needed. */
@@ -177,21 +184,17 @@ function endOfDay(dateStr: string): Date {
   return d;
 }
 
-/** "in 4 days" / "in 2 hours" / "expired 3 days ago" — short and human. */
+/** "in 4 days" / "in 2 hours" / "3 days ago", in the language on screen. */
 function relativeTo(now: Date, then: Date): string {
   const diffMs = then.getTime() - now.getTime();
-  const past = diffMs < 0;
-  const abs = Math.abs(diffMs);
-  const minutes = Math.round(abs / 60000);
+  const sign = diffMs < 0 ? -1 : 1;
+  const minutes = Math.round(Math.abs(diffMs) / 60000);
   const hours = Math.round(minutes / 60);
   const days = Math.round(hours / 24);
-  const unit =
-    days >= 1
-      ? `${days} day${days === 1 ? "" : "s"}`
-      : hours >= 1
-        ? `${hours} hour${hours === 1 ? "" : "s"}`
-        : `${minutes} minute${minutes === 1 ? "" : "s"}`;
-  return past ? `${unit} ago` : `in ${unit}`;
+  const say = new Intl.RelativeTimeFormat(currentLocale(), { numeric: "auto" });
+  if (days >= 1) return say.format(sign * days, "day");
+  if (hours >= 1) return say.format(sign * hours, "hour");
+  return say.format(sign * minutes, "minute");
 }
 
 /* ─── Subscription Indicator: at-a-glance "is it active, which plan, since when, until when" ─── */
@@ -201,9 +204,9 @@ function SubscriptionIndicator({ sub }: { sub: any | null | undefined }) {
       <div className="flex items-start gap-3 rounded-xl border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/30 px-4 py-3">
         <AlertCircle size={18} className="text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
         <div className="text-sm text-amber-900 dark:text-amber-200">
-          <p className="font-semibold">No subscription assigned</p>
+          <p className="font-semibold">{t("No subscription assigned")}</p>
           <p className="text-amber-800 dark:text-amber-200 mt-0.5">
-            This tenant has no feature access until you activate a tier below.
+            {t("This tenant has no feature access until you activate a tier below.")}
           </p>
         </div>
       </div>
@@ -219,21 +222,21 @@ function SubscriptionIndicator({ sub }: { sub: any | null | undefined }) {
     ? {
         wrap: "border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-900/30",
         icon: <CheckCircle2 size={20} className="text-emerald-600 dark:text-emerald-400" />,
-        title: "Active subscription",
+        title: t("Active subscription"),
         titleClass: "text-emerald-900 dark:text-emerald-200",
       }
     : isTrial
       ? {
           wrap: "border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/30",
           icon: <Clock size={20} className="text-blue-600 dark:text-blue-400" />,
-          title: "Trial in progress",
+          title: t("Trial in progress"),
           titleClass: "text-blue-900 dark:text-blue-200",
         }
       : isExpired
         ? {
             wrap: "border-rose-200 dark:border-rose-800 bg-rose-50 dark:bg-rose-900/30",
             icon: <CircleSlash size={20} className="text-rose-600 dark:text-rose-400" />,
-            title: status === "cancelled" ? "Subscription cancelled" : "Subscription expired",
+            title: status === "cancelled" ? t("Subscription cancelled") : t("Subscription expired"),
             titleClass: "text-rose-900 dark:text-rose-200",
           }
         : {
@@ -258,11 +261,12 @@ function SubscriptionIndicator({ sub }: { sub: any | null | undefined }) {
             <PlanIcon code={sub.plan_code} size={14} />
             <span className="text-lg font-bold text-primary">{sub.plan_name}</span>
             <span className="text-xs text-muted">
-              {sub.monthly_price === 0 ? "Free" : `₱${sub.monthly_price.toLocaleString()}/mo`}
+              {sub.monthly_price === 0 ? t("Free") : `₱${sub.monthly_price.toLocaleString()}/mo`}
             </span>
             {sub.max_users && (
               <span className="text-xs text-muted">
-                · {sub.max_users} users · {sub.max_branches || "∞"} branches
+                {t("· {{max_users}} users ·", { max_users: sub.max_users })}{" "}
+                {sub.max_branches || "∞"} {t("branches")}
               </span>
             )}
           </div>
@@ -274,7 +278,7 @@ function SubscriptionIndicator({ sub }: { sub: any | null | undefined }) {
       <div className="grid grid-cols-1 sm:grid-cols-2 border-t border-current/10 bg-[rgb(var(--surface)/0.5)]">
         <div className="px-4 py-3 sm:border-r border-soft">
           <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted">
-            <Calendar size={11} /> Started
+            <Calendar size={11} /> {t("Started")}
           </div>
           <div className="text-sm font-medium text-primary mt-1">
             {started ? format(started, "MMM d, yyyy") : "—"}
@@ -283,7 +287,7 @@ function SubscriptionIndicator({ sub }: { sub: any | null | undefined }) {
         </div>
         <div className="px-4 py-3">
           <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted">
-            {expires ? <CalendarOff size={11} /> : <InfinityIcon size={11} />} Until
+            {expires ? <CalendarOff size={11} /> : <InfinityIcon size={11} />} {t("Until")}
           </div>
           {expires ? (
             <>
@@ -301,8 +305,8 @@ function SubscriptionIndicator({ sub }: { sub: any | null | undefined }) {
             </>
           ) : (
             <>
-              <div className="text-sm font-medium text-primary mt-1">Never — permanent</div>
-              <div className="text-xs text-muted">No expiration set</div>
+              <div className="text-sm font-medium text-primary mt-1">{t("Never — permanent")}</div>
+              <div className="text-xs text-muted">{t("No expiration set")}</div>
             </>
           )}
         </div>
@@ -461,21 +465,21 @@ function SubscriptionManager({ tenantId, tenantName }: { tenantId: string; tenan
   const saveErrorMessage =
     typeof (save.error as any)?.response?.data?.detail === "string"
       ? (save.error as any).response.data.detail
-      : "Failed to save. Please try again.";
+      : t("Failed to save. Please try again.");
 
   const selectedPlan = tier === "trial" ? findPlanByCode(trialOfCode) : findPlanByCode(tier);
 
   const buttonLabel = save.isPending
     ? tier === "trial"
-      ? "Starting trial…"
-      : "Activating…"
+      ? t("Starting trial…")
+      : t("Activating…")
     : tier === "trial"
       ? currentSub?.status === "trial"
-        ? "Save trial"
-        : "Start trial"
+        ? t("Save trial")
+        : t("Start trial")
       : currentSub && currentSub.status === "active" && currentSub.plan_code === tier
-        ? "Save changes"
-        : "Activate subscription";
+        ? t("Save changes")
+        : t("Activate subscription");
 
   return (
     <div className="panel">
@@ -483,11 +487,11 @@ function SubscriptionManager({ tenantId, tenantName }: { tenantId: string; tenan
       <div className="px-6 py-4 border-b border-soft flex items-center justify-between">
         <div className="flex items-center gap-2">
           <CreditCard size={16} className="text-muted" />
-          <h3 className="font-semibold text-primary">Subscription</h3>
+          <h3 className="font-semibold text-primary">{t("Subscription")}</h3>
         </div>
         {!showForm && currentSub && (
           <button onClick={() => setShowForm(true)} className="link text-xs">
-            Change tier
+            {t("Change tier")}
           </button>
         )}
       </div>
@@ -502,28 +506,30 @@ function SubscriptionManager({ tenantId, tenantName }: { tenantId: string; tenan
         <div className="px-6 pb-6 space-y-5 border-t border-soft pt-5">
           <div>
             <label className="block text-xs font-semibold text-muted uppercase tracking-wide mb-2">
-              Subscription tier
+              {t("Subscription tier")}
             </label>
             <Select
-              aria-label="Subscription tier"
+              aria-label={t("Subscription tier")}
               value={tier}
               onChange={handleTierChange}
               options={TIER_OPTIONS.map((opt) => ({ value: opt.value, label: opt.label }))}
             />
             <p className="text-xs text-muted mt-1">
-              Picking a tier activates it for this tenant.{" "}
-              <span className="font-medium">Trial</span> defaults to {DEFAULT_TRIAL_DAYS} days
-              (adjust the expiry below to change).
+              {t("Picking a tier activates it for this tenant.")}{" "}
+              {tx("{{trial}} defaults to {{days}} days (adjust the expiry below to change).", {
+                trial: <span className="font-medium">{t("Trial")}</span>,
+                days: DEFAULT_TRIAL_DAYS,
+              })}
             </p>
           </div>
 
           {tier === "trial" && (
             <div>
               <label className="block text-xs font-semibold text-muted uppercase tracking-wide mb-1">
-                Trial of which plan?
+                {t("Trial of which plan?")}
               </label>
               <Select
-                aria-label="Trial of which plan?"
+                aria-label={t("Trial of which plan?")}
                 value={trialOfCode}
                 onChange={setTrialOfCode}
                 options={plans
@@ -531,12 +537,12 @@ function SubscriptionManager({ tenantId, tenantName }: { tenantId: string; tenan
                   .map((p: any) => ({
                     value: p.code,
                     label: `${p.name} (${
-                      p.monthly_price === 0 ? "Free" : `₱${p.monthly_price.toLocaleString()}/mo`
+                      p.monthly_price === 0 ? t("Free") : `₱${p.monthly_price.toLocaleString()}/mo`
                     })`,
                   }))}
               />
               <p className="text-xs text-muted mt-1">
-                Tenant gets all of this plan's features for the trial duration.
+                {t("Tenant gets all of this plan's features for the trial duration.")}
               </p>
             </div>
           )}
@@ -549,20 +555,21 @@ function SubscriptionManager({ tenantId, tenantName }: { tenantId: string; tenan
                 <span className="font-bold text-primary">{selectedPlan.name}</span>
                 {tier === "trial" && (
                   <span className="ml-1 inline-flex items-center text-[10px] font-bold uppercase tracking-wide bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-200 px-1.5 py-0.5 rounded">
-                    Trial
+                    {t("Trial")}
                   </span>
                 )}
               </div>
               <span className="text-secondary">
                 {selectedPlan.monthly_price === 0
-                  ? "Free"
+                  ? t("Free")
                   : `₱${selectedPlan.monthly_price.toLocaleString()}/mo`}
               </span>
               <span className="text-secondary">
-                {selectedPlan.max_users ? `${selectedPlan.max_users} users` : "Unlimited users"} ·{" "}
+                {selectedPlan.max_users ? `${selectedPlan.max_users} users` : t("Unlimited users")}{" "}
+                ·{" "}
                 {selectedPlan.max_branches
                   ? `${selectedPlan.max_branches} branches`
-                  : "Unlimited branches"}
+                  : t("Unlimited branches")}
               </span>
               {Array.isArray(selectedPlan.features) && (
                 <div className="basis-full flex flex-wrap gap-1.5 pt-1">
@@ -591,10 +598,10 @@ function SubscriptionManager({ tenantId, tenantName }: { tenantId: string; tenan
               <span className="flex-1">
                 <span className="flex items-center gap-1.5 text-sm font-semibold text-primary">
                   <InfinityIcon size={14} />
-                  Permanent subscription
+                  {t("Permanent subscription")}
                 </span>
                 <span className="text-xs text-muted">
-                  Never expires. Tenant keeps access until you change the tier.
+                  {t("Never expires. Tenant keeps access until you change the tier.")}
                 </span>
               </span>
             </label>
@@ -605,34 +612,34 @@ function SubscriptionManager({ tenantId, tenantName }: { tenantId: string; tenan
             <div>
               <label className="block text-xs font-semibold text-muted uppercase tracking-wide mb-1">
                 {tier === "trial"
-                  ? "Trial ends at"
+                  ? t("Trial ends at")
                   : isPermanent
-                    ? "Expires at (disabled — permanent)"
-                    : "Expires at"}
+                    ? t("Expires at (disabled — permanent)")
+                    : t("Expires at")}
               </label>
               <DatePicker
-                aria-label={tier === "trial" ? "Trial ends at" : "Expires at"}
+                aria-label={tier === "trial" ? t("Trial ends at") : t("Expires at")}
                 value={expiresAt}
                 onChange={setExpiresAt}
                 disabled={tier !== "trial" && isPermanent}
               />
               {tier === "trial" && (
                 <p className="text-xs text-muted mt-1">
-                  Defaulted to {DEFAULT_TRIAL_DAYS} days from now. Tenant loses access automatically
-                  when this passes.
+                  {t("Defaulted to")} {DEFAULT_TRIAL_DAYS}{" "}
+                  {t("days from now. Tenant loses access automatically when this passes.")}
                 </p>
               )}
             </div>
             <div>
               <label className="block text-xs font-semibold text-muted uppercase tracking-wide mb-1">
-                Notes (optional)
+                {t("Notes (optional)")}
               </label>
               <input
                 type="text"
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
                 className="input"
-                placeholder="e.g. Payment via GCash"
+                placeholder={t("e.g. Payment via GCash")}
               />
             </div>
           </div>
@@ -661,7 +668,7 @@ function SubscriptionManager({ tenantId, tenantName }: { tenantId: string; tenan
                   className="btn-secondary"
                   disabled={save.isPending}
                 >
-                  Cancel
+                  {t("Cancel")}
                 </button>
               )}
               {save.isError && (
@@ -676,8 +683,10 @@ function SubscriptionManager({ tenantId, tenantName }: { tenantId: string; tenan
         <div className="mx-6 mb-6 text-sm bg-emerald-50 dark:bg-emerald-900/30 border border-emerald-200 dark:border-emerald-800 rounded-lg px-3 py-2 text-emerald-800 dark:text-emerald-200 flex items-start gap-2">
           <Check size={14} className="mt-0.5 shrink-0" />
           <span>
-            Subscription saved for <strong>{tenantName || "this tenant"}</strong>. Their session
-            reflects the new tier within ~10 seconds (or instantly when they refocus their tab).
+            {tx(
+              "Subscription saved for {{tenant}}. Their session reflects the new tier within ~10 seconds (or instantly when they refocus their tab).",
+              { tenant: <strong>{tenantName || t("this tenant")}</strong> },
+            )}
           </span>
         </div>
       )}
@@ -743,28 +752,28 @@ export default function AdminTenantDetail() {
         to="/admin/tenants"
         className="inline-flex items-center gap-2 text-sm text-muted hover:text-primary transition-colors"
       >
-        <ArrowLeft size={14} /> Back to tenants
+        <ArrowLeft size={14} /> {t("Back to tenants")}
       </Link>
 
       <div className="flex items-start justify-between flex-wrap gap-3">
         <div>
           <div className="flex items-center gap-3">
             <h2 className="text-2xl font-bold text-primary flex items-center gap-2">
-              <Building2 size={22} /> {c.name || "Tenant"}
+              <Building2 size={22} /> {c.name || t("Tenant")}
             </h2>
             {c.is_active ? (
-              <span className="badge-green">Active</span>
+              <span className="badge-green">{t("Active")}</span>
             ) : c.account?.state === "paused" ? (
-              <span className="badge-red">Paused by its Boss</span>
+              <span className="badge-red">{t("Paused by its Boss")}</span>
             ) : c.account?.state === "deletion_requested" ? (
-              <span className="badge-red">Deletion requested</span>
+              <span className="badge-red">{t("Deletion requested")}</span>
             ) : (
-              <span className="badge-red">Inactive</span>
+              <span className="badge-red">{t("Inactive")}</span>
             )}
             <ProvisioningBadge info={c.provisioning} />
           </div>
           <p className="text-sm text-muted mt-1">
-            Tenant ID: <span className="font-mono">{c.id || id}</span>
+            {t("Tenant ID:")} <span className="font-mono">{c.id || id}</span>
           </p>
         </div>
         {data && (
@@ -778,12 +787,16 @@ export default function AdminTenantDetail() {
             }`}
             title={
               c.is_active
-                ? "Deactivate this tenant — blocks all logins"
-                : "Activate this tenant — restores login"
+                ? t("Deactivate this tenant — blocks all logins")
+                : t("Activate this tenant — restores login")
             }
           >
             <Power size={14} />
-            {toggle.isPending ? "Saving…" : c.is_active ? "Deactivate tenant" : "Activate tenant"}
+            {toggle.isPending
+              ? t("Saving…")
+              : c.is_active
+                ? t("Deactivate tenant")
+                : t("Activate tenant")}
           </button>
         )}
       </div>
@@ -793,15 +806,20 @@ export default function AdminTenantDetail() {
           role="status"
           className="rounded-xl px-4 py-3 text-sm bg-rose-50 dark:bg-rose-950/30 ring-1 ring-rose-200 dark:ring-rose-800/60 text-rose-800 dark:text-rose-200"
         >
-          The Boss asked on {fmtDay(c.account.deletion_requested_at)} for this mill to be deleted.
-          They can still sign in to take its data or change their mind until{" "}
-          {fmtDay(c.account.export_until)}. After that, delete its records, as the Terms of Service
-          (17.4) promise. Nothing is deleted automatically.
+          {t(
+            "The Boss asked on {{deletion_requested_at}} for this mill to be deleted. They can still sign in to take its data or change their mind until {{export_until}}. After that, delete its records, as the Terms of Service (17.4) promise. Nothing is deleted automatically.",
+            {
+              deletion_requested_at: fmtDay(c.account.deletion_requested_at),
+              export_until: fmtDay(c.account.export_until),
+            },
+          )}
         </div>
       )}
       {c.account?.state === "paused" && (
         <p className="text-sm text-secondary">
-          Paused by its Boss on {fmtDay(c.account.closed_at)}. Activating the tenant opens it again.
+          {t("Paused by its Boss on {{closed_at}}. Activating the tenant opens it again.", {
+            closed_at: fmtDay(c.account.closed_at),
+          })}
         </p>
       )}
 
@@ -813,46 +831,46 @@ export default function AdminTenantDetail() {
           <SubscriptionManager tenantId={id!} tenantName={c.name} />
 
           <div className="card">
-            <h3 className="font-semibold text-primary mb-4">Company information</h3>
+            <h3 className="font-semibold text-primary mb-4">{t("Company information")}</h3>
             <dl className="grid grid-cols-2 gap-4 text-sm">
               <div>
-                <dt className="text-muted">Address</dt>
+                <dt className="text-muted">{t("Address")}</dt>
                 <dd className="text-primary">{c.address || "—"}</dd>
               </div>
               <div>
-                <dt className="text-muted">TIN</dt>
+                <dt className="text-muted">{t("TIN")}</dt>
                 <dd className="text-primary">{c.tin || "—"}</dd>
               </div>
               <div>
-                <dt className="text-muted">Phone</dt>
+                <dt className="text-muted">{t("Phone")}</dt>
                 <dd className="text-primary">{c.phone || "—"}</dd>
               </div>
               <div>
-                <dt className="text-muted">Email</dt>
+                <dt className="text-muted">{t("Email")}</dt>
                 <dd className="text-primary">{c.email || "—"}</dd>
               </div>
               <div>
-                <dt className="text-muted">NFA License</dt>
+                <dt className="text-muted">{t("NFA License")}</dt>
                 <dd className="text-primary">{c.nfa_license_no || "—"}</dd>
               </div>
               <div>
-                <dt className="text-muted">DA Reg.</dt>
+                <dt className="text-muted">{t("DA Reg.")}</dt>
                 <dd className="text-primary">{c.da_registration_no || "—"}</dd>
               </div>
               <div>
-                <dt className="text-muted">Currency</dt>
+                <dt className="text-muted">{t("Currency")}</dt>
                 <dd className="text-primary">{c.currency}</dd>
               </div>
               <div>
-                <dt className="text-muted">Timezone</dt>
+                <dt className="text-muted">{t("Timezone")}</dt>
                 <dd className="text-primary">{c.timezone}</dd>
               </div>
               <div>
-                <dt className="text-muted">Multi-branch</dt>
-                <dd className="text-primary">{c.is_multi_branch ? "Yes" : "No"}</dd>
+                <dt className="text-muted">{t("Multi-branch")}</dt>
+                <dd className="text-primary">{c.is_multi_branch ? t("Yes") : t("No")}</dd>
               </div>
               <div>
-                <dt className="text-muted">Signed up</dt>
+                <dt className="text-muted">{t("Signed up")}</dt>
                 <dd className="text-primary">
                   {c.created_at ? format(new Date(c.created_at), "MMM d, yyyy 'at' HH:mm") : "—"}
                 </dd>
@@ -863,19 +881,21 @@ export default function AdminTenantDetail() {
           <div className="panel">
             <div className="px-6 py-4 border-b border-soft flex items-center gap-2">
               <UsersIcon size={16} className="text-muted" />
-              <h3 className="font-semibold text-primary">Users ({users.length})</h3>
+              <h3 className="font-semibold text-primary">
+                {t("Users ({{usersCount}})", { usersCount: users.length })}
+              </h3>
             </div>
             <table className="data-table">
               <thead>
                 <tr>
                   {[
-                    "Username",
-                    "Full name",
-                    "Email",
-                    "Role",
-                    "Status",
-                    "Created",
-                    "Last login",
+                    t("Username"),
+                    t("Full name"),
+                    t("Email"),
+                    t("Role"),
+                    t("Status"),
+                    t("Created"),
+                    t("Last login"),
                   ].map((h) => (
                     <th key={h}>{h}</th>
                   ))}
@@ -887,12 +907,12 @@ export default function AdminTenantDetail() {
                     <td className="px-4 py-3 font-mono text-xs">{u.username}</td>
                     <td className="px-4 py-3">{u.full_name}</td>
                     <td className="px-4 py-3 text-muted">{u.email || "—"}</td>
-                    <td className="px-4 py-3">{roleLabel(u.role) || "—"}</td>
+                    <td className="px-4 py-3">{u.role ? t(roleLabel(u.role)) : "—"}</td>
                     <td className="px-4 py-3">
                       {u.is_active ? (
-                        <span className="badge-green">Active</span>
+                        <span className="badge-green">{t("Active")}</span>
                       ) : (
-                        <span className="badge-red">Inactive</span>
+                        <span className="badge-red">{t("Inactive")}</span>
                       )}
                     </td>
                     <td className="px-4 py-3 text-muted text-xs">
@@ -906,7 +926,7 @@ export default function AdminTenantDetail() {
                 {users.length === 0 && (
                   <tr>
                     <td colSpan={7} className="px-4 py-6 text-center text-muted">
-                      No users yet.
+                      {t("No users yet.")}
                     </td>
                   </tr>
                 )}
@@ -919,12 +939,14 @@ export default function AdminTenantDetail() {
           <div className="panel">
             <div className="px-6 py-4 border-b border-soft flex items-center gap-2">
               <MapPin size={16} className="text-muted" />
-              <h3 className="font-semibold text-primary">Branches ({branches.length})</h3>
+              <h3 className="font-semibold text-primary">
+                {t("Branches ({{branchesCount}})", { branchesCount: branches.length })}
+              </h3>
             </div>
             <table className="data-table">
               <thead>
                 <tr>
-                  {["Name", "Type", "Status"].map((h) => (
+                  {[t("Name"), t("Type"), t("Status")].map((h) => (
                     <th key={h}>{h}</th>
                   ))}
                 </tr>
@@ -935,16 +957,16 @@ export default function AdminTenantDetail() {
                     <td className="px-4 py-3 font-medium">{b.name}</td>
                     <td className="px-4 py-3">
                       {b.is_main_branch ? (
-                        <span className="badge-green">Main</span>
+                        <span className="badge-green">{t("Main")}</span>
                       ) : (
-                        <span className="badge-gray">Branch</span>
+                        <span className="badge-gray">{t("Branch")}</span>
                       )}
                     </td>
                     <td className="px-4 py-3">
                       {b.is_active ? (
-                        <span className="badge-green">Active</span>
+                        <span className="badge-green">{t("Active")}</span>
                       ) : (
-                        <span className="badge-red">Inactive</span>
+                        <span className="badge-red">{t("Inactive")}</span>
                       )}
                     </td>
                   </tr>
@@ -952,7 +974,7 @@ export default function AdminTenantDetail() {
                 {branches.length === 0 && (
                   <tr>
                     <td colSpan={3} className="px-4 py-6 text-center text-muted">
-                      No branches yet.
+                      {t("No branches yet.")}
                     </td>
                   </tr>
                 )}
@@ -963,10 +985,11 @@ export default function AdminTenantDetail() {
           <TenantBackupLoad tenantId={id!} tenantName={c.name} />
 
           <div className="card">
-            <h3 className="font-semibold text-primary mb-1">Activity log</h3>
+            <h3 className="font-semibold text-primary mb-1">{t("Activity log")}</h3>
             <p className="text-xs text-muted mb-3">
-              Who did what, newest first: accounts added, removed or re-roled, sign-in and password
-              events, and warehouse deletes.
+              {t(
+                "Who did what, newest first: accounts added, removed or re-roled, sign-in and password events, and warehouse deletes.",
+              )}
             </p>
             <TenantActivityLog tenantId={id!} />
           </div>
@@ -974,38 +997,38 @@ export default function AdminTenantDetail() {
 
         <div className="space-y-4">
           <div className="card">
-            <h3 className="font-semibold text-primary mb-4">Activity</h3>
+            <h3 className="font-semibold text-primary mb-4">{t("Activity")}</h3>
             <dl className="space-y-3 text-sm">
               <div className="flex justify-between">
-                <dt className="text-muted">Purchases</dt>
+                <dt className="text-muted">{t("Purchases")}</dt>
                 <dd className="font-semibold">{m.purchases_count.toLocaleString()}</dd>
               </div>
               <div className="flex justify-between">
-                <dt className="text-muted">Milling batches</dt>
+                <dt className="text-muted">{t("Milling batches")}</dt>
                 <dd className="font-semibold">{m.batches_count.toLocaleString()}</dd>
               </div>
               <div className="flex justify-between">
-                <dt className="text-muted">Sales orders</dt>
+                <dt className="text-muted">{t("Sales orders")}</dt>
                 <dd className="font-semibold">{m.orders_count.toLocaleString()}</dd>
               </div>
               <div className="flex justify-between">
-                <dt className="text-muted">Invoices</dt>
+                <dt className="text-muted">{t("Invoices")}</dt>
                 <dd className="font-semibold">{m.invoices_count.toLocaleString()}</dd>
               </div>
             </dl>
           </div>
 
           <div className="card">
-            <h3 className="font-semibold text-primary mb-4">Money</h3>
+            <h3 className="font-semibold text-primary mb-4">{t("Money")}</h3>
             <dl className="space-y-3 text-sm">
               <div className="flex justify-between">
-                <dt className="text-muted">Revenue</dt>
+                <dt className="text-muted">{t("Revenue")}</dt>
                 <dd className="font-semibold text-emerald-600 dark:text-emerald-400">
                   ₱{m.total_revenue.toLocaleString()}
                 </dd>
               </div>
               <div className="flex justify-between">
-                <dt className="text-muted">Expenses</dt>
+                <dt className="text-muted">{t("Expenses")}</dt>
                 <dd className="font-semibold text-rose-600 dark:text-rose-400">
                   ₱{m.total_expenses.toLocaleString()}
                 </dd>

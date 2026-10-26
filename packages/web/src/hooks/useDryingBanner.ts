@@ -3,6 +3,7 @@ import type { Coords } from "./useGeolocation";
 import type { HourlyForecast } from "./useWeather";
 import { useDryingAdvisory } from "./useDryingAdvisory";
 import { dryingAdvice, type DryingAdvice } from "../utils/dryingAdvice";
+import { currentLanguage, DEFAULT_LANGUAGE } from "../i18n";
 
 export type DryingBanner = DryingAdvice & { source: "ai" | "forecast" };
 
@@ -10,8 +11,12 @@ const HOUR_MS = 60 * 60 * 1000;
 
 type Saved = { banner: DryingBanner; savedAt: number };
 
-const storageKey = (coords: Coords | null) =>
-  `oraiza:drying-advice:${coords ? `${coords.lat.toFixed(2)},${coords.lon.toFixed(2)}` : "here"}`;
+// Per place, and per language: advice kept in one language never shows in another.
+const storageKey = (coords: Coords | null) => {
+  const place = coords ? `${coords.lat.toFixed(2)},${coords.lon.toFixed(2)}` : "here";
+  const { code } = currentLanguage();
+  return `oraiza:drying-advice:${place}${code === DEFAULT_LANGUAGE ? "" : `:${code}`}`;
+};
 
 function readSaved(key: string): Saved | null {
   try {

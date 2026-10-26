@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import { Info } from "lucide-react";
+import { t } from "../i18n";
 
 /** Point-of-use disclaimers.
  *
@@ -13,25 +14,21 @@ import { Info } from "lucide-react";
 
 const NOTICES = {
   /** Reports, including the NFA/DA/loan "compliance" outputs. */
-  report:
-    "Internal management report generated from your own entries. It is not certified, audited " +
-    "or accredited, is not a registered book of account, and no government agency has reviewed " +
-    "it. Check every figure before you rely on it or file anything based on it.",
+  report: t(
+    "Internal management report generated from your own entries. It is not certified, audited or accredited, is not a registered book of account, and no government agency has reviewed it. Check every figure before you rely on it or file anything based on it.",
+  ),
   /** Anything the app calls an invoice, receipt or payment. */
-  invoice:
-    "Internal sales record. This is not a BIR-registered Official Receipt or Sales Invoice, and " +
-    "Oraiza is not a BIR-accredited invoicing or accounting system. Issue your BIR-compliant " +
-    "documents through your accredited means.",
+  invoice: t(
+    "Internal sales record. This is not a BIR-registered Official Receipt or Sales Invoice, and Oraiza is not a BIR-accredited invoicing or accounting system. Issue your BIR-compliant documents through your accredited means.",
+  ),
   /** Weather forecasts and anything derived from them. */
-  forecast:
-    "Third-party forecast data. Forecasts can be wrong, stale or unavailable, and this is not " +
-    "agronomic advice. Check actual conditions before acting on it.",
+  forecast: t(
+    "Third-party forecast data. Forecasts can be wrong, stale or unavailable, and this is not agronomic advice. Check actual conditions before acting on it.",
+  ),
   /** Employee records holding government identifiers. */
-  employeeData:
-    "These records contain sensitive personal information under the Data Privacy Act, including " +
-    "government identifier numbers. Your mill is the Personal Information Controller for them: " +
-    "collect only what you need, give your workers a privacy notice, and limit who can see this " +
-    "page.",
+  employeeData: t(
+    "These records contain sensitive personal information under the Data Privacy Act, including government identifier numbers. Your mill is the Personal Information Controller for them: collect only what you need, give your workers a privacy notice, and limit who can see this page.",
+  ),
 } as const;
 
 type Props = {
@@ -60,7 +57,7 @@ export default function LegalNotice({ kind, className = "", to }: Props) {
       <span>
         {NOTICES[kind]}{" "}
         <Link to={to ?? DEFAULT_LINK[kind]} className="link">
-          Details
+          {t("Details")}
         </Link>
       </span>
     </p>

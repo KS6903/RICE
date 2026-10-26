@@ -9,6 +9,7 @@ import { useAuthStore } from "../../stores/authStore";
 import { useSubLock } from "../SubscriptionGuard";
 import { FEATURE_PLAN, NAV_GROUPS, PLAN_ORDER, type NavEntry } from "./navigation";
 import { NavDrawer } from "./NavDrawer";
+import { t } from "../../i18n";
 
 function NavItem({
   to,
@@ -32,9 +33,9 @@ function NavItem({
       }
       title={
         locked
-          ? "Subscription required — click to view billing"
+          ? t("Subscription required — click to view billing")
           : readOnly
-            ? `${hint ?? label}. View only: your role can't make changes here.`
+            ? t("{{page}}. View only: your role can't make changes here.", { page: hint ?? label })
             : hint
       }
     >
@@ -52,7 +53,7 @@ function NavItem({
           <span className="flex-1">{label}</span>
           {!locked && readOnly && (
             <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
-              View
+              {t("View")}
             </span>
           )}
           {locked && <Lock size={13} className="text-amber-500" />}
@@ -102,7 +103,7 @@ function OtherPlans({ items, userId }: { items: NavEntry[]; userId: string }) {
         aria-controls={listId}
         className="w-full flex items-center gap-2 px-3 py-1.5 rounded-lg text-[11px] font-bold uppercase tracking-[0.1em] text-muted hover:text-secondary"
       >
-        <span className="flex-1 text-left">More with other plans</span>
+        <span className="flex-1 text-left">{t("More with other plans")}</span>
         <ChevronDown
           size={14}
           className={clsx(
@@ -122,7 +123,10 @@ function OtherPlans({ items, userId }: { items: NavEntry[]; userId: string }) {
                   key={to}
                   to="/settings"
                   className="nav-link opacity-70 hover:opacity-100"
-                  title={`${label} comes with the ${plan} plan. See the plans.`}
+                  title={t("{{label}} comes with the {{plan}} plan. See the plans.", {
+                    label,
+                    plan,
+                  })}
                 >
                   <Icon size={18} className="shrink-0 text-slate-400 dark:text-slate-500" />
                   <span className="flex-1">{label}</span>
@@ -165,20 +169,20 @@ export default function Sidebar({ open, onClose }: { open: boolean; onClose: () 
           <div className="h-10 w-10 rounded-xl bg-grad-brand grid place-items-center shadow-grad-glow">
             <img
               src={riceLogo}
-              alt="Oraiza"
+              alt={t("Oraiza")}
               className="h-full w-full object-contain brightness-0 invert"
             />
           </div>
           <div className="min-w-0 flex-1">
             <h1 className="text-base font-bold tracking-tight text-primary leading-tight truncate">
-              Oraiza
+              {t("Oraiza")}
             </h1>
           </div>
           <button
             type="button"
             onClick={onClose}
             className="lg:hidden -mr-2 h-10 w-10 grid place-items-center rounded-xl text-secondary hover:text-primary"
-            aria-label="Close menu"
+            aria-label={t("Close menu")}
           >
             <X size={20} />
           </button>
@@ -217,10 +221,10 @@ export default function Sidebar({ open, onClose }: { open: boolean; onClose: () 
           }
         >
           <Settings size={18} className="text-slate-500 dark:text-slate-400" />
-          <span className="flex-1">Settings</span>
+          <span className="flex-1">{t("Settings")}</span>
           {locked && (
             <span className="text-[10px] font-bold uppercase tracking-wide text-amber-600 dark:text-amber-400">
-              Renew
+              {t("Renew")}
             </span>
           )}
         </NavLink>

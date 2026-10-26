@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { ArrowUpCircle, X } from "lucide-react";
 import { adminService } from "../../services/AdminService";
+import { t } from "../../i18n";
 
 type PendingPayload = {
   pending: number;
@@ -79,12 +80,12 @@ export default function UpgradeRequestToast() {
             <ArrowUpCircle size={15} />
           </span>
           <span className="text-xs font-bold uppercase tracking-wide text-secondary flex-1">
-            New plan request
+            {t("New plan request")}
           </span>
           <button
             onClick={() => setDismissed(true)}
             className="text-muted hover:text-primary transition-colors"
-            aria-label="Dismiss"
+            aria-label={t("Dismiss")}
           >
             <X size={14} />
           </button>
@@ -95,9 +96,10 @@ export default function UpgradeRequestToast() {
           className="block px-4 py-3 transition-colors hover:bg-[rgb(var(--ink)/0.04)]"
         >
           <p className="text-sm font-semibold text-primary">
-            {toast.company_name || "A tenant"} requested {toast.requested_plan_name || "a plan"}
+            {toast.company_name || t("A tenant")} {t("requested")}{" "}
+            {toast.requested_plan_name || t("a plan")}
           </p>
-          <p className="link text-xs mt-1">Review now →</p>
+          <p className="link text-xs mt-1">{t("Review now →")}</p>
         </Link>
       </div>
     </div>

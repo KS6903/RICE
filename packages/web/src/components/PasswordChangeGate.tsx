@@ -3,6 +3,7 @@ import { AlertCircle, Check, KeyRound, LogOut } from "lucide-react";
 import { authService } from "../services/AuthService";
 import { useAuthStore } from "../stores/authStore";
 import PasswordInput from "./PasswordInput";
+import { t } from "../i18n";
 
 /** Full-screen "choose your own password".
  *
@@ -37,7 +38,7 @@ export default function PasswordChangeGate() {
       requireReauthentication();
       setDone(true);
     } catch (err: any) {
-      setError(err.response?.data?.detail || "Couldn't change the password. Try again.");
+      setError(err.response?.data?.detail || t("Couldn't change the password. Try again."));
     } finally {
       setLoading(false);
     }
@@ -51,9 +52,9 @@ export default function PasswordChangeGate() {
             <KeyRound size={20} className="text-white" />
           </div>
           <div>
-            <h1 className="text-lg font-bold text-primary">Choose your own password</h1>
+            <h1 className="text-lg font-bold text-primary">{t("Choose your own password")}</h1>
             <p className="text-sm text-secondary">
-              You signed in with a temporary password. Choose one only you know.
+              {t("You signed in with a temporary password. Choose one only you know.")}
             </p>
           </div>
         </div>
@@ -61,17 +62,17 @@ export default function PasswordChangeGate() {
         {done ? (
           <div className="space-y-4">
             <p className="flex items-start gap-2 text-sm font-semibold text-emerald-700 dark:text-emerald-400">
-              <Check size={16} className="mt-0.5 shrink-0" /> Your password was changed.
+              <Check size={16} className="mt-0.5 shrink-0" /> {t("Your password was changed.")}
             </p>
             <button type="button" className="btn-primary w-full" onClick={() => void logout()}>
-              Sign in with your new password
+              {t("Sign in with your new password")}
             </button>
           </div>
         ) : (
           <form onSubmit={submit} className="space-y-4">
             <div>
               <label htmlFor="temp-current" className="form-label">
-                Temporary password
+                {t("Temporary password")}
               </label>
               <PasswordInput
                 id="temp-current"
@@ -84,7 +85,7 @@ export default function PasswordChangeGate() {
             </div>
             <div>
               <label htmlFor="temp-new" className="form-label">
-                New password
+                {t("New password")}
               </label>
               <PasswordInput
                 id="temp-new"
@@ -95,12 +96,12 @@ export default function PasswordChangeGate() {
                 required
               />
               <p className="mt-1 text-xs text-secondary">
-                At least 8 characters, with letters and numbers. Not the temporary one.
+                {t("At least 8 characters, with letters and numbers. Not the temporary one.")}
               </p>
             </div>
             <div>
               <label htmlFor="temp-again" className="form-label">
-                New password again
+                {t("New password again")}
               </label>
               <PasswordInput
                 id="temp-again"
@@ -112,7 +113,7 @@ export default function PasswordChangeGate() {
               />
               {mismatch && (
                 <p className="mt-1 text-xs font-semibold text-rose-600 dark:text-rose-400">
-                  The two passwords don&apos;t match.
+                  {t("The two passwords don't match.")}
                 </p>
               )}
             </div>
@@ -128,14 +129,14 @@ export default function PasswordChangeGate() {
             )}
 
             <button type="submit" className="btn-primary w-full" disabled={!ready || loading}>
-              {loading ? "Saving…" : "Save new password"}
+              {loading ? t("Saving…") : t("Save new password")}
             </button>
             <button
               type="button"
               onClick={() => void logout()}
               className="btn-ghost w-full justify-center"
             >
-              <LogOut size={15} /> Sign out
+              <LogOut size={15} /> {t("Sign out")}
             </button>
           </form>
         )}

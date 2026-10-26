@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { authService } from "../services/AuthService";
 import { Sparkles, AlertCircle, MailCheck, ArrowLeft } from "lucide-react";
+import { t } from "../i18n";
 
 export default function ForgotPasswordPage() {
   const [identifier, setIdentifier] = useState("");
@@ -24,7 +25,7 @@ export default function ForgotPasswordPage() {
       }
     } catch {
       // Enumeration-safe endpoint shouldn't error; show a generic message if it does.
-      setError("Something went wrong. Please try again.");
+      setError(t("Something went wrong. Please try again."));
     } finally {
       setLoading(false);
     }
@@ -37,42 +38,42 @@ export default function ForgotPasswordPage() {
           <div className="h-11 w-11 rounded-xl bg-grad-brand grid place-items-center shadow-grad-glow">
             <Sparkles size={20} className="text-white" />
           </div>
-          <p className="text-lg font-bold tracking-tight text-primary">Oraiza</p>
+          <p className="text-lg font-bold tracking-tight text-primary">{t("Oraiza")}</p>
         </div>
 
         {sent ? (
           <div className="space-y-5">
             <div className="flex items-start gap-2 px-3 py-2.5 rounded-xl bg-emerald-500/15 ring-1 ring-inset ring-emerald-500/40 text-sm font-medium text-emerald-700 dark:text-emerald-300">
               <MailCheck size={16} className="mt-0.5 shrink-0" />
-              <span>If an account matches, we&apos;ve sent a reset link. Check your email.</span>
+              <span>{t("If an account matches, we've sent a reset link. Check your email.")}</span>
             </div>
             {devLink && (
               <Link
                 to={devLink}
                 className="block text-sm font-semibold text-grad-brand hover:opacity-80 break-all"
               >
-                Dev reset link → {devLink}
+                {t("Dev reset link → {{devLink}}", { devLink })}
               </Link>
             )}
             <Link
               to="/login"
               className="inline-flex items-center gap-1.5 text-sm font-semibold text-muted hover:text-primary"
             >
-              <ArrowLeft size={14} /> Back to sign in
+              <ArrowLeft size={14} /> {t("Back to sign in")}
             </Link>
           </div>
         ) : (
           <form onSubmit={submit} className="space-y-5">
             <div>
               <h1 className="text-2xl font-bold tracking-tight text-primary">
-                Reset your password
+                {t("Reset your password")}
               </h1>
               <p className="mt-2 text-sm text-secondary">
-                Enter your username or email and we&apos;ll send you a reset link.
+                {t("Enter your username or email and we'll send you a reset link.")}
               </p>
             </div>
             <div>
-              <label className="form-label">Username or email</label>
+              <label className="form-label">{t("Username or email")}</label>
               <input
                 className="input"
                 value={identifier}
@@ -94,13 +95,13 @@ export default function ForgotPasswordPage() {
               className="btn-primary w-full"
               disabled={loading || !identifier.trim()}
             >
-              {loading ? "Sending…" : "Send reset link"}
+              {loading ? t("Sending…") : t("Send reset link")}
             </button>
             <Link
               to="/login"
               className="inline-flex items-center gap-1.5 text-sm font-semibold text-muted hover:text-primary"
             >
-              <ArrowLeft size={14} /> Back to sign in
+              <ArrowLeft size={14} /> {t("Back to sign in")}
             </Link>
           </form>
         )}

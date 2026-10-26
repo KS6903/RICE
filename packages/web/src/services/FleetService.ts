@@ -1,4 +1,5 @@
 import api from "./api";
+import { t } from "../i18n";
 
 export type Driver = {
   id: string;
@@ -43,15 +44,15 @@ export type DispatchTrip = {
 };
 
 export const TRUCK_TYPES = [
-  { value: "forward", label: "Forward" },
-  { value: "canter", label: "Canter" },
-  { value: "closed_van", label: "Closed Van" },
-  { value: "drop_side", label: "Drop Side" },
-  { value: "boom_truck", label: "Boom Truck" },
-  { value: "reefer", label: "Reefer" },
-  { value: "tanker", label: "Tanker" },
-  { value: "pickup", label: "Pickup" },
-  { value: "other", label: "Other" },
+  { value: "forward", label: t("Forward") },
+  { value: "canter", label: t("Canter") },
+  { value: "closed_van", label: t("Closed Van") },
+  { value: "drop_side", label: t("Drop Side") },
+  { value: "boom_truck", label: t("Boom Truck") },
+  { value: "reefer", label: t("Reefer") },
+  { value: "tanker", label: t("Tanker") },
+  { value: "pickup", label: t("Pickup") },
+  { value: "other", label: t("Other") },
 ];
 
 export class FleetService {

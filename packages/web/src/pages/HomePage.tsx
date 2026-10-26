@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import riceLogo from "../assets/Rice_Logo.svg";
 import { warmUpApi } from "../services/warmUp";
+import { t } from "../i18n";
 
 /* ------------------------------------------------------------------ */
 /* Small count-up hook for the "live" stat numbers in the mock UI      */
@@ -93,38 +94,38 @@ function MockStat({
 }
 
 const MOCK_NAV = [
-  { icon: LayoutDashboard, label: "Dashboard", active: true },
-  { icon: Wheat, label: "Paddy" },
-  { icon: Factory, label: "Milling" },
-  { icon: Package, label: "Inventory" },
-  { icon: ShoppingCart, label: "Sales" },
-  { icon: BarChart3, label: "Reports" },
-  { icon: Settings, label: "Settings" },
+  { icon: LayoutDashboard, label: t("Dashboard"), active: true },
+  { icon: Wheat, label: t("Paddy") },
+  { icon: Factory, label: t("Milling") },
+  { icon: Package, label: t("Inventory") },
+  { icon: ShoppingCart, label: t("Sales") },
+  { icon: BarChart3, label: t("Reports") },
+  { icon: Settings, label: t("Settings") },
 ];
 
 const MOCK_ACTIVITY = [
   {
     icon: Wheat,
-    text: "Paddy intake: 2,400 kg from Brgy. San Isidro",
-    badge: "Procurement",
+    text: t("Paddy intake: 2,400 kg from Brgy. San Isidro"),
+    badge: t("Procurement"),
     badgeClass: "badge-green",
   },
   {
     icon: Factory,
-    text: "Milling run #128 finished, 65.2% recovery",
-    badge: "Milling",
+    text: t("Milling run #128 finished, 65.2% recovery"),
+    badge: t("Milling"),
     badgeClass: "badge-violet",
   },
   {
     icon: ShoppingCart,
-    text: "Sale: 50 sacks premium rice to J. Santos",
-    badge: "Sales",
+    text: t("Sale: 50 sacks premium rice to J. Santos"),
+    badge: t("Sales"),
     badgeClass: "badge-cyan",
   },
   {
     icon: Truck,
-    text: "Dispatch DR-0341 out for delivery",
-    badge: "Dispatch",
+    text: t("Dispatch DR-0341 out for delivery"),
+    badge: t("Dispatch"),
     badgeClass: "badge-yellow",
   },
 ];
@@ -240,10 +241,10 @@ function MockDashboard() {
               <span className="h-2.5 w-2.5 rounded-full bg-amber-400" />
               <span className="h-2.5 w-2.5 rounded-full bg-emerald-400" />
               <div className="ml-3 flex-1 max-w-[260px] rounded-md bg-slate-500/10 px-3 py-1 text-[10px] text-muted truncate">
-                app.ricemillsystem.com/dashboard
+                {"app.ricemillsystem.com/dashboard"}
               </div>
               <span className="ml-auto inline-flex items-center gap-1.5 text-[10px] font-semibold text-emerald-600 dark:text-emerald-400">
-                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 hp-pulse" /> Live
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 hp-pulse" /> {t("Live")}
               </span>
             </div>
 
@@ -255,7 +256,7 @@ function MockDashboard() {
                     <Wheat size={11} className="text-white" />
                   </div>
                   <span className="text-[10px] font-extrabold text-primary truncate">
-                    Rice Mill 1
+                    {t("Rice Mill 1")}
                   </span>
                 </div>
                 {MOCK_NAV.map((item, i) => (
@@ -282,16 +283,18 @@ function MockDashboard() {
                   <div className="absolute inset-0 bg-grad-brand-anim opacity-95" />
                   <div className="relative text-white">
                     <p className="text-[10px] font-bold uppercase tracking-wide opacity-90 inline-flex items-center gap-1">
-                      <Sparkles size={10} /> Today at a glance
+                      <Sparkles size={10} /> {t("Today at a glance")}
                     </p>
-                    <p className="text-sm font-extrabold mt-0.5">Good morning, Rice Mill 1 👋</p>
+                    <p className="text-sm font-extrabold mt-0.5">
+                      {t("Good morning, Rice Mill 1 👋")}
+                    </p>
                   </div>
                 </div>
 
                 {/* Stats */}
                 <div className="grid grid-cols-2 gap-2.5">
                   <MockStat
-                    label="Paddy stock"
+                    label={t("Paddy stock")}
                     value={18450}
                     unit="kg"
                     icon={Wheat}
@@ -299,7 +302,7 @@ function MockDashboard() {
                     delay={300}
                   />
                   <MockStat
-                    label="Milled rice"
+                    label={t("Milled rice")}
                     value={9320}
                     unit="kg"
                     icon={Boxes}
@@ -307,7 +310,7 @@ function MockDashboard() {
                     delay={450}
                   />
                   <MockStat
-                    label="Sales today"
+                    label={t("Sales today")}
                     value={42800}
                     unit="₱"
                     icon={CircleDollarSign}
@@ -315,7 +318,7 @@ function MockDashboard() {
                     delay={600}
                   />
                   <MockStat
-                    label="Net profit"
+                    label={t("Net profit")}
                     value={12640}
                     unit="₱"
                     icon={TrendingUp}
@@ -331,7 +334,7 @@ function MockDashboard() {
                     style={{ animationDelay: "500ms" }}
                   >
                     <p className="text-[10px] font-bold uppercase tracking-wide text-muted mb-1.5">
-                      Revenue, last 7 days
+                      {t("Revenue, last 7 days")}
                     </p>
                     <svg viewBox="0 0 220 70" className="w-full h-12" preserveAspectRatio="none">
                       <defs>
@@ -365,7 +368,7 @@ function MockDashboard() {
                     style={{ animationDelay: "650ms" }}
                   >
                     <p className="text-[10px] font-bold uppercase tracking-wide text-muted mb-1.5">
-                      Milling recovery
+                      {t("Milling recovery")}
                     </p>
                     <div className="flex items-end justify-between gap-1.5 h-12">
                       {[62, 48, 70, 55, 78, 64, 88].map((h, i) => (
@@ -385,7 +388,7 @@ function MockDashboard() {
                   style={{ animationDelay: "800ms" }}
                 >
                   <p className="text-[10px] font-bold uppercase tracking-wide text-muted mb-2">
-                    Recent activity
+                    {t("Recent activity")}
                   </p>
                   <div className="space-y-1">
                     {MOCK_ACTIVITY.map((a, i) => (
@@ -425,50 +428,66 @@ function MockDashboard() {
 const FEATURES = [
   {
     icon: Wheat,
-    title: "Paddy procurement",
-    desc: "Record paddy intake from farmers and traders with weights, moisture, and pricing, every kilo accounted for.",
+    title: t("Paddy procurement"),
+    desc: t(
+      "Record paddy intake from farmers and traders with weights, moisture, and pricing, every kilo accounted for.",
+    ),
     iconBg: "bg-gradient-to-br from-emerald-400 to-emerald-600",
   },
   {
     icon: Factory,
-    title: "Milling runs",
-    desc: "Track each milling batch from paddy to rice, with recovery rates and by-products computed automatically.",
+    title: t("Milling runs"),
+    desc: t(
+      "Track each milling batch from paddy to rice, with recovery rates and by-products computed automatically.",
+    ),
     iconBg: "bg-gradient-to-br from-violet-400 to-violet-600",
   },
   {
     icon: Package,
-    title: "Inventory",
-    desc: "Live stock levels for paddy, milled rice, and by-products. Know exactly what's in the warehouse at all times.",
+    title: t("Inventory"),
+    desc: t(
+      "Live stock levels for paddy, milled rice, and by-products. Know exactly what's in the warehouse at all times.",
+    ),
     iconBg: "bg-gradient-to-br from-cyan-400 to-cyan-600",
   },
   {
     icon: ShoppingCart,
-    title: "Sales & dispatch",
-    desc: "Issue sales, generate delivery records, and follow every dispatch from the mill gate to the customer.",
+    title: t("Sales & dispatch"),
+    desc: t(
+      "Issue sales, generate delivery records, and follow every dispatch from the mill gate to the customer.",
+    ),
     iconBg: "bg-gradient-to-br from-amber-400 to-amber-600",
   },
   {
     icon: Wallet,
-    title: "Expenses & P&L",
-    desc: "Log operating costs and see revenue, cost of goods, and net profit roll up into a clear monthly P&L.",
+    title: t("Expenses & P&L"),
+    desc: t(
+      "Log operating costs and see revenue, cost of goods, and net profit roll up into a clear monthly P&L.",
+    ),
     iconBg: "bg-gradient-to-br from-rose-400 to-rose-600",
   },
   {
     icon: BarChart3,
-    title: "Reports",
-    desc: "Production, sales, and financial reports ready when you need them, no spreadsheets required.",
+    title: t("Reports"),
+    desc: t(
+      "Production, sales, and financial reports ready when you need them, no spreadsheets required.",
+    ),
     iconBg: "bg-gradient-to-br from-sky-400 to-sky-600",
   },
   {
     icon: Users,
-    title: "Team & roles",
-    desc: "Give your accountant, cashier, encoder, and operators their own logins with just the access they need.",
+    title: t("Team & roles"),
+    desc: t(
+      "Give your accountant, cashier, encoder, and operators their own logins with just the access they need.",
+    ),
     iconBg: "bg-gradient-to-br from-indigo-400 to-indigo-600",
   },
   {
     icon: ShieldCheck,
-    title: "Secure by default",
-    desc: "Sign in with Google, optional two-factor authentication, and your mill's data kept fully separate.",
+    title: t("Secure by default"),
+    desc: t(
+      "Sign in with Google, optional two-factor authentication, and your mill's data kept fully separate.",
+    ),
     iconBg: "bg-gradient-to-br from-teal-400 to-teal-600",
   },
 ];
@@ -594,18 +613,18 @@ export default function HomePage() {
             <div className="h-9 w-9 shrink-0 rounded-xl bg-grad-brand grid place-items-center shadow-grad-glow max-[314px]:hidden">
               <img
                 src={riceLogo}
-                alt="Oraiza"
+                alt={t("Oraiza")}
                 className="h-full w-full object-contain brightness-0 invert"
               />
             </div>
-            <span className="text-lg font-bold tracking-tight text-primary">Oraiza</span>
+            <span className="text-lg font-bold tracking-tight text-primary">{t("Oraiza")}</span>
           </div>
           <div className="flex items-center gap-2 shrink-0">
             <Link to="/login" className="btn-secondary !py-2 max-sm:!px-3.5">
-              Log in
+              {t("Log in")}
             </Link>
             <Link to="/signup" className="btn-primary !py-2 max-sm:!px-3.5">
-              Sign up <ArrowRight size={16} className="max-sm:hidden" />
+              {t("Sign up")} <ArrowRight size={16} className="max-sm:hidden" />
             </Link>
           </div>
         </div>
@@ -618,24 +637,26 @@ export default function HomePage() {
             <div className="animate-grad-fade-up">
               <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full glass text-xs font-bold uppercase tracking-wide text-secondary mb-5">
                 <Sparkles size={12} className="text-emerald-500" />
-                Built for rice mills
+                {t("Built for rice mills")}
               </div>
               <h1 className="text-4xl lg:text-5xl font-extrabold tracking-tight text-primary leading-[1.1]">
-                Run your rice mill, <span className="text-grad-brand">from paddy to profit.</span>
+                {t("Run your rice mill,")}{" "}
+                <span className="text-grad-brand">{t("from paddy to profit.")}</span>
               </h1>
               <p className="mt-5 text-lg text-secondary max-w-lg">
-                One simple system for procurement, milling, inventory, sales, and reports, so you
-                always know what's in the warehouse and what's on the books.
+                {t(
+                  "One simple system for procurement, milling, inventory, sales, and reports, so you always know what's in the warehouse and what's on the books.",
+                )}
               </p>
               <div className="mt-8 flex flex-wrap items-center gap-3">
                 <Link
                   to="/signup"
                   className="btn-primary !px-6 !py-3 text-base max-sm:w-full max-sm:!px-4 max-sm:whitespace-normal max-sm:text-center"
                 >
-                  Create your mill's account <ArrowRight size={18} />
+                  {t("Create your mill's account")} <ArrowRight size={18} />
                 </Link>
                 <Link to="/login" className="btn-secondary !px-6 !py-3 text-base max-sm:w-full">
-                  Log in
+                  {t("Log in")}
                 </Link>
               </div>
             </div>
@@ -648,11 +669,12 @@ export default function HomePage() {
         <section className="mx-auto max-w-6xl px-4 sm:px-6 pb-20">
           <Reveal className="text-center max-w-2xl mx-auto mb-10">
             <h2 className="text-3xl font-extrabold tracking-tight text-primary">
-              Everything your mill needs, in one place
+              {t("Everything your mill needs, in one place")}
             </h2>
             <p className="mt-3 text-secondary">
-              Replace the notebooks and scattered spreadsheets with a single source of truth for
-              daily operations.
+              {t(
+                "Replace the notebooks and scattered spreadsheets with a single source of truth for daily operations.",
+              )}
             </p>
           </Reveal>
           <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -669,16 +691,18 @@ export default function HomePage() {
             <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_rgba(255,255,255,0.2),_transparent_55%)]" />
             <div className="relative text-white">
               <h2 className="text-3xl font-extrabold tracking-tight">
-                Ready to modernize your mill?
+                {t("Ready to modernize your mill?")}
               </h2>
               <p className="mt-3 text-white/90 max-w-xl mx-auto">
-                Set up your account in minutes and start tracking your first paddy intake today.
+                {t(
+                  "Set up your account in minutes and start tracking your first paddy intake today.",
+                )}
               </p>
               <Link
                 to="/signup"
                 className="mt-7 inline-flex items-center gap-2 rounded-xl bg-white px-6 py-3 font-bold text-slate-900 shadow-lg hover:scale-[1.02] active:scale-[0.98] transition-transform"
               >
-                Get started for free <ArrowRight size={18} />
+                {t("Get started for free")} <ArrowRight size={18} />
               </Link>
             </div>
           </Reveal>
@@ -688,17 +712,21 @@ export default function HomePage() {
       {/* Footer */}
       <footer className="border-t border-soft py-6">
         <div className="mx-auto max-w-6xl px-4 sm:px-6 flex flex-col sm:flex-row items-center justify-between gap-3 text-sm text-muted">
-          <span>© {new Date().getFullYear()} Oraiza by K Systematics</span>
+          <span>
+            {t("© {{getFullYear}} Oraiza by K Systematics", {
+              getFullYear: new Date().getFullYear(),
+            })}
+          </span>
           {/* Login/Signup already have prominent buttons in the nav and the
               CTA sections above; this slot is more useful as the agreements a
               visitor is about to be bound by, reachable before they ever
               create an account. */}
           <div className="flex flex-wrap items-center justify-center gap-4">
             <Link to="/legal/terms" className="hover:text-primary transition-colors">
-              Terms
+              {t("Terms")}
             </Link>
             <Link to="/legal/privacy" className="hover:text-primary transition-colors">
-              Privacy
+              {t("Privacy")}
             </Link>
           </div>
         </div>

@@ -1,5 +1,6 @@
 import { useId, type ReactNode } from "react";
 import { clsx } from "clsx";
+import { t } from "../i18n";
 
 interface Props {
   /** Whose avatar this is; used for the tooltip and the accessible label. */
@@ -40,7 +41,7 @@ export default function UserAvatar({ name, className }: Props) {
       viewBox="0 0 64 64"
       className={clsx("shrink-0 text-secondary", className)}
       role="img"
-      aria-label={name ? `${name}'s profile picture` : "Profile picture"}
+      aria-label={name ? t("{{name}}'s profile picture", { name }) : t("Profile picture")}
       fill="none"
       stroke="currentColor"
       strokeLinecap="round"

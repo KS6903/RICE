@@ -4,6 +4,7 @@ import { authService } from "../services/AuthService";
 import { consumeSensitiveUrlToken } from "../services/sensitiveUrl";
 import PasswordInput from "../components/PasswordInput";
 import { Sparkles, AlertCircle, CheckCircle2, ArrowLeft } from "lucide-react";
+import { t } from "../i18n";
 
 export default function ResetPasswordPage() {
   const [token] = useState(() => consumeSensitiveUrlToken());
@@ -17,14 +18,14 @@ export default function ResetPasswordPage() {
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
-    if (pw !== confirm) return setError("Passwords do not match.");
+    if (pw !== confirm) return setError(t("Passwords do not match."));
     setLoading(true);
     try {
       await authService.resetPassword(token, pw);
       setDone(true);
       setTimeout(() => navigate("/login"), 2000);
     } catch (err: any) {
-      setError(err.response?.data?.detail || "This reset link is invalid or has expired.");
+      setError(err.response?.data?.detail || t("This reset link is invalid or has expired."));
     } finally {
       setLoading(false);
     }
@@ -37,39 +38,39 @@ export default function ResetPasswordPage() {
           <div className="h-11 w-11 rounded-xl bg-grad-brand grid place-items-center shadow-grad-glow">
             <Sparkles size={20} className="text-white" />
           </div>
-          <p className="text-lg font-bold tracking-tight text-primary">Oraiza</p>
+          <p className="text-lg font-bold tracking-tight text-primary">{t("Oraiza")}</p>
         </div>
 
         {done ? (
           <div className="flex items-start gap-2 px-3 py-2.5 rounded-xl bg-emerald-500/15 ring-1 ring-inset ring-emerald-500/40 text-sm font-medium text-emerald-700 dark:text-emerald-300">
             <CheckCircle2 size={16} className="mt-0.5 shrink-0" />
-            <span>Password reset. Redirecting you to sign in…</span>
+            <span>{t("Password reset. Redirecting you to sign in…")}</span>
           </div>
         ) : !token ? (
           <div className="space-y-5">
             <div className="flex items-start gap-2 px-3 py-2.5 rounded-xl bg-rose-500/15 ring-1 ring-inset ring-rose-500/40 text-sm font-medium text-rose-700 dark:text-rose-300">
               <AlertCircle size={16} className="mt-0.5 shrink-0" />
-              <span>This reset link is missing its token. Request a new one.</span>
+              <span>{t("This reset link is missing its token. Request a new one.")}</span>
             </div>
             <Link
               to="/forgot-password"
               className="inline-flex items-center gap-1.5 text-sm font-semibold text-grad-brand hover:opacity-80"
             >
-              Request a new reset link
+              {t("Request a new reset link")}
             </Link>
           </div>
         ) : (
           <form onSubmit={submit} className="space-y-5">
             <div>
               <h1 className="text-2xl font-bold tracking-tight text-primary">
-                Choose a new password
+                {t("Choose a new password")}
               </h1>
               <p className="mt-2 text-sm text-secondary">
-                At least 8 characters, with letters and numbers.
+                {t("At least 8 characters, with letters and numbers.")}
               </p>
             </div>
             <div>
-              <label className="form-label">New password</label>
+              <label className="form-label">{t("New password")}</label>
               <PasswordInput
                 className="input"
                 value={pw}
@@ -81,7 +82,7 @@ export default function ResetPasswordPage() {
               />
             </div>
             <div>
-              <label className="form-label">Confirm new password</label>
+              <label className="form-label">{t("Confirm new password")}</label>
               <PasswordInput
                 className="input"
                 value={confirm}
@@ -102,13 +103,13 @@ export default function ResetPasswordPage() {
               className="btn-primary w-full"
               disabled={loading || !pw || !confirm}
             >
-              {loading ? "Resetting…" : "Reset password"}
+              {loading ? t("Resetting…") : t("Reset password")}
             </button>
             <Link
               to="/login"
               className="inline-flex items-center gap-1.5 text-sm font-semibold text-muted hover:text-primary"
             >
-              <ArrowLeft size={14} /> Back to sign in
+              <ArrowLeft size={14} /> {t("Back to sign in")}
             </Link>
           </form>
         )}

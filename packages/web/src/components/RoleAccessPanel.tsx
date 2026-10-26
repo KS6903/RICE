@@ -16,6 +16,8 @@ import {
 } from "../services/RoleAccessService";
 import { NAV_GROUPS } from "./layout/navigation";
 import Select from "./Select";
+import { t } from "../i18n";
+import { tx } from "../i18n/tx";
 
 export const ROLE_ACCESS_QUERY_KEY = ["role-access"];
 const errorText = (e: any, fallback: string) => e?.response?.data?.detail || fallback;
@@ -23,8 +25,8 @@ const errorText = (e: any, fallback: string) => e?.response?.data?.detail || fal
 /** Pages the sidebar doesn't list on its own. */
 const EXTRA: Record<string, { label: string; also: string[] }> = {
   settings: {
-    label: "Settings",
-    also: ["Billing, company, branches, activity log. Everyone keeps their own account."],
+    label: t("Settings"),
+    also: [t("Billing, company, branches, activity log. Everyone keeps their own account.")],
   },
 };
 
@@ -44,7 +46,11 @@ const pick = (from: Levels, sections: string[]) =>
 function summary(access: Levels, sections: string[]) {
   const opens = sections.filter((s) => (access[s] ?? "none") !== "none").length;
   const edits = sections.filter((s) => access[s] === "full").length;
-  return `Opens ${opens} of ${sections.length} pages, and can edit ${edits}.`;
+  return t("Opens {{opens}} of {{sectionsCount}} pages, and can edit {{edits}}.", {
+    opens,
+    sectionsCount: sections.length,
+    edits,
+  });
 }
 
 /** The pages, each with an Open and an Edit tick. */
@@ -63,9 +69,9 @@ function PageChecklist({
     <table className="w-full text-sm">
       <thead>
         <tr className="text-left text-xs text-muted">
-          <th className="py-1 font-medium">Page</th>
-          <th className="py-1 w-14 text-center font-medium">Open</th>
-          <th className="py-1 w-14 text-center font-medium">Edit</th>
+          <th className="py-1 font-medium">{t("Page")}</th>
+          <th className="py-1 w-14 text-center font-medium">{t("Open")}</th>
+          <th className="py-1 w-14 text-center font-medium">{t("Edit")}</th>
         </tr>
       </thead>
       <tbody className="divide-y divide-gray-100 dark:divide-slate-700">
@@ -78,7 +84,9 @@ function PageChecklist({
                 <span className="font-medium text-primary">{label}</span>
                 {also.length > 0 && (
                   <span className="block text-xs text-secondary">
-                    {section === "settings" ? also[0] : `Also ${also.join(", ")}`}
+                    {section === "settings"
+                      ? also[0]
+                      : t("Also {{also}}", { also: also.join(", ") })}
                   </span>
                 )}
               </td>
@@ -86,7 +94,7 @@ function PageChecklist({
                 <input
                   type="checkbox"
                   className="h-4 w-4 accent-emerald-600"
-                  aria-label={`${name} can open ${label}`}
+                  aria-label={t("{{name}} can open {{label}}", { name, label })}
                   checked={level !== "none"}
                   onChange={(e) => onChange(section, e.target.checked ? "view" : "none")}
                 />
@@ -95,7 +103,7 @@ function PageChecklist({
                 <input
                   type="checkbox"
                   className="h-4 w-4 accent-emerald-600 disabled:opacity-40"
-                  aria-label={`${name} can edit ${label}`}
+                  aria-label={t("{{name}} can edit {{label}}", { name, label })}
                   checked={level === "full"}
                   disabled={level === "none"}
                   onChange={(e) => onChange(section, e.target.checked ? "full" : "view")}
@@ -136,11 +144,12 @@ function EditPowerToggle({
           checked={checked}
           disabled={toggle.isPending}
           onChange={(e) => toggle.mutate(e.target.checked)}
-          aria-label={`Edit power for ${name}`}
+          aria-label={t("Edit power for {{name}}", { name })}
         />
         <span>
-          <span className="font-semibold text-primary">Edit power</span>: can correct saved records.
-          Every change is logged.
+          {tx("{{power}}: can correct saved records. Every change is logged.", {
+            power: <span className="font-semibold text-primary">{t("Edit power")}</span>,
+          })}
         </span>
       </label>
       {toggle.isError && <SaveError error={toggle.error} />}
@@ -151,7 +160,7 @@ function EditPowerToggle({
 function SaveError({ error }: { error: unknown }) {
   return (
     <p role="alert" className="text-sm font-medium text-rose-600 dark:text-rose-400">
-      {errorText(error, "Couldn't save that. Try again.")}
+      {errorText(error, t("Couldn't save that. Try again."))}
     </p>
   );
 }
@@ -169,7 +178,7 @@ function RoleRow({ entry, sections }: { entry: RoleAccessEntry; sections: string
     },
   });
 
-  const name = roleLabel(entry.role);
+  const name = t(roleLabel(entry.role));
   const dirty = sections.some((s) => draft[s] !== (entry.access[s] ?? "none"));
   const atDefault = sections.every((s) => draft[s] === (entry.defaults[s] ?? "none"));
   const panelId = `role-access-${entry.role}`;
@@ -188,7 +197,7 @@ function RoleRow({ entry, sections }: { entry: RoleAccessEntry; sections: string
         <div className="min-w-0">
           <p className="text-sm font-semibold text-primary">{name}</p>
           <p className="text-xs text-secondary">
-            {entry.editable ? summary(entry.access, sections) : "Everything, always."}
+            {entry.editable ? summary(entry.access, sections) : t("Everything, always.")}
           </p>
           {entry.editable ? (
             <EditPowerToggle
@@ -198,7 +207,9 @@ function RoleRow({ entry, sections }: { entry: RoleAccessEntry; sections: string
             />
           ) : (
             <p className="mt-1.5 text-xs text-secondary">
-              <span className="font-semibold text-primary">Edit power</span>: always.
+              {tx("{{power}}: always.", {
+                power: <span className="font-semibold text-primary">{t("Edit power")}</span>,
+              })}
             </p>
           )}
         </div>
@@ -208,10 +219,14 @@ function RoleRow({ entry, sections }: { entry: RoleAccessEntry; sections: string
             className="btn-secondary !py-1.5 text-sm shrink-0"
             aria-expanded={open}
             aria-controls={panelId}
-            aria-label={`${open ? "Close" : "Choose"} what ${name} can open`}
+            aria-label={
+              open
+                ? t("Close what {{name}} can open", { name })
+                : t("Choose what {{name}} can open", { name })
+            }
             onClick={toggle}
           >
-            Choose pages
+            {t("Choose pages")}
             <ChevronDown
               size={16}
               className={`transition-transform ${open ? "rotate-180" : ""}`}
@@ -220,7 +235,7 @@ function RoleRow({ entry, sections }: { entry: RoleAccessEntry; sections: string
           </button>
         ) : (
           <span className="badge-gray inline-flex items-center gap-1 shrink-0">
-            <Lock size={12} aria-hidden /> Full access
+            <Lock size={12} aria-hidden /> {t("Full access")}
           </span>
         )}
       </div>
@@ -241,11 +256,11 @@ function RoleRow({ entry, sections }: { entry: RoleAccessEntry; sections: string
               disabled={atDefault}
               onClick={() => setDraft(pick(entry.defaults, sections))}
             >
-              Put back to the default
+              {t("Put back to the default")}
             </button>
             <div className="flex gap-2">
               <button type="button" className="btn-secondary" onClick={toggle}>
-                Cancel
+                {t("Cancel")}
               </button>
               <button
                 type="button"
@@ -253,7 +268,7 @@ function RoleRow({ entry, sections }: { entry: RoleAccessEntry; sections: string
                 disabled={!dirty || save.isPending}
                 onClick={() => save.mutate()}
               >
-                {save.isPending ? "Saving…" : "Save"}
+                {save.isPending ? t("Saving…") : t("Save")}
               </button>
             </div>
           </div>
@@ -290,11 +305,10 @@ function CustomRoleRow({ role, sections }: { role: CustomRoleEntry; sections: st
   const dirty =
     name.trim() !== role.name || sections.some((s) => draft[s] !== (role.access[s] ?? "none"));
   const panelId = `custom-role-${role.id}`;
-  const people = role.people === 1 ? "1 person" : `${role.people} people`;
   const holders =
     role.people === 0
-      ? "Nobody has it yet."
-      : `${people} ${role.people === 1 ? "has" : "have"} it.`;
+      ? t("Nobody has it yet.")
+      : t("{{count}} people have it.", { count: role.people });
 
   const toggle = () => {
     if (!open) {
@@ -325,10 +339,14 @@ function CustomRoleRow({ role, sections }: { role: CustomRoleEntry; sections: st
           className="btn-secondary !py-1.5 text-sm shrink-0"
           aria-expanded={open}
           aria-controls={panelId}
-          aria-label={`${open ? "Close" : "Choose"} what ${role.name} can open`}
+          aria-label={
+            open
+              ? t("Close what {{name}} can open", { name: role.name })
+              : t("Choose what {{name}} can open", { name: role.name })
+          }
           onClick={toggle}
         >
-          Choose pages
+          {t("Choose pages")}
           <ChevronDown
             size={16}
             className={`transition-transform ${open ? "rotate-180" : ""}`}
@@ -341,7 +359,7 @@ function CustomRoleRow({ role, sections }: { role: CustomRoleEntry; sections: st
         <div id={panelId} className="mt-3 rounded-xl border border-soft p-3 space-y-3">
           <div>
             <label htmlFor={`${panelId}-name`} className="form-label">
-              Role name
+              {t("Role name")}
             </label>
             <input
               id={`${panelId}-name`}
@@ -365,15 +383,19 @@ function CustomRoleRow({ role, sections }: { role: CustomRoleEntry; sections: st
               className="btn-ghost text-sm text-rose-600 dark:text-rose-400"
               disabled={remove.isPending || role.people > 0}
               title={
-                role.people > 0 ? `Give the ${people} who have it another role first.` : undefined
+                role.people > 0
+                  ? t("Give the {{count}} people who have it another role first.", {
+                      count: role.people,
+                    })
+                  : undefined
               }
               onClick={() => remove.mutate()}
             >
-              <Trash2 size={14} aria-hidden /> Delete role
+              <Trash2 size={14} aria-hidden /> {t("Delete role")}
             </button>
             <div className="flex gap-2">
               <button type="button" className="btn-secondary" onClick={toggle}>
-                Cancel
+                {t("Cancel")}
               </button>
               <button
                 type="button"
@@ -381,14 +403,15 @@ function CustomRoleRow({ role, sections }: { role: CustomRoleEntry; sections: st
                 disabled={!dirty || !name.trim() || save.isPending}
                 onClick={() => save.mutate()}
               >
-                {save.isPending ? "Saving…" : "Save"}
+                {save.isPending ? t("Saving…") : t("Save")}
               </button>
             </div>
           </div>
           {role.people > 0 && (
             <p className="text-xs text-secondary">
-              {people} {role.people === 1 ? "has" : "have"} this role. To delete it, give them
-              another role first.
+              {t("{{count}} people have this role. To delete it, give them another role first.", {
+                count: role.people,
+              })}
             </p>
           )}
         </div>
@@ -414,30 +437,34 @@ function NewRoleForm({ data, onDone }: { data: RoleAccessData; onDone: () => voi
 
   // Start from nothing, or from a copy of a role that's close to what's wanted.
   const starts = [
-    ...data.roles.map((r) => ({ key: `b:${r.role}`, label: roleLabel(r.role), access: r.access })),
+    ...data.roles.map((r) => ({
+      key: `b:${r.role}`,
+      label: t(roleLabel(r.role)),
+      access: r.access,
+    })),
     ...data.custom_roles.map((r) => ({ key: `c:${r.id}`, label: r.name, access: r.access })),
   ];
 
   return (
     <div className="rounded-xl border border-emerald-500/40 p-3 space-y-3">
-      <p className="text-sm font-semibold text-primary">New role</p>
+      <p className="text-sm font-semibold text-primary">{t("New role")}</p>
       <div className="grid gap-3 sm:grid-cols-2">
         <div>
           <label htmlFor="new-role-name" className="form-label">
-            Role name
+            {t("Role name")}
           </label>
           <input
             id="new-role-name"
             className="input"
             maxLength={50}
-            placeholder="e.g. Warehouse Manager"
+            placeholder={t("e.g. Warehouse Manager")}
             value={name}
             onChange={(e) => setName(e.target.value)}
           />
         </div>
         <div>
           <label htmlFor="new-role-start" className="form-label">
-            Start from
+            {t("Start from")}
           </label>
           <Select
             id="new-role-start"
@@ -448,14 +475,17 @@ function NewRoleForm({ data, onDone }: { data: RoleAccessData; onDone: () => voi
               setDraft(pick(from?.access ?? {}, sections));
             }}
             options={[
-              { value: "", label: "No pages" },
-              ...starts.map((s) => ({ value: s.key, label: `A copy of ${s.label}` })),
+              { value: "", label: t("No pages") },
+              ...starts.map((s) => ({
+                value: s.key,
+                label: t("A copy of {{label}}", { label: s.label }),
+              })),
             ]}
           />
         </div>
       </div>
       <PageChecklist
-        name={name.trim() || "The new role"}
+        name={name.trim() || t("The new role")}
         sections={sections}
         draft={draft}
         onChange={(s, l) => setDraft((d) => ({ ...d, [s]: l }))}
@@ -463,7 +493,7 @@ function NewRoleForm({ data, onDone }: { data: RoleAccessData; onDone: () => voi
       {create.isError && <SaveError error={create.error} />}
       <div className="flex justify-end gap-2">
         <button type="button" className="btn-secondary" onClick={onDone}>
-          Cancel
+          {t("Cancel")}
         </button>
         <button
           type="button"
@@ -471,7 +501,7 @@ function NewRoleForm({ data, onDone }: { data: RoleAccessData; onDone: () => voi
           disabled={!name.trim() || create.isPending}
           onClick={() => create.mutate()}
         >
-          {create.isPending ? "Adding…" : "Add role"}
+          {create.isPending ? t("Adding…") : t("Add role")}
         </button>
       </div>
     </div>
@@ -489,7 +519,7 @@ export default function RoleAccessPanel() {
   });
 
   return (
-    <section aria-label="Who can open what" className="card space-y-3">
+    <section aria-label={t("Who can open what")} className="card space-y-3">
       <button
         type="button"
         className="flex w-full items-start justify-between gap-3 text-left"
@@ -498,11 +528,12 @@ export default function RoleAccessPanel() {
       >
         <span>
           <span className="block font-semibold text-gray-900 dark:text-slate-100">
-            Who can open what
+            {t("Who can open what")}
           </span>
           <span className="block text-sm text-gray-500 dark:text-slate-400">
-            Choose the pages each role can open, and whether they can change things there or only
-            look. Add roles of your own.
+            {t(
+              "Choose the pages each role can open, and whether they can change things there or only look. Add roles of your own.",
+            )}
           </span>
         </span>
         <ChevronDown
@@ -515,14 +546,14 @@ export default function RoleAccessPanel() {
       {shown && (
         <>
           <p className="text-xs text-secondary">
-            The Boss always has everything. Every other role, the Admin included, can be changed
-            page by page. Everyone keeps their own account (profile, password, devices) whatever
-            Settings says.
+            {t(
+              "The Boss always has everything. Every other role, the Admin included, can be changed page by page. Everyone keeps their own account (profile, password, devices) whatever Settings says.",
+            )}
           </p>
-          {isLoading && <p className="text-sm text-muted">Loading…</p>}
+          {isLoading && <p className="text-sm text-muted">{t("Loading…")}</p>}
           {isError && (
             <p role="alert" className="text-sm font-medium text-rose-600 dark:text-rose-400">
-              Couldn't load who can open what. Try again in a moment.
+              {t("Couldn't load who can open what. Try again in a moment.")}
             </p>
           )}
           {data && (
@@ -535,22 +566,23 @@ export default function RoleAccessPanel() {
 
               <div className="space-y-2 border-t border-soft pt-3">
                 <div className="flex flex-wrap items-center justify-between gap-2">
-                  <p className="text-sm font-semibold text-primary">Your own roles</p>
+                  <p className="text-sm font-semibold text-primary">{t("Your own roles")}</p>
                   {!adding && (
                     <button
                       type="button"
                       className="btn-secondary !py-1.5 text-sm"
                       onClick={() => setAdding(true)}
                     >
-                      <Plus size={16} aria-hidden /> Add a role
+                      <Plus size={16} aria-hidden /> {t("Add a role")}
                     </button>
                   )}
                 </div>
                 {adding && <NewRoleForm data={data} onDone={() => setAdding(false)} />}
                 {data.custom_roles.length === 0 && !adding ? (
                   <p className="text-xs text-secondary">
-                    None yet. Add one when a job here doesn't match a role above, like a warehouse
-                    manager.
+                    {t(
+                      "None yet. Add one when a job here doesn't match a role above, like a warehouse manager.",
+                    )}
                   </p>
                 ) : (
                   <ul className="divide-y divide-gray-100 dark:divide-slate-700">

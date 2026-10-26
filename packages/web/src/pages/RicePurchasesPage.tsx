@@ -25,6 +25,7 @@ import {
   inSeveralWarehouses,
   usePurchaseWarehouse,
 } from "../components/PurchaseWarehouse";
+import { t } from "../i18n";
 
 const gradeLabel = (g: string) => g.charAt(0).toUpperCase() + g.slice(1);
 
@@ -93,9 +94,11 @@ export default function RicePurchasesPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-xl font-bold text-gray-900 dark:text-slate-100">Rice (Bigas)</h2>
+          <h2 className="text-xl font-bold text-gray-900 dark:text-slate-100">
+            {t("Rice (Bigas)")}
+          </h2>
           <p className="text-sm text-gray-500 dark:text-slate-400">
-            Milled rice you buy, and the rice in stock
+            {t("Milled rice you buy, and the rice in stock")}
           </p>
         </div>
       </div>
@@ -103,7 +106,7 @@ export default function RicePurchasesPage() {
       <Modal
         open={showForm}
         size="xl"
-        title="New Rice Purchase"
+        title={t("New Rice Purchase")}
         onClose={() => setShowForm(false)}
         testId="new-purchase"
       >
@@ -113,25 +116,25 @@ export default function RicePurchasesPage() {
           >
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-slate-200 mb-1">
-                Purchase Date
+                {t("Purchase Date")}
               </label>
               <DatePicker
-                aria-label="Purchase date"
+                aria-label={t("Purchase date")}
                 value={form.purchase_date}
                 onChange={(v) => setForm((f) => ({ ...f, purchase_date: v }))}
               />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-slate-200 mb-1">
-                Delivery Type
+                {t("Delivery Type")}
               </label>
               <Select
-                aria-label="Delivery type"
+                aria-label={t("Delivery type")}
                 value={form.delivery_type}
                 onChange={(v) => setForm((f) => ({ ...f, delivery_type: v }))}
                 options={[
-                  { value: "delivered", label: "Delivered" },
-                  { value: "picked_up", label: "Picked up" },
+                  { value: "delivered", label: t("Delivered") },
+                  { value: "picked_up", label: t("Picked up") },
                 ]}
               />
             </div>
@@ -140,16 +143,16 @@ export default function RicePurchasesPage() {
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <p className="text-sm font-medium text-gray-700 dark:text-slate-200">
-                Purchase Items
+                {t("Purchase Items")}
               </p>
               <div className="flex items-center gap-3">
                 <QuickAdd
-                  label="New variety"
+                  label={t("New variety")}
                   endpoint="/paddy/varieties"
                   queryKey={["varieties"]}
                   fields={[
-                    { key: "code", label: "Code", required: true, placeholder: "e.g. RC400" },
-                    { key: "name", label: "Name", required: true },
+                    { key: "code", label: t("Code"), required: true, placeholder: t("e.g. RC400") },
+                    { key: "name", label: t("Name"), required: true },
                   ]}
                   transformBody={(b) => ({ ...b, code: String(b.code).toUpperCase() })}
                 />
@@ -157,7 +160,7 @@ export default function RicePurchasesPage() {
                   onClick={() => setForm((f) => ({ ...f, items: [...f.items, newLine()] }))}
                   className="text-sm text-brand-600 dark:text-brand-400 hover:text-brand-700 dark:hover:text-brand-300"
                 >
-                  + Add Item
+                  {t("+ Add Item")}
                 </button>
               </div>
             </div>
@@ -166,34 +169,34 @@ export default function RicePurchasesPage() {
                 key={idx}
                 className="grid grid-cols-2 sm:grid-cols-5 gap-2 p-3 bg-gray-50 dark:bg-slate-900/50 rounded-lg"
               >
-                <FieldCaption label="Variety" className="col-span-2 sm:col-span-1">
+                <FieldCaption label={t("Variety")} className="col-span-2 sm:col-span-1">
                   <Select
-                    aria-label="Variety"
-                    placeholder="Variety"
+                    aria-label={t("Variety")}
+                    placeholder={t("Variety")}
                     value={item.variety_id}
                     onChange={(v) => setLine(idx, { variety_id: v })}
                     options={varieties.map((v: any) => ({ value: v.id, label: v.code }))}
                   />
                 </FieldCaption>
-                <FieldCaption label="Grade">
+                <FieldCaption label={t("Grade")}>
                   <Select
-                    aria-label="Grade"
+                    aria-label={t("Grade")}
                     value={item.grade_name}
                     onChange={(v) => setLine(idx, { grade_name: v })}
                     options={MILLED_GRADES.map((g) => ({ value: g, label: gradeLabel(g) }))}
                   />
                 </FieldCaption>
-                <FieldCaption label="Sacks">
+                <FieldCaption label={t("Sacks")}>
                   <input
                     className="input"
-                    placeholder="Sacks"
+                    placeholder={t("Sacks")}
                     type="number"
                     min="0"
                     value={item.sack_count}
                     onChange={(e) => setLine(idx, { sack_count: e.target.value })}
                   />
                 </FieldCaption>
-                <FieldCaption label="Kg per sack">
+                <FieldCaption label={t("Kg per sack")}>
                   <input
                     className="input"
                     placeholder="50"
@@ -203,10 +206,10 @@ export default function RicePurchasesPage() {
                     onChange={(e) => setLine(idx, { kg_per_sack: e.target.value })}
                   />
                 </FieldCaption>
-                <FieldCaption label="Price per sack (₱)">
+                <FieldCaption label={t("Price per sack (₱)")}>
                   <input
                     className="input"
-                    placeholder="₱/sack"
+                    placeholder={t("₱/sack")}
                     type="number"
                     min="0"
                     value={item.price_per_sack}
@@ -221,25 +224,27 @@ export default function RicePurchasesPage() {
               className="mr-auto text-sm text-gray-600 dark:text-slate-300"
               data-testid="rice-total"
             >
-              Total:{" "}
-              <span className="font-semibold tabular-nums">{totalKg.toLocaleString()} kg</span>
+              {t("Total:")}{" "}
+              <span className="font-semibold tabular-nums">
+                {t("{{totalKg}} kg", { totalKg: totalKg.toLocaleString() })}
+              </span>
               {" · "}
               <span className="font-semibold tabular-nums">{peso(totalPeso)}</span>
             </p>
             {createMutation.isError && (
               <p className="text-sm text-rose-600 dark:text-rose-400">
-                Couldn't save. Check each line has sacks and a price.
+                {t("Couldn't save. Check each line has sacks and a price.")}
               </p>
             )}
             <button onClick={() => setShowForm(false)} className="btn-secondary">
-              Cancel
+              {t("Cancel")}
             </button>
             <button
               onClick={() => createMutation.mutate(form)}
               className="btn-primary"
               disabled={createMutation.isPending}
             >
-              {createMutation.isPending ? "Saving…" : "Save Purchase"}
+              {createMutation.isPending ? t("Saving…") : t("Save Purchase")}
             </button>
           </div>
         </div>
@@ -247,17 +252,19 @@ export default function RicePurchasesPage() {
 
       {/* Stock index: what's on hand, always visible above the purchases */}
       <section className="space-y-2" data-testid="rice-stock-index">
-        <h3 className="text-sm font-bold text-gray-900 dark:text-slate-100">Rice in stock</h3>
+        <h3 className="text-sm font-bold text-gray-900 dark:text-slate-100">
+          {t("Rice in stock")}
+        </h3>
         <div className="card overflow-hidden p-0">
           <table className="w-full text-sm">
             <thead className="bg-gray-50 dark:bg-slate-900/50 border-b border-gray-200 dark:border-slate-700">
               <tr>
                 {[
-                  "Variety",
-                  "Grade",
-                  ...(stockInSeveralWarehouses ? ["Warehouse"] : []),
-                  "Stock (kg)",
-                  "Sacks (50 kg)",
+                  t("Variety"),
+                  t("Grade"),
+                  ...(stockInSeveralWarehouses ? [t("Warehouse")] : []),
+                  t("Stock (kg)"),
+                  t("Sacks (50 kg)"),
                 ].map((h) => (
                   <th
                     key={h}
@@ -274,7 +281,7 @@ export default function RicePurchasesPage() {
                   <td className="px-4 py-3">{r.variety?.code || "—"}</td>
                   <td className="px-4 py-3">{r.grade_name ? gradeLabel(r.grade_name) : "—"}</td>
                   {stockInSeveralWarehouses && (
-                    <td className="px-4 py-3">{r.branch?.name || "Unassigned"}</td>
+                    <td className="px-4 py-3">{r.branch?.name || t("Unassigned")}</td>
                   )}
                   <td className="px-4 py-3 font-medium">
                     {Number(r.quantity_kg).toLocaleString()}
@@ -297,8 +304,9 @@ export default function RicePurchasesPage() {
                       colSpan={stockInSeveralWarehouses ? 5 : 4}
                       className="px-4 py-8 text-center text-muted"
                     >
-                      No rice in stock. Purchases you record and rice you mill show up here by
-                      variety and grade.
+                      {t(
+                        "No rice in stock. Purchases you record and rice you mill show up here by variety and grade.",
+                      )}
                     </td>
                   </tr>
                 )
@@ -319,13 +327,14 @@ export default function RicePurchasesPage() {
           empty={
             <EmptyState
               icon={ShoppingBasket}
-              title="No rice bought yet"
-              action={canEdit("paddy") ? "Record your first purchase" : undefined}
+              title={t("No rice bought yet")}
+              action={canEdit("paddy") ? t("Record your first purchase") : undefined}
               onAction={() => setShowForm(true)}
               next="Next: sell it from the Sales side."
             >
-              Each time you buy milled rice from another mill or a trader, record the sacks and the
-              price here. It's added to your rice stock automatically.
+              {t(
+                "Each time you buy milled rice from another mill or a trader, record the sacks and the price here. It's added to your rice stock automatically.",
+              )}
             </EmptyState>
           }
         />

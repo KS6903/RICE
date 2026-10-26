@@ -28,6 +28,7 @@ import {
 import { format, startOfMonth } from "date-fns";
 import { useThemeStore } from "../stores/themeStore";
 import { useAccess } from "../hooks/useAccess";
+import { t } from "../i18n";
 
 type Tone = "emerald" | "violet" | "cyan" | "amber";
 
@@ -57,7 +58,7 @@ const signedPeso = (n: number) => `${n < 0 ? "-" : ""}₱${Math.abs(n).toLocaleS
  *  its card, so a big number never pushes the icon out of place. 0.6em is a
  *  generous average width per character; a unit after it takes about 1.5rem. */
 function fitFontSize(text: string, unit?: string) {
-  const room = unit ? "(100cqi - 1.5rem)" : "100cqi";
+  const room = unit ? t("(100cqi - 1.5rem)") : "100cqi";
   return `min(1.875rem, calc(${room} / ${(text.length * 0.6).toFixed(2)}))`;
 }
 
@@ -155,10 +156,10 @@ export default function Dashboard() {
 
   const pnlChart = pnl
     ? [
-        { name: "Revenue", value: pnl.revenue },
-        { name: "Cost of Goods", value: pnl.cost_of_goods },
-        { name: "Expenses", value: pnl.operating_expenses },
-        { name: "Net Profit", value: pnl.net_profit },
+        { name: t("Revenue"), value: pnl.revenue },
+        { name: t("Cost of Goods"), value: pnl.cost_of_goods },
+        { name: t("Expenses"), value: pnl.operating_expenses },
+        { name: t("Net Profit"), value: pnl.net_profit },
       ]
     : [];
 
@@ -194,20 +195,24 @@ export default function Dashboard() {
                 {pnl ? signedPeso(Number(pnl.net_profit)) : "—"}
               </h1>
               <p className="mt-1 text-white text-sm font-medium">
-                Net profit · {format(new Date(), "MMMM yyyy")} · all branches
+                {t("Net profit · {{format}} · all branches", {
+                  format: format(new Date(), "MMMM yyyy"),
+                })}
               </p>
             </div>
 
             <div className="grid grid-cols-1 min-[480px]:grid-cols-2 gap-3 lg:gap-4 text-white">
               <div className="rounded-2xl bg-white/15 ring-1 ring-white/25 backdrop-blur-md px-4 py-3">
-                <p className="text-xs font-bold uppercase tracking-wide text-white/85">Revenue</p>
+                <p className="text-xs font-bold uppercase tracking-wide text-white/85">
+                  {t("Revenue")}
+                </p>
                 <p className="mt-1 text-xl font-bold">
                   {pnl ? `₱${Number(pnl.revenue).toLocaleString()}` : "—"}
                 </p>
               </div>
               <div className="rounded-2xl bg-white/15 ring-1 ring-white/25 backdrop-blur-md px-4 py-3">
                 <p className="text-xs font-bold uppercase tracking-wide text-white/85">
-                  Gross margin
+                  {t("Gross margin")}
                 </p>
                 <p className="mt-1 text-xl font-bold flex items-center gap-1">
                   {pnl ? `${pnl.gross_margin_pct}%` : "—"}
@@ -230,14 +235,14 @@ export default function Dashboard() {
         className={`grid grid-cols-1 sm:grid-cols-2 gap-4 ${canViewReports ? "lg:grid-cols-4" : "lg:grid-cols-2"}`}
       >
         <StatCard
-          label="Palay Stock"
+          label={t("Palay Stock")}
           value={inventory ? inventory.palay_total_kg.toLocaleString() : "—"}
           unit="kg"
           icon={Wheat}
           tone="amber"
         />
         <StatCard
-          label="Milled Rice"
+          label={t("Milled Rice")}
           value={inventory ? inventory.milled_rice_total_kg.toLocaleString() : "—"}
           unit="kg"
           icon={Package}
@@ -246,13 +251,13 @@ export default function Dashboard() {
         {canViewReports && (
           <>
             <StatCard
-              label="Net Profit (MTD)"
+              label={t("Net Profit (MTD)")}
               value={pnl ? signedPeso(Number(pnl.net_profit)) : "—"}
               icon={TrendingUp}
               tone="cyan"
             />
             <StatCard
-              label="Gross Margin"
+              label={t("Gross Margin")}
               value={pnl ? `${pnl.gross_margin_pct}%` : "—"}
               icon={Factory}
               tone="violet"
@@ -267,17 +272,17 @@ export default function Dashboard() {
           <div className="card lg:col-span-2">
             <div className="flex items-start justify-between mb-5">
               <div>
-                <h3 className="text-lg font-bold text-primary">Financial Summary</h3>
+                <h3 className="text-lg font-bold text-primary">{t("Financial Summary")}</h3>
                 <p className="text-sm text-secondary mt-0.5">
-                  {format(new Date(), "MMMM yyyy")} · breakdown
+                  {t("{{format}} · breakdown", { format: format(new Date(), "MMMM yyyy") })}
                 </p>
               </div>
-              <span className="badge-violet">Live</span>
+              <span className="badge-violet">{t("Live")}</span>
             </div>
 
             {pnlLoading ? (
               <div className="skeleton h-[260px] rounded-xl" aria-busy="true">
-                <span className="sr-only">Loading</span>
+                <span className="sr-only">{t("Loading")}</span>
               </div>
             ) : pnlChart.length > 0 ? (
               <ResponsiveContainer width="100%" height={260}>
@@ -305,7 +310,7 @@ export default function Dashboard() {
                     formatter={(v: number) => `₱${v.toLocaleString()}`}
                     contentStyle={{
                       backgroundColor: isDark ? "rgba(15,23,42,0.96)" : "rgba(255,255,255,0.98)",
-                      border: `1px solid ${gridColor}`,
+                      border: t("1px solid {{gridColor}}", { gridColor }),
                       borderRadius: 12,
                       boxShadow: "0 8px 24px -8px rgba(0,0,0,0.2)",
                       color: isDark ? "#f1f5f9" : "#0f172a",
@@ -327,10 +332,10 @@ export default function Dashboard() {
               <div className="flex flex-col items-center justify-center h-56 text-center">
                 <p className="flex items-center text-secondary font-medium">
                   <AlertCircle size={16} className="mr-2" />
-                  Nothing to chart yet this month
+                  {t("Nothing to chart yet this month")}
                 </p>
                 <p className="mt-1 text-sm text-muted max-w-xs">
-                  Sales and expenses you record show up here as revenue, costs and profit.
+                  {t("Sales and expenses you record show up here as revenue, costs and profit.")}
                 </p>
               </div>
             )}
@@ -340,8 +345,8 @@ export default function Dashboard() {
         <div className={canViewReports ? "card" : "card lg:col-span-3"}>
           <div className="flex items-start justify-between mb-5">
             <div>
-              <h3 className="text-lg font-bold text-primary">By-products</h3>
-              <p className="text-sm text-secondary mt-0.5">Current stock</p>
+              <h3 className="text-lg font-bold text-primary">{t("By-products")}</h3>
+              <p className="text-sm text-secondary mt-0.5">{t("Current stock")}</p>
             </div>
           </div>
 
@@ -364,7 +369,7 @@ export default function Dashboard() {
                       </span>
                       <span className="text-sm font-bold text-primary">
                         {kg.toLocaleString()}
-                        <span className="text-xs font-semibold text-muted ml-0.5">kg</span>
+                        <span className="text-xs font-semibold text-muted ml-0.5">{t("kg")}</span>
                       </span>
                     </div>
                     <div className="h-2 rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden">
@@ -381,10 +386,10 @@ export default function Dashboard() {
             <div className="text-sm">
               <p className="flex items-center gap-2 text-secondary font-medium">
                 <AlertCircle size={16} />
-                No by-products yet
+                {t("No by-products yet")}
               </p>
               <p className="mt-1 text-muted">
-                Rice hull, bran and broken rice appear here after you mill a batch.
+                {t("Rice hull, bran and broken rice appear here after you mill a batch.")}
               </p>
             </div>
           )}

@@ -1,6 +1,7 @@
 import { createPortal } from "react-dom";
 import { X as XIcon } from "lucide-react";
 import { useEscapeKey } from "../../hooks/useEscapeKey";
+import { t } from "../../i18n";
 
 /**
  * The frame for a sales record's edit or history dialog: a title, the body,
@@ -36,7 +37,7 @@ export default function RecordDialog({
     >
       <button
         type="button"
-        aria-label="Close"
+        aria-label={t("Close")}
         tabIndex={-1}
         className="absolute inset-0 bg-slate-900/50 backdrop-blur-sm"
         onClick={() => !busy && onClose()}
@@ -49,7 +50,7 @@ export default function RecordDialog({
           </div>
           <button
             type="button"
-            aria-label="Close"
+            aria-label={t("Close")}
             onClick={onClose}
             disabled={busy}
             className="btn-ghost !p-1.5"

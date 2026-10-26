@@ -1,3 +1,4 @@
+import { t } from "../i18n";
 let started = false;
 
 /**
@@ -31,11 +32,11 @@ export function serverUnreachableMessage(err: any): string | null {
   const res = err?.response;
   if (!res) {
     return err?.request
-      ? "Couldn't reach the server. Check your internet connection and try again."
+      ? t("Couldn't reach the server. Check your internet connection and try again.")
       : null;
   }
   if (res.status === 502 || res.status === 504 || res.data?.code === "upstream_unavailable") {
-    return "Something went wrong. Please try again.";
+    return t("Something went wrong. Please try again.");
   }
   return null;
 }

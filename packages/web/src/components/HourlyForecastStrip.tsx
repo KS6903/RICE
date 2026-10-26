@@ -1,15 +1,14 @@
 import { Droplets } from "lucide-react";
 import type { HourlyForecast } from "../hooks/useWeather";
-import { weatherIcon, weatherIconClass } from "./weatherIcons";
+import { conditionText, weatherIcon, weatherIconClass } from "./weatherIcons";
+import { t } from "../i18n";
+import { hourLabel as hourOf } from "../utils/dryingAdvice";
 
 /** Format a local-ISO hour ("2026-06-15T13:00") as "1 PM" / "Now". */
 function hourLabel(iso: string, isFirst: boolean): string {
-  if (isFirst) return "Now";
-  const h = Number(iso.slice(11, 13));
-  if (Number.isNaN(h)) return iso.slice(11, 16);
-  const period = h < 12 ? "AM" : "PM";
-  const display = h % 12 === 0 ? 12 : h % 12;
-  return `${display} ${period}`;
+  if (isFirst) return t("Now");
+  if (Number.isNaN(Number(iso.slice(11, 13)))) return iso.slice(11, 16);
+  return hourOf(iso);
 }
 
 /** The coming hours as a row of tiles, sliding sideways when they don't fit.
@@ -27,7 +26,7 @@ export default function HourlyForecastStrip({ hourly }: { hourly: HourlyForecast
           <div
             key={h.time}
             className="shrink-0 w-[4.5rem] rounded-2xl ring-1 ring-soft bg-white/50 dark:bg-slate-800/50 px-2 py-3 flex flex-col items-center gap-1.5"
-            title={h.condition}
+            title={conditionText(h.condition_code, h.condition)}
           >
             <span className="text-[11px] font-semibold text-muted whitespace-nowrap">
               {hourLabel(h.time, i === 0)}

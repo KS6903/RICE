@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useAuthStore } from "../stores/authStore";
 import { authService } from "../services/AuthService";
 import { MailWarning, Loader2, Check } from "lucide-react";
+import { t } from "../i18n";
 
 /** Soft prompt shown in the app shell when the signed-in user hasn't verified
  *  their email but verification isn't strictly enforced. Offers a resend.
@@ -31,11 +32,13 @@ export default function VerifyEmailBanner() {
     <div className="flex shrink-0 flex-wrap items-center gap-2 px-4 sm:px-6 py-2 text-sm font-medium bg-amber-500/15 text-amber-800 dark:text-amber-300 border-b border-amber-500/30">
       <MailWarning size={16} className="shrink-0" />
       <span className="min-w-0 flex-1 break-words">
-        Please verify your email address ({user.email}) to keep your account secure.
+        {t("Please verify your email address ({{email}}) to keep your account secure.", {
+          email: user.email,
+        })}
       </span>
       {sent ? (
         <span className="inline-flex items-center gap-1.5 text-emerald-700 dark:text-emerald-400">
-          <Check size={14} /> Sent
+          <Check size={14} /> {t("Sent")}
         </span>
       ) : (
         <button
@@ -43,7 +46,7 @@ export default function VerifyEmailBanner() {
           disabled={busy}
           className="inline-flex items-center gap-1.5 font-semibold hover:opacity-80"
         >
-          {busy && <Loader2 size={13} className="animate-spin" />} Resend link
+          {busy && <Loader2 size={13} className="animate-spin" />} {t("Resend link")}
         </button>
       )}
     </div>

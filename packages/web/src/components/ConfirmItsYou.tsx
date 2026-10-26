@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import { ShieldCheck } from "lucide-react";
 import PasswordInput from "./PasswordInput";
 import { useEscapeKey } from "../hooks/useEscapeKey";
+import { t } from "../i18n";
 
 /** What the signed-in person typed to prove it is them. */
 export type Proof = { password: string; code: string };
@@ -76,12 +77,18 @@ function Asking({ what, reason, usesCode, error, onConfirm, onCancel }: Props) {
             </div>
             <div className="min-w-0 space-y-1.5">
               <h3 id={titleId} className="text-lg font-bold text-primary">
-                Confirm it is you
+                {t("Confirm it is you")}
               </h3>
               <p className="text-sm text-secondary">
-                {reason ?? `Making someone ${what ?? "a Boss"} gives them control of the mill.`}{" "}
-                Enter your own password
-                {usesCode ? " and the code from your authenticator app" : ""} to continue.
+                {reason ??
+                  t("Making someone {{what}} gives them control of the mill.", {
+                    what: what ?? t("a Boss"),
+                  })}{" "}
+                {usesCode
+                  ? t(
+                      "Enter your own password and the code from your authenticator app to continue.",
+                    )
+                  : t("Enter your own password to continue.")}
               </p>
             </div>
           </div>
@@ -94,7 +101,7 @@ function Asking({ what, reason, usesCode, error, onConfirm, onCancel }: Props) {
 
           <div>
             <label htmlFor={`${titleId}-password`} className={LABEL}>
-              Your password
+              {t("Your password")}
             </label>
             {/* Typed by hand every time: a password manager must not fill it. A
                 browser leaves a "new-password" field alone, and the data
@@ -117,7 +124,7 @@ function Asking({ what, reason, usesCode, error, onConfirm, onCancel }: Props) {
           {usesCode && (
             <div>
               <label htmlFor={`${titleId}-code`} className={LABEL}>
-                Authenticator code
+                {t("Authenticator code")}
               </label>
               <input
                 id={`${titleId}-code`}
@@ -126,17 +133,17 @@ function Asking({ what, reason, usesCode, error, onConfirm, onCancel }: Props) {
                 onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
                 autoComplete="one-time-code"
                 inputMode="numeric"
-                placeholder="6-digit code"
+                placeholder={t("6-digit code")}
               />
             </div>
           )}
 
           <div className="flex gap-2">
             <button type="submit" disabled={!ready} className="btn-primary flex-1">
-              Confirm
+              {t("Confirm")}
             </button>
             <button type="button" onClick={onCancel} className="btn-secondary flex-1">
-              Cancel
+              {t("Cancel")}
             </button>
           </div>
         </form>

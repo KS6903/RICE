@@ -6,6 +6,7 @@ import { salesService, type ChangeEntry } from "../../services/SalesService";
 import { paddyService } from "../../services/PaddyService";
 import { costsService } from "../../services/CostsService";
 import { millingService } from "../../services/MillingService";
+import { t } from "../../i18n";
 
 /** The saved records whose corrections are logged (edit power). */
 export type RecordKind =
@@ -53,18 +54,22 @@ export default function RecordHistory({
   });
   return (
     <RecordDialog
-      title={`History of ${label}`}
-      subtitle={`Every change made to this ${KINDS[kind].noun}, newest first.`}
+      title={t("History of {{label}}", { label })}
+      subtitle={t("Every change made to this {{noun}}, newest first.", { noun: KINDS[kind].noun })}
       onClose={onClose}
       testId="record-history"
     >
-      {q.isLoading && <p className="text-sm text-muted">Loading…</p>}
-      {q.isError && <p className="text-sm text-rose-600">Couldn't load the history. Try again.</p>}
+      {q.isLoading && <p className="text-sm text-muted">{t("Loading…")}</p>}
+      {q.isError && (
+        <p className="text-sm text-rose-600">{t("Couldn't load the history. Try again.")}</p>
+      )}
       {q.data && q.data.length === 0 && (
         <div className="py-6 text-center">
           <History size={22} className="mx-auto text-muted" aria-hidden />
           <p className="mt-2 text-sm text-secondary">
-            No changes yet. Edits to this {KINDS[kind].noun} show here, field by field.
+            {t("No changes yet. Edits to this {{noun}} show here, field by field.", {
+              noun: KINDS[kind].noun,
+            })}
           </p>
         </div>
       )}
@@ -73,7 +78,7 @@ export default function RecordHistory({
           {q.data.map((entry) => (
             <li key={entry.id} className="rounded-xl bg-slate-500/5 px-4 py-3">
               <p className="text-xs font-semibold text-secondary">
-                {entry.user_name || "System"}
+                {entry.user_name || t("System")}
                 {entry.created_at && (
                   <span className="font-normal text-muted">
                     {" · "}

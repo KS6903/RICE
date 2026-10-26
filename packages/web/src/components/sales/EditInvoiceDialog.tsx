@@ -3,6 +3,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import RecordDialog from "./RecordDialog";
 import DatePicker from "../DatePicker";
 import { salesService } from "../../services/SalesService";
+import { t } from "../../i18n";
 
 /** The Boss corrects a saved invoice's dates. Its amounts follow its order, so
  *  the note says where to change them. Every change is logged. */
@@ -31,8 +32,8 @@ export default function EditInvoiceDialog({
 
   return (
     <RecordDialog
-      title={`Edit invoice ${invoice.invoice_no}`}
-      subtitle="Every change you save is logged in the invoice's history."
+      title={t("Edit invoice {{invoice_no}}", { invoice_no: invoice.invoice_no })}
+      subtitle={t("Every change you save is logged in the invoice's history.")}
       onClose={onClose}
       busy={save.isPending}
       testId="edit-invoice"
@@ -44,7 +45,7 @@ export default function EditInvoiceDialog({
             onClick={onClose}
             disabled={save.isPending}
           >
-            Cancel
+            {t("Cancel")}
           </button>
           <button
             type="button"
@@ -52,7 +53,7 @@ export default function EditInvoiceDialog({
             onClick={() => save.mutate()}
             disabled={!invoiceDate || save.isPending}
           >
-            {save.isPending ? "Saving…" : "Save changes"}
+            {save.isPending ? t("Saving…") : t("Save changes")}
           </button>
         </>
       }
@@ -60,20 +61,33 @@ export default function EditInvoiceDialog({
       <div className="space-y-4">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <label className="block">
-            <span className="block mb-1 text-xs font-medium text-secondary">Invoice date</span>
-            <DatePicker value={invoiceDate} onChange={setInvoiceDate} aria-label="Invoice date" />
+            <span className="block mb-1 text-xs font-medium text-secondary">
+              {t("Invoice date")}
+            </span>
+            <DatePicker
+              value={invoiceDate}
+              onChange={setInvoiceDate}
+              aria-label={t("Invoice date")}
+            />
           </label>
           <label className="block">
-            <span className="block mb-1 text-xs font-medium text-secondary">Due date</span>
-            <DatePicker value={dueDate} onChange={setDueDate} aria-label="Due date" clearable />
+            <span className="block mb-1 text-xs font-medium text-secondary">{t("Due date")}</span>
+            <DatePicker
+              value={dueDate}
+              onChange={setDueDate}
+              aria-label={t("Due date")}
+              clearable
+            />
           </label>
         </div>
         <p className="text-sm text-secondary">
-          The amounts come from the order. To change them, edit the order: the invoice follows.
+          {t(
+            "The amounts come from the order. To change them, edit the order: the invoice follows.",
+          )}
         </p>
         {error && (
           <p role="alert" className="text-sm text-rose-600 dark:text-rose-400">
-            {typeof error === "string" ? error : "Couldn't save. Check the dates and try again."}
+            {typeof error === "string" ? error : t("Couldn't save. Check the dates and try again.")}
           </p>
         )}
       </div>

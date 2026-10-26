@@ -52,8 +52,12 @@ import DataExport from "../components/DataExport";
 import ConfirmDialog from "../components/ConfirmDialog";
 import DeviceSessionCard from "../components/DeviceSessionCard";
 import AccountClosureCard from "../components/AccountClosureCard";
+import LanguagePicker from "../components/LanguagePicker";
 import type { ActivityRow } from "../components/activity/format";
 import { Trash2, RotateCcw } from "lucide-react";
+import { t } from "../i18n";
+import { tx } from "../i18n/tx";
+import { statusText } from "../utils/statusText";
 
 type Tab =
   | "billing"
@@ -83,19 +87,19 @@ export default function SettingsPage() {
     // Stock > Catalog.
     ...(millSettings
       ? [
-          { key: "billing" as Tab, label: "Billing", icon: CreditCard },
-          { key: "company" as Tab, label: "Company", icon: Building2 },
-          { key: "branches" as Tab, label: "Branches", icon: MapPin },
-          { key: "activity" as Tab, label: "Activity Log", icon: History },
+          { key: "billing" as Tab, label: t("Billing"), icon: CreditCard },
+          { key: "company" as Tab, label: t("Company"), icon: Building2 },
+          { key: "branches" as Tab, label: t("Branches"), icon: MapPin },
+          { key: "activity" as Tab, label: t("Activity Log"), icon: History },
         ]
       : []),
     // The full data export holds every record, government IDs included: owner only.
-    ...(role === "owner" ? [{ key: "data" as Tab, label: "Your Data", icon: Download }] : []),
+    ...(role === "owner" ? [{ key: "data" as Tab, label: t("Your Data"), icon: Download }] : []),
     // Personal settings — available to every role.
-    { key: "profile", label: "My Profile", icon: UserIcon },
-    { key: "appearance", label: "Appearance", icon: Palette },
-    { key: "password", label: "Password", icon: KeyRound },
-    { key: "sessions", label: "Devices", icon: MonitorSmartphone },
+    { key: "profile", label: t("My Profile"), icon: UserIcon },
+    { key: "appearance", label: t("Appearance"), icon: Palette },
+    { key: "password", label: t("Password"), icon: KeyRound },
+    { key: "sessions", label: t("Devices"), icon: MonitorSmartphone },
   ];
 
   return (
@@ -105,8 +109,10 @@ export default function SettingsPage() {
           <SettingsIcon size={20} className="text-white" />
         </div>
         <div>
-          <h2 className="text-2xl font-bold tracking-tight text-primary">Settings</h2>
-          <p className="text-sm text-secondary">Manage your account and platform preferences</p>
+          <h2 className="text-2xl font-bold tracking-tight text-primary">{t("Settings")}</h2>
+          <p className="text-sm text-secondary">
+            {t("Manage your account and platform preferences")}
+          </p>
         </div>
       </div>
 
@@ -161,25 +167,25 @@ export default function SettingsPage() {
 
 // In the order a plan card lists them: the basics, then what each tier adds.
 const FEATURE_LABELS: Record<string, string> = {
-  dashboard: "Dashboard",
-  paddy: "Paddy procurement",
-  inventory: "Inventory tracking",
-  sales: "Sales & invoices",
-  expenses: "Expense tracking",
-  users: "User management",
-  milling: "Milling operations",
-  dispatch: "Dispatch (deliveries, trucks and drivers)",
-  multi_branch: "More than one warehouse",
-  field_operators: "Field operators (agents and millers)",
-  cash_count: "Cash count",
-  collections: "Collections",
-  employees: "Employees module",
-  reports_advanced: "Advanced reports (AR aging, valuation)",
-  compliance_reports: "DA / NFA compliance reports",
-  offline_sync: "Offline sync (Electron desktop)",
-  canva_inventory: "Visual Warehouse canva (spatial inventory)",
-  drying_advisor: "Palay drying advisor",
-  automations: "Automations (morning summary, reminders)",
+  dashboard: t("Dashboard"),
+  paddy: t("Paddy procurement"),
+  inventory: t("Inventory tracking"),
+  sales: t("Sales & invoices"),
+  expenses: t("Expense tracking"),
+  users: t("User management"),
+  milling: t("Milling operations"),
+  dispatch: t("Dispatch (deliveries, trucks and drivers)"),
+  multi_branch: t("More than one warehouse"),
+  field_operators: t("Field operators (agents and millers)"),
+  cash_count: t("Cash count"),
+  collections: t("Collections"),
+  employees: t("Employees module"),
+  reports_advanced: t("Advanced reports (AR aging, valuation)"),
+  compliance_reports: t("DA / NFA compliance reports"),
+  offline_sync: t("Offline sync (Electron desktop)"),
+  canva_inventory: t("Visual Warehouse canva (spatial inventory)"),
+  drying_advisor: t("Palay drying advisor"),
+  automations: t("Automations (morning summary, reminders)"),
 };
 
 const ALL_FEATURE_KEYS = Object.keys(FEATURE_LABELS);
@@ -245,8 +251,12 @@ function ResolvedNotice({ request, onDone }: { request: UpgradeRequest; onDone: 
         className={`text-sm font-semibold ${approved ? "text-emerald-900 dark:text-emerald-100" : "text-rose-900 dark:text-rose-100"}`}
       >
         {approved
-          ? `Your upgrade to ${request.requested_plan_name} has been approved.`
-          : `Your upgrade to ${request.requested_plan_name} was not approved.`}
+          ? t("Your upgrade to {{requested_plan_name}} has been approved.", {
+              requested_plan_name: request.requested_plan_name,
+            })
+          : t("Your upgrade to {{requested_plan_name}} was not approved.", {
+              requested_plan_name: request.requested_plan_name,
+            })}
         {request.admin_note && (
           <span className="ml-1 font-normal opacity-80">— {request.admin_note}</span>
         )}
@@ -311,7 +321,7 @@ function BillingTab() {
   if (!plan) {
     return (
       <div className="card text-sm text-secondary">
-        No subscription on file. Contact your platform administrator.
+        {t("No subscription on file. Contact your platform administrator.")}
       </div>
     );
   }
@@ -348,7 +358,9 @@ function BillingTab() {
 
         <div className="relative flex items-start justify-between gap-4">
           <div>
-            <p className="text-xs font-bold tracking-wide uppercase text-white/75">Current plan</p>
+            <p className="text-xs font-bold tracking-wide uppercase text-white/75">
+              {t("Current plan")}
+            </p>
             <div className="flex items-baseline gap-3 mt-1.5 flex-wrap">
               <h3 className="text-3xl font-extrabold tracking-tight">{plan.name}</h3>
               <span className="text-xs font-bold uppercase tracking-wide px-2.5 py-1 rounded-full bg-white/20 ring-1 ring-white/30 backdrop-blur-sm">
@@ -358,14 +370,14 @@ function BillingTab() {
             <p className="text-white/85 mt-2 font-medium">
               {plan.monthly_price > 0
                 ? `₱${plan.monthly_price.toLocaleString()}/month`
-                : "Free forever"}
+                : t("Free forever")}
             </p>
           </div>
           <div className="text-right">
-            <p className="text-xs font-bold uppercase tracking-wide text-white/75">Status</p>
+            <p className="text-xs font-bold uppercase tracking-wide text-white/75">{t("Status")}</p>
             <p className="text-sm font-bold capitalize mt-1 flex items-center justify-end gap-1.5">
               <span className={`w-2 h-2 rounded-full ${statusDot}`} />
-              {plan.status}
+              {statusText(plan.status)}
             </p>
           </div>
         </div>
@@ -376,7 +388,7 @@ function BillingTab() {
             return (
               <div className="relative mt-5 flex items-center gap-2 rounded-xl bg-white/10 ring-1 ring-white/20 px-4 py-2.5 text-sm text-white/90">
                 <Clock size={14} className="shrink-0" />
-                <span className="font-medium">Permanent subscription — no expiry</span>
+                <span className="font-medium">{t("Permanent subscription — no expiry")}</span>
               </div>
             );
           }
@@ -397,8 +409,11 @@ function BillingTab() {
               <div className="flex items-center gap-2">
                 <Clock size={14} className="shrink-0" />
                 <span className="font-medium">
-                  {expired ? "Subscription expired" : "Expires on "}
-                  <span className="font-bold">{!expired && format(expDate, "MMMM d, yyyy")}</span>
+                  {expired
+                    ? t("Subscription expired")
+                    : tx("Expires on {{date}}", {
+                        date: <span className="font-bold">{format(expDate, "MMMM d, yyyy")}</span>,
+                      })}
                 </span>
               </div>
               {!expired && (
@@ -407,7 +422,7 @@ function BillingTab() {
                     urgent ? "bg-white/25 text-white" : "bg-white/15 text-white/90"
                   }`}
                 >
-                  {daysLeft} day{daysLeft === 1 ? "" : "s"} left
+                  {t("{{count}} days left", { count: daysLeft })}
                 </span>
               )}
             </div>
@@ -416,12 +431,12 @@ function BillingTab() {
 
         <div className="relative grid grid-cols-2 gap-4 mt-6 pt-6 border-t border-white/20 text-sm">
           <div>
-            <p className="text-white/75 font-medium">User limit</p>
-            <p className="font-bold text-lg mt-0.5">{plan.max_users ?? "Unlimited"}</p>
+            <p className="text-white/75 font-medium">{t("User limit")}</p>
+            <p className="font-bold text-lg mt-0.5">{plan.max_users ?? t("Unlimited")}</p>
           </div>
           <div>
-            <p className="text-white/75 font-medium">Branch limit</p>
-            <p className="font-bold text-lg mt-0.5">{plan.max_branches ?? "Unlimited"}</p>
+            <p className="text-white/75 font-medium">{t("Branch limit")}</p>
+            <p className="font-bold text-lg mt-0.5">{plan.max_branches ?? t("Unlimited")}</p>
           </div>
         </div>
       </div>
@@ -435,7 +450,7 @@ function BillingTab() {
                 <div className="flex items-center gap-2">
                   <Clock size={15} className="text-white" />
                   <span className="text-white text-xs font-bold uppercase tracking-wider">
-                    {isPlanChange ? "Plan Change Requested" : "Upgrade Requested"}
+                    {isPlanChange ? t("Plan Change Requested") : t("Upgrade Requested")}
                   </span>
                 </div>
                 {canRequest && (
@@ -444,18 +459,26 @@ function BillingTab() {
                     disabled={cancelRequest.isPending}
                     className="text-white/80 hover:text-white text-xs font-semibold transition-colors disabled:opacity-50"
                   >
-                    {cancelRequest.isPending ? "Cancelling…" : "Cancel"}
+                    {cancelRequest.isPending ? t("Cancelling…") : t("Cancel")}
                   </button>
                 )}
               </div>
               <div className="bg-white dark:bg-slate-900 px-4 py-3.5">
                 <p className="font-bold text-slate-900 dark:text-slate-100">
-                  {isPlanChange ? "Change to " : "Upgrade to "}
-                  <span className="text-indigo-600 dark:text-indigo-400">
-                    {pendingRequest.requested_plan_name}
-                  </span>
+                  {(() => {
+                    const plan = (
+                      <span className="text-indigo-600 dark:text-indigo-400">
+                        {pendingRequest.requested_plan_name}
+                      </span>
+                    );
+                    return isPlanChange
+                      ? tx("Change to {{plan}}", { plan })
+                      : tx("Upgrade to {{plan}}", { plan });
+                  })()}
                   {pendingRequest.billing_interval === "annual" && (
-                    <span className="badge-green ml-2 !text-[10px] align-middle">Annual</span>
+                    <span className="badge-green ml-2 !text-[10px] align-middle">
+                      {t("Annual")}
+                    </span>
                   )}
                   {pendingRequest.created_at && (
                     <span className="font-normal text-slate-400 text-sm">
@@ -466,8 +489,10 @@ function BillingTab() {
                 </p>
                 <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
                   {isPlanChange
-                    ? "Awaiting admin approval. If approved, the new plan will take effect at the end of your current billing period."
-                    : "Awaiting platform administrator approval."}
+                    ? t(
+                        "Awaiting admin approval. If approved, the new plan will take effect at the end of your current billing period.",
+                      )
+                    : t("Awaiting platform administrator approval.")}
                 </p>
               </div>
             </div>
@@ -480,21 +505,21 @@ function BillingTab() {
 
       <div className="card">
         <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
-          <h3 className="text-lg font-bold text-primary">Available plans</h3>
+          <h3 className="text-lg font-bold text-primary">{t("Available plans")}</h3>
           <div className="flex items-center gap-3 flex-wrap">
             {!canRequest && (
               <span className="text-xs font-medium text-muted">
-                Only owners/admins can request upgrades
+                {t("Only owners/admins can request upgrades")}
               </span>
             )}
-            <div className="seg" role="group" aria-label="Billing interval">
+            <div className="seg" role="group" aria-label={t("Billing interval")}>
               <button
                 type="button"
                 onClick={() => setBillingInterval("monthly")}
                 aria-pressed={billingInterval === "monthly"}
                 className={`seg-btn ${billingInterval === "monthly" ? "is-active" : ""}`}
               >
-                Monthly
+                {t("Monthly")}
               </button>
               <button
                 type="button"
@@ -502,7 +527,7 @@ function BillingTab() {
                 aria-pressed={billingInterval === "annual"}
                 className={`seg-btn ${billingInterval === "annual" ? "is-active" : ""}`}
               >
-                Annual
+                {t("Annual")}
               </button>
             </div>
           </div>
@@ -569,11 +594,11 @@ function BillingTab() {
                 <div className="flex items-center gap-2 mb-1">
                   <span className={accent}>{planIcon(p.code, 18)}</span>
                   <span className="font-bold text-slate-900 dark:text-slate-100">{p.name}</span>
-                  {isCurrent && <span className="ml-auto badge-green">Current</span>}
+                  {isCurrent && <span className="ml-auto badge-green">{t("Current")}</span>}
                 </div>
                 <div className="flex items-baseline gap-1 mt-1">
                   <span className="text-2xl font-extrabold text-slate-900 dark:text-slate-100">
-                    {displayPrice === 0 ? "Free" : `₱${displayPrice.toLocaleString()}`}
+                    {displayPrice === 0 ? t("Free") : `₱${displayPrice.toLocaleString()}`}
                   </span>
                   {displayPrice > 0 && (
                     <span className="text-sm font-semibold text-slate-600 dark:text-slate-400">
@@ -583,17 +608,20 @@ function BillingTab() {
                 </div>
                 {annualSavingsPct > 0 && (
                   <p className="text-xs font-bold text-emerald-600 dark:text-emerald-400 -mt-0.5">
-                    Save {annualSavingsPct}% vs monthly
+                    {t("Save {{annualSavingsPct}}% vs monthly", { annualSavingsPct })}
                   </p>
                 )}
                 <p className="text-sm text-slate-800 dark:text-slate-200 mt-1 mb-2">
                   {p.description}
                 </p>
                 <div className="text-xs text-slate-700 dark:text-slate-300 font-semibold mb-3">
-                  {p.max_users ? `${p.max_users} users` : "Unlimited users"} ·{" "}
+                  {p.max_users
+                    ? t("{{count}} users", { count: p.max_users })
+                    : t("Unlimited users")}{" "}
+                  ·{" "}
                   {p.max_branches
-                    ? `${p.max_branches} ${p.max_branches === 1 ? "warehouse" : "warehouses"}`
-                    : "Unlimited warehouses"}
+                    ? t("{{count}} warehouses", { count: p.max_branches })
+                    : t("Unlimited warehouses")}
                 </div>
                 <ul className="text-sm text-slate-800 dark:text-slate-200 space-y-1.5 flex-1">
                   {[...(p.features || [])].sort(byFeatureOrder).map((f) => (
@@ -606,19 +634,21 @@ function BillingTab() {
                 <div className="mt-4">
                   {isCurrent ? (
                     <button disabled className="btn-secondary w-full opacity-70 cursor-default">
-                      Your current plan
+                      {t("Your current plan")}
                     </button>
                   ) : p.code === "free" ? (
                     <button
                       disabled
                       className="btn-secondary w-full opacity-70 cursor-default"
-                      title="Free is assigned automatically when your subscription ends — you can't request it."
+                      title={t(
+                        "Free is assigned automatically when your subscription ends — you can't request it.",
+                      )}
                     >
-                      Default plan
+                      {t("Default plan")}
                     </button>
                   ) : isPendingTarget ? (
                     <button disabled className="btn-secondary w-full opacity-70 cursor-default">
-                      Pending approval
+                      {t("Pending approval")}
                     </button>
                   ) : (
                     <>
@@ -628,17 +658,17 @@ function BillingTab() {
                         className="btn-primary w-full"
                         title={
                           !canRequest
-                            ? "Owner/admin role required"
+                            ? t("Owner/admin role required")
                             : pendingRequest
-                              ? "Cancel your pending request first"
+                              ? t("Cancel your pending request first")
                               : undefined
                         }
                       >
-                        {isOnPaidPlan ? "Change Plan" : `Get ${p.name}`}
+                        {isOnPaidPlan ? t("Change Plan") : t("Get {{name}}", { name: p.name })}
                       </button>
                       {isOnPaidPlan && (
                         <p className="text-[11px] text-center text-slate-600 dark:text-slate-400 mt-1.5">
-                          Takes effect at end of current billing period
+                          {t("Takes effect at end of current billing period")}
                         </p>
                       )}
                     </>
@@ -651,7 +681,9 @@ function BillingTab() {
       </div>
 
       <div className="card">
-        <h3 className="text-lg font-bold text-primary mb-4">What's included in {plan.name}</h3>
+        <h3 className="text-lg font-bold text-primary mb-4">
+          {t("What's included in {{name}}", { name: plan.name })}
+        </h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
           {ALL_FEATURE_KEYS.map((key) => {
             const included = features.includes(key);
@@ -698,22 +730,22 @@ function CompanyTab() {
   });
 
   if (isLoading) {
-    return <div className="card text-sm text-secondary">Loading…</div>;
+    return <div className="card text-sm text-secondary">{t("Loading…")}</div>;
   }
 
   const fields: { label: string; key: string; full?: boolean; type?: string }[] = [
-    { label: "Company Name *", key: "name", full: true },
-    { label: "Address", key: "address", full: true },
-    { label: "TIN", key: "tin" },
-    { label: "Phone", key: "phone" },
-    { label: "Email", key: "email", type: "email" },
-    { label: "NFA License No.", key: "nfa_license_no" },
-    { label: "DA Registration No.", key: "da_registration_no" },
+    { label: t("Company Name *"), key: "name", full: true },
+    { label: t("Address"), key: "address", full: true },
+    { label: t("TIN"), key: "tin" },
+    { label: t("Phone"), key: "phone" },
+    { label: t("Email"), key: "email", type: "email" },
+    { label: t("NFA License No."), key: "nfa_license_no" },
+    { label: t("DA Registration No."), key: "da_registration_no" },
   ];
 
   return (
     <div className="card max-w-2xl space-y-5">
-      <h3 className="text-lg font-bold text-primary">Company Information</h3>
+      <h3 className="text-lg font-bold text-primary">{t("Company Information")}</h3>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         {fields.map(({ label, key, full, type }) => (
           <div key={key} className={full ? "sm:col-span-2" : ""}>
@@ -736,12 +768,12 @@ function CompanyTab() {
               disabled={readOnly}
               onChange={(e) => setForm((f: any) => ({ ...f, is_multi_branch: e.target.checked }))}
             />
-            <span>Enable multi-branch mode</span>
+            <span>{t("Enable multi-branch mode")}</span>
           </label>
         </div>
       </div>
       {readOnly ? (
-        <p className="text-sm text-secondary">View only: your role can't change these.</p>
+        <p className="text-sm text-secondary">{t("View only: your role can't change these.")}</p>
       ) : (
         <div className="flex items-center gap-3 pt-2">
           <button
@@ -749,16 +781,16 @@ function CompanyTab() {
             className="btn-primary"
             disabled={save.isPending || !form.name}
           >
-            {save.isPending ? "Saving…" : "Save changes"}
+            {save.isPending ? t("Saving…") : t("Save changes")}
           </button>
           {saved && (
             <span className="text-sm font-semibold text-emerald-600 dark:text-emerald-400 inline-flex items-center gap-1">
-              <Check size={14} /> Saved
+              <Check size={14} /> {t("Saved")}
             </span>
           )}
           {save.isError && (
             <span className="text-sm font-medium text-rose-600 dark:text-rose-400">
-              Failed to save.
+              {t("Failed to save.")}
             </span>
           )}
         </div>
@@ -846,15 +878,15 @@ function BranchesTab() {
     <div className="space-y-4">
       <div className="flex justify-between items-center gap-3 flex-wrap">
         <p className="text-sm text-secondary font-medium">
-          {branches.length} branch{branches.length === 1 ? "" : "es"}
+          {t("{{count}} branches", { count: branches.length })}
         </p>
         {!readOnly && (
           <div className="flex flex-wrap items-center gap-2">
             <button onClick={() => setShowTrash((v) => !v)} className="btn-secondary">
-              <History size={16} /> {showTrash ? "Hide history" : "History / Trash"}
+              <History size={16} /> {showTrash ? t("Hide history") : t("History / Trash")}
             </button>
             <button onClick={() => setShowForm(!showForm)} className="btn-primary">
-              <Plus size={16} /> Add branch
+              <Plus size={16} /> {t("Add branch")}
             </button>
           </div>
         )}
@@ -863,21 +895,21 @@ function BranchesTab() {
       {selected.size > 0 && (
         <div className="flex items-center justify-between gap-3 rounded-xl px-4 py-2.5 bg-rose-50 dark:bg-rose-950/30 ring-1 ring-rose-200 dark:ring-rose-800/60">
           <span className="text-sm font-semibold text-rose-700 dark:text-rose-300">
-            {selected.size} selected
+            {t("{{selectedCount}} selected", { selectedCount: selected.size })}
           </span>
           <div className="flex items-center gap-2">
             <button
               onClick={() => setSelected(new Set())}
               className="btn-secondary !py-1.5 !px-3 text-sm"
             >
-              Clear
+              {t("Clear")}
             </button>
             <button
               onClick={confirmBulkDelete}
               disabled={bulkDelete.isPending}
               className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-rose-600 text-white text-sm font-semibold hover:bg-rose-700 disabled:opacity-50"
             >
-              <Trash2 size={15} /> {bulkDelete.isPending ? "Deleting…" : "Delete selected"}
+              <Trash2 size={15} /> {bulkDelete.isPending ? t("Deleting…") : t("Delete selected")}
             </button>
           </div>
         </div>
@@ -895,7 +927,7 @@ function BranchesTab() {
           </ul>
           <button
             type="button"
-            aria-label="Dismiss"
+            aria-label={t("Dismiss")}
             onClick={() => setSkippedReasons([])}
             className="btn-ghost !p-1.5 shrink-0"
           >
@@ -908,25 +940,25 @@ function BranchesTab() {
         open={confirmingBulk}
         danger
         busy={bulkDelete.isPending}
-        title={`Move ${selected.size} warehouse${selected.size === 1 ? "" : "s"} to trash?`}
-        confirmLabel="Move to trash"
+        title={t("Move {{count}} warehouses to trash?", { count: selected.size })}
+        confirmLabel={t("Move to trash")}
         onCancel={() => setConfirmingBulk(false)}
         onConfirm={() => {
           bulkDelete.mutate([...selected]);
           setConfirmingBulk(false);
         }}
       >
-        You can restore {selected.size === 1 ? "it" : "them"} within 30 days.
+        {t("You can restore them within 30 days.", { count: selected.size })}
       </ConfirmDialog>
 
       {showTrash && <BranchTrashPanel />}
 
       {showForm && (
         <div className="card space-y-4">
-          <h3 className="text-lg font-bold text-primary">New branch</h3>
+          <h3 className="text-lg font-bold text-primary">{t("New branch")}</h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className={LABEL}>Name *</label>
+              <label className={LABEL}>{t("Name *")}</label>
               <input
                 className="input"
                 value={form.name}
@@ -934,7 +966,7 @@ function BranchesTab() {
               />
             </div>
             <div>
-              <label className={LABEL}>Address</label>
+              <label className={LABEL}>{t("Address")}</label>
               <input
                 className="input"
                 value={form.address}
@@ -949,23 +981,23 @@ function BranchesTab() {
               checked={form.is_main_branch}
               onChange={(e) => setForm((f) => ({ ...f, is_main_branch: e.target.checked }))}
             />
-            <span>Mark as main branch</span>
+            <span>{t("Mark as main branch")}</span>
           </label>
           {create.isError && (
             <p className="text-sm font-medium text-rose-600 dark:text-rose-400">
-              {(create.error as any)?.response?.data?.detail || "Failed to create branch."}
+              {(create.error as any)?.response?.data?.detail || t("Failed to create branch.")}
             </p>
           )}
           <div className="flex gap-2 justify-end">
             <button onClick={() => setShowForm(false)} className="btn-secondary">
-              Cancel
+              {t("Cancel")}
             </button>
             <button
               onClick={() => create.mutate(form)}
               className="btn-primary"
               disabled={create.isPending || !form.name}
             >
-              {create.isPending ? "Creating…" : "Create branch"}
+              {create.isPending ? t("Creating…") : t("Create branch")}
             </button>
           </div>
         </div>
@@ -978,7 +1010,7 @@ function BranchesTab() {
               <th className={`${TABLE_HEAD} w-10`}>
                 <input
                   type="checkbox"
-                  aria-label="Select all warehouses"
+                  aria-label={t("Select all warehouses")}
                   className="h-4 w-4 rounded border-soft accent-rose-500 cursor-pointer disabled:opacity-40"
                   disabled={readOnly || selectable.length === 0}
                   checked={selectable.length > 0 && selected.size === selectable.length}
@@ -989,7 +1021,7 @@ function BranchesTab() {
                   onChange={toggleAll}
                 />
               </th>
-              {["Name", "Address", "Type", "Status", ""].map((h, i) => (
+              {[t("Name"), t("Address"), t("Type"), t("Status"), ""].map((h, i) => (
                 <th key={i} className={TABLE_HEAD}>
                   {h}
                 </th>
@@ -1004,10 +1036,12 @@ function BranchesTab() {
                   <td className="px-4 py-3">
                     <input
                       type="checkbox"
-                      aria-label={`Select ${b.name}`}
+                      aria-label={t("Select {{name}}", { name: b.name })}
                       className="h-4 w-4 rounded border-soft accent-rose-500 cursor-pointer disabled:opacity-30"
                       disabled={readOnly || b.is_main_branch}
-                      title={b.is_main_branch ? "The main warehouse can't be deleted" : undefined}
+                      title={
+                        b.is_main_branch ? t("The main warehouse can't be deleted") : undefined
+                      }
                       checked={selected.has(b.id)}
                       onChange={() => toggle(b.id)}
                     />
@@ -1037,7 +1071,7 @@ function BranchesTab() {
                     {isEditing ? (
                       <input
                         className="input !py-1 text-sm w-full max-w-xs"
-                        placeholder="Address"
+                        placeholder={t("Address")}
                         value={editValues.address}
                         onChange={(e) => setEditValues((v) => ({ ...v, address: e.target.value }))}
                       />
@@ -1047,16 +1081,16 @@ function BranchesTab() {
                   </td>
                   <td className="px-4 py-3">
                     {b.is_main_branch ? (
-                      <span className="badge-green">Main</span>
+                      <span className="badge-green">{t("Main")}</span>
                     ) : (
-                      <span className="badge-gray">Branch</span>
+                      <span className="badge-gray">{t("Branch")}</span>
                     )}
                   </td>
                   <td className="px-4 py-3">
                     {b.is_active ? (
-                      <span className="badge-green">Active</span>
+                      <span className="badge-green">{t("Active")}</span>
                     ) : (
-                      <span className="badge-red">Inactive</span>
+                      <span className="badge-red">{t("Inactive")}</span>
                     )}
                   </td>
                   <td className="px-4 py-3 text-right">
@@ -1064,7 +1098,7 @@ function BranchesTab() {
                       <div className="flex items-center justify-end gap-1">
                         <button
                           type="button"
-                          aria-label="Save"
+                          aria-label={t("Save")}
                           disabled={!editValues.name.trim() || update.isPending}
                           onClick={() =>
                             update.mutate({
@@ -1078,7 +1112,7 @@ function BranchesTab() {
                         </button>
                         <button
                           type="button"
-                          aria-label="Cancel"
+                          aria-label={t("Cancel")}
                           onClick={() => setEditingId(null)}
                           className="p-1.5 rounded-md text-slate-500 hover:text-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700/40"
                         >
@@ -1088,7 +1122,7 @@ function BranchesTab() {
                     ) : readOnly ? null : (
                       <button
                         type="button"
-                        aria-label={`Rename ${b.name}`}
+                        aria-label={t("Rename {{name}}", { name: b.name })}
                         onClick={() => startEdit(b)}
                         // Always visible (dimmed) — the opacity-toggle on hover
                         // caused flicker when the mouse crossed the icon edge.
@@ -1104,7 +1138,7 @@ function BranchesTab() {
             {branches.length === 0 && (
               <tr>
                 <td colSpan={6} className="px-4 py-8 text-center text-muted font-medium">
-                  No branches
+                  {t("No branches")}
                 </td>
               </tr>
             )}
@@ -1135,15 +1169,15 @@ function BranchTrashPanel() {
     <div className="card space-y-3">
       <div className="flex items-center gap-2">
         <History size={16} className="text-muted" />
-        <h3 className="font-semibold text-primary">Recently deleted warehouses</h3>
+        <h3 className="font-semibold text-primary">{t("Recently deleted warehouses")}</h3>
       </div>
       <p className="text-xs text-muted">
-        Deleted warehouses are kept for 30 days, then permanently removed.
+        {t("Deleted warehouses are kept for 30 days, then permanently removed.")}
       </p>
       {isLoading ? (
-        <p className="text-sm text-muted py-4 text-center">Loading…</p>
+        <p className="text-sm text-muted py-4 text-center">{t("Loading…")}</p>
       ) : trashed.length === 0 ? (
-        <p className="text-sm text-muted py-4 text-center">Trash is empty.</p>
+        <p className="text-sm text-muted py-4 text-center">{t("Trash is empty.")}</p>
       ) : (
         <ul className="divide-y divide-slate-100 dark:divide-slate-800">
           {trashed.map((b) => (
@@ -1151,13 +1185,15 @@ function BranchTrashPanel() {
               <div className="min-w-0">
                 <p className="text-sm font-semibold text-primary truncate">{b.name}</p>
                 <p className="text-xs text-muted">
-                  {b.deleted_by_name ? `Deleted by ${b.deleted_by_name} · ` : ""}
+                  {b.deleted_by_name
+                    ? t("Deleted by {{deleted_by_name}} · ", { deleted_by_name: b.deleted_by_name })
+                    : ""}
                   <span
                     className={
                       b.days_remaining <= 3 ? "text-rose-600 dark:text-rose-400 font-semibold" : ""
                     }
                   >
-                    {b.days_remaining}d left
+                    {t("{{days_remaining}}d left", { days_remaining: b.days_remaining })}
                   </span>
                 </p>
               </div>
@@ -1166,7 +1202,7 @@ function BranchTrashPanel() {
                 disabled={restore.isPending}
                 className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg btn-secondary text-sm font-semibold disabled:opacity-50"
               >
-                <RotateCcw size={14} /> Restore
+                <RotateCcw size={14} /> {t("Restore")}
               </button>
             </li>
           ))}
@@ -1231,17 +1267,18 @@ function ActivityTab() {
   return (
     <div className="space-y-4">
       <div>
-        <h3 className="text-lg font-bold text-primary">Activity log</h3>
+        <h3 className="text-lg font-bold text-primary">{t("Activity log")}</h3>
         <p className="text-sm text-secondary">
-          Who deleted, restored, or purged warehouses, and who downloaded the mill&apos;s data, most
-          recent first. It shows the last month; pick other days to look further back, up to{" "}
-          {ACTIVITY_MAX_DAYS} days at a time.
+          {t(
+            "Who deleted, restored, or purged warehouses, and who downloaded the mill's data, most recent first. It shows the last month; pick other days to look further back, up to",
+          )}{" "}
+          {ACTIVITY_MAX_DAYS} {t("days at a time.")}
         </p>
       </div>
       <div className="flex flex-wrap items-end gap-3">
         <div>
           <label htmlFor="activity-from" className={LABEL}>
-            From
+            {t("From")}
           </label>
           <input
             id="activity-from"
@@ -1254,7 +1291,7 @@ function ActivityTab() {
         </div>
         <div>
           <label htmlFor="activity-to" className={LABEL}>
-            To
+            {t("To")}
           </label>
           <input
             id="activity-to"
@@ -1268,18 +1305,20 @@ function ActivityTab() {
         </div>
         {!isLastMonth && (
           <button type="button" onClick={() => setRange(lastMonth())} className="btn-secondary">
-            Last month
+            {t("Last month")}
           </button>
         )}
       </div>
       {error ? (
         <p className="text-sm font-medium text-rose-600 dark:text-rose-400">
-          {(error as any)?.response?.data?.detail || "Couldn't load the activity."}
+          {(error as any)?.response?.data?.detail || t("Couldn't load the activity.")}
         </p>
       ) : (
         rows.length >= ACTIVITY_ROW_LIMIT && (
           <p className="text-sm text-secondary">
-            Showing the latest {ACTIVITY_ROW_LIMIT}. Pick fewer days to see the rest.
+            {t("Showing the latest {{limit}}. Pick fewer days to see the rest.", {
+              limit: ACTIVITY_ROW_LIMIT,
+            })}
           </p>
         )
       )}
@@ -1325,11 +1364,11 @@ function ProfileTab() {
         current_password: "",
         mfa_code: "",
       }));
-      setSaved(emailChanged ? "Verification sent to your new email." : "Saved");
+      setSaved(emailChanged ? t("Verification sent to your new email.") : t("Saved"));
       setError("");
       setTimeout(() => setSaved(""), 3500);
     },
-    onError: (e: any) => setError(e.response?.data?.detail || "Failed to update."),
+    onError: (e: any) => setError(e.response?.data?.detail || t("Failed to update.")),
   });
 
   return (
@@ -1338,15 +1377,15 @@ function ProfileTab() {
         <div className="flex items-center gap-3">
           <UserAvatar className="h-12 w-12" name={user?.full_name || user?.username} />
           <div>
-            <h3 className="text-lg font-bold text-primary">My profile</h3>
+            <h3 className="text-lg font-bold text-primary">{t("My profile")}</h3>
             <p className="text-xs text-muted font-medium">
-              {user?.role_label || roleLabel(user?.role)}
+              {user?.role_label || t(roleLabel(user?.role))}
             </p>
           </div>
         </div>
 
         <div>
-          <label className={LABEL}>Username</label>
+          <label className={LABEL}>{t("Username")}</label>
           <input
             className="input opacity-70 cursor-not-allowed"
             value={user?.username || ""}
@@ -1354,7 +1393,7 @@ function ProfileTab() {
           />
         </div>
         <div>
-          <label className={LABEL}>Full name</label>
+          <label className={LABEL}>{t("Full name")}</label>
           <input
             className="input"
             value={form.full_name}
@@ -1362,7 +1401,7 @@ function ProfileTab() {
           />
         </div>
         <div>
-          <label className={LABEL}>Email</label>
+          <label className={LABEL}>{t("Email")}</label>
           <input
             type="email"
             className="input"
@@ -1374,25 +1413,28 @@ function ProfileTab() {
         {emailChanged && (
           <div className="rounded-xl bg-amber-50/70 dark:bg-amber-950/20 ring-1 ring-amber-200 dark:ring-amber-800/50 p-4 space-y-3">
             <div>
-              <p className="text-sm font-semibold text-primary">Confirm this sensitive change</p>
+              <p className="text-sm font-semibold text-primary">
+                {t("Confirm this sensitive change")}
+              </p>
               <p className="text-xs text-secondary mt-0.5">
-                Changing your email signs it out of verified status until you confirm the new
-                address.
+                {t(
+                  "Changing your email signs it out of verified status until you confirm the new address.",
+                )}
               </p>
             </div>
             <div>
-              <label className={LABEL}>Current password</label>
+              <label className={LABEL}>{t("Current password")}</label>
               <PasswordInput
                 className="input"
                 value={form.current_password}
                 onChange={(e) => setForm((f) => ({ ...f, current_password: e.target.value }))}
                 autoComplete="current-password"
-                placeholder="Enter your current password"
+                placeholder={t("Enter your current password")}
               />
             </div>
             {user?.mfa_enabled && (
               <div>
-                <label className={LABEL}>Or authenticator code</label>
+                <label className={LABEL}>{t("Or authenticator code")}</label>
                 <input
                   className="input font-mono"
                   value={form.mfa_code}
@@ -1401,7 +1443,7 @@ function ProfileTab() {
                   }
                   autoComplete="one-time-code"
                   inputMode="numeric"
-                  placeholder="6-digit code or backup code"
+                  placeholder={t("6-digit code or backup code")}
                 />
               </div>
             )}
@@ -1418,7 +1460,7 @@ function ProfileTab() {
               (emailChanged && !hasEmailProof)
             }
           >
-            {save.isPending ? "Saving…" : "Save profile"}
+            {save.isPending ? t("Saving…") : t("Save profile")}
           </button>
           {saved && (
             <span className="text-sm font-semibold text-emerald-600 dark:text-emerald-400 inline-flex items-center gap-1">
@@ -1437,8 +1479,8 @@ function ProfileTab() {
 }
 
 const THEME_OPTIONS: { value: Theme; label: string; icon: React.ElementType }[] = [
-  { value: "light", label: "Light", icon: Sun },
-  { value: "dark", label: "Dark", icon: Moon },
+  { value: "light", label: t("Light"), icon: Sun },
+  { value: "dark", label: t("Dark"), icon: Moon },
 ];
 
 /** A thumbnail of the app in one theme. Its colours are fixed, so each
@@ -1470,15 +1512,16 @@ function AppearanceTab() {
   return (
     <div className="card max-w-xl space-y-5">
       <div>
-        <h3 className="text-lg font-bold text-primary">Appearance</h3>
+        <h3 className="text-lg font-bold text-primary">{t("Appearance")}</h3>
         <p className="text-sm text-secondary mt-0.5">
-          Your choice is saved to your account on this device. The sign-in and home pages always
-          stay light.
+          {t(
+            "Your choice is saved to your account on this device. The sign-in and home pages always stay light.",
+          )}
         </p>
       </div>
 
       <fieldset>
-        <legend className={LABEL}>Theme</legend>
+        <legend className={LABEL}>{t("Theme")}</legend>
         <div className="grid grid-cols-2 gap-3">
           {THEME_OPTIONS.map(({ value, label, icon: Icon }) => {
             const active = theme === value;
@@ -1512,6 +1555,8 @@ function AppearanceTab() {
           })}
         </div>
       </fieldset>
+
+      <LanguagePicker />
     </div>
   );
 }
@@ -1528,24 +1573,24 @@ function PasswordTab() {
     mutationFn: (body: { current_password: string; new_password: string }) =>
       authService.changePassword(body.current_password, body.new_password),
     onSuccess: () => {
-      setMsg({ type: "ok", text: "Password changed successfully." });
+      setMsg({ type: "ok", text: t("Password changed successfully.") });
       setForm({ current_password: "", new_password: "", confirm: "" });
     },
     onError: (e: any) =>
       setMsg({
         type: "err",
-        text: e.response?.data?.detail || "Failed to change password.",
+        text: e.response?.data?.detail || t("Failed to change password."),
       }),
   });
 
   const submit = () => {
     setMsg(null);
     if (form.new_password !== form.confirm)
-      return setMsg({ type: "err", text: "New passwords do not match." });
+      return setMsg({ type: "err", text: t("New passwords do not match.") });
     if (form.new_password.length < 8)
       return setMsg({
         type: "err",
-        text: "New password must be at least 8 characters.",
+        text: t("New password must be at least 8 characters."),
       });
     change.mutate({
       current_password: form.current_password,
@@ -1560,13 +1605,13 @@ function PasswordTab() {
           <div className="h-11 w-11 rounded-xl bg-grad-brand grid place-items-center shadow-grad-glow">
             <KeyRound size={18} className="text-white" />
           </div>
-          <h3 className="text-lg font-bold text-primary">Change password</h3>
+          <h3 className="text-lg font-bold text-primary">{t("Change password")}</h3>
         </div>
 
         {[
-          { label: "Current password", key: "current_password" },
-          { label: "New password", key: "new_password" },
-          { label: "Confirm new password", key: "confirm" },
+          { label: t("Current password"), key: "current_password" },
+          { label: t("New password"), key: "new_password" },
+          { label: t("Confirm new password"), key: "confirm" },
         ].map(({ label, key }) => (
           <div key={key}>
             <label className={LABEL}>{label}</label>
@@ -1597,7 +1642,7 @@ function PasswordTab() {
           className="btn-primary w-full"
           disabled={change.isPending || !form.current_password || !form.new_password}
         >
-          {change.isPending ? "Changing…" : "Change password"}
+          {change.isPending ? t("Changing…") : t("Change password")}
         </button>
       </div>
 
@@ -1627,7 +1672,7 @@ function GoogleIdentityCard() {
       await authService.linkGoogle(credential, proofBody());
       await logout();
     } catch (e: any) {
-      setError(e.response?.data?.detail || "Could not link this Google account.");
+      setError(e.response?.data?.detail || t("Could not link this Google account."));
       setPending(false);
     }
   };
@@ -1639,7 +1684,7 @@ function GoogleIdentityCard() {
       await authService.unlinkGoogle(proofBody());
       await logout();
     } catch (e: any) {
-      setError(e.response?.data?.detail || "Could not unlink this Google account.");
+      setError(e.response?.data?.detail || t("Could not unlink this Google account."));
       setPending(false);
     }
   };
@@ -1647,16 +1692,16 @@ function GoogleIdentityCard() {
   return (
     <div className="card space-y-5">
       <div>
-        <h3 className="text-lg font-bold text-primary">Google sign-in</h3>
+        <h3 className="text-lg font-bold text-primary">{t("Google sign-in")}</h3>
         <p className="text-sm text-secondary mt-1">
           {linked
-            ? "A verified Google identity is linked to this account."
-            : "Link Google only after confirming your existing account."}
+            ? t("A verified Google identity is linked to this account.")
+            : t("Link Google only after confirming your existing account.")}
         </p>
       </div>
       <div>
         <label className={LABEL}>
-          {usesMfa ? "Current authenticator code" : "Current password"}
+          {usesMfa ? t("Current authenticator code") : t("Current password")}
         </label>
         {usesMfa ? (
           <input
@@ -1682,22 +1727,22 @@ function GoogleIdentityCard() {
           onClick={unlink}
           disabled={pending || !proof.trim()}
         >
-          {pending ? "Unlinking…" : "Unlink Google"}
+          {pending ? t("Unlinking…") : t("Unlink Google")}
         </button>
       ) : proof.trim() ? (
         <div className={pending ? "pointer-events-none opacity-60" : ""}>
           <GoogleLogin
             onSuccess={(response) => void link(response.credential)}
-            onError={() => setError("Google verification was cancelled or failed.")}
+            onError={() => setError(t("Google verification was cancelled or failed."))}
           />
         </div>
       ) : (
         <p className="text-xs text-muted">
-          Enter your proof above to enable the Google link button.
+          {t("Enter your proof above to enable the Google link button.")}
         </p>
       )}
       <p className="text-xs text-muted">
-        Linking or unlinking revokes every active session and requires a fresh sign-in.
+        {t("Linking or unlinking revokes every active session and requires a fresh sign-in.")}
       </p>
     </div>
   );
@@ -1740,7 +1785,7 @@ export function MfaCard() {
     try {
       setEnroll(await authService.mfaEnroll());
     } catch (e: any) {
-      setMsg({ type: "err", text: e.response?.data?.detail || "Could not start enrollment." });
+      setMsg({ type: "err", text: e.response?.data?.detail || t("Could not start enrollment.") });
     }
   };
 
@@ -1756,7 +1801,7 @@ export function MfaCard() {
       // the one-time recovery codes remain visible until the user saves them.
       requireReauthentication();
     } catch (e: any) {
-      setMsg({ type: "err", text: e.response?.data?.detail || "Invalid code." });
+      setMsg({ type: "err", text: e.response?.data?.detail || t("Invalid code.") });
     }
   };
 
@@ -1769,7 +1814,7 @@ export function MfaCard() {
       setBackupCodes(res.backup_codes);
       refresh();
     } catch (e: any) {
-      setMsg({ type: "err", text: e.response?.data?.detail || "Invalid code." });
+      setMsg({ type: "err", text: e.response?.data?.detail || t("Invalid code.") });
     }
   };
 
@@ -1782,13 +1827,13 @@ export function MfaCard() {
       // A refused attempt doesn't use up the code, so keep it and ask for the
       // password again.
       setPassword("");
-      setMsg({ type: "err", text: e.response?.data?.detail || "Invalid code." });
+      setMsg({ type: "err", text: e.response?.data?.detail || t("Invalid code.") });
     }
   };
 
   const codeInput = (
     <input
-      aria-label="Authenticator code"
+      aria-label={t("Authenticator code")}
       className="input text-center tracking-[0.4em]"
       value={code}
       onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
@@ -1805,13 +1850,13 @@ export function MfaCard() {
           <ShieldCheck size={18} className="text-white" />
         </div>
         <div>
-          <h3 className="text-lg font-bold text-primary">Two-factor authentication</h3>
+          <h3 className="text-lg font-bold text-primary">{t("Two-factor authentication")}</h3>
           <p className="text-sm text-secondary">
             {mfaEnabled
-              ? "Enabled. Codes are required at sign-in."
+              ? t("Enabled. Codes are required at sign-in.")
               : previous
-                ? "Off. Your earlier authenticator is still on file."
-                : "Add a 6-digit authenticator code to sign-in."}
+                ? t("Off. Your earlier authenticator is still on file.")
+                : t("Add a 6-digit authenticator code to sign-in.")}
           </p>
         </div>
       </div>
@@ -1819,7 +1864,9 @@ export function MfaCard() {
       {recommended && !enroll && !reuse && (
         <div className="flex items-start gap-2 px-3 py-2.5 rounded-xl bg-amber-500/15 ring-1 ring-inset ring-amber-500/40 text-sm font-medium text-amber-700 dark:text-amber-300">
           <AlertCircle size={16} className="mt-0.5 shrink-0" />
-          <span>As a Boss account, turning on two-factor authentication is recommended.</span>
+          <span>
+            {t("As a Boss account, turning on two-factor authentication is recommended.")}
+          </span>
         </div>
       )}
 
@@ -1827,7 +1874,7 @@ export function MfaCard() {
         <div className="space-y-4">
           <BackupCodes codes={backupCodes} />
           <button onClick={() => void logout()} className="btn-primary w-full">
-            I&apos;ve saved my codes, sign in again
+            {t("I've saved my codes, sign in again")}
           </button>
         </div>
       )}
@@ -1837,8 +1884,9 @@ export function MfaCard() {
           {previous ? (
             <>
               <p className="text-sm text-secondary">
-                Your earlier authenticator is still on file. Switch back on with it, or set up a new
-                one.
+                {t(
+                  "Your earlier authenticator is still on file. Switch back on with it, or set up a new one.",
+                )}
               </p>
               <button
                 onClick={() => {
@@ -1847,16 +1895,18 @@ export function MfaCard() {
                 }}
                 className="btn-primary w-full"
               >
-                Switch back on with my earlier authenticator
+                {t("Switch back on with my earlier authenticator")}
               </button>
               <button onClick={start} className="btn-secondary w-full">
-                Set up a new authenticator
+                {t("Set up a new authenticator")}
               </button>
-              <p className="text-xs text-muted">A new authenticator replaces the earlier one.</p>
+              <p className="text-xs text-muted">
+                {t("A new authenticator replaces the earlier one.")}
+              </p>
             </>
           ) : (
             <button onClick={start} className="btn-primary w-full">
-              Enable two-factor authentication
+              {t("Enable two-factor authentication")}
             </button>
           )}
         </div>
@@ -1865,8 +1915,9 @@ export function MfaCard() {
       {reuse && (
         <div className="space-y-4">
           <p className="text-sm text-secondary">
-            Enter the 6-digit code your earlier authenticator shows now. It can&apos;t be the code
-            you used to turn two-factor off, so if it is refused, wait for the next one.
+            {t(
+              "Enter the 6-digit code your earlier authenticator shows now. It can't be the code you used to turn two-factor off, so if it is refused, wait for the next one.",
+            )}
           </p>
           {codeInput}
           <div className="flex gap-2">
@@ -1875,7 +1926,7 @@ export function MfaCard() {
               className="btn-primary flex-1"
               disabled={code.length < 6}
             >
-              Confirm &amp; enable
+              {t("Confirm & enable")}
             </button>
             <button
               onClick={() => {
@@ -1885,7 +1936,7 @@ export function MfaCard() {
               }}
               className="btn-secondary flex-1"
             >
-              Cancel
+              {t("Cancel")}
             </button>
           </div>
         </div>
@@ -1901,7 +1952,7 @@ export function MfaCard() {
               className="btn-primary flex-1"
               disabled={code.length < 6}
             >
-              Confirm &amp; enable
+              {t("Confirm & enable")}
             </button>
             <button
               onClick={() => {
@@ -1911,7 +1962,7 @@ export function MfaCard() {
               }}
               className="btn-secondary flex-1"
             >
-              Cancel
+              {t("Cancel")}
             </button>
           </div>
         </div>
@@ -1921,10 +1972,12 @@ export function MfaCard() {
         <div className="space-y-3">
           <div className="flex items-center justify-between text-sm">
             <span className="text-secondary">
-              Recovery codes:{" "}
-              <span className="font-semibold text-primary">{codesRemaining} left</span>
+              {t("Recovery codes:")}{" "}
+              <span className="font-semibold text-primary">
+                {t("{{codesRemaining}} left", { codesRemaining })}
+              </span>
               {codesRemaining <= 3 && (
-                <span className="text-amber-600 dark:text-amber-400"> · running low</span>
+                <span className="text-amber-600 dark:text-amber-400"> {t("· running low")}</span>
               )}
             </span>
             <button
@@ -1934,12 +1987,12 @@ export function MfaCard() {
               }}
               className="font-semibold text-grad-brand hover:opacity-80"
             >
-              Regenerate
+              {t("Regenerate")}
             </button>
           </div>
           {required ? (
             <p className="text-xs text-muted">
-              Two-factor authentication is required for your role, so it can&apos;t be turned off.
+              {t("Two-factor authentication is required for your role, so it can't be turned off.")}
             </p>
           ) : (
             <button
@@ -1949,7 +2002,7 @@ export function MfaCard() {
               }}
               className="btn-secondary w-full"
             >
-              Disable two-factor authentication
+              {t("Disable two-factor authentication")}
             </button>
           )}
         </div>
@@ -1958,8 +2011,9 @@ export function MfaCard() {
       {regenerating && (
         <div className="space-y-4">
           <p className="text-sm text-secondary">
-            Enter a current authenticator code to issue new recovery codes. This invalidates your
-            old codes.
+            {t(
+              "Enter a current authenticator code to issue new recovery codes. This invalidates your old codes.",
+            )}
           </p>
           {codeInput}
           <div className="flex gap-2">
@@ -1968,7 +2022,7 @@ export function MfaCard() {
               className="btn-primary flex-1"
               disabled={code.length < 6}
             >
-              Regenerate codes
+              {t("Regenerate codes")}
             </button>
             <button
               onClick={() => {
@@ -1978,7 +2032,7 @@ export function MfaCard() {
               }}
               className="btn-secondary flex-1"
             >
-              Cancel
+              {t("Cancel")}
             </button>
           </div>
         </div>
@@ -1987,12 +2041,13 @@ export function MfaCard() {
       {disabling && (
         <div className="space-y-4">
           <p className="text-sm text-secondary">
-            To turn two-factor authentication off, enter your password and a current authenticator
-            code. You will be signed out.
+            {t(
+              "To turn two-factor authentication off, enter your password and a current authenticator code. You will be signed out.",
+            )}
           </p>
           <div>
             <label htmlFor="mfa-off-password" className="form-label">
-              Password
+              {t("Password")}
             </label>
             <PasswordInput
               id="mfa-off-password"
@@ -2003,7 +2058,7 @@ export function MfaCard() {
             />
           </div>
           <div>
-            <span className="form-label">Authenticator code</span>
+            <span className="form-label">{t("Authenticator code")}</span>
             {codeInput}
           </div>
           <div className="flex gap-2">
@@ -2012,7 +2067,7 @@ export function MfaCard() {
               className="btn-primary flex-1"
               disabled={code.length < 6 || password.length === 0}
             >
-              Disable
+              {t("Disable")}
             </button>
             <button
               onClick={() => {
@@ -2023,7 +2078,7 @@ export function MfaCard() {
               }}
               className="btn-secondary flex-1"
             >
-              Cancel
+              {t("Cancel")}
             </button>
           </div>
         </div>
@@ -2071,17 +2126,18 @@ function SessionsTab() {
           <MonitorSmartphone size={18} className="text-white" />
         </div>
         <div>
-          <h3 className="text-lg font-bold text-primary">Devices &amp; sessions</h3>
+          <h3 className="text-lg font-bold text-primary">{t("Devices & sessions")}</h3>
           <p className="text-sm text-secondary">
-            Every device signed in to your account: what it is, its IP address, and the cookies it
-            keeps. Revoke anything you don&apos;t recognize.
+            {t(
+              "Every device signed in to your account: what it is, its IP address, and the cookies it keeps. Revoke anything you don't recognize.",
+            )}
           </p>
         </div>
       </div>
 
       {q.isLoading ? (
         <div className="flex items-center gap-2 text-sm text-secondary">
-          <Loader2 size={15} className="animate-spin" /> Loading sessions…
+          <Loader2 size={15} className="animate-spin" /> {t("Loading sessions…")}
         </div>
       ) : (
         <div className="space-y-2">
@@ -2103,7 +2159,7 @@ function SessionsTab() {
           className="btn-secondary w-full inline-flex items-center justify-center gap-1.5"
         >
           <LogOut size={15} />{" "}
-          {revokeOthers.isPending ? "Signing out…" : "Sign out all other devices"}
+          {revokeOthers.isPending ? t("Signing out…") : t("Sign out all other devices")}
         </button>
       )}
     </div>

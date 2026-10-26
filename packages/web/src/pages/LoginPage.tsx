@@ -18,6 +18,7 @@ import riceLogo from "../assets/Rice_Logo.svg";
 import { enterApp, safeNext, withNext } from "../utils/next";
 import { serverUnreachableMessage, warmUpApi } from "../services/warmUp";
 import AuthLoadingScreen from "../components/AuthLoadingScreen";
+import { t } from "../i18n";
 
 export default function LoginPage() {
   // Boot a sleeping API while the person types, not after they press Sign in.
@@ -48,10 +49,12 @@ export default function LoginPage() {
   const idleSignedOut = searchParams.get("reason") === "idle";
   // Signed out by closing the mill's account (Settings > My Profile).
   const closedNotices: Record<string, string> = {
-    "account-paused":
+    "account-paused": t(
       "The account is paused and everyone is signed out. Sign in to switch it back on.",
-    "account-deletion":
+    ),
+    "account-deletion": t(
       "Your request to delete the account is in, and everyone is signed out. You can still sign in to download the mill's data or take the request back.",
+    ),
   };
   const closedNotice = closedNotices[searchParams.get("reason") ?? ""];
   // Where to go once signed in, if it's a page that may ask (/retrieve-data).
@@ -90,7 +93,7 @@ export default function LoginPage() {
       setLoading(false);
       setError(
         serverUnreachableMessage(err) ??
-          (err.response?.data?.detail || "Invalid username or password."),
+          (err.response?.data?.detail || t("Invalid username or password.")),
       );
       // A permanent lockout can only be cleared by resetting the password.
       const code = err.response?.data?.code;
@@ -109,7 +112,7 @@ export default function LoginPage() {
     } catch (err: any) {
       setHelp({
         state: "error",
-        text: err.response?.data?.detail || "Couldn't send that. Try again in a little while.",
+        text: err.response?.data?.detail || t("Couldn't send that. Try again in a little while."),
       });
     }
   };
@@ -127,10 +130,11 @@ export default function LoginPage() {
       const status = err.response?.status;
       setError(
         serverUnreachableMessage(err) ??
-          (err.response?.data?.detail || "Invalid authentication code."),
+          (err.response?.data?.detail || t("Invalid authentication code.")),
       );
       // An expired/consumed challenge means starting over from the password step.
-      if (status === 401 && err.response?.data?.detail?.includes("challenge")) {
+      const said: string | undefined = err.response?.data?.detail_en ?? err.response?.data?.detail;
+      if (status === 401 && said?.includes("challenge")) {
         setMfaChallenge(null);
         setMfaCode("");
       }
@@ -146,7 +150,7 @@ export default function LoginPage() {
     } catch (err: any) {
       setLoading(false);
       setError(
-        serverUnreachableMessage(err) ?? (err.response?.data?.detail || "Google login failed."),
+        serverUnreachableMessage(err) ?? (err.response?.data?.detail || t("Google login failed.")),
       );
     }
   };
@@ -155,7 +159,7 @@ export default function LoginPage() {
     <div className="auth-viewport w-full grid lg:grid-cols-2 relative overflow-hidden">
       {/* Signing in shows a loading page, not a busy button: it opens the app, or
           lifts to show why not. */}
-      {loading && <AuthLoadingScreen label={mfaChallenge ? "Verifying…" : "Signing in…"} />}
+      {loading && <AuthLoadingScreen label={mfaChallenge ? t("Verifying…") : t("Signing in…")} />}
       {/* LEFT — marketing */}
       <div className="relative hidden lg:flex flex-col justify-between p-12 overflow-hidden">
         <div
@@ -181,32 +185,33 @@ export default function LoginPage() {
             <div className="h-12 w-12 rounded-xl bg-white/15 grid place-items-center ring-1 ring-white/30">
               <img
                 src={riceLogo}
-                alt="Oraiza"
+                alt={t("Oraiza")}
                 className="h-full w-full object-contain brightness-0 invert"
               />
             </div>
-            <p className="text-lg font-bold tracking-tight">Oraiza</p>
+            <p className="text-lg font-bold tracking-tight">{t("Oraiza")}</p>
           </Link>
         </div>
 
         <div className="relative text-white max-w-md">
           <h2 className="text-4xl xl:text-5xl font-bold leading-[1.05] tracking-tight">
-            Run your mill
+            {t("Run your mill")}
             <br />
             <span className="bg-gradient-to-r from-white via-cyan-200 to-emerald-200 bg-clip-text text-transparent">
-              like the future.
+              {t("like the future.")}
             </span>
           </h2>
           <p className="mt-5 text-white text-base leading-relaxed">
-            The modern ERP built for Philippine rice millers. Track palay, milling, inventory, and
-            P&amp;L — online or offline, on any device.
+            {t(
+              "The modern ERP built for Philippine rice millers. Track palay, milling, inventory, and P&L — online or offline, on any device.",
+            )}
           </p>
 
           <div className="mt-10 grid gap-3">
             {[
-              { icon: Wifi, label: "Works offline · syncs when you reconnect" },
-              { icon: ShieldCheck, label: "NFA & DA-ready compliance reports" },
-              { icon: Building2, label: "Single or multi-branch out of the box" },
+              { icon: Wifi, label: t("Works offline · syncs when you reconnect") },
+              { icon: ShieldCheck, label: t("NFA & DA-ready compliance reports") },
+              { icon: Building2, label: t("Single or multi-branch out of the box") },
             ].map(({ icon: Icon, label }) => (
               <div key={label} className="flex items-center gap-3 text-base text-white font-medium">
                 <div className="h-9 w-9 rounded-lg bg-white/15 grid place-items-center ring-1 ring-white/25">
@@ -219,7 +224,9 @@ export default function LoginPage() {
         </div>
 
         <p className="relative text-sm text-white/75">
-          © {new Date().getFullYear()} Oraiza by K Systematics
+          {t("© {{getFullYear}} Oraiza by K Systematics", {
+            getFullYear: new Date().getFullYear(),
+          })}
         </p>
       </div>
 
@@ -237,7 +244,7 @@ export default function LoginPage() {
             <ArrowLeft size={18} />
             <ArrowLeft size={18} />
           </span>
-          Back
+          {t("Back")}
         </button>
 
         <div className="w-full max-w-sm animate-grad-fade-up">
@@ -248,22 +255,22 @@ export default function LoginPage() {
             >
               <img
                 src={riceLogo}
-                alt="Oraiza"
+                alt={t("Oraiza")}
                 className="h-full w-full object-contain brightness-0 invert"
               />
             </Link>
-            <p className="text-lg font-bold tracking-tight text-primary">Oraiza</p>
+            <p className="text-lg font-bold tracking-tight text-primary">{t("Oraiza")}</p>
           </div>
 
           <h1 className="text-3xl font-bold tracking-tight text-primary">
-            {mfaChallenge ? "Two-factor authentication" : "Welcome back"}
+            {mfaChallenge ? t("Two-factor authentication") : t("Welcome back")}
           </h1>
           <p className="mt-2 text-base text-secondary">
             {mfaChallenge
               ? useBackupCode
-                ? "Enter one of your saved backup codes."
-                : "Enter the 6-digit code from your authenticator app."
-              : "Sign in to continue to your dashboard."}
+                ? t("Enter one of your saved backup codes.")
+                : t("Enter the 6-digit code from your authenticator app.")
+              : t("Sign in to continue to your dashboard.")}
           </p>
 
           {closedNotice && !mfaChallenge && (
@@ -278,7 +285,7 @@ export default function LoginPage() {
           {idleSignedOut && !mfaChallenge && (
             <div className="mt-6 flex items-start gap-2 px-3 py-2.5 rounded-xl bg-sky-500/15 ring-1 ring-inset ring-sky-500/40 text-sm font-medium text-sky-700 dark:text-sky-300">
               <Clock size={16} className="mt-0.5 shrink-0" />
-              <span>You were signed out due to inactivity. Please sign in again.</span>
+              <span>{t("You were signed out due to inactivity. Please sign in again.")}</span>
             </div>
           )}
 
@@ -286,7 +293,7 @@ export default function LoginPage() {
             <form onSubmit={handleMfaVerify} className="mt-8 space-y-5">
               <div>
                 <label className="form-label">
-                  {useBackupCode ? "Backup code" : "Authentication code"}
+                  {useBackupCode ? t("Backup code") : t("Authentication code")}
                 </label>
                 {useBackupCode ? (
                   <input
@@ -324,7 +331,7 @@ export default function LoginPage() {
                 className="btn-primary w-full"
                 disabled={loading || mfaCode.replace(/\s/g, "").length < 6}
               >
-                {loading ? "Verifying…" : "Verify"}
+                {loading ? t("Verifying…") : t("Verify")}
               </button>
 
               <button
@@ -336,7 +343,9 @@ export default function LoginPage() {
                   setError("");
                 }}
               >
-                {useBackupCode ? "Use authenticator app instead" : "Use a backup code instead"}
+                {useBackupCode
+                  ? t("Use authenticator app instead")
+                  : t("Use a backup code instead")}
               </button>
 
               <button
@@ -349,13 +358,13 @@ export default function LoginPage() {
                   setError("");
                 }}
               >
-                ← Back to sign in
+                {t("← Back to sign in")}
               </button>
             </form>
           ) : (
             <form onSubmit={handleLogin} className="mt-8 space-y-5">
               <div>
-                <label className="form-label">Username</label>
+                <label className="form-label">{t("Username")}</label>
                 <input
                   className="input"
                   value={username}
@@ -368,13 +377,13 @@ export default function LoginPage() {
               <div>
                 <div className="flex items-center justify-between mb-1.5">
                   <label className="form-label" style={{ marginBottom: 0 }}>
-                    Password
+                    {t("Password")}
                   </label>
                   <Link
                     to="/forgot-password"
                     className="text-xs font-semibold text-muted hover:text-primary transition-colors"
                   >
-                    Forgot?
+                    {t("Forgot?")}
                   </Link>
                 </div>
                 <PasswordInput
@@ -398,7 +407,7 @@ export default function LoginPage() {
                       to="/forgot-password"
                       className="self-start font-semibold underline underline-offset-2 hover:opacity-80"
                     >
-                      Reset your password to unlock →
+                      {t("Reset your password to unlock →")}
                     </Link>
                   )}
                 </div>
@@ -406,20 +415,20 @@ export default function LoginPage() {
 
               {error && locked && (
                 <section
-                  aria-label="Locked out?"
+                  aria-label={t("Locked out?")}
                   className="space-y-3 rounded-xl bg-slate-500/10 px-3 py-3 text-sm text-secondary ring-1 ring-inset ring-slate-500/30"
                 >
                   <p className="flex items-center gap-2 font-semibold text-primary">
-                    <LifeBuoy size={16} aria-hidden /> Locked out?
+                    <LifeBuoy size={16} aria-hidden /> {t("Locked out?")}
                   </p>
                   <p>
-                    <strong>Employee:</strong> ask your Boss to give you a temporary password from
-                    the Users page.
+                    <strong>{t("Employee:")}</strong>{" "}
+                    {t("ask your Boss to give you a temporary password from the Users page.")}
                   </p>
                   <div className="space-y-2">
                     <p>
-                      <strong>Boss:</strong> email the admin, who will give you a temporary
-                      password.
+                      <strong>{t("Boss:")}</strong>{" "}
+                      {t("email the admin, who will give you a temporary password.")}
                     </p>
                     <button
                       type="button"
@@ -429,7 +438,7 @@ export default function LoginPage() {
                       }
                       className="btn-secondary w-full"
                     >
-                      {help.state === "sending" ? "Sending…" : "Email the admin"}
+                      {help.state === "sending" ? t("Sending…") : t("Email the admin")}
                     </button>
                     {(help.state === "sent" || help.state === "error") && (
                       <p
@@ -448,7 +457,7 @@ export default function LoginPage() {
               )}
 
               <button type="submit" className="btn-primary w-full" disabled={loading || lockedOut}>
-                {loading ? "Signing in…" : "Sign in"}
+                {loading ? t("Signing in…") : t("Sign in")}
               </button>
 
               {/* Google sign-in only when it is set up: see googleSignIn.ts. */}
@@ -456,7 +465,7 @@ export default function LoginPage() {
                 <>
                   <div className="relative flex items-center py-2">
                     <div className="flex-grow border-t border-slate-200 dark:border-slate-800"></div>
-                    <span className="flex-shrink-0 mx-4 text-sm text-secondary">or</span>
+                    <span className="flex-shrink-0 mx-4 text-sm text-secondary">{t("or")}</span>
                     <div className="flex-grow border-t border-slate-200 dark:border-slate-800"></div>
                   </div>
 
@@ -488,7 +497,7 @@ export default function LoginPage() {
                           d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
                         />
                       </svg>
-                      Continue with Google
+                      {t("Continue with Google")}
                     </div>
                     {/* Invisible GIS button — real clickable element */}
                     <div
@@ -497,7 +506,7 @@ export default function LoginPage() {
                     >
                       <GoogleLogin
                         onSuccess={handleGoogleSuccess}
-                        onError={() => setError("Google login failed.")}
+                        onError={() => setError(t("Google login failed."))}
                         useOneTap
                         width={400}
                         size="large"
@@ -510,21 +519,21 @@ export default function LoginPage() {
           )}
 
           <p className="mt-8 text-center text-base text-secondary">
-            New to Oraiza?{" "}
+            {t("New to Oraiza?")}{" "}
             <Link
               to={withNext("/signup", next)}
               className="font-semibold text-grad-brand hover:opacity-80 transition-opacity"
             >
-              Create an account →
+              {t("Create an account →")}
             </Link>
           </p>
 
           <nav className="mt-6 flex flex-wrap justify-center gap-x-4 gap-y-1 text-xs text-muted">
             <Link to="/legal/terms" className="link">
-              Terms
+              {t("Terms")}
             </Link>
             <Link to="/legal/privacy" className="link">
-              Privacy
+              {t("Privacy")}
             </Link>
           </nav>
         </div>

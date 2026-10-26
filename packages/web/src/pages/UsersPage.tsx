@@ -14,6 +14,7 @@ import { useCurrentPlan } from "../hooks/useFeature";
 import Select from "../components/Select";
 import ConfirmDialog from "../components/ConfirmDialog";
 import RoleAccessPanel, { ROLE_ACCESS_QUERY_KEY } from "../components/RoleAccessPanel";
+import { currentLanguage, DEFAULT_LANGUAGE, t } from "../i18n";
 
 const FIELD_LABEL = "block text-sm font-medium text-gray-700 dark:text-slate-200 mb-1";
 const ERROR_TEXT = "text-sm font-medium text-rose-600 dark:text-rose-400";
@@ -21,19 +22,23 @@ const ERROR_TEXT = "text-sm font-medium text-rose-600 dark:text-rose-400";
 const errorText = (e: any, fallback: string) => e?.response?.data?.detail || fallback;
 
 const roleOptions = (roles: readonly { id: number; label: string }[]) =>
-  roles.map((r) => ({ value: String(r.id), label: r.label }));
+  roles.map((r) => ({ value: String(r.id), label: t(r.label) }));
 
 /** The role picker's value for someone: a built-in role's id, or a made-up one's. */
 const roleValueOf = (u: any) =>
   u?.custom_role_id ? `${CUSTOM_ROLE}${u.custom_role_id}` : String(u?.role_id ?? u?.role?.id ?? "");
 
-const withArticle = (label: string) => `${/^[aeiou]/i.test(label) ? "an" : "a"} ${label}`;
+/** "a Cashier", "an Admin" in English; other languages take the name as it is. */
+const withArticle = (label: string) =>
+  currentLanguage().code === DEFAULT_LANGUAGE
+    ? `${/^[aeiou]/i.test(label) ? "an" : "a"} ${label}`
+    : label;
 
 // Making someone a Boss or an Admin hands over control of the mill, so the
 // person doing it confirms with their own password (and an authenticator code,
 // if they use one). So does any role that can manage the people here (Users,
 // with edit). The server asks for the same.
-const CONFIRMED_ROLES: Record<string, string> = { owner: "a Boss", admin: "an Admin" };
+const CONFIRMED_ROLES: Record<string, string> = { owner: t("a Boss"), admin: t("an Admin") };
 const EMPTY_PROOF: Proof = { password: "", code: "" };
 /** A new user starts with no role: "-- Select Role --" until one is chosen. */
 const EMPTY_USER_FORM = { username: "", full_name: "", email: "", password: "", role_id: "" };
@@ -46,13 +51,13 @@ type Asking = { form: "create" | "edit"; error?: string };
 function ConfirmedNote({ proven, onAsk }: { proven: boolean; onAsk: () => void }) {
   return proven ? (
     <p className="mt-1 inline-flex items-center gap-1 text-xs font-medium text-emerald-600 dark:text-emerald-400">
-      <ShieldCheck size={13} aria-hidden /> You confirmed it is you.
+      <ShieldCheck size={13} aria-hidden /> {t("You confirmed it is you.")}
     </p>
   ) : (
     <p className="mt-1 text-xs text-secondary">
-      This role needs your confirmation.{" "}
+      {t("This role needs your confirmation.")}{" "}
       <button type="button" onClick={onAsk} className="font-semibold text-emerald-600 underline">
-        Confirm now
+        {t("Confirm now")}
       </button>
     </p>
   );
@@ -93,7 +98,7 @@ export default function UsersPage() {
   const askAgain = (e: any, formName: "create" | "edit") => {
     if (e?.response?.data?.code !== "confirm_failed") return false;
     setProof(EMPTY_PROOF);
-    setAsking({ form: formName, error: errorText(e, "That didn't work.") });
+    setAsking({ form: formName, error: errorText(e, t("That didn't work.")) });
     return true;
   };
 
@@ -121,7 +126,7 @@ export default function UsersPage() {
       setProof(EMPTY_PROOF);
     },
     onError: (e) => {
-      if (!askAgain(e, "edit")) setActionError(errorText(e, "Couldn't save that change."));
+      if (!askAgain(e, "edit")) setActionError(errorText(e, t("Couldn't save that change.")));
     },
   });
 
@@ -154,7 +159,7 @@ export default function UsersPage() {
     const name = roleNameOf(value);
     if (CONFIRMED_ROLES[name]) return CONFIRMED_ROLES[name];
     const builtIn = roleAccess?.roles.find((r) => r.role === name);
-    return builtIn?.access.users === "full" ? withArticle(roleLabel(name)) : undefined;
+    return builtIn?.access.users === "full" ? withArticle(t(roleLabel(name))) : undefined;
   };
   const usesCode = !!me?.mfa_enabled;
   const createWhat = confirmWhat(form.role_id);
@@ -232,10 +237,11 @@ export default function UsersPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between gap-3">
         <div>
-          <h2 className="text-xl font-bold text-gray-900 dark:text-slate-100">Users</h2>
+          <h2 className="text-xl font-bold text-gray-900 dark:text-slate-100">{t("Users")}</h2>
           <p className="text-sm text-gray-500 dark:text-slate-400">
-            Give each person their own login. Their role decides which pages they see and what they
-            can change.
+            {t(
+              "Give each person their own login. Their role decides which pages they see and what they can change.",
+            )}
           </p>
           <p
             className={`mt-1.5 text-sm font-semibold ${
@@ -243,9 +249,16 @@ export default function UsersPage() {
             }`}
           >
             {seatLimit === null
-              ? `${seatsUsed} ${seatsUsed === 1 ? "user" : "users"}. Your plan has no user limit.`
-              : `${seatsUsed} of ${seatLimit} users`}
-            {seatsFull && ". Every seat is taken: upgrade your plan to add more."}
+              ? t("{{count}} users. Your plan has no user limit.", { count: seatsUsed })
+              : seatsFull
+                ? t(
+                    "{{seatsUsed}} of {{seatLimit}} users. Every seat is taken: upgrade your plan to add more.",
+                    {
+                      seatsUsed,
+                      seatLimit,
+                    },
+                  )
+                : t("{{seatsUsed}} of {{seatLimit}} users", { seatsUsed, seatLimit })}
           </p>
         </div>
         <button
@@ -256,19 +269,19 @@ export default function UsersPage() {
           }}
           className="btn-primary shrink-0"
         >
-          <Plus size={16} /> Add User
+          <Plus size={16} /> {t("Add User")}
         </button>
       </div>
 
       {showForm && (
         <div className="card space-y-4">
-          <h3 className="font-semibold text-gray-900 dark:text-slate-100">New User</h3>
+          <h3 className="font-semibold text-gray-900 dark:text-slate-100">{t("New User")}</h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {[
-              { label: "Username", key: "username", type: "text" },
-              { label: "Full Name", key: "full_name", type: "text" },
-              { label: "Email", key: "email", type: "email" },
-              { label: "Password", key: "password", type: "password" },
+              { label: t("Username"), key: "username", type: "text" },
+              { label: t("Full Name"), key: "full_name", type: "text" },
+              { label: t("Email"), key: "email", type: "email" },
+              { label: t("Password"), key: "password", type: "password" },
             ].map(({ label, key, type }) => (
               <div key={key}>
                 <label className={FIELD_LABEL}>{label}</label>
@@ -291,13 +304,13 @@ export default function UsersPage() {
             ))}
             <div>
               <label htmlFor="new-user-role" className={FIELD_LABEL}>
-                Role
+                {t("Role")}
               </label>
               <Select
                 id="new-user-role"
                 value={form.role_id}
                 onChange={pickCreateRole}
-                options={[{ value: "", label: "-- Select Role --" }, ...roleChoices]}
+                options={[{ value: "", label: t("-- Select Role --") }, ...roleChoices]}
               />
               {createWhat && (
                 <ConfirmedNote proven={proven} onAsk={() => setAsking({ form: "create" })} />
@@ -306,7 +319,7 @@ export default function UsersPage() {
           </div>
           {createUser.isError && (
             <p className={ERROR_TEXT}>
-              {errorText(createUser.error, "Couldn't create that user.")}
+              {errorText(createUser.error, t("Couldn't create that user."))}
             </p>
           )}
           <div className="flex gap-2 justify-end">
@@ -317,14 +330,14 @@ export default function UsersPage() {
               }}
               className="btn-secondary"
             >
-              Cancel
+              {t("Cancel")}
             </button>
             <button
               onClick={createNow}
               className="btn-primary"
               disabled={createUser.isPending || form.role_id === ""}
             >
-              {createUser.isPending ? "Creating…" : "Create User"}
+              {createUser.isPending ? t("Creating…") : t("Create User")}
             </button>
           </div>
         </div>
@@ -333,12 +346,12 @@ export default function UsersPage() {
       {editing && (
         <div className="card space-y-4">
           <h3 className="font-semibold text-gray-900 dark:text-slate-100">
-            Edit <span className="font-mono text-sm">{editing.username}</span>
-            {editing.id === me?.id && <span className="text-muted font-normal"> (you)</span>}
+            {t("Edit")} <span className="font-mono text-sm">{editing.username}</span>
+            {editing.id === me?.id && <span className="text-muted font-normal"> {t("(you)")}</span>}
           </h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className={FIELD_LABEL}>Full Name</label>
+              <label className={FIELD_LABEL}>{t("Full Name")}</label>
               <input
                 className="input"
                 value={editForm.full_name}
@@ -346,7 +359,7 @@ export default function UsersPage() {
               />
             </div>
             <div>
-              <label className={FIELD_LABEL}>Email</label>
+              <label className={FIELD_LABEL}>{t("Email")}</label>
               <input
                 type="email"
                 className="input"
@@ -356,7 +369,7 @@ export default function UsersPage() {
             </div>
             <div>
               <label htmlFor="edit-user-role" className={FIELD_LABEL}>
-                Role
+                {t("Role")}
               </label>
               <Select
                 id="edit-user-role"
@@ -366,7 +379,7 @@ export default function UsersPage() {
                 options={editing.id === me?.id ? allRoleOptions : roleChoices}
               />
               {editing.id === me?.id && (
-                <p className="text-xs text-muted mt-1">You can't change your own role.</p>
+                <p className="text-xs text-muted mt-1">{t("You can't change your own role.")}</p>
               )}
               {editWhat && (
                 <ConfirmedNote proven={proven} onAsk={() => setAsking({ form: "edit" })} />
@@ -382,10 +395,10 @@ export default function UsersPage() {
               }}
               className="btn-secondary"
             >
-              Cancel
+              {t("Cancel")}
             </button>
             <button onClick={saveEdit} className="btn-primary" disabled={updateUser.isPending}>
-              {updateUser.isPending ? "Saving…" : "Save changes"}
+              {updateUser.isPending ? t("Saving…") : t("Save changes")}
             </button>
           </div>
         </div>
@@ -397,14 +410,16 @@ export default function UsersPage() {
         <table className="w-full text-sm">
           <thead className="bg-gray-50 dark:bg-slate-900/50 border-b border-gray-200 dark:border-slate-700">
             <tr>
-              {["Username", "Full Name", "Email", "Role", "Status", ""].map((h, i) => (
-                <th
-                  key={i}
-                  className="px-4 py-3 text-left font-medium text-gray-600 dark:text-slate-300"
-                >
-                  {h}
-                </th>
-              ))}
+              {[t("Username"), t("Full Name"), t("Email"), t("Role"), t("Status"), ""].map(
+                (h, i) => (
+                  <th
+                    key={i}
+                    className="px-4 py-3 text-left font-medium text-gray-600 dark:text-slate-300"
+                  >
+                    {h}
+                  </th>
+                ),
+              )}
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100 dark:divide-slate-700">
@@ -418,17 +433,17 @@ export default function UsersPage() {
                   <td className="px-4 py-3 font-mono text-xs">{u.username}</td>
                   <td className="px-4 py-3 font-medium">
                     {u.full_name}
-                    {isMe && <span className="ml-1 font-normal text-muted">(you)</span>}
+                    {isMe && <span className="ml-1 font-normal text-muted">{t("(you)")}</span>}
                   </td>
                   <td className="px-4 py-3 text-gray-500 dark:text-slate-400">{u.email || "—"}</td>
                   <td className="px-4 py-3">
-                    {u.custom_role?.name || roleLabel(u.role?.name) || "—"}
+                    {u.custom_role?.name || (u.role?.name ? t(roleLabel(u.role.name)) : "—")}
                   </td>
                   <td className="px-4 py-3">
                     {u.is_active ? (
-                      <span className="badge-green">Active</span>
+                      <span className="badge-green">{t("Active")}</span>
                     ) : (
-                      <span className="badge-red">Removed</span>
+                      <span className="badge-red">{t("Removed")}</span>
                     )}
                   </td>
                   <td className="px-4 py-3">
@@ -439,9 +454,9 @@ export default function UsersPage() {
                             type="button"
                             onClick={() => startEdit(u)}
                             className="btn-ghost !px-2 !py-1.5 text-xs"
-                            title={`Edit ${u.username}`}
+                            title={t("Edit {{username}}", { username: u.username })}
                           >
-                            <Pencil size={14} /> Edit
+                            <Pencil size={14} /> {t("Edit")}
                           </button>
                         )}
                         {/* Only the Boss can: it's how a locked-out employee gets back
@@ -451,22 +466,26 @@ export default function UsersPage() {
                             type="button"
                             onClick={() => setTempFor(u)}
                             className="btn-ghost !px-2 !py-1.5 text-xs"
-                            title={`Give ${u.username} a temporary password`}
-                            aria-label={`Give ${u.username} a temporary password`}
+                            title={t("Give {{username}} a temporary password", {
+                              username: u.username,
+                            })}
+                            aria-label={t("Give {{username}} a temporary password", {
+                              username: u.username,
+                            })}
                           >
-                            <KeyRound size={14} /> Temporary password
+                            <KeyRound size={14} /> {t("Temporary password")}
                           </button>
                         )}
                         {/* Your own account can't be removed or reset; keep their slots so
                             the Edit buttons line up down the column. */}
                         {iAmBoss && u.is_active && isMe && (
                           <span aria-hidden className="btn-ghost invisible !px-2 !py-1.5 text-xs">
-                            <KeyRound size={14} /> Temporary password
+                            <KeyRound size={14} /> {t("Temporary password")}
                           </span>
                         )}
                         {u.is_active && isMe && (
                           <span aria-hidden className="btn-ghost invisible !px-2 !py-1.5 text-xs">
-                            <Trash2 size={14} /> Remove
+                            <Trash2 size={14} /> {t("Remove")}
                           </span>
                         )}
                         {u.is_active && !isMe && (
@@ -475,9 +494,9 @@ export default function UsersPage() {
                             onClick={() => remove(u)}
                             disabled={updateUser.isPending}
                             className="btn-ghost !px-2 !py-1.5 text-xs text-rose-600 hover:text-rose-700 dark:text-rose-400"
-                            title={`Remove ${u.username}`}
+                            title={t("Remove {{username}}", { username: u.username })}
                           >
-                            <Trash2 size={14} /> Remove
+                            <Trash2 size={14} /> {t("Remove")}
                           </button>
                         )}
                         {!u.is_active && (
@@ -488,9 +507,9 @@ export default function UsersPage() {
                             }
                             disabled={updateUser.isPending}
                             className="btn-ghost !px-2 !py-1.5 text-xs"
-                            title={`Restore ${u.username}`}
+                            title={t("Restore {{username}}", { username: u.username })}
                           >
-                            <RotateCcw size={14} /> Restore
+                            <RotateCcw size={14} /> {t("Restore")}
                           </button>
                         )}
                       </div>
@@ -502,7 +521,7 @@ export default function UsersPage() {
             {users.length === 0 && (
               <tr>
                 <td colSpan={6} className="px-4 py-8 text-center text-gray-400">
-                  No users yet
+                  {t("No users yet")}
                 </td>
               </tr>
             )}
@@ -523,7 +542,7 @@ export default function UsersPage() {
 
       <ConfirmItsYou
         open={!!asking}
-        what={confirmWhat(asking?.form === "edit" ? editForm.role_id : form.role_id) ?? "a Boss"}
+        what={confirmWhat(asking?.form === "edit" ? editForm.role_id : form.role_id) ?? t("a Boss")}
         usesCode={usesCode}
         error={asking?.error}
         onConfirm={(p) => {
@@ -537,15 +556,16 @@ export default function UsersPage() {
         open={!!removing}
         danger
         title={`Remove ${removing?.full_name || removing?.username}?`}
-        confirmLabel="Remove"
+        confirmLabel={t("Remove")}
         onCancel={() => setRemoving(null)}
         onConfirm={() => {
           if (removing) updateUser.mutate({ id: removing.id, body: { is_active: false } });
           setRemoving(null);
         }}
       >
-        They won't be able to sign in any more. Their past records stay, and you can restore them
-        later.
+        {t(
+          "They won't be able to sign in any more. Their past records stay, and you can restore them later.",
+        )}
       </ConfirmDialog>
     </div>
   );

@@ -2,6 +2,8 @@ import { Link } from "react-router-dom";
 import { AlertCircle, X, AlertOctagon } from "lucide-react";
 import { useBillingNoticeStore } from "../stores/billingNoticeStore";
 import { useAuthStore } from "../stores/authStore";
+import { t } from "../i18n";
+import { tx } from "../i18n/tx";
 
 const DAYS = 1000 * 60 * 60 * 24;
 
@@ -24,7 +26,7 @@ function StatusBanner() {
   if (!sub) {
     return (
       <Bar tone="rose" Icon={AlertOctagon}>
-        <span>Your company doesn't have a subscription yet. Choose a plan to start.</span>
+        <span>{t("Your company doesn't have a subscription yet. Choose a plan to start.")}</span>
       </Bar>
     );
   }
@@ -32,13 +34,15 @@ function StatusBanner() {
   if (sub.status === "expired" || sub.status === "cancelled" || sub.status === "past_due") {
     const label =
       sub.status === "expired"
-        ? "Your subscription has expired."
+        ? t("Your subscription has expired.")
         : sub.status === "cancelled"
-          ? "Your subscription has been cancelled."
-          : "Your subscription is past due.";
+          ? t("Your subscription has been cancelled.")
+          : t("Your subscription is past due.");
     return (
       <Bar tone="rose" Icon={AlertOctagon}>
-        <span>{label} Renew now to restore access.</span>
+        <span>
+          {label} {t("Renew now to restore access.")}
+        </span>
       </Bar>
     );
   }
@@ -48,7 +52,10 @@ function StatusBanner() {
     return (
       <Bar tone="amber" Icon={AlertCircle}>
         <span>
-          Your <b>{sub.name}</b> plan expires in {remaining} day{remaining === 1 ? "" : "s"}.
+          {tx("Your {{plan}} plan expires in {{count}} days.", {
+            plan: <b>{sub.name}</b>,
+            count: remaining,
+          })}
         </span>
       </Bar>
     );
@@ -81,7 +88,7 @@ function Bar({
       <Icon size={16} className={`${iconCls} shrink-0`} />
       <span className="flex-1">{children}</span>
       <Link to="/settings" className={`underline font-medium whitespace-nowrap ${linkCls}`}>
-        View billing
+        {t("View billing")}
       </Link>
     </div>
   );
@@ -104,12 +111,12 @@ function TransientBanner() {
         onClick={dismiss}
         className="text-amber-800 dark:text-amber-200 underline hover:text-amber-900 dark:hover:text-amber-200 font-medium whitespace-nowrap"
       >
-        View plans
+        {t("View plans")}
       </Link>
       <button
         onClick={dismiss}
         className="text-amber-700 dark:text-amber-300 hover:text-amber-900 dark:hover:text-amber-200"
-        aria-label="Dismiss"
+        aria-label={t("Dismiss")}
       >
         <X size={14} />
       </button>
