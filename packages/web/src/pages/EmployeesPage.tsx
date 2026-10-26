@@ -282,7 +282,7 @@ function EmployeeRow({
 export default function EmployeesPage() {
   const hasFeature = useFeature("employees");
   if (!hasFeature) {
-    return <UpgradeRequired feature="Employees" requires="Pro or Enterprise plan" />;
+    return <UpgradeRequired feature={t("Employees")} requires={t("Pro or Enterprise plan")} />;
   }
   return <EmployeesPageInner />;
 }

@@ -30,16 +30,16 @@ export type PlanName = "Basic" | "Pro" | "Enterprise";
 /** The first plan that includes each feature a lower plan lacks (migration
  *  019_plan_tiers), in the order the menu lists them. */
 export const FEATURE_PLAN: Record<string, PlanName> = {
-  milling: t("Basic"),
-  dispatch: t("Basic"),
-  drying_advisor: t("Basic"),
-  field_operators: t("Pro"),
-  cash_count: t("Pro"),
-  collections: t("Pro"),
-  employees: t("Pro"),
-  automations: t("Enterprise"),
+  milling: "Basic",
+  dispatch: "Basic",
+  drying_advisor: "Basic",
+  field_operators: "Pro",
+  cash_count: "Pro",
+  collections: "Pro",
+  employees: "Pro",
+  automations: "Enterprise",
 };
-export const PLAN_ORDER: PlanName[] = [t("Basic"), t("Pro"), t("Enterprise")];
+export const PLAN_ORDER: PlanName[] = ["Basic", "Pro", "Enterprise"];
 
 export type NavEntry = {
   to: string;

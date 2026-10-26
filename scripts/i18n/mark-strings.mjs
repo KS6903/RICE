@@ -35,7 +35,7 @@ const SKIP_FILES = new Set(skipList.files);
 
 /** JSX attributes whose string value is shown to people. */
 const TEXT_ATTR =
-  /^(aria-label|aria-description|aria-valuetext|alt|title|label|placeholder|sublabel|subtitle|emptyText|empty|confirmLabel|cancelLabel|okLabel|newPlaceholder|reason|hint|description|desc|text|message|tooltip|caption|heading|cta|prompt|body|blurb|summary|note|helper|helperText|error|warning|what|why|headline|detail|legend|unit|suffix|prefix|badge)$/;
+  /^(aria-label|aria-description|aria-valuetext|alt|title|label|placeholder|sublabel|subtitle|emptyText|empty|confirmLabel|cancelLabel|okLabel|newPlaceholder|reason|hint|description|desc|text|message|tooltip|caption|heading|cta|prompt|body|blurb|summary|note|helper|helperText|error|warning|what|why|headline|detail|legend|unit|suffix|prefix|badge|requires|feature)$/;
 
 /** Object properties whose string value is data or styling, never text. */
 const DATA_PROP =
