@@ -73,7 +73,7 @@ export default function InvoicePreviewModal({ order, onClose, onGenerate, pendin
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[70] flex items-center justify-center p-4"
+      className="dialog-viewport fixed inset-0 z-[70] flex items-center justify-center p-4"
       role="dialog"
       aria-modal="true"
       aria-labelledby="invoice-preview-title"
@@ -86,7 +86,7 @@ export default function InvoicePreviewModal({ order, onClose, onGenerate, pendin
       />
       <div
         data-testid="invoice-preview"
-        className="relative flex max-h-[92vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl bg-slate-100 shadow-2xl ring-1 ring-soft dark:bg-slate-900"
+        className="dialog-panel relative flex w-full max-w-2xl flex-col overflow-hidden rounded-2xl bg-slate-100 shadow-2xl ring-1 ring-soft dark:bg-slate-900"
       >
         <div className="flex items-center justify-between gap-3 px-5 py-3.5">
           <div className="flex items-center gap-2">
@@ -223,7 +223,7 @@ export default function InvoicePreviewModal({ order, onClose, onGenerate, pendin
           )}
           <div className="flex flex-wrap items-center justify-between gap-3">
             <p className="text-xs text-muted">Nothing is invoiced until you generate it.</p>
-            <div className="flex gap-2">
+            <div className="flex w-full flex-wrap gap-2 sm:w-auto">
               <button type="button" onClick={onClose} disabled={pending} className="btn-secondary">
                 Cancel
               </button>

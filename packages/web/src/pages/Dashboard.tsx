@@ -198,8 +198,8 @@ export default function Dashboard() {
               </p>
             </div>
 
-            <div className="grid grid-cols-2 gap-3 lg:gap-4 text-white">
-              <div className="rounded-2xl bg-white/15 ring-1 ring-white/25 backdrop-blur-md px-4 py-3 min-w-[10rem]">
+            <div className="grid grid-cols-1 min-[480px]:grid-cols-2 gap-3 lg:gap-4 text-white">
+              <div className="rounded-2xl bg-white/15 ring-1 ring-white/25 backdrop-blur-md px-4 py-3">
                 <p className="text-xs font-bold uppercase tracking-wide text-white/85">Revenue</p>
                 <p className="mt-1 text-xl font-bold">
                   {pnl ? `₱${Number(pnl.revenue).toLocaleString()}` : "—"}

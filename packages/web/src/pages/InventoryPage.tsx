@@ -185,7 +185,7 @@ export default function InventoryPage() {
         <div
           {...tabs.containerProps}
           title="Drag a tab to rearrange. On a touch screen, press and hold first."
-          className="flex items-center gap-1 p-1 rounded-xl glass overflow-x-auto"
+          className="tab-strip flex items-center gap-1 p-1 rounded-xl glass overflow-x-auto"
         >
           {orderedViews.map(({ key, label, icon: Icon }) => {
             const active = view === key;

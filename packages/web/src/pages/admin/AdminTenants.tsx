@@ -221,7 +221,7 @@ export default function AdminTenants() {
             {active.length} active · {inactive.length} deactivated
           </p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex w-full flex-wrap items-center gap-3 sm:w-auto">
           {sweep.isSuccess && (
             <span className="text-xs font-medium text-emerald-600 dark:text-emerald-400">
               {(sweep.data as any)?.data?.expired ?? 0} expired
@@ -236,13 +236,13 @@ export default function AdminTenants() {
             <ShieldOff size={14} />
             {sweep.isPending ? "Sweeping…" : "Sweep expired"}
           </button>
-          <div className="relative">
+          <div className="relative min-w-0 w-full sm:w-64">
             <Search
               size={16}
               className="absolute left-3 top-1/2 -translate-y-1/2 text-muted pointer-events-none"
             />
             <input
-              className="input pl-9 w-64"
+              className="input pl-9"
               placeholder="Search by name or email…"
               value={search}
               onChange={(e) => setSearch(e.target.value)}

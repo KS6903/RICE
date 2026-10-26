@@ -16,11 +16,11 @@ export default function AppShell() {
     <div className="app-viewport flex overflow-hidden">
       <PageLoadingBar />
       <Sidebar open={nav.open} onClose={() => nav.setOpen(false)} />
-      <div className="flex-1 flex flex-col min-w-0">
+      <div className="flex-1 flex flex-col min-w-0 min-h-0">
         <Header menuOpen={nav.open} onMenu={() => nav.setOpen(true)} />
         <VerifyEmailBanner />
         <BillingNoticeBanner />
-        <main className="flex-1 overflow-y-auto px-4 py-5 sm:px-6 sm:py-6 lg:px-8 lg:py-8">
+        <main className="app-main flex-1 overflow-y-auto py-5 sm:py-6 lg:py-8">
           <div className="mx-auto max-w-7xl animate-grad-fade-up">
             <SubscriptionGuard>
               <Outlet />

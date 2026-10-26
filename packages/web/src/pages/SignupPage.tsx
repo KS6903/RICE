@@ -171,7 +171,7 @@ export default function SignupPage() {
     // Desktop: exactly one screen tall, so the page itself never scrolls; only
     // the form panel would, in a window too short to fit it. Phones keep normal
     // scrolling so the on-screen keyboard can't hide the field being typed in.
-    <div className="min-h-screen w-full grid lg:grid-cols-2 lg:h-screen lg:grid-rows-[minmax(0,1fr)] relative overflow-hidden">
+    <div className="auth-viewport auth-fixed w-full grid lg:grid-cols-2 lg:grid-rows-[minmax(0,1fr)] relative overflow-hidden">
       {/* A loading page while the account is made: see LoginPage. */}
       {loading && <AuthLoadingScreen label="Creating your account…" />}
       {/* Back — shares LoginPage's .btn-back component (index.css). Positioned

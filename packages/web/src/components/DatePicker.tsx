@@ -3,6 +3,7 @@ import type { KeyboardEvent as ReactKeyboardEvent } from "react";
 import { createPortal } from "react-dom";
 import { Calendar, ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
 import { clsx } from "clsx";
+import { observeViewport, positionPopover } from "../utils/popoverPosition";
 import {
   addDays,
   addMonths,
@@ -42,14 +43,13 @@ type Props = {
   "data-testid"?: string;
 };
 
-const GAP = 6;
 const WIDTH = 288; // w-72
 const HEIGHT = 376;
 const WEEKDAYS = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
 const ISO = "yyyy-MM-dd";
 const YEARS_PER_PAGE = 12;
 
-type Place = { left: number; top?: number; bottom?: number };
+type Place = ReturnType<typeof positionPopover>;
 type View = "days" | "months" | "years";
 
 function parse(value: string | undefined): Date | null {
@@ -112,12 +112,7 @@ export default function DatePicker({
   const measure = () => {
     const r = triggerRef.current?.getBoundingClientRect();
     if (!r) return;
-    const left = Math.max(8, Math.min(r.left, window.innerWidth - WIDTH - 8));
-    const roomBelow = window.innerHeight - r.bottom;
-    const up = roomBelow < HEIGHT + GAP && r.top > roomBelow;
-    setPlace(
-      up ? { left, bottom: window.innerHeight - r.top + GAP } : { left, top: r.bottom + GAP },
-    );
+    setPlace(positionPopover(r, WIDTH, HEIGHT));
   };
 
   const openPanel = () => {
@@ -148,12 +143,10 @@ export default function DatePicker({
       if (!panelRef.current?.contains(t) && !triggerRef.current?.contains(t)) setOpen(false);
     };
     window.addEventListener("mousedown", onPointerDown);
-    window.addEventListener("scroll", measure, true);
-    window.addEventListener("resize", measure);
+    const stop = observeViewport(measure);
     return () => {
       window.removeEventListener("mousedown", onPointerDown);
-      window.removeEventListener("scroll", measure, true);
-      window.removeEventListener("resize", measure);
+      stop();
     };
     // measure only reads refs.
   }, [open]);
@@ -293,8 +286,8 @@ export default function DatePicker({
             id={dialogId}
             role="dialog"
             aria-label="Choose a date"
-            className="fixed z-[70] rounded-xl bg-white p-3 shadow-2xl ring-1 ring-soft animate-panel-in dark:bg-slate-900"
-            style={{ ...place, width: `min(${WIDTH}px, calc(100vw - 16px))` }}
+            className="fixed z-[70] overflow-y-auto overscroll-contain rounded-xl bg-white p-3 shadow-2xl ring-1 ring-soft animate-panel-in dark:bg-slate-900"
+            style={place}
             onKeyDown={onPanelKeyDown}
           >
             <div className="mb-2 flex items-center justify-between gap-1">

@@ -35,19 +35,19 @@ function todayIso(): string {
 export default function DateTimePicker({ value, onChange, id, disabled, className, label }: Props) {
   const [date, time] = split(value);
   return (
-    <div className={clsx("flex gap-2", className)}>
+    <div className={clsx("flex flex-wrap gap-2", className)}>
       <DatePicker
         id={id}
         aria-label={`${label} date`}
         disabled={disabled}
-        className="min-w-0 flex-1"
+        className="min-w-0 flex-1 basis-[10rem]"
         value={date}
         onChange={(d) => onChange(`${d}T${time || DEFAULT_TIME}`)}
       />
       <TimePicker
         aria-label={`${label} time`}
         disabled={disabled}
-        className="w-36 shrink-0"
+        className="min-w-0 flex-1 basis-[8rem]"
         value={time}
         onChange={(t) => onChange(`${date || todayIso()}T${t}`)}
       />

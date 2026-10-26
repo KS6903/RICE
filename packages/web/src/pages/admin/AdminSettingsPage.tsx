@@ -726,16 +726,16 @@ export default function AdminSettingsPage() {
         </div>
       </div>
 
-      <div className="flex flex-col md:flex-row gap-6">
-        <aside className="w-full md:w-52 shrink-0">
-          <nav className="flex md:flex-col gap-1 overflow-x-auto pb-2 md:pb-0">
+      <div className="flex flex-col xl:flex-row gap-6">
+        <aside className="w-full xl:w-52 shrink-0 min-w-0">
+          <nav className="tab-strip flex xl:flex-col gap-1 overflow-x-auto pb-2 xl:pb-0">
             {tabs.map(({ key, label, icon: Icon }) => {
               const active = tab === key;
               return (
                 <button
                   key={key}
                   onClick={() => setTab(key)}
-                  className={clsx("nav-link w-full", active && "is-active")}
+                  className={clsx("nav-link whitespace-nowrap xl:w-full", active && "is-active")}
                 >
                   <Icon
                     size={16}

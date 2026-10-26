@@ -52,7 +52,7 @@ function Asking({ what, reason, usesCode, error, onConfirm, onCancel }: Props) {
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[80] grid place-items-center bg-black/40 p-4"
+      className="dialog-viewport fixed inset-0 z-[80] grid place-items-center bg-black/40 p-4"
       onMouseDown={(e) => {
         if (e.target === e.currentTarget) onCancel();
       }}
@@ -61,7 +61,7 @@ function Asking({ what, reason, usesCode, error, onConfirm, onCancel }: Props) {
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
-        className="card w-full max-w-md !bg-white dark:!bg-slate-900"
+        className="dialog-panel card w-full max-w-md overflow-y-auto !bg-white dark:!bg-slate-900"
       >
         <form
           className="space-y-4"

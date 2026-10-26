@@ -34,7 +34,7 @@ function ViewSwitch({ view, onChange }: { view: View; onChange: (v: View) => voi
     <div
       role="group"
       aria-label="Forecast range"
-      className="inline-flex rounded-xl bg-slate-500/10 p-0.5"
+      className="inline-flex max-w-full shrink-0 overflow-x-auto rounded-xl bg-slate-500/10 p-0.5"
       data-testid="weather-view-switch"
     >
       {options.map((o) => (
@@ -44,7 +44,7 @@ function ViewSwitch({ view, onChange }: { view: View; onChange: (v: View) => voi
           aria-pressed={view === o.id}
           onClick={() => onChange(o.id)}
           className={clsx(
-            "rounded-[0.65rem] px-3 py-1 text-xs font-semibold transition-colors",
+            "shrink-0 whitespace-nowrap rounded-[0.65rem] px-3 py-1 text-xs font-semibold transition-colors",
             view === o.id
               ? "bg-white text-primary shadow-sm dark:bg-slate-700"
               : "text-muted hover:text-primary",
@@ -79,7 +79,11 @@ export default function WeatherWidget({ variant = "compact" }: { variant?: Varia
           size={variant === "compact" ? 14 : 22}
           className="animate-spin text-muted shrink-0"
         />
-        <span className="text-xs text-muted">Loading weather…</span>
+        <span
+          className={clsx("text-xs text-muted", variant === "compact" && "sr-only sm:not-sr-only")}
+        >
+          Loading weather…
+        </span>
       </Shell>
     );
   }
@@ -91,7 +95,11 @@ export default function WeatherWidget({ variant = "compact" }: { variant?: Varia
     return (
       <Shell variant={variant} testid="weather-widget" title={msg}>
         <Cloud size={variant === "compact" ? 14 : 22} className="text-muted shrink-0" />
-        <span className="text-xs text-muted">Weather unavailable</span>
+        <span
+          className={clsx("text-xs text-muted", variant === "compact" && "sr-only sm:not-sr-only")}
+        >
+          Weather unavailable
+        </span>
       </Shell>
     );
   }
@@ -115,7 +123,11 @@ export default function WeatherWidget({ variant = "compact" }: { variant?: Varia
         testid="weather-widget"
         title={`${p.condition} · ${placeLabel} · feels like ${p.feels_like_c != null ? Math.round(p.feels_like_c) + "°C" : "—"} · ${p.provider}`}
       >
-        <Icon size={16} className={`${tint} shrink-0`} data-testid="weather-icon" />
+        <Icon
+          size={16}
+          className={`${tint} shrink-0 max-[299px]:hidden`}
+          data-testid="weather-icon"
+        />
         <span
           className="text-sm font-semibold text-primary tabular-nums"
           data-testid="weather-temp"
@@ -123,7 +135,7 @@ export default function WeatherWidget({ variant = "compact" }: { variant?: Varia
           {tempLabel}C
         </span>
         <span
-          className="hidden md:inline text-xs text-secondary truncate max-w-[8rem]"
+          className="hidden 2xl:inline text-xs text-secondary truncate max-w-[8rem]"
           data-testid="weather-location"
         >
           {placeLabel}
@@ -138,7 +150,7 @@ export default function WeatherWidget({ variant = "compact" }: { variant?: Varia
   const providerName = PROVIDER_NAMES[p.provider] ?? p.provider;
   return (
     <div data-testid="weather-widget" className="card">
-      <div className="mb-4 flex items-center justify-between gap-3">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
         <ViewSwitch view={view} onChange={setView} />
         <Attribution
           name={view === "today" ? providerName : PROVIDER_NAMES["open-meteo"]}

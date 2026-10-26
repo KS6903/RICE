@@ -41,7 +41,7 @@ export default function Modal({
   const width = { md: "max-w-lg", lg: "max-w-2xl", xl: "max-w-4xl" }[size];
   return createPortal(
     <div
-      className="fixed inset-0 z-50 grid place-items-center p-4"
+      className="dialog-viewport fixed inset-0 z-50 grid place-items-center p-4"
       role="dialog"
       aria-modal="true"
       aria-labelledby={titleId}
@@ -53,7 +53,7 @@ export default function Modal({
         onClick={onClose}
       />
       <div
-        className={`relative w-full ${width} max-h-[calc(100dvh-2rem)] flex flex-col overflow-hidden rounded-2xl glass-strong ring-1 ring-soft shadow-2xl animate-grad-fade-up`}
+        className={`dialog-panel relative w-full ${width} flex flex-col overflow-hidden rounded-2xl glass-strong ring-1 ring-soft shadow-2xl animate-grad-fade-up`}
       >
         <div className="flex items-start justify-between gap-3 border-b border-soft px-5 py-4">
           <div className="min-w-0">

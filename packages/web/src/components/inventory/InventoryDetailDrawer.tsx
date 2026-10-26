@@ -102,7 +102,7 @@ export default function InventoryDetailDrawer({
   // transformed ancestor leave it where the user expects it.
   return createPortal(
     <div
-      className="fixed inset-0 z-50 grid place-items-center p-4"
+      className="dialog-viewport fixed inset-0 z-50 grid place-items-center p-4"
       role="dialog"
       aria-modal="true"
       aria-labelledby="inventory-drawer-title"
@@ -118,7 +118,7 @@ export default function InventoryDetailDrawer({
 
       {/* Panel — centred */}
       <aside
-        className="relative w-full max-w-md max-h-[calc(100dvh-2rem)] glass-strong rounded-2xl ring-1 ring-soft shadow-2xl flex flex-col overflow-hidden animate-grad-fade-up"
+        className="dialog-panel relative w-full max-w-md glass-strong rounded-2xl ring-1 ring-soft shadow-2xl flex flex-col overflow-hidden animate-grad-fade-up"
         data-testid="inventory-drawer"
       >
         {/* Header */}

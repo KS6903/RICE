@@ -138,8 +138,8 @@ export default function AdminShell() {
         </div>
       </NavDrawer>
 
-      <div className="flex-1 flex flex-col min-w-0">
-        <header className="h-16 glass-strong border-b border-soft flex items-center justify-between gap-2 px-3 sm:px-6 shrink-0 relative z-10">
+      <div className="flex-1 flex flex-col min-w-0 min-h-0">
+        <header className="app-header min-h-16 glass-strong border-b border-soft flex flex-wrap items-center justify-between gap-2 px-3 pb-2 sm:px-6 shrink-0 relative z-10">
           <NavDrawerButton open={nav.open} onOpen={() => nav.setOpen(true)} />
           <span className="inline-flex items-center gap-1.5 badge-violet mr-auto lg:mr-0">
             <ShieldCheck size={12} />
@@ -176,7 +176,7 @@ export default function AdminShell() {
           </div>
         </header>
 
-        <main className="flex-1 overflow-y-auto px-4 py-5 sm:px-6 sm:py-6 lg:px-8 lg:py-8">
+        <main className="app-main flex-1 overflow-y-auto py-5 sm:py-6 lg:py-8">
           <div className="mx-auto max-w-7xl animate-grad-fade-up">
             <Outlet />
           </div>

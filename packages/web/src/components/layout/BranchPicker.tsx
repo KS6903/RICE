@@ -17,7 +17,7 @@ const ALL = "all";
  * choice goes with every request (api.ts), and switching reloads what's on the
  * screen for it.
  */
-export default function BranchPicker() {
+export default function BranchPicker({ className = "" }: { className?: string }) {
   const user = useAuthStore((s) => s.user);
   const setUser = useAuthStore((s) => s.setUser);
   const view = useBranchStore((s) => s.view);
@@ -75,7 +75,7 @@ export default function BranchPicker() {
   const home = branches.find((b) => b.id === user.branch_id);
 
   return (
-    <div className="flex items-center gap-1.5 min-w-0">
+    <div className={`flex items-center gap-1.5 min-w-0 ${className}`}>
       <Building2 size={15} className="hidden sm:block shrink-0 text-muted" aria-hidden />
       <Select
         aria-label="Branch"
@@ -85,7 +85,7 @@ export default function BranchPicker() {
           qc.invalidateQueries();
         }}
         options={options}
-        className="max-w-[9rem] sm:max-w-[13rem]"
+        className="flex-1 min-w-0"
         title={
           view === ALL && home
             ? `Every branch added up. New records go to ${home.name}.`
@@ -95,7 +95,7 @@ export default function BranchPicker() {
       {view !== defaultView && (
         <button
           type="button"
-          className="hidden md:inline text-xs font-semibold text-secondary hover:text-primary whitespace-nowrap"
+          className="shrink-0 text-xs font-semibold text-secondary hover:text-primary whitespace-nowrap"
           disabled={save.isPending}
           onClick={() => save.mutate(view)}
         >

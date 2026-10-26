@@ -28,7 +28,7 @@ export default function RecordDialog({
   useEscapeKey(onClose, !busy);
   return createPortal(
     <div
-      className="fixed inset-0 z-[70] flex items-center justify-center p-4"
+      className="dialog-viewport fixed inset-0 z-[70] flex items-center justify-center p-4"
       role="dialog"
       aria-modal="true"
       aria-label={title}
@@ -41,7 +41,7 @@ export default function RecordDialog({
         className="absolute inset-0 bg-slate-900/50 backdrop-blur-sm"
         onClick={() => !busy && onClose()}
       />
-      <div className="relative flex max-h-[92vh] w-full max-w-xl flex-col overflow-hidden rounded-2xl bg-[rgb(var(--surface-raised))] shadow-2xl ring-1 ring-soft">
+      <div className="dialog-panel relative flex w-full max-w-xl flex-col overflow-hidden rounded-2xl bg-[rgb(var(--surface-raised))] shadow-2xl ring-1 ring-soft">
         <div className="flex items-start justify-between gap-3 px-5 pt-4 pb-3 border-b border-soft">
           <div className="min-w-0">
             <h3 className="text-base font-bold text-primary">{title}</h3>
@@ -59,7 +59,9 @@ export default function RecordDialog({
         </div>
         <div className="flex-1 overflow-y-auto px-5 py-4">{children}</div>
         {footer && (
-          <div className="flex justify-end gap-2 px-5 py-3 border-t border-soft">{footer}</div>
+          <div className="flex shrink-0 flex-wrap justify-end gap-2 px-5 py-3 border-t border-soft">
+            {footer}
+          </div>
         )}
       </div>
     </div>,

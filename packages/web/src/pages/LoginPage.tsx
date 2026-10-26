@@ -152,7 +152,7 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen w-full grid lg:grid-cols-2 relative overflow-hidden">
+    <div className="auth-viewport w-full grid lg:grid-cols-2 relative overflow-hidden">
       {/* Signing in shows a loading page, not a busy button: it opens the app, or
           lifts to show why not. */}
       {loading && <AuthLoadingScreen label={mfaChallenge ? "Verifying…" : "Signing in…"} />}

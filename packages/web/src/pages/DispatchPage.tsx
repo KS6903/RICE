@@ -101,7 +101,7 @@ export default function DispatchPage() {
       </div>
 
       {/* outer tabs */}
-      <div className="flex items-center gap-1 p-1 rounded-xl glass overflow-x-auto">
+      <div className="tab-strip flex items-center gap-1 p-1 rounded-xl glass overflow-x-auto">
         {(
           [
             { key: "orders" as PageTab, label: "Orders", icon: ClipboardList },
@@ -414,7 +414,7 @@ function AssignCourierModal({ order, onClose }: { order: DispatchOrder; onClose:
 
   return createPortal(
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      className="dialog-viewport fixed inset-0 z-50 flex items-center justify-center p-4"
       role="dialog"
       aria-modal="true"
       aria-labelledby="assign-courier-title"
@@ -426,7 +426,7 @@ function AssignCourierModal({ order, onClose }: { order: DispatchOrder; onClose:
         onClick={onClose}
       />
       <div
-        className="relative w-full max-w-[460px] max-h-[calc(100dvh-2rem)] overflow-y-auto glass-strong rounded-2xl shadow-2xl ring-1 ring-soft p-5 animate-grad-fade-up"
+        className="dialog-panel relative w-full max-w-[460px] overflow-y-auto glass-strong rounded-2xl shadow-2xl ring-1 ring-soft p-5 animate-grad-fade-up"
         data-testid="assign-courier-modal"
       >
         <div className="flex items-start justify-between mb-4">

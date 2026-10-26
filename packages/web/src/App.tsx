@@ -3,6 +3,7 @@ import { lazy, Suspense, useEffect, type ComponentType } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useAuthStore } from "./stores/authStore";
 import { useIdleLogout } from "./hooks/useIdleLogout";
+import { useVisualViewport } from "./hooks/useVisualViewport";
 import { authService } from "./services/AuthService";
 import AppShell from "./components/layout/AppShell";
 import AdminShell from "./components/layout/AdminShell";
@@ -415,6 +416,7 @@ function AppRoutes() {
 }
 
 export default function App() {
+  useVisualViewport();
   return (
     <BrowserRouter>
       <AuthSessionSync />

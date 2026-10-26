@@ -123,7 +123,7 @@ export default function ReportsPage() {
 
         {pnl && (
           <>
-            <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
+            <div className="grid grid-cols-1 min-[480px]:grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-4">
               {[
                 {
                   label: "Revenue",
@@ -240,7 +240,7 @@ export default function ReportsPage() {
 
         {revenueAnnual && (
           <>
-            <div className="grid grid-cols-3 sm:grid-cols-6 gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-3">
               {revenueAnnual.map((m) => (
                 <div
                   key={m.month}

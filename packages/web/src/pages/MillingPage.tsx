@@ -380,7 +380,10 @@ export default function MillingPage() {
               </div>
             </div>
             {form.inputs.map((inp, idx) => (
-              <div key={idx} className="grid grid-cols-4 gap-2 mb-2">
+              <div
+                key={idx}
+                className="grid grid-cols-1 min-[400px]:grid-cols-2 lg:grid-cols-3 gap-2 mb-2"
+              >
                 <FieldCaption label="Variety">
                   <Select
                     aria-label="Variety"
@@ -447,7 +450,10 @@ export default function MillingPage() {
             {form.outputs.map((out, idx) => {
               const est = estimateFor(idx);
               return (
-                <div key={idx} className="grid grid-cols-4 gap-2 mb-2 items-start">
+                <div
+                  key={idx}
+                  className="grid grid-cols-1 min-[400px]:grid-cols-2 lg:grid-cols-3 gap-2 mb-2 items-start"
+                >
                   <FieldCaption label="What came out">
                     <Select
                       aria-label="What came out"

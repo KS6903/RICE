@@ -212,7 +212,7 @@ export function FieldOperatorsContent() {
   return (
     <div className="space-y-4">
       {/* Tab bar: by type, with Deactivated at the far end */}
-      <div className="flex items-center gap-1 p-1 rounded-xl glass overflow-x-auto">
+      <div className="tab-strip flex items-center gap-1 p-1 rounded-xl glass overflow-x-auto">
         {tabs.types.map(({ key, label, count }) => {
           const active = typeTab === key;
           return (

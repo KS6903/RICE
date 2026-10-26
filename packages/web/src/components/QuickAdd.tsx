@@ -99,7 +99,7 @@ export default function QuickAdd({
       {trigger}
       {createPortal(
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          className="dialog-viewport fixed inset-0 z-50 flex items-center justify-center p-4"
           role="dialog"
           aria-modal="true"
           aria-labelledby={`${uid}-title`}
@@ -116,7 +116,7 @@ export default function QuickAdd({
               e.preventDefault();
               if (canSave) create.mutate();
             }}
-            className="relative w-full max-w-lg max-h-[90vh] overflow-y-auto glass-strong rounded-2xl shadow-2xl ring-1 ring-soft p-5 animate-grad-fade-up"
+            className="dialog-panel relative w-full max-w-lg overflow-y-auto glass-strong rounded-2xl shadow-2xl ring-1 ring-soft p-5 animate-grad-fade-up"
           >
             <div className="flex items-start justify-between mb-4">
               <h3 id={`${uid}-title`} className="text-lg font-bold text-primary">

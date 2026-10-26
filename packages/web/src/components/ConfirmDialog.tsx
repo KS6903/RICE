@@ -51,7 +51,7 @@ export default function ConfirmDialog({
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[80] grid place-items-center bg-black/40 p-4"
+      className="dialog-viewport fixed inset-0 z-[80] grid place-items-center bg-black/40 p-4"
       onMouseDown={(e) => {
         if (e.target === e.currentTarget) onCancel();
       }}
@@ -60,7 +60,7 @@ export default function ConfirmDialog({
         role="alertdialog"
         aria-modal="true"
         aria-labelledby={titleId}
-        className="card w-full max-w-md space-y-4 !bg-white dark:!bg-slate-900"
+        className="dialog-panel card w-full max-w-md overflow-y-auto space-y-4 !bg-white dark:!bg-slate-900"
       >
         <div className="flex items-start gap-3">
           <div

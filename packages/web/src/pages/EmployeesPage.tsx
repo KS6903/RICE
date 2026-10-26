@@ -1210,7 +1210,7 @@ function EmployeeProfile({
   // instead of letting it cover and centre on the whole screen.
   return createPortal(
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      className="dialog-viewport fixed inset-0 z-50 flex items-center justify-center p-4"
       role="dialog"
       aria-modal="true"
       aria-labelledby="employee-profile-title"
@@ -1221,10 +1221,10 @@ function EmployeeProfile({
         className="absolute inset-0 bg-slate-900/45 backdrop-blur-sm"
         onClick={() => !editing && onClose()}
       />
-      <div className="relative flex w-full max-w-2xl max-h-[88vh] flex-col overflow-hidden rounded-2xl bg-white shadow-2xl ring-1 ring-soft animate-grad-fade-up dark:bg-slate-800">
+      <div className="dialog-panel relative flex w-full max-w-2xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl ring-1 ring-soft animate-grad-fade-up dark:bg-slate-800">
         {/* Header */}
-        <div className="flex items-start gap-4 border-b border-soft px-6 py-5">
-          <UserAvatar className="h-14 w-14" name={e.full_name} />
+        <div className="flex flex-wrap items-start gap-3 border-b border-soft px-4 py-4 sm:px-6 sm:py-5">
+          <UserAvatar className="h-10 w-10 shrink-0 sm:h-14 sm:w-14" name={e.full_name} />
           <div className="min-w-0 flex-1">
             <h3 id="employee-profile-title" className="truncate text-lg font-bold text-primary">
               {e.full_name}
@@ -1251,7 +1251,7 @@ function EmployeeProfile({
               )}
             </div>
           </div>
-          <div className="flex shrink-0 items-center gap-1">
+          <div className="flex w-full shrink-0 justify-end items-center gap-1 sm:w-auto">
             {mayEdit && !editing && (
               <button type="button" onClick={startEdit} className="btn-secondary !py-1.5 text-sm">
                 <Pencil size={14} /> Edit
@@ -1264,7 +1264,7 @@ function EmployeeProfile({
         </div>
 
         {/* Body */}
-        <div className="flex-1 space-y-6 overflow-y-auto px-6 py-5">
+        <div className="flex-1 space-y-6 overflow-y-auto px-4 py-4 sm:px-6 sm:py-5">
           {PROFILE_SECTIONS.filter((s) => editing || !s.editOnly).map((section) => (
             <section key={section.title}>
               <h4 className="mb-3 text-xs font-bold uppercase tracking-wide text-muted">

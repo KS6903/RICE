@@ -9,6 +9,7 @@ import { allUnits, saveCustomUnit, type QuantityUnit, slugify } from "./inventor
 import Select from "../Select";
 import { MILLED_GRADES } from "../../mappers/InventoryMapper";
 import { useByproductKinds } from "../../hooks/useByproductKinds";
+import { useEscapeKey } from "../../hooks/useEscapeKey";
 
 type StockType = "palay" | "milled_rice" | "byproduct";
 
@@ -80,6 +81,7 @@ function InlineCreateSelect({
                 submit();
               }
               if (e.key === "Escape") {
+                e.preventDefault();
                 setAdding(false);
                 setErr(null);
               }
@@ -147,6 +149,7 @@ export default function AddInventoryModal({
   onClose: () => void;
 }) {
   const qc = useQueryClient();
+  useEscapeKey(onClose);
 
   // Local mirrors so freshly-created options appear instantly in this modal.
   const [branches, setBranches] = useState<any[]>(branchesProp);
@@ -273,13 +276,10 @@ export default function AddInventoryModal({
 
   return createPortal(
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      className="dialog-viewport fixed inset-0 z-50 flex items-center justify-center p-4"
       role="dialog"
       aria-modal="true"
       aria-labelledby="add-inventory-title"
-      onKeyDown={(e) => {
-        if (e.key === "Escape") onClose();
-      }}
     >
       <button
         type="button"
@@ -289,7 +289,7 @@ export default function AddInventoryModal({
       />
       <div
         data-testid="add-inventory-modal"
-        className="relative w-full max-w-[480px] max-h-[90vh] overflow-y-auto glass-strong rounded-2xl shadow-2xl ring-1 ring-soft p-5 animate-grad-fade-up"
+        className="dialog-panel relative w-full max-w-[480px] overflow-y-auto glass-strong rounded-2xl shadow-2xl ring-1 ring-soft p-5 animate-grad-fade-up"
       >
         <div className="flex items-start justify-between mb-3">
           <div>
@@ -482,7 +482,7 @@ export default function AddInventoryModal({
             </div>
           )}
 
-          <div className="flex items-center justify-end gap-2 pt-1 border-t border-soft -mx-5 px-5 -mb-5 py-3 mt-4 sticky bottom-0 bg-inherit">
+          <div className="flex flex-wrap items-center justify-end gap-2 pt-1 border-t border-soft -mx-5 px-5 -mb-5 py-3 mt-4 sticky bottom-0 bg-[rgb(var(--surface-raised))]">
             <button type="button" onClick={onClose} className="btn-secondary !py-1.5 !px-3 text-sm">
               Cancel
             </button>

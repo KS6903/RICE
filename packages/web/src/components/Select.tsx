@@ -3,6 +3,7 @@ import type { KeyboardEvent as ReactKeyboardEvent } from "react";
 import { createPortal } from "react-dom";
 import { Check, ChevronDown } from "lucide-react";
 import { clsx } from "clsx";
+import { observeViewport, positionPopover } from "../utils/popoverPosition";
 
 export type SelectOption = { value: string; label: string };
 
@@ -20,12 +21,11 @@ type Props = {
   "data-testid"?: string;
 };
 
-const GAP = 6;
 const ROW = 42;
 const MAX_HEIGHT = 288; // max-h-72
 const MAX_WIDTH = 448; // max-w-md
 
-type Place = { left: number; minWidth: number; maxWidth: number; top?: number; bottom?: number };
+type Place = ReturnType<typeof positionPopover>;
 
 /**
  * A dropdown in the app's own menu style (the look of the warehouse and
@@ -63,17 +63,7 @@ export default function Select({
     const r = triggerRef.current?.getBoundingClientRect();
     if (!r) return;
     const menuHeight = Math.min(MAX_HEIGHT, options.length * ROW + 8);
-    const roomBelow = window.innerHeight - r.bottom;
-    const up = roomBelow < menuHeight + GAP && r.top > roomBelow;
-    // As wide as the field, or wider to fit a long choice, but never off screen.
-    const base = {
-      left: r.left,
-      minWidth: r.width,
-      maxWidth: Math.min(MAX_WIDTH, Math.max(r.width, window.innerWidth - r.left - 8)),
-    };
-    setPlace(
-      up ? { ...base, bottom: window.innerHeight - r.top + GAP } : { ...base, top: r.bottom + GAP },
-    );
+    setPlace(positionPopover(r, Math.min(MAX_WIDTH, Math.max(r.width, 240)), menuHeight));
   };
 
   const openMenu = () => {
@@ -105,12 +95,10 @@ export default function Select({
       }
     };
     window.addEventListener("mousedown", onPointerDown);
-    window.addEventListener("scroll", measure, true);
-    window.addEventListener("resize", measure);
+    const stop = observeViewport(measure);
     return () => {
       window.removeEventListener("mousedown", onPointerDown);
-      window.removeEventListener("scroll", measure, true);
-      window.removeEventListener("resize", measure);
+      stop();
     };
     // measure only reads refs and options, which the menu doesn't change.
     // eslint-disable-next-line react-hooks/exhaustive-deps

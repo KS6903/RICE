@@ -49,7 +49,7 @@ export function NavDrawer({
       <aside
         id="app-nav"
         className={clsx(
-          "flex flex-col glass border-r border-soft",
+          "app-nav flex flex-col min-h-0 glass border-r border-soft",
           "fixed inset-y-0 left-0 z-40 w-72 max-w-[85vw] transition-[transform,visibility] duration-200 ease-out motion-reduce:transition-none",
           "lg:relative lg:z-auto lg:max-w-none lg:shrink-0 lg:translate-x-0 lg:visible lg:transition-none",
           // Solid enough to read over the page it covers.

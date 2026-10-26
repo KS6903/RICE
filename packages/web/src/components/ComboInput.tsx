@@ -2,6 +2,7 @@ import { useEffect, useId, useRef, useState } from "react";
 import type { KeyboardEvent as ReactKeyboardEvent } from "react";
 import { createPortal } from "react-dom";
 import { clsx } from "clsx";
+import { observeViewport, positionPopover } from "../utils/popoverPosition";
 
 type Props = {
   value: string;
@@ -17,11 +18,10 @@ type Props = {
   "aria-label"?: string;
 };
 
-const GAP = 6;
 const ROW = 40;
 const MAX_HEIGHT = 224; // max-h-56
 
-type Place = { left: number; width: number; top?: number; bottom?: number };
+type Place = ReturnType<typeof positionPopover>;
 
 /**
  * A text field with suggestions, in the app's own menu style instead of the
@@ -58,13 +58,7 @@ export default function ComboInput({
     const r = inputRef.current?.getBoundingClientRect();
     if (!r) return;
     const menuHeight = Math.min(MAX_HEIGHT, matches.length * ROW + 8);
-    const roomBelow = window.innerHeight - r.bottom;
-    const up = roomBelow < menuHeight + GAP && r.top > roomBelow;
-    setPlace(
-      up
-        ? { left: r.left, width: r.width, bottom: window.innerHeight - r.top + GAP }
-        : { left: r.left, width: r.width, top: r.bottom + GAP },
-    );
+    setPlace(positionPopover(r, r.width, menuHeight));
   };
 
   const show = () => {
@@ -81,12 +75,7 @@ export default function ComboInput({
   // While showing: follow the field when anything scrolls or the window resizes.
   useEffect(() => {
     if (!showing) return;
-    window.addEventListener("scroll", measure, true);
-    window.addEventListener("resize", measure);
-    return () => {
-      window.removeEventListener("scroll", measure, true);
-      window.removeEventListener("resize", measure);
-    };
+    return observeViewport(measure);
     // measure only reads refs and the suggestions it is about to show.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [showing]);

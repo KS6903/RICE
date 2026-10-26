@@ -456,7 +456,7 @@ export default function SalesPage() {
         </div>
       )}
 
-      <div className="flex gap-2 overflow-x-auto border-b border-gray-200 dark:border-slate-700">
+      <div className="tab-strip flex gap-2 overflow-x-auto border-b border-gray-200 dark:border-slate-700">
         {(["orders", "invoices", "customers"] as const).map((t) => (
           <button
             key={t}

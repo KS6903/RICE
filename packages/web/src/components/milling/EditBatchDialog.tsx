@@ -238,7 +238,10 @@ export default function EditBatchDialog({
           <p className="mb-1.5 text-xs font-medium text-secondary">Palay in</p>
           <div className="space-y-2">
             {inputs.map((inp, i) => (
-              <div key={i} className="grid grid-cols-[1fr_7rem_6rem_auto] items-end gap-2">
+              <div
+                key={i}
+                className="grid grid-cols-2 sm:grid-cols-[minmax(0,1fr)_7rem_6rem_auto] items-end gap-2"
+              >
                 <Select
                   aria-label={`Variety of palay ${i + 1}`}
                   value={inp.variety_id}
@@ -297,7 +300,10 @@ export default function EditBatchDialog({
           <p className="mb-1.5 text-xs font-medium text-secondary">What came out</p>
           <div className="space-y-2">
             {outputs.map((out, i) => (
-              <div key={i} className="grid grid-cols-[1fr_1fr_7rem_auto] items-end gap-2">
+              <div
+                key={i}
+                className="grid grid-cols-2 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_7rem_auto] items-end gap-2"
+              >
                 <Select
                   aria-label={`Output ${i + 1}`}
                   value={out.output_type}

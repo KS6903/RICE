@@ -24,13 +24,13 @@ async function purgeFavorites(request: APIRequestContext, token: string) {
   });
   if (!res.ok()) return;
   const list: { id: string }[] = await res.json();
-  await Promise.all(
-    list.map((l) =>
-      request.delete(`/api/locations/${l.id}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      }),
-    ),
-  );
+  // Deleting the default promotes a sibling, so clean up in order.
+  for (const location of list) {
+    const deleted = await request.delete(`/api/locations/${location.id}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    expect(deleted.ok(), `favorite cleanup failed (${deleted.status()})`).toBeTruthy();
+  }
 }
 
 test.describe("Weather + saved locations — header dropdown, search, favorites", () => {

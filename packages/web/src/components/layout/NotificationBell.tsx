@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
+import { usePopoverPosition } from "../../hooks/usePopoverPosition";
 import { useNavigate } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Bell, CheckCheck } from "lucide-react";
@@ -26,6 +28,7 @@ export default function NotificationBell() {
   const [open, setOpen] = useState(false);
   const popoverRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
+  const place = usePopoverPosition(open, triggerRef, popoverRef, 384, 440);
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { canView } = useAccess();
@@ -123,92 +126,96 @@ export default function NotificationBell() {
         )}
       </button>
 
-      {open && (
-        <div
-          ref={popoverRef}
-          className="fixed inset-x-3 top-[4.5rem] sm:absolute sm:inset-x-auto sm:top-auto sm:right-0 sm:mt-2 sm:w-96 z-50 bg-white dark:bg-slate-900 rounded-xl shadow-2xl ring-1 ring-soft overflow-hidden"
-          role="dialog"
-          aria-label="Notifications"
-        >
-          <div className="flex items-center justify-between px-4 py-2.5 border-b border-soft">
-            <span className="text-xs font-bold uppercase tracking-wide text-secondary">
-              Notifications
-            </span>
-            <button
-              type="button"
-              onClick={() => markRead.mutate(undefined)}
-              disabled={unread === 0 || markRead.isPending}
-              className="inline-flex items-center gap-1 text-xs font-semibold link disabled:opacity-40 disabled:cursor-default"
-            >
-              <CheckCheck size={14} />
-              Mark all read
-            </button>
-          </div>
+      {open &&
+        place &&
+        createPortal(
+          <div
+            ref={popoverRef}
+            className="fixed z-50 bg-white dark:bg-slate-900 rounded-xl shadow-2xl ring-1 ring-soft overflow-y-auto overscroll-contain"
+            style={place}
+            role="dialog"
+            aria-label="Notifications"
+          >
+            <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-2.5 border-b border-soft">
+              <span className="text-xs font-bold uppercase tracking-wide text-secondary">
+                Notifications
+              </span>
+              <button
+                type="button"
+                onClick={() => markRead.mutate(undefined)}
+                disabled={unread === 0 || markRead.isPending}
+                className="inline-flex items-center gap-1 text-xs font-semibold link disabled:opacity-40 disabled:cursor-default"
+              >
+                <CheckCheck size={14} />
+                Mark all read
+              </button>
+            </div>
 
-          <div className="max-h-96 overflow-y-auto">
-            {list.isLoading ? (
-              <div className="p-4 space-y-3" aria-busy="true">
-                {[0, 1, 2].map((i) => (
-                  <div key={i} className="skeleton h-12 rounded-lg" />
-                ))}
-              </div>
-            ) : list.isError ? (
-              <p className="p-4 text-sm text-secondary">
-                Notifications couldn't load. Try again in a moment.
-              </p>
-            ) : items.length === 0 ? (
-              <div className="p-6 text-center">
-                <p className="text-sm font-semibold text-primary">You're all caught up</p>
-                <p className="text-xs text-secondary mt-1">
-                  Reminders about your plan, invoices and scheduled reports show up here.
+            <div className="max-h-96 overflow-y-auto">
+              {list.isLoading ? (
+                <div className="p-4 space-y-3" aria-busy="true">
+                  {[0, 1, 2].map((i) => (
+                    <div key={i} className="skeleton h-12 rounded-lg" />
+                  ))}
+                </div>
+              ) : list.isError ? (
+                <p className="p-4 text-sm text-secondary">
+                  Notifications couldn't load. Try again in a moment.
                 </p>
-              </div>
-            ) : (
-              <ul className="divide-y divide-slate-100 dark:divide-slate-800">
-                {items.map((n) => (
-                  <li key={n.id} className="relative">
-                    <button
-                      type="button"
-                      onClick={() => openNotice(n)}
-                      className="w-full text-left px-4 py-3 flex gap-3 hover:bg-[rgb(var(--ink)/0.04)] transition-colors"
-                    >
-                      <span
-                        className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${n.read ? "bg-transparent" : "bg-emerald-500"}`}
-                        aria-hidden
-                      />
-                      <span className="min-w-0">
-                        <span
-                          className={`block text-sm ${n.read ? "text-secondary" : "font-semibold text-primary"}`}
-                        >
-                          {n.title}
-                        </span>
-                        {n.body && (
-                          <span className="block text-xs text-secondary mt-0.5 line-clamp-2">
-                            {n.body}
-                          </span>
-                        )}
-                        <span className="block text-[11px] text-muted mt-1">
-                          {timeAgo(n.created_at)}
-                        </span>
-                      </span>
-                    </button>
-                    {canTask && n.kind.startsWith("automation.") && (
-                      // Beside the alert, not inside its button: one control each.
+              ) : items.length === 0 ? (
+                <div className="p-6 text-center">
+                  <p className="text-sm font-semibold text-primary">You're all caught up</p>
+                  <p className="text-xs text-secondary mt-1">
+                    Reminders about your plan, invoices and scheduled reports show up here.
+                  </p>
+                </div>
+              ) : (
+                <ul className="divide-y divide-slate-100 dark:divide-slate-800">
+                  {items.map((n) => (
+                    <li key={n.id} className="relative">
                       <button
                         type="button"
-                        onClick={() => makeTask(n)}
-                        className="absolute right-3 bottom-2.5 text-[11px] font-semibold link"
+                        onClick={() => openNotice(n)}
+                        className="w-full text-left px-4 py-3 flex gap-3 hover:bg-[rgb(var(--ink)/0.04)] transition-colors"
                       >
-                        Make it a task
+                        <span
+                          className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${n.read ? "bg-transparent" : "bg-emerald-500"}`}
+                          aria-hidden
+                        />
+                        <span className="min-w-0">
+                          <span
+                            className={`block text-sm ${n.read ? "text-secondary" : "font-semibold text-primary"}`}
+                          >
+                            {n.title}
+                          </span>
+                          {n.body && (
+                            <span className="block text-xs text-secondary mt-0.5 line-clamp-2">
+                              {n.body}
+                            </span>
+                          )}
+                          <span className="block text-[11px] text-muted mt-1">
+                            {timeAgo(n.created_at)}
+                          </span>
+                        </span>
                       </button>
-                    )}
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-        </div>
-      )}
+                      {canTask && n.kind.startsWith("automation.") && (
+                        // Beside the alert, not inside its button: one control each.
+                        <button
+                          type="button"
+                          onClick={() => makeTask(n)}
+                          className="absolute right-3 bottom-2.5 text-[11px] font-semibold link"
+                        >
+                          Make it a task
+                        </button>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </div>,
+          document.body,
+        )}
     </div>
   );
 }

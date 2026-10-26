@@ -52,6 +52,13 @@ OKLCH-adjacent hex brand ramp; surfaces via CSS variables.
   so iOS doesn't zoom in on focus. The frame uses `.app-viewport` (`100dvh`), not `h-screen`.
 - Responsive grids via `repeat(auto-fit, minmax(...))` or breakpoint columns; sidebar collapses
   structurally (not fluid type).
+- The branch picker gets its own row below `sm`; header controls keep their touch targets. Settings
+  navigation stays horizontal until `xl` so tablets have room for the active settings form.
+- Use `.dialog-viewport` on a portalled dialog's backdrop and `.dialog-panel` on its panel. These
+  follow the visual viewport above an on-screen keyboard; a long body scrolls inside the panel.
+  Popovers use `positionPopover` / `usePopoverPosition` to stay within the visible screen.
+- Use `.tab-strip` for horizontal page tabs. It keeps labels intact and scrolls independently;
+  wide tables scroll inside their own card. Content and navigation account for device safe areas.
 
 ## Motion
 

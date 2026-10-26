@@ -563,7 +563,7 @@ function PalletDetailPanel({
   // Portalled and centred, like the FIFO panel below.
   return createPortal(
     <div
-      className="fixed inset-0 z-50 grid place-items-center p-4"
+      className="dialog-viewport fixed inset-0 z-50 grid place-items-center p-4"
       role="dialog"
       aria-modal="true"
       data-testid="pallet-detail-panel"
@@ -572,7 +572,7 @@ function PalletDetailPanel({
         className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm animate-grad-fade-up"
         onClick={onClose}
       />
-      <div className="relative w-full max-w-md max-h-[calc(100dvh-2rem)] glass-strong rounded-2xl ring-1 ring-soft shadow-2xl flex flex-col overflow-hidden animate-grad-fade-up">
+      <div className="dialog-panel relative w-full max-w-md glass-strong rounded-2xl ring-1 ring-soft shadow-2xl flex flex-col overflow-hidden animate-grad-fade-up">
         <div className="flex items-start justify-between gap-3 p-5 border-b border-soft">
           <div className="min-w-0">
             <div className="flex items-center gap-2">
@@ -726,10 +726,10 @@ function FifoPanel({
   // containing block and pull the panel off the centre of the viewport.
   return createPortal(
     <div
-      className="fixed inset-0 z-50 grid place-items-center bg-slate-900/60 backdrop-blur-sm p-4"
+      className="dialog-viewport fixed inset-0 z-50 grid place-items-center bg-slate-900/60 backdrop-blur-sm p-4"
       data-testid="fifo-panel"
     >
-      <div className="glass-strong rounded-2xl shadow-2xl ring-1 ring-soft p-6 w-[520px] max-w-full max-h-[calc(100dvh-2rem)] overflow-y-auto animate-grad-fade-up">
+      <div className="dialog-panel glass-strong rounded-2xl shadow-2xl ring-1 ring-soft p-4 sm:p-6 w-[520px] max-w-full overflow-y-auto animate-grad-fade-up">
         <div className="flex items-center justify-between mb-1">
           <div className="flex items-center gap-2">
             <Zap size={18} className="text-amber-500" />

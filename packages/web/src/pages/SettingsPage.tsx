@@ -110,9 +110,9 @@ export default function SettingsPage() {
         </div>
       </div>
 
-      <div className="flex flex-col md:flex-row gap-6">
-        <aside className="w-full md:w-64 shrink-0">
-          <nav className="flex md:flex-col gap-1 overflow-x-auto pb-4 md:pb-0 -mx-1 md:mx-0 px-1">
+      <div className="flex flex-col xl:flex-row gap-6">
+        <aside className="w-full xl:w-64 shrink-0 min-w-0">
+          <nav className="tab-strip flex xl:flex-col gap-1 overflow-x-auto pb-4 xl:pb-0 -mx-1 xl:mx-0 px-1">
             {tabs.map(({ key, label, icon: Icon }) => {
               const active = tab === key;
               return (

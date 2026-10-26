@@ -50,6 +50,9 @@
     box-sizing: border-box;
   }
 
+  /* Grid tracks may shrink, but their contents must be allowed to shrink too. */
+  .grid > * { min-width: 0; }
+
   /* One size across pages, tables and dialogs. The type selector outranks
      local sizing utilities; flex labels must not squeeze the checkbox. */
   input[type="checkbox"] {
@@ -447,6 +450,8 @@
 
   /* ========== Inputs — bigger, higher-contrast for seniors ========== */
   .input {
+    min-width: 0;
+    max-width: 100%;
     width: 100%;
     padding: 0.7rem 0.95rem;
     border-radius: 0.75rem;
@@ -569,6 +574,7 @@
   }
   .panel-header {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
     justify-content: space-between;
     gap: 0.75rem;
@@ -641,6 +647,9 @@
   /* ========== Segmented control (filters, settings tabs) ========== */
   .seg {
     display: inline-flex;
+    max-width: 100%;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
     gap: 0.125rem;
     padding: 0.25rem;
     border-radius: 0.75rem;
@@ -649,6 +658,7 @@
   }
   .seg-btn {
     display: inline-flex;
+    flex-shrink: 0;
     align-items: center;
     gap: 0.4rem;
     padding: 0.4rem 0.85rem;
@@ -715,12 +725,82 @@
    at every hyphen. Outside the layers so it's always emitted
    and outranks the `overflow-hidden` utility.
    --------------------------------------------------------- */
-.card.overflow-hidden:has(> table),
+.card:has(> table),
 .panel:has(> table) {
   overflow-x: auto;
 }
+
+/* Content scrolls inside the frame; a wide table or long name must not stretch
+   the frame and take the navigation or page actions off screen. */
+.app-main {
+  --content-gutter: 1rem;
+  min-width: 0;
+  min-height: 0;
+  padding-left: max(var(--content-gutter), env(safe-area-inset-left));
+  padding-right: max(var(--content-gutter), env(safe-area-inset-right));
+  padding-bottom: max(1.25rem, env(safe-area-inset-bottom));
+  overscroll-behavior-y: contain;
+  overflow-wrap: anywhere;
+}
+.app-header { padding-top: max(0.5rem, env(safe-area-inset-top)); }
+.app-nav {
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+.auth-viewport {
+  min-height: 100vh;
+  min-height: 100dvh;
+  overflow-wrap: anywhere;
+}
+.tab-strip {
+  min-width: 0;
+  max-width: 100%;
+  overscroll-behavior-x: contain;
+}
+.tab-strip > button { flex-shrink: 0; white-space: nowrap; }
+
+/* Visual viewport variables follow the keyboard and zoom. The panel's body
+   can scroll while its title, close button and actions stay reachable. */
+.dialog-viewport {
+  inset: auto;
+  left: var(--viewport-left, 0px);
+  top: var(--viewport-top, 0px);
+  width: var(--viewport-width, 100%);
+  height: 100vh;
+  height: var(--viewport-height, 100dvh);
+  padding: max(0.75rem, env(safe-area-inset-top)) max(0.75rem, env(safe-area-inset-right)) max(0.75rem, env(safe-area-inset-bottom)) max(0.75rem, env(safe-area-inset-left));
+}
+.dialog-panel {
+  min-width: 0;
+  min-height: 0;
+  max-height: 100%;
+  overflow-wrap: anywhere;
+  overscroll-behavior: contain;
+}
+.dialog-panel > .flex-1 { min-height: 0; }
+.dialog-panel :is(.btn-primary, .btn-secondary, .btn-danger) {
+  min-width: 0;
+  max-width: 100%;
+  white-space: normal;
+}
+@media (min-width: 640px) {
+  .app-main { --content-gutter: 1.5rem; padding-bottom: max(1.5rem, env(safe-area-inset-bottom)); }
+  .dialog-viewport { padding: max(1rem, env(safe-area-inset-top)) max(1rem, env(safe-area-inset-right)) max(1rem, env(safe-area-inset-bottom)) max(1rem, env(safe-area-inset-left)); }
+}
+@media (min-width: 1024px) {
+  .app-main { --content-gutter: 2rem; padding-bottom: max(2rem, env(safe-area-inset-bottom)); }
+  .auth-viewport.auth-fixed { height: 100vh; height: 100dvh; }
+}
+@media (pointer: coarse) {
+  input, select, textarea, .input { font-size: max(16px, 1em); }
+  .btn-primary, .btn-secondary, .btn-danger, .btn-ghost, .input,
+  .nav-link, .seg-btn, .tab-strip > button, button[aria-haspopup] { min-height: 44px; }
+  .app-header button:not(.input) { min-height: 44px; min-width: 44px; flex-shrink: 0; }
+  .btn-ghost > svg { flex-shrink: 0; }
+}
 @media (max-width: 639px) {
-  .card.overflow-hidden > table :is(th, td),
+  .btn-primary, .btn-secondary, .btn-danger { max-width: 100%; white-space: normal; }
+  .card > table :is(th, td),
   .panel > table :is(th, td),
   .overflow-x-auto > table :is(th, td) {
     white-space: nowrap;
