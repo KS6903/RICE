@@ -58,4 +58,14 @@ describe("Settings: Appearance", () => {
     expect(document.documentElement.classList.contains("dark")).toBe(false);
     expect(localStorage.getItem("rice-mill-theme:u9")).toBe("light");
   });
+
+  it("keeps the language on a tab of its own", () => {
+    draw();
+    fireEvent.click(screen.getByRole("button", { name: "Appearance" }));
+    expect(screen.queryByTestId("language-picker")).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: "Language" }));
+    expect(screen.getByTestId("language-picker")).toHaveTextContent("Powered by Google");
+    expect(screen.queryByRole("radio", { name: "Dark" })).toBeNull();
+  });
 });

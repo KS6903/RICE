@@ -3,6 +3,7 @@ import { fireEvent, render, screen, waitFor, within } from "@testing-library/rea
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import LanguagePicker from "./LanguagePicker";
 import { authService } from "../services/AuthService";
+import { LANGUAGES } from "../i18n";
 
 // Switching reloads the page; here it only records what it was asked.
 const switchLanguage = vi.hoisted(() => vi.fn());
@@ -23,17 +24,17 @@ const draw = () =>
 describe("LanguagePicker", () => {
   afterEach(() => vi.restoreAllMocks());
 
-  it("lists the Philippines' languages first, with English ticked", () => {
+  it("lists every language in one list by name, English ticked, powered by Google", () => {
     draw();
     const list = screen.getByRole("radiogroup", { name: "Language" });
     const options = within(list).getAllByRole("radio");
-    expect(options.slice(0, 4).map((o) => o.getAttribute("value"))).toEqual([
-      "tl",
-      "ceb",
-      "ilo",
-      "hil",
-    ]);
+    expect(options).toHaveLength(LANGUAGES.length);
+    const names = LANGUAGES.map((l) => l.english).sort((a, b) => a.localeCompare(b));
+    expect(LANGUAGES.find((l) => l.code === options[0].getAttribute("value"))?.english).toBe(
+      names[0],
+    );
     expect(within(list).getByRole("radio", { name: "English" })).toBeChecked();
+    expect(screen.getByTestId("language-attribution")).toHaveTextContent("Powered by Google");
   });
 
   it("finds a language by its own name or its English one", () => {

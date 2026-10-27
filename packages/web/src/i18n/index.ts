@@ -26,8 +26,6 @@ export type Language = {
   /** Its name in English. */
   english: string;
   rtl?: boolean;
-  /** Shown first, in a group of its own ("Philippines"). */
-  group?: string;
   /** Changes when the file does, so a browser never keeps an old copy. */
   version?: string;
 };

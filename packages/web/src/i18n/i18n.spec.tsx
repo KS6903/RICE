@@ -38,9 +38,12 @@ describe("the language list", () => {
     expect(new Set(codes).size).toBe(codes.length);
   });
 
-  it("lists the Philippines' languages under their own heading", () => {
-    for (const code of ["tl", "ceb", "ilo", "hil"]) {
-      expect(findLanguage(code)?.group).toBe("Philippines");
-    }
+  it("has Tagalog, Bisaya, Ilocano and Hiligaynon by the names people use", () => {
+    expect(["tl", "ceb", "ilo", "hil"].map((code) => findLanguage(code)?.name)).toEqual([
+      "Tagalog",
+      "Bisaya",
+      "Ilokano",
+      "Hiligaynon",
+    ]);
   });
 });

@@ -1,15 +1,9 @@
 {
-  "$comment": "Read by translate.mjs. groups: languages listed first in the picker, under that heading. names: how a language is called, where Google's name isn't the one people use. keep: words never translated (names of products, agencies and the like).",
-  "groups": [
-    {
-      "label": "Philippines",
-      "codes": ["tl", "ceb", "ilo", "hil"]
-    }
-  ],
+  "$comment": "Read by translate.mjs. names: how a language is called, where Google's name isn't the one people use (the list is sorted by \"english\"). keep: words never translated (names of products, agencies and the like).",
   "names": {
     "tl": {
       "name": "Tagalog",
-      "english": "Filipino"
+      "english": "Tagalog"
     },
     "ceb": {
       "name": "Bisaya",
@@ -21,7 +15,7 @@
     },
     "hil": {
       "name": "Hiligaynon",
-      "english": "Ilonggo"
+      "english": "Hiligaynon"
     }
   },
   "keep": [

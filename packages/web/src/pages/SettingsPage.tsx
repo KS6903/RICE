@@ -37,6 +37,7 @@ import {
   MonitorSmartphone,
   LogOut,
   Palette,
+  Languages,
   Sun,
   Moon,
   Download,
@@ -67,6 +68,7 @@ type Tab =
   | "data"
   | "profile"
   | "appearance"
+  | "language"
   | "password"
   | "sessions";
 
@@ -98,6 +100,7 @@ export default function SettingsPage() {
     // Personal settings — available to every role.
     { key: "profile", label: t("My Profile"), icon: UserIcon },
     { key: "appearance", label: t("Appearance"), icon: Palette },
+    { key: "language", label: t("Language"), icon: Languages },
     { key: "password", label: t("Password"), icon: KeyRound },
     { key: "sessions", label: t("Devices"), icon: MonitorSmartphone },
   ];
@@ -157,6 +160,7 @@ export default function SettingsPage() {
           {tab === "data" && <DataExport />}
           {tab === "profile" && <ProfileTab />}
           {tab === "appearance" && <AppearanceTab />}
+          {tab === "language" && <LanguagePicker />}
           {tab === "password" && <PasswordTab />}
           {tab === "sessions" && <SessionsTab />}
         </main>
@@ -1511,14 +1515,7 @@ function AppearanceTab() {
 
   return (
     <div className="card max-w-xl space-y-5">
-      <div>
-        <h3 className="text-lg font-bold text-primary">{t("Appearance")}</h3>
-        <p className="text-sm text-secondary mt-0.5">
-          {t(
-            "Your choice is saved to your account on this device. The sign-in and home pages always stay light.",
-          )}
-        </p>
-      </div>
+      <h3 className="text-lg font-bold text-primary">{t("Appearance")}</h3>
 
       <fieldset>
         <legend className={LABEL}>{t("Theme")}</legend>
@@ -1555,8 +1552,6 @@ function AppearanceTab() {
           })}
         </div>
       </fieldset>
-
-      <LanguagePicker />
     </div>
   );
 }

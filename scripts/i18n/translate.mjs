@@ -130,7 +130,6 @@ function allKeys() {
   const backend = path.join(HERE, "backend-messages.json");
   if (fs.existsSync(backend))
     for (const k of JSON.parse(fs.readFileSync(backend, "utf8"))) keys.add(k);
-  for (const g of CONFIG.groups) keys.add(g.label);
   const plurals = JSON.parse(fs.readFileSync(ENGLISH_PLURALS, "utf8"));
   // A counted key is plural only if English has its forms (en.json).
   const plural = new Map();
@@ -289,11 +288,15 @@ async function googleLanguages() {
   return Object.entries(list.tl).filter(([code]) => code !== "auto" && code !== SOURCE);
 }
 
+/** The language's name for itself; Google's English name when Intl has none
+ *  (it then answers in English, "Abkhazian", which would show twice). */
 function nativeName(code, english) {
   try {
-    const name = new Intl.DisplayNames([tagOf(code)], { type: "language" }).of(tagOf(code));
-    if (name && name !== tagOf(code))
-      return name.charAt(0).toLocaleUpperCase(tagOf(code)) + name.slice(1);
+    const tag = tagOf(code);
+    const name = new Intl.DisplayNames([tag], { type: "language" }).of(tag);
+    const inEnglish = new Intl.DisplayNames(["en"], { type: "language" }).of(tag);
+    if (name && name !== tag && name !== inEnglish)
+      return name.charAt(0).toLocaleUpperCase(tag) + name.slice(1);
   } catch {
     /* not a tag Intl knows */
   }
@@ -309,8 +312,6 @@ function isRtl(code) {
     return false;
   }
 }
-
-const groupOf = (code) => CONFIG.groups.find((g) => g.codes.includes(code));
 
 function readJson(file, fallback) {
   try {
@@ -397,8 +398,6 @@ async function main() {
 
   const languages = await googleLanguages();
   const targets = languages.filter(([code]) => !only || only.includes(code));
-  // The Philippines' languages first, then the rest.
-  targets.sort(([a], [b]) => (groupOf(b) ? 1 : 0) - (groupOf(a) ? 1 : 0));
 
   let i = 0;
   const workers = Array.from({ length: Number(option("--parallel") ?? 3) }, async () => {
@@ -428,16 +427,10 @@ async function main() {
       english: names.english ?? english,
     };
     if (isRtl(code)) entry.rtl = true;
-    const group = groupOf(code);
-    if (group) entry.group = group.label;
     entry.version = versionOf(code);
     list.push(entry);
   }
-  const groupOrder = (l) => {
-    const g = CONFIG.groups.findIndex((x) => x.codes.includes(l.code));
-    return g < 0 ? Infinity : g * 1000 + CONFIG.groups[g].codes.indexOf(l.code);
-  };
-  list.sort((a, b) => groupOrder(a) - groupOrder(b) || a.english.localeCompare(b.english));
+  list.sort((a, b) => a.english.localeCompare(b.english));
   writeJson(LANGUAGE_LIST, { languages: list });
   console.log(`languages.json: ${list.length} languages`);
 }
