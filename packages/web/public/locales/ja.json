@@ -249,6 +249,7 @@
  "Batches: palay in, rice and by-products out": "バッチ: パレーが入って、米と副産物が出る",
  "Bearer clients must provide a refresh token": "ベアラークライアントはリフレッシュトークンを提供する必要があります",
  "Before you can close the account:": "アカウントを閉鎖する前に:",
+ "Beta": "ベータ",
  "Bi-weekly": "隔週",
  "Bigas uses each variety's Recovery % ({{pct}}% when it has none). Ipa is 20% of the palay and darak about 10%.": "Bigas は各品種の回収率 (品種がない場合は{{pct}}%) を使用します。パレーの20％がイパ、約10％がダラックです。",
  "Bill to": "請求先",

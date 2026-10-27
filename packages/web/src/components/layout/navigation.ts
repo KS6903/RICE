@@ -50,6 +50,8 @@ export type NavEntry = {
   section: AppSection;
   /** One line on hover: what the page is for, for someone who's never opened it. */
   hint: string;
+  /** Still being tried out: a "Beta" mark beside its name. */
+  beta?: boolean;
 };
 
 /** Grouped in the order a mill works: palay in, milled, stocked, sold, paid
@@ -229,6 +231,7 @@ export const NAV_GROUPS: { title: string | null; items: NavEntry[] }[] = [
         feature: "automations",
         section: "automations",
         hint: t("Reports and alerts that run by themselves"),
+        beta: true,
       },
       {
         to: "/employees",

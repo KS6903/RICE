@@ -251,6 +251,7 @@
  "Batches: palay in, rice and by-products out": "Partijas: palay iekšā, rīsi un blakusprodukti",
  "Bearer clients must provide a refresh token": "Uzrādītāja klientiem ir jānodrošina atsvaidzināšanas pilnvara",
  "Before you can close the account:": "Pirms konta slēgšanas:",
+ "Beta": "Beta",
  "Bi-weekly": "Reizi divās nedēļās",
  "Bigas uses each variety's Recovery % ({{pct}}% when it has none). Ipa is 20% of the palay and darak about 10%.": "Bigas izmanto katras šķirnes atkopšanas % ({{pct}}%, ja tāda nav). Ipa ir 20% no palay un darak apmēram 10%.",
  "Bill to": "Rēķins",

@@ -63,6 +63,7 @@ describe("Sidebar", () => {
     expect(within(basic).getByRole("link", { name: "Dispatch" })).toBeInTheDocument();
     expect(within(pro).getByRole("link", { name: "Field Operators" })).toBeInTheDocument();
     expect(within(pro).getByRole("link", { name: "Cash count" })).toBeInTheDocument();
+    // Selling a plan, nothing in it is marked Beta.
     expect(within(enterprise).getByRole("link", { name: "Automations" })).toBeInTheDocument();
   });
 

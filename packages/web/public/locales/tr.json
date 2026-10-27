@@ -250,6 +250,7 @@
  "Batches: palay in, rice and by-products out": "Partiler: Palay girişi, pirinç ve yan ürünler çıkışı",
  "Bearer clients must provide a refresh token": "Taşıyıcı istemcilerin bir yenileme jetonu sağlaması gerekir",
  "Before you can close the account:": "Hesabı kapatmadan önce:",
+ "Beta": "Beta",
  "Bi-weekly": "İki haftada bir",
  "Bigas uses each variety's Recovery % ({{pct}}% when it has none). Ipa is 20% of the palay and darak about 10%.": "Bigas her çeşidin Geri Kazanım Yüzdesini (hiç olmadığında % {{pct}} ) kullanır. Ipa, palayın %20'sini, darak ise yaklaşık %10'unu oluşturur.",
  "Bill to": "ya fatura edilecek",

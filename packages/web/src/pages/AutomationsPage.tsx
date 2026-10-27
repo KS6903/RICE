@@ -1138,6 +1138,9 @@ export default function AutomationsPage() {
         <div className="flex items-center gap-3 flex-wrap">
           <h1 className="text-2xl font-bold text-primary">{t("Automations")}</h1>
           <span className="badge-yellow">{t("Enterprise")}</span>
+          <span className="badge-violet" data-testid="automations-beta">
+            {t("Beta")}
+          </span>
         </div>
         <p className="text-secondary mt-1 max-w-2xl">
           {t(

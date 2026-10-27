@@ -11,6 +11,15 @@ import { FEATURE_PLAN, NAV_GROUPS, PLAN_ORDER, type NavEntry } from "./navigatio
 import { NavDrawer } from "./NavDrawer";
 import { t } from "../../i18n";
 
+/** "Beta" beside a page still being tried out. */
+function BetaMark() {
+  return (
+    <span className="rounded-full bg-violet-500/10 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-violet-600 dark:text-violet-300">
+      {t("Beta")}
+    </span>
+  );
+}
+
 function NavItem({
   to,
   label,
@@ -19,6 +28,7 @@ function NavItem({
   locked,
   readOnly,
   hint,
+  beta,
 }: NavEntry & { locked?: boolean; readOnly?: boolean }) {
   // Locked here means the subscription has lapsed: every page waits on renewal.
   const target = locked ? "/settings" : to;
@@ -51,6 +61,7 @@ function NavItem({
             )}
           />
           <span className="flex-1">{label}</span>
+          {!locked && beta && <BetaMark />}
           {!locked && readOnly && (
             <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
               {t("View")}

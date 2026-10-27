@@ -250,6 +250,7 @@
  "Batches: palay in, rice and by-products out": "Erät: palay sisään, riisi ja sivutuotteet ulos",
  "Bearer clients must provide a refresh token": "Kuljetusasiakkaiden on toimitettava päivitystunnus",
  "Before you can close the account:": "Ennen kuin voit sulkea tilin:",
+ "Beta": "Beeta",
  "Bi-weekly": "Joka toinen viikko",
  "Bigas uses each variety's Recovery % ({{pct}}% when it has none). Ipa is 20% of the palay and darak about 10%.": "Bigas käyttää kunkin lajikkeen palautumisprosenttia ({{pct}}%, kun sillä ei ole yhtään). Ipa on 20 % palaystä ja darak noin 10 %.",
  "Bill to": "Laskuta",
