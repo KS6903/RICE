@@ -37,7 +37,6 @@ import {
   MonitorSmartphone,
   LogOut,
   Palette,
-  Languages,
   Sun,
   Moon,
   Download,
@@ -68,7 +67,6 @@ type Tab =
   | "data"
   | "profile"
   | "appearance"
-  | "language"
   | "password"
   | "sessions";
 
@@ -100,7 +98,6 @@ export default function SettingsPage() {
     // Personal settings — available to every role.
     { key: "profile", label: t("My Profile"), icon: UserIcon },
     { key: "appearance", label: t("Appearance"), icon: Palette },
-    { key: "language", label: t("Language"), icon: Languages },
     { key: "password", label: t("Password"), icon: KeyRound },
     { key: "sessions", label: t("Devices"), icon: MonitorSmartphone },
   ];
@@ -160,7 +157,6 @@ export default function SettingsPage() {
           {tab === "data" && <DataExport />}
           {tab === "profile" && <ProfileTab />}
           {tab === "appearance" && <AppearanceTab />}
-          {tab === "language" && <LanguagePicker />}
           {tab === "password" && <PasswordTab />}
           {tab === "sessions" && <SessionsTab />}
         </main>
@@ -1514,44 +1510,48 @@ function AppearanceTab() {
   const setTheme = useThemeStore((s) => s.setTheme);
 
   return (
-    <div className="card max-w-xl space-y-5">
-      <h3 className="text-lg font-bold text-primary">{t("Appearance")}</h3>
+    <div className="space-y-6">
+      <div className="card max-w-xl space-y-5">
+        <h3 className="text-lg font-bold text-primary">{t("Appearance")}</h3>
 
-      <fieldset>
-        <legend className={LABEL}>{t("Theme")}</legend>
-        <div className="grid grid-cols-2 gap-3">
-          {THEME_OPTIONS.map(({ value, label, icon: Icon }) => {
-            const active = theme === value;
-            return (
-              <label
-                key={value}
-                className={`cursor-pointer rounded-xl border-2 p-3 transition-colors has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-emerald-500/40 ${
-                  active
-                    ? "border-emerald-500"
-                    : "border-slate-200 hover:border-slate-300 dark:border-slate-700 dark:hover:border-slate-500"
-                }`}
-              >
-                <input
-                  type="radio"
-                  name="theme"
-                  value={value}
-                  checked={active}
-                  onChange={() => setTheme(value)}
-                  className="sr-only"
-                />
-                <ThemePreview dark={value === "dark"} />
-                <span className="mt-3 flex items-center gap-2 text-sm font-semibold text-primary">
-                  <Icon size={16} className="text-secondary" />
-                  {label}
-                  {active && (
-                    <Check size={16} className="ml-auto text-emerald-600 dark:text-emerald-400" />
-                  )}
-                </span>
-              </label>
-            );
-          })}
-        </div>
-      </fieldset>
+        <fieldset>
+          <legend className={LABEL}>{t("Theme")}</legend>
+          <div className="grid grid-cols-2 gap-3">
+            {THEME_OPTIONS.map(({ value, label, icon: Icon }) => {
+              const active = theme === value;
+              return (
+                <label
+                  key={value}
+                  className={`cursor-pointer rounded-xl border-2 p-3 transition-colors has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-emerald-500/40 ${
+                    active
+                      ? "border-emerald-500"
+                      : "border-slate-200 hover:border-slate-300 dark:border-slate-700 dark:hover:border-slate-500"
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="theme"
+                    value={value}
+                    checked={active}
+                    onChange={() => setTheme(value)}
+                    className="sr-only"
+                  />
+                  <ThemePreview dark={value === "dark"} />
+                  <span className="mt-3 flex items-center gap-2 text-sm font-semibold text-primary">
+                    <Icon size={16} className="text-secondary" />
+                    {label}
+                    {active && (
+                      <Check size={16} className="ml-auto text-emerald-600 dark:text-emerald-400" />
+                    )}
+                  </span>
+                </label>
+              );
+            })}
+          </div>
+        </fieldset>
+      </div>
+
+      <LanguagePicker />
     </div>
   );
 }

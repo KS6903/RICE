@@ -5,7 +5,7 @@ import { clsx } from "clsx";
 import { authService } from "../services/AuthService";
 import { currentLanguage, LANGUAGES, switchLanguage, t } from "../i18n";
 
-/** Settings > Language: the language the app is shown in. Every language with
+/** Settings > Appearance, its own card under the theme: the language the app is shown in. Every language with
  *  a file in public/locales, by name. Saved on the account, then the page
  *  reloads in it. */
 export default function LanguagePicker() {

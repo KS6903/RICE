@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { User } from "@rice-mill/shared";
@@ -59,13 +59,14 @@ describe("Settings: Appearance", () => {
     expect(localStorage.getItem("rice-mill-theme:u9")).toBe("light");
   });
 
-  it("keeps the language on a tab of its own", () => {
+  it("shows the language in a card of its own, under the theme", () => {
     draw();
+    expect(screen.queryByRole("button", { name: "Language" })).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Appearance" }));
-    expect(screen.queryByTestId("language-picker")).toBeNull();
 
-    fireEvent.click(screen.getByRole("button", { name: "Language" }));
-    expect(screen.getByTestId("language-picker")).toHaveTextContent("Powered by Google");
-    expect(screen.queryByRole("radio", { name: "Dark" })).toBeNull();
+    const language = screen.getByTestId("language-picker");
+    expect(language).toHaveTextContent("Powered by Google");
+    expect(within(language).queryByRole("radio", { name: "Dark" })).toBeNull();
+    expect(screen.getByRole("radio", { name: "Dark" })).toBeInTheDocument();
   });
 });
