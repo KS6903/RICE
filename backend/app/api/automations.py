@@ -148,7 +148,7 @@ def _ai_out(db: Session, company_id: uuid.UUID) -> dict:
 
 
 # The jobs tick every 15 minutes; three missed ticks means they aren't running
-# on this server (the private preview has no cron, for one).
+# on this server (the cron trigger is missing, or the jobs container can't start).
 SCHEDULER_STALE_AFTER = timedelta(minutes=45)
 # How far back the page counts emails that never reached anyone.
 UNDELIVERED_WINDOW = timedelta(days=7)

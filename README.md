@@ -140,6 +140,6 @@ can point them at another runner, but never at a self-hosted one while the repos
 - [SETUP.md](SETUP.md): local setup step by step, and how offline sync works
 - [PRODUCT.md](PRODUCT.md) and [DESIGN.md](DESIGN.md): who it's for, and the visual system
 - [CLOUDFLARE_DEPLOY.md](CLOUDFLARE_DEPLOY.md): what runs where in production, and how to deploy
-- [PREVIEW_DEPLOY.md](PREVIEW_DEPLOY.md): the private test site for invited testers, and its costs
+- [PREVIEW_DEPLOY.md](PREVIEW_DEPLOY.md): the preview site on app.oraiza.workers.dev, and its costs
 - [PRODUCTION_LAUNCH_CHECKLIST.md](PRODUCTION_LAUNCH_CHECKLIST.md): what's left before launch
 - [SECURITY_OPERATIONS.md](SECURITY_OPERATIONS.md): release gate, e2e databases, account recovery

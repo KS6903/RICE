@@ -175,6 +175,15 @@ def test_the_real_preview_config_is_ready(monkeypatch):
     assert gate.check(gate.WRANGLER_CONFIG, gate.CONTAINER_ENV, env_name="preview") == []
 
 
+def test_every_deployed_worker_keeps_the_15_minute_cron():
+    """The cron is the only thing that runs the provisioner and the scheduled jobs
+    (automations, plan expiry, email). The preview shipped with an empty list, and
+    on the live site, which is the preview, no automation ever ran."""
+    config = gate.load_jsonc(gate.WRANGLER_CONFIG)
+    assert config["triggers"]["crons"] == ["*/15 * * * *"]
+    assert config["env"]["preview"]["triggers"]["crons"] == ["*/15 * * * *"]
+
+
 def test_an_env_that_does_not_exist_is_an_error(tmp_path):
     with pytest.raises(ValueError, match="no env.staging"):
         gate.check(_wrangler(tmp_path), gate.CONTAINER_ENV, env_name="staging")

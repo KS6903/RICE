@@ -67,7 +67,7 @@ export type AISettings = {
 
 /** What could stop the automations reaching people. */
 export type AutomationsHealth = {
-  /** False when scheduled runs haven't ticked lately (the private preview has none). */
+  /** False when scheduled runs haven't ticked lately (no cron trigger, or the jobs container fails to start). */
   scheduler_running: boolean;
   last_tick: string | null;
   /** This week's automation emails: given up on, or still being retried. */

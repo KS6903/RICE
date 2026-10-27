@@ -1,9 +1,8 @@
-# Private preview on Cloudflare
+# Preview site on Cloudflare
 
-A private test copy of Oraiza for invited testers, at
-`https://app.oraiza.workers.dev`, behind Cloudflare Access so only the people you
-list can open it. It runs the same code with the production security settings, except in two
-places (`ENV=preview`):
+A trimmed copy of Oraiza at `https://app.oraiza.workers.dev`. Sign-up is open to anyone behind
+Turnstile (`SIGNUP_OPEN` in `wrangler.jsonc`); step 7 locks it to a list of people instead. It
+runs the same code with the production security settings, except in two places (`ENV=preview`):
 
 - the legal documents may still show "To follow" where your company details aren't filled in;
 - email is optional, so email verification is off unless you add an email account.
@@ -24,11 +23,18 @@ checked by `backend/deploy_readiness.py --env preview`, and deployed by the
 
 The $5 plan includes 25 GiB-hours of container memory and 375 vCPU-minutes a month, and
 containers are billed only while awake. The preview is trimmed to stay close to that: one small
-API container (`basic`: ¼ vCPU, 1 GiB) that sleeps after 10 minutes idle, and no 15-minute cron.
-About an hour of use a day comes to roughly $5.15 a month; three hours, about $7.
+API container (`basic`: ¼ vCPU, 1 GiB) that sleeps after 10 minutes idle.
 
-Without the cron, scheduled jobs don't run here (subscription expiry, automations, clean-ups).
-A new sign-up still gets its database schema: the sign-up itself starts the provisioner.
+The 15-minute cron (`env.preview.triggers` in `wrangler.jsonc`) wakes the provisioner and the
+jobs runner about 96 times a day each. Those two are one-shot containers that exit when their work
+is done, but they add to the hours above. The usage figures this page used to give (about $5.15 a
+month for an hour of use a day) were worked out without the cron, so check Cloudflare's usage page
+after the first week instead of trusting them.
+
+The cron is what runs the scheduled jobs: subscription expiry, automations and their emails,
+clean-ups. Without it none of them run, and the Automations page says "Automatic runs are
+paused on this server". A new sign-up still gets its database schema without it: the sign-up
+itself starts the provisioner.
 
 ## One-time setup
 
@@ -79,7 +85,8 @@ In the repository: Settings → Secrets and variables → Actions → **New repo
 
 GitHub → Actions → **Deploy preview (Cloudflare)** → Run workflow, on `main`. It runs the full
 checks, the preview readiness gate, brings Neon up to date, then deploys the Worker and builds
-the containers.
+the containers. After that it deploys itself after every push to `main` whose CI passed, so a
+change to `wrangler.jsonc` (the cron included) goes live when it is merged.
 
 ### 6. Worker secrets
 
@@ -97,9 +104,9 @@ The invite code is the one secret you type yourself, because you'll give it to y
 the script never shows the ones it makes. The containers read the secrets when they start, so
 set them before anyone opens the site.
 
-### 7. Lock it to your testers
+### 7. Lock it to your testers (optional)
 
-Workers & Pages → **app** → Settings → Domains & Routes → `workers.dev` →
+Skip this while the site is open to everyone. Otherwise: Workers & Pages → **app** → Settings → Domains & Routes → `workers.dev` →
 **Enable Cloudflare Access**, then **Manage Cloudflare Access** and add each tester's email.
 Anyone else gets Cloudflare's sign-in page and goes no further.
 
@@ -120,8 +127,9 @@ Anyone else gets Cloudflare's sign-in page and goes no further.
    Worker can do the same, so keep that right to yourself; they'd still need your two-factor code.
    (`create_platform_admin.py` without `--hash` still makes an ordinary admin in the database.)
 
-2. Each tester signs up their mill on the preview with the invite code. Owners and admins set
-   up two-factor sign-in on their first visit, as in production.
+2. Each mill signs up on the site. While `SIGNUP_OPEN` is `"true"` (it is now) no invite code is
+   needed; otherwise they enter `SIGNUP_INVITE_CODE`. Owners and admins set up two-factor
+   sign-in on their first visit, as in production.
 3. In the admin console, set each mill's plan (Admin → Tenants).
 4. Optional demo data for a mill: from `backend/`, with `$env:DATABASE_URL` set as above,
    `.\.venv\Scripts\python.exe seed_demo.py <owner username> --allow-remote`.

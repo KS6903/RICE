@@ -238,8 +238,8 @@ def send_test(db: Session, company: Company, recipe: Recipe, user: User, *, now:
 
 
 def email_test(db: Session, recipe: Recipe, user: User, *, now: datetime) -> str:
-    """Email a test now rather than on the next jobs tick, which may never come
-    on this server (the preview has no cron). Says what happened, for the page:
+    """Email a test now rather than on the next jobs tick, which is up to 15
+    minutes away, and never comes if the cron is off. Says what happened, for the page:
     sent, no_address, not_set_up, later (over the day's cap) or failed."""
     only = (Notification.user_id == user.id) & (Notification.kind == job_name(recipe.code))
     try:

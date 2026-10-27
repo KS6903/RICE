@@ -94,13 +94,13 @@
     "SMTP_USERNAME": "no-reply@example.com"
   },
 
-  // ── The private preview (`wrangler deploy --env preview`) ──────────────────
-  // A test site for invited testers on app.oraiza.workers.dev,
-  // behind Cloudflare Access. Trimmed to stay near the Workers Paid plan's
-  // included container hours: one small API container that sleeps after 10
-  // minutes, and no 15-minute cron (it would wake the provisioner and the jobs
-  // runner about 96 times a day). Signups still start the provisioner on their
-  // own (X-Provisioning-Queued); scheduled jobs don't run here.
+  // ── The preview Worker (`wrangler deploy --env preview`) ───────────────────
+  // The site live on app.oraiza.workers.dev, with sign-up open behind Turnstile.
+  // Trimmed to stay near the Workers Paid plan's included container hours: one
+  // small API container that sleeps after 10 minutes. It keeps the 15-minute
+  // cron, which wakes the provisioner and the jobs runner about 96 times a day
+  // each: without it no scheduled job ever runs here (automations, plan expiry,
+  // email, clean-ups).
   // Every binding is spelled out rather than inherited. See PREVIEW_DEPLOY.md.
   "env": {
     "preview": {
@@ -152,8 +152,11 @@
           "new_sqlite_classes": ["JobsContainer"]
         }
       ],
+      // The same 15-minute tick as production. It runs the provisioner and every
+      // scheduled job (plan expiry, automations and their emails, clean-ups); with
+      // none, the Automations page says "Automatic runs are paused".
       "triggers": {
-        "crons": []
+        "crons": ["*/15 * * * *"]
       },
       "observability": {
         "enabled": true

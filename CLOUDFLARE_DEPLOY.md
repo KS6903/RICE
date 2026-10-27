@@ -4,9 +4,9 @@ How Oraiza runs on Cloudflare, and the steps to deploy it. Companion to
 [PRODUCTION_LAUNCH_CHECKLIST.md](PRODUCTION_LAUNCH_CHECKLIST.md) — the database-role,
 secret-generation and monitoring phases there still apply.
 
-This page is the production deployment. The private test site for invited testers is a trimmed
-copy of it (`wrangler.jsonc` `env.preview`, one small container, no cron); see
-[PREVIEW_DEPLOY.md](PREVIEW_DEPLOY.md).
+This page is the production deployment. The preview site on `app.oraiza.workers.dev` is a
+trimmed copy of it (`wrangler.jsonc` `env.preview`: one small API container, the same 15-minute
+cron); see [PREVIEW_DEPLOY.md](PREVIEW_DEPLOY.md).
 
 ## What runs where
 
