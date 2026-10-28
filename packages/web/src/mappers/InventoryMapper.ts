@@ -25,7 +25,13 @@ export type UnifiedItem = {
 export type ItemLocation = { branchId: string | null; branchName: string; quantity_kg: number };
 
 /** The grades milled rice is stocked under (milling output, Add inventory, rice purchases). */
-export const MILLED_GRADES = ["premium", "regular", "broken"] as const;
+export const MILLED_GRADES = [
+  "Graded Rice",
+  "Straight Mill Rice",
+  "Broken Rice",
+  "Well-Milled Rice",
+  "Regular-Milled Rice",
+] as const;
 
 // Just the progress-bar color per type (presentation lives in the page; this is
 // the one bit of styling the unified item carries).
@@ -125,7 +131,7 @@ export class InventoryMapper {
   /** For the "All warehouses" view: one item per kind + variety + grade, adding
    *  up the stock every warehouse holds of it. Each item keeps the per-warehouse
    *  split in `locations` so the views can still show what sits where. Grade is
-   *  part of the match: Rc222 grade A and grade B are different stock. */
+   *  part of the match: Dinorado grade A and grade B are different stock. */
   static combineAcrossWarehouses(items: UnifiedItem[]): UnifiedItem[] {
     const groups = new Map<string, UnifiedItem[]>();
     for (const i of items) {

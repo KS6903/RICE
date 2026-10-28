@@ -79,7 +79,7 @@ def test_saving_a_purchase_unchanged_logs_nothing(auth_client):
 
 def test_a_rice_purchase_moves_its_stock_to_the_corrected_grade(auth_client, db_session):
     variety = _variety(auth_client)
-    line = {"variety_id": variety["id"], "grade_name": "premium", "sack_count": "20", "price_per_sack": "2400"}
+    line = {"variety_id": variety["id"], "grade_name": "Graded Rice", "sack_count": "20", "price_per_sack": "2400"}
     purchase = _ok(
         auth_client.post("/api/paddy/rice-purchases", json={"purchase_date": "2026-10-20", "items": [line]}), 201
     )
@@ -87,17 +87,21 @@ def test_a_rice_purchase_moves_its_stock_to_the_corrected_grade(auth_client, db_
     edited = _ok(
         auth_client.patch(
             f"/api/paddy/rice-purchases/{purchase['id']}",
-            json={"items": [{**line, "grade_name": "regular", "sack_count": "18"}], "remarks": "Wrong grade"},
+            json={
+                "items": [{**line, "grade_name": "Straight Mill Rice", "sack_count": "18"}],
+                "remarks": "Wrong grade",
+            },
         )
     )
     assert edited["total_kg"] == 900.0
     stock = {r.grade_name: float(r.quantity_kg) for r in db_session.query(MilledRiceInventory).all()}
-    assert stock == {"premium": 0.0, "regular": 900.0}
+    assert stock == {"Graded Rice": 0.0, "Straight Mill Rice": 900.0}
 
     [entry] = _history(auth_client, "paddy", "rice_purchase", purchase["id"])
     assert entry["detail"].splitlines() == [
         "Remarks: blank → Wrong grade",
-        "Lines: RC400 premium, 20 sacks of 50 kg at ₱2,400/sack → RC400 regular, 18 sacks of 50 kg at ₱2,400/sack",
+        "Lines: RC400 Graded Rice, 20 sacks of 50 kg at ₱2,400/sack"
+        " → RC400 Straight Mill Rice, 18 sacks of 50 kg at ₱2,400/sack",
     ]
 
 

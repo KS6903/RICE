@@ -20,7 +20,7 @@ def _variety(c, code="RC400"):
 def _rice_line(variety_id, **over):
     return {
         "variety_id": variety_id,
-        "grade_name": "premium",
+        "grade_name": "Graded Rice",
         "sack_count": "20",
         "kg_per_sack": "50",
         "price_per_sack": "2400",
@@ -57,13 +57,15 @@ def test_rice_purchase_adds_its_sacks_to_milled_rice_stock(auth_client, db_sessi
 
     stock = db_session.query(MilledRiceInventory).filter(MilledRiceInventory.variety_id == variety["id"]).all()
     assert len(stock) == 1
-    assert stock[0].grade_name == "premium"
+    assert stock[0].grade_name == "Graded Rice"
     assert stock[0].branch_id == seed_owner.branch_id
     assert float(stock[0].quantity_kg) == 1250.0
 
     # The Rice page's stock table reads it back.
     rows = auth_client.get("/api/paddy/rice-stock").json()
-    assert [(r["variety"]["code"], r["grade_name"], r["quantity_kg"]) for r in rows] == [("RC400", "premium", 1250.0)]
+    assert [(r["variety"]["code"], r["grade_name"], r["quantity_kg"]) for r in rows] == [
+        ("RC400", "Graded Rice", 1250.0)
+    ]
 
 
 def test_rice_purchase_goes_to_the_warehouse_the_owner_picks(auth_client, db_session, seed_owner):

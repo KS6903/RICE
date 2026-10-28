@@ -31,7 +31,7 @@ const gradeLabel = (g: string) => g.charAt(0).toUpperCase() + g.slice(1);
 
 const newLine = (): RiceLineForm => ({
   variety_id: "",
-  grade_name: "premium",
+  grade_name: "Graded Rice",
   sack_count: "",
   kg_per_sack: "50",
   price_per_sack: "",
@@ -151,7 +151,12 @@ export default function RicePurchasesPage() {
                   endpoint="/paddy/varieties"
                   queryKey={["varieties"]}
                   fields={[
-                    { key: "code", label: t("Code"), required: true, placeholder: t("e.g. RC400") },
+                    {
+                      key: "code",
+                      label: t("Code"),
+                      required: true,
+                      placeholder: t("e.g. Dinorado"),
+                    },
                     { key: "name", label: t("Name"), required: true },
                   ]}
                   transformBody={(b) => ({ ...b, code: String(b.code).toUpperCase() })}

@@ -99,7 +99,7 @@ class MilledRiceInventory(Base):
     company_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("companies.id"))
     branch_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("branches.id"))
     variety_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("rice_varieties.id"))
-    grade_name: Mapped[str | None] = mapped_column(String(30))  # premium, regular, broken
+    grade_name: Mapped[str | None] = mapped_column(String(30))  # Graded Rice, Straight Mill Rice, Broken Rice, ...
     quantity_kg: Mapped[Decimal] = mapped_column(Numeric(12, 3), default=0)
 
     variety: Mapped["RiceVariety"] = relationship("RiceVariety")

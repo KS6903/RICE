@@ -164,7 +164,7 @@ export default function SalesPage() {
       {
         item_type: "milled_rice",
         variety_id: "",
-        grade_name: "regular",
+        grade_name: "Straight Mill Rice",
         quantity_kg: "",
         unit_price_per_kg: "",
       },
@@ -332,7 +332,7 @@ export default function SalesPage() {
                       {
                         item_type: "milled_rice",
                         variety_id: "",
-                        grade_name: "regular",
+                        grade_name: "Straight Mill Rice",
                         quantity_kg: "",
                         unit_price_per_kg: "",
                       },

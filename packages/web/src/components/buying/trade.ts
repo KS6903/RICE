@@ -24,7 +24,7 @@ export const byproductName = (t: string | null | undefined) => (t ? byproductLab
 export const gradeLabel = (g: string | null | undefined) =>
   g ? g.charAt(0).toUpperCase() + g.slice(1) : "—";
 
-/** What a sales-order line is, in words: "RC222 · Premium", "Darak (Rice Bran)". */
+/** What a sales-order line is, in words: "Dinorado · Graded Rice", "Darak (Rice Bran)". */
 export const saleLineName = (line: any) =>
   line.item_type === "byproduct"
     ? byproductName(line.byproduct_type)

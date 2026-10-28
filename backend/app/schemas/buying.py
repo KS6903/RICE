@@ -18,7 +18,7 @@ def _blank_to_none(v: str | None) -> str | None:
 
 class RicePurchaseItemIn(BaseModel):
     variety_id: uuid.UUID | None = None
-    grade_name: str | None = Field(None, max_length=30)  # premium, regular, broken
+    grade_name: str | None = Field(None, max_length=30)  # Graded Rice, Straight Mill Rice, Broken Rice, ...
     sack_count: Decimal = Field(gt=0)
     kg_per_sack: Decimal = Field(Decimal("50"), gt=0, le=1000)
     price_per_sack: Decimal = Field(ge=0)

@@ -47,7 +47,7 @@ const BLANK: Record<TradeKind, Line> = {
   },
   rice: {
     variety_id: "",
-    grade_name: "premium",
+    grade_name: "Graded Rice",
     sack_count: "",
     kg_per_sack: "50",
     price_per_sack: "",

@@ -168,7 +168,7 @@ export default function AddInventoryModal({
   const [branchId, setBranchId] = useState<string>(defaultBranchId || branchesProp[0]?.id || "");
   const [varietyId, setVarietyId] = useState<string>("");
   const [gradeId, setGradeId] = useState<string>("");
-  const [gradeName, setGradeName] = useState<string>("premium");
+  const [gradeName, setGradeName] = useState<string>("Graded Rice");
   const [byproductType, setByproductType] = useState<string>("ipa");
   const [quantity, setQuantity] = useState<string>("");
   const [unitCode, setUnitCode] = useState<string>("kg");
@@ -369,7 +369,7 @@ export default function AddInventoryModal({
               value={varietyId}
               onChange={setVarietyId}
               placeholder={t("Select a variety…")}
-              newPlaceholder={t("New variety (e.g. RC222 — Tubigan)…")}
+              newPlaceholder={t("New variety (e.g. Dinorado)…")}
               options={varieties.map((v: any) => ({ value: v.id, label: `${v.code} — ${v.name}` }))}
               onCreate={createVariety}
             />

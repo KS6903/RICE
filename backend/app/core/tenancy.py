@@ -30,7 +30,7 @@ from contextlib import contextmanager
 from typing import Iterator
 
 import jwt
-from sqlalchemy import event, text
+from sqlalchemy import event, func, text
 from sqlalchemy.orm import Session
 
 from ..models.base import now_utc
@@ -167,16 +167,33 @@ def _token_from_request(request) -> str | None:
 # System reference catalogs seeded into every NEW client schema (mirrors seed.py).
 # Rows are company_id=NULL — i.e. that client's copy of the shared catalog, which
 # the allow_shared logic in services/base.py treats as system rows.
+#
+# (code, name, typical recovery %). The code is what the pickers show (at most 20
+# characters); the name is the full text the Catalog shows. No category: none of
+# them is an inbred/hybrid pick, and the Boss can set one.
 _SYSTEM_VARIETIES = [
-    ("Rc222", "NSIC Rc222", "inbred", 66.0),
-    ("Rc216", "NSIC Rc216", "inbred", 65.0),
-    ("Rc218", "NSIC Rc218", "inbred", 65.0),
-    ("Rc298", "NSIC Rc298", "inbred", 66.0),
-    ("PSB14", "PSB Rc14", "inbred", 64.0),
-    ("SINAG", "Sinag (Hybrid)", "hybrid", 68.0),
-    ("MESTIZO", "Mestizo (Hybrid)", "hybrid", 68.0),
-    ("LOCAL", "Local Variety", "local", 62.0),
+    ("Dinorado", "Dinorado", 65.0),
+    ("Jasmine Rice", "Jasmine Rice", 64.0),
+    ("Sinandomeng", "Sinandomeng", 65.0),
+    ("Maharlika", "Maharlika", 65.0),
+    ("Brown Rice", "Brown Rice (Unpolished Rice)", 78.0),
+    ("Red Rice", "Red Rice", 70.0),
+    ("Black Rice", "Black Rice", 70.0),
+    ("Malagkit", "Malagkit (Glutinous Rice | Sticky Rice)", 65.0),
 ]
+# The defaults a schema made before that list still has (NSIC Rc222 and the
+# rest), each with the default that replaces it. sync_system_varieties renames
+# it in place, so the records that use it keep pointing at it.
+_RETIRED_VARIETIES = {
+    "Rc222": "Dinorado",
+    "Rc216": "Jasmine Rice",
+    "Rc218": "Sinandomeng",
+    "Rc298": "Maharlika",
+    "PSB14": "Brown Rice",
+    "SINAG": "Red Rice",
+    "MESTIZO": "Black Rice",
+    "LOCAL": "Malagkit",
+}
 _SYSTEM_GRADES = [
     ("A", "Grade A", 0.0, 14.0),
     ("B", "Grade B", 14.1, 18.0),
@@ -202,17 +219,59 @@ def seed_reference_rows(db: Session) -> None:
     Caller must have already pointed ``db`` at the target client schema. Idempotent
     (skips rows that already exist). Flush only — caller owns the transaction.
     """
-    from ..models.reference import QualityGrade, RiceVariety
+    from ..models.reference import QualityGrade
 
-    for code, name, cat, rec in _SYSTEM_VARIETIES:
-        exists = db.query(RiceVariety).filter_by(code=code, company_id=None).first()
-        if not exists:
-            db.add(RiceVariety(code=code, name=name, category=cat, typical_recovery_pct=rec))
+    _add_missing_varieties(db)
     for code, name, mn, mx in _SYSTEM_GRADES:
         grade: QualityGrade | None = db.query(QualityGrade).filter_by(code=code, company_id=None).first()
         if not grade:
             db.add(QualityGrade(code=code, name=name, min_moisture_pct=mn, max_moisture_pct=mx))
     db.flush()
+
+
+def _add_missing_varieties(db: Session) -> None:
+    """Add each default variety whose code (in any case) no row has yet."""
+    from ..models.reference import RiceVariety
+
+    for code, name, rec in _SYSTEM_VARIETIES:
+        if not db.query(RiceVariety.id).filter(func.lower(RiceVariety.code) == code.lower()).first():
+            db.add(RiceVariety(code=code, name=name, typical_recovery_pct=rec))
+
+
+def sync_system_varieties(db: Session) -> None:
+    """Bring the CURRENT schema's default varieties to the current list.
+
+    Runs from migrate_all_tenants.py. A schema made before the list changed still
+    has the retired defaults (_RETIRED_VARIETIES): each is renamed in place to
+    the default that replaces it, or hidden when the mill already made its own
+    variety with that code. Only then are the defaults still missing added, so a
+    schema without retired defaults (a new one, or one whose Boss already
+    changed them) is left alone and a default the Boss renamed is never added
+    back. Re-runnable: a renamed row no longer has its old code. Flush only;
+    the caller owns the transaction.
+    """
+    from ..models.reference import RiceVariety
+
+    new = {code: (name, rec) for code, name, rec in _SYSTEM_VARIETIES}
+    found = False
+    for old_code, new_code in _RETIRED_VARIETIES.items():
+        old = db.query(RiceVariety).filter_by(code=old_code, company_id=None).first()
+        if old is None:
+            continue
+        found = True
+        if db.query(RiceVariety.id).filter(func.lower(RiceVariety.code) == new_code.lower()).first():
+            old.is_active = False
+            old.deactivated_at = old.deactivated_at or now_utc()
+        else:
+            old.code = new_code
+            old.name, old.typical_recovery_pct = new[new_code]
+            old.category = None
+        # The sessions that run this don't autoflush: without it the next
+        # query would not see this change.
+        db.flush()
+    if found:
+        _add_missing_varieties(db)
+        db.flush()
 
 
 def seed_default_expense_categories(db: Session, company_id: uuid.UUID) -> None:

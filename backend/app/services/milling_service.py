@@ -383,7 +383,7 @@ class MillingService(BaseService):
         company_id = self.current_user.company_id
         inv: Any
         if out.output_type == "milled_rice":
-            grade_name = getattr(out, "grade_name", None) or "regular"
+            grade_name = getattr(out, "grade_name", None) or "Straight Mill Rice"
             inv = self.milled.find_bucket(company_id, branch_id, out.variety_id, grade_name)
             if not inv:
                 inv = MilledRiceInventory(

@@ -56,7 +56,7 @@ class RicePurchaseItem(Base):
         UUID(as_uuid=True), ForeignKey("rice_purchases.id", ondelete="CASCADE")
     )
     variety_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("rice_varieties.id"))
-    grade_name: Mapped[str | None] = mapped_column(String(30))  # premium, regular, broken (as milled stock)
+    grade_name: Mapped[str | None] = mapped_column(String(30))  # a milled-rice grade, as milled stock
     sack_count: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
     kg_per_sack: Mapped[Decimal] = mapped_column(Numeric(6, 2), nullable=False, default=Decimal("50"))
     price_per_sack: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)

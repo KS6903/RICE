@@ -65,7 +65,7 @@ def seed(db, username: str) -> str:
                 company_id=branch.company_id,
                 branch_id=branch.id,
                 variety_id=v.id,
-                grade_name=["premium", "regular", "broken"][i % 3],
+                grade_name=["Graded Rice", "Straight Mill Rice", "Broken Rice"][i % 3],
                 quantity_kg=Decimal("1750.0") - Decimal(str(i * 200)),
             )
         )

@@ -83,7 +83,12 @@ def test_order_list_carries_customer_and_items_for_the_invoice_preview(auth_clie
             "order_date": "2026-06-05",
             "discount_pct": "10",
             "items": [
-                {"item_type": "milled_rice", "grade_name": "premium", "quantity_kg": "100", "unit_price_per_kg": "50"},
+                {
+                    "item_type": "milled_rice",
+                    "grade_name": "Graded Rice",
+                    "quantity_kg": "100",
+                    "unit_price_per_kg": "50",
+                },
                 {"item_type": "byproduct", "quantity_kg": "20", "unit_price_per_kg": "5"},
             ],
         },
@@ -100,7 +105,7 @@ def test_order_list_carries_customer_and_items_for_the_invoice_preview(auth_clie
     }
     assert len(order["items"]) == 2
     rice = next(i for i in order["items"] if i["item_type"] == "milled_rice")
-    assert rice["grade_name"] == "premium"
+    assert rice["grade_name"] == "Graded Rice"
     assert float(rice["quantity_kg"]) == 100.0
     assert float(rice["unit_price_per_kg"]) == 50.0
     assert float(rice["line_total"]) == 5000.0

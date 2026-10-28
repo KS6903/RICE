@@ -72,7 +72,7 @@ describe("Rice (Bigas) page", () => {
     expect(create.mock.calls[0][0]).toMatchObject({
       branch_id: "b2",
       delivery_type: "delivered",
-      items: [{ variety_id: "v1", grade_name: "premium", sack_count: "20", kg_per_sack: "50" }],
+      items: [{ variety_id: "v1", grade_name: "Graded Rice", sack_count: "20", kg_per_sack: "50" }],
     });
   });
 
@@ -83,7 +83,7 @@ describe("Rice (Bigas) page", () => {
         branch_id: "b1",
         branch: { name: "Main Branch" },
         variety: { code: "RC222" },
-        grade_name: "premium",
+        grade_name: "Graded Rice",
         quantity_kg: 1000,
       },
       {
@@ -91,7 +91,7 @@ describe("Rice (Bigas) page", () => {
         branch_id: "b2",
         branch: { name: "2nd Branch" },
         variety: { code: "RC222" },
-        grade_name: "premium",
+        grade_name: "Graded Rice",
         quantity_kg: 500,
       },
     ]);
@@ -101,7 +101,7 @@ describe("Rice (Bigas) page", () => {
     expect(
       await within(stock).findByRole("columnheader", { name: "Warehouse" }),
     ).toBeInTheDocument();
-    expect(within(stock).getAllByText("Premium")).toHaveLength(2);
+    expect(within(stock).getAllByText("Graded Rice")).toHaveLength(2);
   });
 
   it("doesn't offer an encoder the warehouse choice", async () => {

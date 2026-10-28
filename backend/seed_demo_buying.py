@@ -82,13 +82,13 @@ def _purchases(db, user) -> str:
             items=[
                 {
                     "variety_id": varieties[0].id,
-                    "grade_name": "premium",
+                    "grade_name": "Graded Rice",
                     "sack_count": Decimal("40"),
                     "price_per_sack": Decimal("2450"),
                 },
                 {
                     "variety_id": varieties[-1].id,
-                    "grade_name": "regular",
+                    "grade_name": "Straight Mill Rice",
                     "sack_count": Decimal("20"),
                     "kg_per_sack": Decimal("25"),
                     "price_per_sack": Decimal("1150"),
@@ -105,7 +105,7 @@ def _purchases(db, user) -> str:
             items=[
                 {
                     "variety_id": varieties[0].id,
-                    "grade_name": "premium",
+                    "grade_name": "Graded Rice",
                     "sack_count": Decimal("25"),
                     "price_per_sack": Decimal("2400"),
                 }
@@ -185,7 +185,7 @@ def _sales(db, user) -> str:
             {
                 "item_type": "milled_rice",
                 "variety_id": variety.id if variety else None,
-                "grade_name": "premium",
+                "grade_name": "Graded Rice",
                 "quantity_kg": Decimal("500"),
                 "unit_price_per_kg": Decimal("52"),
             },

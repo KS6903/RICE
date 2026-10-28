@@ -29,7 +29,7 @@ type Line = {
 
 const newLine = (kind: TradeKind): Line => ({
   variety_id: "",
-  grade_name: kind === "rice" ? "regular" : "",
+  grade_name: kind === "rice" ? "Straight Mill Rice" : "",
   byproduct_type: kind === "byproduct" ? "ipa" : "",
   quantity_kg: "",
   unit_price_per_kg: "",

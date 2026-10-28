@@ -8,6 +8,9 @@ What it does: for every company, set search_path to its schema and run
 ``create_all`` for the tenant tables (additive — creates any tables missing from
 that schema). Re-runnable and safe.
 
+It also moves each schema's default rice varieties to the current list
+(``sync_system_varieties``): the old ones (NSIC Rc222 and the rest) are renamed in place.
+
 Note: ``create_all`` adds missing *tables* but not new *columns* on existing
 tables. For a column/constraint change, add the equivalent ``ALTER TABLE`` to
 ``_extra_ddl`` below (it runs per schema, after create_all).
@@ -31,6 +34,7 @@ from app.core.tenancy import (
     schema_name_for,
     seed_default_expense_categories,
     set_search_path,
+    sync_system_varieties,
     tenant_tables,
 )
 from app.models.company import Company
@@ -73,6 +77,21 @@ _extra_ddl: list[str] = [
     "ALTER TABLE milling_batches ADD COLUMN IF NOT EXISTS client_notes TEXT",
     # The categories every mill starts with can't be deleted (filled in below).
     "ALTER TABLE expense_categories ADD COLUMN IF NOT EXISTS is_default BOOLEAN NOT NULL DEFAULT false",
+    # Milled rice is Graded Rice, Straight Mill Rice, Broken Rice, Well-Milled Rice or
+    # Regular-Milled Rice (it was premium, regular or broken, and for a day graded, straight
+    # mill or broken). Stock, sales lines, rice purchases and price lists follow, so a list
+    # price still matches the lines it prices.
+    *(
+        f"UPDATE {table} SET grade_name = '{new}' WHERE grade_name = '{old}'"
+        for table in ("milled_rice_inventory", "sales_order_items", "rice_purchase_items", "price_lists")
+        for old, new in (
+            ("premium", "Graded Rice"),
+            ("graded", "Graded Rice"),
+            ("regular", "Straight Mill Rice"),
+            ("straight mill", "Straight Mill Rice"),
+            ("broken", "Broken Rice"),
+        )
+    ),
     # The mill's list of by-products (byproduct_kinds, made by create_all) starts
     # with the ones it already has in stock, bought or sold, named as
     # byproduct_kind_service.name_for names them.
@@ -119,6 +138,7 @@ def migrate_all() -> int:
             for stmt in _extra_ddl:
                 session.execute(text(stmt))
             seed_default_expense_categories(session, company.id)
+            sync_system_varieties(session)
             if settings.PROVISIONER_DATABASE_URL is not None:
                 grant_runtime_schema_access(session, schema)
             session.commit()

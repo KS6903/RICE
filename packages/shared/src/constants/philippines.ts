@@ -1,14 +1,14 @@
 // Philippines rice mill domain constants
 
 export const RICE_VARIETIES = [
-  { code: "Rc222", name: "NSIC Rc222", category: "inbred" as const, typical_recovery_pct: 66 },
-  { code: "Rc216", name: "NSIC Rc216", category: "inbred" as const, typical_recovery_pct: 65 },
-  { code: "Rc218", name: "NSIC Rc218", category: "inbred" as const, typical_recovery_pct: 65 },
-  { code: "Rc298", name: "NSIC Rc298", category: "inbred" as const, typical_recovery_pct: 66 },
-  { code: "PSB14", name: "PSB Rc14", category: "inbred" as const, typical_recovery_pct: 64 },
-  { code: "SINAG", name: "Sinag", category: "hybrid" as const, typical_recovery_pct: 68 },
-  { code: "MESTIZO", name: "Mestizo", category: "hybrid" as const, typical_recovery_pct: 68 },
-  { code: "LOCAL", name: "Local Variety", category: "local" as const, typical_recovery_pct: 62 },
+  { code: "Dinorado", name: "Dinorado", typical_recovery_pct: 65 },
+  { code: "Jasmine Rice", name: "Jasmine Rice", typical_recovery_pct: 64 },
+  { code: "Sinandomeng", name: "Sinandomeng", typical_recovery_pct: 65 },
+  { code: "Maharlika", name: "Maharlika", typical_recovery_pct: 65 },
+  { code: "Brown Rice", name: "Brown Rice (Unpolished Rice)", typical_recovery_pct: 78 },
+  { code: "Red Rice", name: "Red Rice", typical_recovery_pct: 70 },
+  { code: "Black Rice", name: "Black Rice", typical_recovery_pct: 70 },
+  { code: "Malagkit", name: "Malagkit (Glutinous Rice | Sticky Rice)", typical_recovery_pct: 65 },
 ];
 
 export const QUALITY_GRADES = [

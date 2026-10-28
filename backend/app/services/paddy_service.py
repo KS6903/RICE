@@ -78,7 +78,7 @@ class PaddyService(BaseService):
 
     def update_variety(self, variety_id: uuid.UUID, data) -> RiceVariety:
         """Edit a variety, or hide it (is_active=False) from the pickers and
-        unhide it. The standard ones (NSIC Rc222 and the rest) are this mill's
+        unhide it. The standard ones (Dinorado and the rest) are this mill's
         own copy in its schema, so they can be edited and hidden too."""
         v = self.varieties.get(variety_id)
         if not v or v.company_id not in (self.current_user.company_id, None):

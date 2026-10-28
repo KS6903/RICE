@@ -51,7 +51,7 @@ def test_create_batch_deducts_palay_and_adds_milled_rice(auth_client, seed_owner
                     "output_type": "milled_rice",
                     "variety_id": variety["id"],
                     "output_weight_kg": "300",
-                    "grade_name": "regular",
+                    "grade_name": "Straight Mill Rice",
                 }
             ],
         },

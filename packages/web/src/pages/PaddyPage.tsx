@@ -152,7 +152,12 @@ export default function PaddyPage() {
                   endpoint="/paddy/varieties"
                   queryKey={["varieties"]}
                   fields={[
-                    { key: "code", label: t("Code"), required: true, placeholder: t("e.g. RC400") },
+                    {
+                      key: "code",
+                      label: t("Code"),
+                      required: true,
+                      placeholder: t("e.g. Dinorado"),
+                    },
                     { key: "name", label: t("Name"), required: true },
                     {
                       key: "category",

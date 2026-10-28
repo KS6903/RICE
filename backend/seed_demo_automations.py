@@ -79,9 +79,12 @@ CUSTOMERS = (
 FAVOURED_CUSTOMER = "Bigasan ni Mang Tonyo"
 # The supplier the encoder pays over the going price.
 FAVOURED_SUPPLIER = "Golden Harvest Supply"
-VARIETIES = ("Rc222", "Rc216", "SINAG")
-BASE_PRICE = {"Rc222": 1180, "Rc216": 1150, "SINAG": 1260}  # ₱/cavan at 14% moisture
-RICE_PRICE = {"Rc222": Decimal("52.00"), "Rc216": Decimal("50.00"), "SINAG": Decimal("56.00")}  # ₱/kg list
+# The default varieties the demo mills trade in. They take the place of NSIC Rc222, Rc216
+# and Sinag, which sync_system_varieties renamed to these in place.
+MAIN, SECOND, DEAREST = "Dinorado", "Jasmine Rice", "Red Rice"
+VARIETIES = (MAIN, SECOND, DEAREST)
+BASE_PRICE = {MAIN: 1180, SECOND: 1150, DEAREST: 1260}  # ₱/cavan at 14% moisture
+RICE_PRICE = {MAIN: Decimal("52.00"), SECOND: Decimal("50.00"), DEAREST: Decimal("56.00")}  # ₱/kg list
 BYPRODUCT_PRICE = {"darak": Decimal("14.00"), "binlid": Decimal("32.00")}
 
 
@@ -235,7 +238,7 @@ def seed(db, username: str, *, reset: bool) -> str:
                     )
                 )
     # Planted: two wet lots bought early this morning, nobody drying them yet.
-    for k, code in enumerate(("Rc222", "SINAG")):
+    for k, code in enumerate((MAIN, DEAREST)):
         n += 1
         entered = datetime.now(timezone.utc) - timedelta(hours=14 + k)
         purchase = PalayPurchase(
@@ -475,7 +478,7 @@ def seed(db, username: str, *, reset: bool) -> str:
     for back, delivery in ((0, today + timedelta(days=1)), (4, today - timedelta(days=2))):
         order_n += 1
         day = today - timedelta(days=back)
-        code = "Rc222"
+        code = MAIN
         qty = Decimal(3000)
         total = qty * RICE_PRICE[code]
         db.add(
@@ -518,17 +521,17 @@ def seed(db, username: str, *, reset: bool) -> str:
     db.add(
         PalayPurchaseItem(
             purchase_id=dear.id,
-            variety_id=varieties["Rc222"].id,
+            variety_id=varieties[MAIN].id,
             gross_weight_kg=Decimal(4040),
             tare_weight_kg=Decimal(40),
             cavan_count=Decimal(80),
             moisture_content_pct=Decimal("18.5"),
-            price_per_cavan=Decimal(BASE_PRICE["Rc222"] + 180),
+            price_per_cavan=Decimal(BASE_PRICE[MAIN] + 180),
         )
     )
     for k, status in enumerate(("confirmed", "cancelled")):
         order_n += 1
-        unit = RICE_PRICE["Rc222"] - 4
+        unit = RICE_PRICE[MAIN] - 4
         qty = Decimal(2000)
         subtotal = qty * unit
         discount = (subtotal * Decimal("0.08")).quantize(Decimal("0.01")) if k == 0 else Decimal(0)
@@ -555,7 +558,7 @@ def seed(db, username: str, *, reset: bool) -> str:
             SalesOrderItem(
                 order_id=order.id,
                 item_type="milled_rice",
-                variety_id=varieties["Rc222"].id,
+                variety_id=varieties[MAIN].id,
                 grade_name="A",
                 quantity_kg=qty,
                 unit_price_per_kg=unit,
@@ -594,7 +597,7 @@ def seed(db, username: str, *, reset: bool) -> str:
         rice_left = Decimal(4000) + milled[code] - sold[code]
         if rice_left < sold[code] / DAYS * 8:  # keep a believable week or two of cover
             rice_left = (sold[code] / DAYS * 12).quantize(Decimal(1))
-        if code == "Rc216":
+        if code == SECOND:
             rice_left = Decimal(600)  # planted: about a day or two of sales left
         row = (
             db.query(MilledRiceInventory)
@@ -716,7 +719,7 @@ def seed(db, username: str, *, reset: bool) -> str:
             now + timedelta(hours=20),
             "acknowledged",
         ),
-        ("negative_stock", "Stock below zero: Rc216 milled rice", None, now + timedelta(hours=4), "open"),
+        ("negative_stock", f"Stock below zero: {SECOND} milled rice", None, now + timedelta(hours=4), "open"),
     )
     for source, title, person, due_at, state in demo_tasks:
         key = f"{MARKER}:task:{source}"

@@ -102,7 +102,11 @@ export default function MillingPage() {
     start_datetime: format(new Date(), "yyyy-MM-dd'T'HH:mm"),
     remarks: "",
     inputs: [{ variety_id: "", grade_id: "", input_weight_kg: "", moisture_content_pct: "" }],
-    outputs: [blankOutput("milled_rice", "regular"), blankOutput("ipa"), blankOutput("darak")],
+    outputs: [
+      blankOutput("milled_rice", "Straight Mill Rice"),
+      blankOutput("ipa"),
+      blankOutput("darak"),
+    ],
   });
 
   // Each output weight follows the palay going in until someone types the
@@ -334,7 +338,12 @@ export default function MillingPage() {
                   endpoint="/paddy/varieties"
                   queryKey={["varieties"]}
                   fields={[
-                    { key: "code", label: t("Code"), required: true, placeholder: t("e.g. RC400") },
+                    {
+                      key: "code",
+                      label: t("Code"),
+                      required: true,
+                      placeholder: t("e.g. Dinorado"),
+                    },
                     { key: "name", label: t("Name"), required: true },
                     {
                       key: "category",

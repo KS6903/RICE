@@ -118,7 +118,7 @@ const MOCK_ACTIVITY = [
   },
   {
     icon: ShoppingCart,
-    text: t("Sale: 50 sacks premium rice to J. Santos"),
+    text: t("Sale: 50 sacks graded rice to J. Santos"),
     badge: t("Sales"),
     badgeClass: "badge-cyan",
   },

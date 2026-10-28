@@ -273,7 +273,7 @@ export function VarietiesList() {
     <div className="space-y-4">
       <p className="text-sm text-secondary">
         {t(
-          "Add your own rice varieties, or edit the default ones (NSIC Rc222 and the rest). Hide a variety you don't use: it leaves the lists you pick from until you unhide it.",
+          "Add your own rice varieties, or edit the default ones (Dinorado and the rest). Hide a variety you don't use: it leaves the lists you pick from until you unhide it.",
         )}
       </p>
       <div className="flex justify-end">
@@ -290,7 +290,7 @@ export function VarietiesList() {
               <label className={LABEL}>{t("Code *")}</label>
               <input
                 className="input"
-                placeholder={t("e.g. RC400")}
+                placeholder={t("e.g. Dinorado")}
                 value={form.code}
                 onChange={(e) => setForm((f) => ({ ...f, code: e.target.value.toUpperCase() }))}
               />
@@ -299,7 +299,7 @@ export function VarietiesList() {
               <label className={LABEL}>{t("Name *")}</label>
               <input
                 className="input"
-                placeholder={t("e.g. NSIC Rc400")}
+                placeholder={t("e.g. Dinorado")}
                 value={form.name}
                 onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
               />

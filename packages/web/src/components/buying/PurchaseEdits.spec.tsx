@@ -57,7 +57,7 @@ const rice = {
       id: "i2",
       variety_id: "v1",
       variety_code: "RC222",
-      grade_name: "premium",
+      grade_name: "Graded Rice",
       sack_count: "20.00",
       kg_per_sack: "50.00",
       weight_kg: "1000",
@@ -149,14 +149,14 @@ describe("Correcting a saved purchase", () => {
       within(screen.getByTestId("purchase-details")).getByRole("button", { name: /Edit/ }),
     );
     const dialog = await screen.findByTestId("edit-purchase");
-    await chooseOption("Grade of line 1", "Regular", within(dialog));
+    await chooseOption("Grade of line 1", "Straight Mill Rice", within(dialog));
     fireEvent.click(within(dialog).getByRole("button", { name: "Save changes" }));
 
     await waitFor(() => expect(save).toHaveBeenCalled());
     expect(save.mock.calls[0][1].items).toEqual([
       {
         variety_id: "v1",
-        grade_name: "regular",
+        grade_name: "Straight Mill Rice",
         sack_count: 20,
         kg_per_sack: 50,
         price_per_sack: 2400,
