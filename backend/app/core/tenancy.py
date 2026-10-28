@@ -27,6 +27,7 @@ import logging
 import re
 import uuid
 from contextlib import contextmanager
+from decimal import Decimal
 from typing import Iterator
 
 import jwt
@@ -252,7 +253,7 @@ def sync_system_varieties(db: Session) -> None:
     """
     from ..models.reference import RiceVariety
 
-    new = {code: (name, rec) for code, name, rec in _SYSTEM_VARIETIES}
+    new = {code: (name, Decimal(str(rec))) for code, name, rec in _SYSTEM_VARIETIES}
     found = False
     for old_code, new_code in _RETIRED_VARIETIES.items():
         old = db.query(RiceVariety).filter_by(code=old_code, company_id=None).first()
