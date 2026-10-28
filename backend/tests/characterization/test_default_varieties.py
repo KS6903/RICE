@@ -2,6 +2,7 @@
 before the list changed (NSIC Rc222 and the rest) is brought to it."""
 
 import pytest
+
 from app.core.tenancy import sync_system_varieties
 from app.models.reference import RiceVariety
 
