@@ -55,8 +55,10 @@ export const pricePerCavan = (pricePerKg: string): number | null => {
 };
 
 export type PurchaseForm = {
-  /** The warehouse to store the palay in; left out, the recorder's own. */
+  /** The branch to store the palay in; left out, the recorder's own. */
   branch_id?: string | null;
+  /** The warehouse in that branch; left out, the branch's first. */
+  warehouse_id?: string | null;
   purchase_date: string;
   delivery_type: string;
   remarks: string;

@@ -44,7 +44,9 @@ def add_warehouse(body: WarehouseAdd, svc: WarehouseService = Depends(get_wareho
 
 
 @router.put("/{warehouse_id}", dependencies=INVENTORY_WRITE)
-def rename_warehouse(warehouse_id: uuid.UUID, body: WarehouseRename, svc: WarehouseService = Depends(get_warehouse_service)):
+def rename_warehouse(
+    warehouse_id: uuid.UUID, body: WarehouseRename, svc: WarehouseService = Depends(get_warehouse_service)
+):
     return svc.rename(warehouse_id, body.name)
 
 

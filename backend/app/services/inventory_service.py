@@ -53,9 +53,7 @@ class InventoryService(BaseService):
     def get_milled_rice(
         self, *, branch_id: uuid.UUID | None = None, warehouse_id: uuid.UUID | None = None
     ) -> list[dict]:
-        rows = self.milled.list_with_stock(
-            self.current_user.company_id, branch_id=branch_id, warehouse_id=warehouse_id
-        )
+        rows = self.milled.list_with_stock(self.current_user.company_id, branch_id=branch_id, warehouse_id=warehouse_id)
         branches = self._branch_map()
         warehouses = warehouse_map(self.db, self.current_user.company_id)
         return [
@@ -191,7 +189,9 @@ class InventoryService(BaseService):
             elif data.inventory_type == "milled_rice":
                 if not data.variety_id:
                     raise ValidationError("Variety is required for milled rice.")
-                inv = self.milled.find_bucket(company_id, data.branch_id, data.variety_id, data.grade_name, warehouse_id)
+                inv = self.milled.find_bucket(
+                    company_id, data.branch_id, data.variety_id, data.grade_name, warehouse_id
+                )
                 if not inv:
                     inv = MilledRiceInventory(
                         company_id=company_id,

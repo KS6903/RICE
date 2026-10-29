@@ -33,7 +33,9 @@ class MilledRiceInventoryRepository(BaseRepository[MilledRiceInventory]):
             stmt = stmt.where(MilledRiceInventory.warehouse_id == warehouse_id)
         return self.db.execute(stmt).scalars().all()
 
-    def find_bucket(self, company_id, branch_id, variety_id, grade_name, warehouse_id=None) -> MilledRiceInventory | None:
+    def find_bucket(
+        self, company_id, branch_id, variety_id, grade_name, warehouse_id=None
+    ) -> MilledRiceInventory | None:
         stmt = select(MilledRiceInventory).where(
             MilledRiceInventory.company_id == company_id,
             MilledRiceInventory.branch_id == branch_id,
