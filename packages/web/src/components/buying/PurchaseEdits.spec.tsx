@@ -177,7 +177,7 @@ describe("Correcting a saved purchase", () => {
       within(screen.getByTestId("purchase-details")).getByRole("button", { name: /Edit/ }),
     );
     const dialog = await screen.findByTestId("edit-purchase");
-    fireEvent.change(within(dialog).getByLabelText("Gross kg of line 1"), {
+    fireEvent.change(within(dialog).getByLabelText("Kilos (est.) of line 1"), {
       target: { value: "40" },
     });
     expect(within(dialog).getByRole("button", { name: "Save changes" })).toBeDisabled();

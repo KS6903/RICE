@@ -239,9 +239,9 @@ def test_the_stock_view_defaults_to_all_and_only_the_boss_changes_it(make_auth_c
     assert _ok(boss.get("/api/paddy/stock-view")) == {"view": "sacks"}
     assert boss.put("/api/paddy/stock-view", json={"view": "bushels"}).status_code == 422
 
-    # Another role reads the choice but can't change it (this is another mill's accountant).
+    # Another role reads the choice but can't change it. (A new test client takes over
+    # from the one before, so this is another mill's accountant and boss is not used again.)
     books = make_auth_client(["paddy"], username="books", role_name="accountant")
     assert _ok(books.get("/api/paddy/stock-view")) == {"view": "all"}
     assert books.put("/api/paddy/stock-view", json={"view": "kilos"}).status_code == 403
     assert _ok(books.get("/api/paddy/stock-view")) == {"view": "all"}
-    assert _ok(boss.get("/api/paddy/stock-view")) == {"view": "sacks"}

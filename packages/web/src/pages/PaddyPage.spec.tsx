@@ -148,7 +148,7 @@ describe("PaddyPage: a purchase line counted in sacks, bought wet or dry", () =>
   it("offers the palay varieties with their other names, and not the rice ones", async () => {
     open();
     fireEvent.click(await screen.findByRole("button", { name: "Variety" }));
-    const options = within(screen.getByRole("listbox")).getAllByRole("option");
+    const options = within(await screen.findByRole("listbox")).getAllByRole("option");
     expect(options.map((o) => o.textContent?.trim())).toEqual([
       "NSIC Rc 222 (Tubigan 18, Triple Two)",
     ]);
@@ -240,7 +240,7 @@ describe("PaddyPage: how the palay in stock is counted", () => {
       "Cavans (est.)",
       "Kilos (est.)",
     ]);
-    const row = within(stockTable()).getByText("NSIC Rc 222").closest("tr") as HTMLElement;
+    const row = (await within(stockTable()).findByText("NSIC Rc 222")).closest("tr") as HTMLElement;
     expect(
       within(row)
         .getAllByRole("cell")
@@ -265,7 +265,7 @@ describe("PaddyPage: how the palay in stock is counted", () => {
     );
     const headers = within(stockTable()).getAllByRole("columnheader");
     expect(headers.some((h) => h.className.includes("hidden"))).toBe(false);
-    expect(within(stockTable()).getByText("5 cavans wet")).toBeInTheDocument();
+    expect(await within(stockTable()).findByText("5 cavans wet")).toBeInTheDocument();
   });
 
   it("lets only the Boss change it", async () => {
