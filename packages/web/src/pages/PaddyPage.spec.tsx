@@ -147,7 +147,7 @@ describe("PaddyPage: a purchase line counted in sacks, bought wet or dry", () =>
 
   it("offers the palay varieties with their other names, and not the rice ones", async () => {
     open();
-    fireEvent.click(await screen.findByRole("button", { name: "Variety", exact: true }));
+    fireEvent.click(await screen.findByRole("button", { name: "Variety" }));
     const options = within(screen.getByRole("listbox")).getAllByRole("option");
     expect(options.map((o) => o.textContent?.trim())).toEqual([
       "NSIC Rc 222 (Tubigan 18, Triple Two)",

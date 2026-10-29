@@ -47,10 +47,7 @@ describe("CatalogPage", () => {
   it("gives a Free mill its own lists, and the rest under other plans", () => {
     useAuthStore.setState({ user: boss(FREE) });
     draw();
-    expect(screen.getByRole("tab", { name: "Rice varieties" })).toHaveAttribute(
-      "aria-selected",
-      "true",
-    );
+    expect(screen.getByRole("tab", { name: "Varieties" })).toHaveAttribute("aria-selected", "true");
     expect(screen.getByText("the varieties list")).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: "By-products" })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: "Expense categories" })).toBeInTheDocument();

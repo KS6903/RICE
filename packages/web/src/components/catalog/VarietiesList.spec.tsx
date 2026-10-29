@@ -97,7 +97,7 @@ describe("Catalog: Rice varieties", () => {
 });
 
 describe("Catalog: palay and rice have their own variety lists", () => {
-  const dinorado = { ...rc222, id: "din", code: "Dinorado", name: "Dinorado", kind: "rice" };
+  const dinorado = { ...rc222, id: "din", code: "Dinorado", name: "Dinorado (Rice)", kind: "rice" };
 
   beforeEach(() => {
     useAuthStore.setState({ user: owner });
@@ -112,10 +112,10 @@ describe("Catalog: palay and rice have their own variety lists", () => {
   it("shows the palay list first, and the rice list on its own button", async () => {
     draw();
     await screen.findByText("NSIC Rc222");
-    expect(screen.queryByText("Dinorado")).not.toBeInTheDocument();
+    expect(screen.queryByText("Dinorado (Rice)")).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "Rice" }));
-    expect(await screen.findByText("Dinorado")).toBeInTheDocument();
+    expect(await screen.findByText("Dinorado (Rice)")).toBeInTheDocument();
     expect(screen.queryByText("NSIC Rc222")).not.toBeInTheDocument();
   });
 

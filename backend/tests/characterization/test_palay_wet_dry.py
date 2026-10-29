@@ -232,16 +232,16 @@ def test_correcting_a_purchase_with_dried_lines_replaces_them_and_their_drying(a
 # ── the Boss's choice of how the stock is counted ────────────────────────────
 
 
-def test_the_stock_view_defaults_to_all_and_only_the_boss_changes_it(auth_client, make_auth_client):
-    assert _ok(auth_client.get("/api/paddy/stock-view")) == {"view": "all"}
-    assert _ok(auth_client.put("/api/paddy/stock-view", json={"view": "sacks"})) == {"view": "sacks"}
-    assert _ok(auth_client.get("/api/paddy/stock-view")) == {"view": "sacks"}
-    assert auth_client.put("/api/paddy/stock-view", json={"view": "bushels"}).status_code == 422
+def test_the_stock_view_defaults_to_all_and_only_the_boss_changes_it(make_auth_client):
+    boss = make_auth_client(["paddy"], username="boss", role_name="owner")
+    assert _ok(boss.get("/api/paddy/stock-view")) == {"view": "all"}
+    assert _ok(boss.put("/api/paddy/stock-view", json={"view": "sacks"})) == {"view": "sacks"}
+    assert _ok(boss.get("/api/paddy/stock-view")) == {"view": "sacks"}
+    assert boss.put("/api/paddy/stock-view", json={"view": "bushels"}).status_code == 422
 
-    # Staff see the Boss's choice for their own mill but can't change it.
+    # Another role reads the choice but can't change it (this is another mill's accountant).
     books = make_auth_client(["paddy"], username="books", role_name="accountant")
     assert _ok(books.get("/api/paddy/stock-view")) == {"view": "all"}
-    refused = books.put("/api/paddy/stock-view", json={"view": "kilos"})
-    assert refused.status_code == 403
+    assert books.put("/api/paddy/stock-view", json={"view": "kilos"}).status_code == 403
     assert _ok(books.get("/api/paddy/stock-view")) == {"view": "all"}
-    assert _ok(auth_client.get("/api/paddy/stock-view")) == {"view": "sacks"}
+    assert _ok(boss.get("/api/paddy/stock-view")) == {"view": "sacks"}

@@ -33,7 +33,7 @@ type List = {
 const LISTS: List[] = [
   {
     key: "varieties",
-    label: t("Rice varieties"),
+    label: t("Varieties"),
     what: t("The varieties and grades you buy, mill and sell. Hide one you no longer handle."),
     feature: "paddy",
     section: "paddy",
