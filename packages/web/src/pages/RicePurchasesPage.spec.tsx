@@ -170,7 +170,18 @@ describe("Rice (Bigas) page", () => {
 
     await waitFor(() => expect(create).toHaveBeenCalled());
     expect(create.mock.calls[0][0]).toMatchObject({ branch_id: "b1", warehouse_id: "w3" });
-    // Another branch has just the one, so there it isn't asked.
+  });
+
+  it("doesn't ask which warehouse in a branch that has just the one", async () => {
+    vi.mocked(warehousesService.list).mockResolvedValue([
+      ...warehouseRows,
+      { id: "w3", branch_id: "b1", name: "Warehouse 2 - Main Branch", is_default: false },
+    ]);
+    useAuthStore.setState({ user: owner });
+    draw(<RicePurchasesPage />);
+    fireEvent.click(screen.getByRole("button", { name: /New Purchase/ }));
+    await screen.findByLabelText("Store in warehouse");
+
     await chooseOption("Branch", "2nd Branch");
     expect(screen.queryByLabelText("Store in warehouse")).toBeNull();
   });

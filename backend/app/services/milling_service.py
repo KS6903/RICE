@@ -357,9 +357,10 @@ class MillingService(BaseService):
         if sign < 0:
             # Palay comes out of the branch's warehouses, its first first; the last
             # one holding any takes what is left (never below zero).
+            places: list[uuid.UUID | None] = [*warehouse_ids_of(self.db, branch_id)] or [first]
             held = [
                 inv
-                for wid in warehouse_ids_of(self.db, branch_id) or [first]
+                for wid in places
                 if (inv := self.palay.find_bucket(company_id, branch_id, inp.variety_id, inp.grade_id, wid))
             ]
             remaining = inp.input_weight_kg
