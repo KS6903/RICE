@@ -334,12 +334,16 @@ describe("PaddyPage: how the palay in stock is counted", () => {
     useAuthStore.setState({ user: encoder });
     const { unmount } = draw();
     await within(stockTable()).findByText("NSIC Rc 222");
-    expect(screen.queryByLabelText("Count palay in")).toBeNull();
+    expect(screen.queryByRole("radiogroup", { name: "View by" })).toBeNull();
     unmount();
 
     useAuthStore.setState({ user: owner });
     draw();
-    await chooseOption("Count palay in", "Sacks");
+    // An icon for each way of viewing, the current one pressed in.
+    const views = await screen.findByRole("radiogroup", { name: "View by" });
+    expect(within(views).getAllByRole("radio")).toHaveLength(4);
+    expect(within(views).getByRole("radio", { name: "All" })).toBeChecked();
+    fireEvent.click(within(views).getByRole("radio", { name: "Sacks" }));
     await waitFor(() => expect(setView).toHaveBeenCalledWith("sacks"));
   });
 });

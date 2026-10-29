@@ -7,7 +7,7 @@ import {
   type PurchaseItemForm,
   type StockView,
 } from "../services/PaddyService";
-import { Wheat } from "lucide-react";
+import { Container, LayoutGrid, Scale, ShoppingBag, Wheat, type LucideIcon } from "lucide-react";
 import { format } from "date-fns";
 import QuickAdd from "../components/QuickAdd";
 import { useAccess } from "../hooks/useAccess";
@@ -30,6 +30,14 @@ import { varietyOptions } from "../utils/varieties";
 import { t } from "../i18n";
 
 type Unit = Exclude<StockView, "all">;
+
+/** The picture on each way of viewing the stock, like a grid / list switch. */
+const viewIcons: Record<StockView, LucideIcon> = {
+  all: LayoutGrid,
+  sacks: ShoppingBag,
+  cavans: Container,
+  kilos: Scale,
+};
 
 /** A figure for the stock table, to a decimal; a dash when the server sent none. */
 const amount = (v: unknown) =>
@@ -442,15 +450,27 @@ export default function PaddyPage() {
           </h3>
           {role === "owner" && (
             <div className="flex items-center gap-2 text-xs text-muted">
-              <span>{t("Count palay in")}</span>
-              <Select
-                aria-label={t("Count palay in")}
-                className="!w-44"
-                value={stockView}
-                onChange={(v) => chooseView.mutate(v as StockView)}
-                disabled={chooseView.isPending}
-                options={viewOptions}
-              />
+              <span id="palay-view-by">{t("View by")}</span>
+              <div role="radiogroup" aria-labelledby="palay-view-by" className="seg">
+                {viewOptions.map(({ value, label }) => {
+                  const Icon = viewIcons[value];
+                  return (
+                    <button
+                      key={value}
+                      type="button"
+                      role="radio"
+                      aria-checked={stockView === value}
+                      title={label}
+                      disabled={chooseView.isPending}
+                      className={`seg-btn !px-2.5 ${stockView === value ? "is-active" : ""}`}
+                      onClick={() => stockView !== value && chooseView.mutate(value)}
+                    >
+                      <Icon className="h-4 w-4" aria-hidden="true" />
+                      <span className="sr-only">{label}</span>
+                    </button>
+                  );
+                })}
+              </div>
             </div>
           )}
         </div>
