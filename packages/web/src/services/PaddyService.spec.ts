@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { PaddyService, blankPurchaseItem } from "./PaddyService";
+import { PaddyService, blankPurchaseItem, pricePerCavan } from "./PaddyService";
 
 describe("PaddyService.toPurchasePayload", () => {
   it("parses numeric fields and nulls out empty ids/optionals", () => {
@@ -14,13 +14,13 @@ describe("PaddyService.toPurchasePayload", () => {
           gross_weight_kg: "1000",
           tare_weight_kg: "50",
           moisture_content_pct: "14",
-          price_per_cavan: "1200",
+          price_per_kg: "24",
         },
         {
           ...blankPurchaseItem(),
           gross_weight_kg: "500",
           tare_weight_kg: "",
-          price_per_cavan: "1000",
+          price_per_kg: "20",
         },
       ],
     };
@@ -58,7 +58,7 @@ describe("PaddyService.toPurchasePayload", () => {
       purchase_date: "2026-10-29",
       delivery_type: "delivered",
       remarks: "",
-      items: [{ ...blankPurchaseItem(), sack_count: "20", price_per_cavan: "1200" }],
+      items: [{ ...blankPurchaseItem(), sack_count: "20", price_per_kg: "24" }],
     });
     expect(payload.items[0]).toMatchObject({
       sack_count: 20,
@@ -71,7 +71,7 @@ describe("PaddyService.toPurchasePayload", () => {
     const line = {
       ...blankPurchaseItem(),
       sack_count: "20",
-      price_per_cavan: "1200",
+      price_per_kg: "24",
       dried_weight_kg: "800",
       dried_moisture_pct: "14",
     };
@@ -86,6 +86,19 @@ describe("PaddyService.toPurchasePayload", () => {
     }).items;
     expect(wet).toMatchObject({ is_wet: true, dried_weight_kg: 800, dried_moisture_pct: 14 });
     expect(dry).toMatchObject({ is_wet: false, dried_weight_kg: null, dried_moisture_pct: null });
+  });
+});
+
+describe("pricePerCavan", () => {
+  it("is the price per kilo times the 50 kg of a cavan, to the centavo", () => {
+    expect(pricePerCavan("24")).toBe(1200);
+    expect(pricePerCavan("24.5")).toBe(1225);
+    expect(pricePerCavan("23.1")).toBe(1155); // not 1155.0000000000002
+    expect(pricePerCavan("22.333")).toBe(1116.65);
+  });
+
+  it("is nothing until a price is typed", () => {
+    expect(pricePerCavan("")).toBeNull();
   });
 });
 

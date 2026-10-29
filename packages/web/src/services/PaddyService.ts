@@ -16,8 +16,9 @@ export type PurchaseItemForm = {
   tare_weight_kg: string;
   /** Moisture when bought: for wet palay, before drying. */
   moisture_content_pct: string;
-  price_per_cavan: string;
-  /** Bought wet: red until the after-drying weight and moisture are in. */
+  /** What the buyer types; the price per cavan is worked out from it. */
+  price_per_kg: string;
+  /** Bought wet: its weight and moisture after drying are then required. */
   is_wet: boolean;
   dried_weight_kg: string;
   dried_moisture_pct: string;
@@ -35,7 +36,7 @@ export const blankPurchaseItem = (): PurchaseItemForm => ({
   gross_weight_kg: "",
   tare_weight_kg: "0",
   moisture_content_pct: "",
-  price_per_cavan: "",
+  price_per_kg: "",
   is_wet: false,
   dried_weight_kg: "",
   dried_moisture_pct: "",
@@ -43,6 +44,15 @@ export const blankPurchaseItem = (): PurchaseItemForm => ({
 
 const numberOrNull = (v: string) =>
   v !== "" && !Number.isNaN(parseFloat(v)) ? parseFloat(v) : null;
+
+/** A cavan of palay is 50 kg, as on the server. */
+const KG_PER_CAVAN = 50;
+
+/** The price per cavan for a price per kilo, to the centavo; null until a price is typed. */
+export const pricePerCavan = (pricePerKg: string): number | null => {
+  const perKg = numberOrNull(pricePerKg);
+  return perKg === null ? null : Math.round(perKg * KG_PER_CAVAN * 100) / 100;
+};
 
 export type PurchaseForm = {
   /** The warehouse to store the palay in; left out, the recorder's own. */
@@ -158,7 +168,7 @@ export class PaddyService {
         gross_weight_kg: numberOrNull(i.gross_weight_kg),
         tare_weight_kg: parseFloat(i.tare_weight_kg) || 0,
         moisture_content_pct: numberOrNull(i.moisture_content_pct),
-        price_per_cavan: parseFloat(i.price_per_cavan),
+        price_per_cavan: pricePerCavan(i.price_per_kg),
         is_wet: i.is_wet,
         dried_weight_kg: i.is_wet ? numberOrNull(i.dried_weight_kg) : null,
         dried_moisture_pct: i.is_wet ? numberOrNull(i.dried_moisture_pct) : null,

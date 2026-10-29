@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   paddyService,
   blankPurchaseItem,
+  pricePerCavan,
   type PurchaseItemForm,
   type StockView,
 } from "../services/PaddyService";
@@ -35,6 +36,12 @@ const amount = (v: unknown) =>
   v == null || Number.isNaN(Number(v))
     ? "—"
     : Number(v).toLocaleString(undefined, { maximumFractionDigits: 1 });
+
+/** The price per cavan worked out from a price per kilo, for the read-only field. */
+const cavanPrice = (pricePerKg: string) => {
+  const price = pricePerCavan(pricePerKg);
+  return price === null ? "" : price.toLocaleString(undefined, { maximumFractionDigits: 2 });
+};
 
 export default function PaddyPage() {
   const qc = useQueryClient();
@@ -101,9 +108,13 @@ export default function PaddyPage() {
       setItem(idx, { [key]: e.target.value } as Partial<PurchaseItemForm>);
 
   // A line needs something counted (sacks, cavans or kilos; the last two are
-  // optional estimates) and a price.
+  // optional estimates) and a price; a wet line also its weight and moisture
+  // after drying.
   const ready = form.items.every(
-    (i) => (i.sack_count || i.cavan_count || i.gross_weight_kg) && i.price_per_cavan !== "",
+    (i) =>
+      (i.sack_count || i.cavan_count || i.gross_weight_kg) &&
+      i.price_per_kg !== "" &&
+      (!i.is_wet || (Number(i.dried_weight_kg) > 0 && i.dried_moisture_pct !== "")),
   );
   const saveError = (createMutation.error as any)?.response?.data?.detail;
 
@@ -124,7 +135,20 @@ export default function PaddyPage() {
     },
     kilos: { label: t("Kilos (est.)"), word: t("kg"), stock: "quantity_kg", wet: "wet_kg" },
   };
-  const shownUnits: Unit[] = stockView === "all" ? ["sacks", "cavans", "kilos"] : [stockView];
+  // "All" leaves out the cavans while they read the same as the sacks on every row
+  // (sacks of 50 kg): the column would only repeat itself.
+  const cavansRepeatSacks =
+    inventory.length > 0 &&
+    inventory.every(
+      (i: any) =>
+        i.quantity_sacks != null && amount(i.quantity_sacks) === amount(i.quantity_cavans),
+    );
+  const shownUnits: Unit[] =
+    stockView === "all"
+      ? cavansRepeatSacks
+        ? ["sacks", "kilos"]
+        : ["sacks", "cavans", "kilos"]
+      : [stockView];
   const unitClass = (u: Unit) =>
     stockView === "all" && u !== "sacks" ? "hidden sm:table-cell" : "";
   const stockColumns = 2 + (stockInSeveralWarehouses ? 1 : 0) + shownUnits.length;
@@ -243,7 +267,7 @@ export default function PaddyPage() {
               <div
                 key={idx}
                 data-testid="purchase-line"
-                className={`space-y-2 p-3 bg-gray-50 dark:bg-slate-900/50 rounded-lg ring-1 ${item.is_wet ? "ring-rose-300 dark:ring-rose-500/40" : "ring-transparent"}`}
+                className="space-y-2 p-3 bg-gray-50 dark:bg-slate-900/50 rounded-lg"
               >
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                   <FieldCaption label={t("Variety")} className="col-span-2 sm:col-span-1">
@@ -326,9 +350,10 @@ export default function PaddyPage() {
                     />
                   </FieldCaption>
                 </div>
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                   <FieldCaption
                     label={item.is_wet ? t("Moisture before drying %") : t("Moisture %")}
+                    className="col-span-2 sm:col-span-1"
                   >
                     <input
                       className="input"
@@ -339,46 +364,49 @@ export default function PaddyPage() {
                       onChange={text(idx, "moisture_content_pct")}
                     />
                   </FieldCaption>
-                  <FieldCaption label={t("Price per cavan (₱)")}>
+                  <FieldCaption label={t("Price per kg (₱)")}>
                     <input
                       className="input"
-                      placeholder={t("₱/cavan")}
+                      placeholder={t("₱/kg")}
                       type="number"
                       min={0}
-                      value={item.price_per_cavan}
-                      onChange={text(idx, "price_per_cavan")}
+                      value={item.price_per_kg}
+                      onChange={text(idx, "price_per_kg")}
+                    />
+                  </FieldCaption>
+                  <FieldCaption label={t("Price per cavan (₱)")}>
+                    <input
+                      className="input cursor-default tabular-nums opacity-70"
+                      placeholder={t("₱/cavan")}
+                      type="text"
+                      readOnly
+                      tabIndex={-1}
+                      value={cavanPrice(item.price_per_kg)}
                     />
                   </FieldCaption>
                 </div>
                 {item.is_wet && (
-                  <div className="space-y-2 rounded-lg border border-rose-200 bg-rose-50/60 p-2.5 dark:border-rose-500/30 dark:bg-rose-500/10">
-                    <p className="text-xs text-rose-700 dark:text-rose-300">
-                      {t(
-                        "Wet palay stays red until its weight and moisture after drying are recorded. Leave these blank to record them once it's dry.",
-                      )}
-                    </p>
-                    <div className="grid grid-cols-2 gap-2">
-                      <FieldCaption label={t("Weight after drying (kg)")}>
-                        <input
-                          className="input"
-                          placeholder={t("Optional")}
-                          type="number"
-                          min={0}
-                          value={item.dried_weight_kg}
-                          onChange={text(idx, "dried_weight_kg")}
-                        />
-                      </FieldCaption>
-                      <FieldCaption label={t("Moisture after drying %")}>
-                        <input
-                          className="input"
-                          placeholder={t("Optional")}
-                          type="number"
-                          min={0}
-                          value={item.dried_moisture_pct}
-                          onChange={text(idx, "dried_moisture_pct")}
-                        />
-                      </FieldCaption>
-                    </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <FieldCaption label={t("Weight after drying (kg)")}>
+                      <input
+                        className="input"
+                        placeholder={t("Weight after drying (kg)")}
+                        type="number"
+                        min={0}
+                        value={item.dried_weight_kg}
+                        onChange={text(idx, "dried_weight_kg")}
+                      />
+                    </FieldCaption>
+                    <FieldCaption label={t("Moisture after drying %")}>
+                      <input
+                        className="input"
+                        placeholder={t("Moisture after drying %")}
+                        type="number"
+                        min={0}
+                        value={item.dried_moisture_pct}
+                        onChange={text(idx, "dried_moisture_pct")}
+                      />
+                    </FieldCaption>
                   </div>
                 )}
               </div>

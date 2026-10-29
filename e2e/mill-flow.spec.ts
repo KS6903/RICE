@@ -30,7 +30,7 @@ test.describe("Buy and sell through the forms", () => {
     await page.getByLabel("Kilos (est.)").fill("2000");
     await page.getByLabel("Tare: sacks (kg)").fill("20");
     await page.getByLabel("Moisture %").fill("14");
-    await page.getByLabel("Price per cavan (₱)").fill("1150");
+    await page.getByLabel("Price per kg (₱)").fill("23");
     await page.getByRole("button", { name: "Save Purchase" }).click();
 
     await expect(page.getByRole("heading", { name: "New Palay Purchase" })).toBeHidden();

@@ -67,7 +67,7 @@ afterEach(() => {
 
 const fillAndSave = () => {
   fireEvent.change(screen.getByLabelText("Kilos (est.)"), { target: { value: "1000" } });
-  fireEvent.change(screen.getByPlaceholderText("₱/cavan"), { target: { value: "1200" } });
+  fireEvent.change(screen.getByPlaceholderText("₱/kg"), { target: { value: "24" } });
   fireEvent.click(screen.getByRole("button", { name: "Save Purchase" }));
 };
 
@@ -165,7 +165,7 @@ describe("PaddyPage: a purchase line counted in sacks, bought wet or dry", () =>
     open();
     fireEvent.change(await screen.findByLabelText("Sacks"), { target: { value: "20" } });
     expect(screen.getByRole("button", { name: "Save Purchase" })).toBeDisabled(); // no price yet
-    fireEvent.change(screen.getByPlaceholderText("₱/cavan"), { target: { value: "1200" } });
+    fireEvent.change(screen.getByPlaceholderText("₱/kg"), { target: { value: "24" } });
     fireEvent.click(screen.getByRole("button", { name: "Save Purchase" }));
 
     await waitFor(() => expect(create).toHaveBeenCalled());
@@ -173,11 +173,22 @@ describe("PaddyPage: a purchase line counted in sacks, bought wet or dry", () =>
       sack_count: "20",
       cavan_count: "",
       gross_weight_kg: "",
+      price_per_kg: "24",
       is_wet: false,
     });
   });
 
-  it("asks for the weight and moisture after drying only once the line is wet", async () => {
+  it("takes the price per kilo and works out the price per cavan from it", async () => {
+    open();
+    const perCavan = await screen.findByLabelText("Price per cavan (₱)");
+    expect(perCavan).toHaveAttribute("readonly");
+    expect(perCavan).toHaveValue("");
+
+    fireEvent.change(screen.getByLabelText("Price per kg (₱)"), { target: { value: "24.5" } });
+    expect(perCavan).toHaveValue("1,225"); // 50 kg to the cavan
+  });
+
+  it("requires the weight and moisture after drying once the line is wet, and no red", async () => {
     open();
     expect(await screen.findByRole("checkbox", { name: "Dry" })).toBeChecked();
     expect(screen.queryByLabelText("Weight after drying (kg)")).toBeNull();
@@ -186,13 +197,23 @@ describe("PaddyPage: a purchase line counted in sacks, bought wet or dry", () =>
     expect(screen.getByRole("checkbox", { name: "Wet" })).toBeChecked();
     expect(screen.getByRole("checkbox", { name: "Dry" })).not.toBeChecked();
     expect(screen.getByLabelText("Moisture before drying %")).toBeInTheDocument();
+    // The line and its drying figures aren't outlined or boxed in red.
+    expect(screen.getByTestId("purchase-line").className).not.toMatch(/rose|red/);
+    expect(
+      screen.getByLabelText("Weight after drying (kg)").closest("div.grid")?.className,
+    ).not.toMatch(/rose|red/);
+
+    const save = screen.getByRole("button", { name: "Save Purchase" });
+    fireEvent.change(screen.getByLabelText("Sacks"), { target: { value: "20" } });
+    fireEvent.change(screen.getByPlaceholderText("₱/kg"), { target: { value: "24" } });
+    expect(save).toBeDisabled(); // nothing after drying yet
     fireEvent.change(screen.getByLabelText("Weight after drying (kg)"), {
       target: { value: "800" },
     });
+    expect(save).toBeDisabled(); // still no moisture after drying
     fireEvent.change(screen.getByLabelText("Moisture after drying %"), { target: { value: "14" } });
-    fireEvent.change(screen.getByLabelText("Sacks"), { target: { value: "20" } });
-    fireEvent.change(screen.getByPlaceholderText("₱/cavan"), { target: { value: "1200" } });
-    fireEvent.click(screen.getByRole("button", { name: "Save Purchase" }));
+    expect(save).toBeEnabled();
+    fireEvent.click(save);
 
     await waitFor(() => expect(create).toHaveBeenCalled());
     expect(create.mock.calls[0][0].items[0]).toMatchObject({
@@ -256,6 +277,40 @@ describe("PaddyPage: how the palay in stock is counted", () => {
     // Phones show the sacks alone: the other two columns are hidden below the sm breakpoint.
     expect(headers[3]).toHaveClass("hidden", "sm:table-cell");
     expect(headers[2]).not.toHaveClass("hidden");
+  });
+
+  it("leaves out the cavans when they read the same as the sacks on every row", async () => {
+    vi.mocked(paddyService.listInventory).mockResolvedValue([
+      { ...stock[0], quantity_sacks: 20, quantity_cavans: 20, quantity_kg: 1000 },
+      { ...stock[0], id: "i2", quantity_sacks: 268.3, quantity_cavans: 268.3, quantity_kg: 13417 },
+    ]);
+    useAuthStore.setState({ user: encoder });
+    draw();
+
+    await waitFor(() =>
+      expect(
+        within(stockTable())
+          .getAllByRole("columnheader")
+          .map((h) => h.textContent),
+      ).toEqual(["Variety", "Grade", "Sacks", "Kilos (est.)"]),
+    );
+  });
+
+  it("keeps the cavans as soon as one row's differ from its sacks", async () => {
+    vi.mocked(paddyService.listInventory).mockResolvedValue([
+      { ...stock[0], quantity_sacks: 20, quantity_cavans: 20 },
+      { ...stock[0], id: "i2", quantity_sacks: 18.5, quantity_cavans: 20 },
+    ]);
+    useAuthStore.setState({ user: encoder });
+    draw();
+
+    await waitFor(() =>
+      expect(
+        within(stockTable())
+          .getAllByRole("columnheader")
+          .map((h) => h.textContent),
+      ).toEqual(["Variety", "Grade", "Sacks", "Cavans (est.)", "Kilos (est.)"]),
+    );
   });
 
   it("shows only the one the Boss picked, on every screen", async () => {
