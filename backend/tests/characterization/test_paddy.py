@@ -63,7 +63,7 @@ def _standard(c, code="Dinorado"):
 
 def test_a_new_mill_starts_with_the_default_varieties(auth_client):
     every = auth_client.get("/api/paddy/varieties", params={"include_inactive": True}).json()
-    assert sorted(v["code"] for v in every if v["company_id"] is None) == sorted(
+    assert sorted(v["code"] for v in every if v["company_id"] is None and v["kind"] == "rice") == sorted(
         [
             "Black Rice",
             "Brown Rice",
@@ -77,6 +77,40 @@ def test_a_new_mill_starts_with_the_default_varieties(auth_client):
     )
     malagkit = _standard(auth_client, "Malagkit")
     assert malagkit["name"] == "Malagkit (Glutinous Rice | Sticky Rice)"
+
+
+def test_a_new_mill_starts_with_the_palay_varieties_and_what_they_are_also_known_as(auth_client):
+    every = auth_client.get("/api/paddy/varieties", params={"include_inactive": True}).json()
+    palay = {v["code"]: v for v in every if v["company_id"] is None and v["kind"] == "palay"}
+    assert len(palay) == 33
+    assert sum(v["category"] == "inbred" for v in palay.values()) == 27
+    assert sum(v["category"] == "hybrid" for v in palay.values()) == 6
+    assert palay["NSIC Rc 222"]["name"] == "NSIC Rc 222 (Tubigan 18, Triple Two)"
+    assert palay["NSIC Rc 218 SR"]["name"] == "NSIC Rc 218 SR (Mabango 3)"
+    assert palay["PSB Rc 72H"]["name"] == "PSB Rc 72H (Mestiso 1)"
+    assert palay["Longping 2096"]["name"] == "Longping 2096 (LP 2096)"
+    assert palay["NSIC Rc 302"]["name"] == "NSIC Rc 302"
+    assert not any(code in palay for code in ("Dinorado", "Malagkit"))
+
+
+def test_a_variety_joins_the_list_of_the_page_that_made_it(auth_client):
+    made = auth_client.post("/api/paddy/varieties", json={"code": "Tubigan 99", "name": "Mine", "kind": "palay"})
+    assert made.status_code == 201, made.text
+    assert made.json()["kind"] == "palay"
+    assert _make_variety(auth_client, "Plain", "Plain").json()["kind"] == "rice"
+    bad = auth_client.post("/api/paddy/varieties", json={"code": "X", "name": "X", "kind": "both"})
+    assert bad.status_code == 422
+
+
+def test_a_palay_and_a_rice_variety_may_share_a_code_but_not_on_one_page(auth_client):
+    assert (
+        auth_client.post("/api/paddy/varieties", json={"code": "Same", "name": "A", "kind": "palay"}).status_code == 201
+    )
+    assert (
+        auth_client.post("/api/paddy/varieties", json={"code": "same", "name": "B", "kind": "rice"}).status_code == 201
+    )
+    again = auth_client.post("/api/paddy/varieties", json={"code": "SAME", "name": "C", "kind": "palay"})
+    assert again.status_code == 409
 
 
 def test_a_standard_variety_can_be_edited(auth_client):
@@ -181,7 +215,7 @@ def test_create_purchase_multi_item_updates_inventory(auth_client, db_session):
 
     # reference number format: PP-YYYYMMDD-NNNN
     assert re.match(r"^PP-\d{8}-\d{4}$", purchase["reference_no"]), purchase["reference_no"]
-    assert purchase["status"] == "received"
+    assert purchase["status"] == "completed"  # bought dry: nothing left to do
 
     # Both items land on ONE inventory bucket (same variety+grade+branch):
     # net = (1000-50) + (500-0) = 1450
@@ -396,8 +430,23 @@ def test_get_paddy_inventory_serialized_shape(auth_client):
     rows = auth_client.get("/api/paddy/inventory").json()
     assert len(rows) == 1
     row = rows[0]
-    assert set(row.keys()) == {"id", "branch_id", "branch", "variety", "grade", "quantity_kg"}
+    assert set(row.keys()) == {
+        "id",
+        "branch_id",
+        "branch",
+        "variety",
+        "grade",
+        "quantity_kg",
+        "quantity_cavans",
+        "quantity_sacks",
+        "wet_kg",
+        "wet_cavans",
+        "wet_sacks",
+    }
     assert row["quantity_kg"] == 200.0
+    assert row["quantity_cavans"] == 4.0
+    assert row["quantity_sacks"] == 4.0  # no sacks counted: a sack is taken as 50 kg
+    assert row["wet_kg"] == 0
     assert set(row["variety"].keys()) == {"id", "code", "name"}
     assert set(row["grade"].keys()) == {"id", "code"}
     assert set(row["branch"].keys()) == {"id", "name", "is_main_branch"}

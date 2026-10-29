@@ -17,6 +17,7 @@ import FieldCaption from "../FieldCaption";
 import QuickAdd from "../QuickAdd";
 import { peso } from "./money";
 import { GOODS, SALE_ITEM_TYPE, gradeLabel, type TradeKind } from "./trade";
+import { varietyOptions } from "../../utils/varieties";
 import { t } from "../../i18n";
 
 type Line = {
@@ -239,7 +240,7 @@ export default function NewSaleModal({ kind, onClose }: { kind: TradeKind; onClo
                       placeholder={t("Variety")}
                       value={item.variety_id}
                       onChange={(v) => setLine(idx, { variety_id: v })}
-                      options={varieties.map((v: any) => ({ value: v.id, label: v.code }))}
+                      options={varietyOptions(varieties, kind === "palay" ? "palay" : "rice")}
                     />
                   </FieldCaption>
                   <FieldCaption label={t("Grade")}>

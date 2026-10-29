@@ -8,6 +8,7 @@ import { millingService } from "../../services/MillingService";
 import { costsService } from "../../services/CostsService";
 import { byproductKindService, type ByproductKind } from "../../services/ByproductKindService";
 import { useByproductKinds } from "../../hooks/useByproductKinds";
+import { varietiesOf, type VarietyKind } from "../../utils/varieties";
 import Select from "../Select";
 import ConfirmDialog from "../ConfirmDialog";
 import {
@@ -179,6 +180,8 @@ export function VarietiesList() {
   const qc = useQueryClient();
   const [showHidden, setShowHidden] = useState(false);
   const [showForm, setShowForm] = useState(false);
+  // Palay and rice have their own lists; a new variety joins the one on screen.
+  const [kind, setKind] = useState<VarietyKind>("palay");
   const [form, setForm] = useState({
     code: "",
     name: "",
@@ -187,10 +190,11 @@ export function VarietiesList() {
   });
   const [editing, setEditing] = useState<VarietyEdit | null>(null);
 
-  const { data: varieties = [] } = useQuery({
+  const { data: everyVariety = [] } = useQuery({
     queryKey: ["varieties-all"],
     queryFn: () => paddyService.listVarieties(true),
   });
+  const varieties = varietiesOf(everyVariety, kind);
   const shown = varieties.filter((v: any) => v.is_active);
   const hidden = varieties.filter((v: any) => !v.is_active);
   const refresh = () => {
@@ -202,6 +206,7 @@ export function VarietiesList() {
     mutationFn: (b: typeof form) =>
       paddyService.createVariety({
         ...b,
+        kind,
         typical_recovery_pct: b.typical_recovery_pct ? parseFloat(b.typical_recovery_pct) : null,
       }),
     onSuccess: () => {
@@ -273,10 +278,31 @@ export function VarietiesList() {
     <div className="space-y-4">
       <p className="text-sm text-secondary">
         {t(
-          "Add your own rice varieties, or edit the default ones (Dinorado and the rest). Hide a variety you don't use: it leaves the lists you pick from until you unhide it.",
+          "Palay and rice have their own lists. Add your own varieties, or edit the default ones (NSIC Rc 222 and the rest for palay, Dinorado and the rest for rice). Hide a variety you don't use: it leaves the lists you pick from until you unhide it.",
         )}
       </p>
-      <div className="flex justify-end">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div role="group" aria-label={t("Variety list")} className="flex gap-2">
+          {(
+            [
+              ["palay", t("Palay")],
+              ["rice", t("Rice")],
+            ] as const
+          ).map(([value, label]) => (
+            <button
+              key={value}
+              type="button"
+              aria-pressed={kind === value}
+              onClick={() => {
+                setKind(value);
+                setEditing(null);
+              }}
+              className={kind === value ? "btn-primary" : "btn-secondary"}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
         <button onClick={() => setShowForm(!showForm)} className="btn-primary">
           <Plus size={16} /> {t("Add variety")}
         </button>
@@ -290,7 +316,7 @@ export function VarietiesList() {
               <label className={LABEL}>{t("Code *")}</label>
               <input
                 className="input"
-                placeholder={t("e.g. Dinorado")}
+                placeholder={kind === "palay" ? t("e.g. NSIC Rc 222") : t("e.g. Dinorado")}
                 value={form.code}
                 onChange={(e) => setForm((f) => ({ ...f, code: e.target.value.toUpperCase() }))}
               />
@@ -299,7 +325,9 @@ export function VarietiesList() {
               <label className={LABEL}>{t("Name *")}</label>
               <input
                 className="input"
-                placeholder={t("e.g. Dinorado")}
+                placeholder={
+                  kind === "palay" ? t("e.g. NSIC Rc 222 (Tubigan 18)") : t("e.g. Dinorado")
+                }
                 value={form.name}
                 onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
               />

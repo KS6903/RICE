@@ -17,6 +17,9 @@ class RiceVariety(Base):
     code: Mapped[str] = mapped_column(String(20), nullable=False)
     name: Mapped[str] = mapped_column(String(100), nullable=False)
     category: Mapped[str | None] = mapped_column(String(20))  # inbred, hybrid, local
+    # Which pages offer it: palay (NSIC Rc 222 and the rest), rice (Dinorado and the
+    # rest), or both (a variety a mill made before the two lists were split).
+    kind: Mapped[str] = mapped_column(String(10), nullable=False, default="rice", server_default="rice")
     typical_recovery_pct: Mapped[Decimal | None] = mapped_column(Numeric(5, 2))
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     deactivated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)

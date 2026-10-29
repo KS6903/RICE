@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { PaddyService } from "./PaddyService";
+import { PaddyService, blankPurchaseItem } from "./PaddyService";
 
 describe("PaddyService.toPurchasePayload", () => {
   it("parses numeric fields and nulls out empty ids/optionals", () => {
@@ -9,19 +9,17 @@ describe("PaddyService.toPurchasePayload", () => {
       remarks: "",
       items: [
         {
+          ...blankPurchaseItem(),
           variety_id: "v1",
-          grade_id: "",
           gross_weight_kg: "1000",
           tare_weight_kg: "50",
           moisture_content_pct: "14",
           price_per_cavan: "1200",
         },
         {
-          variety_id: "",
-          grade_id: "",
+          ...blankPurchaseItem(),
           gross_weight_kg: "500",
           tare_weight_kg: "",
-          moisture_content_pct: "",
           price_per_cavan: "1000",
         },
       ],
@@ -30,19 +28,64 @@ describe("PaddyService.toPurchasePayload", () => {
     expect(payload.items[0]).toEqual({
       variety_id: "v1",
       grade_id: null,
+      sack_count: null,
+      cavan_count: null,
       gross_weight_kg: 1000,
       tare_weight_kg: 50,
       moisture_content_pct: 14,
       price_per_cavan: 1200,
+      is_wet: false,
+      dried_weight_kg: null,
+      dried_moisture_pct: null,
     });
     expect(payload.items[1]).toEqual({
       variety_id: null,
       grade_id: null,
+      sack_count: null,
+      cavan_count: null,
       gross_weight_kg: 500,
       tare_weight_kg: 0,
       moisture_content_pct: null,
       price_per_cavan: 1000,
+      is_wet: false,
+      dried_weight_kg: null,
+      dried_moisture_pct: null,
     });
+  });
+
+  it("counts in sacks: cavans and kilos left blank are sent as nothing", () => {
+    const payload = PaddyService.toPurchasePayload({
+      purchase_date: "2026-10-29",
+      delivery_type: "delivered",
+      remarks: "",
+      items: [{ ...blankPurchaseItem(), sack_count: "20", price_per_cavan: "1200" }],
+    });
+    expect(payload.items[0]).toMatchObject({
+      sack_count: 20,
+      cavan_count: null,
+      gross_weight_kg: null,
+    });
+  });
+
+  it("sends the after-drying figures only for wet palay", () => {
+    const line = {
+      ...blankPurchaseItem(),
+      sack_count: "20",
+      price_per_cavan: "1200",
+      dried_weight_kg: "800",
+      dried_moisture_pct: "14",
+    };
+    const [wet, dry] = PaddyService.toPurchasePayload({
+      purchase_date: "2026-10-29",
+      delivery_type: "delivered",
+      remarks: "",
+      items: [
+        { ...line, is_wet: true },
+        { ...line, is_wet: false },
+      ],
+    }).items;
+    expect(wet).toMatchObject({ is_wet: true, dried_weight_kg: 800, dried_moisture_pct: 14 });
+    expect(dry).toMatchObject({ is_wet: false, dried_weight_kg: null, dried_moisture_pct: null });
   });
 });
 

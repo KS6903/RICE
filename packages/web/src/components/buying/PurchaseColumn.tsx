@@ -10,6 +10,7 @@ import { inSeveralWarehouses } from "../PurchaseWarehouse";
 import { peso } from "./money";
 import { STATUS_BADGE, byproductName, gradeLabel, type TradeKind } from "./trade";
 import EditPurchaseDialog from "./EditPurchaseDialog";
+import RecordDryingDialog from "./RecordDryingDialog";
 import RecordHistory, { type RecordKind } from "../sales/RecordHistory";
 import { useCanEditSavedRecords } from "../../hooks/useRecordEditor";
 import { t } from "../../i18n";
@@ -20,6 +21,17 @@ const HISTORY_KIND: Record<TradeKind, RecordKind> = {
   rice: "rice_purchase",
   byproduct: "byproduct_purchase",
 };
+
+/** The badge beside a purchase. Palay is red while any wet line is still to dry
+ *  and green once it's completed; the others show the status they were saved with. */
+function purchaseBadge(kind: TradeKind, p: any): { cls: string; text: string } {
+  if (kind === "palay") {
+    return p.is_drying
+      ? { cls: "badge-red", text: t("Wet") }
+      : { cls: "badge-green", text: t("Completed") };
+  }
+  return { cls: STATUS_BADGE[p.status] || "badge-gray", text: statusText(p.status) };
+}
 
 export default function PurchaseColumn({
   kind,
@@ -41,6 +53,7 @@ export default function PurchaseColumn({
   const [open, setOpen] = useState<any | null>(null);
   const [editing, setEditing] = useState<any | null>(null);
   const [history, setHistory] = useState<any | null>(null);
+  const [drying, setDrying] = useState<{ purchase: any; line: any } | null>(null);
   const canCorrect = useCanEditSavedRecords();
   const canSeeHistory = canCorrect || canBuy;
   const several = inSeveralWarehouses(purchases);
@@ -80,7 +93,14 @@ export default function PurchaseColumn({
         ) : (
           <ul className="divide-y divide-gray-100 dark:divide-slate-700">
             {purchases.map((p) => (
-              <li key={p.id}>
+              <li
+                key={p.id}
+                className={
+                  kind === "palay"
+                    ? `border-l-4 ${p.is_drying ? "border-rose-500" : "border-emerald-500"}`
+                    : undefined
+                }
+              >
                 <button
                   type="button"
                   onClick={() => setOpen(p)}
@@ -109,8 +129,8 @@ export default function PurchaseColumn({
                     <p className="text-xs tabular-nums text-muted">
                       {peso(Number(p.total_amount ?? 0))}
                     </p>
-                    <span className={`mt-1 inline-block ${STATUS_BADGE[p.status] || "badge-gray"}`}>
-                      {statusText(p.status)}
+                    <span className={`mt-1 inline-block ${purchaseBadge(kind, p).cls}`}>
+                      {purchaseBadge(kind, p).text}
                     </span>
                   </div>
                 </button>
@@ -140,6 +160,21 @@ export default function PurchaseColumn({
                 }
               : undefined
           }
+          onRecordDrying={
+            canBuy
+              ? (line) => {
+                  setDrying({ purchase: open, line });
+                  setOpen(null);
+                }
+              : undefined
+          }
+        />
+      )}
+      {drying && (
+        <RecordDryingDialog
+          purchase={drying.purchase}
+          line={drying.line}
+          onClose={() => setDrying(null)}
         />
       )}
       {editing && (
@@ -167,6 +202,11 @@ const LINE_COLUMNS: Record<TradeKind, Col[]> = {
   palay: [
     { label: t("Variety"), value: (l) => l.variety_code ?? "—" },
     { label: t("Grade"), value: (l) => l.grade_code ?? "—" },
+    {
+      label: t("Sacks"),
+      value: (l) => (l.sack_count != null ? Number(l.sack_count).toLocaleString() : "—"),
+      numeric: true,
+    },
     { label: t("Gross"), value: (l) => kg(l.gross_weight_kg), numeric: true },
     { label: t("Tare"), value: (l) => kg(l.tare_weight_kg), numeric: true },
     { label: t("Net"), value: (l) => kg(l.net_weight_kg), numeric: true },
@@ -204,6 +244,7 @@ export function PurchaseDetails({
   onClose,
   onEdit,
   onHistory,
+  onRecordDrying,
 }: {
   kind: TradeKind;
   purchase: any;
@@ -212,8 +253,48 @@ export function PurchaseDetails({
   onEdit?: () => void;
   /** Its logged changes; left out, no History button. */
   onHistory?: () => void;
+  /** A wet line came out of the dryer; left out, no Record drying button. */
+  onRecordDrying?: (line: any) => void;
 }) {
-  const cols = LINE_COLUMNS[kind];
+  const anyWet = (p.items ?? []).some((l: any) => l.is_wet);
+  const cols: Col[] =
+    kind === "palay"
+      ? [
+          ...LINE_COLUMNS.palay,
+          {
+            label: t("Condition"),
+            value: (l) =>
+              l.is_drying ? (
+                <span className="inline-flex items-center gap-2">
+                  <span className="badge-red">{t("Wet")}</span>
+                  {onRecordDrying && (
+                    <button
+                      type="button"
+                      className="text-xs font-medium text-brand-600 hover:underline dark:text-brand-400"
+                      onClick={() => onRecordDrying(l)}
+                    >
+                      {t("Record drying")}
+                    </button>
+                  )}
+                </span>
+              ) : (
+                <span className="badge-green">{l.is_wet ? t("Dried") : t("Dry")}</span>
+              ),
+          },
+          ...(anyWet
+            ? [
+                {
+                  label: t("After drying"),
+                  value: (l: any) =>
+                    l.dried_weight_kg != null
+                      ? `${kg(l.dried_weight_kg)}${l.dried_moisture_pct != null ? ` · ${Number(l.dried_moisture_pct)}%` : ""}`
+                      : "—",
+                  numeric: true,
+                },
+              ]
+            : []),
+        ]
+      : LINE_COLUMNS[kind];
   const facts: [string, ReactNode][] = [
     [t("Date"), p.purchase_date],
     [t("Supplier"), p.supplier?.name ?? "—"],
@@ -221,8 +302,8 @@ export function PurchaseDetails({
     [t("Delivery"), p.delivery_type ? (DELIVERY[p.delivery_type] ?? p.delivery_type) : "—"],
     [
       t("Status"),
-      <span key="s" className={STATUS_BADGE[p.status] || "badge-gray"}>
-        {statusText(p.status)}
+      <span key="s" className={purchaseBadge(kind, p).cls}>
+        {purchaseBadge(kind, p).text}
       </span>,
     ],
     [

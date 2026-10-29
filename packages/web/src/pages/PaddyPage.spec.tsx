@@ -39,12 +39,23 @@ const draw = () =>
 
 let create: ReturnType<typeof vi.spyOn>;
 let listBranches: ReturnType<typeof vi.spyOn>;
+let setView: ReturnType<typeof vi.spyOn>;
 
 beforeEach(() => {
   vi.spyOn(paddyService, "listPurchases").mockResolvedValue([]);
-  vi.spyOn(paddyService, "listVarieties").mockResolvedValue([{ id: "v1", code: "RC222" }]);
+  vi.spyOn(paddyService, "listVarieties").mockResolvedValue([
+    {
+      id: "v1",
+      code: "NSIC Rc 222",
+      name: "NSIC Rc 222 (Tubigan 18, Triple Two)",
+      kind: "palay",
+    },
+    { id: "v2", code: "Dinorado", name: "Dinorado", kind: "rice" },
+  ]);
   vi.spyOn(paddyService, "listGrades").mockResolvedValue([]);
   vi.spyOn(paddyService, "listInventory").mockResolvedValue([]);
+  vi.spyOn(paddyService, "getStockView").mockResolvedValue("all");
+  setView = vi.spyOn(paddyService, "setStockView").mockResolvedValue("sacks");
   create = vi.spyOn(paddyService, "createPurchase").mockResolvedValue({ id: "p1" });
   listBranches = vi.spyOn(inventoryService, "getBranches").mockResolvedValue(warehouses);
 });
@@ -55,7 +66,7 @@ afterEach(() => {
 });
 
 const fillAndSave = () => {
-  fireEvent.change(screen.getByPlaceholderText("Gross kg"), { target: { value: "1000" } });
+  fireEvent.change(screen.getByLabelText("Kilos (est.)"), { target: { value: "1000" } });
   fireEvent.change(screen.getByPlaceholderText("₱/cavan"), { target: { value: "1200" } });
   fireEvent.click(screen.getByRole("button", { name: "Save Purchase" }));
 };
@@ -124,5 +135,149 @@ describe("PaddyPage: which warehouse a new purchase is stored in", () => {
       await within(stock).findByRole("columnheader", { name: "Warehouse" }),
     ).toBeInTheDocument();
     expect(within(stock).getByText("2nd Branch")).toBeInTheDocument();
+  });
+});
+
+describe("PaddyPage: a purchase line counted in sacks, bought wet or dry", () => {
+  const open = () => {
+    useAuthStore.setState({ user: owner });
+    draw();
+    fireEvent.click(screen.getByRole("button", { name: /New Purchase/ }));
+  };
+
+  it("offers the palay varieties with their other names, and not the rice ones", async () => {
+    open();
+    fireEvent.click(await screen.findByRole("button", { name: "Variety", exact: true }));
+    const options = within(screen.getByRole("listbox")).getAllByRole("option");
+    expect(options.map((o) => o.textContent?.trim())).toEqual([
+      "NSIC Rc 222 (Tubigan 18, Triple Two)",
+    ]);
+  });
+
+  it("saves a line with only the sacks and the price: cavans and kilos are optional", async () => {
+    open();
+    fireEvent.change(await screen.findByLabelText("Sacks"), { target: { value: "20" } });
+    expect(screen.getByRole("button", { name: "Save Purchase" })).toBeDisabled(); // no price yet
+    fireEvent.change(screen.getByPlaceholderText("₱/cavan"), { target: { value: "1200" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save Purchase" }));
+
+    await waitFor(() => expect(create).toHaveBeenCalled());
+    expect(create.mock.calls[0][0].items[0]).toMatchObject({
+      sack_count: "20",
+      cavan_count: "",
+      gross_weight_kg: "",
+      is_wet: false,
+    });
+  });
+
+  it("asks for the weight and moisture after drying only once the line is wet", async () => {
+    open();
+    expect(await screen.findByRole("checkbox", { name: "Dry" })).toBeChecked();
+    expect(screen.queryByLabelText("Weight after drying (kg)")).toBeNull();
+
+    fireEvent.click(screen.getByRole("checkbox", { name: "Wet" }));
+    expect(screen.getByRole("checkbox", { name: "Wet" })).toBeChecked();
+    expect(screen.getByRole("checkbox", { name: "Dry" })).not.toBeChecked();
+    expect(screen.getByLabelText("Moisture before drying %")).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText("Weight after drying (kg)"), {
+      target: { value: "800" },
+    });
+    fireEvent.change(screen.getByLabelText("Moisture after drying %"), { target: { value: "14" } });
+    fireEvent.change(screen.getByLabelText("Sacks"), { target: { value: "20" } });
+    fireEvent.change(screen.getByPlaceholderText("₱/cavan"), { target: { value: "1200" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save Purchase" }));
+
+    await waitFor(() => expect(create).toHaveBeenCalled());
+    expect(create.mock.calls[0][0].items[0]).toMatchObject({
+      is_wet: true,
+      dried_weight_kg: "800",
+      dried_moisture_pct: "14",
+    });
+  });
+
+  it("clears the after-drying figures when the line goes back to dry", async () => {
+    open();
+    fireEvent.click(await screen.findByRole("checkbox", { name: "Wet" }));
+    fireEvent.change(screen.getByLabelText("Weight after drying (kg)"), {
+      target: { value: "800" },
+    });
+    fireEvent.click(screen.getByRole("checkbox", { name: "Dry" }));
+    fireEvent.click(screen.getByRole("checkbox", { name: "Wet" }));
+    expect(screen.getByLabelText("Weight after drying (kg)")).toHaveValue(null);
+  });
+});
+
+describe("PaddyPage: how the palay in stock is counted", () => {
+  const stock = [
+    {
+      id: "i1",
+      branch_id: "b1",
+      branch: { name: "Main Branch" },
+      variety: { code: "NSIC Rc 222" },
+      quantity_kg: 1000,
+      quantity_cavans: 20,
+      quantity_sacks: 18.5,
+      wet_kg: 250,
+      wet_cavans: 5,
+      wet_sacks: 4.6,
+    },
+  ];
+  const stockTable = () => screen.getByTestId("palay-stock-index");
+
+  beforeEach(() => {
+    vi.mocked(paddyService.listInventory).mockResolvedValue(stock);
+  });
+
+  it("shows sacks, cavans and kilos by default, the sacks first", async () => {
+    useAuthStore.setState({ user: encoder });
+    draw();
+
+    const headers = await within(stockTable()).findAllByRole("columnheader");
+    expect(headers.map((h) => h.textContent)).toEqual([
+      "Variety",
+      "Grade",
+      "Sacks",
+      "Cavans (est.)",
+      "Kilos (est.)",
+    ]);
+    const row = within(stockTable()).getByText("NSIC Rc 222").closest("tr") as HTMLElement;
+    expect(
+      within(row)
+        .getAllByRole("cell")
+        .map((c) => c.textContent),
+    ).toEqual(["NSIC Rc 222" + "4.6 sacks wet", "—", "18.5", "20", "1,000"]);
+    // Phones show the sacks alone: the other two columns are hidden below the sm breakpoint.
+    expect(headers[3]).toHaveClass("hidden", "sm:table-cell");
+    expect(headers[2]).not.toHaveClass("hidden");
+  });
+
+  it("shows only the one the Boss picked, on every screen", async () => {
+    vi.mocked(paddyService.getStockView).mockResolvedValue("cavans");
+    useAuthStore.setState({ user: encoder });
+    draw();
+
+    await waitFor(() =>
+      expect(
+        within(stockTable())
+          .getAllByRole("columnheader")
+          .map((h) => h.textContent),
+      ).toEqual(["Variety", "Grade", "Cavans (est.)"]),
+    );
+    const headers = within(stockTable()).getAllByRole("columnheader");
+    expect(headers.some((h) => h.className.includes("hidden"))).toBe(false);
+    expect(within(stockTable()).getByText("5 cavans wet")).toBeInTheDocument();
+  });
+
+  it("lets only the Boss change it", async () => {
+    useAuthStore.setState({ user: encoder });
+    const { unmount } = draw();
+    await within(stockTable()).findByText("NSIC Rc 222");
+    expect(screen.queryByLabelText("Count palay in")).toBeNull();
+    unmount();
+
+    useAuthStore.setState({ user: owner });
+    draw();
+    await chooseOption("Count palay in", "Sacks");
+    await waitFor(() => expect(setView).toHaveBeenCalledWith("sacks"));
   });
 });

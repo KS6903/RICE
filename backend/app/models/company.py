@@ -57,6 +57,9 @@ class Company(Base, TimestampMixin):
     # {role: {page: "full" | "view" | "none"}}: only the cells that differ from
     # the default matrix (core/access_policy.py). NULL when nothing was changed.
     role_access: Mapped[dict | None] = mapped_column(JSONB)
+    # How the Palay page counts the palay in stock, as the Boss chose: sacks,
+    # cavans, kilos or all three. NULL until chosen, which shows all three.
+    palay_stock_view: Mapped[str | None] = mapped_column(String(10))
     provisioning_requested_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     provisioned_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     provisioning_error: Mapped[str | None] = mapped_column(String(120))

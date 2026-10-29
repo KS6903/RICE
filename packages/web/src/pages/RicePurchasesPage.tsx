@@ -25,6 +25,7 @@ import {
   inSeveralWarehouses,
   usePurchaseWarehouse,
 } from "../components/PurchaseWarehouse";
+import { varietyOptions } from "../utils/varieties";
 import { t } from "../i18n";
 
 const gradeLabel = (g: string) => g.charAt(0).toUpperCase() + g.slice(1);
@@ -159,7 +160,11 @@ export default function RicePurchasesPage() {
                     },
                     { key: "name", label: t("Name"), required: true },
                   ]}
-                  transformBody={(b) => ({ ...b, code: String(b.code).toUpperCase() })}
+                  transformBody={(b) => ({
+                    ...b,
+                    code: String(b.code).toUpperCase(),
+                    kind: "rice",
+                  })}
                 />
                 <button
                   onClick={() => setForm((f) => ({ ...f, items: [...f.items, newLine()] }))}
@@ -180,7 +185,7 @@ export default function RicePurchasesPage() {
                     placeholder={t("Variety")}
                     value={item.variety_id}
                     onChange={(v) => setLine(idx, { variety_id: v })}
-                    options={varieties.map((v: any) => ({ value: v.id, label: v.code }))}
+                    options={varietyOptions(varieties, "rice")}
                   />
                 </FieldCaption>
                 <FieldCaption label={t("Grade")}>

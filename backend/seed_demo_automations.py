@@ -38,7 +38,7 @@ from sqlalchemy import delete, select
 from app.automations.cash import cash_received
 from app.automations.engine import entitled
 from app.core.database import SessionLocal
-from app.core.tenancy import set_search_path
+from app.core.tenancy import _PALAY_FOR_RICE, set_search_path
 from app.core.timezones import tenant_zone
 from app.models.action import ActionItem
 from app.models.activity import ActivityLog
@@ -150,6 +150,9 @@ def seed(db, username: str, *, reset: bool) -> str:
     varieties = {v.code: v for v in db.query(RiceVariety).filter(RiceVariety.code.in_(VARIETIES))}
     if len(varieties) < len(VARIETIES):
         return f"{username}: the variety catalog is missing one of {VARIETIES}; run seed.py first"
+    # The palay a mill buys, stocks and mills has the palay variety of each rice one.
+    palay_rows = {v.code: v for v in db.query(RiceVariety).filter(RiceVariety.kind == "palay")}
+    palay = {code: palay_rows.get(_PALAY_FOR_RICE[code], varieties[code]) for code in VARIETIES}
 
     # ── people the mill deals with ────────────────────────────────────────────
     customers: dict[str, Customer] = {}
@@ -211,12 +214,14 @@ def seed(db, username: str, *, reset: bool) -> str:
             gross = Decimal(cavans) * KG_PER_CAVAN + rng.randint(20, 60)
             item = PalayPurchaseItem(
                 purchase_id=purchase.id,
-                variety_id=varieties[code].id,
+                variety_id=palay[code].id,
+                sack_count=Decimal(cavans),
                 gross_weight_kg=gross,
                 tare_weight_kg=Decimal(rng.randint(20, 60)),
                 cavan_count=Decimal(cavans),
                 moisture_content_pct=moisture,
                 price_per_cavan=Decimal(price).quantize(Decimal("0.01")),
+                is_wet=moisture > 14,
             )
             db.add(item)
             db.flush()
@@ -225,11 +230,12 @@ def seed(db, username: str, *, reset: bool) -> str:
             if moisture > 14 and back > 0:
                 start = entered + timedelta(hours=2)
                 done = back > 2 or rng.random() < 0.5
+                end = start + timedelta(hours=rng.randint(20, 40)) if done else None
                 db.add(
                     DryingRecord(
                         purchase_item_id=item.id,
                         start_datetime=start,
-                        end_datetime=start + timedelta(hours=rng.randint(20, 40)) if done else None,
+                        end_datetime=end,
                         initial_moisture_pct=moisture,
                         final_moisture_pct=Decimal("13.8") if done else None,
                         drying_method=rng.choice(("sun", "sun", "mechanical")),
@@ -237,6 +243,14 @@ def seed(db, username: str, *, reset: bool) -> str:
                         operator_id=operator.id,
                     )
                 )
+                if done:
+                    net = gross - item.tare_weight_kg
+                    item.dried_weight_kg = (net * (100 - moisture) / Decimal("86.2")).quantize(Decimal("0.001"))
+                    item.dried_moisture_pct = Decimal("13.8")
+                    item.dried_at = end
+            # Red until dried: the wet lots still to dry are "received", not completed.
+            if item.is_drying:
+                purchase.status = "received"
     # Planted: two wet lots bought early this morning, nobody drying them yet.
     for k, code in enumerate((MAIN, DEAREST)):
         n += 1
@@ -247,7 +261,7 @@ def seed(db, username: str, *, reset: bool) -> str:
             reference_no=f"PP-AUTO-{today:%Y%m%d}-W{k + 1}",
             supplier_id=suppliers["San Isidro Farmers Co-op"].id if "San Isidro Farmers Co-op" in suppliers else None,
             purchase_date=entered.astimezone(zone).date(),
-            status="completed",
+            status="received",
             created_by=encoder.id,
             created_at=entered,
             updated_at=entered,
@@ -257,12 +271,14 @@ def seed(db, username: str, *, reset: bool) -> str:
         db.add(
             PalayPurchaseItem(
                 purchase_id=purchase.id,
-                variety_id=varieties[code].id,
+                variety_id=palay[code].id,
+                sack_count=Decimal(120),
                 gross_weight_kg=Decimal(6040),
                 tare_weight_kg=Decimal(40),
                 cavan_count=Decimal(120),
                 moisture_content_pct=Decimal("23.5") if k == 0 else Decimal("21.0"),
                 price_per_cavan=Decimal(BASE_PRICE[code] - 110),
+                is_wet=True,
             )
         )
 
@@ -298,7 +314,7 @@ def seed(db, username: str, *, reset: bool) -> str:
         db.flush()
         rice_kg = (input_kg * recovery / 100).quantize(Decimal(1))
         broken = Decimal(str(round(rng.uniform(6, 12), 1))) + (Decimal(9) if back == 1 else 0)
-        db.add(MillingBatchInput(batch_id=batch.id, variety_id=varieties[code].id, input_weight_kg=input_kg))
+        db.add(MillingBatchInput(batch_id=batch.id, variety_id=palay[code].id, input_weight_kg=input_kg))
         db.add_all(
             [
                 MillingBatchOutput(
@@ -521,7 +537,7 @@ def seed(db, username: str, *, reset: bool) -> str:
     db.add(
         PalayPurchaseItem(
             purchase_id=dear.id,
-            variety_id=varieties[MAIN].id,
+            variety_id=palay[MAIN].id,
             gross_weight_kg=Decimal(4040),
             tare_weight_kg=Decimal(40),
             cavan_count=Decimal(80),
@@ -609,9 +625,9 @@ def seed(db, username: str, *, reset: bool) -> str:
             db.add(row)
         row.quantity_kg = rice_left
         palay_left = max(Decimal(2000), palay_bought[code] - palay_used[code])
-        prow = db.query(PalayInventory).filter(PalayInventory.variety_id == v.id).first()
+        prow = db.query(PalayInventory).filter(PalayInventory.variety_id == palay[code].id).first()
         if prow is None:
-            prow = PalayInventory(company_id=cid, branch_id=bid, variety_id=v.id)
+            prow = PalayInventory(company_id=cid, branch_id=bid, variety_id=palay[code].id)
             db.add(prow)
         prow.quantity_kg = palay_left
     bran = db.query(ByproductInventory).filter(ByproductInventory.byproduct_type == "darak").first()

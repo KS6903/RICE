@@ -13,17 +13,31 @@ import { useByproductKinds } from "../../hooks/useByproductKinds";
 import { MILLED_GRADES } from "../../mappers/InventoryMapper";
 import { peso } from "./money";
 import { gradeLabel, type TradeKind } from "./trade";
+import WetDryChoice from "./WetDryChoice";
+import { varietyOptions } from "../../utils/varieties";
 import { t } from "../../i18n";
 
 type Line = Record<string, string>;
 
 /** The numbers on a line, as each kind's create takes them. */
-const NUMBERS: Record<TradeKind, { key: string; label: string; optional?: boolean }[]> = {
+const NUMBERS: Record<
+  TradeKind,
+  { key: string; label: string; optional?: boolean; wetOnly?: boolean }[]
+> = {
   palay: [
-    { key: "gross_weight_kg", label: t("Gross kg") },
+    { key: "sack_count", label: t("Sacks"), optional: true },
+    { key: "cavan_count", label: t("Cavans (est.)"), optional: true },
+    { key: "gross_weight_kg", label: t("Kilos (est.)"), optional: true },
     { key: "tare_weight_kg", label: t("Tare kg") },
     { key: "moisture_content_pct", label: t("Moisture %"), optional: true },
     { key: "price_per_cavan", label: t("₱ per cavan") },
+    { key: "dried_weight_kg", label: t("Weight after drying (kg)"), optional: true, wetOnly: true },
+    {
+      key: "dried_moisture_pct",
+      label: t("Moisture after drying %"),
+      optional: true,
+      wetOnly: true,
+    },
   ],
   rice: [
     { key: "sack_count", label: t("Sacks") },
@@ -40,10 +54,15 @@ const BLANK: Record<TradeKind, Line> = {
   palay: {
     variety_id: "",
     grade_id: "",
+    sack_count: "",
+    cavan_count: "",
     gross_weight_kg: "",
     tare_weight_kg: "0",
     moisture_content_pct: "",
     price_per_cavan: "",
+    is_wet: "",
+    dried_weight_kg: "",
+    dried_moisture_pct: "",
   },
   rice: {
     variety_id: "",
@@ -78,15 +97,22 @@ function fromItem(kind: TradeKind, i: any): Line {
   const line: Line = { ...BLANK[kind] };
   for (const key of Object.keys(line)) {
     const value = i[key];
-    if (value === null || value === undefined) line[key] = "";
+    if (key === "is_wet") line[key] = value ? "yes" : "";
+    else if (value === null || value === undefined) line[key] = "";
     else line[key] = NUMBERS[kind].some((n) => n.key === key) ? text(value) : String(value);
   }
   return line;
 }
 
+/** Kilos bought: the weighed ones, else the cavans, else the sacks (50 kg each). */
+const palayKg = (l: Line) =>
+  l.gross_weight_kg !== ""
+    ? num(l.gross_weight_kg) - num(l.tare_weight_kg)
+    : (num(l.cavan_count) || num(l.sack_count)) * 50;
+
 const lineAmount = (kind: TradeKind, l: Line) =>
   kind === "palay"
-    ? ((num(l.gross_weight_kg) - num(l.tare_weight_kg)) / 50) * num(l.price_per_cavan)
+    ? (palayKg(l) / 50) * num(l.price_per_cavan)
     : kind === "rice"
       ? num(l.sack_count) * num(l.price_per_sack)
       : num(l.weight_kg) * num(l.price_per_kg);
@@ -94,7 +120,14 @@ const lineAmount = (kind: TradeKind, l: Line) =>
 function lineIsValid(kind: TradeKind, l: Line): boolean {
   const filled = NUMBERS[kind].every((n) => n.optional || l[n.key] !== "");
   if (!filled || NUMBERS[kind].some((n) => num(l[n.key]) < 0)) return false;
-  if (kind === "palay") return num(l.gross_weight_kg) > num(l.tare_weight_kg);
+  if (kind === "palay") {
+    const counted = l.gross_weight_kg !== "" || l.cavan_count !== "" || l.sack_count !== "";
+    return (
+      counted &&
+      palayKg(l) > 0 &&
+      (l.is_wet !== "yes" || l.dried_weight_kg === "" || num(l.dried_weight_kg) > 0)
+    );
+  }
   if (kind === "rice") return num(l.sack_count) > 0 && num(l.kg_per_sack) > 0;
   return !!l.byproduct_type && num(l.weight_kg) > 0;
 }
@@ -105,6 +138,14 @@ function toItem(kind: TradeKind, l: Line): Record<string, unknown> {
   for (const [key, value] of Object.entries(l)) {
     const isNumber = NUMBERS[kind].some((n) => n.key === key);
     item[key] = value === "" ? null : isNumber ? num(value) : value;
+  }
+  if (kind === "palay") {
+    const wet = l.is_wet === "yes";
+    item.is_wet = wet;
+    if (!wet) {
+      item.dried_weight_kg = null;
+      item.dried_moisture_pct = null;
+    }
   }
   return item;
 }
@@ -198,9 +239,10 @@ export default function EditPurchaseDialog({
     supplierId,
     purchase.supplier?.name,
   );
-  const varietyOptions = [
+  // Palay purchases pick from the palay list, rice purchases from the rice list.
+  const pickableVarieties = [
     { value: "", label: t("Any variety") },
-    ...varieties.map((v: any) => ({ value: v.id, label: v.code })),
+    ...varietyOptions(varieties, kind === "palay" ? "palay" : "rice"),
   ];
   const gradeOptions = [
     { value: "", label: t("No grade") },
@@ -225,7 +267,7 @@ export default function EditPurchaseDialog({
           aria-label={t("Variety of line {{value}}", { value: i + 1 })}
           value={l.variety_id}
           onChange={(v) => setLine(i, { variety_id: v })}
-          options={withCurrent(varietyOptions, l.variety_id, saved?.variety_code)}
+          options={withCurrent(pickableVarieties, l.variety_id, saved?.variety_code)}
         />
         {kind === "palay" ? (
           <Select
@@ -323,23 +365,35 @@ export default function EditPurchaseDialog({
                     <Trash2 size={15} />
                   </button>
                 </div>
+                {kind === "palay" && (
+                  <div className="flex items-center gap-3">
+                    <span className="text-[11px] text-muted">{t("Condition")}</span>
+                    <WetDryChoice
+                      wet={l.is_wet === "yes"}
+                      name={String(i + 1)}
+                      onChange={(wet) => setLine(i, { is_wet: wet ? "yes" : "" })}
+                    />
+                  </div>
+                )}
                 <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-                  {NUMBERS[kind].map((n) => (
-                    <label key={n.key} className="block">
-                      <span className="block mb-1 text-[11px] text-muted">{n.label}</span>
-                      <input
-                        className="input"
-                        type="number"
-                        min={0}
-                        aria-label={t("{{label}} of line {{value}}", {
-                          label: n.label,
-                          value: i + 1,
-                        })}
-                        value={l[n.key]}
-                        onChange={(e) => setLine(i, { [n.key]: e.target.value })}
-                      />
-                    </label>
-                  ))}
+                  {NUMBERS[kind]
+                    .filter((n) => !n.wetOnly || l.is_wet === "yes")
+                    .map((n) => (
+                      <label key={n.key} className="block">
+                        <span className="block mb-1 text-[11px] text-muted">{n.label}</span>
+                        <input
+                          className="input"
+                          type="number"
+                          min={0}
+                          aria-label={t("{{label}} of line {{value}}", {
+                            label: n.label,
+                            value: i + 1,
+                          })}
+                          value={l[n.key]}
+                          onChange={(e) => setLine(i, { [n.key]: e.target.value })}
+                        />
+                      </label>
+                    ))}
                 </div>
               </div>
             ))}

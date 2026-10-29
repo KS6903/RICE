@@ -195,6 +195,58 @@ _RETIRED_VARIETIES = {
     "MESTIZO": "Black Rice",
     "LOCAL": "Malagkit",
 }
+# The palay (paddy) varieties a mill buys: (code, also known as, category). The
+# code is what the pickers show; the name adds the other names it goes by. No
+# recovery %: the milling page takes 65% for a variety without one.
+_SYSTEM_PALAY_VARIETIES = [
+    ("NSIC Rc 222", "Tubigan 18, Triple Two", "inbred"),
+    ("NSIC Rc 160", "Tubigan 14", "inbred"),
+    ("NSIC Rc 216", "Tubigan 17", "inbred"),
+    ("NSIC Rc 300", "Tubigan 24", "inbred"),
+    ("NSIC Rc 302", "", "inbred"),
+    ("NSIC Rc 354", "", "inbred"),
+    ("NSIC Rc 356", "", "inbred"),
+    ("NSIC Rc 358", "", "inbred"),
+    ("NSIC Rc 394", "", "inbred"),
+    ("NSIC Rc 396", "", "inbred"),
+    ("NSIC Rc 400", "Tubigan 35", "inbred"),
+    ("NSIC Rc 402", "Tubigan 36", "inbred"),
+    ("NSIC Rc 414", "", "inbred"),
+    ("NSIC Rc 218 SR", "Mabango 3", "inbred"),
+    ("NSIC Rc 480", "Green Super Rice", "inbred"),
+    ("NSIC Rc 570", "", "inbred"),
+    ("NSIC Rc 596", "", "inbred"),
+    ("NSIC Rc 600", "", "inbred"),
+    ("NSIC Rc 194", "Submarino 1", "inbred"),
+    ("NSIC Rc 224", "", "inbred"),
+    ("NSIC Rc 226", "", "inbred"),
+    ("NSIC Rc 308", "", "inbred"),
+    ("NSIC Rc 416", "", "inbred"),
+    ("NSIC Rc 422", "", "inbred"),
+    ("NSIC Rc 424", "", "inbred"),
+    ("NSIC Rc 426", "", "inbred"),
+    ("NSIC Rc 430", "", "inbred"),
+    ("PSB Rc 26H", "Magat", "hybrid"),
+    ("PSB Rc 72H", "Mestiso 1", "hybrid"),
+    ("Mestiso 29", "", "hybrid"),
+    ("Mestiso 38", "", "hybrid"),
+    ("Longping 908", "LP 908", "hybrid"),
+    ("Longping 2096", "LP 2096", "hybrid"),
+]
+# Where the palay records of a mill made before the lists were split go, once:
+# each rice default they used becomes the palay default with it. The first three
+# are the same variety; the other five old defaults (Rc298, PSB14, SINAG, MESTIZO
+# and LOCAL) have no namesake in the palay list, so they take one each.
+_PALAY_FOR_RICE = {
+    "Dinorado": "NSIC Rc 222",
+    "Jasmine Rice": "NSIC Rc 216",
+    "Sinandomeng": "NSIC Rc 218 SR",
+    "Maharlika": "NSIC Rc 300",
+    "Brown Rice": "PSB Rc 26H",
+    "Red Rice": "NSIC Rc 480",
+    "Black Rice": "Mestiso 29",
+    "Malagkit": "NSIC Rc 160",
+}
 _SYSTEM_GRADES = [
     ("A", "Grade A", 0.0, 14.0),
     ("B", "Grade B", 14.1, 18.0),
@@ -223,6 +275,7 @@ def seed_reference_rows(db: Session) -> None:
     from ..models.reference import QualityGrade
 
     _add_missing_varieties(db)
+    _add_palay_varieties(db)
     for code, name, mn, mx in _SYSTEM_GRADES:
         grade: QualityGrade | None = db.query(QualityGrade).filter_by(code=code, company_id=None).first()
         if not grade:
@@ -231,12 +284,47 @@ def seed_reference_rows(db: Session) -> None:
 
 
 def _add_missing_varieties(db: Session) -> None:
-    """Add each default variety whose code (in any case) no row has yet."""
+    """Add each default rice variety whose code (in any case) no row has yet."""
     from ..models.reference import RiceVariety
 
     for code, name, rec in _SYSTEM_VARIETIES:
         if not db.query(RiceVariety.id).filter(func.lower(RiceVariety.code) == code.lower()).first():
-            db.add(RiceVariety(code=code, name=name, typical_recovery_pct=rec))
+            db.add(RiceVariety(code=code, name=name, kind="rice", typical_recovery_pct=rec))
+
+
+def _add_palay_varieties(db: Session) -> None:
+    """Add each default palay variety whose code (in any case) no row has yet."""
+    from ..models.reference import RiceVariety
+
+    for code, aka, category in _SYSTEM_PALAY_VARIETIES:
+        if not db.query(RiceVariety.id).filter(func.lower(RiceVariety.code) == code.lower()).first():
+            db.add(RiceVariety(code=code, name=f"{code} ({aka})" if aka else code, category=category, kind="palay"))
+
+
+def _point_palay_records_at_palay_varieties(db: Session) -> None:
+    """Move the palay stock, purchase lines, milling inputs and palay sale lines
+    from the rice default they used to the palay default that replaces it
+    (_PALAY_FOR_RICE). Runs once per schema, with the palay defaults' first
+    arrival: after that a record that uses a rice variety was put there on purpose."""
+    from ..models.milling import MillingBatchInput
+    from ..models.paddy import PalayInventory, PalayPurchaseItem
+    from ..models.reference import RiceVariety
+    from ..models.sales import SalesOrderItem
+
+    defaults = db.query(RiceVariety).filter(RiceVariety.company_id.is_(None)).all()
+    rice = {v.code: v.id for v in defaults if v.kind == "rice"}
+    palay = {v.code: v.id for v in defaults if v.kind == "palay"}
+    for rice_code, palay_code in _PALAY_FOR_RICE.items():
+        old, new = rice.get(rice_code), palay.get(palay_code)
+        if old is None or new is None:
+            continue
+        db.query(PalayInventory).filter(PalayInventory.variety_id == old).update({"variety_id": new})
+        db.query(PalayPurchaseItem).filter(PalayPurchaseItem.variety_id == old).update({"variety_id": new})
+        db.query(MillingBatchInput).filter(MillingBatchInput.variety_id == old).update({"variety_id": new})
+        db.query(SalesOrderItem).filter(SalesOrderItem.variety_id == old, SalesOrderItem.item_type == "palay").update(
+            {"variety_id": new}
+        )
+    db.flush()
 
 
 def sync_system_varieties(db: Session) -> None:
@@ -248,7 +336,10 @@ def sync_system_varieties(db: Session) -> None:
     variety with that code. Only then are the defaults still missing added, so a
     schema without retired defaults (a new one, or one whose Boss already
     changed them) is left alone and a default the Boss renamed is never added
-    back. Re-runnable: a renamed row no longer has its old code. Flush only;
+    back. Re-runnable: a renamed row no longer has its old code.
+
+    A schema with no palay defaults yet (made before palay and rice had their own
+    lists) gets them, and its palay records move over to them, once. Flush only;
     the caller owns the transaction.
     """
     from ..models.reference import RiceVariety
@@ -273,6 +364,10 @@ def sync_system_varieties(db: Session) -> None:
     if found:
         _add_missing_varieties(db)
         db.flush()
+    if not db.query(RiceVariety.id).filter(RiceVariety.company_id.is_(None), RiceVariety.kind == "palay").first():
+        _add_palay_varieties(db)
+        db.flush()
+        _point_palay_records_at_palay_varieties(db)
 
 
 def seed_default_expense_categories(db: Session, company_id: uuid.UUID) -> None:

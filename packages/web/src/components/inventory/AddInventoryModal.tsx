@@ -10,6 +10,7 @@ import Select from "../Select";
 import { MILLED_GRADES } from "../../mappers/InventoryMapper";
 import { useByproductKinds } from "../../hooks/useByproductKinds";
 import { useEscapeKey } from "../../hooks/useEscapeKey";
+import { varietiesOf } from "../../utils/varieties";
 import { t } from "../../i18n";
 
 type StockType = "palay" | "milled_rice" | "byproduct";
@@ -205,7 +206,11 @@ export default function AddInventoryModal({
   const createVariety = async (text: string) => {
     // Accept "CODE — Name" or just a code; backend needs code + name.
     const code = text.split(/[—-]/)[0].trim() || text.trim();
-    const created = await paddyService.createVariety({ code, name: text.trim() });
+    const created = await paddyService.createVariety({
+      code,
+      name: text.trim(),
+      kind: type === "palay" ? "palay" : "rice",
+    });
     await qc.invalidateQueries({ queryKey: ["varieties"] });
     setVarietyId(created.id);
   };
@@ -369,8 +374,18 @@ export default function AddInventoryModal({
               value={varietyId}
               onChange={setVarietyId}
               placeholder={t("Select a variety…")}
-              newPlaceholder={t("New variety (e.g. Dinorado)…")}
-              options={varieties.map((v: any) => ({ value: v.id, label: `${v.code} — ${v.name}` }))}
+              newPlaceholder={
+                type === "palay"
+                  ? t("New variety (e.g. NSIC Rc 222)…")
+                  : t("New variety (e.g. Dinorado)…")
+              }
+              options={varietiesOf(varieties, type === "palay" ? "palay" : "rice").map(
+                (v: any) => ({
+                  value: v.id,
+                  // The full name often starts with the code already ("NSIC Rc 222 (Tubigan 18)").
+                  label: v.name.startsWith(v.code) ? v.name : `${v.code} — ${v.name}`,
+                }),
+              )}
               onCreate={createVariety}
             />
           )}

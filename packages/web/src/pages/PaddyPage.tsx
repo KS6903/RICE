@@ -1,6 +1,11 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { paddyService } from "../services/PaddyService";
+import {
+  paddyService,
+  blankPurchaseItem,
+  type PurchaseItemForm,
+  type StockView,
+} from "../services/PaddyService";
 import { Wheat } from "lucide-react";
 import { format } from "date-fns";
 import QuickAdd from "../components/QuickAdd";
@@ -14,16 +19,26 @@ import DatePicker from "../components/DatePicker";
 import Modal from "../components/Modal";
 import PurchaseColumn from "../components/buying/PurchaseColumn";
 import SaleColumn from "../components/buying/SaleColumn";
+import WetDryChoice from "../components/buying/WetDryChoice";
 import {
   PurchaseWarehouseField,
   inSeveralWarehouses,
   usePurchaseWarehouse,
 } from "../components/PurchaseWarehouse";
+import { varietyOptions } from "../utils/varieties";
 import { t } from "../i18n";
+
+type Unit = Exclude<StockView, "all">;
+
+/** A figure for the stock table, to a decimal; a dash when the server sent none. */
+const amount = (v: unknown) =>
+  v == null || Number.isNaN(Number(v))
+    ? "—"
+    : Number(v).toLocaleString(undefined, { maximumFractionDigits: 1 });
 
 export default function PaddyPage() {
   const qc = useQueryClient();
-  const { canEdit } = useAccess();
+  const { canEdit, role } = useAccess();
   const [showForm, setShowForm] = useOpenOnArrival();
 
   const { data: purchases = [], isLoading: purchasesLoading } = useQuery({
@@ -42,6 +57,14 @@ export default function PaddyPage() {
     queryKey: ["palay-inventory"],
     queryFn: () => paddyService.listInventory(),
   });
+  const { data: stockView = "all" } = useQuery<StockView>({
+    queryKey: ["palay-stock-view"],
+    queryFn: () => paddyService.getStockView(),
+  });
+  const chooseView = useMutation({
+    mutationFn: (view: StockView) => paddyService.setStockView(view),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["palay-stock-view"] }),
+  });
 
   // Which warehouse the palay goes into (owner/admin pick; others: their own).
   const warehouse = usePurchaseWarehouse();
@@ -52,16 +75,7 @@ export default function PaddyPage() {
     purchase_date: format(new Date(), "yyyy-MM-dd"),
     delivery_type: "delivered",
     remarks: "",
-    items: [
-      {
-        variety_id: "",
-        grade_id: "",
-        gross_weight_kg: "",
-        tare_weight_kg: "0",
-        moisture_content_pct: "",
-        price_per_cavan: "",
-      },
-    ],
+    items: [blankPurchaseItem()],
   });
 
   const createMutation = useMutation({
@@ -75,21 +89,52 @@ export default function PaddyPage() {
     },
   });
 
-  const addItem = () =>
+  const addItem = () => setForm((f) => ({ ...f, items: [...f.items, blankPurchaseItem()] }));
+  const setItem = (idx: number, patch: Partial<PurchaseItemForm>) =>
     setForm((f) => ({
       ...f,
-      items: [
-        ...f.items,
-        {
-          variety_id: "",
-          grade_id: "",
-          gross_weight_kg: "",
-          tare_weight_kg: "0",
-          moisture_content_pct: "",
-          price_per_cavan: "",
-        },
-      ],
+      items: f.items.map((it, i) => (i === idx ? { ...it, ...patch } : it)),
     }));
+  const text =
+    (idx: number, key: Exclude<keyof PurchaseItemForm, "is_wet">) =>
+    (e: { target: { value: string } }) =>
+      setItem(idx, { [key]: e.target.value } as Partial<PurchaseItemForm>);
+
+  // A line needs something counted (sacks, cavans or kilos; the last two are
+  // optional estimates) and a price.
+  const ready = form.items.every(
+    (i) => (i.sack_count || i.cavan_count || i.gross_weight_kg) && i.price_per_cavan !== "",
+  );
+  const saveError = (createMutation.error as any)?.response?.data?.detail;
+
+  // How the stock is counted: the Boss picks sacks, cavans, kilos or all. "All" is
+  // too wide for a phone, which shows the sacks.
+  const units: Record<Unit, { label: string; word: string; stock: string; wet: string }> = {
+    sacks: {
+      label: t("Sacks"),
+      word: t("sacks"),
+      stock: "quantity_sacks",
+      wet: "wet_sacks",
+    },
+    cavans: {
+      label: t("Cavans (est.)"),
+      word: t("cavans"),
+      stock: "quantity_cavans",
+      wet: "wet_cavans",
+    },
+    kilos: { label: t("Kilos (est.)"), word: t("kg"), stock: "quantity_kg", wet: "wet_kg" },
+  };
+  const shownUnits: Unit[] = stockView === "all" ? ["sacks", "cavans", "kilos"] : [stockView];
+  const unitClass = (u: Unit) =>
+    stockView === "all" && u !== "sacks" ? "hidden sm:table-cell" : "";
+  const stockColumns = 2 + (stockInSeveralWarehouses ? 1 : 0) + shownUnits.length;
+  const viewOptions: { value: StockView; label: string }[] = [
+    { value: "all", label: t("All") },
+    { value: "sacks", label: t("Sacks") },
+    { value: "cavans", label: t("Cavans (estimated)") },
+    { value: "kilos", label: t("Kilos (estimated)") },
+  ];
+  const firstUnit = units[shownUnits[0]];
 
   return (
     <div className="space-y-6">
@@ -156,7 +201,7 @@ export default function PaddyPage() {
                       key: "code",
                       label: t("Code"),
                       required: true,
-                      placeholder: t("e.g. Dinorado"),
+                      placeholder: t("e.g. NSIC Rc 222"),
                     },
                     { key: "name", label: t("Name"), required: true },
                     {
@@ -180,6 +225,7 @@ export default function PaddyPage() {
                   transformBody={(b) => ({
                     ...b,
                     code: String(b.code).toUpperCase(),
+                    kind: "palay",
                     typical_recovery_pct: b.typical_recovery_pct
                       ? parseFloat(b.typical_recovery_pct)
                       : null,
@@ -196,89 +242,155 @@ export default function PaddyPage() {
             {form.items.map((item, idx) => (
               <div
                 key={idx}
-                className="grid grid-cols-2 sm:grid-cols-6 gap-2 p-3 bg-gray-50 dark:bg-slate-900/50 rounded-lg"
+                data-testid="purchase-line"
+                className={`space-y-2 p-3 bg-gray-50 dark:bg-slate-900/50 rounded-lg ring-1 ${item.is_wet ? "ring-rose-300 dark:ring-rose-500/40" : "ring-transparent"}`}
               >
-                <FieldCaption label={t("Variety")} className="col-span-2 sm:col-span-1">
-                  <Select
-                    aria-label={t("Variety")}
-                    placeholder={t("Variety")}
-                    value={item.variety_id}
-                    onChange={(v) => {
-                      const items = [...form.items];
-                      items[idx].variety_id = v;
-                      setForm((f) => ({ ...f, items }));
-                    }}
-                    options={varieties.map((v: any) => ({ value: v.id, label: v.code }))}
-                  />
-                </FieldCaption>
-                <FieldCaption label={t("Grade")}>
-                  <Select
-                    aria-label={t("Grade")}
-                    placeholder={t("Grade")}
-                    value={item.grade_id}
-                    onChange={(v) => {
-                      const items = [...form.items];
-                      items[idx].grade_id = v;
-                      setForm((f) => ({ ...f, items }));
-                    }}
-                    options={grades.map((g: any) => ({ value: g.id, label: g.code }))}
-                  />
-                </FieldCaption>
-                <FieldCaption label={t("Gross weight (kg)")}>
-                  <input
-                    className="input"
-                    placeholder={t("Gross kg")}
-                    type="number"
-                    value={item.gross_weight_kg}
-                    onChange={(e) => {
-                      const items = [...form.items];
-                      items[idx].gross_weight_kg = e.target.value;
-                      setForm((f) => ({ ...f, items }));
-                    }}
-                  />
-                </FieldCaption>
-                <FieldCaption label={t("Tare: sacks (kg)")}>
-                  <input
-                    className="input"
-                    placeholder={t("Tare kg")}
-                    type="number"
-                    value={item.tare_weight_kg}
-                    onChange={(e) => {
-                      const items = [...form.items];
-                      items[idx].tare_weight_kg = e.target.value;
-                      setForm((f) => ({ ...f, items }));
-                    }}
-                  />
-                </FieldCaption>
-                <FieldCaption label={t("Moisture %")}>
-                  <input
-                    className="input"
-                    placeholder={t("Moisture %")}
-                    type="number"
-                    value={item.moisture_content_pct}
-                    onChange={(e) => {
-                      const items = [...form.items];
-                      items[idx].moisture_content_pct = e.target.value;
-                      setForm((f) => ({ ...f, items }));
-                    }}
-                  />
-                </FieldCaption>
-                <FieldCaption label={t("Price per cavan (₱)")}>
-                  <input
-                    className="input"
-                    placeholder={t("₱/cavan")}
-                    type="number"
-                    value={item.price_per_cavan}
-                    onChange={(e) => {
-                      const items = [...form.items];
-                      items[idx].price_per_cavan = e.target.value;
-                      setForm((f) => ({ ...f, items }));
-                    }}
-                  />
-                </FieldCaption>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                  <FieldCaption label={t("Variety")} className="col-span-2 sm:col-span-1">
+                    <Select
+                      aria-label={t("Variety")}
+                      placeholder={t("Variety")}
+                      value={item.variety_id}
+                      onChange={(v) => setItem(idx, { variety_id: v })}
+                      options={varietyOptions(varieties, "palay")}
+                    />
+                  </FieldCaption>
+                  <FieldCaption label={t("Grade")}>
+                    <Select
+                      aria-label={t("Grade")}
+                      placeholder={t("Grade")}
+                      value={item.grade_id}
+                      onChange={(v) => setItem(idx, { grade_id: v })}
+                      options={grades.map((g: any) => ({ value: g.id, label: g.code }))}
+                    />
+                  </FieldCaption>
+                  <div>
+                    <span className="block mb-1 text-xs font-medium text-secondary">
+                      {t("Condition")}
+                    </span>
+                    <WetDryChoice
+                      wet={item.is_wet}
+                      name={String(idx + 1)}
+                      onChange={(wet) =>
+                        setItem(
+                          idx,
+                          wet
+                            ? { is_wet: true }
+                            : { is_wet: false, dried_weight_kg: "", dried_moisture_pct: "" },
+                        )
+                      }
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  <FieldCaption label={t("Sacks")}>
+                    <input
+                      className="input"
+                      placeholder={t("Sacks")}
+                      type="number"
+                      min={0}
+                      value={item.sack_count}
+                      onChange={text(idx, "sack_count")}
+                    />
+                  </FieldCaption>
+                  <FieldCaption label={t("Cavans (est.)")}>
+                    <input
+                      className="input"
+                      placeholder={t("Optional")}
+                      type="number"
+                      min={0}
+                      value={item.cavan_count}
+                      onChange={text(idx, "cavan_count")}
+                    />
+                  </FieldCaption>
+                  <FieldCaption
+                    label={item.is_wet ? t("Wet weight (kg, est.)") : t("Kilos (est.)")}
+                  >
+                    <input
+                      className="input"
+                      placeholder={t("Optional")}
+                      type="number"
+                      min={0}
+                      value={item.gross_weight_kg}
+                      onChange={text(idx, "gross_weight_kg")}
+                    />
+                  </FieldCaption>
+                  <FieldCaption label={t("Tare: sacks (kg)")}>
+                    <input
+                      className="input"
+                      placeholder={t("Tare kg")}
+                      type="number"
+                      min={0}
+                      value={item.tare_weight_kg}
+                      onChange={text(idx, "tare_weight_kg")}
+                    />
+                  </FieldCaption>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <FieldCaption
+                    label={item.is_wet ? t("Moisture before drying %") : t("Moisture %")}
+                  >
+                    <input
+                      className="input"
+                      placeholder={item.is_wet ? t("Moisture before drying %") : t("Moisture %")}
+                      type="number"
+                      min={0}
+                      value={item.moisture_content_pct}
+                      onChange={text(idx, "moisture_content_pct")}
+                    />
+                  </FieldCaption>
+                  <FieldCaption label={t("Price per cavan (₱)")}>
+                    <input
+                      className="input"
+                      placeholder={t("₱/cavan")}
+                      type="number"
+                      min={0}
+                      value={item.price_per_cavan}
+                      onChange={text(idx, "price_per_cavan")}
+                    />
+                  </FieldCaption>
+                </div>
+                {item.is_wet && (
+                  <div className="space-y-2 rounded-lg border border-rose-200 bg-rose-50/60 p-2.5 dark:border-rose-500/30 dark:bg-rose-500/10">
+                    <p className="text-xs text-rose-700 dark:text-rose-300">
+                      {t(
+                        "Wet palay stays red until its weight and moisture after drying are recorded. Leave these blank to record them once it's dry.",
+                      )}
+                    </p>
+                    <div className="grid grid-cols-2 gap-2">
+                      <FieldCaption label={t("Weight after drying (kg)")}>
+                        <input
+                          className="input"
+                          placeholder={t("Optional")}
+                          type="number"
+                          min={0}
+                          value={item.dried_weight_kg}
+                          onChange={text(idx, "dried_weight_kg")}
+                        />
+                      </FieldCaption>
+                      <FieldCaption label={t("Moisture after drying %")}>
+                        <input
+                          className="input"
+                          placeholder={t("Optional")}
+                          type="number"
+                          min={0}
+                          value={item.dried_moisture_pct}
+                          onChange={text(idx, "dried_moisture_pct")}
+                        />
+                      </FieldCaption>
+                    </div>
+                  </div>
+                )}
               </div>
             ))}
           </div>
+          {createMutation.isError && (
+            <p role="alert" className="text-sm text-rose-600 dark:text-rose-400">
+              {typeof saveError === "string"
+                ? saveError
+                : t("Couldn't save. Check the sacks, cavans or kilos, and the price.")}
+            </p>
+          )}
           <div className="flex gap-2 justify-end">
             <button onClick={() => setShowForm(false)} className="btn-secondary">
               {t("Cancel")}
@@ -286,7 +398,7 @@ export default function PaddyPage() {
             <button
               onClick={() => createMutation.mutate(form)}
               className="btn-primary"
-              disabled={createMutation.isPending}
+              disabled={createMutation.isPending || !ready}
             >
               {createMutation.isPending ? t("Saving…") : t("Save Purchase")}
             </button>
@@ -296,25 +408,45 @@ export default function PaddyPage() {
 
       {/* Stock index: what's on hand, always visible above the purchases */}
       <section className="space-y-2" data-testid="palay-stock-index">
-        <h3 className="text-sm font-bold text-gray-900 dark:text-slate-100">
-          {t("Palay in stock")}
-        </h3>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h3 className="text-sm font-bold text-gray-900 dark:text-slate-100">
+            {t("Palay in stock")}
+          </h3>
+          {role === "owner" && (
+            <div className="flex items-center gap-2 text-xs text-muted">
+              <span>{t("Count palay in")}</span>
+              <Select
+                aria-label={t("Count palay in")}
+                className="!w-44"
+                value={stockView}
+                onChange={(v) => chooseView.mutate(v as StockView)}
+                disabled={chooseView.isPending}
+                options={viewOptions}
+              />
+            </div>
+          )}
+        </div>
         <div className="card overflow-hidden p-0">
           <table className="w-full text-sm">
             <thead className="bg-gray-50 dark:bg-slate-900/50 border-b border-gray-200 dark:border-slate-700">
               <tr>
                 {[
-                  t("Variety"),
-                  t("Grade"),
-                  ...(stockInSeveralWarehouses ? [t("Warehouse")] : []),
-                  t("Stock (kg)"),
-                  t("Cavans"),
+                  { key: "variety", label: t("Variety"), cls: "" },
+                  { key: "grade", label: t("Grade"), cls: "" },
+                  ...(stockInSeveralWarehouses
+                    ? [{ key: "warehouse", label: t("Warehouse"), cls: "" }]
+                    : []),
+                  ...shownUnits.map((u) => ({
+                    key: u,
+                    label: units[u].label,
+                    cls: unitClass(u),
+                  })),
                 ].map((h) => (
                   <th
-                    key={h}
-                    className="px-4 py-3 text-left font-medium text-gray-600 dark:text-slate-300"
+                    key={h.key}
+                    className={`px-4 py-3 text-left font-medium text-gray-600 dark:text-slate-300 ${h.cls}`}
                   >
-                    {h}
+                    {h.label}
                   </th>
                 ))}
               </tr>
@@ -322,32 +454,40 @@ export default function PaddyPage() {
             <tbody className="divide-y divide-gray-100 dark:divide-slate-700">
               {inventory.map((i: any) => (
                 <tr key={i.id} className="hover:bg-gray-50 dark:hover:bg-slate-900/50">
-                  <td className="px-4 py-3">{i.variety?.code || "—"}</td>
+                  <td className="px-4 py-3" title={i.variety?.name}>
+                    {i.variety?.code || "—"}
+                    {Number(i.wet_kg) > 0 && (
+                      <span className="badge-red ml-2 align-middle">
+                        {t("{{amount}} wet", {
+                          amount: `${amount(i[firstUnit.wet])} ${firstUnit.word}`,
+                        })}
+                      </span>
+                    )}
+                  </td>
                   <td className="px-4 py-3">{i.grade?.code || "—"}</td>
                   {stockInSeveralWarehouses && (
                     <td className="px-4 py-3">{i.branch?.name || t("Unassigned")}</td>
                   )}
-                  <td className="px-4 py-3 font-medium">
-                    {Number(i.quantity_kg).toLocaleString()}
-                  </td>
-                  <td className="px-4 py-3 text-gray-500 dark:text-slate-400">
-                    {t("{{toFixed}} cv", { toFixed: (Number(i.quantity_kg) / 50).toFixed(1) })}
-                  </td>
+                  {shownUnits.map((u, n) => (
+                    <td
+                      key={u}
+                      className={`px-4 py-3 tabular-nums ${n === 0 ? "font-medium" : "text-gray-500 dark:text-slate-400"} ${unitClass(u)}`}
+                    >
+                      {amount(i[units[u].stock])}
+                    </td>
+                  ))}
                 </tr>
               ))}
               {inventoryLoading ? (
                 <tr>
-                  <td colSpan={stockInSeveralWarehouses ? 5 : 4}>
+                  <td colSpan={stockColumns}>
                     <LoadingRows rows={2} />
                   </td>
                 </tr>
               ) : (
                 inventory.length === 0 && (
                   <tr>
-                    <td
-                      colSpan={stockInSeveralWarehouses ? 5 : 4}
-                      className="px-4 py-8 text-center text-muted"
-                    >
+                    <td colSpan={stockColumns} className="px-4 py-8 text-center text-muted">
                       {t(
                         "No palay in stock. Purchases you record show up here by variety and grade.",
                       )}

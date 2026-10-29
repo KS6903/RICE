@@ -3,7 +3,7 @@ from datetime import date, datetime
 from decimal import Decimal
 from typing import TYPE_CHECKING
 
-from sqlalchemy import Date, DateTime, ForeignKey, Numeric, String, Text
+from sqlalchemy import Boolean, Date, DateTime, ForeignKey, Numeric, String, Text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -15,6 +15,9 @@ if TYPE_CHECKING:
     from .reference import QualityGrade, RiceVariety
     from .supplier_customer import Supplier
     from .user import User
+
+# A cavan of palay, and what a sack is taken to weigh when nobody weighed it.
+KG_PER_CAVAN = Decimal("50")
 
 
 class PalayPurchase(Base, TimestampMixin):
@@ -48,11 +51,21 @@ class PalayPurchaseItem(Base):
     )
     variety_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("rice_varieties.id"))
     grade_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("quality_grades.id"))
+    # What was bought, counted in sacks. Cavans and kilos are optional: when the
+    # kilos weren't weighed they are taken from the cavans, or else the sacks.
+    sack_count: Mapped[Decimal | None] = mapped_column(Numeric(10, 2))
     gross_weight_kg: Mapped[Decimal] = mapped_column(Numeric(10, 3), nullable=False)
     tare_weight_kg: Mapped[Decimal] = mapped_column(Numeric(10, 3), default=0)
     cavan_count: Mapped[Decimal | None] = mapped_column(Numeric(8, 2))
+    # Moisture when bought; for wet palay, the moisture before drying.
     moisture_content_pct: Mapped[Decimal | None] = mapped_column(Numeric(5, 2))
     price_per_cavan: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
+    # Bought wet: counted in stock at its wet weight until the after-drying weight
+    # and moisture are recorded, and the line is then complete.
+    is_wet: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="false")
+    dried_weight_kg: Mapped[Decimal | None] = mapped_column(Numeric(10, 3))
+    dried_moisture_pct: Mapped[Decimal | None] = mapped_column(Numeric(5, 2))
+    dried_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
     purchase: Mapped["PalayPurchase"] = relationship("PalayPurchase", back_populates="items")
     variety: Mapped["RiceVariety"] = relationship("RiceVariety")
@@ -63,8 +76,19 @@ class PalayPurchaseItem(Base):
         return self.gross_weight_kg - self.tare_weight_kg
 
     @property
+    def is_drying(self) -> bool:
+        """Bought wet and not yet dried: the red ones."""
+        return self.is_wet and self.dried_weight_kg is None
+
+    @property
+    def stock_weight_kg(self) -> Decimal:
+        """What this line holds in stock: the dried weight once it is dry."""
+        return self.dried_weight_kg if self.dried_weight_kg is not None else self.net_weight_kg
+
+    @property
     def total_amount(self) -> Decimal:
-        return (self.net_weight_kg / 50) * self.price_per_cavan
+        # Paid on the weight it was bought at, wet or not.
+        return (self.net_weight_kg / KG_PER_CAVAN) * self.price_per_cavan
 
 
 class DryingRecord(Base):

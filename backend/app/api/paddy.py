@@ -12,7 +12,7 @@ from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.orm import Session
 
 from ..core.database import get_db
-from ..core.security import get_current_user, require_feature, require_section_access
+from ..core.security import get_current_user, require_feature, require_roles, require_section_access
 from ..repositories.inventory import ByproductInventoryRepository, MilledRiceInventoryRepository
 from ..repositories.paddy import (
     PalayInventoryRepository,
@@ -28,10 +28,12 @@ from ..schemas.buying import (
     RicePurchaseEdit,
 )
 from ..schemas.paddy import (
+    DriedIn,
     GradeCreate,
     PurchaseCreate,
     PurchaseEdit,
     PurchaseUpdate,
+    StockViewIn,
     SupplierCreate,
     SupplierUpdate,
     VarietyCreate,
@@ -159,7 +161,7 @@ def get_purchase(purchase_id: uuid.UUID, svc: PaddyService = Depends(get_paddy_s
     dependencies=[Depends(require_section_access("paddy", write=True))],
 )
 def create_purchase(body: PurchaseCreate, svc: PaddyService = Depends(get_paddy_service)):
-    return svc.create_purchase(body)
+    return svc.serialize_purchase(svc.create_purchase(body))
 
 
 @router.put(
@@ -176,6 +178,21 @@ def edit_purchase(purchase_id: uuid.UUID, body: PurchaseEdit, svc: PaddyService 
     return svc.serialize_purchase(svc.edit_purchase(purchase_id, body))
 
 
+@router.post(
+    "/purchases/{purchase_id}/items/{item_id}/dried",
+    dependencies=[Depends(require_section_access("paddy", write=True))],
+)
+def record_drying(
+    purchase_id: uuid.UUID,
+    item_id: uuid.UUID,
+    body: DriedIn,
+    svc: PaddyService = Depends(get_paddy_service),
+):
+    """A wet line is dry: its weight and moisture after drying. Whoever buys palay
+    can record it, since it's the next step of the purchase, not a correction."""
+    return svc.serialize_purchase(svc.record_drying(purchase_id, item_id, body))
+
+
 # ── Inventory ─────────────────────────────────────────────────────────────────
 
 
@@ -185,6 +202,18 @@ def get_palay_inventory(
     svc: PaddyService = Depends(get_paddy_service),
 ):
     return svc.get_palay_inventory(branch_id=branch_id)
+
+
+@router.get("/stock-view")
+def get_stock_view(svc: PaddyService = Depends(get_paddy_service)):
+    """How the Palay page counts the stock: sacks, cavans, kilos or all."""
+    return {"view": svc.get_stock_view()}
+
+
+@router.put("/stock-view", dependencies=[Depends(require_roles("owner"))])
+def set_stock_view(body: StockViewIn, svc: PaddyService = Depends(get_paddy_service)):
+    """Only the Boss chooses it, for the whole mill."""
+    return {"view": svc.set_stock_view(body.view)}
 
 
 # ── Rice (bigas) and by-product purchases ──────────────────────────────────────

@@ -19,6 +19,7 @@ import RecordHistory from "../components/sales/RecordHistory";
 import { useCanEditSavedRecords } from "../hooks/useRecordEditor";
 import { t } from "../i18n";
 import { statusText } from "../utils/statusText";
+import { varietiesOf, varietyOptions } from "../utils/varieties";
 
 function StatusBadge({ status }: { status: string }) {
   const map: Record<string, string> = {
@@ -342,7 +343,7 @@ export default function MillingPage() {
                       key: "code",
                       label: t("Code"),
                       required: true,
-                      placeholder: t("e.g. Dinorado"),
+                      placeholder: t("e.g. NSIC Rc 222"),
                     },
                     { key: "name", label: t("Name"), required: true },
                     {
@@ -366,6 +367,7 @@ export default function MillingPage() {
                   transformBody={(b) => ({
                     ...b,
                     code: String(b.code).toUpperCase(),
+                    kind: "palay",
                     typical_recovery_pct: b.typical_recovery_pct
                       ? parseFloat(b.typical_recovery_pct)
                       : null,
@@ -407,7 +409,7 @@ export default function MillingPage() {
                       inputs[idx].variety_id = v;
                       setForm((f) => ({ ...f, inputs }));
                     }}
-                    options={varieties.map((v: any) => ({ value: v.id, label: v.code }))}
+                    options={varietyOptions(varieties, "palay")}
                   />
                 </FieldCaption>
                 <FieldCaption label={t("Palay weight (kg)")}>
@@ -712,7 +714,8 @@ export default function MillingPage() {
         <EditBatchDialog
           batch={editing}
           equipment={equipment}
-          varieties={varieties}
+          varieties={varietiesOf(varieties, "palay")}
+          outputVarieties={varietiesOf(varieties, "rice")}
           clients={clients}
           onClose={() => setEditing(null)}
         />

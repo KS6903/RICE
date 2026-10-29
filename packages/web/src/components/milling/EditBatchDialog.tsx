@@ -47,12 +47,16 @@ export default function EditBatchDialog({
   batch,
   equipment,
   varieties,
+  outputVarieties,
   clients,
   onClose,
 }: {
   batch: any;
   equipment: { id: string; name: string }[];
+  /** The palay going in. */
   varieties: { id: string; code: string }[];
+  /** The rice coming out; left out, the same list as the palay. */
+  outputVarieties?: { id: string; code: string }[];
   clients: { id: string; name: string }[];
   onClose: () => void;
 }) {
@@ -141,10 +145,12 @@ export default function EditBatchDialog({
   const setOutput = (i: number, patch: Partial<Output>) =>
     setOutputs((xs) => xs.map((x, j) => (j === i ? { ...x, ...patch } : x)));
 
-  const varietyOptions = [
+  const optionsOf = (list: { id: string; code: string }[]) => [
     { value: "", label: t("Any variety") },
-    ...varieties.map((v) => ({ value: v.id, label: v.code })),
+    ...list.map((v) => ({ value: v.id, label: v.code })),
   ];
+  const varietyOptions = optionsOf(varieties);
+  const outputVarietyOptions = optionsOf(outputVarieties ?? varieties);
 
   return (
     <RecordDialog
@@ -324,7 +330,7 @@ export default function EditBatchDialog({
                     aria-label={t("Variety of output {{value}}", { value: i + 1 })}
                     value={out.variety_id}
                     onChange={(v) => setOutput(i, { variety_id: v })}
-                    options={varietyOptions}
+                    options={outputVarietyOptions}
                   />
                 ) : (
                   <span />

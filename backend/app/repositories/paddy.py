@@ -32,13 +32,16 @@ class RiceVarietyRepository(BaseRepository[RiceVariety]):
         return self.db.execute(stmt.order_by(RiceVariety.code)).scalars().all()
 
     def get_by_code(
-        self, company_id: uuid.UUID, code: str, *, exclude_id: uuid.UUID | None = None
+        self, company_id: uuid.UUID, code: str, *, kind: str = "rice", exclude_id: uuid.UUID | None = None
     ) -> RiceVariety | None:
         """The variety with that code, ignoring case, among the company's own and
-        the standard (shared) ones."""
+        the standard (shared) ones that share a list with ``kind``: a palay and a
+        rice variety may have the same code, but not two on the same page."""
+        kinds = ("palay", "rice", "both") if kind == "both" else (kind, "both")
         stmt = select(RiceVariety).where(
             (RiceVariety.company_id == company_id) | (RiceVariety.company_id.is_(None)),
             func.lower(RiceVariety.code) == code.lower(),
+            RiceVariety.kind.in_(kinds),
         )
         if exclude_id is not None:
             stmt = stmt.where(RiceVariety.id != exclude_id)

@@ -132,7 +132,9 @@ describe("Sales column", () => {
     vi.spyOn(salesService, "listCustomers").mockResolvedValue([
       { id: "c1", name: "Aling Nena Store" },
     ]);
-    vi.spyOn(paddyService, "listVarieties").mockResolvedValue([{ id: "v1", code: "RC222" }]);
+    vi.spyOn(paddyService, "listVarieties").mockResolvedValue([
+      { id: "v1", code: "RC222", kind: "both" },
+    ]);
     vi.spyOn(paddyService, "listGrades").mockResolvedValue([{ id: "g1", code: "A" }]);
     vi.spyOn(byproductKindService, "list").mockResolvedValue([]);
   });

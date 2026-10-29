@@ -88,8 +88,8 @@ describe("Correcting a saved purchase", () => {
   beforeEach(() => {
     vi.spyOn(paddyService, "listSuppliers").mockResolvedValue([{ id: "s1", name: "Mang Ben" }]);
     vi.spyOn(paddyService, "listVarieties").mockResolvedValue([
-      { id: "v1", code: "RC222" },
-      { id: "v2", code: "RC160" },
+      { id: "v1", code: "RC222", kind: "both" },
+      { id: "v2", code: "RC160", kind: "both" },
     ]);
     vi.spyOn(paddyService, "listGrades").mockResolvedValue([{ id: "g1", code: "A" }]);
     vi.spyOn(byproductKindService, "list").mockResolvedValue([]);
@@ -110,7 +110,7 @@ describe("Correcting a saved purchase", () => {
     );
     const dialog = await screen.findByTestId("edit-purchase");
 
-    fireEvent.change(within(dialog).getByLabelText("Gross kg of line 1"), {
+    fireEvent.change(within(dialog).getByLabelText("Kilos (est.) of line 1"), {
       target: { value: "1200" },
     });
     fireEvent.change(within(dialog).getByLabelText("Moisture % of line 1"), {
@@ -129,10 +129,15 @@ describe("Correcting a saved purchase", () => {
           {
             variety_id: "v1",
             grade_id: null,
+            sack_count: null,
+            cavan_count: null,
             gross_weight_kg: 1200,
             tare_weight_kg: 50,
             moisture_content_pct: 14,
             price_per_cavan: 1200,
+            is_wet: false,
+            dried_weight_kg: null,
+            dried_moisture_pct: null,
           },
         ],
       }),

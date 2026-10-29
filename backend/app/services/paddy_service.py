@@ -18,11 +18,14 @@ from datetime import datetime, timezone
 from decimal import Decimal
 from typing import Any, Sequence
 
+from sqlalchemy import case, func
 from sqlalchemy.orm import Session
 
 from ..core.exceptions import ConflictError, NotFoundError, PermissionDeniedError, ValidationError
-from ..models.company import Branch
+from ..models.company import Branch, Company
 from ..models.paddy import (
+    KG_PER_CAVAN,
+    DryingRecord,
     PalayInventory,
     PalayInventoryMovement,
     PalayPurchase,
@@ -68,7 +71,7 @@ class PaddyService(BaseService):
 
     def create_variety(self, data) -> RiceVariety:
         payload = data.model_dump()
-        payload["code"] = self._free_variety_code(data.code)
+        payload["code"] = self._free_variety_code(data.code, kind=data.kind)
         payload["name"] = _required(data.name, "Give the variety a name.")
         variety = RiceVariety(company_id=self.current_user.company_id, **payload)
         with self.transaction():
@@ -85,7 +88,7 @@ class PaddyService(BaseService):
             raise NotFoundError("Variety not found")
         payload = data.model_dump(exclude_none=True)
         if "code" in payload:
-            payload["code"] = self._free_variety_code(payload["code"], exclude_id=v.id)
+            payload["code"] = self._free_variety_code(payload["code"], kind=v.kind, exclude_id=v.id)
         if "name" in payload:
             payload["name"] = _required(payload["name"], "Give the variety a name.")
         with self.transaction():
@@ -98,9 +101,9 @@ class PaddyService(BaseService):
         self.db.refresh(v)
         return v
 
-    def _free_variety_code(self, code: str, *, exclude_id: uuid.UUID | None = None) -> str:
+    def _free_variety_code(self, code: str, *, kind: str, exclude_id: uuid.UUID | None = None) -> str:
         code = _required(code, "Give the variety a code.")
-        if self.varieties.get_by_code(self.current_user.company_id, code, exclude_id=exclude_id):
+        if self.varieties.get_by_code(self.current_user.company_id, code, kind=kind, exclude_id=exclude_id):
             raise ConflictError(f"Variety code '{code}' already exists in your company", code="variety_exists")
         return code
 
@@ -175,15 +178,25 @@ class PaddyService(BaseService):
                 "variety_code": i.variety.code if i.variety else None,
                 "grade_id": i.grade_id,
                 "grade_code": i.grade.code if i.grade else None,
+                "sack_count": i.sack_count,
+                "cavan_count": i.cavan_count,
                 "gross_weight_kg": i.gross_weight_kg,
                 "tare_weight_kg": i.tare_weight_kg,
                 "net_weight_kg": i.net_weight_kg,
                 "moisture_content_pct": i.moisture_content_pct,
                 "price_per_cavan": i.price_per_cavan,
+                "is_wet": i.is_wet,
+                "is_drying": i.is_drying,
+                "dried_weight_kg": i.dried_weight_kg,
+                "dried_moisture_pct": i.dried_moisture_pct,
+                "dried_at": i.dried_at,
                 "line_total": i.total_amount,
             }
             for i in p.items
         ]
+        # What the list shows beside the purchase: red while any wet line is
+        # still to dry, green once every line is dry.
+        data["is_drying"] = any(i.is_drying for i in p.items)
         data["total_kg"] = float(sum((i.net_weight_kg for i in p.items), Decimal("0")))
         data["total_amount"] = float(sum((i.total_amount for i in p.items), Decimal("0")))
         creator = p.creator
@@ -220,12 +233,8 @@ class PaddyService(BaseService):
                     created_by=self.current_user.id,
                 )
             )
-            for item_data in data.items:
-                item = PalayPurchaseItem(purchase_id=purchase.id, **item_data.model_dump())
-                item.cavan_count = (item.gross_weight_kg - item.tare_weight_kg) / 50
-                self.db.add(item)
-                self.db.flush()
-                self._apply_inventory_movement(item, "in", str(purchase.id), branch_id)
+            lines = [self._add_line(purchase, item_data, branch_id) for item_data in data.items]
+            _settle_status(purchase, lines)
         self.db.refresh(purchase)
         return purchase
 
@@ -246,15 +255,16 @@ class PaddyService(BaseService):
             for field, val in fields.items():
                 setattr(p, field, val)
             if data.items is not None:
+                # A drying record points at its line, so it goes before the line does.
+                self.db.query(DryingRecord).filter(
+                    DryingRecord.purchase_item_id.in_([old.id for old in p.items])
+                ).delete(synchronize_session=False)
                 for old in list(p.items):
                     self._apply_inventory_movement(old, "out", str(p.id), p.branch_id)
                     p.items.remove(old)
-                for item_data in data.items:
-                    item = PalayPurchaseItem(purchase_id=p.id, **item_data.model_dump())
-                    item.cavan_count = (item.gross_weight_kg - item.tare_weight_kg) / 50
-                    self.db.add(item)
-                    self.db.flush()
-                    self._apply_inventory_movement(item, "in", str(p.id), p.branch_id)
+                self.db.flush()
+                lines = [self._add_line(p, item_data, p.branch_id) for item_data in data.items]
+                _settle_status(p, lines)
             self.db.flush()
             self.db.expire(p)
             log_changes(
@@ -265,6 +275,51 @@ class PaddyService(BaseService):
                 entity_id=p.id,
                 entity_label=p.reference_no,
                 lines=changed_fields(before, _purchase_state(p), PURCHASE_FIELDS),
+            )
+        self.db.refresh(p)
+        return p
+
+    def record_drying(self, purchase_id: uuid.UUID, item_id: uuid.UUID, data) -> PalayPurchase:
+        """A wet line is dry: record what it weighs now and its moisture. Its stock
+        becomes the dried weight, the line is complete, and the purchase is too
+        once none of its lines is still wet."""
+        p = self.get_purchase(purchase_id)
+        item = next((i for i in p.items if i.id == item_id), None)
+        if item is None:
+            raise NotFoundError("Purchase line not found")
+        if not item.is_wet:
+            raise ValidationError("This line was bought dry.")
+        if item.dried_weight_kg is not None:
+            raise ConflictError(
+                "This line's drying result is already recorded. Correct it with Edit.", code="already_dried"
+            )
+        wet_kg = item.stock_weight_kg
+        before = item.moisture_content_pct
+        with self.transaction():
+            item.dried_weight_kg = data.dried_weight_kg
+            item.dried_moisture_pct = data.dried_moisture_pct
+            item.dried_at = datetime.now(timezone.utc)
+            self._apply_inventory_change(
+                item,
+                data.dried_weight_kg - wet_kg,
+                "adjustment",
+                p.branch_id,
+                source_id=p.id,
+                notes=f"Dried: {show(wet_kg)} kg to {show(data.dried_weight_kg)} kg",
+            )
+            self._close_drying_record(item, p)
+            _settle_status(p, list(p.items))
+            log_changes(
+                self.db,
+                user=self.current_user,
+                action="palay_purchase.dried",
+                entity_type="palay_purchase",
+                entity_id=p.id,
+                entity_label=p.reference_no,
+                lines=[
+                    f"{_what(item)} dried: {show(wet_kg)} kg → {show(data.dried_weight_kg)} kg, "
+                    f"moisture {show(before)}% → {show(data.dried_moisture_pct)}%"
+                ],
             )
         self.db.refresh(p)
         return p
@@ -284,23 +339,77 @@ class PaddyService(BaseService):
     # ── inventory (read) ──────────────────────────────────────────────────────
 
     def get_palay_inventory(self, *, branch_id: uuid.UUID | None = None) -> list[dict]:
-        """Serialized live palay stock. Shape preserved verbatim from the old route."""
+        """Serialized live palay stock, each line in kilos, cavans and sacks, and how
+        much of it is still wet.
+
+        Stock is kept in kilos. A line's sacks are the kilos over what a sack of
+        that palay weighed when it was bought (the sacks counted on its purchases),
+        or over 50 kg when no purchase counted any; its cavans are the kilos over 50."""
         rows = self.inventory.list_with_stock(self.current_user.company_id, branch_id=branch_id)
         branch_rows = self.db.query(Branch).filter(Branch.company_id == self.current_user.company_id).all()
         bmap = {str(b.id): {"id": str(b.id), "name": b.name, "is_main_branch": b.is_main_branch} for b in branch_rows}
-        return [
-            {
-                "id": str(r.id),
-                "branch_id": str(r.branch_id) if r.branch_id else None,
-                "branch": bmap.get(str(r.branch_id)) if r.branch_id else None,
-                "variety": {"id": str(r.variety.id), "code": r.variety.code, "name": r.variety.name}
-                if r.variety
-                else None,
-                "grade": {"id": str(r.grade.id), "code": r.grade.code} if r.grade else None,
-                "quantity_kg": float(r.quantity_kg),
-            }
-            for r in rows
-        ]
+        bought = self._bought_by_bucket()
+        out: list[dict] = []
+        for r in rows:
+            kg = float(r.quantity_kg)
+            counted_kg, counted_sacks, wet_kg = bought.get((r.branch_id, r.variety_id, r.grade_id), (0.0, 0.0, 0.0))
+            kg_per_sack = counted_kg / counted_sacks if counted_sacks > 0 and counted_kg > 0 else float(KG_PER_CAVAN)
+            wet_kg = min(wet_kg, kg)
+            out.append(
+                {
+                    "id": str(r.id),
+                    "branch_id": str(r.branch_id) if r.branch_id else None,
+                    "branch": bmap.get(str(r.branch_id)) if r.branch_id else None,
+                    "variety": {"id": str(r.variety.id), "code": r.variety.code, "name": r.variety.name}
+                    if r.variety
+                    else None,
+                    "grade": {"id": str(r.grade.id), "code": r.grade.code} if r.grade else None,
+                    "quantity_kg": kg,
+                    "quantity_cavans": round(kg / float(KG_PER_CAVAN), 2),
+                    "quantity_sacks": round(kg / kg_per_sack, 2),
+                    "wet_kg": round(wet_kg, 2),
+                    "wet_cavans": round(wet_kg / float(KG_PER_CAVAN), 2),
+                    "wet_sacks": round(wet_kg / kg_per_sack, 2),
+                }
+            )
+        return out
+
+    def _bought_by_bucket(self) -> dict[tuple, tuple[float, float, float]]:
+        """Per (warehouse, variety, grade): the kilos and the sacks of the purchase
+        lines that counted sacks, and the kilos still wet."""
+        net = PalayPurchaseItem.gross_weight_kg - PalayPurchaseItem.tare_weight_kg
+        held = func.coalesce(PalayPurchaseItem.dried_weight_kg, net)
+        counted = PalayPurchaseItem.sack_count > 0
+        wet = PalayPurchaseItem.is_wet.is_(True) & PalayPurchaseItem.dried_weight_kg.is_(None)
+        rows = (
+            self.db.query(
+                PalayPurchase.branch_id,
+                PalayPurchaseItem.variety_id,
+                PalayPurchaseItem.grade_id,
+                func.coalesce(func.sum(case((counted, held), else_=0)), 0),
+                func.coalesce(func.sum(case((counted, PalayPurchaseItem.sack_count), else_=0)), 0),
+                func.coalesce(func.sum(case((wet, net), else_=0)), 0),
+            )
+            .join(PalayPurchase, PalayPurchase.id == PalayPurchaseItem.purchase_id)
+            .filter(PalayPurchase.company_id == self.current_user.company_id, PalayPurchase.status != "cancelled")
+            .group_by(PalayPurchase.branch_id, PalayPurchaseItem.variety_id, PalayPurchaseItem.grade_id)
+            .all()
+        )
+        return {(b, v, g): (float(kg), float(sacks), float(w)) for b, v, g, kg, sacks, w in rows}
+
+    # ── how the stock is counted (the Boss's choice) ──────────────────────────
+
+    def get_stock_view(self) -> str:
+        company = self.db.get(Company, self.current_user.company_id)
+        return (company.palay_stock_view if company else None) or "all"
+
+    def set_stock_view(self, view: str) -> str:
+        company = self.db.get(Company, self.current_user.company_id)
+        if company is None:
+            raise NotFoundError("Company not found")
+        with self.transaction():
+            company.palay_stock_view = view
+        return view
 
     # ── private helpers (formerly services/paddy.py) ──────────────────────────
 
@@ -312,11 +421,66 @@ class PaddyService(BaseService):
     def _purchase_warehouse(self, branch_id: uuid.UUID | None) -> uuid.UUID | None:
         return purchase_warehouse(self.db, self.current_user, branch_id)
 
+    def _add_line(self, purchase: PalayPurchase, d, branch_id: uuid.UUID | None) -> PalayPurchaseItem:
+        """Save one line of a purchase, put it in stock, and file its drying when
+        it came with the after-drying weight."""
+        values = d.model_dump()
+        if values["gross_weight_kg"] is None:
+            # Not weighed: a cavan is 50 kg, and so is a sack taken as 1 cavan.
+            values["gross_weight_kg"] = (values["cavan_count"] or values["sack_count"]) * KG_PER_CAVAN
+            values["tare_weight_kg"] = Decimal("0")
+        item = PalayPurchaseItem(purchase_id=purchase.id, **values)
+        if item.cavan_count is None:
+            item.cavan_count = item.net_weight_kg / KG_PER_CAVAN
+        if item.dried_weight_kg is not None:
+            item.dried_at = datetime.now(timezone.utc)
+        self.db.add(item)
+        self.db.flush()
+        self._apply_inventory_movement(item, "in", str(purchase.id), branch_id)
+        if item.dried_weight_kg is not None:
+            self._close_drying_record(item, purchase)
+        return item
+
+    def _close_drying_record(self, item: PalayPurchaseItem, purchase: PalayPurchase) -> None:
+        """Note the drying as done, so the automations that watch for wet palay
+        not yet drying leave it alone."""
+        now = datetime.now(timezone.utc)
+        self.db.add(
+            DryingRecord(
+                purchase_item_id=item.id,
+                start_datetime=purchase.created_at or now,
+                end_datetime=item.dried_at or now,
+                initial_moisture_pct=item.moisture_content_pct,
+                final_moisture_pct=item.dried_moisture_pct,
+                drying_cost=0,
+                operator_id=self.current_user.id,
+            )
+        )
+
     def _apply_inventory_movement(
         self, item: PalayPurchaseItem, direction: str, source_id: str, branch_id: uuid.UUID | None
     ) -> None:
+        weight = item.stock_weight_kg
+        self._apply_inventory_change(
+            item,
+            weight if direction == "in" else -weight,
+            direction,
+            branch_id,
+            source_id=uuid.UUID(source_id),
+        )
+
+    def _apply_inventory_change(
+        self,
+        item: PalayPurchaseItem,
+        qty: Decimal,
+        movement_type: str,
+        branch_id: uuid.UUID | None,
+        *,
+        source_id: uuid.UUID,
+        notes: str | None = None,
+    ) -> None:
+        """Move the line's stock bucket by ``qty`` kg (never below zero) and log it."""
         inv = self.inventory.find_bucket(self.current_user.company_id, branch_id, item.variety_id, item.grade_id)
-        qty = item.net_weight_kg if direction == "in" else -item.net_weight_kg
         if not inv:
             inv = PalayInventory(
                 company_id=self.current_user.company_id,
@@ -333,11 +497,13 @@ class PaddyService(BaseService):
         self.db.add(
             PalayInventoryMovement(
                 inventory_id=inv.id,
-                movement_type="in" if direction == "in" else "out",
+                movement_type=movement_type,
                 source_type="purchase",
-                source_id=uuid.UUID(source_id),
-                quantity_kg=abs(qty),
+                source_id=source_id,
+                # An adjustment keeps its sign (drying only ever takes weight off).
+                quantity_kg=qty if movement_type == "adjustment" else abs(qty),
                 balance_after_kg=inv.quantity_kg,
+                notes=notes,
                 created_by=self.current_user.id,
                 created_at=datetime.now(timezone.utc),
             )
@@ -369,13 +535,34 @@ def purchase_state(p: Any, line_text: Any) -> dict[str, Any]:
     }
 
 
+def _what(i: PalayPurchaseItem) -> str:
+    """A line in a few words: its variety and grade, and the sacks when counted."""
+    what = " ".join(filter(None, [i.variety.code if i.variety else "Any variety", i.grade.code if i.grade else None]))
+    return f"{what}, {show(i.sack_count)} sacks" if i.sack_count is not None else what
+
+
 def _palay_line(i: PalayPurchaseItem) -> str:
     what = " ".join(filter(None, [i.variety.code if i.variety else "Any variety", i.grade.code if i.grade else None]))
-    parts = [f"{show(i.gross_weight_kg)} kg gross", f"{show(i.tare_weight_kg)} kg tare"]
+    parts = []
+    if i.sack_count is not None:
+        parts.append(f"{show(i.sack_count)} sacks")
+    parts += [f"{show(i.gross_weight_kg)} kg gross", f"{show(i.tare_weight_kg)} kg tare"]
     if i.moisture_content_pct is not None:
         parts.append(f"{show(i.moisture_content_pct)}% moisture")
+    if i.is_wet:
+        if i.dried_weight_kg is None:
+            parts.append("wet")
+        else:
+            parts.append(f"wet, dried to {show(i.dried_weight_kg)} kg at {show(i.dried_moisture_pct)}%")
     parts.append(f"₱{show(i.price_per_cavan)}/cavan")
     return f"{what}, {', '.join(parts)}"
+
+
+def _settle_status(purchase: PalayPurchase, lines: list[PalayPurchaseItem]) -> None:
+    """A purchase is received while any of its lines is wet and undried, and
+    completed once every line is dry. (A draft or cancelled one stays as it is.)"""
+    if purchase.status in ("received", "completed"):
+        purchase.status = "received" if any(i.is_drying for i in lines) else "completed"
 
 
 def _purchase_state(p: PalayPurchase) -> dict[str, Any]:

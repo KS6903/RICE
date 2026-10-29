@@ -8,8 +8,9 @@ What it does: for every company, set search_path to its schema and run
 ``create_all`` for the tenant tables (additive — creates any tables missing from
 that schema). Re-runnable and safe.
 
-It also moves each schema's default rice varieties to the current list
-(``sync_system_varieties``): the old ones (NSIC Rc222 and the rest) are renamed in place.
+It also moves each schema's default varieties to the current lists
+(``sync_system_varieties``): the old rice ones (NSIC Rc222 and the rest) are renamed
+in place, and the palay ones are added once, with the palay records moved to them.
 
 Note: ``create_all`` adds missing *tables* but not new *columns* on existing
 tables. For a column/constraint change, add the equivalent ``ALTER TABLE`` to
@@ -92,6 +93,37 @@ _extra_ddl: list[str] = [
             ("broken", "Broken Rice"),
         )
     ),
+    # Palay and rice have their own variety lists. A variety a mill made before
+    # then stays on both pages ("both"); the standard ones stay rice, and
+    # sync_system_varieties gives the palay ones. Only when the column is new.
+    """
+    DO $$
+    BEGIN
+        IF NOT EXISTS (
+            SELECT 1 FROM information_schema.columns
+            WHERE table_schema = current_schema() AND table_name = 'rice_varieties' AND column_name = 'kind'
+        ) THEN
+            ALTER TABLE rice_varieties ADD COLUMN kind VARCHAR(10) NOT NULL DEFAULT 'rice';
+            UPDATE rice_varieties SET kind = 'both' WHERE company_id IS NOT NULL;
+        END IF;
+    END $$
+    """,
+    # A palay line is counted in sacks (cavans and kilos optional), and can be
+    # bought wet and dried later, with the weight and moisture after drying.
+    "ALTER TABLE palay_purchase_items ADD COLUMN IF NOT EXISTS sack_count NUMERIC(10, 2)",
+    "ALTER TABLE palay_purchase_items ADD COLUMN IF NOT EXISTS is_wet BOOLEAN NOT NULL DEFAULT false",
+    "ALTER TABLE palay_purchase_items ADD COLUMN IF NOT EXISTS dried_weight_kg NUMERIC(10, 3)",
+    "ALTER TABLE palay_purchase_items ADD COLUMN IF NOT EXISTS dried_moisture_pct NUMERIC(5, 2)",
+    "ALTER TABLE palay_purchase_items ADD COLUMN IF NOT EXISTS dried_at TIMESTAMPTZ",
+    # A palay purchase with nothing left to dry is completed (it was "received").
+    """
+    UPDATE palay_purchases SET status = 'completed'
+    WHERE status = 'received'
+      AND NOT EXISTS (
+          SELECT 1 FROM palay_purchase_items i
+          WHERE i.purchase_id = palay_purchases.id AND i.is_wet AND i.dried_weight_kg IS NULL
+      )
+    """,
     # The mill's list of by-products (byproduct_kinds, made by create_all) starts
     # with the ones it already has in stock, bought or sold, named as
     # byproduct_kind_service.name_for names them.

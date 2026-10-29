@@ -13,8 +13,9 @@ response models can be adopted later behind the characterization tests.
 import uuid
 from datetime import date
 from decimal import Decimal
+from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 # ── Varieties ────────────────────────────────────────────────────────────────
 
@@ -23,6 +24,8 @@ class VarietyCreate(BaseModel):
     code: str
     name: str
     category: str | None = None
+    # The list it joins: the Palay pages' or the Rice pages'. Fixed once made.
+    kind: Literal["palay", "rice"] = "rice"
     typical_recovery_pct: Decimal | None = None
 
 
@@ -72,12 +75,41 @@ class SupplierUpdate(BaseModel):
 
 
 class PurchaseItemIn(BaseModel):
+    """One line of a palay purchase. Counted in sacks; the cavans and kilos are
+    optional, and when the kilos weren't weighed they come from the cavans, or
+    else the sacks (50 kg each). A wet line may carry the weight and moisture
+    after drying now, or have them recorded once it is dry."""
+
     variety_id: uuid.UUID | None = None
     grade_id: uuid.UUID | None = None
-    gross_weight_kg: Decimal
+    sack_count: Decimal | None = Field(None, gt=0)
+    cavan_count: Decimal | None = Field(None, gt=0)
+    gross_weight_kg: Decimal | None = None
     tare_weight_kg: Decimal = Decimal("0")
     moisture_content_pct: Decimal | None = None
     price_per_cavan: Decimal
+    is_wet: bool = False
+    dried_weight_kg: Decimal | None = Field(None, gt=0)
+    dried_moisture_pct: Decimal | None = Field(None, ge=0, le=100)
+
+    @model_validator(mode="after")
+    def _counted(self) -> "PurchaseItemIn":
+        if self.gross_weight_kg is None and self.cavan_count is None and self.sack_count is None:
+            raise ValueError("Give the sacks, cavans or kilos bought.")
+        if not self.is_wet and (self.dried_weight_kg is not None or self.dried_moisture_pct is not None):
+            raise ValueError("Only wet palay has a weight and moisture after drying.")
+        return self
+
+
+class DriedIn(BaseModel):
+    """The result of drying one wet line: what it weighs now, and its moisture."""
+
+    dried_weight_kg: Decimal = Field(gt=0)
+    dried_moisture_pct: Decimal | None = Field(None, ge=0, le=100)
+
+
+class StockViewIn(BaseModel):
+    view: Literal["sacks", "cavans", "kilos", "all"]
 
 
 class PurchaseCreate(BaseModel):

@@ -32,6 +32,11 @@
     "REG-0001",
     "app.ricemillsystem.com/dashboard",
     "09xx xxx xxxx",
+    "Graded Rice",
+    "Straight Mill Rice",
+    "Broken Rice",
+    "Well-Milled Rice",
+    "Regular-Milled Rice",
     "packages/web/src/components/layout/navigation.ts:Basic",
     "packages/web/src/components/layout/navigation.ts:Pro",
     "packages/web/src/components/layout/navigation.ts:Enterprise"

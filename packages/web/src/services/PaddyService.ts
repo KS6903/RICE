@@ -8,11 +8,41 @@ import type { ChangeEntry } from "./SalesService";
 export type PurchaseItemForm = {
   variety_id: string;
   grade_id: string;
+  /** Counted in sacks; cavans and kilos are optional (kilos not weighed are
+   *  taken from the cavans, or else the sacks). */
+  sack_count: string;
+  cavan_count: string;
   gross_weight_kg: string;
   tare_weight_kg: string;
+  /** Moisture when bought: for wet palay, before drying. */
   moisture_content_pct: string;
   price_per_cavan: string;
+  /** Bought wet: red until the after-drying weight and moisture are in. */
+  is_wet: boolean;
+  dried_weight_kg: string;
+  dried_moisture_pct: string;
 };
+
+/** How the Palay page counts the stock, the Boss's choice for the whole mill. */
+export type StockView = "sacks" | "cavans" | "kilos" | "all";
+
+/** A palay line with nothing filled in. */
+export const blankPurchaseItem = (): PurchaseItemForm => ({
+  variety_id: "",
+  grade_id: "",
+  sack_count: "",
+  cavan_count: "",
+  gross_weight_kg: "",
+  tare_weight_kg: "0",
+  moisture_content_pct: "",
+  price_per_cavan: "",
+  is_wet: false,
+  dried_weight_kg: "",
+  dried_moisture_pct: "",
+});
+
+const numberOrNull = (v: string) =>
+  v !== "" && !Number.isNaN(parseFloat(v)) ? parseFloat(v) : null;
 
 export type PurchaseForm = {
   /** The warehouse to store the palay in; left out, the recorder's own. */
@@ -84,6 +114,26 @@ export class PaddyService {
     return this.http.get("/paddy/inventory").then((r) => r.data);
   }
 
+  getStockView(): Promise<StockView> {
+    return this.http.get("/paddy/stock-view").then((r) => r.data.view);
+  }
+
+  /** The Boss only. */
+  setStockView(view: StockView): Promise<StockView> {
+    return this.http.put("/paddy/stock-view", { view }).then((r) => r.data.view);
+  }
+
+  /** A wet line is dry: its weight and moisture after drying. */
+  recordDried(
+    purchaseId: string,
+    itemId: string,
+    body: { dried_weight_kg: number; dried_moisture_pct: number | null },
+  ): Promise<any> {
+    return this.http
+      .post(`/paddy/purchases/${purchaseId}/items/${itemId}/dried`, body)
+      .then((r) => r.data);
+  }
+
   createSupplier(body: Record<string, unknown>): Promise<any> {
     return this.http.post("/paddy/suppliers", body).then((r) => r.data);
   }
@@ -103,10 +153,15 @@ export class PaddyService {
       items: form.items.map((i) => ({
         variety_id: i.variety_id || null,
         grade_id: i.grade_id || null,
-        gross_weight_kg: parseFloat(i.gross_weight_kg),
+        sack_count: numberOrNull(i.sack_count),
+        cavan_count: numberOrNull(i.cavan_count),
+        gross_weight_kg: numberOrNull(i.gross_weight_kg),
         tare_weight_kg: parseFloat(i.tare_weight_kg) || 0,
-        moisture_content_pct: i.moisture_content_pct ? parseFloat(i.moisture_content_pct) : null,
+        moisture_content_pct: numberOrNull(i.moisture_content_pct),
         price_per_cavan: parseFloat(i.price_per_cavan),
+        is_wet: i.is_wet,
+        dried_weight_kg: i.is_wet ? numberOrNull(i.dried_weight_kg) : null,
+        dried_moisture_pct: i.is_wet ? numberOrNull(i.dried_moisture_pct) : null,
       })),
     };
   }
