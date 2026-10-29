@@ -39,25 +39,28 @@ def get_inventory_service(
 @router.get("/milled-rice")
 def get_milled_rice(
     branch_id: uuid.UUID | None = Query(None),
+    warehouse_id: uuid.UUID | None = Query(None),
     svc: InventoryService = Depends(get_inventory_service),
 ):
-    return svc.get_milled_rice(branch_id=branch_id)
+    return svc.get_milled_rice(branch_id=branch_id, warehouse_id=warehouse_id)
 
 
 @router.get("/byproducts")
 def get_byproducts(
     branch_id: uuid.UUID | None = Query(None),
+    warehouse_id: uuid.UUID | None = Query(None),
     svc: InventoryService = Depends(get_inventory_service),
 ):
-    return svc.get_byproducts(branch_id=branch_id)
+    return svc.get_byproducts(branch_id=branch_id, warehouse_id=warehouse_id)
 
 
 @router.get("/summary")
 def inventory_summary(
     branch_id: uuid.UUID | None = Query(None),
+    warehouse_id: uuid.UUID | None = Query(None),
     svc: InventoryService = Depends(get_inventory_service),
 ):
-    return svc.get_summary(branch_id=branch_id)
+    return svc.get_summary(branch_id=branch_id, warehouse_id=warehouse_id)
 
 
 @router.post(

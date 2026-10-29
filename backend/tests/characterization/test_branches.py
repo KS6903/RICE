@@ -24,7 +24,7 @@ def test_create_second_branch_requires_multi_branch(auth_client):
     res = auth_client.post("/api/branches/", json={"name": "Branch 2"})
     assert res.status_code == 402
     assert res.json()["code"] == "multi_branch"
-    assert "one warehouse" in res.json()["detail"]
+    assert "one branch" in res.json()["detail"]
 
 
 def test_bulk_delete_skips_main(auth_client):

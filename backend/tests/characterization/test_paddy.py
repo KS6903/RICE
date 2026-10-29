@@ -308,7 +308,7 @@ def test_purchase_into_an_unknown_or_trashed_warehouse_is_refused(auth_client, d
             json={"purchase_date": "2026-10-17", "branch_id": branch_id, "items": [_ITEM]},
         )
         assert res.status_code == 404, res.text
-        assert res.json()["detail"] == "Warehouse not found."
+        assert res.json()["detail"] == "Branch not found."
     # Refused before anything is written.
     assert db_session.query(PalayPurchase).count() == 0
 
@@ -324,7 +324,7 @@ def test_only_an_owner_or_admin_picks_another_warehouse(make_auth_client, db_ses
         json={"purchase_date": "2026-10-17", "branch_id": str(second.id), "items": [_ITEM]},
     )
     assert refused.status_code == 403, refused.text
-    assert "another warehouse" in refused.json()["detail"]
+    assert "another branch" in refused.json()["detail"]
 
     # Naming their own warehouse is fine.
     own = client.post(

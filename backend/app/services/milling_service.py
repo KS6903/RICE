@@ -41,6 +41,7 @@ from ..services.base import BaseService
 from ..services.byproduct_kind_service import byproduct_name
 from ..services.canva_color import pick_unused_color
 from ..services.record_changes import changed_fields, log_changes, show
+from ..services.warehouses import default_warehouse_id, warehouse_ids_of
 
 
 class MillingService(BaseService):
@@ -351,27 +352,49 @@ class MillingService(BaseService):
     def _palay_move(self, inp, batch_id: uuid.UUID, branch_id: uuid.UUID | None, sign: int) -> None:
         """Take a batch input's palay out of stock (sign -1; never below zero,
         and only from stock there is), or put it back (1)."""
-        inv = self.palay.find_bucket(self.current_user.company_id, branch_id, inp.variety_id, inp.grade_id)
+        company_id = self.current_user.company_id
+        first = default_warehouse_id(self.db, branch_id)
+        if sign < 0:
+            # Palay comes out of the branch's warehouses, its first first; the last
+            # one holding any takes what is left (never below zero).
+            held = [
+                inv
+                for wid in warehouse_ids_of(self.db, branch_id) or [first]
+                if (inv := self.palay.find_bucket(company_id, branch_id, inp.variety_id, inp.grade_id, wid))
+            ]
+            remaining = inp.input_weight_kg
+            for n, inv in enumerate(held):
+                take = remaining if n == len(held) - 1 else min(inv.quantity_kg, remaining)
+                if take <= 0:
+                    continue
+                inv.quantity_kg = max(Decimal("0"), inv.quantity_kg - take)
+                remaining -= take
+                self._log_palay_move(inv, "out", take, batch_id)
+            return
+        # Put back: into the branch's first warehouse.
+        inv = self.palay.find_bucket(company_id, branch_id, inp.variety_id, inp.grade_id, first)
         if inv is None:
-            if sign < 0:
-                return
             inv = PalayInventory(
-                company_id=self.current_user.company_id,
+                company_id=company_id,
                 branch_id=branch_id,
+                warehouse_id=first,
                 variety_id=inp.variety_id,
                 grade_id=inp.grade_id,
                 quantity_kg=Decimal("0"),
             )
             self.db.add(inv)
             self.db.flush()
-        inv.quantity_kg = max(Decimal("0"), inv.quantity_kg + sign * inp.input_weight_kg)
+        inv.quantity_kg = inv.quantity_kg + inp.input_weight_kg
+        self._log_palay_move(inv, "in", inp.input_weight_kg, batch_id)
+
+    def _log_palay_move(self, inv, movement_type: str, weight, batch_id: uuid.UUID) -> None:
         self.db.add(
             PalayInventoryMovement(
                 inventory_id=inv.id,
-                movement_type="out" if sign < 0 else "in",
+                movement_type=movement_type,
                 source_type="milling_batch",
                 source_id=batch_id,
-                quantity_kg=inp.input_weight_kg,
+                quantity_kg=weight,
                 balance_after_kg=inv.quantity_kg,
                 created_by=self.current_user.id,
                 created_at=datetime.now(timezone.utc),
@@ -381,14 +404,16 @@ class MillingService(BaseService):
     def _apply_output(self, out, branch_id: uuid.UUID | None, sign: int = 1) -> None:
         """Put an output into stock (sign 1), or take it out again (-1)."""
         company_id = self.current_user.company_id
+        warehouse_id = default_warehouse_id(self.db, branch_id)  # outputs go to the branch's first
         inv: Any
         if out.output_type == "milled_rice":
             grade_name = getattr(out, "grade_name", None) or "Straight Mill Rice"
-            inv = self.milled.find_bucket(company_id, branch_id, out.variety_id, grade_name)
+            inv = self.milled.find_bucket(company_id, branch_id, out.variety_id, grade_name, warehouse_id)
             if not inv:
                 inv = MilledRiceInventory(
                     company_id=company_id,
                     branch_id=branch_id,
+                    warehouse_id=warehouse_id,
                     variety_id=out.variety_id,
                     grade_name=grade_name,
                     quantity_kg=Decimal("0"),
@@ -397,11 +422,12 @@ class MillingService(BaseService):
                 self.db.flush()
             inv.quantity_kg += sign * out.output_weight_kg
         else:
-            inv = self.byproducts.find_bucket(company_id, branch_id, out.output_type)
+            inv = self.byproducts.find_bucket(company_id, branch_id, out.output_type, warehouse_id)
             if not inv:
                 inv = ByproductInventory(
                     company_id=company_id,
                     branch_id=branch_id,
+                    warehouse_id=warehouse_id,
                     byproduct_type=out.output_type,
                     quantity_kg=Decimal("0"),
                 )

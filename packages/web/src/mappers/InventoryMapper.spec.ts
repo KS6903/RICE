@@ -2,6 +2,33 @@ import { describe, it, expect } from "vitest";
 import { InventoryMapper, type UnifiedItem } from "./InventoryMapper";
 
 describe("InventoryMapper.toUnifiedItems", () => {
+  it("places stock in its warehouse, or in its branch when it has none", () => {
+    const items = InventoryMapper.toUnifiedItems(
+      [
+        {
+          id: "1",
+          variety: { code: "NSIC" },
+          branch_id: "b1",
+          branch: { name: "Main" },
+          warehouse_id: "w2",
+          warehouse: { name: "Warehouse 2 - Main" },
+          quantity_kg: 100,
+        },
+        {
+          id: "2",
+          variety: { code: "NSIC" },
+          branch_id: "b1",
+          branch: { name: "Main" },
+          quantity_kg: 40,
+        },
+      ],
+      [],
+      [],
+    );
+    expect(items[0]).toMatchObject({ branchId: "w2", branchName: "Warehouse 2 - Main" });
+    expect(items[1]).toMatchObject({ branchId: "b1", branchName: "Main" });
+  });
+
   it("normalizes palay / milled / byproduct rows into one list", () => {
     const palay = [
       {

@@ -15,10 +15,10 @@ export type WarehouseBranch = {
 
 type Props = {
   branches: WarehouseBranch[];
-  selectedId: string; // "" = All warehouses
+  selectedId: string; // "" = All branches
   onSelect: (branchId: string) => void;
-  allowAllOption?: boolean; // show "All warehouses" entry (default true)
-  allowAdd?: boolean; // show the "+ Add warehouse" footer (default true)
+  allowAllOption?: boolean; // show "All branches" entry (default true)
+  allowAdd?: boolean; // show the "+ Add branch" footer (default true)
 };
 
 function WarehousePickerInner({
@@ -94,15 +94,15 @@ function WarehousePickerInner({
       // a brand-new branch was added but the page is still showing the old one.
       if (created?.id) onSelect(created.id);
     },
-    onError: (e: any) => setError(e?.response?.data?.detail || t("Could not add warehouse.")),
+    onError: (e: any) => setError(e?.response?.data?.detail || t("Could not add branch.")),
   });
 
   const selected = branches.find((b) => b.id === selectedId);
   const label = selectedId
     ? selected
       ? selected.name
-      : t("Unknown warehouse")
-    : t("All warehouses ({{branchesCount}})", { branchesCount: branches.length });
+      : t("Unknown branch")
+    : t("All branches ({{branchesCount}})", { branchesCount: branches.length });
 
   return (
     <div data-testid="warehouse-picker" className="relative min-w-0 max-w-full">
@@ -163,7 +163,7 @@ function WarehousePickerInner({
                   }`}
                 >
                   <Globe size={14} />
-                  <span className="flex-1">{t("All warehouses")}</span>
+                  <span className="flex-1">{t("All branches")}</span>
                   <span className="text-[11px] text-muted tabular-nums">{branches.length}</span>
                 </button>
               )}
@@ -172,7 +172,7 @@ function WarehousePickerInner({
 
               {branches.length === 0 && !adding && (
                 <p className="text-xs text-muted text-center py-3 italic">
-                  {t("No warehouses yet.")}
+                  {t("No branches yet.")}
                 </p>
               )}
 
@@ -244,7 +244,7 @@ function WarehousePickerInner({
                         )}
                         <button
                           type="button"
-                          title={t("Rename warehouse")}
+                          title={t("Rename branch")}
                           aria-label={t("Rename {{name}}", { name: b.name })}
                           onClick={(e) => {
                             e.stopPropagation();
@@ -279,7 +279,7 @@ function WarehousePickerInner({
                     <input
                       autoFocus
                       className="input !py-1 !px-2 text-sm flex-1"
-                      placeholder={t("Warehouse name…")}
+                      placeholder={t("Branch name…")}
                       value={newName}
                       onChange={(e) => setNewName(e.target.value)}
                       onKeyDown={(e) => e.key === "Escape" && setAdding(false)}
@@ -310,7 +310,7 @@ function WarehousePickerInner({
                     onClick={() => setAdding(true)}
                     className="w-full flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-sm font-semibold text-emerald-700 dark:text-emerald-300 hover:bg-emerald-500/10 transition-colors"
                   >
-                    <Plus size={14} /> {t("Add warehouse")}
+                    <Plus size={14} /> {t("Add branch")}
                   </button>
                 )}
                 {error && (

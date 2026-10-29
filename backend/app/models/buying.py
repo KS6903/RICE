@@ -24,6 +24,7 @@ if TYPE_CHECKING:
     from .reference import RiceVariety
     from .supplier_customer import Supplier
     from .user import User
+    from .warehouse import Warehouse
 
 
 class RicePurchase(Base, TimestampMixin):
@@ -32,6 +33,9 @@ class RicePurchase(Base, TimestampMixin):
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     company_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("companies.id"))
     branch_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("branches.id"))
+    warehouse_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("warehouses.id", ondelete="SET NULL")
+    )
     reference_no: Mapped[str] = mapped_column(String(30), unique=True, nullable=False)
     supplier_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("suppliers.id"))
     purchase_date: Mapped[date] = mapped_column(Date, nullable=False)
@@ -46,6 +50,7 @@ class RicePurchase(Base, TimestampMixin):
     supplier: Mapped["Supplier"] = relationship("Supplier")
     creator: Mapped["User"] = relationship("User", foreign_keys=[created_by])
     branch: Mapped["Branch | None"] = relationship("Branch")
+    warehouse: Mapped["Warehouse | None"] = relationship("Warehouse")
 
 
 class RicePurchaseItem(Base):
@@ -79,6 +84,9 @@ class ByproductPurchase(Base, TimestampMixin):
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     company_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("companies.id"))
     branch_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("branches.id"))
+    warehouse_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("warehouses.id", ondelete="SET NULL")
+    )
     reference_no: Mapped[str] = mapped_column(String(30), unique=True, nullable=False)
     supplier_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("suppliers.id"))
     purchase_date: Mapped[date] = mapped_column(Date, nullable=False)
@@ -93,6 +101,7 @@ class ByproductPurchase(Base, TimestampMixin):
     supplier: Mapped["Supplier"] = relationship("Supplier")
     creator: Mapped["User"] = relationship("User", foreign_keys=[created_by])
     branch: Mapped["Branch | None"] = relationship("Branch")
+    warehouse: Mapped["Warehouse | None"] = relationship("Warehouse")
 
 
 class ByproductPurchaseItem(Base):

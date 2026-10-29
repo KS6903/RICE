@@ -56,7 +56,7 @@ function statusBadge(status: string) {
   return map[status] || "badge-gray";
 }
 
-/* ─── Per-user activity log (warehouse delete/restore/purge) ─── */
+/* ─── Per-user activity log (branch delete/restore/purge) ─── */
 function TenantActivityLog({ tenantId }: { tenantId: string }) {
   const { data: rows = [], isLoading } = useQuery<ActivityRow[]>({
     queryKey: ["admin-tenant-activity", tenantId],
@@ -988,7 +988,7 @@ export default function AdminTenantDetail() {
             <h3 className="font-semibold text-primary mb-1">{t("Activity log")}</h3>
             <p className="text-xs text-muted mb-3">
               {t(
-                "Who did what, newest first: accounts added, removed or re-roled, sign-in and password events, and warehouse deletes.",
+                "Who did what, newest first: accounts added, removed or re-roled, sign-in and password events, and branch deletes.",
               )}
             </p>
             <TenantActivityLog tenantId={id!} />

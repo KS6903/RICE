@@ -61,6 +61,7 @@ from app.models.reference import RiceVariety
 from app.models.sales import Invoice, Payment, PriceList, SalesOrder, SalesOrderItem
 from app.models.supplier_customer import Customer, Supplier
 from app.models.user import User
+from app.services.warehouses import default_warehouse_id
 
 MARKER = "demo-automations-seed"
 DAYS = 60
@@ -200,6 +201,7 @@ def seed(db, username: str, *, reset: bool) -> str:
             purchase = PalayPurchase(
                 company_id=cid,
                 branch_id=bid,
+                warehouse_id=default_warehouse_id(db, bid),
                 reference_no=f"PP-AUTO-{day:%Y%m%d}-{n:03d}",
                 supplier_id=supplier.id,
                 purchase_date=day,
@@ -258,6 +260,7 @@ def seed(db, username: str, *, reset: bool) -> str:
         purchase = PalayPurchase(
             company_id=cid,
             branch_id=bid,
+            warehouse_id=default_warehouse_id(db, bid),
             reference_no=f"PP-AUTO-{today:%Y%m%d}-W{k + 1}",
             supplier_id=suppliers["San Isidro Farmers Co-op"].id if "San Isidro Farmers Co-op" in suppliers else None,
             purchase_date=entered.astimezone(zone).date(),
@@ -524,6 +527,7 @@ def seed(db, username: str, *, reset: bool) -> str:
     dear = PalayPurchase(
         company_id=cid,
         branch_id=bid,
+        warehouse_id=default_warehouse_id(db, bid),
         reference_no=f"PP-AUTO-{today:%Y%m%d}-D1",
         supplier_id=suppliers[FAVOURED_SUPPLIER].id,
         purchase_date=today,
@@ -608,6 +612,7 @@ def seed(db, username: str, *, reset: bool) -> str:
             )
 
     # ── stock on hand, consistent with the above, with one variety running low
+    wid = default_warehouse_id(db, bid)  # the branch's first warehouse
     for code in VARIETIES:
         v = varieties[code]
         rice_left = Decimal(4000) + milled[code] - sold[code]
@@ -621,18 +626,18 @@ def seed(db, username: str, *, reset: bool) -> str:
             .first()
         )
         if row is None:
-            row = MilledRiceInventory(company_id=cid, branch_id=bid, variety_id=v.id, grade_name="A")
+            row = MilledRiceInventory(company_id=cid, branch_id=bid, warehouse_id=wid, variety_id=v.id, grade_name="A")
             db.add(row)
         row.quantity_kg = rice_left
         palay_left = max(Decimal(2000), palay_bought[code] - palay_used[code])
         prow = db.query(PalayInventory).filter(PalayInventory.variety_id == palay[code].id).first()
         if prow is None:
-            prow = PalayInventory(company_id=cid, branch_id=bid, variety_id=palay[code].id)
+            prow = PalayInventory(company_id=cid, branch_id=bid, warehouse_id=wid, variety_id=palay[code].id)
             db.add(prow)
         prow.quantity_kg = palay_left
     bran = db.query(ByproductInventory).filter(ByproductInventory.byproduct_type == "darak").first()
     if bran is None:
-        bran = ByproductInventory(company_id=cid, branch_id=bid, byproduct_type="darak")
+        bran = ByproductInventory(company_id=cid, branch_id=bid, warehouse_id=wid, byproduct_type="darak")
         db.add(bran)
     bran.quantity_kg = Decimal(-180)  # planted: more bran sold than was recorded milled
 

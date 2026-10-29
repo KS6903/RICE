@@ -523,8 +523,8 @@ export default function CheckoutPage() {
                   : t("Unlimited users")}{" "}
                 ·{" "}
                 {plan.max_branches
-                  ? t("{{count}} warehouses", { count: plan.max_branches })
-                  : t("Unlimited warehouses")}
+                  ? t("{{count}} branches", { count: plan.max_branches })
+                  : t("Unlimited branches")}
               </p>
             </div>
             <p className="font-semibold text-primary whitespace-nowrap">{peso(price)}</p>

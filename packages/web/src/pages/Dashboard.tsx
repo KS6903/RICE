@@ -137,10 +137,10 @@ export default function Dashboard() {
   const isDark = theme === "dark";
   const canViewReports = useAccess().canView("reports");
 
-  // The same cache entry as Inventory's "All warehouses" view, so both pages
+  // The same cache entry as Inventory's "All branches" view, so both pages
   // always show the same stock.
   const { data: inventory, isLoading: inventoryLoading } = useQuery({
-    queryKey: ["inventory-summary", ""],
+    queryKey: ["inventory-summary", "", ""],
     queryFn: () => inventoryService.getSummary(),
   });
   const byproducts = Object.entries<number>(inventory?.byproducts ?? {});

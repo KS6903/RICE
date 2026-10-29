@@ -22,7 +22,9 @@ import SaleColumn from "../components/buying/SaleColumn";
 import { peso } from "../components/buying/money";
 import {
   PurchaseWarehouseField,
+  inSeveralBranches,
   inSeveralWarehouses,
+  purchaseGridClass,
   usePurchaseWarehouse,
 } from "../components/PurchaseWarehouse";
 import { varietyOptions } from "../utils/varieties";
@@ -59,9 +61,12 @@ export default function RicePurchasesPage() {
     queryFn: () => buyingService.listRiceStock(),
   });
 
-  // Which warehouse the rice goes into (owner/admin pick; others: their own).
+  // Which branch and warehouse the rice goes into (owner/admin pick the branch;
+  // others: their own).
   const warehouse = usePurchaseWarehouse();
+  const stockInSeveralBranches = inSeveralBranches(stock);
   const stockInSeveralWarehouses = inSeveralWarehouses(stock);
+  const placeColumns = Number(stockInSeveralBranches) + Number(stockInSeveralWarehouses);
 
   const [form, setForm] = useState({
     purchase_date: format(new Date(), "yyyy-MM-dd"),
@@ -77,7 +82,11 @@ export default function RicePurchasesPage() {
 
   const createMutation = useMutation({
     mutationFn: (body: typeof form) =>
-      buyingService.createRicePurchase({ ...body, branch_id: warehouse.branchId }),
+      buyingService.createRicePurchase({
+        ...body,
+        branch_id: warehouse.branchId,
+        warehouse_id: warehouse.warehouseId,
+      }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["rice-purchases"] });
       qc.invalidateQueries({ queryKey: ["rice-stock"] });
@@ -113,7 +122,7 @@ export default function RicePurchasesPage() {
       >
         <div className="space-y-4">
           <div
-            className={`grid grid-cols-1 sm:grid-cols-2 gap-4 ${warehouse.show ? "lg:grid-cols-3" : ""}`}
+            className={`grid grid-cols-1 sm:grid-cols-2 gap-4 ${purchaseGridClass(warehouse.fields)}`}
           >
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-slate-200 mb-1">
@@ -272,6 +281,7 @@ export default function RicePurchasesPage() {
                 {[
                   t("Variety"),
                   t("Grade"),
+                  ...(stockInSeveralBranches ? [t("Branch")] : []),
                   ...(stockInSeveralWarehouses ? [t("Warehouse")] : []),
                   t("Stock (kg)"),
                   t("Sacks (50 kg)"),
@@ -290,8 +300,11 @@ export default function RicePurchasesPage() {
                 <tr key={r.id} className="hover:bg-gray-50 dark:hover:bg-slate-900/50">
                   <td className="px-4 py-3">{r.variety?.code || "—"}</td>
                   <td className="px-4 py-3">{r.grade_name ? gradeLabel(r.grade_name) : "—"}</td>
-                  {stockInSeveralWarehouses && (
+                  {stockInSeveralBranches && (
                     <td className="px-4 py-3">{r.branch?.name || t("Unassigned")}</td>
+                  )}
+                  {stockInSeveralWarehouses && (
+                    <td className="px-4 py-3">{r.warehouse?.name || "—"}</td>
                   )}
                   <td className="px-4 py-3 font-medium">
                     {Number(r.quantity_kg).toLocaleString()}
@@ -303,7 +316,7 @@ export default function RicePurchasesPage() {
               ))}
               {stockLoading ? (
                 <tr>
-                  <td colSpan={stockInSeveralWarehouses ? 5 : 4}>
+                  <td colSpan={4 + placeColumns}>
                     <LoadingRows rows={2} />
                   </td>
                 </tr>
@@ -311,7 +324,7 @@ export default function RicePurchasesPage() {
                 stock.length === 0 && (
                   <tr>
                     <td
-                      colSpan={stockInSeveralWarehouses ? 5 : 4}
+                      colSpan={4 + placeColumns}
                       className="px-4 py-8 text-center text-muted"
                     >
                       {t(

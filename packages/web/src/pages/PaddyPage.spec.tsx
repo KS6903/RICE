@@ -7,6 +7,7 @@ import PaddyPage from "./PaddyPage";
 import { useAuthStore } from "../stores/authStore";
 import { paddyService } from "../services/PaddyService";
 import { inventoryService } from "../services/InventoryService";
+import { warehousesService } from "../services/WarehousesService";
 import { chooseOption } from "../test/pickers";
 
 configure({ asyncUtilTimeout: 5000 });
@@ -24,6 +25,11 @@ const encoder: User = { ...owner, id: "u2", username: "mill1.encoder", role: "en
 const warehouses = [
   { id: "b2", name: "2nd Branch", is_main_branch: false },
   { id: "b1", name: "Main Branch", is_main_branch: true },
+];
+
+const warehouseRows = [
+  { id: "w1", branch_id: "b1", name: "Warehouse 1 - Main Branch", is_default: true },
+  { id: "w2", branch_id: "b2", name: "Warehouse 1 - 2nd Branch", is_default: true },
 ];
 
 const draw = () =>
@@ -58,6 +64,7 @@ beforeEach(() => {
   setView = vi.spyOn(paddyService, "setStockView").mockResolvedValue("sacks");
   create = vi.spyOn(paddyService, "createPurchase").mockResolvedValue({ id: "p1" });
   listBranches = vi.spyOn(inventoryService, "getBranches").mockResolvedValue(warehouses);
+  vi.spyOn(warehousesService, "list").mockResolvedValue(warehouseRows);
 });
 
 afterEach(() => {
@@ -71,38 +78,38 @@ const fillAndSave = () => {
   fireEvent.click(screen.getByRole("button", { name: "Save Purchase" }));
 };
 
-describe("PaddyPage: which warehouse a new purchase is stored in", () => {
-  it("lets the owner pick the warehouse, starting on their own", async () => {
+describe("PaddyPage: which branch and warehouse a new purchase is stored in", () => {
+  it("lets the owner pick the branch, starting on their own", async () => {
     useAuthStore.setState({ user: owner });
     draw();
     fireEvent.click(screen.getByRole("button", { name: /New Purchase/ }));
 
     await waitFor(() =>
-      expect(screen.getByLabelText("Store in warehouse")).toHaveTextContent("Main Branch (Main)"),
+      expect(screen.getByLabelText("Branch")).toHaveTextContent("Main Branch (Main)"),
     );
-    await chooseOption("Store in warehouse", "2nd Branch");
+    await chooseOption("Branch", "2nd Branch");
     fillAndSave();
 
     await waitFor(() => expect(create).toHaveBeenCalled());
     expect(create.mock.calls[0][0]).toMatchObject({ branch_id: "b2" });
   });
 
-  it("saves to the owner's own warehouse when they leave it as it is", async () => {
+  it("saves to the owner's own branch when they leave it as it is", async () => {
     useAuthStore.setState({ user: owner });
     draw();
     fireEvent.click(screen.getByRole("button", { name: /New Purchase/ }));
-    await screen.findByLabelText("Store in warehouse");
+    await screen.findByLabelText("Branch");
     fillAndSave();
 
     await waitFor(() => expect(create).toHaveBeenCalled());
     expect(create.mock.calls[0][0]).toMatchObject({ branch_id: "b1" });
   });
 
-  it("doesn't offer the choice to an encoder; their purchases go to their own warehouse", async () => {
+  it("doesn't offer the choice to an encoder; their purchases go to their own branch", async () => {
     useAuthStore.setState({ user: encoder });
     draw();
     fireEvent.click(screen.getByRole("button", { name: /New Purchase/ }));
-    expect(screen.queryByLabelText("Store in warehouse")).toBeNull();
+    expect(screen.queryByLabelText("Branch")).toBeNull();
     expect(listBranches).not.toHaveBeenCalled();
     fillAndSave();
 
@@ -110,7 +117,7 @@ describe("PaddyPage: which warehouse a new purchase is stored in", () => {
     expect(create.mock.calls[0][0]).toMatchObject({ branch_id: null });
   });
 
-  it("names the warehouse in the stock table once palay sits in more than one", async () => {
+  it("names the branch in the stock table once palay sits in more than one", async () => {
     vi.mocked(paddyService.listInventory).mockResolvedValue([
       {
         id: "i1",
@@ -132,9 +139,62 @@ describe("PaddyPage: which warehouse a new purchase is stored in", () => {
 
     const stock = screen.getByTestId("palay-stock-index");
     expect(
+      await within(stock).findByRole("columnheader", { name: "Branch" }),
+    ).toBeInTheDocument();
+    expect(within(stock).queryByRole("columnheader", { name: "Warehouse" })).toBeNull();
+    expect(within(stock).getByText("2nd Branch")).toBeInTheDocument();
+  });
+
+  it("names the warehouse too once a branch's palay sits in more than one", async () => {
+    vi.mocked(paddyService.listInventory).mockResolvedValue([
+      {
+        id: "i1",
+        branch_id: "b1",
+        warehouse_id: "w1",
+        branch: { name: "Main Branch" },
+        warehouse: { name: "Warehouse 1 - Main Branch" },
+        variety: { code: "RC222" },
+        quantity_kg: 500,
+      },
+      {
+        id: "i2",
+        branch_id: "b1",
+        warehouse_id: "w3",
+        branch: { name: "Main Branch" },
+        warehouse: { name: "Warehouse 2 - Main Branch" },
+        variety: { code: "RC222" },
+        quantity_kg: 300,
+      },
+    ]);
+    useAuthStore.setState({ user: owner });
+    draw();
+
+    const stock = screen.getByTestId("palay-stock-index");
+    expect(
       await within(stock).findByRole("columnheader", { name: "Warehouse" }),
     ).toBeInTheDocument();
-    expect(within(stock).getByText("2nd Branch")).toBeInTheDocument();
+    expect(within(stock).queryByRole("columnheader", { name: "Branch" })).toBeNull();
+    expect(within(stock).getByText("Warehouse 2 - Main Branch")).toBeInTheDocument();
+  });
+
+  it("asks which warehouse once the branch has more than one, and sends the pick", async () => {
+    vi.mocked(warehousesService.list).mockResolvedValue([
+      ...warehouseRows,
+      { id: "w3", branch_id: "b1", name: "Warehouse 2 - Main Branch", is_default: false },
+    ]);
+    useAuthStore.setState({ user: owner });
+    draw();
+    fireEvent.click(screen.getByRole("button", { name: /New Purchase/ }));
+    await waitFor(() =>
+      expect(screen.getByLabelText("Store in warehouse")).toHaveTextContent(
+        "Warehouse 1 - Main Branch",
+      ),
+    );
+    await chooseOption("Store in warehouse", "Warehouse 2 - Main Branch");
+    fillAndSave();
+
+    await waitFor(() => expect(create).toHaveBeenCalled());
+    expect(create.mock.calls[0][0]).toMatchObject({ branch_id: "b1", warehouse_id: "w3" });
   });
 });
 

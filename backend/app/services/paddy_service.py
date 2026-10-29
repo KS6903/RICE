@@ -43,6 +43,7 @@ from ..repositories.paddy import (
 from ..services.base import BaseService
 from ..services.canva_color import pick_unused_color
 from ..services.record_changes import changed_fields, log_changes, show
+from ..services.warehouses import default_warehouse_id, warehouse_for, warehouse_map
 
 
 class PaddyService(BaseService):
@@ -170,6 +171,7 @@ class PaddyService(BaseService):
         data = {c.name: getattr(p, c.name) for c in p.__table__.columns}
         data["supplier"] = {"id": p.supplier.id, "name": p.supplier.name} if p.supplier else None
         data["branch"] = {"id": str(p.branch.id), "name": p.branch.name} if p.branch else None
+        data["warehouse"] = {"id": str(p.warehouse.id), "name": p.warehouse.name} if p.warehouse else None
         data["item_count"] = len(p.items)
         data["items"] = [
             {
@@ -218,12 +220,13 @@ class PaddyService(BaseService):
         for item_data in data.items:
             self.assert_company_fk(RiceVariety, item_data.variety_id, label="Variety", allow_shared=True)
             self.assert_company_fk(QualityGrade, item_data.grade_id, label="Grade", allow_shared=True)
-        branch_id = self._purchase_warehouse(data.branch_id)
+        branch_id, warehouse_id = purchase_place(self.db, self.current_user, data.branch_id, data.warehouse_id)
         with self.transaction():
             purchase = self.purchases.add(
                 PalayPurchase(
                     company_id=self.current_user.company_id,
                     branch_id=branch_id,
+                    warehouse_id=warehouse_id,
                     reference_no=self._next_reference_no(),
                     supplier_id=data.supplier_id,
                     purchase_date=data.purchase_date,
@@ -260,7 +263,7 @@ class PaddyService(BaseService):
                     DryingRecord.purchase_item_id.in_([old.id for old in p.items])
                 ).delete(synchronize_session=False)
                 for old in list(p.items):
-                    self._apply_inventory_movement(old, "out", str(p.id), p.branch_id)
+                    self._apply_inventory_movement(old, "out", str(p.id), p.branch_id, p.warehouse_id)
                     p.items.remove(old)
                 self.db.flush()
                 lines = [self._add_line(p, item_data, p.branch_id) for item_data in data.items]
@@ -304,6 +307,7 @@ class PaddyService(BaseService):
                 data.dried_weight_kg - wet_kg,
                 "adjustment",
                 p.branch_id,
+                warehouse_id=p.warehouse_id,
                 source_id=p.id,
                 notes=f"Dried: {show(wet_kg)} kg to {show(data.dried_weight_kg)} kg",
             )
@@ -338,21 +342,28 @@ class PaddyService(BaseService):
 
     # ── inventory (read) ──────────────────────────────────────────────────────
 
-    def get_palay_inventory(self, *, branch_id: uuid.UUID | None = None) -> list[dict]:
+    def get_palay_inventory(
+        self, *, branch_id: uuid.UUID | None = None, warehouse_id: uuid.UUID | None = None
+    ) -> list[dict]:
         """Serialized live palay stock, each line in kilos, cavans and sacks, and how
         much of it is still wet.
 
         Stock is kept in kilos. A line's sacks are the kilos over what a sack of
         that palay weighed when it was bought (the sacks counted on its purchases),
         or over 50 kg when no purchase counted any; its cavans are the kilos over 50."""
-        rows = self.inventory.list_with_stock(self.current_user.company_id, branch_id=branch_id)
+        rows = self.inventory.list_with_stock(
+            self.current_user.company_id, branch_id=branch_id, warehouse_id=warehouse_id
+        )
         branch_rows = self.db.query(Branch).filter(Branch.company_id == self.current_user.company_id).all()
         bmap = {str(b.id): {"id": str(b.id), "name": b.name, "is_main_branch": b.is_main_branch} for b in branch_rows}
+        wmap = warehouse_map(self.db, self.current_user.company_id)
         bought = self._bought_by_bucket()
         out: list[dict] = []
         for r in rows:
             kg = float(r.quantity_kg)
-            counted_kg, counted_sacks, wet_kg = bought.get((r.branch_id, r.variety_id, r.grade_id), (0.0, 0.0, 0.0))
+            counted_kg, counted_sacks, wet_kg = bought.get(
+                (r.branch_id, r.warehouse_id, r.variety_id, r.grade_id), (0.0, 0.0, 0.0)
+            )
             kg_per_sack = counted_kg / counted_sacks if counted_sacks > 0 and counted_kg > 0 else float(KG_PER_CAVAN)
             wet_kg = min(wet_kg, kg)
             out.append(
@@ -360,6 +371,8 @@ class PaddyService(BaseService):
                     "id": str(r.id),
                     "branch_id": str(r.branch_id) if r.branch_id else None,
                     "branch": bmap.get(str(r.branch_id)) if r.branch_id else None,
+                    "warehouse_id": str(r.warehouse_id) if r.warehouse_id else None,
+                    "warehouse": wmap.get(str(r.warehouse_id)) if r.warehouse_id else None,
                     "variety": {"id": str(r.variety.id), "code": r.variety.code, "name": r.variety.name}
                     if r.variety
                     else None,
@@ -384,6 +397,7 @@ class PaddyService(BaseService):
         rows = (
             self.db.query(
                 PalayPurchase.branch_id,
+                PalayPurchase.warehouse_id,
                 PalayPurchaseItem.variety_id,
                 PalayPurchaseItem.grade_id,
                 func.coalesce(func.sum(case((counted, held), else_=0)), 0),
@@ -392,10 +406,15 @@ class PaddyService(BaseService):
             )
             .join(PalayPurchase, PalayPurchase.id == PalayPurchaseItem.purchase_id)
             .filter(PalayPurchase.company_id == self.current_user.company_id, PalayPurchase.status != "cancelled")
-            .group_by(PalayPurchase.branch_id, PalayPurchaseItem.variety_id, PalayPurchaseItem.grade_id)
+            .group_by(
+                PalayPurchase.branch_id,
+                PalayPurchase.warehouse_id,
+                PalayPurchaseItem.variety_id,
+                PalayPurchaseItem.grade_id,
+            )
             .all()
         )
-        return {(b, v, g): (float(kg), float(sacks), float(w)) for b, v, g, kg, sacks, w in rows}
+        return {(b, wh, v, g): (float(kg), float(sacks), float(w)) for b, wh, v, g, kg, sacks, w in rows}
 
     # ── how the stock is counted (the Boss's choice) ──────────────────────────
 
@@ -418,9 +437,6 @@ class PaddyService(BaseService):
         count = self.db.query(PalayInventoryMovement).count() + 1
         return f"PP-{today}-{count:04d}"
 
-    def _purchase_warehouse(self, branch_id: uuid.UUID | None) -> uuid.UUID | None:
-        return purchase_warehouse(self.db, self.current_user, branch_id)
-
     def _add_line(self, purchase: PalayPurchase, d, branch_id: uuid.UUID | None) -> PalayPurchaseItem:
         """Save one line of a purchase, put it in stock, and file its drying when
         it came with the after-drying weight."""
@@ -436,7 +452,7 @@ class PaddyService(BaseService):
             item.dried_at = datetime.now(timezone.utc)
         self.db.add(item)
         self.db.flush()
-        self._apply_inventory_movement(item, "in", str(purchase.id), branch_id)
+        self._apply_inventory_movement(item, "in", str(purchase.id), branch_id, purchase.warehouse_id)
         if item.dried_weight_kg is not None:
             self._close_drying_record(item, purchase)
         return item
@@ -458,7 +474,12 @@ class PaddyService(BaseService):
         )
 
     def _apply_inventory_movement(
-        self, item: PalayPurchaseItem, direction: str, source_id: str, branch_id: uuid.UUID | None
+        self,
+        item: PalayPurchaseItem,
+        direction: str,
+        source_id: str,
+        branch_id: uuid.UUID | None,
+        warehouse_id: uuid.UUID | None = None,
     ) -> None:
         weight = item.stock_weight_kg
         self._apply_inventory_change(
@@ -467,6 +488,7 @@ class PaddyService(BaseService):
             direction,
             branch_id,
             source_id=uuid.UUID(source_id),
+            warehouse_id=warehouse_id,
         )
 
     def _apply_inventory_change(
@@ -478,13 +500,19 @@ class PaddyService(BaseService):
         *,
         source_id: uuid.UUID,
         notes: str | None = None,
+        warehouse_id: uuid.UUID | None = None,
     ) -> None:
-        """Move the line's stock bucket by ``qty`` kg (never below zero) and log it."""
-        inv = self.inventory.find_bucket(self.current_user.company_id, branch_id, item.variety_id, item.grade_id)
+        """Move the line's stock bucket in its warehouse by ``qty`` kg (never below
+        zero) and log it."""
+        warehouse_id = warehouse_id or default_warehouse_id(self.db, branch_id)
+        inv = self.inventory.find_bucket(
+            self.current_user.company_id, branch_id, item.variety_id, item.grade_id, warehouse_id
+        )
         if not inv:
             inv = PalayInventory(
                 company_id=self.current_user.company_id,
                 branch_id=branch_id,
+                warehouse_id=warehouse_id,
                 variety_id=item.variety_id,
                 grade_id=item.grade_id,
                 quantity_kg=max(Decimal("0"), qty),
@@ -570,21 +598,30 @@ def _purchase_state(p: PalayPurchase) -> dict[str, Any]:
 
 
 def purchase_warehouse(db: Session, current_user: Any, branch_id: uuid.UUID | None) -> uuid.UUID | None:
-    """The warehouse a purchase (palay, rice or by-products) goes into: the
+    """The branch a purchase (palay, rice or by-products) goes into: the
     recorder's own unless an owner or admin picked another of the company's live
-    warehouses."""
+    branches."""
     own = current_user.branch_id
     if branch_id is None or branch_id == own:
         return own
     role = getattr(getattr(current_user, "role", None), "name", None)
     if role not in ("owner", "admin") and not getattr(current_user, "is_platform_admin", False):
-        raise PermissionDeniedError("Only an owner or admin can store a purchase in another warehouse.")
+        raise PermissionDeniedError("Only an owner or admin can store a purchase in another branch.")
     branch = db.get(Branch, branch_id)
-    # Another company's warehouse reads as missing, never as forbidden; a
-    # warehouse in the trash takes no new stock.
+    # Another company's branch reads as missing, never as forbidden; a
+    # branch in the trash takes no new stock.
     if not branch or branch.company_id != current_user.company_id or branch.deleted_at is not None:
-        raise NotFoundError("Warehouse not found.")
+        raise NotFoundError("Branch not found.")
     return branch.id
+
+
+def purchase_place(
+    db: Session, current_user: Any, branch_id: uuid.UUID | None, warehouse_id: uuid.UUID | None
+) -> tuple[uuid.UUID | None, uuid.UUID | None]:
+    """The branch and the warehouse in it a purchase goes into. The warehouse is
+    the one picked (it must be in that branch), else the branch's first."""
+    branch = purchase_warehouse(db, current_user, branch_id)
+    return branch, warehouse_for(db, company_id=current_user.company_id, branch_id=branch, warehouse_id=warehouse_id)
 
 
 def _required(value: str, message: str) -> str:

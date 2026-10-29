@@ -26,6 +26,7 @@ from ..repositories.inventory import (
 from ..repositories.paddy import PalayInventoryRepository
 from ..services.base import BaseService
 from ..services.byproduct_kind_service import ByproductKindService
+from ..services.warehouses import warehouse_for, warehouse_map
 
 
 class InventoryService(BaseService):
@@ -49,14 +50,21 @@ class InventoryService(BaseService):
         rows = self.db.query(Branch).filter(Branch.company_id == self.current_user.company_id).all()
         return {str(b.id): {"id": str(b.id), "name": b.name, "is_main_branch": b.is_main_branch} for b in rows}
 
-    def get_milled_rice(self, *, branch_id: uuid.UUID | None = None) -> list[dict]:
-        rows = self.milled.list_with_stock(self.current_user.company_id, branch_id=branch_id)
+    def get_milled_rice(
+        self, *, branch_id: uuid.UUID | None = None, warehouse_id: uuid.UUID | None = None
+    ) -> list[dict]:
+        rows = self.milled.list_with_stock(
+            self.current_user.company_id, branch_id=branch_id, warehouse_id=warehouse_id
+        )
         branches = self._branch_map()
+        warehouses = warehouse_map(self.db, self.current_user.company_id)
         return [
             {
                 "id": str(r.id),
                 "branch_id": str(r.branch_id) if r.branch_id else None,
                 "branch": branches.get(str(r.branch_id)) if r.branch_id else None,
+                "warehouse_id": str(r.warehouse_id) if r.warehouse_id else None,
+                "warehouse": warehouses.get(str(r.warehouse_id)) if r.warehouse_id else None,
                 "variety_id": str(r.variety_id) if r.variety_id else None,
                 "variety": {"id": str(r.variety.id), "code": r.variety.code, "name": r.variety.name}
                 if r.variety
@@ -67,29 +75,36 @@ class InventoryService(BaseService):
             for r in rows
         ]
 
-    def get_byproducts(self, *, branch_id: uuid.UUID | None = None) -> list[dict]:
-        rows = self.byproducts.list_for_company(self.current_user.company_id, branch_id=branch_id)
+    def get_byproducts(
+        self, *, branch_id: uuid.UUID | None = None, warehouse_id: uuid.UUID | None = None
+    ) -> list[dict]:
+        rows = self.byproducts.list_for_company(
+            self.current_user.company_id, branch_id=branch_id, warehouse_id=warehouse_id
+        )
         branches = self._branch_map()
+        warehouses = warehouse_map(self.db, self.current_user.company_id)
         return [
             {
                 "id": str(r.id),
                 "branch_id": str(r.branch_id) if r.branch_id else None,
                 "branch": branches.get(str(r.branch_id)) if r.branch_id else None,
+                "warehouse_id": str(r.warehouse_id) if r.warehouse_id else None,
+                "warehouse": warehouses.get(str(r.warehouse_id)) if r.warehouse_id else None,
                 "byproduct_type": r.byproduct_type,
                 "quantity_kg": float(r.quantity_kg),
             }
             for r in rows
         ]
 
-    def get_summary(self, *, branch_id: uuid.UUID | None = None) -> dict:
+    def get_summary(self, *, branch_id: uuid.UUID | None = None, warehouse_id: uuid.UUID | None = None) -> dict:
         """The totals the dashboard shows. They count exactly the rows the
         Inventory page lists (palay and milled rice with stock on hand, every
         by-product row), so the two always agree. Each by-product type adds up
         across warehouses."""
         company_id = self.current_user.company_id
-        palay = self.palay.list_with_stock(company_id, branch_id=branch_id)
-        milled = self.milled.list_with_stock(company_id, branch_id=branch_id)
-        byproducts = self.byproducts.list_for_company(company_id, branch_id=branch_id)
+        palay = self.palay.list_with_stock(company_id, branch_id=branch_id, warehouse_id=warehouse_id)
+        milled = self.milled.list_with_stock(company_id, branch_id=branch_id, warehouse_id=warehouse_id)
+        byproducts = self.byproducts.list_for_company(company_id, branch_id=branch_id, warehouse_id=warehouse_id)
 
         branches = self._branch_map()
         by_branch: dict[str, dict] = {}
@@ -143,7 +158,7 @@ class InventoryService(BaseService):
         if data.branch_id:
             branch = self.db.get(Branch, data.branch_id)
             if not branch or branch.company_id != self.current_user.company_id:
-                raise NotFoundError("Warehouse not found.")
+                raise NotFoundError("Branch not found.")
         # IDOR guards: varieties/grades must be ours or from the shared catalog
         # (a foreign id would otherwise leak that tenant's variety name via joins).
         self.assert_company_fk(RiceVariety, data.variety_id, label="Variety", allow_shared=True)
@@ -153,14 +168,19 @@ class InventoryService(BaseService):
         inv: Any = None
 
         with self.transaction():
+            # The warehouse it goes into: the one picked (in that branch), else the branch's first.
+            warehouse_id = warehouse_for(
+                self.db, company_id=company_id, branch_id=data.branch_id, warehouse_id=data.warehouse_id
+            )
             if data.inventory_type == "palay":
                 if not data.variety_id:
                     raise ValidationError("Variety is required for palay.")
-                inv = self.palay.find_bucket(company_id, data.branch_id, data.variety_id, data.grade_id)
+                inv = self.palay.find_bucket(company_id, data.branch_id, data.variety_id, data.grade_id, warehouse_id)
                 if not inv:
                     inv = PalayInventory(
                         company_id=company_id,
                         branch_id=data.branch_id,
+                        warehouse_id=warehouse_id,
                         variety_id=data.variety_id,
                         grade_id=data.grade_id,
                         quantity_kg=Decimal("0"),
@@ -171,11 +191,12 @@ class InventoryService(BaseService):
             elif data.inventory_type == "milled_rice":
                 if not data.variety_id:
                     raise ValidationError("Variety is required for milled rice.")
-                inv = self.milled.find_bucket(company_id, data.branch_id, data.variety_id, data.grade_name)
+                inv = self.milled.find_bucket(company_id, data.branch_id, data.variety_id, data.grade_name, warehouse_id)
                 if not inv:
                     inv = MilledRiceInventory(
                         company_id=company_id,
                         branch_id=data.branch_id,
+                        warehouse_id=warehouse_id,
                         variety_id=data.variety_id,
                         grade_name=data.grade_name,
                         quantity_kg=Decimal("0"),
@@ -192,11 +213,12 @@ class InventoryService(BaseService):
                     raise ValidationError("By-product type is required.")
                 data.byproduct_type = btype
                 ByproductKindService(self.db, self.current_user).ensure(btype)
-                inv = self.byproducts.find_bucket(company_id, data.branch_id, btype)
+                inv = self.byproducts.find_bucket(company_id, data.branch_id, btype, warehouse_id)
                 if not inv:
                     inv = ByproductInventory(
                         company_id=company_id,
                         branch_id=data.branch_id,
+                        warehouse_id=warehouse_id,
                         byproduct_type=btype,
                         quantity_kg=Decimal("0"),
                     )

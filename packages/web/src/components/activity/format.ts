@@ -13,9 +13,13 @@ export type ActivityRow = {
 };
 
 const ACTION_VERBS: Record<string, string> = {
-  "warehouse.delete": t("Deleted warehouse"),
-  "warehouse.restore": t("Restored warehouse"),
-  "warehouse.purge": t("Permanently deleted warehouse"),
+  // These three are about branches (they were named before warehouses existed).
+  "warehouse.delete": t("Deleted branch"),
+  "warehouse.restore": t("Restored branch"),
+  "warehouse.purge": t("Permanently deleted branch"),
+  "storage.add": t("Added warehouse"),
+  "storage.rename": t("Renamed warehouse"),
+  "storage.delete": t("Deleted warehouse"),
   "data.export": t("Downloaded all data for"),
   "user.create": t("Added user"),
   "user.role_change": t("Changed the role of"),

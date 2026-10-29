@@ -4,7 +4,14 @@
 // string literals. Components stay functional; hooks call these methods.
 import api from "./api";
 
-const branchQuery = (branchId?: string) => (branchId ? `?branch_id=${branchId}` : "");
+/** ?branch_id=… and/or &warehouse_id=… ; nothing when neither is picked. */
+const placeQuery = (branchId?: string, warehouseId?: string) => {
+  const parts = [
+    branchId ? `branch_id=${branchId}` : "",
+    warehouseId ? `warehouse_id=${warehouseId}` : "",
+  ].filter(Boolean);
+  return parts.length ? `?${parts.join("&")}` : "";
+};
 
 export class InventoryService {
   constructor(private http = api) {}
@@ -13,20 +20,20 @@ export class InventoryService {
     return this.http.get("/branches/").then((r) => r.data);
   }
 
-  getMilledRice(branchId?: string): Promise<any[]> {
-    return this.http.get(`/inventory/milled-rice${branchQuery(branchId)}`).then((r) => r.data);
+  getMilledRice(branchId?: string, warehouseId?: string): Promise<any[]> {
+    return this.http.get(`/inventory/milled-rice${placeQuery(branchId, warehouseId)}`).then((r) => r.data);
   }
 
-  getByproducts(branchId?: string): Promise<any[]> {
-    return this.http.get(`/inventory/byproducts${branchQuery(branchId)}`).then((r) => r.data);
+  getByproducts(branchId?: string, warehouseId?: string): Promise<any[]> {
+    return this.http.get(`/inventory/byproducts${placeQuery(branchId, warehouseId)}`).then((r) => r.data);
   }
 
-  getPalay(branchId?: string): Promise<any[]> {
-    return this.http.get(`/paddy/inventory${branchQuery(branchId)}`).then((r) => r.data);
+  getPalay(branchId?: string, warehouseId?: string): Promise<any[]> {
+    return this.http.get(`/paddy/inventory${placeQuery(branchId, warehouseId)}`).then((r) => r.data);
   }
 
-  getSummary(branchId?: string): Promise<any> {
-    return this.http.get(`/inventory/summary${branchQuery(branchId)}`).then((r) => r.data);
+  getSummary(branchId?: string, warehouseId?: string): Promise<any> {
+    return this.http.get(`/inventory/summary${placeQuery(branchId, warehouseId)}`).then((r) => r.data);
   }
 
   addStock(body: Record<string, unknown>): Promise<any> {

@@ -117,6 +117,8 @@ class PurchaseCreate(BaseModel):
     # The warehouse the palay is stored in. None: the recorder's own warehouse.
     # Only an owner or admin may pick a different one.
     branch_id: uuid.UUID | None = None
+    # The warehouse in that branch; None: the branch's first.
+    warehouse_id: uuid.UUID | None = None
     purchase_date: date
     delivery_type: str | None = None
     remarks: str | None = None

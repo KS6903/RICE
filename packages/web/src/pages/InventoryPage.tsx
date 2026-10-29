@@ -22,6 +22,7 @@ import NewWarehouseView from "../components/warehouse/NewWarehouseView";
 import LoadingRows from "../components/LoadingRows";
 import InventoryDetailDrawer from "../components/inventory/InventoryDetailDrawer";
 import WarehousePicker from "../components/inventory/WarehousePicker";
+import WarehouseStrip from "../components/inventory/WarehouseStrip";
 import AddInventoryModal from "../components/inventory/AddInventoryModal";
 import {
   LocationKey,
@@ -32,6 +33,7 @@ import {
 } from "../components/inventory/locationShades";
 import { useAuthStore } from "../stores/authStore";
 import { inventoryService } from "../services/InventoryService";
+import { warehousesService, type Warehouse as StorageWarehouse } from "../services/WarehousesService";
 import { byproductLabel } from "../mappers/byproductNames";
 import { useByproductKinds } from "../hooks/useByproductKinds";
 import {
@@ -81,7 +83,14 @@ const VIEWS: { key: ViewMode; label: string; icon: React.ElementType }[] = [
 ];
 
 export default function InventoryPage() {
+  // Which branch the page shows ("" = all of them) and, inside a branch with
+  // several warehouses, which warehouse ("" = all of the branch's).
   const [branchFilter, setBranchFilter] = useState<string>("");
+  const [warehouseFilter, setWarehouseFilter] = useState<string>("");
+  const pickBranch = (id: string) => {
+    setBranchFilter(id);
+    setWarehouseFilter("");
+  };
   // The tabs can be dragged into any order, remembered per account. The page
   // opens on whichever one is first.
   const tabs = useReorderableTabs(
@@ -105,22 +114,50 @@ export default function InventoryPage() {
     queryKey: ["branches"],
     queryFn: () => inventoryService.getBranches(),
   });
+  const { data: warehouses = [] } = useQuery<StorageWarehouse[]>({
+    queryKey: ["warehouses"],
+    queryFn: () => warehousesService.list(),
+  });
   const { data: milled = [], isLoading: milledLoading } = useQuery<any[]>({
-    queryKey: ["milled-rice", branchFilter],
-    queryFn: () => inventoryService.getMilledRice(branchFilter),
+    queryKey: ["milled-rice", branchFilter, warehouseFilter],
+    queryFn: () => inventoryService.getMilledRice(branchFilter, warehouseFilter),
   });
   const { data: byproducts = [], isLoading: byproductsLoading } = useQuery<any[]>({
-    queryKey: ["byproducts", branchFilter],
-    queryFn: () => inventoryService.getByproducts(branchFilter),
+    queryKey: ["byproducts", branchFilter, warehouseFilter],
+    queryFn: () => inventoryService.getByproducts(branchFilter, warehouseFilter),
   });
   const { data: palay = [], isLoading: palayLoading } = useQuery<any[]>({
-    queryKey: ["palay-inventory", branchFilter],
-    queryFn: () => inventoryService.getPalay(branchFilter),
+    queryKey: ["palay-inventory", branchFilter, warehouseFilter],
+    queryFn: () => inventoryService.getPalay(branchFilter, warehouseFilter),
   });
   const { data: summary } = useQuery<any>({
-    queryKey: ["inventory-summary", branchFilter],
-    queryFn: () => inventoryService.getSummary(branchFilter),
+    queryKey: ["inventory-summary", branchFilter, warehouseFilter],
+    queryFn: () => inventoryService.getSummary(branchFilter, warehouseFilter),
   });
+  // The branch whose warehouses show above the stock: the one picked, or the
+  // mill's only one.
+  const contextBranch =
+    branches.find((b) => b.id === branchFilter) ??
+    (!branchFilter && branches.length === 1 ? branches[0] : null);
+  const branchWarehouses = warehouses.filter((w) => w.branch_id === contextBranch?.id);
+  // Each warehouse keeps one colour; the main branch's first one comes first.
+  const places = useMemo(
+    () =>
+      warehouses.map((w) => ({
+        id: w.id,
+        name: w.name,
+        is_main_branch: w.is_default && !!branches.find((b) => b.id === w.branch_id)?.is_main_branch,
+      })),
+    [warehouses, branches],
+  );
+  // A warehouse picked from the key or the detail window narrows to it, in its branch.
+  const pickPlace = (id: string) => {
+    const w = warehouses.find((x) => x.id === id);
+    if (w) {
+      setBranchFilter(w.branch_id);
+      setWarehouseFilter(w.id);
+    } else pickBranch(id);
+  };
   const stockLoading = palayLoading || milledLoading || byproductsLoading;
   // The by-products' names, for the lists below.
   const { label: byproductName } = useByproductKinds();
@@ -132,9 +169,9 @@ export default function InventoryPage() {
   const [sort, setSort] = useInventorySort();
   const items: UnifiedItem[] = useMemo(() => {
     const unified = InventoryMapper.toUnifiedItems(palay, milled, byproducts, byproductName);
-    const shown = branchFilter ? unified : InventoryMapper.combineAcrossWarehouses(unified);
+    const shown = warehouseFilter ? unified : InventoryMapper.combineAcrossWarehouses(unified);
     return shown.sort(InventoryMapper.comparator(sort));
-  }, [palay, milled, byproducts, byproductName, sort, branchFilter]);
+  }, [palay, milled, byproducts, byproductName, sort, warehouseFilter]);
   const palaySorted = useMemo(() => InventoryMapper.sortRows(palay, "palay", sort), [palay, sort]);
   const milledSorted = useMemo(
     () => InventoryMapper.sortRows(milled, "milled", sort),
@@ -149,7 +186,7 @@ export default function InventoryPage() {
 
   return (
     // Each warehouse keeps one colour on every view and in the detail window.
-    <WarehouseColorProvider branches={branches}>
+    <WarehouseColorProvider branches={places}>
       <div className="space-y-6">
         <div className="flex items-center justify-between flex-wrap gap-3">
           <div>
@@ -162,7 +199,7 @@ export default function InventoryPage() {
             <WarehousePicker
               branches={branches as any[]}
               selectedId={branchFilter}
-              onSelect={setBranchFilter}
+              onSelect={pickBranch}
             />
             <Select
               className="!w-auto min-w-[13rem]"
@@ -183,6 +220,18 @@ export default function InventoryPage() {
             )}
           </div>
         </div>
+
+        {/* The branch's warehouses: pick one, and add, rename or delete them */}
+        {contextBranch && (
+          <WarehouseStrip
+            branchId={contextBranch.id}
+            branchName={contextBranch.name}
+            warehouses={branchWarehouses}
+            selectedId={warehouseFilter}
+            onSelect={setWarehouseFilter}
+            canManage={canAddInventory}
+          />
+        )}
 
         {/* View switcher: drag a tab to rearrange (press and hold on a touch screen) */}
         <div
@@ -216,8 +265,8 @@ export default function InventoryPage() {
         </div>
 
         {/* All warehouses: which colour is which warehouse; a click narrows to one */}
-        {!branchFilter && (view === "cards" || view === "bins" || view === "spreadsheet") && (
-          <WarehouseLegend items={items} onPick={setBranchFilter} />
+        {!warehouseFilter && (view === "cards" || view === "bins" || view === "spreadsheet") && (
+          <WarehouseLegend items={items} onPick={pickPlace} />
         )}
 
         {/* The list views wait for all three kinds of stock: until then a page that
@@ -248,7 +297,7 @@ export default function InventoryPage() {
           <NewWarehouseView
             branches={branches}
             branchFilter={branchFilter}
-            setBranchFilter={setBranchFilter}
+            setBranchFilter={pickBranch}
           />
         )}
 
@@ -256,8 +305,9 @@ export default function InventoryPage() {
           item={selected}
           totalKg={totalKg}
           onClose={() => setSelected(null)}
-          onViewInWarehouse={(branchId) => {
-            if (branchId) setBranchFilter(branchId);
+          onViewInWarehouse={(placeId) => {
+            // The Warehouse tab shows a branch's floor plan: go to this one's branch.
+            if (placeId) pickBranch(warehouses.find((w) => w.id === placeId)?.branch_id ?? placeId);
             setView("warehouse");
             setSelected(null);
           }}
@@ -288,12 +338,12 @@ function ClassicView({ palay, milled, byproducts, summary, branchFilter }: any) 
     <>
       {summary?.by_branch && summary.by_branch.length > 0 && !branchFilter && (
         <div className="card">
-          <h3 className="font-semibold text-primary mb-3">{t("Stock by warehouse")}</h3>
+          <h3 className="font-semibold text-primary mb-3">{t("Stock by branch")}</h3>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead className="border-b border-slate-200 dark:border-slate-700">
                 <tr className="text-left text-secondary">
-                  <th className="px-3 py-2 font-medium">{t("Warehouse")}</th>
+                  <th className="px-3 py-2 font-medium">{t("Branch")}</th>
                   <th className="px-3 py-2 font-medium text-right">{t("Palay (kg)")}</th>
                   <th className="px-3 py-2 font-medium text-right">{t("Milled Rice (kg)")}</th>
                   <th className="px-3 py-2 font-medium text-right">{t("By-products (kg)")}</th>

@@ -20,6 +20,7 @@ class StockCreate(BaseModel):
     inventory_type: str  # palay, milled_rice, byproduct
     quantity_kg: Decimal
     branch_id: uuid.UUID | None = None
+    warehouse_id: uuid.UUID | None = None  # in that branch; None: the branch's first
     variety_id: uuid.UUID | None = None  # palay + milled_rice
     grade_id: uuid.UUID | None = None  # palay
     grade_name: str | None = None  # milled_rice

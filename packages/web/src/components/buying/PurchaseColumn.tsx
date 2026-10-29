@@ -6,7 +6,7 @@ import { History, Pencil, Plus } from "lucide-react";
 import { roleLabel } from "@rice-mill/shared";
 import Modal from "../Modal";
 import LoadingRows from "../LoadingRows";
-import { inSeveralWarehouses } from "../PurchaseWarehouse";
+import { inSeveralBranches, inSeveralWarehouses } from "../PurchaseWarehouse";
 import { peso } from "./money";
 import { STATUS_BADGE, byproductName, gradeLabel, type TradeKind } from "./trade";
 import EditPurchaseDialog from "./EditPurchaseDialog";
@@ -56,7 +56,8 @@ export default function PurchaseColumn({
   const [drying, setDrying] = useState<{ purchase: any; line: any } | null>(null);
   const canCorrect = useCanEditSavedRecords();
   const canSeeHistory = canCorrect || canBuy;
-  const several = inSeveralWarehouses(purchases);
+  const several = inSeveralBranches(purchases);
+  const severalWarehouses = inSeveralWarehouses(purchases);
   const total = purchases.reduce((s, p) => s + Number(p.total_amount ?? 0), 0);
 
   return (
@@ -114,6 +115,7 @@ export default function PurchaseColumn({
                     <p className="truncate text-xs text-muted">
                       {p.purchase_date}
                       {several && p.branch?.name && <> · {p.branch.name}</>}
+                      {severalWarehouses && p.warehouse?.name && <> · {p.warehouse.name}</>}
                       {p.created_by_name && (
                         <>
                           {" "}
@@ -298,7 +300,8 @@ export function PurchaseDetails({
   const facts: [string, ReactNode][] = [
     [t("Date"), p.purchase_date],
     [t("Supplier"), p.supplier?.name ?? "—"],
-    [t("Warehouse"), p.branch?.name ?? "—"],
+    [t("Branch"), p.branch?.name ?? "—"],
+    [t("Warehouse"), p.warehouse?.name ?? "—"],
     [t("Delivery"), p.delivery_type ? (DELIVERY[p.delivery_type] ?? p.delivery_type) : "—"],
     [
       t("Status"),

@@ -175,7 +175,7 @@ const FEATURE_LABELS: Record<string, string> = {
   users: t("User management"),
   milling: t("Milling operations"),
   dispatch: t("Dispatch (deliveries, trucks and drivers)"),
-  multi_branch: t("More than one warehouse"),
+  multi_branch: t("More than one branch"),
   field_operators: t("Field operators (agents and millers)"),
   cash_count: t("Cash count"),
   collections: t("Collections"),
@@ -620,8 +620,8 @@ function BillingTab() {
                     : t("Unlimited users")}{" "}
                   ·{" "}
                   {p.max_branches
-                    ? t("{{count}} warehouses", { count: p.max_branches })
-                    : t("Unlimited warehouses")}
+                    ? t("{{count}} branches", { count: p.max_branches })
+                    : t("Unlimited branches")}
                 </div>
                 <ul className="text-sm text-slate-800 dark:text-slate-200 space-y-1.5 flex-1">
                   {[...(p.features || [])].sort(byFeatureOrder).map((f) => (
@@ -813,7 +813,7 @@ function BranchesTab() {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [showTrash, setShowTrash] = useState(false);
   const [confirmingBulk, setConfirmingBulk] = useState(false);
-  // Why some of the selected warehouses were left out of the last bulk delete.
+  // Why some of the selected branches were left out of the last bulk delete.
   const [skippedReasons, setSkippedReasons] = useState<string[]>([]);
 
   const create = useMutation({
@@ -834,7 +834,7 @@ function BranchesTab() {
     },
   });
 
-  // Warehouses the owner is allowed to bulk-delete (everything except main).
+  // Branches the owner is allowed to bulk-delete (everything except main).
   const selectable = (branches as any[]).filter((b) => !b.is_main_branch);
 
   const bulkDelete = useMutation({
@@ -940,7 +940,7 @@ function BranchesTab() {
         open={confirmingBulk}
         danger
         busy={bulkDelete.isPending}
-        title={t("Move {{count}} warehouses to trash?", { count: selected.size })}
+        title={t("Move {{count}} branches to trash?", { count: selected.size })}
         confirmLabel={t("Move to trash")}
         onCancel={() => setConfirmingBulk(false)}
         onConfirm={() => {
@@ -1010,7 +1010,7 @@ function BranchesTab() {
               <th className={`${TABLE_HEAD} w-10`}>
                 <input
                   type="checkbox"
-                  aria-label={t("Select all warehouses")}
+                  aria-label={t("Select all branches")}
                   className="h-4 w-4 rounded border-soft accent-rose-500 cursor-pointer disabled:opacity-40"
                   disabled={readOnly || selectable.length === 0}
                   checked={selectable.length > 0 && selected.size === selectable.length}
@@ -1040,7 +1040,7 @@ function BranchesTab() {
                       className="h-4 w-4 rounded border-soft accent-rose-500 cursor-pointer disabled:opacity-30"
                       disabled={readOnly || b.is_main_branch}
                       title={
-                        b.is_main_branch ? t("The main warehouse can't be deleted") : undefined
+                        b.is_main_branch ? t("The main branch can't be deleted") : undefined
                       }
                       checked={selected.has(b.id)}
                       onChange={() => toggle(b.id)}
@@ -1169,10 +1169,10 @@ function BranchTrashPanel() {
     <div className="card space-y-3">
       <div className="flex items-center gap-2">
         <History size={16} className="text-muted" />
-        <h3 className="font-semibold text-primary">{t("Recently deleted warehouses")}</h3>
+        <h3 className="font-semibold text-primary">{t("Recently deleted branches")}</h3>
       </div>
       <p className="text-xs text-muted">
-        {t("Deleted warehouses are kept for 30 days, then permanently removed.")}
+        {t("Deleted branches are kept for 30 days, then permanently removed.")}
       </p>
       {isLoading ? (
         <p className="text-sm text-muted py-4 text-center">{t("Loading…")}</p>
@@ -1270,7 +1270,7 @@ function ActivityTab() {
         <h3 className="text-lg font-bold text-primary">{t("Activity log")}</h3>
         <p className="text-sm text-secondary">
           {t(
-            "Who deleted, restored, or purged warehouses, and who downloaded the mill's data, most recent first. It shows the last month; pick other days to look further back, up to",
+            "Who deleted, restored, or purged branches, and who downloaded the mill's data, most recent first. It shows the last month; pick other days to look further back, up to",
           )}{" "}
           {ACTIVITY_MAX_DAYS} {t("days at a time.")}
         </p>

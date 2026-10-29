@@ -40,6 +40,7 @@ from app.models.warehouse import Pallet, RiceBatch, WarehouseZone
 from app.repositories.canva import WarehouseLayoutRepository
 from app.services.canva_bootstrap import _next_pallet_code
 from app.services.rice_shelf_life import aging_status, compute_best_before
+from app.services.warehouses import default_warehouse_id
 
 
 def _seed_suppliers(db, company_id, branch_id):
@@ -165,6 +166,7 @@ def _seed_purchases(db, company_id, branch_id):
         pur = PalayPurchase(
             company_id=company_id,
             branch_id=branch_id,
+            warehouse_id=default_warehouse_id(db, branch_id),
             reference_no=f"PO-{today.year}-{i + 1:04d}",
             supplier_id=suppliers[i % len(suppliers)].id,
             purchase_date=today - timedelta(days=i * 4),

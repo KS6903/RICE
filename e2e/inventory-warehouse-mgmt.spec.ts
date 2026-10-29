@@ -13,8 +13,8 @@ test.describe("Inventory — warehouse picker and pack-out", () => {
     const popover = page.getByTestId("warehouse-picker-popover");
     await expect(popover).toBeVisible();
 
-    // Footer should expose an "Add warehouse" action
-    await expect(popover.getByRole("button", { name: /add warehouse/i })).toBeVisible();
+    // Footer should expose an "Add branch" action
+    await expect(popover.getByRole("button", { name: /add branch/i })).toBeVisible();
 
     // Hovering a row should reveal a rename pencil — assert at least one row exists
     await expect(popover.getByText(/main branch/i).first()).toBeVisible();

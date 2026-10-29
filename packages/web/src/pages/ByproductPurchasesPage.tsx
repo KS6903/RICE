@@ -21,7 +21,9 @@ import SaleColumn from "../components/buying/SaleColumn";
 import { peso } from "../components/buying/money";
 import {
   PurchaseWarehouseField,
+  inSeveralBranches,
   inSeveralWarehouses,
+  purchaseGridClass,
   usePurchaseWarehouse,
 } from "../components/PurchaseWarehouse";
 import { t } from "../i18n";
@@ -49,9 +51,12 @@ export default function ByproductPurchasesPage() {
     queryFn: () => buyingService.listByproductStock(),
   });
 
-  // Which warehouse it goes into (owner/admin pick; others: their own).
+  // Which branch and warehouse it goes into (owner/admin pick the branch;
+  // others: their own).
   const warehouse = usePurchaseWarehouse();
+  const stockInSeveralBranches = inSeveralBranches(stock);
   const stockInSeveralWarehouses = inSeveralWarehouses(stock);
+  const placeColumns = Number(stockInSeveralBranches) + Number(stockInSeveralWarehouses);
 
   // The mill's by-products (Stock > Catalog), plus any other it already stocks.
   const { active: kinds } = useByproductKinds();
@@ -74,7 +79,11 @@ export default function ByproductPurchasesPage() {
 
   const createMutation = useMutation({
     mutationFn: (body: typeof form) =>
-      buyingService.createByproductPurchase({ ...body, branch_id: warehouse.branchId }),
+      buyingService.createByproductPurchase({
+        ...body,
+        branch_id: warehouse.branchId,
+        warehouse_id: warehouse.warehouseId,
+      }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["byproduct-purchases"] });
       qc.invalidateQueries({ queryKey: ["byproduct-stock"] });
@@ -111,7 +120,7 @@ export default function ByproductPurchasesPage() {
       >
         <div className="space-y-4">
           <div
-            className={`grid grid-cols-1 sm:grid-cols-2 gap-4 ${warehouse.show ? "lg:grid-cols-3" : ""}`}
+            className={`grid grid-cols-1 sm:grid-cols-2 gap-4 ${purchaseGridClass(warehouse.fields)}`}
           >
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-slate-200 mb-1">
@@ -229,6 +238,7 @@ export default function ByproductPurchasesPage() {
               <tr>
                 {[
                   t("By-product"),
+                  ...(stockInSeveralBranches ? [t("Branch")] : []),
                   ...(stockInSeveralWarehouses ? [t("Warehouse")] : []),
                   t("Stock (kg)"),
                 ].map((h) => (
@@ -245,8 +255,11 @@ export default function ByproductPurchasesPage() {
               {stock.map((r: any) => (
                 <tr key={r.id} className="hover:bg-gray-50 dark:hover:bg-slate-900/50">
                   <td className="px-4 py-3">{byproductLabel(r.byproduct_type)}</td>
-                  {stockInSeveralWarehouses && (
+                  {stockInSeveralBranches && (
                     <td className="px-4 py-3">{r.branch?.name || t("Unassigned")}</td>
+                  )}
+                  {stockInSeveralWarehouses && (
+                    <td className="px-4 py-3">{r.warehouse?.name || "—"}</td>
                   )}
                   <td className="px-4 py-3 font-medium">
                     {Number(r.quantity_kg).toLocaleString()}
@@ -255,7 +268,7 @@ export default function ByproductPurchasesPage() {
               ))}
               {stockLoading ? (
                 <tr>
-                  <td colSpan={stockInSeveralWarehouses ? 3 : 2}>
+                  <td colSpan={2 + placeColumns}>
                     <LoadingRows rows={2} />
                   </td>
                 </tr>
@@ -263,7 +276,7 @@ export default function ByproductPurchasesPage() {
                 stock.length === 0 && (
                   <tr>
                     <td
-                      colSpan={stockInSeveralWarehouses ? 3 : 2}
+                      colSpan={2 + placeColumns}
                       className="px-4 py-8 text-center text-muted"
                     >
                       {t(

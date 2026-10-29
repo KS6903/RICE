@@ -144,7 +144,47 @@ _extra_ddl: list[str] = [
       AND code NOT IN ('ipa', 'darak', 'binlid')
     ON CONFLICT (company_id, code) DO NOTHING
     """,
+    # Every branch keeps its stock in warehouses (the warehouses table is made by
+    # create_all): stock and purchases say which one (filled in by _backfill_warehouses).
+    "ALTER TABLE palay_purchases ADD COLUMN IF NOT EXISTS warehouse_id UUID REFERENCES warehouses(id) ON DELETE SET NULL",
+    "ALTER TABLE palay_inventory ADD COLUMN IF NOT EXISTS warehouse_id UUID REFERENCES warehouses(id) ON DELETE SET NULL",
+    "ALTER TABLE rice_purchases ADD COLUMN IF NOT EXISTS warehouse_id UUID REFERENCES warehouses(id) ON DELETE SET NULL",
+    "ALTER TABLE byproduct_purchases ADD COLUMN IF NOT EXISTS warehouse_id UUID REFERENCES warehouses(id) ON DELETE SET NULL",
+    "ALTER TABLE milled_rice_inventory ADD COLUMN IF NOT EXISTS warehouse_id UUID REFERENCES warehouses(id) ON DELETE SET NULL",
+    "ALTER TABLE byproduct_inventory ADD COLUMN IF NOT EXISTS warehouse_id UUID REFERENCES warehouses(id) ON DELETE SET NULL",
 ]
+
+
+def _backfill_warehouses(session, company_id) -> None:
+    """Every branch of the mill gets its first warehouse, "Warehouse 1 - <branch
+    name>", and the stock and purchases it already has go into it. Safe to repeat."""
+    session.execute(
+        text(
+            """
+            INSERT INTO warehouses (id, company_id, branch_id, name, is_default, created_at)
+            SELECT gen_random_uuid(), b.company_id, b.id, 'Warehouse 1 - ' || b.name, true, now()
+            FROM branches b
+            WHERE b.company_id = :company_id
+              AND NOT EXISTS (SELECT 1 FROM warehouses w WHERE w.branch_id = b.id)
+            """
+        ),
+        {"company_id": str(company_id)},
+    )
+    for statement in (
+        "UPDATE palay_purchases t SET warehouse_id = w.id FROM warehouses w "
+        "WHERE w.branch_id = t.branch_id AND w.is_default AND t.warehouse_id IS NULL",
+        "UPDATE palay_inventory t SET warehouse_id = w.id FROM warehouses w "
+        "WHERE w.branch_id = t.branch_id AND w.is_default AND t.warehouse_id IS NULL",
+        "UPDATE rice_purchases t SET warehouse_id = w.id FROM warehouses w "
+        "WHERE w.branch_id = t.branch_id AND w.is_default AND t.warehouse_id IS NULL",
+        "UPDATE byproduct_purchases t SET warehouse_id = w.id FROM warehouses w "
+        "WHERE w.branch_id = t.branch_id AND w.is_default AND t.warehouse_id IS NULL",
+        "UPDATE milled_rice_inventory t SET warehouse_id = w.id FROM warehouses w "
+        "WHERE w.branch_id = t.branch_id AND w.is_default AND t.warehouse_id IS NULL",
+        "UPDATE byproduct_inventory t SET warehouse_id = w.id FROM warehouses w "
+        "WHERE w.branch_id = t.branch_id AND w.is_default AND t.warehouse_id IS NULL",
+    ):
+        session.execute(text(statement))
 
 
 def migrate_all() -> int:
@@ -169,6 +209,7 @@ def migrate_all() -> int:
             Base.metadata.create_all(bind=session.connection(), tables=tenant_tables())
             for stmt in _extra_ddl:
                 session.execute(text(stmt))
+            _backfill_warehouses(session, company.id)
             seed_default_expense_categories(session, company.id)
             sync_system_varieties(session)
             if settings.PROVISIONER_DATABASE_URL is not None:

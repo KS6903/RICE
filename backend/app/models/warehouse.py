@@ -16,6 +16,27 @@ if TYPE_CHECKING:
     from .reference import QualityGrade, RiceVariety
 
 
+class Warehouse(Base):
+    """A place a branch keeps its stock. A branch always has at least one: the
+    first is made with the branch, named "Warehouse 1 - <branch name>", and the
+    Boss can add more. A warehouse belongs to one branch and never moves."""
+
+    __tablename__ = "warehouses"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    company_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("companies.id", ondelete="CASCADE"), nullable=False
+    )
+    branch_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("branches.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    # The one stock goes to when nobody picks (a milling batch, a purchase by
+    # someone who can't choose): the branch's first.
+    is_default: Mapped[bool] = mapped_column(default=False, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc, nullable=False)
+
+
 class WarehouseLayout(Base, TimestampMixin):
     """Spatial layout for a branch warehouse. A branch can have multiple layouts."""
 

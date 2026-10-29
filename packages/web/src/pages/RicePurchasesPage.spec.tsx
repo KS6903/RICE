@@ -9,6 +9,7 @@ import { useAuthStore } from "../stores/authStore";
 import { paddyService } from "../services/PaddyService";
 import { buyingService } from "../services/BuyingService";
 import { inventoryService } from "../services/InventoryService";
+import { warehousesService } from "../services/WarehousesService";
 import { chooseOption } from "../test/pickers";
 
 configure({ asyncUtilTimeout: 5000 });
@@ -22,6 +23,11 @@ const owner: User = {
   branch_id: "b1",
 };
 const encoder: User = { ...owner, id: "u2", username: "mill1.encoder", role: "encoder" };
+
+const warehouseRows = [
+  { id: "w1", branch_id: "b1", name: "Warehouse 1 - Main Branch", is_default: true },
+  { id: "w2", branch_id: "b2", name: "Warehouse 1 - 2nd Branch", is_default: true },
+];
 
 const draw = (page: React.ReactNode) =>
   render(
@@ -38,6 +44,7 @@ beforeEach(() => {
     { id: "b1", name: "Main Branch", is_main_branch: true },
     { id: "b2", name: "2nd Branch", is_main_branch: false },
   ]);
+  vi.spyOn(warehousesService, "list").mockResolvedValue(warehouseRows);
   vi.spyOn(buyingService, "listRicePurchases").mockResolvedValue([]);
   vi.spyOn(buyingService, "listRiceStock").mockResolvedValue([]);
   vi.spyOn(buyingService, "listByproductPurchases").mockResolvedValue([]);
@@ -50,7 +57,7 @@ afterEach(() => {
 });
 
 describe("Rice (Bigas) page", () => {
-  it("records sacks of rice into the warehouse the owner picks, showing the total", async () => {
+  it("records sacks of rice into the branch the owner picks, showing the total", async () => {
     const create = vi.spyOn(buyingService, "createRicePurchase").mockResolvedValue({ id: "p1" });
     useAuthStore.setState({ user: owner });
     draw(<RicePurchasesPage />);
@@ -61,7 +68,7 @@ describe("Rice (Bigas) page", () => {
     expect(screen.queryByPlaceholderText("Moisture %")).toBeNull();
 
     await chooseOption("Variety", "RC222");
-    await chooseOption("Store in warehouse", "2nd Branch");
+    await chooseOption("Branch", "2nd Branch");
     fireEvent.change(screen.getByPlaceholderText("Sacks"), { target: { value: "20" } });
     fireEvent.change(screen.getByPlaceholderText("₱/sack"), { target: { value: "2400" } });
     expect(screen.getByTestId("rice-total")).toHaveTextContent("1,000 kg");
@@ -71,12 +78,13 @@ describe("Rice (Bigas) page", () => {
     await waitFor(() => expect(create).toHaveBeenCalled());
     expect(create.mock.calls[0][0]).toMatchObject({
       branch_id: "b2",
+      warehouse_id: null, // its only warehouse: nothing to ask
       delivery_type: "delivered",
       items: [{ variety_id: "v1", grade_name: "Graded Rice", sack_count: "20", kg_per_sack: "50" }],
     });
   });
 
-  it("shows rice in stock, naming the warehouse once there are several", async () => {
+  it("shows rice in stock, naming the branch once there are several", async () => {
     vi.mocked(buyingService.listRiceStock).mockResolvedValue([
       {
         id: "s1",
@@ -99,16 +107,79 @@ describe("Rice (Bigas) page", () => {
     draw(<RicePurchasesPage />);
     const stock = screen.getByTestId("rice-stock-index");
     expect(
-      await within(stock).findByRole("columnheader", { name: "Warehouse" }),
+      await within(stock).findByRole("columnheader", { name: "Branch" }),
     ).toBeInTheDocument();
+    // One warehouse in each branch says nothing the branch doesn't.
+    expect(within(stock).queryByRole("columnheader", { name: "Warehouse" })).toBeNull();
     expect(within(stock).getAllByText("Graded Rice")).toHaveLength(2);
   });
 
-  it("doesn't offer an encoder the warehouse choice", async () => {
+  it("names the warehouse too once a branch's rice sits in more than one", async () => {
+    vi.mocked(buyingService.listRiceStock).mockResolvedValue([
+      {
+        id: "s1",
+        branch_id: "b1",
+        warehouse_id: "w1",
+        branch: { name: "Main Branch" },
+        warehouse: { name: "Warehouse 1 - Main Branch" },
+        variety: { code: "RC222" },
+        grade_name: "Graded Rice",
+        quantity_kg: 1000,
+      },
+      {
+        id: "s2",
+        branch_id: "b1",
+        warehouse_id: "w3",
+        branch: { name: "Main Branch" },
+        warehouse: { name: "Warehouse 2 - Main Branch" },
+        variety: { code: "RC222" },
+        grade_name: "Graded Rice",
+        quantity_kg: 500,
+      },
+    ]);
+    useAuthStore.setState({ user: owner });
+    draw(<RicePurchasesPage />);
+    const stock = screen.getByTestId("rice-stock-index");
+    expect(
+      await within(stock).findByRole("columnheader", { name: "Warehouse" }),
+    ).toBeInTheDocument();
+    expect(within(stock).getByText("Warehouse 2 - Main Branch")).toBeInTheDocument();
+  });
+
+  it("asks which warehouse once the chosen branch has more than one", async () => {
+    vi.mocked(warehousesService.list).mockResolvedValue([
+      ...warehouseRows,
+      { id: "w3", branch_id: "b1", name: "Warehouse 2 - Main Branch", is_default: false },
+    ]);
+    const create = vi.spyOn(buyingService, "createRicePurchase").mockResolvedValue({ id: "p1" });
+    useAuthStore.setState({ user: owner });
+    draw(<RicePurchasesPage />);
+    fireEvent.click(screen.getByRole("button", { name: /New Purchase/ }));
+
+    await chooseOption("Variety", "RC222");
+    // The branch's first is already picked.
+    await waitFor(() =>
+      expect(screen.getByLabelText("Store in warehouse")).toHaveTextContent(
+        "Warehouse 1 - Main Branch",
+      ),
+    );
+    await chooseOption("Store in warehouse", "Warehouse 2 - Main Branch");
+    fireEvent.change(screen.getByPlaceholderText("Sacks"), { target: { value: "20" } });
+    fireEvent.change(screen.getByPlaceholderText("₱/sack"), { target: { value: "2400" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save Purchase" }));
+
+    await waitFor(() => expect(create).toHaveBeenCalled());
+    expect(create.mock.calls[0][0]).toMatchObject({ branch_id: "b1", warehouse_id: "w3" });
+    // Another branch has just the one, so there it isn't asked.
+    await chooseOption("Branch", "2nd Branch");
+    expect(screen.queryByLabelText("Store in warehouse")).toBeNull();
+  });
+
+  it("doesn't offer an encoder the branch choice", async () => {
     useAuthStore.setState({ user: encoder });
     draw(<RicePurchasesPage />);
     fireEvent.click(screen.getByRole("button", { name: /New Purchase/ }));
-    expect(screen.queryByLabelText("Store in warehouse")).toBeNull();
+    expect(screen.queryByLabelText("Branch")).toBeNull();
   });
 });
 

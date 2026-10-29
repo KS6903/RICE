@@ -97,19 +97,28 @@ class PalayPurchaseRepository(BaseRepository[PalayPurchase]):
 class PalayInventoryRepository(BaseRepository[PalayInventory]):
     model = PalayInventory
 
-    def list_with_stock(self, company_id: uuid.UUID, *, branch_id: uuid.UUID | None = None) -> Sequence[PalayInventory]:
+    def list_with_stock(
+        self, company_id: uuid.UUID, *, branch_id: uuid.UUID | None = None, warehouse_id: uuid.UUID | None = None
+    ) -> Sequence[PalayInventory]:
         stmt = select(PalayInventory).where(PalayInventory.company_id == company_id, PalayInventory.quantity_kg > 0)
         branch_id = branch_id or viewed_branch(self.db)
         if branch_id:
             stmt = stmt.where(PalayInventory.branch_id == branch_id)
+        if warehouse_id:
+            stmt = stmt.where(PalayInventory.warehouse_id == warehouse_id)
         return self.db.execute(stmt).scalars().all()
 
-    def find_bucket(self, company_id: uuid.UUID, branch_id, variety_id, grade_id) -> PalayInventory | None:
-        """The single stock row for a (company, branch, variety, grade) tuple."""
+    def find_bucket(
+        self, company_id: uuid.UUID, branch_id, variety_id, grade_id, warehouse_id=None
+    ) -> PalayInventory | None:
+        """The single stock row for a (company, branch, warehouse, variety, grade)
+        tuple; with no warehouse named, the first row of the branch's."""
         stmt = select(PalayInventory).where(
             PalayInventory.company_id == company_id,
             PalayInventory.branch_id == branch_id,
             PalayInventory.variety_id == variety_id,
             PalayInventory.grade_id == grade_id,
         )
+        if warehouse_id is not None:
+            stmt = stmt.where(PalayInventory.warehouse_id == warehouse_id)
         return self.db.execute(stmt).scalars().first()

@@ -199,9 +199,10 @@ def record_drying(
 @router.get("/inventory")
 def get_palay_inventory(
     branch_id: uuid.UUID | None = Query(None),
+    warehouse_id: uuid.UUID | None = Query(None),
     svc: PaddyService = Depends(get_paddy_service),
 ):
-    return svc.get_palay_inventory(branch_id=branch_id)
+    return svc.get_palay_inventory(branch_id=branch_id, warehouse_id=warehouse_id)
 
 
 @router.get("/stock-view")

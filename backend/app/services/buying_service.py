@@ -26,8 +26,9 @@ from ..models.supplier_customer import Supplier
 from ..repositories.inventory import ByproductInventoryRepository, MilledRiceInventoryRepository
 from ..services.base import BaseService
 from ..services.byproduct_kind_service import ByproductKindService, byproduct_name
-from ..services.paddy_service import PURCHASE_FIELDS, purchase_state, purchase_warehouse
+from ..services.paddy_service import PURCHASE_FIELDS, purchase_place, purchase_state
 from ..services.record_changes import changed_fields, log_changes, show
+from ..services.warehouses import default_warehouse_id
 
 Purchase = RicePurchase | ByproductPurchase
 
@@ -66,6 +67,7 @@ class BuyingService(BaseService):
         data = {c.name: getattr(p, c.name) for c in p.__table__.columns}
         data["supplier"] = {"id": p.supplier.id, "name": p.supplier.name} if p.supplier else None
         data["branch"] = {"id": str(p.branch.id), "name": p.branch.name} if p.branch else None
+        data["warehouse"] = {"id": str(p.warehouse.id), "name": p.warehouse.name} if p.warehouse else None
         data["item_count"] = len(p.items)
         data["items"] = [self._line(i) for i in p.items]
         data["total_kg"] = float(sum((i.weight_kg for i in p.items), Decimal("0")))
@@ -102,10 +104,11 @@ class BuyingService(BaseService):
         today = datetime.now(timezone.utc).strftime("%Y%m%d")
         return f"{prefix}-{today}-{self.db.query(model).count() + 1:04d}"
 
-    def _header(self, model: type[Purchase], prefix: str, data, branch_id) -> Any:
+    def _header(self, model: type[Purchase], prefix: str, data, branch_id, warehouse_id) -> Any:
         purchase = model(
             company_id=self.current_user.company_id,
             branch_id=branch_id,
+            warehouse_id=warehouse_id,
             reference_no=self._reference_no(model, prefix),
             supplier_id=data.supplier_id,
             purchase_date=data.purchase_date,
@@ -128,13 +131,13 @@ class BuyingService(BaseService):
         self.assert_company_fk(Supplier, data.supplier_id, label="Supplier")
         for line in data.items:
             self.assert_company_fk(RiceVariety, line.variety_id, label="Variety", allow_shared=True)
-        branch_id = purchase_warehouse(self.db, self.current_user, data.branch_id)
+        branch_id, warehouse_id = purchase_place(self.db, self.current_user, data.branch_id, data.warehouse_id)
         with self.transaction():
-            purchase = self._header(RicePurchase, "RP", data, branch_id)
+            purchase = self._header(RicePurchase, "RP", data, branch_id, warehouse_id)
             for line in data.items:
                 item = RicePurchaseItem(purchase_id=purchase.id, **line.model_dump())
                 self.db.add(item)
-                self._move_rice(item, branch_id, 1)
+                self._move_rice(item, branch_id, warehouse_id, 1)
         self.db.refresh(purchase)
         return self.serialize(purchase)
 
@@ -146,14 +149,19 @@ class BuyingService(BaseService):
             self.assert_company_fk(RiceVariety, line.variety_id, label="Variety", allow_shared=True)
         return self._edit(p, data, RicePurchaseItem, self._move_rice, _rice_line, "rice_purchase")
 
-    def _move_rice(self, item: RicePurchaseItem, branch_id: uuid.UUID | None, sign: int) -> None:
-        """Put a rice line's kilos into milled-rice stock (sign 1), or take them out (-1)."""
+    def _move_rice(
+        self, item: RicePurchaseItem, branch_id: uuid.UUID | None, warehouse_id: uuid.UUID | None, sign: int
+    ) -> None:
+        """Put a rice line's kilos into its warehouse's milled-rice stock (sign 1), or
+        take them out (-1)."""
         company_id = self.current_user.company_id
-        stock = self.milled.find_bucket(company_id, branch_id, item.variety_id, item.grade_name)
+        warehouse_id = warehouse_id or default_warehouse_id(self.db, branch_id)
+        stock = self.milled.find_bucket(company_id, branch_id, item.variety_id, item.grade_name, warehouse_id)
         if stock is None:
             stock = MilledRiceInventory(
                 company_id=company_id,
                 branch_id=branch_id,
+                warehouse_id=warehouse_id,
                 variety_id=item.variety_id,
                 grade_name=item.grade_name,
                 quantity_kg=Decimal("0"),
@@ -170,13 +178,13 @@ class BuyingService(BaseService):
     def create_byproduct_purchase(self, data) -> dict:
         """Record a by-product purchase and add its weight to by-product stock — atomically."""
         self.assert_company_fk(Supplier, data.supplier_id, label="Supplier")
-        branch_id = purchase_warehouse(self.db, self.current_user, data.branch_id)
+        branch_id, warehouse_id = purchase_place(self.db, self.current_user, data.branch_id, data.warehouse_id)
         with self.transaction():
-            purchase = self._header(ByproductPurchase, "BP", data, branch_id)
+            purchase = self._header(ByproductPurchase, "BP", data, branch_id, warehouse_id)
             for line in data.items:
                 item = ByproductPurchaseItem(purchase_id=purchase.id, **line.model_dump())
                 self.db.add(item)
-                self._move_byproduct(item, branch_id, 1)
+                self._move_byproduct(item, branch_id, warehouse_id, 1)
         self.db.refresh(purchase)
         return self.serialize(purchase)
 
@@ -186,17 +194,21 @@ class BuyingService(BaseService):
         p = self._own(ByproductPurchase, purchase_id)
         return self._edit(p, data, ByproductPurchaseItem, self._move_byproduct, _byproduct_line, "byproduct_purchase")
 
-    def _move_byproduct(self, item: ByproductPurchaseItem, branch_id: uuid.UUID | None, sign: int) -> None:
-        """Put a by-product line's kilos into stock (sign 1), or take them out
-        (-1). A by-product new to the mill joins its list."""
+    def _move_byproduct(
+        self, item: ByproductPurchaseItem, branch_id: uuid.UUID | None, warehouse_id: uuid.UUID | None, sign: int
+    ) -> None:
+        """Put a by-product line's kilos into its warehouse's stock (sign 1), or take
+        them out (-1). A by-product new to the mill joins its list."""
         company_id = self.current_user.company_id
         if sign > 0:
             ByproductKindService(self.db, self.current_user).ensure(item.byproduct_type)
-        stock = self.byproducts.find_bucket(company_id, branch_id, item.byproduct_type)
+        warehouse_id = warehouse_id or default_warehouse_id(self.db, branch_id)
+        stock = self.byproducts.find_bucket(company_id, branch_id, item.byproduct_type, warehouse_id)
         if stock is None:
             stock = ByproductInventory(
                 company_id=company_id,
                 branch_id=branch_id,
+                warehouse_id=warehouse_id,
                 byproduct_type=item.byproduct_type,
                 quantity_kg=Decimal("0"),
             )
@@ -226,12 +238,12 @@ class BuyingService(BaseService):
                 setattr(p, field, val)
             if data.items is not None:
                 for old in list(p.items):
-                    move(old, p.branch_id, -1)
+                    move(old, p.branch_id, p.warehouse_id, -1)
                     p.items.remove(old)
                 for line in data.items:
                     item = item_model(purchase_id=p.id, **line.model_dump())
                     self.db.add(item)
-                    move(item, p.branch_id, 1)
+                    move(item, p.branch_id, p.warehouse_id, 1)
             self.db.flush()
             self.db.expire(p)
             log_changes(

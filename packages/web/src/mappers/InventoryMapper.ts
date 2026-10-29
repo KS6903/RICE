@@ -12,6 +12,8 @@ export type UnifiedItem = {
   typeLabel: string;
   variety: string;
   grade: string;
+  /** The warehouse the stock sits in (its id and name; the field names are older
+   *  than warehouses). */
   branchId: string | null;
   branchName: string;
   quantity_kg: number;
@@ -43,6 +45,13 @@ const BAR_COLOR: Record<UnifiedItem["type"], string> = {
 
 const branchName = (row: { branch?: { name?: string } | null }): string =>
   row.branch?.name || t("Unassigned");
+
+/** Where a stock row sits: its warehouse (id and name), or, for stock from before
+ *  warehouses, its branch. The item's `branchId` / `branchName` carry this place. */
+const placeId = (row: { warehouse_id?: string | null; branch_id?: string | null }) =>
+  row.warehouse_id ?? row.branch_id ?? null;
+const placeName = (row: { warehouse?: { name?: string } | null; branch?: { name?: string } | null }) =>
+  row.warehouse?.name || branchName(row);
 
 // The order a flat list shows the three kinds in.
 const TYPE_ORDER: Record<UnifiedItem["type"], number> = { palay: 0, milled: 1, byproduct: 2 };
@@ -182,8 +191,8 @@ export class InventoryMapper {
         typeLabel: "Palay (Paddy)",
         variety: p.variety?.code || "—",
         grade: p.grade?.code || "—",
-        branchId: p.branch_id,
-        branchName: branchName(p),
+        branchId: placeId(p),
+        branchName: placeName(p),
         quantity_kg: Number(p.quantity_kg),
         color: BAR_COLOR.palay,
       });
@@ -195,8 +204,8 @@ export class InventoryMapper {
         typeLabel: "Milled Rice (Bigas)",
         variety: m.variety?.code || "—",
         grade: m.grade_name || "—",
-        branchId: m.branch_id,
-        branchName: branchName(m),
+        branchId: placeId(m),
+        branchName: placeName(m),
         quantity_kg: Number(m.quantity_kg),
         color: BAR_COLOR.milled,
       });
@@ -208,8 +217,8 @@ export class InventoryMapper {
         typeLabel: "By-product",
         variety: label(b.byproduct_type),
         grade: "—",
-        branchId: b.branch_id,
-        branchName: branchName(b),
+        branchId: placeId(b),
+        branchName: placeName(b),
         quantity_kg: Number(b.quantity_kg),
         color: BAR_COLOR.byproduct,
       });

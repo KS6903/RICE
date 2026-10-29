@@ -23,7 +23,9 @@ import SaleColumn from "../components/buying/SaleColumn";
 import WetDryChoice from "../components/buying/WetDryChoice";
 import {
   PurchaseWarehouseField,
+  inSeveralBranches,
   inSeveralWarehouses,
+  purchaseGridClass,
   usePurchaseWarehouse,
 } from "../components/PurchaseWarehouse";
 import { varietyOptions } from "../utils/varieties";
@@ -81,9 +83,12 @@ export default function PaddyPage() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ["palay-stock-view"] }),
   });
 
-  // Which warehouse the palay goes into (owner/admin pick; others: their own).
+  // Which branch and warehouse the palay goes into (owner/admin pick the branch;
+  // others: their own).
   const warehouse = usePurchaseWarehouse();
-  // The stock table names the warehouse once stock sits in more than one.
+  // The stock table names the branch once stock sits in more than one, and the
+  // warehouse once a branch's stock sits in more than one.
+  const stockInSeveralBranches = inSeveralBranches(inventory);
   const stockInSeveralWarehouses = inSeveralWarehouses(inventory);
 
   const [form, setForm] = useState({
@@ -95,7 +100,11 @@ export default function PaddyPage() {
 
   const createMutation = useMutation({
     mutationFn: (body: typeof form) =>
-      paddyService.createPurchase({ ...body, branch_id: warehouse.branchId }),
+      paddyService.createPurchase({
+        ...body,
+        branch_id: warehouse.branchId,
+        warehouse_id: warehouse.warehouseId,
+      }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["palay-purchases"] });
       qc.invalidateQueries({ queryKey: ["palay-inventory"] });
@@ -159,7 +168,8 @@ export default function PaddyPage() {
       : [stockView];
   const unitClass = (u: Unit) =>
     stockView === "all" && u !== "sacks" ? "hidden sm:table-cell" : "";
-  const stockColumns = 2 + (stockInSeveralWarehouses ? 1 : 0) + shownUnits.length;
+  const stockColumns =
+    2 + Number(stockInSeveralBranches) + Number(stockInSeveralWarehouses) + shownUnits.length;
   const viewOptions: { value: StockView; label: string }[] = [
     { value: "all", label: t("All") },
     { value: "sacks", label: t("Sacks") },
@@ -190,7 +200,7 @@ export default function PaddyPage() {
       >
         <div className="space-y-4">
           <div
-            className={`grid grid-cols-1 sm:grid-cols-2 gap-4 ${warehouse.show ? "lg:grid-cols-3" : ""}`}
+            className={`grid grid-cols-1 sm:grid-cols-2 gap-4 ${purchaseGridClass(warehouse.fields)}`}
           >
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-slate-200 mb-1">
@@ -481,6 +491,9 @@ export default function PaddyPage() {
                 {[
                   { key: "variety", label: t("Variety"), cls: "" },
                   { key: "grade", label: t("Grade"), cls: "" },
+                  ...(stockInSeveralBranches
+                    ? [{ key: "branch", label: t("Branch"), cls: "" }]
+                    : []),
                   ...(stockInSeveralWarehouses
                     ? [{ key: "warehouse", label: t("Warehouse"), cls: "" }]
                     : []),
@@ -513,8 +526,11 @@ export default function PaddyPage() {
                     )}
                   </td>
                   <td className="px-4 py-3">{i.grade?.code || "—"}</td>
-                  {stockInSeveralWarehouses && (
+                  {stockInSeveralBranches && (
                     <td className="px-4 py-3">{i.branch?.name || t("Unassigned")}</td>
+                  )}
+                  {stockInSeveralWarehouses && (
+                    <td className="px-4 py-3">{i.warehouse?.name || "—"}</td>
                   )}
                   {shownUnits.map((u, n) => (
                     <td

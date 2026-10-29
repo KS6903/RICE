@@ -98,6 +98,9 @@ class MilledRiceInventory(Base):
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     company_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("companies.id"))
     branch_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("branches.id"))
+    warehouse_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("warehouses.id", ondelete="SET NULL")
+    )
     variety_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("rice_varieties.id"))
     grade_name: Mapped[str | None] = mapped_column(String(30))  # Graded Rice, Straight Mill Rice, Broken Rice, ...
     quantity_kg: Mapped[Decimal] = mapped_column(Numeric(12, 3), default=0)
@@ -111,5 +114,8 @@ class ByproductInventory(Base):
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     company_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("companies.id"))
     branch_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("branches.id"))
+    warehouse_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("warehouses.id", ondelete="SET NULL")
+    )
     byproduct_type: Mapped[str] = mapped_column(String(20), nullable=False)  # ipa, darak, binlid
     quantity_kg: Mapped[Decimal] = mapped_column(Numeric(12, 3), default=0)

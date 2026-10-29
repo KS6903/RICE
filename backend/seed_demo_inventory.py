@@ -16,6 +16,7 @@ from app.models.milling import ByproductInventory, MilledRiceInventory
 from app.models.paddy import PalayInventory
 from app.models.reference import QualityGrade, RiceVariety
 from app.models.user import User
+from app.services.warehouses import default_warehouse_id
 
 
 def seed(db, username: str) -> str:
@@ -44,6 +45,7 @@ def seed(db, username: str) -> str:
         return f"{username}: needs varieties and grades (run seed.py first) — skipped"
 
     created = 0
+    warehouse_id = default_warehouse_id(db, branch.id)  # the branch's first warehouse
 
     # Palay rows
     for i, v in enumerate(varieties):
@@ -51,6 +53,7 @@ def seed(db, username: str) -> str:
             PalayInventory(
                 company_id=branch.company_id,
                 branch_id=branch.id,
+                warehouse_id=warehouse_id,
                 variety_id=v.id,
                 grade_id=grades[i % len(grades)].id,
                 quantity_kg=Decimal("2500.0") - Decimal(str(i * 300)),
@@ -64,6 +67,7 @@ def seed(db, username: str) -> str:
             MilledRiceInventory(
                 company_id=branch.company_id,
                 branch_id=branch.id,
+                warehouse_id=warehouse_id,
                 variety_id=v.id,
                 grade_name=["Graded Rice", "Straight Mill Rice", "Broken Rice"][i % 3],
                 quantity_kg=Decimal("1750.0") - Decimal(str(i * 200)),
@@ -77,6 +81,7 @@ def seed(db, username: str) -> str:
             ByproductInventory(
                 company_id=branch.company_id,
                 branch_id=branch.id,
+                warehouse_id=warehouse_id,
                 byproduct_type=kind,
                 quantity_kg=Decimal(kg),
             )

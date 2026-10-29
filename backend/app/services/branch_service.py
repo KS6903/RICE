@@ -23,6 +23,7 @@ from ..models.user import Role, User
 from ..repositories.branches import BranchRepository
 from ..services.activity import TRASH_RETENTION_DAYS, log_activity, purge_expired_branches
 from ..services.base import BaseService
+from ..services.warehouses import ensure_default_warehouse, rename_branch_warehouses
 
 
 class BranchService(BaseService):
@@ -102,18 +103,20 @@ class BranchService(BaseService):
         features = get_user_features(self.current_user, self.db)
         if existing_count >= 1 and "multi_branch" not in features:
             raise FeatureRequiredError(
-                "Your plan includes one warehouse. Please upgrade to add more.",
+                "Your plan includes one branch. Please upgrade to add more.",
                 code="multi_branch",
             )
         sub = self.db.query(Subscription).filter(Subscription.company_id == company_id).first()
         if sub and sub.plan and sub.plan.max_branches is not None and existing_count >= sub.plan.max_branches:
             raise FeatureRequiredError(
-                f"Your plan allows up to {sub.plan.max_branches} warehouses. Please upgrade for more.",
+                f"Your plan allows up to {sub.plan.max_branches} branches. Please upgrade for more.",
                 code="branch_limit",
             )
         branch = Branch(company_id=company_id, **data.model_dump())
         with self.transaction():
             self.branches.add(branch)
+            # Every branch starts with one warehouse, "Warehouse 1 - <branch name>".
+            ensure_default_warehouse(self.db, branch)
         self.db.refresh(branch)
         return branch
 
@@ -121,9 +124,12 @@ class BranchService(BaseService):
         branch = self.branches.get_for_company(branch_id, self.current_user.company_id, include_deleted=True)
         if not branch:
             raise NotFoundError("Branch not found")
+        old_name = branch.name
         with self.transaction():
             for field, val in data.model_dump(exclude_none=True).items():
                 setattr(branch, field, val)
+            if branch.name != old_name:
+                rename_branch_warehouses(self.db, branch, old_name)
         self.db.refresh(branch)
         return branch
 
@@ -144,10 +150,10 @@ class BranchService(BaseService):
                     skipped.append({"id": str(bid), "reason": "Not found or already trashed."})
                     continue
                 if branch.is_main_branch:
-                    skipped.append({"id": str(bid), "reason": "The main warehouse can't be deleted."})
+                    skipped.append({"id": str(bid), "reason": "The main branch can't be deleted."})
                     continue
                 if live_count - len(deleted) <= 1:
-                    skipped.append({"id": str(bid), "reason": "You must keep at least one warehouse."})
+                    skipped.append({"id": str(bid), "reason": "You must keep at least one branch."})
                     continue
                 branch.deleted_at = now_utc()
                 branch.deleted_by = self.current_user.id
@@ -199,7 +205,7 @@ class BranchService(BaseService):
         if not branch:
             raise NotFoundError("Branch not found")
         if branch.deleted_at is None:
-            raise ConflictError("This warehouse is not in the trash.")
+            raise ConflictError("This branch is not in the trash.")
         with self.transaction():
             branch.deleted_at = None
             branch.deleted_by = None

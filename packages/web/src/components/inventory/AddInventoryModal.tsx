@@ -5,6 +5,7 @@ import { Wheat, Package, Boxes, X as XIcon, Plus, Check } from "lucide-react";
 import { paddyService } from "../../services/PaddyService";
 import { branchesService } from "../../services/BranchesService";
 import { inventoryService } from "../../services/InventoryService";
+import { warehousesService } from "../../services/WarehousesService";
 import { allUnits, saveCustomUnit, type QuantityUnit, slugify } from "./inventoryExtras";
 import Select from "../Select";
 import { MILLED_GRADES } from "../../mappers/InventoryMapper";
@@ -167,6 +168,16 @@ export default function AddInventoryModal({
 
   const [type, setType] = useState<StockType>("palay");
   const [branchId, setBranchId] = useState<string>(defaultBranchId || branchesProp[0]?.id || "");
+  // The branch's warehouses; one with several asks which, otherwise the stock goes in its only one.
+  const { data: allWarehouses = [] } = useQuery({
+    queryKey: ["warehouses"],
+    queryFn: () => warehousesService.list(),
+  });
+  const branchWarehouses = allWarehouses.filter((w) => w.branch_id === branchId);
+  const [pickedWarehouse, setPickedWarehouse] = useState<string>("");
+  const warehouseId = branchWarehouses.some((w) => w.id === pickedWarehouse)
+    ? pickedWarehouse
+    : (branchWarehouses.find((w) => w.is_default) ?? branchWarehouses[0])?.id ?? "";
   const [varietyId, setVarietyId] = useState<string>("");
   const [gradeId, setGradeId] = useState<string>("");
   const [gradeName, setGradeName] = useState<string>("Graded Rice");
@@ -245,6 +256,7 @@ export default function AddInventoryModal({
       const body: Record<string, unknown> = {
         quantity_kg: kg,
         branch_id: branchId || null,
+        warehouse_id: branchWarehouses.length > 1 ? warehouseId || null : null,
       };
       if (type === "palay") {
         body.inventory_type = "palay";
@@ -353,19 +365,37 @@ export default function AddInventoryModal({
             </div>
           </div>
 
-          {/* Warehouse — with inline create */}
+          {/* Branch — with inline create */}
           <InlineCreateSelect
-            label={t("Warehouse")}
+            label={t("Branch")}
             value={branchId}
-            onChange={setBranchId}
+            onChange={(id) => {
+              setBranchId(id);
+              setPickedWarehouse("");
+            }}
             placeholder={t("Unassigned")}
-            newPlaceholder={t("New warehouse name…")}
+            newPlaceholder={t("New branch name…")}
             options={branches.map((b: any) => ({
               value: b.id,
               label: `${b.name}${b.is_main_branch ? t(" (Main)") : ""}`,
             }))}
             onCreate={createBranch}
           />
+
+          {/* Warehouse — only a branch with several asks */}
+          {branchWarehouses.length > 1 && (
+            <div>
+              <label className="block text-sm font-medium text-secondary mb-1.5">
+                {t("Warehouse")}
+              </label>
+              <Select
+                aria-label={t("Warehouse")}
+                value={warehouseId}
+                onChange={setPickedWarehouse}
+                options={branchWarehouses.map((w) => ({ value: w.id, label: w.name }))}
+              />
+            </div>
+          )}
 
           {/* Variety — palay + milled, with inline create */}
           {needsVariety && (

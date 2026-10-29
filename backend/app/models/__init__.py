@@ -35,7 +35,7 @@ from .sync import SyncConflict, SyncLog
 from .upgrade_request import UpgradeRequest
 from .user import CompanyRole, Role, User
 from .user_location import UserLocation
-from .warehouse import Pallet, PalletMovement, RiceBatch, WarehouseLayout, WarehouseZone
+from .warehouse import Pallet, PalletMovement, RiceBatch, Warehouse, WarehouseLayout, WarehouseZone
 
 __all__ = [
     "ActionItem",
@@ -96,6 +96,7 @@ __all__ = [
     "SubscriptionPlan",
     "Subscription",
     "UpgradeRequest",
+    "Warehouse",
     "WarehouseLayout",
     "WarehouseZone",
     "Pallet",
