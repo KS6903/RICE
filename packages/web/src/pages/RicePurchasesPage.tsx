@@ -323,10 +323,7 @@ export default function RicePurchasesPage() {
               ) : (
                 stock.length === 0 && (
                   <tr>
-                    <td
-                      colSpan={4 + placeColumns}
-                      className="px-4 py-8 text-center text-muted"
-                    >
+                    <td colSpan={4 + placeColumns} className="px-4 py-8 text-center text-muted">
                       {t(
                         "No rice in stock. Purchases you record and rice you mill show up here by variety and grade.",
                       )}

@@ -177,7 +177,7 @@ export default function AddInventoryModal({
   const [pickedWarehouse, setPickedWarehouse] = useState<string>("");
   const warehouseId = branchWarehouses.some((w) => w.id === pickedWarehouse)
     ? pickedWarehouse
-    : (branchWarehouses.find((w) => w.is_default) ?? branchWarehouses[0])?.id ?? "";
+    : ((branchWarehouses.find((w) => w.is_default) ?? branchWarehouses[0])?.id ?? "");
   const [varietyId, setVarietyId] = useState<string>("");
   const [gradeId, setGradeId] = useState<string>("");
   const [gradeName, setGradeName] = useState<string>("Graded Rice");

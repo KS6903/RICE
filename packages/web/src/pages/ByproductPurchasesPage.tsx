@@ -275,10 +275,7 @@ export default function ByproductPurchasesPage() {
               ) : (
                 stock.length === 0 && (
                   <tr>
-                    <td
-                      colSpan={2 + placeColumns}
-                      className="px-4 py-8 text-center text-muted"
-                    >
+                    <td colSpan={2 + placeColumns} className="px-4 py-8 text-center text-muted">
                       {t(
                         "No by-products in stock. What you buy and what milling leaves over show up here.",
                       )}

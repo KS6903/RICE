@@ -1039,9 +1039,7 @@ function BranchesTab() {
                       aria-label={t("Select {{name}}", { name: b.name })}
                       className="h-4 w-4 rounded border-soft accent-rose-500 cursor-pointer disabled:opacity-30"
                       disabled={readOnly || b.is_main_branch}
-                      title={
-                        b.is_main_branch ? t("The main branch can't be deleted") : undefined
-                      }
+                      title={b.is_main_branch ? t("The main branch can't be deleted") : undefined}
                       checked={selected.has(b.id)}
                       onChange={() => toggle(b.id)}
                     />

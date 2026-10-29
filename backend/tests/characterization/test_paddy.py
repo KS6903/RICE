@@ -434,6 +434,8 @@ def test_get_paddy_inventory_serialized_shape(auth_client):
         "id",
         "branch_id",
         "branch",
+        "warehouse_id",
+        "warehouse",
         "variety",
         "grade",
         "quantity_kg",

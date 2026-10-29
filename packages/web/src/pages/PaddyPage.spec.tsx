@@ -138,9 +138,7 @@ describe("PaddyPage: which branch and warehouse a new purchase is stored in", ()
     draw();
 
     const stock = screen.getByTestId("palay-stock-index");
-    expect(
-      await within(stock).findByRole("columnheader", { name: "Branch" }),
-    ).toBeInTheDocument();
+    expect(await within(stock).findByRole("columnheader", { name: "Branch" })).toBeInTheDocument();
     expect(within(stock).queryByRole("columnheader", { name: "Warehouse" })).toBeNull();
     expect(within(stock).getByText("2nd Branch")).toBeInTheDocument();
   });

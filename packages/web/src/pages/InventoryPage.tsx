@@ -33,7 +33,10 @@ import {
 } from "../components/inventory/locationShades";
 import { useAuthStore } from "../stores/authStore";
 import { inventoryService } from "../services/InventoryService";
-import { warehousesService, type Warehouse as StorageWarehouse } from "../services/WarehousesService";
+import {
+  warehousesService,
+  type Warehouse as StorageWarehouse,
+} from "../services/WarehousesService";
 import { byproductLabel } from "../mappers/byproductNames";
 import { useByproductKinds } from "../hooks/useByproductKinds";
 import {
@@ -146,7 +149,8 @@ export default function InventoryPage() {
       warehouses.map((w) => ({
         id: w.id,
         name: w.name,
-        is_main_branch: w.is_default && !!branches.find((b) => b.id === w.branch_id)?.is_main_branch,
+        is_main_branch:
+          w.is_default && !!branches.find((b) => b.id === w.branch_id)?.is_main_branch,
       })),
     [warehouses, branches],
   );

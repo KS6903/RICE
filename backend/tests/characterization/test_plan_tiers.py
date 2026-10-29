@@ -125,7 +125,7 @@ def test_warehouses_per_plan():
 
 
 def test_a_warehouse_past_the_limit_is_refused(auth_client, db_session, seed_owner):
-    """Each warehouse is a branch. Basic's three: the main one and two more."""
+    """Basic's three branches: the main one and two more."""
     plan = db_session.query(Subscription).filter(Subscription.company_id == seed_owner.company_id).one().plan
     plan.max_branches = _migration("019_plan_tiers").MAX_WAREHOUSES["basic"]
     plan.features = [*plan.features, "multi_branch"]  # as Basic has
@@ -134,4 +134,4 @@ def test_a_warehouse_past_the_limit_is_refused(auth_client, db_session, seed_own
         assert auth_client.post("/api/branches/", json={"name": f"Warehouse {n}"}).status_code == 201
     refused = auth_client.post("/api/branches/", json={"name": "Warehouse 4"})
     assert refused.status_code == 402
-    assert "up to 3 warehouses" in refused.json()["detail"]
+    assert "up to 3 branches" in refused.json()["detail"]

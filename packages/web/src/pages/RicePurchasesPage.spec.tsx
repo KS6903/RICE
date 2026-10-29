@@ -106,9 +106,7 @@ describe("Rice (Bigas) page", () => {
     useAuthStore.setState({ user: owner });
     draw(<RicePurchasesPage />);
     const stock = screen.getByTestId("rice-stock-index");
-    expect(
-      await within(stock).findByRole("columnheader", { name: "Branch" }),
-    ).toBeInTheDocument();
+    expect(await within(stock).findByRole("columnheader", { name: "Branch" })).toBeInTheDocument();
     // One warehouse in each branch says nothing the branch doesn't.
     expect(within(stock).queryByRole("columnheader", { name: "Warehouse" })).toBeNull();
     expect(within(stock).getAllByText("Graded Rice")).toHaveLength(2);

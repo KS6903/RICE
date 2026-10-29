@@ -21,19 +21,27 @@ export class InventoryService {
   }
 
   getMilledRice(branchId?: string, warehouseId?: string): Promise<any[]> {
-    return this.http.get(`/inventory/milled-rice${placeQuery(branchId, warehouseId)}`).then((r) => r.data);
+    return this.http
+      .get(`/inventory/milled-rice${placeQuery(branchId, warehouseId)}`)
+      .then((r) => r.data);
   }
 
   getByproducts(branchId?: string, warehouseId?: string): Promise<any[]> {
-    return this.http.get(`/inventory/byproducts${placeQuery(branchId, warehouseId)}`).then((r) => r.data);
+    return this.http
+      .get(`/inventory/byproducts${placeQuery(branchId, warehouseId)}`)
+      .then((r) => r.data);
   }
 
   getPalay(branchId?: string, warehouseId?: string): Promise<any[]> {
-    return this.http.get(`/paddy/inventory${placeQuery(branchId, warehouseId)}`).then((r) => r.data);
+    return this.http
+      .get(`/paddy/inventory${placeQuery(branchId, warehouseId)}`)
+      .then((r) => r.data);
   }
 
   getSummary(branchId?: string, warehouseId?: string): Promise<any> {
-    return this.http.get(`/inventory/summary${placeQuery(branchId, warehouseId)}`).then((r) => r.data);
+    return this.http
+      .get(`/inventory/summary${placeQuery(branchId, warehouseId)}`)
+      .then((r) => r.data);
   }
 
   addStock(body: Record<string, unknown>): Promise<any> {

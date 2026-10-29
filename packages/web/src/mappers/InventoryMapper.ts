@@ -50,8 +50,10 @@ const branchName = (row: { branch?: { name?: string } | null }): string =>
  *  warehouses, its branch. The item's `branchId` / `branchName` carry this place. */
 const placeId = (row: { warehouse_id?: string | null; branch_id?: string | null }) =>
   row.warehouse_id ?? row.branch_id ?? null;
-const placeName = (row: { warehouse?: { name?: string } | null; branch?: { name?: string } | null }) =>
-  row.warehouse?.name || branchName(row);
+const placeName = (row: {
+  warehouse?: { name?: string } | null;
+  branch?: { name?: string } | null;
+}) => row.warehouse?.name || branchName(row);
 
 // The order a flat list shows the three kinds in.
 const TYPE_ORDER: Record<UnifiedItem["type"], number> = { palay: 0, milled: 1, byproduct: 2 };
