@@ -23,6 +23,12 @@ interface AuthState {
 
 let logoutPromise: Promise<void> | null = null;
 
+/** The sign-out still telling the server, if there is one. Leaving the page
+ *  before it finishes can cut the request off and leave the session alive. */
+export function pendingLogout(): Promise<void> | null {
+  return logoutPromise;
+}
+
 export const useAuthStore = create<AuthState>()(
   persist(
     (set, get) => ({

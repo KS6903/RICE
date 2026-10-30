@@ -14,6 +14,8 @@ import AccountClosedGate from "./components/AccountClosedGate";
 import PasswordChangeGate from "./components/PasswordChangeGate";
 import EmailVerificationGate from "./components/EmailVerificationGate";
 import LegalAcceptanceGate from "./components/LegalAcceptanceGate";
+import ReloadOnPageChange from "./components/ReloadOnPageChange";
+import ErrorBoundary from "./components/ErrorBoundary";
 import { t } from "./i18n";
 
 const HomePage = lazy(() => import("./pages/HomePage"));
@@ -434,7 +436,10 @@ export default function App() {
     <BrowserRouter>
       <AuthSessionSync />
       <IdleLogout />
-      <AppRoutes />
+      <ReloadOnPageChange />
+      <ErrorBoundary>
+        <AppRoutes />
+      </ErrorBoundary>
     </BrowserRouter>
   );
 }
