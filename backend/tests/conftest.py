@@ -117,6 +117,7 @@ ALL_FEATURES = [
     "field_operators",
     "cash_count",
     "collections",
+    "page_todo",
 ]
 
 

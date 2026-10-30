@@ -26,13 +26,14 @@ export type UnifiedItem = {
 /** One warehouse's share of a combined item. */
 export type ItemLocation = { branchId: string | null; branchName: string; quantity_kg: number };
 
-/** The grades milled rice is stocked under (milling output, Add inventory, rice purchases). */
+/** The grades milled rice is stocked under (milling output, Add inventory, rice
+ *  purchases), A to Z as the pickers show them. */
 export const MILLED_GRADES = [
-  "Graded Rice",
-  "Straight Mill Rice",
   "Broken Rice",
-  "Well-Milled Rice",
+  "Graded Rice",
   "Regular-Milled Rice",
+  "Straight Mill Rice",
+  "Well-Milled Rice",
 ] as const;
 
 // Just the progress-bar color per type (presentation lives in the page; this is

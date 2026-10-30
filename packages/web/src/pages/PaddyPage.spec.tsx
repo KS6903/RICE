@@ -222,7 +222,6 @@ describe("PaddyPage: a purchase line counted in sacks, bought wet or dry", () =>
   it("saves a line with only the sacks and the price: cavans and kilos are optional", async () => {
     open();
     fireEvent.change(await screen.findByLabelText("Sacks"), { target: { value: "20" } });
-    expect(screen.getByRole("button", { name: "Save Purchase" })).toBeDisabled(); // no price yet
     fireEvent.change(screen.getByPlaceholderText("₱/kg"), { target: { value: "24" } });
     fireEvent.click(screen.getByRole("button", { name: "Save Purchase" }));
 
@@ -236,6 +235,50 @@ describe("PaddyPage: a purchase line counted in sacks, bought wet or dry", () =>
     });
   });
 
+  it("says what a line still needs when saving with it missing, and saves nothing", async () => {
+    open();
+    const save = await screen.findByRole("button", { name: "Save Purchase" });
+    expect(screen.queryByTestId("field-error")).toBeNull();
+
+    fireEvent.click(save);
+
+    const notices = screen.getAllByTestId("field-error").map((n) => n.textContent);
+    expect(notices).toEqual(["Enter the sacks, cavans or kilos.", "This field needs an input."]);
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "Some fields still need an input. Fill in the ones marked in red.",
+    );
+    expect(create).not.toHaveBeenCalled();
+
+    // Each notice goes once its field is filled in.
+    fireEvent.change(screen.getByLabelText("Sacks"), { target: { value: "20" } });
+    expect(screen.getAllByTestId("field-error").map((n) => n.textContent)).toEqual([
+      "This field needs an input.",
+    ]);
+    fireEvent.change(screen.getByPlaceholderText("₱/kg"), { target: { value: "24" } });
+    expect(screen.queryByTestId("field-error")).toBeNull();
+    fireEvent.click(save);
+    await waitFor(() => expect(create).toHaveBeenCalled());
+  });
+
+  it("starts the variety and grade on a prompt, and lists the grades A to Z", async () => {
+    vi.spyOn(paddyService, "listGrades").mockResolvedValue([
+      { id: "g3", code: "NFA2" },
+      { id: "g1", code: "A" },
+      { id: "g4", code: "Premium" },
+      { id: "g2", code: "B" },
+    ]);
+    open();
+    expect(await screen.findByLabelText("Grade")).toHaveTextContent("-- Select Grade --");
+    expect(screen.getByLabelText("Variety")).toHaveTextContent("-- Select Variety --");
+
+    await waitFor(() => {
+      if (!screen.queryByRole("listbox")) fireEvent.click(screen.getByLabelText("Grade"));
+      expect(screen.getByRole("option", { name: "Premium" })).toBeInTheDocument();
+    });
+    const options = within(screen.getByRole("listbox")).getAllByRole("option");
+    expect(options.map((o) => o.textContent?.trim())).toEqual(["A", "B", "NFA2", "Premium"]);
+  });
+
   it("takes the price per kilo and works out the price per cavan from it", async () => {
     open();
     const perCavan = await screen.findByLabelText("Price per cavan (₱)");
@@ -246,50 +289,54 @@ describe("PaddyPage: a purchase line counted in sacks, bought wet or dry", () =>
     expect(perCavan).toHaveValue("1,225"); // 50 kg to the cavan
   });
 
-  it("requires the weight and moisture after drying once the line is wet, and no red", async () => {
+  it("saves wet palay as Wet, with nothing asked about its drying, and no red", async () => {
     open();
     expect(await screen.findByRole("checkbox", { name: "Dry" })).toBeChecked();
-    expect(screen.queryByLabelText("Weight after drying (kg)")).toBeNull();
 
     fireEvent.click(screen.getByRole("checkbox", { name: "Wet" }));
     expect(screen.getByRole("checkbox", { name: "Wet" })).toBeChecked();
     expect(screen.getByRole("checkbox", { name: "Dry" })).not.toBeChecked();
     expect(screen.getByLabelText("Moisture before drying %")).toBeInTheDocument();
-    // The line and its drying figures aren't outlined or boxed in red.
+    // Its drying is recorded later, from the purchase's details.
+    expect(screen.queryByLabelText("Weight after drying (kg)")).toBeNull();
+    expect(screen.queryByLabelText("Moisture after drying %")).toBeNull();
+    expect(screen.getByText(/Wet palay is saved as Wet/)).toBeInTheDocument();
+    // The line isn't outlined or boxed in red, and the words Wet and Dry aren't coloured.
     expect(screen.getByTestId("purchase-line").className).not.toMatch(/rose|red/);
-    expect(
-      screen.getByLabelText("Weight after drying (kg)").closest("div.grid")?.className,
-    ).not.toMatch(/rose|red/);
+    expect(screen.getByText("Wet").className).not.toMatch(/rose|red|emerald/);
+    expect(screen.getByText("Dry").className).not.toMatch(/rose|red|emerald/);
 
-    const save = screen.getByRole("button", { name: "Save Purchase" });
     fireEvent.change(screen.getByLabelText("Sacks"), { target: { value: "20" } });
     fireEvent.change(screen.getByPlaceholderText("₱/kg"), { target: { value: "24" } });
-    expect(save).toBeDisabled(); // nothing after drying yet
-    fireEvent.change(screen.getByLabelText("Weight after drying (kg)"), {
-      target: { value: "800" },
-    });
-    expect(save).toBeDisabled(); // still no moisture after drying
-    fireEvent.change(screen.getByLabelText("Moisture after drying %"), { target: { value: "14" } });
-    expect(save).toBeEnabled();
-    fireEvent.click(save);
+    fireEvent.click(screen.getByRole("button", { name: "Save Purchase" }));
 
     await waitFor(() => expect(create).toHaveBeenCalled());
-    expect(create.mock.calls[0][0].items[0]).toMatchObject({
-      is_wet: true,
-      dried_weight_kg: "800",
-      dried_moisture_pct: "14",
-    });
+    const line = create.mock.calls[0][0].items[0];
+    expect(line).toMatchObject({ is_wet: true, sack_count: "20", price_per_kg: "24" });
+    expect(line).not.toHaveProperty("dried_weight_kg");
+  });
+});
+
+describe("PaddyPage: its own To do window (Pro plans and up)", () => {
+  it("puts a To do button at the top right of the page's title, for a plan that has it", () => {
+    useAuthStore.setState({ user: { ...owner, features: ["paddy", "page_todo"] } });
+    draw();
+
+    const button = screen.getByTestId("palay-todo-button");
+    expect(button).toHaveTextContent("To do");
+    // In the same row as the title and its line, after them.
+    const header = screen.getByRole("heading", { name: "Palay (Paddy)" }).parentElement
+      ?.parentElement as HTMLElement;
+    expect(header).toContainElement(button);
+    expect(header.lastElementChild).toBe(button);
+    expect(header.className).toMatch(/items-center/);
   });
 
-  it("clears the after-drying figures when the line goes back to dry", async () => {
-    open();
-    fireEvent.click(await screen.findByRole("checkbox", { name: "Wet" }));
-    fireEvent.change(screen.getByLabelText("Weight after drying (kg)"), {
-      target: { value: "800" },
-    });
-    fireEvent.click(screen.getByRole("checkbox", { name: "Dry" }));
-    fireEvent.click(screen.getByRole("checkbox", { name: "Wet" }));
-    expect(screen.getByLabelText("Weight after drying (kg)")).toHaveValue(null);
+  it("has no To do button on a plan without it", () => {
+    useAuthStore.setState({ user: { ...owner, features: ["paddy"] } });
+    draw();
+
+    expect(screen.queryByTestId("palay-todo-button")).toBeNull();
   });
 });
 

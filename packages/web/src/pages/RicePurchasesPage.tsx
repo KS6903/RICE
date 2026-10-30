@@ -8,7 +8,12 @@ import { format } from "date-fns";
 import { useAccess } from "../hooks/useAccess";
 import { useOpenOnArrival } from "../hooks/useOpenOnArrival";
 import { paddyService } from "../services/PaddyService";
-import { buyingService, type RiceLineForm } from "../services/BuyingService";
+import {
+  buyingService,
+  lineReady,
+  riceLineProblems,
+  type RiceLineForm,
+} from "../services/BuyingService";
 import { MILLED_GRADES } from "../mappers/InventoryMapper";
 import QuickAdd from "../components/QuickAdd";
 import EmptyState from "../components/EmptyState";
@@ -27,6 +32,7 @@ import {
   purchaseGridClass,
   usePurchaseWarehouse,
 } from "../components/PurchaseWarehouse";
+import { fixFields, needsChoice, needsInput } from "../utils/required";
 import { varietyOptions } from "../utils/varieties";
 import { t } from "../i18n";
 
@@ -34,7 +40,7 @@ const gradeLabel = (g: string) => g.charAt(0).toUpperCase() + g.slice(1);
 
 const newLine = (): RiceLineForm => ({
   variety_id: "",
-  grade_name: "Graded Rice",
+  grade_name: "",
   sack_count: "",
   kg_per_sack: "50",
   price_per_sack: "",
@@ -80,6 +86,13 @@ export default function RicePurchasesPage() {
       items: f.items.map((l, i) => (i === idx ? { ...l, ...patch } : l)),
     }));
 
+  // After a try at saving with something missing, the empty fields say so.
+  const [attempted, setAttempted] = useState(false);
+  const closeForm = () => {
+    setShowForm(false);
+    setAttempted(false);
+  };
+
   const createMutation = useMutation({
     mutationFn: (body: typeof form) =>
       buyingService.createRicePurchase({
@@ -92,10 +105,17 @@ export default function RicePurchasesPage() {
       qc.invalidateQueries({ queryKey: ["rice-stock"] });
       qc.invalidateQueries({ queryKey: ["milled-rice"] });
       qc.invalidateQueries({ queryKey: ["inventory-summary"] });
-      setShowForm(false);
+      closeForm();
       setForm((f) => ({ ...f, remarks: "", items: [newLine()] }));
     },
   });
+
+  // Each line needs its grade, the sacks and their weight, and a price.
+  const ready = form.items.every((l) => lineReady(riceLineProblems(l)));
+  const submit = () => {
+    setAttempted(true);
+    if (ready) createMutation.mutate(form);
+  };
 
   const totalKg = form.items.reduce((s, l) => s + lineKg(l), 0);
   const totalPeso = form.items.reduce((s, l) => s + linePeso(l), 0);
@@ -117,7 +137,7 @@ export default function RicePurchasesPage() {
         open={showForm}
         size="xl"
         title={t("New Rice Purchase")}
-        onClose={() => setShowForm(false)}
+        onClose={closeForm}
         testId="new-purchase"
       >
         <div className="space-y-4">
@@ -183,60 +203,64 @@ export default function RicePurchasesPage() {
                 </button>
               </div>
             </div>
-            {form.items.map((item, idx) => (
-              <div
-                key={idx}
-                className="grid grid-cols-2 sm:grid-cols-5 gap-2 p-3 bg-gray-50 dark:bg-slate-900/50 rounded-lg"
-              >
-                <FieldCaption label={t("Variety")} className="col-span-2 sm:col-span-1">
-                  <Select
-                    aria-label={t("Variety")}
-                    placeholder={t("Variety")}
-                    value={item.variety_id}
-                    onChange={(v) => setLine(idx, { variety_id: v })}
-                    options={varietyOptions(varieties, "rice")}
-                  />
-                </FieldCaption>
-                <FieldCaption label={t("Grade")}>
-                  <Select
-                    aria-label={t("Grade")}
-                    value={item.grade_name}
-                    onChange={(v) => setLine(idx, { grade_name: v })}
-                    options={MILLED_GRADES.map((g) => ({ value: g, label: gradeLabel(g) }))}
-                  />
-                </FieldCaption>
-                <FieldCaption label={t("Sacks")}>
-                  <input
-                    className="input"
-                    placeholder={t("Sacks")}
-                    type="number"
-                    min="0"
-                    value={item.sack_count}
-                    onChange={(e) => setLine(idx, { sack_count: e.target.value })}
-                  />
-                </FieldCaption>
-                <FieldCaption label={t("Kg per sack")}>
-                  <input
-                    className="input"
-                    placeholder="50"
-                    type="number"
-                    min="0"
-                    value={item.kg_per_sack}
-                    onChange={(e) => setLine(idx, { kg_per_sack: e.target.value })}
-                  />
-                </FieldCaption>
-                <FieldCaption label={t("Price per sack (₱)")}>
-                  <input
-                    className="input"
-                    placeholder={t("₱/sack")}
-                    type="number"
-                    min="0"
-                    value={item.price_per_sack}
-                    onChange={(e) => setLine(idx, { price_per_sack: e.target.value })}
-                  />
-                </FieldCaption>
-              </div>
-            ))}
+            {form.items.map((item, idx) => {
+              const problems = riceLineProblems(item);
+              const flag = (missing: boolean, message = needsInput()) =>
+                attempted && missing ? message : undefined;
+              return (
+                <div
+                  key={idx}
+                  className="grid grid-cols-2 gap-3 rounded-xl bg-gray-50 p-4 ring-1 ring-soft sm:grid-cols-5 dark:bg-slate-900/50"
+                >
+                  <FieldCaption label={t("Variety")} className="col-span-2 sm:col-span-1">
+                    <Select
+                      aria-label={t("Variety")}
+                      value={item.variety_id}
+                      onChange={(v) => setLine(idx, { variety_id: v })}
+                      options={varietyOptions(varieties, "rice")}
+                    />
+                  </FieldCaption>
+                  <FieldCaption label={t("Grade")} error={flag(problems.grade, needsChoice())}>
+                    <Select
+                      aria-label={t("Grade")}
+                      value={item.grade_name}
+                      onChange={(v) => setLine(idx, { grade_name: v })}
+                      options={MILLED_GRADES.map((g) => ({ value: g, label: gradeLabel(g) }))}
+                    />
+                  </FieldCaption>
+                  <FieldCaption label={t("Sacks")} error={flag(problems.sacks)}>
+                    <input
+                      className="input"
+                      placeholder={t("Sacks")}
+                      type="number"
+                      min="0"
+                      value={item.sack_count}
+                      onChange={(e) => setLine(idx, { sack_count: e.target.value })}
+                    />
+                  </FieldCaption>
+                  <FieldCaption label={t("Kg per sack")} error={flag(problems.kgPerSack)}>
+                    <input
+                      className="input"
+                      placeholder="50"
+                      type="number"
+                      min="0"
+                      value={item.kg_per_sack}
+                      onChange={(e) => setLine(idx, { kg_per_sack: e.target.value })}
+                    />
+                  </FieldCaption>
+                  <FieldCaption label={t("Price per sack (₱)")} error={flag(problems.price)}>
+                    <input
+                      className="input"
+                      placeholder={t("₱/sack")}
+                      type="number"
+                      min="0"
+                      value={item.price_per_sack}
+                      onChange={(e) => setLine(idx, { price_per_sack: e.target.value })}
+                    />
+                  </FieldCaption>
+                </div>
+              );
+            })}
           </div>
           <div className="flex flex-wrap items-center justify-end gap-x-4 gap-y-2">
             <p
@@ -250,19 +274,20 @@ export default function RicePurchasesPage() {
               {" · "}
               <span className="font-semibold tabular-nums">{peso(totalPeso)}</span>
             </p>
+            {attempted && !ready && (
+              <p role="alert" className="text-sm font-medium text-rose-600 dark:text-rose-400">
+                {fixFields()}
+              </p>
+            )}
             {createMutation.isError && (
               <p className="text-sm text-rose-600 dark:text-rose-400">
                 {t("Couldn't save. Check each line has sacks and a price.")}
               </p>
             )}
-            <button onClick={() => setShowForm(false)} className="btn-secondary">
+            <button onClick={closeForm} className="btn-secondary">
               {t("Cancel")}
             </button>
-            <button
-              onClick={() => createMutation.mutate(form)}
-              className="btn-primary"
-              disabled={createMutation.isPending}
-            >
+            <button onClick={submit} className="btn-primary" disabled={createMutation.isPending}>
               {createMutation.isPending ? t("Saving…") : t("Save Purchase")}
             </button>
           </div>

@@ -474,7 +474,6 @@ function EmployeesPageInner() {
                 </label>
                 <Select
                   aria-label={t("Position")}
-                  placeholder={t("Choose a position")}
                   value={form.position}
                   onChange={(v) => {
                     upd("position", v);
@@ -507,7 +506,6 @@ function EmployeesPageInner() {
                 </label>
                 <Select
                   aria-label={t("Department")}
-                  placeholder={t("Choose a department")}
                   value={form.department}
                   onChange={(v) => upd("department", v)}
                   options={withCurrent(DEPARTMENTS, form.department)}
@@ -814,7 +812,6 @@ function EmployeesPageInner() {
                 </label>
                 <Select
                   aria-label={t("Relation")}
-                  placeholder={t("Choose a relation")}
                   value={form.emergency_contact_relation}
                   onChange={(v) => upd("emergency_contact_relation", v)}
                   options={withCurrent(RELATIONS, form.emergency_contact_relation)}

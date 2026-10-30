@@ -4,6 +4,7 @@ import { createPortal } from "react-dom";
 import { Check, ChevronDown } from "lucide-react";
 import { clsx } from "clsx";
 import { observeViewport, positionPopover } from "../utils/popoverPosition";
+import { selectPrompt } from "../utils/selectPrompt";
 import { t } from "../i18n";
 
 export type SelectOption = { value: string; label: string };
@@ -46,9 +47,11 @@ export default function Select({
   id,
   disabled,
   className,
-  placeholder = t("Choose…"),
+  placeholder,
   ...aria
 }: Props) {
+  // "-- Select Grade --": named after the field's own label unless told otherwise.
+  const prompt = placeholder ?? selectPrompt(aria["aria-label"]);
   // useId gives ":r0:"-style ids; keep them plain for aria references.
   const listId = `select-${useId().replace(/[^a-zA-Z0-9_-]/g, "")}`;
   const triggerRef = useRef<HTMLButtonElement>(null);
@@ -201,7 +204,7 @@ export default function Select({
         )}
       >
         <span className={clsx("flex-1 truncate", !selected && "text-muted")}>
-          {selected?.label ?? placeholder}
+          {selected?.label ?? prompt}
         </span>
         <ChevronDown
           size={17}

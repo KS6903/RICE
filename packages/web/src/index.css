@@ -472,6 +472,16 @@
     border-color: #10b981;
     box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.22);
   }
+  /* A field the user still has to fill in: outlined in red, its notice under it
+     (components/FieldCaption). */
+  .field-error .input,
+  .field-error .input:hover {
+    border-color: #e11d48;
+  }
+  .field-error .input:focus {
+    border-color: #e11d48;
+    box-shadow: 0 0 0 3px rgba(225, 29, 72, 0.18);
+  }
 
   /* ========== Form label — standard senior-readable size ========== */
   .form-label {

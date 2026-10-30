@@ -53,7 +53,7 @@ class QualityGradeRepository(BaseRepository[QualityGrade]):
 
     def list_company_or_shared(self, company_id: uuid.UUID) -> Sequence[QualityGrade]:
         stmt = select(QualityGrade).where((QualityGrade.company_id == company_id) | (QualityGrade.company_id.is_(None)))
-        return self.db.execute(stmt).scalars().all()
+        return self.db.execute(stmt.order_by(QualityGrade.code)).scalars().all()
 
     def get_by_code(self, company_id: uuid.UUID, code: str) -> QualityGrade | None:
         stmt = select(QualityGrade).where(QualityGrade.company_id == company_id, QualityGrade.code == code)

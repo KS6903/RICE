@@ -1,5 +1,11 @@
 import { describe, it, expect } from "vitest";
-import { PaddyService, blankPurchaseItem, pricePerCavan } from "./PaddyService";
+import {
+  PaddyService,
+  blankPurchaseItem,
+  pricePerCavan,
+  purchaseLineProblems,
+  purchaseLineReady,
+} from "./PaddyService";
 
 describe("PaddyService.toPurchasePayload", () => {
   it("parses numeric fields and nulls out empty ids/optionals", () => {
@@ -35,8 +41,6 @@ describe("PaddyService.toPurchasePayload", () => {
       moisture_content_pct: 14,
       price_per_cavan: 1200,
       is_wet: false,
-      dried_weight_kg: null,
-      dried_moisture_pct: null,
     });
     expect(payload.items[1]).toEqual({
       variety_id: null,
@@ -48,8 +52,6 @@ describe("PaddyService.toPurchasePayload", () => {
       moisture_content_pct: null,
       price_per_cavan: 1000,
       is_wet: false,
-      dried_weight_kg: null,
-      dried_moisture_pct: null,
     });
   });
 
@@ -66,26 +68,29 @@ describe("PaddyService.toPurchasePayload", () => {
       gross_weight_kg: null,
     });
   });
+});
 
-  it("sends the after-drying figures only for wet palay", () => {
-    const line = {
-      ...blankPurchaseItem(),
-      sack_count: "20",
-      price_per_kg: "24",
-      dried_weight_kg: "800",
-      dried_moisture_pct: "14",
-    };
-    const [wet, dry] = PaddyService.toPurchasePayload({
-      purchase_date: "2026-10-29",
-      delivery_type: "delivered",
-      remarks: "",
-      items: [
-        { ...line, is_wet: true },
-        { ...line, is_wet: false },
-      ],
-    }).items;
-    expect(wet).toMatchObject({ is_wet: true, dried_weight_kg: 800, dried_moisture_pct: 14 });
-    expect(dry).toMatchObject({ is_wet: false, dried_weight_kg: null, dried_moisture_pct: null });
+describe("purchaseLineProblems", () => {
+  it("asks for something counted and a price", () => {
+    expect(purchaseLineProblems(blankPurchaseItem())).toEqual({ counted: true, price: true });
+    expect(purchaseLineReady(blankPurchaseItem())).toBe(false);
+  });
+
+  it("is satisfied by the sacks, the cavans or the kilos, with a price", () => {
+    for (const counted of [
+      { sack_count: "20" },
+      { cavan_count: "20" },
+      { gross_weight_kg: "1000" },
+    ]) {
+      const line = { ...blankPurchaseItem(), ...counted, price_per_kg: "24" };
+      expect(purchaseLineProblems(line)).toEqual({ counted: false, price: false });
+      expect(purchaseLineReady(line)).toBe(true);
+    }
+  });
+
+  it("asks for nothing more of wet palay: it is saved as Wet", () => {
+    const wet = { ...blankPurchaseItem(), is_wet: true, sack_count: "20", price_per_kg: "24" };
+    expect(purchaseLineReady(wet)).toBe(true);
   });
 });
 

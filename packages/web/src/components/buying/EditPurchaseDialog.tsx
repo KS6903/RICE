@@ -14,6 +14,10 @@ import { MILLED_GRADES } from "../../mappers/InventoryMapper";
 import { peso } from "./money";
 import { gradeLabel, type TradeKind } from "./trade";
 import WetDryChoice from "./WetDryChoice";
+import FieldCaption from "../FieldCaption";
+import { sortGrades } from "../../utils/grades";
+import { fixFields, needsInput } from "../../utils/required";
+import { selectPrompt } from "../../utils/selectPrompt";
 import { varietyOptions } from "../../utils/varieties";
 import { t } from "../../i18n";
 
@@ -66,7 +70,7 @@ const BLANK: Record<TradeKind, Line> = {
   },
   rice: {
     variety_id: "",
-    grade_name: "Graded Rice",
+    grade_name: "",
     sack_count: "",
     kg_per_sack: "50",
     price_per_sack: "",
@@ -130,6 +134,26 @@ function lineIsValid(kind: TradeKind, l: Line): boolean {
   }
   if (kind === "rice") return num(l.sack_count) > 0 && num(l.kg_per_sack) > 0;
   return !!l.byproduct_type && num(l.weight_kg) > 0;
+}
+
+/** The numbers of a line that are empty or can't be right: what the notices point at. */
+function lineMissing(kind: TradeKind, l: Line): Set<string> {
+  const missing = new Set<string>();
+  for (const n of NUMBERS[kind]) {
+    if (n.wetOnly && l.is_wet !== "yes") continue;
+    if (!n.optional && l[n.key] === "") missing.add(n.key);
+  }
+  if (kind === "palay") {
+    if (palayKg(l) <= 0) missing.add("sack_count");
+    if (l.is_wet === "yes" && l.dried_weight_kg !== "" && num(l.dried_weight_kg) <= 0) {
+      missing.add("dried_weight_kg");
+    }
+  }
+  if (kind === "rice") {
+    for (const key of ["sack_count", "kg_per_sack"]) if (!(num(l[key]) > 0)) missing.add(key);
+  }
+  if (kind === "byproduct" && !(num(l.weight_kg) > 0)) missing.add("weight_kg");
+  return missing;
 }
 
 /** A line as the server takes it: numbers as numbers, blanks as null. */
@@ -199,6 +223,8 @@ export default function EditPurchaseDialog({
 
   const total = lines.reduce((sum, l) => sum + lineAmount(kind, l), 0);
   const valid = !!date && lines.length > 0 && lines.every((l) => lineIsValid(kind, l));
+  // After a try at saving with something missing, the empty fields say so.
+  const [attempted, setAttempted] = useState(false);
 
   const save = useMutation({
     mutationFn: () =>
@@ -218,6 +244,11 @@ export default function EditPurchaseDialog({
   });
   const error = (save.error as any)?.response?.data?.detail;
 
+  const submit = () => {
+    setAttempted(true);
+    if (valid) save.mutate();
+  };
+
   const setLine = (i: number, patch: Line) =>
     setLines((ls) => ls.map((l, j) => (j === i ? { ...l, ...patch } : l)));
 
@@ -233,7 +264,7 @@ export default function EditPurchaseDialog({
 
   const supplierOptions = withCurrent(
     [
-      { value: "", label: t("No supplier") },
+      { value: "", label: selectPrompt(t("Supplier")) },
       ...suppliers.map((s: any) => ({ value: String(s.id), label: s.name })),
     ],
     supplierId,
@@ -241,12 +272,12 @@ export default function EditPurchaseDialog({
   );
   // Palay purchases pick from the palay list, rice purchases from the rice list.
   const pickableVarieties = [
-    { value: "", label: t("Any variety") },
+    { value: "", label: selectPrompt(t("Variety")) },
     ...varietyOptions(varieties, kind === "palay" ? "palay" : "rice"),
   ];
   const gradeOptions = [
-    { value: "", label: t("No grade") },
-    ...grades.map((g: any) => ({ value: g.id, label: g.code })),
+    { value: "", label: selectPrompt(t("Grade")) },
+    ...sortGrades(grades).map((g: any) => ({ value: g.id, label: g.code })),
   ];
   const byproductOptions = byproductKinds.map((k) => ({ value: k.code, label: k.name }));
 
@@ -279,6 +310,7 @@ export default function EditPurchaseDialog({
         ) : (
           <Select
             aria-label={t("Grade of line {{value}}", { value: i + 1 })}
+            placeholder={selectPrompt(t("Grade"))}
             value={l.grade_name}
             onChange={(v) => setLine(i, { grade_name: v })}
             options={MILLED_GRADES.map((g) => ({ value: g, label: gradeLabel(g) }))}
@@ -307,12 +339,7 @@ export default function EditPurchaseDialog({
           >
             {t("Cancel")}
           </button>
-          <button
-            type="button"
-            className="btn-primary"
-            onClick={() => save.mutate()}
-            disabled={!valid || save.isPending}
-          >
+          <button type="button" className="btn-primary" onClick={submit} disabled={save.isPending}>
             {save.isPending ? t("Saving…") : t("Save changes")}
           </button>
         </>
@@ -379,8 +406,13 @@ export default function EditPurchaseDialog({
                   {NUMBERS[kind]
                     .filter((n) => !n.wetOnly || l.is_wet === "yes")
                     .map((n) => (
-                      <label key={n.key} className="block">
-                        <span className="block mb-1 text-[11px] text-muted">{n.label}</span>
+                      <FieldCaption
+                        key={n.key}
+                        label={n.label}
+                        error={
+                          attempted && lineMissing(kind, l).has(n.key) ? needsInput() : undefined
+                        }
+                      >
                         <input
                           className="input"
                           type="number"
@@ -392,7 +424,7 @@ export default function EditPurchaseDialog({
                           value={l[n.key]}
                           onChange={(e) => setLine(i, { [n.key]: e.target.value })}
                         />
-                      </label>
+                      </FieldCaption>
                     ))}
                 </div>
               </div>
@@ -421,6 +453,11 @@ export default function EditPurchaseDialog({
           />
         </label>
 
+        {attempted && !valid && (
+          <p role="alert" className="text-sm font-medium text-rose-600 dark:text-rose-400">
+            {fixFields()}
+          </p>
+        )}
         {error && (
           <p role="alert" className="text-sm text-rose-600 dark:text-rose-400">
             {typeof error === "string"

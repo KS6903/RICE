@@ -168,6 +168,12 @@ def test_create_grade_duplicate_409(auth_client):
     assert _make_grade(auth_client).status_code == 409
 
 
+def test_grades_are_listed_a_to_z(auth_client):
+    for code in ("ZZ", "B", "AA"):
+        assert _make_grade(auth_client, code).status_code == 201
+    assert [g["code"] for g in auth_client.get("/api/paddy/grades").json()] == ["AA", "B", "ZZ"]
+
+
 # ── suppliers ────────────────────────────────────────────────────────────────
 
 

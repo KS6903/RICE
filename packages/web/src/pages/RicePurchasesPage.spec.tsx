@@ -68,6 +68,7 @@ describe("Rice (Bigas) page", () => {
     expect(screen.queryByPlaceholderText("Moisture %")).toBeNull();
 
     await chooseOption("Variety", "RC222");
+    await chooseOption("Grade", "Graded Rice");
     await chooseOption("Branch", "2nd Branch");
     fireEvent.change(screen.getByPlaceholderText("Sacks"), { target: { value: "20" } });
     fireEvent.change(screen.getByPlaceholderText("₱/sack"), { target: { value: "2400" } });
@@ -82,6 +83,50 @@ describe("Rice (Bigas) page", () => {
       delivery_type: "delivered",
       items: [{ variety_id: "v1", grade_name: "Graded Rice", sack_count: "20", kg_per_sack: "50" }],
     });
+  });
+
+  it("starts the grade on a prompt and lists the grades A to Z", async () => {
+    useAuthStore.setState({ user: owner });
+    draw(<RicePurchasesPage />);
+    fireEvent.click(screen.getByRole("button", { name: /New Purchase/ }));
+
+    expect(screen.getByLabelText("Grade")).toHaveTextContent("-- Select Grade --");
+    expect(screen.getByLabelText("Variety")).toHaveTextContent("-- Select Variety --");
+    fireEvent.click(screen.getByLabelText("Grade"));
+    const options = within(screen.getByRole("listbox")).getAllByRole("option");
+    expect(options.map((o) => o.textContent?.trim())).toEqual([
+      "Broken Rice",
+      "Graded Rice",
+      "Regular-Milled Rice",
+      "Straight Mill Rice",
+      "Well-Milled Rice",
+    ]);
+  });
+
+  it("says what is missing when saving without it, and saves nothing", async () => {
+    const create = vi.spyOn(buyingService, "createRicePurchase").mockResolvedValue({ id: "p1" });
+    useAuthStore.setState({ user: owner });
+    draw(<RicePurchasesPage />);
+    fireEvent.click(screen.getByRole("button", { name: /New Purchase/ }));
+
+    fireEvent.click(screen.getByRole("button", { name: "Save Purchase" }));
+
+    expect(screen.getAllByTestId("field-error").map((n) => n.textContent)).toEqual([
+      "Please select an option.", // the grade
+      "This field needs an input.", // the sacks
+      "This field needs an input.", // the price
+    ]);
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "Some fields still need an input. Fill in the ones marked in red.",
+    );
+    expect(create).not.toHaveBeenCalled();
+
+    await chooseOption("Grade", "Graded Rice");
+    fireEvent.change(screen.getByPlaceholderText("Sacks"), { target: { value: "20" } });
+    fireEvent.change(screen.getByPlaceholderText("₱/sack"), { target: { value: "2400" } });
+    expect(screen.queryByTestId("field-error")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Save Purchase" }));
+    await waitFor(() => expect(create).toHaveBeenCalled());
   });
 
   it("shows rice in stock, naming the branch once there are several", async () => {
@@ -162,6 +207,7 @@ describe("Rice (Bigas) page", () => {
       ),
     );
     await chooseOption("Store in warehouse", "Warehouse 2 - Main Branch");
+    await chooseOption("Grade", "Broken Rice");
     fireEvent.change(screen.getByPlaceholderText("Sacks"), { target: { value: "20" } });
     fireEvent.change(screen.getByPlaceholderText("₱/sack"), { target: { value: "2400" } });
     fireEvent.click(screen.getByRole("button", { name: "Save Purchase" }));
@@ -193,6 +239,23 @@ describe("Rice (Bigas) page", () => {
 });
 
 describe("By-products page", () => {
+  it("says what is missing when saving without it, and saves nothing", () => {
+    const create = vi
+      .spyOn(buyingService, "createByproductPurchase")
+      .mockResolvedValue({ id: "p1" });
+    useAuthStore.setState({ user: owner });
+    draw(<ByproductPurchasesPage />);
+    fireEvent.click(screen.getByRole("button", { name: /New Purchase/ }));
+
+    fireEvent.click(screen.getByRole("button", { name: "Save Purchase" }));
+
+    expect(screen.getAllByTestId("field-error").map((n) => n.textContent)).toEqual([
+      "This field needs an input.", // the weight
+      "This field needs an input.", // the price
+    ]);
+    expect(create).not.toHaveBeenCalled();
+  });
+
   it("records a by-product by weight, without variety or grade", async () => {
     const create = vi
       .spyOn(buyingService, "createByproductPurchase")

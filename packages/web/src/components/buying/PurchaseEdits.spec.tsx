@@ -169,8 +169,9 @@ describe("Correcting a saved purchase", () => {
     ]);
   });
 
-  it("a line that makes no sense can't be saved", async () => {
+  it("a line that makes no sense can't be saved: the dialog says which field", async () => {
     useAuthStore.setState({ user: boss });
+    const edit = vi.spyOn(paddyService, "editPurchase").mockResolvedValue(palay);
     draw("palay", palay);
     openPurchase("PP-20261020-0001");
     fireEvent.click(
@@ -180,7 +181,15 @@ describe("Correcting a saved purchase", () => {
     fireEvent.change(within(dialog).getByLabelText("Kilos (est.) of line 1"), {
       target: { value: "40" },
     });
-    expect(within(dialog).getByRole("button", { name: "Save changes" })).toBeDisabled();
+    expect(within(dialog).queryByTestId("field-error")).toBeNull();
+
+    fireEvent.click(within(dialog).getByRole("button", { name: "Save changes" }));
+
+    expect(within(dialog).getByTestId("field-error")).toHaveTextContent(
+      "This field needs an input.",
+    );
+    expect(within(dialog).getByRole("alert")).toHaveTextContent("Some fields still need an input");
+    expect(edit).not.toHaveBeenCalled();
   });
 
   it("without edit power, the popup shows the history but no Edit", async () => {

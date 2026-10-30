@@ -5,6 +5,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Plus, X } from "lucide-react";
 import api from "../services/api";
 import Select from "./Select";
+import { selectPrompt } from "../utils/selectPrompt";
 import { t } from "../i18n";
 
 export interface QuickAddField {
@@ -147,7 +148,7 @@ export default function QuickAdd({
                     {f.type === "select" ? (
                       <Select
                         id={id}
-                        placeholder={t("Select…")}
+                        placeholder={selectPrompt(f.label)}
                         value={String(form[f.key] ?? "")}
                         onChange={(v) => setForm((s) => ({ ...s, [f.key]: v }))}
                         options={f.options ?? []}

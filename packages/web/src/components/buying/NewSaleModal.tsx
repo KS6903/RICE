@@ -17,6 +17,7 @@ import FieldCaption from "../FieldCaption";
 import QuickAdd from "../QuickAdd";
 import { peso } from "./money";
 import { GOODS, SALE_ITEM_TYPE, gradeLabel, type TradeKind } from "./trade";
+import { sortGrades } from "../../utils/grades";
 import { varietyOptions } from "../../utils/varieties";
 import { t } from "../../i18n";
 
@@ -80,7 +81,7 @@ export default function NewSaleModal({ kind, onClose }: { kind: TradeKind; onClo
         ? MILLED_GRADES.map((g) => ({ value: g, label: gradeLabel(g) }))
         : [
             { value: "", label: t("No grade") },
-            ...grades.map((g: any) => ({ value: g.code, label: g.code })),
+            ...sortGrades(grades).map((g: any) => ({ value: g.code, label: g.code })),
           ],
     [kind, grades],
   );
@@ -188,7 +189,6 @@ export default function NewSaleModal({ kind, onClose }: { kind: TradeKind; onClo
             </div>
             <Select
               aria-label={t("Customer")}
-              placeholder={t("Choose a customer")}
               value={form.customer_id}
               onChange={(v) => setForm((f) => ({ ...f, customer_id: v }))}
               options={customers.map((c: any) => ({ value: c.id, label: c.name }))}
@@ -237,7 +237,6 @@ export default function NewSaleModal({ kind, onClose }: { kind: TradeKind; onClo
                   <FieldCaption label={t("Variety")}>
                     <Select
                       aria-label={t("Variety")}
-                      placeholder={t("Variety")}
                       value={item.variety_id}
                       onChange={(v) => setLine(idx, { variety_id: v })}
                       options={varietyOptions(varieties, kind === "palay" ? "palay" : "rice")}

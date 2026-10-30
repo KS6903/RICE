@@ -81,6 +81,15 @@ def test_each_plan_opens_its_pages_and_no_more(make_auth_client, plan):
             assert status == 402, f"{plan} should be refused {path}, got {status}"
 
 
+def test_the_palay_pages_to_do_window_is_for_pro_and_enterprise_only():
+    # 029_page_todo: the Palay page's own To do window. The overall To do page
+    # (the automations feature) stays Enterprise only.
+    todo = _migration("029_page_todo")
+    assert todo.CODE == "page_todo"
+    assert todo.PLANS == ("pro", "enterprise")
+    assert "page_todo" not in PLANS["free"] + PLANS["basic"]
+
+
 def test_free_no_longer_includes_milling():
     assert "milling" not in PLANS["free"]
     assert {"milling", "dispatch"} <= set(PLANS["basic"])

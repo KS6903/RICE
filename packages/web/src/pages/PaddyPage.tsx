@@ -4,6 +4,8 @@ import {
   paddyService,
   blankPurchaseItem,
   pricePerCavan,
+  purchaseLineProblems,
+  purchaseLineReady,
   type PurchaseItemForm,
   type StockView,
 } from "../services/PaddyService";
@@ -11,6 +13,7 @@ import { Container, LayoutGrid, Scale, ShoppingBag, Wheat, type LucideIcon } fro
 import { format } from "date-fns";
 import QuickAdd from "../components/QuickAdd";
 import { useAccess } from "../hooks/useAccess";
+import { useFeature } from "../hooks/useFeature";
 import { useOpenOnArrival } from "../hooks/useOpenOnArrival";
 import EmptyState from "../components/EmptyState";
 import LoadingRows from "../components/LoadingRows";
@@ -18,6 +21,7 @@ import FieldCaption from "../components/FieldCaption";
 import Select from "../components/Select";
 import DatePicker from "../components/DatePicker";
 import Modal from "../components/Modal";
+import PalayTodo from "../components/buying/PalayTodo";
 import PurchaseColumn from "../components/buying/PurchaseColumn";
 import SaleColumn from "../components/buying/SaleColumn";
 import WetDryChoice from "../components/buying/WetDryChoice";
@@ -28,6 +32,8 @@ import {
   purchaseGridClass,
   usePurchaseWarehouse,
 } from "../components/PurchaseWarehouse";
+import { sortGrades } from "../utils/grades";
+import { fixFields, needsInput } from "../utils/required";
 import { varietyOptions } from "../utils/varieties";
 import { t } from "../i18n";
 
@@ -56,6 +62,8 @@ const cavanPrice = (pricePerKg: string) => {
 export default function PaddyPage() {
   const qc = useQueryClient();
   const { canEdit, role } = useAccess();
+  // The page's own To do window: Pro plans and up.
+  const hasTodo = useFeature("page_todo");
   const [showForm, setShowForm] = useOpenOnArrival();
 
   const { data: purchases = [], isLoading: purchasesLoading } = useQuery({
@@ -98,6 +106,13 @@ export default function PaddyPage() {
     items: [blankPurchaseItem()],
   });
 
+  // After a try at saving with something missing, the empty fields say so.
+  const [attempted, setAttempted] = useState(false);
+  const closeForm = () => {
+    setShowForm(false);
+    setAttempted(false);
+  };
+
   const createMutation = useMutation({
     mutationFn: (body: typeof form) =>
       paddyService.createPurchase({
@@ -109,7 +124,7 @@ export default function PaddyPage() {
       qc.invalidateQueries({ queryKey: ["palay-purchases"] });
       qc.invalidateQueries({ queryKey: ["palay-inventory"] });
       qc.invalidateQueries({ queryKey: ["inventory-summary"] });
-      setShowForm(false);
+      closeForm();
     },
   });
 
@@ -125,14 +140,13 @@ export default function PaddyPage() {
       setItem(idx, { [key]: e.target.value } as Partial<PurchaseItemForm>);
 
   // A line needs something counted (sacks, cavans or kilos; the last two are
-  // optional estimates) and a price; a wet line also its weight and moisture
-  // after drying.
-  const ready = form.items.every(
-    (i) =>
-      (i.sack_count || i.cavan_count || i.gross_weight_kg) &&
-      i.price_per_kg !== "" &&
-      (!i.is_wet || (Number(i.dried_weight_kg) > 0 && i.dried_moisture_pct !== "")),
-  );
+  // optional estimates) and a price. Wet palay is saved as Wet: it is completed
+  // when its drying is recorded from the purchase's details.
+  const ready = form.items.every(purchaseLineReady);
+  const submit = () => {
+    setAttempted(true);
+    if (ready) createMutation.mutate(form);
+  };
   const saveError = (createMutation.error as any)?.response?.data?.detail;
 
   // How the stock is counted: the Boss picks sacks, cavans, kilos or all. "All" is
@@ -180,7 +194,7 @@ export default function PaddyPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-3">
         <div>
           <h2 className="text-xl font-bold text-gray-900 dark:text-slate-100">
             {t("Palay (Paddy)")}
@@ -189,13 +203,14 @@ export default function PaddyPage() {
             {t("Procurement and palay inventory")}
           </p>
         </div>
+        {hasTodo && <PalayTodo purchases={purchases} canRecord={canEdit("paddy")} />}
       </div>
 
       <Modal
         open={showForm}
         size="xl"
         title={t("New Palay Purchase")}
-        onClose={() => setShowForm(false)}
+        onClose={closeForm}
         testId="new-purchase"
       >
         <div className="space-y-4">
@@ -281,155 +296,155 @@ export default function PaddyPage() {
                 </button>
               </div>
             </div>
-            {form.items.map((item, idx) => (
-              <div
-                key={idx}
-                data-testid="purchase-line"
-                className="space-y-2 p-3 bg-gray-50 dark:bg-slate-900/50 rounded-lg"
-              >
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                  <FieldCaption label={t("Variety")} className="col-span-2 sm:col-span-1">
-                    <Select
-                      aria-label={t("Variety")}
-                      placeholder={t("Variety")}
-                      value={item.variety_id}
-                      onChange={(v) => setItem(idx, { variety_id: v })}
-                      options={varietyOptions(varieties, "palay")}
-                    />
-                  </FieldCaption>
-                  <FieldCaption label={t("Grade")}>
-                    <Select
-                      aria-label={t("Grade")}
-                      placeholder={t("Grade")}
-                      value={item.grade_id}
-                      onChange={(v) => setItem(idx, { grade_id: v })}
-                      options={grades.map((g: any) => ({ value: g.id, label: g.code }))}
-                    />
-                  </FieldCaption>
+            {form.items.map((item, idx) => {
+              const problems = purchaseLineProblems(item);
+              const flag = (missing: boolean, message = needsInput()) =>
+                attempted && missing ? message : undefined;
+              return (
+                <div
+                  key={idx}
+                  data-testid="purchase-line"
+                  className="space-y-4 rounded-xl bg-gray-50 p-4 ring-1 ring-soft dark:bg-slate-900/50"
+                >
+                  <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                    <FieldCaption label={t("Variety")} className="col-span-2">
+                      <Select
+                        aria-label={t("Variety")}
+                        value={item.variety_id}
+                        onChange={(v) => setItem(idx, { variety_id: v })}
+                        options={varietyOptions(varieties, "palay")}
+                      />
+                    </FieldCaption>
+                    <FieldCaption label={t("Grade")}>
+                      <Select
+                        aria-label={t("Grade")}
+                        value={item.grade_id}
+                        onChange={(v) => setItem(idx, { grade_id: v })}
+                        options={sortGrades(grades).map((g: any) => ({
+                          value: g.id,
+                          label: g.code,
+                        }))}
+                      />
+                    </FieldCaption>
+                    <div>
+                      <span className="mb-1 block text-xs font-medium text-secondary">
+                        {t("Condition")}
+                      </span>
+                      <WetDryChoice
+                        wet={item.is_wet}
+                        name={String(idx + 1)}
+                        onChange={(wet) => setItem(idx, { is_wet: wet })}
+                      />
+                    </div>
+                  </div>
+                  {item.is_wet && (
+                    <p className="-mt-2 text-xs text-muted">
+                      {t(
+                        "Wet palay is saved as Wet. Record its weight and moisture after drying from the purchase's details to complete it.",
+                      )}
+                    </p>
+                  )}
+
                   <div>
-                    <span className="block mb-1 text-xs font-medium text-secondary">
-                      {t("Condition")}
-                    </span>
-                    <WetDryChoice
-                      wet={item.is_wet}
-                      name={String(idx + 1)}
-                      onChange={(wet) =>
-                        setItem(
-                          idx,
-                          wet
-                            ? { is_wet: true }
-                            : { is_wet: false, dried_weight_kg: "", dried_moisture_pct: "" },
-                        )
-                      }
-                    />
+                    <p className="mb-2 text-[10px] font-bold uppercase tracking-wide text-muted">
+                      {t("How much")}
+                    </p>
+                    <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                      <FieldCaption
+                        label={t("Sacks")}
+                        error={flag(problems.counted, t("Enter the sacks, cavans or kilos."))}
+                      >
+                        <input
+                          className="input"
+                          type="number"
+                          min={0}
+                          value={item.sack_count}
+                          onChange={text(idx, "sack_count")}
+                        />
+                      </FieldCaption>
+                      <FieldCaption label={t("Cavans (est.)")}>
+                        <input
+                          className="input"
+                          placeholder={t("Optional")}
+                          type="number"
+                          min={0}
+                          value={item.cavan_count}
+                          onChange={text(idx, "cavan_count")}
+                        />
+                      </FieldCaption>
+                      <FieldCaption
+                        label={item.is_wet ? t("Wet weight (kg, est.)") : t("Kilos (est.)")}
+                      >
+                        <input
+                          className="input"
+                          placeholder={t("Optional")}
+                          type="number"
+                          min={0}
+                          value={item.gross_weight_kg}
+                          onChange={text(idx, "gross_weight_kg")}
+                        />
+                      </FieldCaption>
+                      <FieldCaption label={t("Tare: sacks (kg)")}>
+                        <input
+                          className="input"
+                          placeholder="0"
+                          type="number"
+                          min={0}
+                          value={item.tare_weight_kg}
+                          onChange={text(idx, "tare_weight_kg")}
+                        />
+                      </FieldCaption>
+                    </div>
+                  </div>
+
+                  <div>
+                    <p className="mb-2 text-[10px] font-bold uppercase tracking-wide text-muted">
+                      {t("Moisture and price")}
+                    </p>
+                    <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                      <FieldCaption
+                        label={item.is_wet ? t("Moisture before drying %") : t("Moisture %")}
+                      >
+                        <input
+                          className="input"
+                          placeholder={t("Optional")}
+                          type="number"
+                          min={0}
+                          value={item.moisture_content_pct}
+                          onChange={text(idx, "moisture_content_pct")}
+                        />
+                      </FieldCaption>
+                      <FieldCaption label={t("Price per kg (₱)")} error={flag(problems.price)}>
+                        <input
+                          className="input"
+                          placeholder={t("₱/kg")}
+                          type="number"
+                          min={0}
+                          value={item.price_per_kg}
+                          onChange={text(idx, "price_per_kg")}
+                        />
+                      </FieldCaption>
+                      <FieldCaption label={t("Price per cavan (₱)")}>
+                        <input
+                          className="input cursor-default tabular-nums opacity-70"
+                          placeholder={t("₱/cavan")}
+                          type="text"
+                          readOnly
+                          tabIndex={-1}
+                          value={cavanPrice(item.price_per_kg)}
+                        />
+                      </FieldCaption>
+                    </div>
                   </div>
                 </div>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                  <FieldCaption label={t("Sacks")}>
-                    <input
-                      className="input"
-                      placeholder={t("Sacks")}
-                      type="number"
-                      min={0}
-                      value={item.sack_count}
-                      onChange={text(idx, "sack_count")}
-                    />
-                  </FieldCaption>
-                  <FieldCaption label={t("Cavans (est.)")}>
-                    <input
-                      className="input"
-                      placeholder={t("Optional")}
-                      type="number"
-                      min={0}
-                      value={item.cavan_count}
-                      onChange={text(idx, "cavan_count")}
-                    />
-                  </FieldCaption>
-                  <FieldCaption
-                    label={item.is_wet ? t("Wet weight (kg, est.)") : t("Kilos (est.)")}
-                  >
-                    <input
-                      className="input"
-                      placeholder={t("Optional")}
-                      type="number"
-                      min={0}
-                      value={item.gross_weight_kg}
-                      onChange={text(idx, "gross_weight_kg")}
-                    />
-                  </FieldCaption>
-                  <FieldCaption label={t("Tare: sacks (kg)")}>
-                    <input
-                      className="input"
-                      placeholder={t("Tare kg")}
-                      type="number"
-                      min={0}
-                      value={item.tare_weight_kg}
-                      onChange={text(idx, "tare_weight_kg")}
-                    />
-                  </FieldCaption>
-                </div>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                  <FieldCaption
-                    label={item.is_wet ? t("Moisture before drying %") : t("Moisture %")}
-                    className="col-span-2 sm:col-span-1"
-                  >
-                    <input
-                      className="input"
-                      placeholder={item.is_wet ? t("Moisture before drying %") : t("Moisture %")}
-                      type="number"
-                      min={0}
-                      value={item.moisture_content_pct}
-                      onChange={text(idx, "moisture_content_pct")}
-                    />
-                  </FieldCaption>
-                  <FieldCaption label={t("Price per kg (₱)")}>
-                    <input
-                      className="input"
-                      placeholder={t("₱/kg")}
-                      type="number"
-                      min={0}
-                      value={item.price_per_kg}
-                      onChange={text(idx, "price_per_kg")}
-                    />
-                  </FieldCaption>
-                  <FieldCaption label={t("Price per cavan (₱)")}>
-                    <input
-                      className="input cursor-default tabular-nums opacity-70"
-                      placeholder={t("₱/cavan")}
-                      type="text"
-                      readOnly
-                      tabIndex={-1}
-                      value={cavanPrice(item.price_per_kg)}
-                    />
-                  </FieldCaption>
-                </div>
-                {item.is_wet && (
-                  <div className="grid grid-cols-2 gap-2">
-                    <FieldCaption label={t("Weight after drying (kg)")}>
-                      <input
-                        className="input"
-                        placeholder={t("Weight after drying (kg)")}
-                        type="number"
-                        min={0}
-                        value={item.dried_weight_kg}
-                        onChange={text(idx, "dried_weight_kg")}
-                      />
-                    </FieldCaption>
-                    <FieldCaption label={t("Moisture after drying %")}>
-                      <input
-                        className="input"
-                        placeholder={t("Moisture after drying %")}
-                        type="number"
-                        min={0}
-                        value={item.dried_moisture_pct}
-                        onChange={text(idx, "dried_moisture_pct")}
-                      />
-                    </FieldCaption>
-                  </div>
-                )}
-              </div>
-            ))}
+              );
+            })}
           </div>
+          {attempted && !ready && (
+            <p role="alert" className="text-sm font-medium text-rose-600 dark:text-rose-400">
+              {fixFields()}
+            </p>
+          )}
           {createMutation.isError && (
             <p role="alert" className="text-sm text-rose-600 dark:text-rose-400">
               {typeof saveError === "string"
@@ -438,14 +453,10 @@ export default function PaddyPage() {
             </p>
           )}
           <div className="flex gap-2 justify-end">
-            <button onClick={() => setShowForm(false)} className="btn-secondary">
+            <button onClick={closeForm} className="btn-secondary">
               {t("Cancel")}
             </button>
-            <button
-              onClick={() => createMutation.mutate(form)}
-              className="btn-primary"
-              disabled={createMutation.isPending || !ready}
-            >
+            <button onClick={submit} className="btn-primary" disabled={createMutation.isPending}>
               {createMutation.isPending ? t("Saving…") : t("Save Purchase")}
             </button>
           </div>

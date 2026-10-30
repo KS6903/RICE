@@ -943,7 +943,6 @@ function TripForm({
           <label className={LABEL}>{t("Truck *")}</label>
           <Select
             aria-label={t("Truck")}
-            placeholder={t("Select truck…")}
             value={truckId}
             onChange={handleTruckChange}
             options={trucks.map((t) => ({
@@ -956,7 +955,6 @@ function TripForm({
           <label className={LABEL}>{t("Driver *")}</label>
           <Select
             aria-label={t("Driver")}
-            placeholder={t("Select driver…")}
             value={driverId}
             onChange={setDriverId}
             options={drivers.map((d) => ({
@@ -1304,7 +1302,6 @@ function TruckForm({
           <label className={LABEL}>{t("Truck type")}</label>
           <Select
             aria-label={t("Truck type")}
-            placeholder={t("Select type…")}
             value={type}
             onChange={setType}
             options={TRUCK_TYPES.map((t) => ({ value: t.value, label: t.label }))}
@@ -1628,7 +1625,6 @@ function DriverForm({
             <label className={LABEL}>{t("Link to employee")}</label>
             <Select
               aria-label={t("Link to employee")}
-              placeholder={t("Choose an employee…")}
               value={employeeId}
               onChange={setEmployeeId}
               options={[

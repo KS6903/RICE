@@ -18,10 +18,9 @@ export type PurchaseItemForm = {
   moisture_content_pct: string;
   /** What the buyer types; the price per cavan is worked out from it. */
   price_per_kg: string;
-  /** Bought wet: its weight and moisture after drying are then required. */
+  /** Bought wet: saved as Wet, and completed once its drying is recorded from the
+   *  purchase's details (the weight and moisture after drying). */
   is_wet: boolean;
-  dried_weight_kg: string;
-  dried_moisture_pct: string;
 };
 
 /** How the Palay page counts the stock, the Boss's choice for the whole mill. */
@@ -38,8 +37,6 @@ export const blankPurchaseItem = (): PurchaseItemForm => ({
   moisture_content_pct: "",
   price_per_kg: "",
   is_wet: false,
-  dried_weight_kg: "",
-  dried_moisture_pct: "",
 });
 
 const numberOrNull = (v: string) =>
@@ -53,6 +50,17 @@ export const pricePerCavan = (pricePerKg: string): number | null => {
   const perKg = numberOrNull(pricePerKg);
   return perKg === null ? null : Math.round(perKg * KG_PER_CAVAN * 100) / 100;
 };
+
+/** What a palay line still lacks before it can be saved (true: missing): something
+ *  counted (sacks, cavans or kilos; the last two are optional estimates) and a
+ *  price. Wet palay needs nothing more: it is saved as Wet. */
+export const purchaseLineProblems = (i: PurchaseItemForm) => ({
+  counted: !(i.sack_count || i.cavan_count || i.gross_weight_kg),
+  price: i.price_per_kg === "",
+});
+
+export const purchaseLineReady = (i: PurchaseItemForm): boolean =>
+  !Object.values(purchaseLineProblems(i)).some(Boolean);
 
 export type PurchaseForm = {
   /** The branch to store the palay in; left out, the recorder's own. */
@@ -196,8 +204,6 @@ export class PaddyService {
         moisture_content_pct: numberOrNull(i.moisture_content_pct),
         price_per_cavan: pricePerCavan(i.price_per_kg),
         is_wet: i.is_wet,
-        dried_weight_kg: i.is_wet ? numberOrNull(i.dried_weight_kg) : null,
-        dried_moisture_pct: i.is_wet ? numberOrNull(i.dried_moisture_pct) : null,
       })),
     };
   }

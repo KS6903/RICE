@@ -180,6 +180,7 @@ const FEATURE_LABELS: Record<string, string> = {
   cash_count: t("Cash count"),
   collections: t("Collections"),
   employees: t("Employees module"),
+  page_todo: t("To do list on the Palay page"),
   reports_advanced: t("Advanced reports (AR aging, valuation)"),
   compliance_reports: t("DA / NFA compliance reports"),
   offline_sync: t("Offline sync (Electron desktop)"),

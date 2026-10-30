@@ -143,7 +143,6 @@ export default function CostsPage() {
               </div>
               <Select
                 aria-label={t("Category")}
-                placeholder={t("Select category…")}
                 value={form.category_id}
                 onChange={(v) => setForm((f) => ({ ...f, category_id: v }))}
                 options={categories.map((c: any) => ({ value: c.id, label: c.name }))}

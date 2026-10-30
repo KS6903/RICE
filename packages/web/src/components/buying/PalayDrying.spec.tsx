@@ -110,10 +110,16 @@ describe("Palay purchases: wet in red, dry in green and completed", () => {
 
     const dialog = within(await screen.findByTestId("record-drying"));
     const mark = dialog.getByRole("button", { name: "Mark as dry" });
-    expect(mark).toBeDisabled();
+    // Both figures are required: trying without them says so, and records nothing.
+    fireEvent.click(mark);
+    expect(dialog.getAllByTestId("field-error")).toHaveLength(2);
+    expect(record).not.toHaveBeenCalled();
     fireEvent.change(dialog.getByLabelText("Weight after drying (kg)"), {
       target: { value: "800" },
     });
+    fireEvent.click(mark);
+    expect(dialog.getAllByTestId("field-error")).toHaveLength(1); // the moisture
+    expect(record).not.toHaveBeenCalled();
     fireEvent.change(dialog.getByLabelText("Moisture after drying %"), {
       target: { value: "14" },
     });

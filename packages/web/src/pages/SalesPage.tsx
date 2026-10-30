@@ -284,7 +284,6 @@ export default function SalesPage() {
               </div>
               <Select
                 aria-label={t("Customer")}
-                placeholder={t("Select customer…")}
                 value={orderForm.customer_id}
                 onChange={(v) => setOrderForm((f) => ({ ...f, customer_id: v }))}
                 options={activeCustomers.map((c: any) => ({ value: c.id, label: c.name }))}
@@ -349,7 +348,6 @@ export default function SalesPage() {
                 <FieldCaption label={t("Rice in stock")} className="col-span-2 sm:col-span-1">
                   <Select
                     aria-label={t("Rice in stock")}
-                    placeholder={t("Variety")}
                     value={
                       (
                         milled.find(

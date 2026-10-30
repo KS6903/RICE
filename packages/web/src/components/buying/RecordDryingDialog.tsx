@@ -1,10 +1,13 @@
 // A wet palay line has been dried: record what it weighs now and its moisture.
 // The line turns green, its stock becomes the dried weight, and the purchase is
-// completed once none of its lines is still wet.
+// completed once none of its lines is still wet. Both figures are required: a wet
+// line is not finished until they are in.
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import RecordDialog from "../sales/RecordDialog";
+import FieldCaption from "../FieldCaption";
 import { paddyService } from "../../services/PaddyService";
+import { fixFields, needsInput } from "../../utils/required";
 import { t } from "../../i18n";
 
 const kg = (v: unknown) => Number(v ?? 0).toLocaleString();
@@ -21,12 +24,13 @@ export default function RecordDryingDialog({
   const qc = useQueryClient();
   const [weight, setWeight] = useState("");
   const [moisture, setMoisture] = useState("");
+  const [attempted, setAttempted] = useState(false);
 
   const save = useMutation({
     mutationFn: () =>
       paddyService.recordDried(purchase.id, line.id, {
         dried_weight_kg: parseFloat(weight),
-        dried_moisture_pct: moisture !== "" ? parseFloat(moisture) : null,
+        dried_moisture_pct: parseFloat(moisture),
       }),
     onSuccess: () => {
       for (const key of [
@@ -41,7 +45,13 @@ export default function RecordDryingDialog({
     },
   });
   const error = (save.error as any)?.response?.data?.detail;
-  const valid = parseFloat(weight) > 0 && (moisture === "" || parseFloat(moisture) >= 0);
+  const missingWeight = !(parseFloat(weight) > 0);
+  const missingMoisture = !(parseFloat(moisture) >= 0);
+  const valid = !missingWeight && !missingMoisture;
+  const submit = () => {
+    setAttempted(true);
+    if (valid) save.mutate();
+  };
 
   return (
     <RecordDialog
@@ -64,12 +74,7 @@ export default function RecordDryingDialog({
           >
             {t("Cancel")}
           </button>
-          <button
-            type="button"
-            className="btn-primary"
-            onClick={() => save.mutate()}
-            disabled={!valid || save.isPending}
-          >
+          <button type="button" className="btn-primary" onClick={submit} disabled={save.isPending}>
             {save.isPending ? t("Saving…") : t("Mark as dry")}
           </button>
         </>
@@ -77,10 +82,10 @@ export default function RecordDryingDialog({
     >
       <div className="space-y-4">
         <div className="grid grid-cols-2 gap-3">
-          <label className="block">
-            <span className="block mb-1 text-xs font-medium text-secondary">
-              {t("Weight after drying (kg)")}
-            </span>
+          <FieldCaption
+            label={t("Weight after drying (kg)")}
+            error={attempted && missingWeight ? needsInput() : undefined}
+          >
             <input
               className="input"
               type="number"
@@ -89,24 +94,28 @@ export default function RecordDryingDialog({
               value={weight}
               onChange={(e) => setWeight(e.target.value)}
             />
-          </label>
-          <label className="block">
-            <span className="block mb-1 text-xs font-medium text-secondary">
-              {t("Moisture after drying %")}
-            </span>
+          </FieldCaption>
+          <FieldCaption
+            label={t("Moisture after drying %")}
+            error={attempted && missingMoisture ? needsInput() : undefined}
+          >
             <input
               className="input"
               type="number"
               min={0}
-              placeholder={t("Optional")}
               value={moisture}
               onChange={(e) => setMoisture(e.target.value)}
             />
-          </label>
+          </FieldCaption>
         </div>
         <p className="text-sm text-secondary">
           {t("The palay in stock becomes this weight, and the line is marked dry and completed.")}
         </p>
+        {attempted && !valid && (
+          <p role="alert" className="text-sm font-medium text-rose-600 dark:text-rose-400">
+            {fixFields()}
+          </p>
+        )}
         {error && (
           <p role="alert" className="text-sm text-rose-600 dark:text-rose-400">
             {typeof error === "string"

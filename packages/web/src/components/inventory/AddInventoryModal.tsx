@@ -11,6 +11,8 @@ import Select from "../Select";
 import { MILLED_GRADES } from "../../mappers/InventoryMapper";
 import { useByproductKinds } from "../../hooks/useByproductKinds";
 import { useEscapeKey } from "../../hooks/useEscapeKey";
+import { sortGrades } from "../../utils/grades";
+import { selectPrompt } from "../../utils/selectPrompt";
 import { varietiesOf } from "../../utils/varieties";
 import { t } from "../../i18n";
 
@@ -116,7 +118,6 @@ function InlineCreateSelect({
           <Select
             aria-label={label}
             className="w-full text-sm"
-            placeholder={placeholder}
             value={value}
             onChange={onChange}
             // With a placeholder, the field can be cleared again by choosing it.
@@ -403,7 +404,7 @@ export default function AddInventoryModal({
               label={t("Variety")}
               value={varietyId}
               onChange={setVarietyId}
-              placeholder={t("Select a variety…")}
+              placeholder={selectPrompt(t("Variety"))}
               newPlaceholder={
                 type === "palay"
                   ? t("New variety (e.g. NSIC Rc 222)…")
@@ -427,9 +428,9 @@ export default function AddInventoryModal({
               optional
               value={gradeId}
               onChange={setGradeId}
-              placeholder={t("No grade")}
+              placeholder={selectPrompt(t("Grade"))}
               newPlaceholder={t("New grade code (e.g. Grade A)…")}
-              options={grades.map((g: any) => ({ value: g.id, label: g.code }))}
+              options={sortGrades(grades).map((g: any) => ({ value: g.id, label: g.code }))}
               onCreate={createGrade}
             />
           )}

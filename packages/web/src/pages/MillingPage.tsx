@@ -307,7 +307,6 @@ export default function MillingPage() {
               </div>
               <Select
                 aria-label={t("Equipment")}
-                placeholder={t("Select equipment…")}
                 value={form.equipment_id}
                 onChange={(v) => setForm((f) => ({ ...f, equipment_id: v }))}
                 options={equipment.map((eq: any) => ({ value: eq.id, label: eq.name }))}
@@ -402,7 +401,6 @@ export default function MillingPage() {
                 <FieldCaption label={t("Variety")}>
                   <Select
                     aria-label={t("Variety")}
-                    placeholder={t("Variety")}
                     value={inp.variety_id}
                     onChange={(v) => {
                       const inputs = [...form.inputs];

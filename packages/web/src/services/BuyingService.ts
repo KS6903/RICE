@@ -18,6 +18,26 @@ export type ByproductLineForm = {
   price_per_kg: string;
 };
 
+/** What a rice line still lacks before it can be saved (true: missing): the grade it
+ *  is stocked under, the sacks and their weight, and a price. */
+export const riceLineProblems = (l: RiceLineForm) => ({
+  grade: l.grade_name === "",
+  sacks: !(Number(l.sack_count) > 0),
+  kgPerSack: !(Number(l.kg_per_sack) > 0),
+  price: l.price_per_sack === "",
+});
+
+/** What a by-product line still lacks before it can be saved (true: missing). */
+export const byproductLineProblems = (l: ByproductLineForm) => ({
+  type: l.byproduct_type === "",
+  weight: !(Number(l.weight_kg) > 0),
+  price: l.price_per_kg === "",
+});
+
+/** No problem left on a line. */
+export const lineReady = (problems: Record<string, boolean>): boolean =>
+  !Object.values(problems).some(Boolean);
+
 type Header = {
   /** The branch to store it in; left out, the recorder's own. */
   branch_id?: string | null;

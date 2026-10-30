@@ -37,6 +37,7 @@ export const FEATURE_PLAN: Record<string, PlanName> = {
   cash_count: "Pro",
   collections: "Pro",
   employees: "Pro",
+  page_todo: "Pro",
   automations: "Enterprise",
 };
 export const PLAN_ORDER: PlanName[] = ["Basic", "Pro", "Enterprise"];

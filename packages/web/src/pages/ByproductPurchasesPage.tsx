@@ -7,7 +7,12 @@ import { Boxes } from "lucide-react";
 import { format } from "date-fns";
 import { useAccess } from "../hooks/useAccess";
 import { useOpenOnArrival } from "../hooks/useOpenOnArrival";
-import { buyingService, type ByproductLineForm } from "../services/BuyingService";
+import {
+  buyingService,
+  byproductLineProblems,
+  lineReady,
+  type ByproductLineForm,
+} from "../services/BuyingService";
 import { byproductLabel } from "../mappers/byproductNames";
 import { useByproductKinds } from "../hooks/useByproductKinds";
 import EmptyState from "../components/EmptyState";
@@ -26,6 +31,7 @@ import {
   purchaseGridClass,
   usePurchaseWarehouse,
 } from "../components/PurchaseWarehouse";
+import { fixFields, needsInput } from "../utils/required";
 import { t } from "../i18n";
 
 const newLine = (): ByproductLineForm => ({
@@ -77,6 +83,13 @@ export default function ByproductPurchasesPage() {
       items: f.items.map((l, i) => (i === idx ? { ...l, ...patch } : l)),
     }));
 
+  // After a try at saving with something missing, the empty fields say so.
+  const [attempted, setAttempted] = useState(false);
+  const closeForm = () => {
+    setShowForm(false);
+    setAttempted(false);
+  };
+
   const createMutation = useMutation({
     mutationFn: (body: typeof form) =>
       buyingService.createByproductPurchase({
@@ -90,10 +103,17 @@ export default function ByproductPurchasesPage() {
       qc.invalidateQueries({ queryKey: ["byproducts"] });
       qc.invalidateQueries({ queryKey: ["byproduct-kinds"] });
       qc.invalidateQueries({ queryKey: ["inventory-summary"] });
-      setShowForm(false);
+      closeForm();
       setForm((f) => ({ ...f, remarks: "", items: [newLine()] }));
     },
   });
+
+  // Each line needs what it is, its weight and a price.
+  const ready = form.items.every((l) => lineReady(byproductLineProblems(l)));
+  const submit = () => {
+    setAttempted(true);
+    if (ready) createMutation.mutate(form);
+  };
 
   const totalKg = form.items.reduce((s, l) => s + (Number(l.weight_kg) || 0), 0);
   const totalPeso = form.items.reduce((s, l) => s + linePeso(l), 0);
@@ -115,7 +135,7 @@ export default function ByproductPurchasesPage() {
         open={showForm}
         size="xl"
         title={t("New By-product Purchase")}
-        onClose={() => setShowForm(false)}
+        onClose={closeForm}
         testId="new-purchase"
       >
         <div className="space-y-4">
@@ -160,41 +180,45 @@ export default function ByproductPurchasesPage() {
                 {t("+ Add Item")}
               </button>
             </div>
-            {form.items.map((item, idx) => (
-              <div
-                key={idx}
-                className="grid grid-cols-2 sm:grid-cols-3 gap-2 p-3 bg-gray-50 dark:bg-slate-900/50 rounded-lg"
-              >
-                <FieldCaption label={t("By-product")} className="col-span-2 sm:col-span-1">
-                  <Select
-                    aria-label={t("By-product")}
-                    value={item.byproduct_type}
-                    onChange={(v) => setLine(idx, { byproduct_type: v })}
-                    options={types}
-                  />
-                </FieldCaption>
-                <FieldCaption label={t("Weight (kg)")}>
-                  <input
-                    className="input"
-                    placeholder="kg"
-                    type="number"
-                    min="0"
-                    value={item.weight_kg}
-                    onChange={(e) => setLine(idx, { weight_kg: e.target.value })}
-                  />
-                </FieldCaption>
-                <FieldCaption label={t("Price per kg (₱)")}>
-                  <input
-                    className="input"
-                    placeholder={t("₱/kg")}
-                    type="number"
-                    min="0"
-                    value={item.price_per_kg}
-                    onChange={(e) => setLine(idx, { price_per_kg: e.target.value })}
-                  />
-                </FieldCaption>
-              </div>
-            ))}
+            {form.items.map((item, idx) => {
+              const problems = byproductLineProblems(item);
+              const flag = (missing: boolean) => (attempted && missing ? needsInput() : undefined);
+              return (
+                <div
+                  key={idx}
+                  className="grid grid-cols-2 gap-3 rounded-xl bg-gray-50 p-4 ring-1 ring-soft sm:grid-cols-3 dark:bg-slate-900/50"
+                >
+                  <FieldCaption label={t("By-product")} className="col-span-2 sm:col-span-1">
+                    <Select
+                      aria-label={t("By-product")}
+                      value={item.byproduct_type}
+                      onChange={(v) => setLine(idx, { byproduct_type: v })}
+                      options={types}
+                    />
+                  </FieldCaption>
+                  <FieldCaption label={t("Weight (kg)")} error={flag(problems.weight)}>
+                    <input
+                      className="input"
+                      placeholder="kg"
+                      type="number"
+                      min="0"
+                      value={item.weight_kg}
+                      onChange={(e) => setLine(idx, { weight_kg: e.target.value })}
+                    />
+                  </FieldCaption>
+                  <FieldCaption label={t("Price per kg (₱)")} error={flag(problems.price)}>
+                    <input
+                      className="input"
+                      placeholder={t("₱/kg")}
+                      type="number"
+                      min="0"
+                      value={item.price_per_kg}
+                      onChange={(e) => setLine(idx, { price_per_kg: e.target.value })}
+                    />
+                  </FieldCaption>
+                </div>
+              );
+            })}
           </div>
           <div className="flex flex-wrap items-center justify-end gap-x-4 gap-y-2">
             <p
@@ -208,19 +232,20 @@ export default function ByproductPurchasesPage() {
               {" · "}
               <span className="font-semibold tabular-nums">{peso(totalPeso)}</span>
             </p>
+            {attempted && !ready && (
+              <p role="alert" className="text-sm font-medium text-rose-600 dark:text-rose-400">
+                {fixFields()}
+              </p>
+            )}
             {createMutation.isError && (
               <p className="text-sm text-rose-600 dark:text-rose-400">
                 {t("Couldn't save. Check each line has a weight and a price.")}
               </p>
             )}
-            <button onClick={() => setShowForm(false)} className="btn-secondary">
+            <button onClick={closeForm} className="btn-secondary">
               {t("Cancel")}
             </button>
-            <button
-              onClick={() => createMutation.mutate(form)}
-              className="btn-primary"
-              disabled={createMutation.isPending}
-            >
+            <button onClick={submit} className="btn-primary" disabled={createMutation.isPending}>
               {createMutation.isPending ? t("Saving…") : t("Save Purchase")}
             </button>
           </div>
