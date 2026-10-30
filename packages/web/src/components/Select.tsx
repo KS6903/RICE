@@ -5,7 +5,6 @@ import { Check, ChevronDown } from "lucide-react";
 import { clsx } from "clsx";
 import { observeViewport, positionPopover } from "../utils/popoverPosition";
 import { selectPrompt } from "../utils/selectPrompt";
-import { t } from "../i18n";
 
 export type SelectOption = { value: string; label: string };
 

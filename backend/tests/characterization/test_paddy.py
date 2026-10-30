@@ -169,9 +169,12 @@ def test_create_grade_duplicate_409(auth_client):
 
 
 def test_grades_are_listed_a_to_z(auth_client):
-    for code in ("ZZ", "B", "AA"):
+    for code in ("ZZ", "MM", "AA"):
         assert _make_grade(auth_client, code).status_code == 201
-    assert [g["code"] for g in auth_client.get("/api/paddy/grades").json()] == ["AA", "B", "ZZ"]
+    # The shared grades every mill starts with (A, B, C, NFA1, NFA2) are in the list too.
+    codes = [g["code"] for g in auth_client.get("/api/paddy/grades").json()]
+    assert codes == sorted(codes)
+    assert {"AA", "MM", "ZZ"} <= set(codes)
 
 
 # ── suppliers ────────────────────────────────────────────────────────────────
