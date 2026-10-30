@@ -312,7 +312,10 @@ export default function PaddyPage() {
                   data-testid="purchase-line"
                   className="space-y-4 rounded-xl bg-gray-50 p-4 ring-1 ring-soft dark:bg-slate-900/50"
                 >
-                  <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                  {/* Variety, grade and condition: a row each on a phone, so
+                      "-- Select Grade --" isn't cut off; Grade and Condition share
+                      a row from a tablet up, and all three from a laptop. */}
+                  <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
                     <FieldCaption label={t("Variety")} className="col-span-2">
                       <Select
                         aria-label={t("Variety")}
@@ -321,7 +324,7 @@ export default function PaddyPage() {
                         options={varietyOptions(varieties, "palay")}
                       />
                     </FieldCaption>
-                    <FieldCaption label={t("Grade")}>
+                    <FieldCaption label={t("Grade")} className="col-span-2 sm:col-span-1">
                       <Select
                         aria-label={t("Grade")}
                         value={item.grade_id}
@@ -332,7 +335,7 @@ export default function PaddyPage() {
                         }))}
                       />
                     </FieldCaption>
-                    <div>
+                    <div className="col-span-2 sm:col-span-1">
                       <span className="mb-1 block text-xs font-medium text-secondary">
                         {t("Condition")}
                       </span>
@@ -409,7 +412,7 @@ export default function PaddyPage() {
                     </p>
                     <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
                       <FieldCaption
-                        label={item.is_wet ? t("Moisture before drying %") : t("Moisture %")}
+                        label={item.is_wet ? t("Moisture when wet %") : t("Moisture %")}
                       >
                         <input
                           className="input"

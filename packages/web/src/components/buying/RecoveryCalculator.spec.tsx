@@ -116,7 +116,7 @@ describe("The recovery calculator on a palay purchase", () => {
   it("weighs wet palay down to 14% moisture", async () => {
     const calc = await openCalculator();
     fill(calc, "Palay sample (kg)", "100");
-    fill(calc, "Moisture of the sample %", "25");
+    fill(calc, "Sample moisture %", "25");
     fill(calc, "Milled rice (kg)", "56.7");
 
     const result = within(calc).getByTestId("recovery-result");

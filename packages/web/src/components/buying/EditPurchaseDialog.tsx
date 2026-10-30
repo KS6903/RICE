@@ -292,8 +292,9 @@ export default function EditPurchaseDialog({
           options={withCurrent(byproductOptions, l.byproduct_type, l.byproduct_type)}
         />
       );
+    // One above the other on a phone: side by side the variety was cut to "NSIC R…".
     return (
-      <div className="grid grid-cols-2 gap-2">
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
         <Select
           aria-label={t("Variety of line {{value}}", { value: i + 1 })}
           value={l.variety_id}

@@ -222,7 +222,7 @@ export default function ByproductPurchasesPage() {
           </div>
           <div className="flex flex-wrap items-center justify-end gap-x-4 gap-y-2">
             <p
-              className="mr-auto text-sm text-gray-600 dark:text-slate-300"
+              className="w-full text-sm text-gray-600 dark:text-slate-300 sm:mr-auto sm:w-auto"
               data-testid="byproduct-total"
             >
               {t("Total:")}{" "}
@@ -242,10 +242,14 @@ export default function ByproductPurchasesPage() {
                 {t("Couldn't save. Check each line has a weight and a price.")}
               </p>
             )}
-            <button onClick={closeForm} className="btn-secondary">
+            <button onClick={closeForm} className="btn-secondary flex-auto sm:flex-none">
               {t("Cancel")}
             </button>
-            <button onClick={submit} className="btn-primary" disabled={createMutation.isPending}>
+            <button
+              onClick={submit}
+              className="btn-primary flex-auto sm:flex-none"
+              disabled={createMutation.isPending}
+            >
               {createMutation.isPending ? t("Saving…") : t("Save Purchase")}
             </button>
           </div>

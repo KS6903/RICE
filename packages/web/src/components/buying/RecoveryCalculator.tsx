@@ -197,7 +197,9 @@ export default function RecoveryCalculator({
       aria-label={t("Recovery calculator")}
       data-testid="recovery-calculator"
     >
-      <div className="flex items-start justify-between gap-3">
+      {/* The kg / g switch goes under the title on a phone, where beside it the
+          title would be squeezed into a sliver. */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="flex items-start gap-2">
           <Calculator size={18} className="mt-0.5 shrink-0 text-brand-600" aria-hidden />
           <div>
@@ -254,7 +256,7 @@ export default function RecoveryCalculator({
               autoFocus
             />
             <Amount
-              label={t("Moisture of the sample %")}
+              label={t("Sample moisture %")}
               value={moisture}
               onChange={setMoisture}
               placeholder={t("Optional")}
@@ -382,17 +384,22 @@ export default function RecoveryCalculator({
 
       <div className="sticky -bottom-4 -mx-4 -mb-4 mt-4 flex flex-wrap items-center justify-end gap-2 rounded-b-2xl border-t border-soft bg-[rgb(var(--surface-raised))] px-4 py-3">
         {canRecord && (
-          <p className="mr-auto text-xs text-muted">
+          <p className="w-full text-xs text-muted sm:mr-auto sm:w-auto">
             {t("Recording saves this result on the purchase. No stock changes.")}
           </p>
         )}
-        <button type="button" className="btn-secondary" onClick={onClose} disabled={save.isPending}>
+        <button
+          type="button"
+          className="btn-secondary flex-auto sm:flex-none"
+          onClick={onClose}
+          disabled={save.isPending}
+        >
           {t("Close calculator")}
         </button>
         {canRecord && (
           <button
             type="button"
-            className="btn-primary"
+            className="btn-primary flex-auto sm:flex-none"
             onClick={() => body && save.mutate(body)}
             disabled={!body || save.isPending}
           >
@@ -431,14 +438,14 @@ export function RecoveryTests({ purchase, canRemove }: { purchase: any; canRemov
   return (
     <section className="mt-4" aria-label={t("Recovery tests")} data-testid="recovery-tests">
       <h4 className="mb-2 text-sm font-bold text-primary">{t("Recovery tests")}</h4>
-      <div className="overflow-x-auto rounded-xl ring-1 ring-soft">
-        <table className="w-full text-sm">
+      <div className="rounded-xl ring-1 ring-soft sm:overflow-x-auto">
+        <table className="stack-table w-full text-sm sm:[overflow-wrap:normal]">
           <thead className="bg-gray-50 dark:bg-slate-900/50">
             <tr>
               {headings.map((h, i) => (
                 <th
                   key={h}
-                  className={`px-3 py-2 font-medium text-gray-600 dark:text-slate-300 ${i >= 2 && i <= 5 ? "text-right" : "text-left"}`}
+                  className={`px-3 py-2 font-medium text-gray-600 dark:text-slate-300 sm:whitespace-nowrap ${i >= 2 && i <= 5 ? "text-right" : "text-left"}`}
                 >
                   {h}
                 </th>
@@ -449,17 +456,30 @@ export function RecoveryTests({ purchase, canRemove }: { purchase: any; canRemov
           <tbody className="divide-y divide-gray-100 dark:divide-slate-700">
             {tests.map((x) => (
               <tr key={x.id}>
-                <td className="px-3 py-2">{new Date(x.created_at).toLocaleDateString()}</td>
-                <td className="px-3 py-2">{x.variety_code ?? "—"}</td>
-                <td className="px-3 py-2 text-right tabular-nums">{formatWeight(x.sample_kg)}</td>
-                <td className="px-3 py-2 text-right tabular-nums">{formatWeight(x.milled_kg)}</td>
-                <td className="px-3 py-2 text-right font-semibold tabular-nums">
+                <td data-label={headings[0]} className="px-3 py-2">
+                  {new Date(x.created_at).toLocaleDateString()}
+                </td>
+                <td data-label={headings[1]} className="px-3 py-2">
+                  {x.variety_code ?? "—"}
+                </td>
+                <td data-label={headings[2]} className="px-3 py-2 text-right tabular-nums">
+                  {formatWeight(x.sample_kg)}
+                </td>
+                <td data-label={headings[3]} className="px-3 py-2 text-right tabular-nums">
+                  {formatWeight(x.milled_kg)}
+                </td>
+                <td
+                  data-label={headings[4]}
+                  className="px-3 py-2 text-right font-semibold tabular-nums"
+                >
                   {percent(Number(x.recovery_pct))}
                 </td>
-                <td className="px-3 py-2 text-right tabular-nums">
+                <td data-label={headings[5]} className="px-3 py-2 text-right tabular-nums">
                   {x.head_rice_pct != null ? percent(Number(x.head_rice_pct)) : "—"}
                 </td>
-                <td className="px-3 py-2">{x.created_by_name ?? "—"}</td>
+                <td data-label={headings[6]} className="px-3 py-2">
+                  {x.created_by_name ?? "—"}
+                </td>
                 {canRemove && (
                   <td className="px-1 py-1 text-right">
                     <button

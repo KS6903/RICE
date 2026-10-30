@@ -285,7 +285,7 @@ export function PurchaseDetails({
                   {onRecordDrying && (
                     <button
                       type="button"
-                      className="text-xs font-medium text-brand-600 hover:underline dark:text-brand-400"
+                      className="text-xs font-medium text-brand-600 hover:underline dark:text-brand-400 max-sm:min-h-[44px] max-sm:rounded-lg max-sm:border max-sm:border-soft max-sm:px-3 max-sm:text-sm"
                       onClick={() => onRecordDrying(l)}
                     >
                       {t("Record drying")}
@@ -338,12 +338,15 @@ export function PurchaseDetails({
       onClose={onClose}
       testId="purchase-details"
       footer={
+        // Straight in the footer, which wraps: on a phone the buttons share the
+        // width (and drop to a second row when a translation is long) instead of
+        // being squeezed until their words break.
         (kind === "palay" || onEdit || onHistory) && (
-          <div className="flex justify-end gap-2">
+          <>
             {kind === "palay" && (
               <button
                 type="button"
-                className="btn-secondary"
+                className="btn-secondary flex-auto sm:flex-none"
                 aria-expanded={calculating}
                 onClick={() => setCalculating((on) => !on)}
               >
@@ -351,16 +354,20 @@ export function PurchaseDetails({
               </button>
             )}
             {onHistory && (
-              <button type="button" className="btn-secondary" onClick={onHistory}>
+              <button
+                type="button"
+                className="btn-secondary flex-auto sm:flex-none"
+                onClick={onHistory}
+              >
                 <History size={15} aria-hidden /> {t("History")}
               </button>
             )}
             {onEdit && (
-              <button type="button" className="btn-primary" onClick={onEdit}>
+              <button type="button" className="btn-primary flex-auto sm:flex-none" onClick={onEdit}>
                 <Pencil size={15} aria-hidden /> {t("Edit")}
               </button>
             )}
-          </div>
+          </>
         )
       }
     >
@@ -371,19 +378,21 @@ export function PurchaseDetails({
             className="rounded-xl bg-slate-50 px-3 py-2 ring-1 ring-soft dark:bg-slate-800/50"
           >
             <dt className="text-[10px] font-bold uppercase tracking-wide text-muted">{label}</dt>
-            <dd className="mt-0.5 truncate text-sm font-semibold text-primary">{value}</dd>
+            <dd className="mt-0.5 text-sm font-semibold text-primary sm:truncate">{value}</dd>
           </div>
         ))}
       </dl>
 
-      <div className="mt-4 overflow-x-auto rounded-xl ring-1 ring-soft">
-        <table className="w-full text-sm">
+      {/* On a phone each line is a card (see .stack-table), so the Condition cell and
+          its Record drying button aren't hidden behind a sideways scroll. */}
+      <div className="mt-4 rounded-xl ring-1 ring-soft sm:overflow-x-auto">
+        <table className="stack-table w-full text-sm sm:[overflow-wrap:normal]">
           <thead className="bg-gray-50 dark:bg-slate-900/50">
             <tr>
               {[...cols, { label: t("Amount"), numeric: true }].map((c) => (
                 <th
                   key={c.label}
-                  className={`px-3 py-2 font-medium text-gray-600 dark:text-slate-300 ${c.numeric ? "text-right" : "text-left"}`}
+                  className={`px-2 py-2 font-medium text-gray-600 dark:text-slate-300 sm:whitespace-nowrap ${c.numeric ? "text-right" : "text-left"}`}
                 >
                   {c.label}
                 </th>
@@ -396,12 +405,16 @@ export function PurchaseDetails({
                 {cols.map((c) => (
                   <td
                     key={c.label}
-                    className={`px-3 py-2 ${c.numeric ? "text-right tabular-nums" : ""}`}
+                    data-label={c.label}
+                    className={`px-2 py-2 ${c.numeric ? "text-right tabular-nums" : ""}`}
                   >
                     {c.value(line)}
                   </td>
                 ))}
-                <td className="px-3 py-2 text-right font-semibold tabular-nums">
+                <td
+                  data-label={t("Amount")}
+                  className="px-2 py-2 text-right font-semibold tabular-nums"
+                >
                   {peso(Number(line.line_total ?? 0))}
                 </td>
               </tr>
@@ -409,10 +422,10 @@ export function PurchaseDetails({
           </tbody>
           <tfoot className="border-t border-soft">
             <tr>
-              <td colSpan={cols.length} className="px-3 py-2 text-right text-muted">
+              <td colSpan={cols.length} className="px-2 py-2 text-right text-muted">
                 {t("Total · {{total_kg}}", { total_kg: kg(p.total_kg) })}
               </td>
-              <td className="px-3 py-2 text-right font-bold tabular-nums text-primary">
+              <td className="px-2 py-2 text-right font-bold tabular-nums text-primary">
                 {peso(Number(p.total_amount ?? 0))}
               </td>
             </tr>

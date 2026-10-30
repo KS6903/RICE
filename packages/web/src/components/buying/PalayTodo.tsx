@@ -73,17 +73,17 @@ export default function PalayTodo({
             {todos.map(({ purchase, line }) => (
               <li
                 key={line.id}
-                className="flex items-center justify-between gap-3 py-3"
+                className="flex flex-col gap-3 py-3 sm:flex-row sm:items-center sm:justify-between"
                 data-testid="palay-todo-item"
               >
                 <div className="min-w-0">
                   <p className="font-mono text-xs text-muted">{purchase.reference_no}</p>
-                  <p className="truncate font-semibold text-primary">
+                  <p className="font-semibold text-primary sm:truncate">
                     {[line.variety_code ?? t("Any variety"), line.grade_code]
                       .filter(Boolean)
                       .join(" · ")}
                   </p>
-                  <p className="truncate text-xs text-muted">
+                  <p className="text-xs text-muted sm:truncate">
                     {kg(line.net_weight_kg)}
                     {line.sack_count != null && (
                       <>
@@ -99,7 +99,7 @@ export default function PalayTodo({
                 {canRecord && (
                   <button
                     type="button"
-                    className="btn-primary shrink-0"
+                    className="btn-primary sm:shrink-0"
                     onClick={() => setDrying({ purchase, line })}
                   >
                     {t("Record drying")}

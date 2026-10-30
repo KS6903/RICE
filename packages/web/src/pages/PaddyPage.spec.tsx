@@ -296,7 +296,7 @@ describe("PaddyPage: a purchase line counted in sacks, bought wet or dry", () =>
     fireEvent.click(screen.getByRole("checkbox", { name: "Wet" }));
     expect(screen.getByRole("checkbox", { name: "Wet" })).toBeChecked();
     expect(screen.getByRole("checkbox", { name: "Dry" })).not.toBeChecked();
-    expect(screen.getByLabelText("Moisture before drying %")).toBeInTheDocument();
+    expect(screen.getByLabelText("Moisture when wet %")).toBeInTheDocument();
     // Its drying is recorded later, from the purchase's details.
     expect(screen.queryByLabelText("Weight after drying (kg)")).toBeNull();
     expect(screen.queryByLabelText("Moisture after drying %")).toBeNull();

@@ -826,4 +826,38 @@
   .overflow-x-auto > table :is(th, td) {
     white-space: nowrap;
   }
+
+  /* A .stack-table becomes one card per row on a phone: each cell shows its
+     column's name (its data-label) before its value, so nothing hides behind a
+     sideways scroll. Its wrapper must not be .overflow-x-auto (use sm:overflow-x-auto). */
+  .stack-table,
+  .stack-table > tbody,
+  .stack-table > tbody > tr { display: block; }
+  .stack-table > thead { display: none; }
+  .stack-table > tbody > tr { padding: 0.5rem 0.75rem; }
+  .stack-table > tbody > tr > td {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 0.25rem 0;
+    text-align: right;
+  }
+  .stack-table > tbody > tr > td::before {
+    content: attr(data-label);
+    flex-shrink: 0;
+    text-align: left;
+    font-size: 0.75rem;
+    color: rgb(var(--ink-subtle));
+  }
+  /* The total row: "Total · 4,000 kg" on the left, the amount on the right. */
+  .stack-table > tfoot { display: block; }
+  .stack-table > tfoot > tr {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 0.5rem 0.75rem;
+  }
+  .stack-table > tfoot > tr > td { display: block; padding: 0; text-align: left; }
+  .stack-table > tfoot > tr > td:last-child { text-align: right; }
 }
