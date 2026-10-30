@@ -35,7 +35,7 @@ import {
 } from "../components/PurchaseWarehouse";
 import { sortGrades } from "../utils/grades";
 import { fixFields, needsInput } from "../utils/required";
-import { STOCK_CELL as CELL, stockDetails } from "../utils/stockTable";
+import { STOCK_CELL as CELL, STOCK_FIGURE as FIGURE, stockDetails } from "../utils/stockTable";
 import { varietyOptions } from "../utils/varieties";
 import { t } from "../i18n";
 
@@ -575,7 +575,7 @@ export default function PaddyPage() {
                     {shownUnits.map((u, n) => (
                       <td
                         key={u}
-                        className={`${CELL} tabular-nums ${n === 0 ? "font-medium" : "text-gray-500 dark:text-slate-400"} ${unitClass(u)}`}
+                        className={`${FIGURE} tabular-nums ${n === 0 ? "font-medium" : "text-gray-500 dark:text-slate-400"} ${unitClass(u)}`}
                       >
                         {amount(i[units[u].stock])}
                       </td>

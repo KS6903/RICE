@@ -35,7 +35,7 @@ import {
   usePurchaseWarehouse,
 } from "../components/PurchaseWarehouse";
 import { fixFields, needsChoice, needsInput } from "../utils/required";
-import { STOCK_CELL as CELL, stockDetails } from "../utils/stockTable";
+import { STOCK_CELL as CELL, STOCK_FIGURE as FIGURE, stockDetails } from "../utils/stockTable";
 import { varietyOptions } from "../utils/varieties";
 import { t } from "../i18n";
 
@@ -387,10 +387,10 @@ export default function RicePurchasesPage() {
                         )}
                       </>
                     )}
-                    <td className={`${CELL} font-medium`}>
+                    <td className={`${FIGURE} font-medium`}>
                       {Number(r.quantity_kg).toLocaleString()}
                     </td>
-                    <td className={`${CELL} text-gray-500 dark:text-slate-400`}>
+                    <td className={`${FIGURE} text-gray-500 dark:text-slate-400`}>
                       {(Number(r.quantity_kg) / sack.kg).toFixed(1)}
                     </td>
                   </tr>
