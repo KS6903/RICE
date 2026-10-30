@@ -23,7 +23,14 @@ from .milling import (
     MillingEquipment,
 )
 from .notification import Notification, NotificationAttachment
-from .paddy import DryingRecord, PalayInventory, PalayInventoryMovement, PalayPurchase, PalayPurchaseItem
+from .paddy import (
+    DryingRecord,
+    PalayInventory,
+    PalayInventoryMovement,
+    PalayPurchase,
+    PalayPurchaseItem,
+    PalayRecoveryTest,
+)
 from .password_reset import PasswordResetToken
 from .plan_payment import PlanPayment
 from .reference import ByproductKind, ByproductType, QualityGrade, RiceVariety
@@ -74,6 +81,7 @@ __all__ = [
     "UserLocation",
     "PalayPurchase",
     "PalayPurchaseItem",
+    "PalayRecoveryTest",
     "DryingRecord",
     "PalayInventory",
     "PalayInventoryMovement",

@@ -14,7 +14,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import joinedload, selectinload
 
 from ..core.branch_scope import only_viewed, viewed_branch
-from ..models.paddy import PalayInventory, PalayPurchase
+from ..models.paddy import PalayInventory, PalayPurchase, PalayRecoveryTest
 from ..models.reference import QualityGrade, RiceVariety
 from ..models.supplier_customer import Supplier
 from ..models.user import User
@@ -84,6 +84,9 @@ class PalayPurchaseRepository(BaseRepository[PalayPurchase]):
                 joinedload(PalayPurchase.creator).joinedload(User.role),
                 joinedload(PalayPurchase.supplier),
                 selectinload(PalayPurchase.items),
+                selectinload(PalayPurchase.recovery_tests).options(
+                    joinedload(PalayRecoveryTest.variety), joinedload(PalayRecoveryTest.creator)
+                ),
             )
             .where(PalayPurchase.company_id == company_id)
         )

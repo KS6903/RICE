@@ -45,6 +45,12 @@ class PalayPurchase(Base, TimestampMixin):
     creator: Mapped["User"] = relationship("User", foreign_keys=[created_by])
     branch: Mapped["Branch | None"] = relationship("Branch")
     warehouse: Mapped["Warehouse | None"] = relationship("Warehouse")
+    recovery_tests: Mapped[list["PalayRecoveryTest"]] = relationship(
+        "PalayRecoveryTest",
+        back_populates="purchase",
+        cascade="all, delete-orphan",
+        order_by="PalayRecoveryTest.created_at.desc()",
+    )
 
 
 class PalayPurchaseItem(Base):
@@ -94,6 +100,38 @@ class PalayPurchaseItem(Base):
     def total_amount(self) -> Decimal:
         # Paid on the weight it was bought at, wet or not.
         return (self.net_weight_kg / KG_PER_CAVAN) * self.price_per_cavan
+
+
+class PalayRecoveryTest(Base, TimestampMixin):
+    """A milling-recovery test on a purchase's palay: a sample weighed in and what
+    came out of it. It hangs on the purchase, not on a line, so correcting the
+    lines (which replaces them) keeps it; the variety says which line was tested."""
+
+    __tablename__ = "palay_recovery_tests"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    company_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("companies.id"))
+    purchase_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("palay_purchases.id", ondelete="CASCADE"), nullable=False
+    )
+    variety_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("rice_varieties.id"))
+    sample_kg: Mapped[Decimal] = mapped_column(Numeric(10, 3), nullable=False)
+    # The sample's moisture, when it was read.
+    sample_moisture_pct: Mapped[Decimal | None] = mapped_column(Numeric(5, 2))
+    # Milled rice out, brokens included; the head rice (kernels at least three
+    # quarters whole) is part of it. Husk and bran are what the milling took off.
+    milled_kg: Mapped[Decimal] = mapped_column(Numeric(10, 3), nullable=False)
+    head_rice_kg: Mapped[Decimal | None] = mapped_column(Numeric(10, 3))
+    husk_kg: Mapped[Decimal | None] = mapped_column(Numeric(10, 3))
+    bran_kg: Mapped[Decimal | None] = mapped_column(Numeric(10, 3))
+    # Milled rice as a percent of the sample, and the head rice as a percent of it.
+    recovery_pct: Mapped[Decimal] = mapped_column(Numeric(5, 2), nullable=False)
+    head_rice_pct: Mapped[Decimal | None] = mapped_column(Numeric(5, 2))
+    created_by: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"))
+
+    purchase: Mapped["PalayPurchase"] = relationship("PalayPurchase", back_populates="recovery_tests")
+    variety: Mapped["RiceVariety | None"] = relationship("RiceVariety")
+    creator: Mapped["User | None"] = relationship("User", foreign_keys=[created_by])
 
 
 class DryingRecord(Base):

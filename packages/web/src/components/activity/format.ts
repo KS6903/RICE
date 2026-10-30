@@ -31,6 +31,8 @@ const ACTION_VERBS: Record<string, string> = {
   "customer.edit": t("Edited customer"),
   "palay_purchase.edit": t("Edited palay purchase"),
   "palay_purchase.dried": t("Recorded the drying of palay purchase"),
+  "palay_purchase.recovery": t("Recorded a recovery test on palay purchase"),
+  "palay_purchase.recovery_removed": t("Removed a recovery test from palay purchase"),
   "rice_purchase.edit": t("Edited rice purchase"),
   "byproduct_purchase.edit": t("Edited by-product purchase"),
   "expense.edit": t("Edited expense"),

@@ -33,6 +33,7 @@ from ..schemas.paddy import (
     PurchaseCreate,
     PurchaseEdit,
     PurchaseUpdate,
+    RecoveryIn,
     StockViewIn,
     SupplierCreate,
     SupplierUpdate,
@@ -191,6 +192,22 @@ def record_drying(
     """A wet line is dry: its weight and moisture after drying. Whoever buys palay
     can record it, since it's the next step of the purchase, not a correction."""
     return svc.serialize_purchase(svc.record_drying(purchase_id, item_id, body))
+
+
+@router.post(
+    "/purchases/{purchase_id}/recovery",
+    dependencies=[Depends(require_section_access("paddy", write=True))],
+)
+def record_recovery(purchase_id: uuid.UUID, body: RecoveryIn, svc: PaddyService = Depends(get_paddy_service)):
+    """Save a milling-recovery test on a purchase. Whoever buys palay can record
+    one; it moves no stock."""
+    return svc.serialize_purchase(svc.record_recovery(purchase_id, body))
+
+
+@router.delete("/purchases/{purchase_id}/recovery/{test_id}", dependencies=[Depends(require_record_editor)])
+def remove_recovery(purchase_id: uuid.UUID, test_id: uuid.UUID, svc: PaddyService = Depends(get_paddy_service)):
+    """Take a recovery test off a purchase (edit power), logged."""
+    return svc.serialize_purchase(svc.remove_recovery(purchase_id, test_id))
 
 
 # ── Inventory ─────────────────────────────────────────────────────────────────

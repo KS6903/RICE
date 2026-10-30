@@ -75,6 +75,18 @@ export type PurchaseEdit = {
   items: Record<string, unknown>[];
 };
 
+/** A milling-recovery test on a purchase's palay: the sample and what came out of
+ *  it, in kilos. The server works out the percentages. */
+export type RecoveryTestForm = {
+  variety_id: string | null;
+  sample_kg: number;
+  sample_moisture_pct: number | null;
+  milled_kg: number;
+  head_rice_kg: number | null;
+  husk_kg: number | null;
+  bran_kg: number | null;
+};
+
 export class PaddyService {
   constructor(private http = api) {}
 
@@ -143,6 +155,18 @@ export class PaddyService {
   ): Promise<any> {
     return this.http
       .post(`/paddy/purchases/${purchaseId}/items/${itemId}/dried`, body)
+      .then((r) => r.data);
+  }
+
+  /** Save a recovery test on a palay purchase; no stock moves. */
+  recordRecovery(purchaseId: string, body: RecoveryTestForm): Promise<any> {
+    return this.http.post(`/paddy/purchases/${purchaseId}/recovery`, body).then((r) => r.data);
+  }
+
+  /** Take a recovery test off a purchase (edit power). */
+  removeRecovery(purchaseId: string, testId: string): Promise<any> {
+    return this.http
+      .delete(`/paddy/purchases/${purchaseId}/recovery/${testId}`)
       .then((r) => r.data);
   }
 

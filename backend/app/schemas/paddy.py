@@ -108,6 +108,31 @@ class DriedIn(BaseModel):
     dried_moisture_pct: Decimal | None = Field(None, ge=0, le=100)
 
 
+class RecoveryIn(BaseModel):
+    """A milling-recovery test on a purchase's palay: the sample weighed in and
+    what came out of it. The recovery is worked out here, never taken from the
+    client. Head rice is part of the milled rice, which includes its brokens."""
+
+    variety_id: uuid.UUID | None = None
+    sample_kg: Decimal = Field(gt=0, max_digits=10, decimal_places=3)
+    sample_moisture_pct: Decimal | None = Field(None, ge=0, le=100)
+    milled_kg: Decimal = Field(gt=0, max_digits=10, decimal_places=3)
+    head_rice_kg: Decimal | None = Field(None, ge=0, max_digits=10, decimal_places=3)
+    husk_kg: Decimal | None = Field(None, ge=0, max_digits=10, decimal_places=3)
+    bran_kg: Decimal | None = Field(None, ge=0, max_digits=10, decimal_places=3)
+
+    @model_validator(mode="after")
+    def _adds_up(self) -> "RecoveryIn":
+        if self.milled_kg > self.sample_kg:
+            raise ValueError("The milled rice can't weigh more than the palay it came from.")
+        if self.head_rice_kg is not None and self.head_rice_kg > self.milled_kg:
+            raise ValueError("The head rice is part of the milled rice, so it can't weigh more than it.")
+        for part in (self.husk_kg, self.bran_kg):
+            if part is not None and part > self.sample_kg:
+                raise ValueError("The husk and the bran can't weigh more than the palay they came from.")
+        return self
+
+
 class StockViewIn(BaseModel):
     view: Literal["sacks", "cavans", "kilos", "all"]
 

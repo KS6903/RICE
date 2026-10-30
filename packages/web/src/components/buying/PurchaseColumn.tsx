@@ -2,7 +2,7 @@
 // clicking it opens the full purchase in a popup, where someone with edit power
 // corrects it and anyone who buys sees its history.
 import { useState, type ReactNode } from "react";
-import { History, Pencil, Plus } from "lucide-react";
+import { Calculator, History, Pencil, Plus } from "lucide-react";
 import { roleLabel } from "@rice-mill/shared";
 import Modal from "../Modal";
 import LoadingRows from "../LoadingRows";
@@ -11,6 +11,7 @@ import { peso } from "./money";
 import { STATUS_BADGE, byproductName, gradeLabel, type TradeKind } from "./trade";
 import EditPurchaseDialog from "./EditPurchaseDialog";
 import RecordDryingDialog from "./RecordDryingDialog";
+import RecoveryCalculator, { RecoveryTests } from "./RecoveryCalculator";
 import RecordHistory, { type RecordKind } from "../sales/RecordHistory";
 import { useCanEditSavedRecords } from "../../hooks/useRecordEditor";
 import { t } from "../../i18n";
@@ -50,7 +51,10 @@ export default function PurchaseColumn({
   /** The purchases are still on their way: show that, not `empty`. */
   loading?: boolean;
 }) {
-  const [open, setOpen] = useState<any | null>(null);
+  // The open purchase is looked up by id, so what a recovery test or a correction
+  // saves shows in the window once the list is fetched again.
+  const [openId, setOpenId] = useState<string | null>(null);
+  const open = purchases.find((p) => p.id === openId) ?? null;
   const [editing, setEditing] = useState<any | null>(null);
   const [history, setHistory] = useState<any | null>(null);
   const [drying, setDrying] = useState<{ purchase: any; line: any } | null>(null);
@@ -104,7 +108,7 @@ export default function PurchaseColumn({
               >
                 <button
                   type="button"
-                  onClick={() => setOpen(p)}
+                  onClick={() => setOpenId(p.id)}
                   className="flex w-full items-start justify-between gap-3 px-4 py-3 text-left hover:bg-gray-50 dark:hover:bg-slate-900/50 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-emerald-400"
                 >
                   <div className="min-w-0">
@@ -145,12 +149,12 @@ export default function PurchaseColumn({
         <PurchaseDetails
           kind={kind}
           purchase={open}
-          onClose={() => setOpen(null)}
+          onClose={() => setOpenId(null)}
           onEdit={
             canCorrect
               ? () => {
                   setEditing(open);
-                  setOpen(null);
+                  setOpenId(null);
                 }
               : undefined
           }
@@ -158,7 +162,7 @@ export default function PurchaseColumn({
             canSeeHistory
               ? () => {
                   setHistory(open);
-                  setOpen(null);
+                  setOpenId(null);
                 }
               : undefined
           }
@@ -166,10 +170,12 @@ export default function PurchaseColumn({
             canBuy
               ? (line) => {
                   setDrying({ purchase: open, line });
-                  setOpen(null);
+                  setOpenId(null);
                 }
               : undefined
           }
+          canRecordRecovery={canBuy}
+          canRemoveRecovery={canCorrect}
         />
       )}
       {drying && (
@@ -247,6 +253,8 @@ export function PurchaseDetails({
   onEdit,
   onHistory,
   onRecordDrying,
+  canRecordRecovery = false,
+  canRemoveRecovery = false,
 }: {
   kind: TradeKind;
   purchase: any;
@@ -257,7 +265,12 @@ export function PurchaseDetails({
   onHistory?: () => void;
   /** A wet line came out of the dryer; left out, no Record drying button. */
   onRecordDrying?: (line: any) => void;
+  /** Palay only: the recovery calculator can save its result on the purchase. */
+  canRecordRecovery?: boolean;
+  /** Palay only: a saved recovery test can be taken off (edit power). */
+  canRemoveRecovery?: boolean;
 }) {
+  const [calculating, setCalculating] = useState(false);
   const anyWet = (p.items ?? []).some((l: any) => l.is_wet);
   const cols: Col[] =
     kind === "palay"
@@ -325,8 +338,18 @@ export function PurchaseDetails({
       onClose={onClose}
       testId="purchase-details"
       footer={
-        (onEdit || onHistory) && (
+        (kind === "palay" || onEdit || onHistory) && (
           <div className="flex justify-end gap-2">
+            {kind === "palay" && (
+              <button
+                type="button"
+                className="btn-secondary"
+                aria-expanded={calculating}
+                onClick={() => setCalculating((on) => !on)}
+              >
+                <Calculator size={15} aria-hidden /> {t("Recovery")}
+              </button>
+            )}
             {onHistory && (
               <button type="button" className="btn-secondary" onClick={onHistory}>
                 <History size={15} aria-hidden /> {t("History")}
@@ -396,6 +419,19 @@ export function PurchaseDetails({
           </tfoot>
         </table>
       </div>
+
+      {kind === "palay" && (
+        <>
+          <RecoveryTests purchase={p} canRemove={canRemoveRecovery} />
+          {calculating && (
+            <RecoveryCalculator
+              purchase={p}
+              canRecord={canRecordRecovery}
+              onClose={() => setCalculating(false)}
+            />
+          )}
+        </>
+      )}
 
       {p.remarks && (
         <p className="mt-4 text-sm text-secondary">

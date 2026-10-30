@@ -15,7 +15,7 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime, timezone
-from decimal import Decimal
+from decimal import ROUND_HALF_UP, Decimal
 from typing import Any, Sequence
 
 from sqlalchemy import case, func
@@ -30,6 +30,7 @@ from ..models.paddy import (
     PalayInventoryMovement,
     PalayPurchase,
     PalayPurchaseItem,
+    PalayRecoveryTest,
 )
 from ..models.reference import QualityGrade, RiceVariety
 from ..models.supplier_customer import Supplier
@@ -196,6 +197,24 @@ class PaddyService(BaseService):
             }
             for i in p.items
         ]
+        data["recovery_tests"] = [
+            {
+                "id": t.id,
+                "variety_id": t.variety_id,
+                "variety_code": t.variety.code if t.variety else None,
+                "sample_kg": t.sample_kg,
+                "sample_moisture_pct": t.sample_moisture_pct,
+                "milled_kg": t.milled_kg,
+                "head_rice_kg": t.head_rice_kg,
+                "husk_kg": t.husk_kg,
+                "bran_kg": t.bran_kg,
+                "recovery_pct": t.recovery_pct,
+                "head_rice_pct": t.head_rice_pct,
+                "created_at": t.created_at,
+                "created_by_name": t.creator.full_name if t.creator else None,
+            }
+            for t in p.recovery_tests
+        ]
         # What the list shows beside the purchase: red while any wet line is
         # still to dry, green once every line is dry.
         data["is_drying"] = any(i.is_drying for i in p.items)
@@ -324,6 +343,61 @@ class PaddyService(BaseService):
                     f"{_what(item)} dried: {show(wet_kg)} kg → {show(data.dried_weight_kg)} kg, "
                     f"moisture {show(before)}% → {show(data.dried_moisture_pct)}%"
                 ],
+            )
+        self.db.refresh(p)
+        return p
+
+    def record_recovery(self, purchase_id: uuid.UUID, data) -> PalayPurchase:
+        """Save a milling-recovery test on a purchase: the palay sample and what
+        came out of it. It only records how the palay milled; no stock moves."""
+        p = self.get_purchase(purchase_id)
+        self.assert_company_fk(RiceVariety, data.variety_id, label="Variety", allow_shared=True)
+        with self.transaction():
+            test = PalayRecoveryTest(
+                company_id=self.current_user.company_id,
+                variety_id=data.variety_id,
+                sample_kg=data.sample_kg,
+                sample_moisture_pct=data.sample_moisture_pct,
+                milled_kg=data.milled_kg,
+                head_rice_kg=data.head_rice_kg,
+                husk_kg=data.husk_kg,
+                bran_kg=data.bran_kg,
+                recovery_pct=_percent(data.milled_kg, data.sample_kg),
+                head_rice_pct=_percent(data.head_rice_kg, data.sample_kg) if data.head_rice_kg is not None else None,
+                created_by=self.current_user.id,
+            )
+            p.recovery_tests.append(test)
+            self.db.flush()
+            log_changes(
+                self.db,
+                user=self.current_user,
+                action="palay_purchase.recovery",
+                entity_type="palay_purchase",
+                entity_id=p.id,
+                entity_label=p.reference_no,
+                lines=[_recovery_line(test)],
+            )
+        self.db.refresh(p)
+        return p
+
+    def remove_recovery(self, purchase_id: uuid.UUID, test_id: uuid.UUID) -> PalayPurchase:
+        """Take a recovery test off a purchase (edit power), logged."""
+        p = self.get_purchase(purchase_id)
+        test = next((t for t in p.recovery_tests if t.id == test_id), None)
+        if test is None:
+            raise NotFoundError("Recovery test not found")
+        line = _recovery_line(test)
+        with self.transaction():
+            p.recovery_tests.remove(test)
+            self.db.flush()
+            log_changes(
+                self.db,
+                user=self.current_user,
+                action="palay_purchase.recovery_removed",
+                entity_type="palay_purchase",
+                entity_id=p.id,
+                entity_label=p.reference_no,
+                lines=[line],
             )
         self.db.refresh(p)
         return p
@@ -584,6 +658,20 @@ def _palay_line(i: PalayPurchaseItem) -> str:
             parts.append(f"wet, dried to {show(i.dried_weight_kg)} kg at {show(i.dried_moisture_pct)}%")
     parts.append(f"₱{show(i.price_per_cavan)}/cavan")
     return f"{what}, {', '.join(parts)}"
+
+
+def _percent(part: Decimal, whole: Decimal) -> Decimal:
+    """What `part` is of `whole`, in percent to two places."""
+    return (part / whole * 100).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+
+
+def _recovery_line(t: PalayRecoveryTest) -> str:
+    """A recovery test in a few words, for the log."""
+    what = t.variety.code if t.variety else "Any variety"
+    line = f"{what}: {show(t.milled_kg)} kg of milled rice from {show(t.sample_kg)} kg of palay, {show(t.recovery_pct)}% recovery"
+    if t.head_rice_pct is not None:
+        line += f", {show(t.head_rice_pct)}% head rice"
+    return line
 
 
 def _settle_status(purchase: PalayPurchase, lines: list[PalayPurchaseItem]) -> None:
