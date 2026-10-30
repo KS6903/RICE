@@ -7,7 +7,7 @@ import { tasksService, type Task } from "../services/TasksService";
 import Select from "../components/Select";
 import { t } from "../i18n";
 
-type Tab = "mine" | "all" | "done";
+type Tab = "undone" | "done";
 
 function errorText(error: unknown, fallback: string): string {
   const detail = (error as { response?: { data?: { detail?: unknown } } })?.response?.data?.detail;
@@ -285,7 +285,6 @@ function TaskCard({ task, manager }: { task: Task; manager: boolean }) {
             <Select
               id={`assign-${task.id}`}
               className="w-64 max-w-full"
-              placeholder={t("Pick someone")}
               value={assignee}
               onChange={setAssignee}
               options={(people.data?.people ?? []).map((p) => ({ value: p.id, label: p.name }))}
@@ -338,16 +337,17 @@ function TaskCard({ task, manager }: { task: Task; manager: boolean }) {
 export default function TasksPage() {
   const [params, setParams] = useSearchParams();
   const from = params.get("from");
-  const [tab, setTab] = useState<Tab>("mine");
+  const [tab, setTab] = useState<Tab>("undone");
+  // "all" is everyone's for the Boss and Admins, and the person's own for anyone
+  // else (the server decides which).
   const list = useQuery({
     queryKey: ["tasks", tab],
-    queryFn: () => tasksService.list(tab === "all" ? "all" : "mine", tab === "done"),
+    queryFn: () => tasksService.list("all", tab === "done"),
   });
   const manager = list.data?.manager ?? false;
   const tasks = list.data?.tasks ?? [];
   const tabs: { key: Tab; label: string }[] = [
-    { key: "mine", label: t("Mine") },
-    ...(manager ? [{ key: "all" as Tab, label: t("Everyone's") }] : []),
+    { key: "undone", label: t("Undone") },
     { key: "done", label: t("Done") },
   ];
 
@@ -366,7 +366,7 @@ export default function TasksPage() {
 
       {manager && (list.data?.unassigned ?? 0) > 0 && (
         <p className="text-sm text-amber-700 dark:text-amber-400">
-          {t("{{count}} open tasks have nobody on them yet. See Everyone's.", {
+          {t("{{count}} open tasks have nobody on them yet.", {
             count: list.data?.unassigned ?? 0,
           })}
         </p>

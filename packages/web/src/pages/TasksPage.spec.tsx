@@ -56,8 +56,9 @@ describe("TasksPage", () => {
     const card = await screen.findByRole("article", { name: "Wet palay not drying: PP-1" });
     expect(within(card).getByText("Overdue")).toBeInTheDocument();
     expect(within(card).getByText("Ena")).toBeInTheDocument();
-    // Not a manager: no Everyone's tab, no assigning.
-    expect(screen.queryByRole("tab", { name: "Everyone's" })).toBeNull();
+    // Undone and Done are the only tabs, and a non-manager can't assign.
+    expect(screen.getAllByRole("tab").map((tab) => tab.textContent)).toEqual(["Undone", "Done"]);
+    expect(screen.getByRole("tab", { name: "Undone" })).toHaveAttribute("aria-selected", "true");
     expect(within(card).queryByRole("button", { name: "Reassign" })).toBeNull();
 
     fireEvent.click(within(card).getByRole("button", { name: /I'm on it/ }));
@@ -70,7 +71,7 @@ describe("TasksPage", () => {
     await waitFor(() => expect(resolve).toHaveBeenCalledWith("t1", "Moved to the dryer."));
   });
 
-  it("lets a manager see everyone's tasks and reassign one", async () => {
+  it("lets a manager see everyone's undone and done tasks and reassign one", async () => {
     const list = vi
       .spyOn(tasksService, "list")
       .mockResolvedValue({ tasks: [task], manager: true, unassigned: 2 });
@@ -80,8 +81,10 @@ describe("TasksPage", () => {
     const assign = vi.spyOn(tasksService, "assign").mockResolvedValue(task);
     draw();
     expect(await screen.findByText(/2 open tasks have nobody on them yet/)).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("tab", { name: "Everyone's" }));
-    await waitFor(() => expect(list).toHaveBeenCalledWith("all", false));
+    expect(list).toHaveBeenCalledWith("all", false);
+    fireEvent.click(screen.getByRole("tab", { name: "Done" }));
+    await waitFor(() => expect(list).toHaveBeenCalledWith("all", true));
+    fireEvent.click(screen.getByRole("tab", { name: "Undone" }));
     const card = await screen.findByRole("article", { name: "Wet palay not drying: PP-1" });
     fireEvent.click(within(card).getByRole("button", { name: "Reassign" }));
     await chooseOption("Give it to", "Ben", within(card));
