@@ -78,8 +78,9 @@ def price_plan(
     Palay wetter than 14% is weighed down to 14% for what it yields, but is paid
     for at the weight it was bought; drier palay is left as weighed.
     """
-    wet = moisture_pct is not None and STANDARD_MOISTURE_PCT < moisture_pct < 100
-    standard_kg = palay_kg * (100 - moisture_pct) / (100 - STANDARD_MOISTURE_PCT) if wet else palay_kg
+    standard_kg = palay_kg
+    if moisture_pct is not None and STANDARD_MOISTURE_PCT < moisture_pct < 100:
+        standard_kg = palay_kg * (100 - moisture_pct) / (100 - STANDARD_MOISTURE_PCT)
     rice_kg = standard_kg * recovery_pct / 100
     total_cost = palay_kg * palay_price + other_costs
     if rice_kg <= 0 or total_cost <= 0:
