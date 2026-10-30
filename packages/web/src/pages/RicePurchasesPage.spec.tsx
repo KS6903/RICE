@@ -54,6 +54,7 @@ beforeEach(() => {
 afterEach(() => {
   vi.restoreAllMocks();
   useAuthStore.setState({ user: null });
+  localStorage.clear();
 });
 
 describe("Rice (Bigas) page", () => {
@@ -155,6 +156,40 @@ describe("Rice (Bigas) page", () => {
     // One warehouse in each branch says nothing the branch doesn't.
     expect(within(stock).queryByRole("columnheader", { name: "Warehouse" })).toBeNull();
     expect(within(stock).getAllByText("Graded Rice")).toHaveLength(2);
+  });
+
+  it("counts the stock in 50 kg sacks, or 25 kg ones once the header is tapped", async () => {
+    vi.mocked(buyingService.listRiceStock).mockResolvedValue([
+      {
+        id: "s1",
+        branch_id: "b1",
+        branch: { name: "Main Branch" },
+        variety: { code: "RC222" },
+        grade_name: "Graded Rice",
+        quantity_kg: 1350,
+      },
+    ]);
+    useAuthStore.setState({ user: owner });
+    const first = draw(<RicePurchasesPage />);
+    const stock = screen.getByTestId("rice-stock-index");
+    expect(await within(stock).findByText("27.0")).toBeInTheDocument();
+    // Nobody has tried the header yet, so it pulses.
+    expect(within(stock).getByTestId("sack-pulse")).toBeInTheDocument();
+
+    fireEvent.click(within(stock).getByRole("button", { name: "Sacks (50 kg)" }));
+    expect(within(stock).getByText("54.0")).toBeInTheDocument();
+    expect(within(stock).getByRole("button", { name: "Sacks (25 kg)" })).toBeInTheDocument();
+    expect(within(stock).queryByTestId("sack-pulse")).toBeNull();
+
+    // Remembered: the page opens in 25 kg sacks next time, with no pulse.
+    first.unmount();
+    draw(<RicePurchasesPage />);
+    const again = screen.getByTestId("rice-stock-index");
+    expect(await within(again).findByText("54.0")).toBeInTheDocument();
+    expect(within(again).queryByTestId("sack-pulse")).toBeNull();
+
+    fireEvent.click(within(again).getByRole("button", { name: "Sacks (25 kg)" }));
+    expect(within(again).getByText("27.0")).toBeInTheDocument();
   });
 
   it("names the warehouse too once a branch's rice sits in more than one", async () => {

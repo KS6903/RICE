@@ -3,10 +3,11 @@
 // moisture. Each purchase goes straight into milled-rice stock.
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ShoppingBasket } from "lucide-react";
+import { ArrowLeftRight, ShoppingBasket } from "lucide-react";
 import { format } from "date-fns";
 import { useAccess } from "../hooks/useAccess";
 import { useOpenOnArrival } from "../hooks/useOpenOnArrival";
+import { useRiceSackSize } from "../hooks/useRiceSackSize";
 import { paddyService } from "../services/PaddyService";
 import {
   buyingService,
@@ -73,6 +74,7 @@ export default function RicePurchasesPage() {
   const stockInSeveralBranches = inSeveralBranches(stock);
   const stockInSeveralWarehouses = inSeveralWarehouses(stock);
   const placeColumns = Number(stockInSeveralBranches) + Number(stockInSeveralWarehouses);
+  const sack = useRiceSackSize();
 
   const [form, setForm] = useState({
     purchase_date: format(new Date(), "yyyy-MM-dd"),
@@ -309,7 +311,6 @@ export default function RicePurchasesPage() {
                   ...(stockInSeveralBranches ? [t("Branch")] : []),
                   ...(stockInSeveralWarehouses ? [t("Warehouse")] : []),
                   t("Stock (kg)"),
-                  t("Sacks (50 kg)"),
                 ].map((h) => (
                   <th
                     key={h}
@@ -318,6 +319,33 @@ export default function RicePurchasesPage() {
                     {h}
                   </th>
                 ))}
+                <th className="px-4 py-3 text-left font-medium text-gray-600 dark:text-slate-300">
+                  {/* Tapping it counts the stock in the other size of sack. Its ring
+                      pulses until it has been tried once. */}
+                  <button
+                    type="button"
+                    className="-mx-2 inline-flex items-center gap-1.5 rounded-md px-2 py-1 font-medium hover:bg-gray-200/70 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-500 dark:hover:bg-slate-700/60"
+                    title={t("Tap to count in {{kg}} kg sacks", { kg: sack.other })}
+                    onClick={sack.toggle}
+                  >
+                    {t("Sacks ({{kg}} kg)", { kg: sack.kg })}
+                    <span
+                      aria-hidden="true"
+                      className="relative inline-flex h-5 w-5 shrink-0 items-center justify-center"
+                    >
+                      {!sack.tapped && (
+                        <span
+                          data-testid="sack-pulse"
+                          className="absolute inset-0 rounded-full bg-emerald-500/40 motion-safe:animate-ping"
+                        />
+                      )}
+                      <ArrowLeftRight
+                        size={14}
+                        className="relative text-emerald-600 dark:text-emerald-400"
+                      />
+                    </span>
+                  </button>
+                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100 dark:divide-slate-700">
@@ -335,7 +363,7 @@ export default function RicePurchasesPage() {
                     {Number(r.quantity_kg).toLocaleString()}
                   </td>
                   <td className="px-4 py-3 text-gray-500 dark:text-slate-400">
-                    {(Number(r.quantity_kg) / 50).toFixed(1)}
+                    {(Number(r.quantity_kg) / sack.kg).toFixed(1)}
                   </td>
                 </tr>
               ))}

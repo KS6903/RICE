@@ -61,6 +61,17 @@
     flex-shrink: 0;
   }
 
+  /* No up/down arrows on number fields, in any browser: the figure is typed. */
+  input[type="number"] {
+    -moz-appearance: textfield;
+    appearance: textfield;
+  }
+  input[type="number"]::-webkit-inner-spin-button,
+  input[type="number"]::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+
   html,
   body {
     height: 100%;
