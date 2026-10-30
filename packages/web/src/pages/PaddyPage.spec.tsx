@@ -384,6 +384,40 @@ describe("PaddyPage: how the palay in stock is counted", () => {
     expect(headers[2]).not.toHaveClass("hidden");
   });
 
+  it("on a phone puts the grade, branch and wet palay under the variety, the amounts beside it", async () => {
+    vi.spyOn(window, "matchMedia").mockImplementation(
+      (query) =>
+        ({
+          matches: query.includes("max-width: 639px"),
+          media: query,
+          addEventListener: () => undefined,
+          removeEventListener: () => undefined,
+        }) as unknown as MediaQueryList,
+    );
+    vi.mocked(paddyService.listInventory).mockResolvedValue([
+      { ...stock[0], grade: { code: "A" } },
+      { ...stock[0], id: "i2", branch_id: "b2", branch: { name: "2nd Branch" }, wet_kg: 0 },
+    ]);
+    useAuthStore.setState({ user: encoder });
+    draw();
+
+    const headers = await within(stockTable()).findAllByRole("columnheader");
+    // No Grade or Branch column; the cavans and kilos are the ones a phone hides by CSS.
+    expect(headers.map((h) => h.textContent)).toEqual([
+      "Variety",
+      "Sacks",
+      "Cavans (est.)",
+      "Kilos (est.)",
+    ]);
+    const grade = await within(stockTable()).findByText("A · Main Branch");
+    const first = grade.closest("td") as HTMLElement;
+    expect(first).toHaveTextContent("NSIC Rc 222");
+    expect(within(first).getByText("4.6 sacks wet")).toBeInTheDocument();
+    const second = within(stockTable()).getByText("2nd Branch").closest("td") as HTMLElement;
+    expect(second).toHaveTextContent("NSIC Rc 222");
+    expect(within(second).queryByText(/wet/)).toBeNull();
+  });
+
   it("leaves out the cavans when they read the same as the sacks on every row", async () => {
     vi.mocked(paddyService.listInventory).mockResolvedValue([
       { ...stock[0], quantity_sacks: 20, quantity_cavans: 20, quantity_kg: 1000 },

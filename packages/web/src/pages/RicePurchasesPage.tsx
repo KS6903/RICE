@@ -6,6 +6,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeftRight, ShoppingBasket } from "lucide-react";
 import { format } from "date-fns";
 import { useAccess } from "../hooks/useAccess";
+import { useIsPhone } from "../hooks/useIsPhone";
 import { useOpenOnArrival } from "../hooks/useOpenOnArrival";
 import { useRiceSackSize } from "../hooks/useRiceSackSize";
 import { paddyService } from "../services/PaddyService";
@@ -34,6 +35,7 @@ import {
   usePurchaseWarehouse,
 } from "../components/PurchaseWarehouse";
 import { fixFields, needsChoice, needsInput } from "../utils/required";
+import { STOCK_CELL as CELL, stockDetails } from "../utils/stockTable";
 import { varietyOptions } from "../utils/varieties";
 import { t } from "../i18n";
 
@@ -75,6 +77,10 @@ export default function RicePurchasesPage() {
   const stockInSeveralWarehouses = inSeveralWarehouses(stock);
   const placeColumns = Number(stockInSeveralBranches) + Number(stockInSeveralWarehouses);
   const sack = useRiceSackSize();
+  // A phone has room for three columns: the grade, and the branch and warehouse when
+  // there are several, go in small print under the variety.
+  const phone = useIsPhone();
+  const stockColumns = phone ? 3 : 4 + placeColumns;
 
   const [form, setForm] = useState({
     purchase_date: format(new Date(), "yyyy-MM-dd"),
@@ -301,30 +307,35 @@ export default function RicePurchasesPage() {
         <h3 className="text-sm font-bold text-gray-900 dark:text-slate-100">
           {t("Rice in stock")}
         </h3>
-        <div className="card overflow-hidden p-0">
+        {/* A card that is still too narrow scrolls sideways, not cuts a column off. */}
+        <div className="card overflow-x-auto p-0">
           <table className="w-full text-sm">
             <thead className="bg-gray-50 dark:bg-slate-900/50 border-b border-gray-200 dark:border-slate-700">
               <tr>
                 {[
                   t("Variety"),
-                  t("Grade"),
-                  ...(stockInSeveralBranches ? [t("Branch")] : []),
-                  ...(stockInSeveralWarehouses ? [t("Warehouse")] : []),
+                  ...(phone
+                    ? []
+                    : [
+                        t("Grade"),
+                        ...(stockInSeveralBranches ? [t("Branch")] : []),
+                        ...(stockInSeveralWarehouses ? [t("Warehouse")] : []),
+                      ]),
                   t("Stock (kg)"),
                 ].map((h) => (
                   <th
                     key={h}
-                    className="px-4 py-3 text-left font-medium text-gray-600 dark:text-slate-300"
+                    className={`${CELL} text-left font-medium text-gray-600 dark:text-slate-300`}
                   >
                     {h}
                   </th>
                 ))}
-                <th className="px-4 py-3 text-left font-medium text-gray-600 dark:text-slate-300">
+                <th className={`${CELL} text-left font-medium text-gray-600 dark:text-slate-300`}>
                   {/* Tapping it counts the stock in the other size of sack. Its ring
-                      pulses until it has been tried once. */}
+                      pulses until it has been tried once. A finger gets a 44px target. */}
                   <button
                     type="button"
-                    className="-mx-2 inline-flex items-center gap-1.5 rounded-md px-2 py-1 font-medium hover:bg-gray-200/70 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-500 dark:hover:bg-slate-700/60"
+                    className="-mx-2 inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-left font-medium hover:bg-gray-200/70 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-500 dark:hover:bg-slate-700/60 [@media(pointer:coarse)]:min-h-[44px]"
                     title={t("Tap to count in {{kg}} kg sacks", { kg: sack.other })}
                     onClick={sack.toggle}
                   >
@@ -349,34 +360,52 @@ export default function RicePurchasesPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100 dark:divide-slate-700">
-              {stock.map((r: any) => (
-                <tr key={r.id} className="hover:bg-gray-50 dark:hover:bg-slate-900/50">
-                  <td className="px-4 py-3">{r.variety?.code || "—"}</td>
-                  <td className="px-4 py-3">{r.grade_name ? gradeLabel(r.grade_name) : "—"}</td>
-                  {stockInSeveralBranches && (
-                    <td className="px-4 py-3">{r.branch?.name || t("Unassigned")}</td>
-                  )}
-                  {stockInSeveralWarehouses && (
-                    <td className="px-4 py-3">{r.warehouse?.name || "—"}</td>
-                  )}
-                  <td className="px-4 py-3 font-medium">
-                    {Number(r.quantity_kg).toLocaleString()}
-                  </td>
-                  <td className="px-4 py-3 text-gray-500 dark:text-slate-400">
-                    {(Number(r.quantity_kg) / sack.kg).toFixed(1)}
-                  </td>
-                </tr>
-              ))}
+              {stock.map((r: any) => {
+                const under = stockDetails(
+                  r.grade_name && gradeLabel(r.grade_name),
+                  stockInSeveralBranches && (r.branch?.name || t("Unassigned")),
+                  stockInSeveralWarehouses && r.warehouse?.name,
+                );
+                return (
+                  <tr key={r.id} className="hover:bg-gray-50 dark:hover:bg-slate-900/50">
+                    <td className={CELL}>
+                      {r.variety?.code || "—"}
+                      {phone && under && (
+                        <span className="mt-0.5 block max-w-[12rem] text-xs text-muted">
+                          {under}
+                        </span>
+                      )}
+                    </td>
+                    {!phone && (
+                      <>
+                        <td className={CELL}>{r.grade_name ? gradeLabel(r.grade_name) : "—"}</td>
+                        {stockInSeveralBranches && (
+                          <td className={CELL}>{r.branch?.name || t("Unassigned")}</td>
+                        )}
+                        {stockInSeveralWarehouses && (
+                          <td className={CELL}>{r.warehouse?.name || "—"}</td>
+                        )}
+                      </>
+                    )}
+                    <td className={`${CELL} font-medium`}>
+                      {Number(r.quantity_kg).toLocaleString()}
+                    </td>
+                    <td className={`${CELL} text-gray-500 dark:text-slate-400`}>
+                      {(Number(r.quantity_kg) / sack.kg).toFixed(1)}
+                    </td>
+                  </tr>
+                );
+              })}
               {stockLoading ? (
                 <tr>
-                  <td colSpan={4 + placeColumns}>
+                  <td colSpan={stockColumns}>
                     <LoadingRows rows={2} />
                   </td>
                 </tr>
               ) : (
                 stock.length === 0 && (
                   <tr>
-                    <td colSpan={4 + placeColumns} className="px-4 py-8 text-center text-muted">
+                    <td colSpan={stockColumns} className="px-4 py-8 text-center text-muted">
                       {t(
                         "No rice in stock. Purchases you record and rice you mill show up here by variety and grade.",
                       )}

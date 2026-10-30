@@ -14,6 +14,7 @@ import { format } from "date-fns";
 import QuickAdd from "../components/QuickAdd";
 import { useAccess } from "../hooks/useAccess";
 import { useFeature } from "../hooks/useFeature";
+import { useIsPhone } from "../hooks/useIsPhone";
 import { useOpenOnArrival } from "../hooks/useOpenOnArrival";
 import EmptyState from "../components/EmptyState";
 import LoadingRows from "../components/LoadingRows";
@@ -34,6 +35,7 @@ import {
 } from "../components/PurchaseWarehouse";
 import { sortGrades } from "../utils/grades";
 import { fixFields, needsInput } from "../utils/required";
+import { STOCK_CELL as CELL, stockDetails } from "../utils/stockTable";
 import { varietyOptions } from "../utils/varieties";
 import { t } from "../i18n";
 
@@ -182,8 +184,12 @@ export default function PaddyPage() {
       : [stockView];
   const unitClass = (u: Unit) =>
     stockView === "all" && u !== "sacks" ? "hidden sm:table-cell" : "";
-  const stockColumns =
-    2 + Number(stockInSeveralBranches) + Number(stockInSeveralWarehouses) + shownUnits.length;
+  // A phone has room for the variety and the amounts: the grade, and the branch and
+  // warehouse when there are several, go in small print under the variety.
+  const phone = useIsPhone();
+  const stockColumns = phone
+    ? 1 + shownUnits.length
+    : 2 + Number(stockInSeveralBranches) + Number(stockInSeveralWarehouses) + shownUnits.length;
   const viewOptions: { value: StockView; label: string }[] = [
     { value: "all", label: t("All") },
     { value: "sacks", label: t("Sacks") },
@@ -453,10 +459,14 @@ export default function PaddyPage() {
             </p>
           )}
           <div className="flex gap-2 justify-end">
-            <button onClick={closeForm} className="btn-secondary">
+            <button onClick={closeForm} className="btn-secondary flex-auto sm:flex-none">
               {t("Cancel")}
             </button>
-            <button onClick={submit} className="btn-primary" disabled={createMutation.isPending}>
+            <button
+              onClick={submit}
+              className="btn-primary flex-auto sm:flex-none"
+              disabled={createMutation.isPending}
+            >
               {createMutation.isPending ? t("Saving…") : t("Save Purchase")}
             </button>
           </div>
@@ -495,17 +505,18 @@ export default function PaddyPage() {
             </div>
           )}
         </div>
-        <div className="card overflow-hidden p-0">
+        {/* A card that is still too narrow scrolls sideways, not cuts a column off. */}
+        <div className="card overflow-x-auto p-0">
           <table className="w-full text-sm">
             <thead className="bg-gray-50 dark:bg-slate-900/50 border-b border-gray-200 dark:border-slate-700">
               <tr>
                 {[
                   { key: "variety", label: t("Variety"), cls: "" },
-                  { key: "grade", label: t("Grade"), cls: "" },
-                  ...(stockInSeveralBranches
+                  ...(phone ? [] : [{ key: "grade", label: t("Grade"), cls: "" }]),
+                  ...(stockInSeveralBranches && !phone
                     ? [{ key: "branch", label: t("Branch"), cls: "" }]
                     : []),
-                  ...(stockInSeveralWarehouses
+                  ...(stockInSeveralWarehouses && !phone
                     ? [{ key: "warehouse", label: t("Warehouse"), cls: "" }]
                     : []),
                   ...shownUnits.map((u) => ({
@@ -516,7 +527,7 @@ export default function PaddyPage() {
                 ].map((h) => (
                   <th
                     key={h.key}
-                    className={`px-4 py-3 text-left font-medium text-gray-600 dark:text-slate-300 ${h.cls}`}
+                    className={`${CELL} text-left font-medium text-gray-600 dark:text-slate-300 ${h.cls}`}
                   >
                     {h.label}
                   </th>
@@ -524,35 +535,54 @@ export default function PaddyPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100 dark:divide-slate-700">
-              {inventory.map((i: any) => (
-                <tr key={i.id} className="hover:bg-gray-50 dark:hover:bg-slate-900/50">
-                  <td className="px-4 py-3" title={i.variety?.name}>
-                    {i.variety?.code || "—"}
-                    {Number(i.wet_kg) > 0 && (
-                      <span className="badge-red ml-2 align-middle">
-                        {t("{{amount}} wet", {
-                          amount: `${amount(i[firstUnit.wet])} ${firstUnit.word}`,
-                        })}
-                      </span>
-                    )}
-                  </td>
-                  <td className="px-4 py-3">{i.grade?.code || "—"}</td>
-                  {stockInSeveralBranches && (
-                    <td className="px-4 py-3">{i.branch?.name || t("Unassigned")}</td>
-                  )}
-                  {stockInSeveralWarehouses && (
-                    <td className="px-4 py-3">{i.warehouse?.name || "—"}</td>
-                  )}
-                  {shownUnits.map((u, n) => (
-                    <td
-                      key={u}
-                      className={`px-4 py-3 tabular-nums ${n === 0 ? "font-medium" : "text-gray-500 dark:text-slate-400"} ${unitClass(u)}`}
-                    >
-                      {amount(i[units[u].stock])}
+              {inventory.map((i: any) => {
+                const under = stockDetails(
+                  i.grade?.code,
+                  stockInSeveralBranches && (i.branch?.name || t("Unassigned")),
+                  stockInSeveralWarehouses && i.warehouse?.name,
+                );
+                const wet = Number(i.wet_kg) > 0 && (
+                  <span className={phone ? "badge-red" : "badge-red ml-2 align-middle"}>
+                    {t("{{amount}} wet", {
+                      amount: `${amount(i[firstUnit.wet])} ${firstUnit.word}`,
+                    })}
+                  </span>
+                );
+                return (
+                  <tr key={i.id} className="hover:bg-gray-50 dark:hover:bg-slate-900/50">
+                    <td className={CELL} title={i.variety?.name}>
+                      {i.variety?.code || "—"}
+                      {phone
+                        ? (under || wet) && (
+                            <span className="mt-0.5 flex max-w-[12rem] flex-wrap items-center gap-x-1.5 gap-y-1 text-xs text-muted">
+                              {under}
+                              {wet}
+                            </span>
+                          )
+                        : wet}
                     </td>
-                  ))}
-                </tr>
-              ))}
+                    {!phone && (
+                      <>
+                        <td className={CELL}>{i.grade?.code || "—"}</td>
+                        {stockInSeveralBranches && (
+                          <td className={CELL}>{i.branch?.name || t("Unassigned")}</td>
+                        )}
+                        {stockInSeveralWarehouses && (
+                          <td className={CELL}>{i.warehouse?.name || "—"}</td>
+                        )}
+                      </>
+                    )}
+                    {shownUnits.map((u, n) => (
+                      <td
+                        key={u}
+                        className={`${CELL} tabular-nums ${n === 0 ? "font-medium" : "text-gray-500 dark:text-slate-400"} ${unitClass(u)}`}
+                      >
+                        {amount(i[units[u].stock])}
+                      </td>
+                    ))}
+                  </tr>
+                );
+              })}
               {inventoryLoading ? (
                 <tr>
                   <td colSpan={stockColumns}>

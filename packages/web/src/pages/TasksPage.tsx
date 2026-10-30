@@ -247,11 +247,12 @@ function TaskCard({ task, manager }: { task: Task; manager: boolean }) {
               {t("Open")}
             </Link>
           )}
-          <div className="ml-auto flex flex-wrap gap-2">
+          {/* On a phone: the other buttons share a row, "Mark resolved" has the next. */}
+          <div className="flex flex-wrap gap-2 max-sm:w-full sm:ml-auto">
             {manager && (
               <button
                 type="button"
-                className="btn-secondary"
+                className="btn-secondary max-sm:flex-[1_1_40%] max-sm:justify-center"
                 onClick={() => setAssigning((a) => !a)}
               >
                 {task.assignee ? t("Reassign") : t("Assign")}
@@ -260,7 +261,7 @@ function TaskCard({ task, manager }: { task: Task; manager: boolean }) {
             {task.status === "open" && (
               <button
                 type="button"
-                className="btn-secondary"
+                className="btn-secondary max-sm:flex-[1_1_40%] max-sm:justify-center"
                 disabled={ack.isPending}
                 onClick={() => ack.mutate()}
               >
@@ -268,7 +269,11 @@ function TaskCard({ task, manager }: { task: Task; manager: boolean }) {
                 {t("I'm on it")}
               </button>
             )}
-            <button type="button" className="btn-primary" onClick={() => setResolving((r) => !r)}>
+            <button
+              type="button"
+              className="btn-primary max-sm:basis-full max-sm:justify-center"
+              onClick={() => setResolving((r) => !r)}
+            >
               <CheckCircle2 size={15} aria-hidden />
               {t("Mark resolved")}
             </button>
@@ -372,14 +377,19 @@ export default function TasksPage() {
         </p>
       )}
 
-      <div role="tablist" aria-label={t("Which tasks")} className="seg max-w-full overflow-x-auto">
+      {/* Two halves of the width on a phone, easy to hit with a thumb. */}
+      <div
+        role="tablist"
+        aria-label={t("Which tasks")}
+        className="seg w-full max-w-full overflow-x-auto sm:w-auto"
+      >
         {tabs.map((t) => (
           <button
             key={t.key}
             type="button"
             role="tab"
             aria-selected={tab === t.key}
-            className={`seg-btn shrink-0 ${tab === t.key ? "is-active" : ""}`}
+            className={`seg-btn flex-1 justify-center sm:flex-none ${tab === t.key ? "is-active" : ""}`}
             onClick={() => setTab(t.key)}
           >
             {t.label}

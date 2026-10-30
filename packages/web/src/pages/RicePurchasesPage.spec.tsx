@@ -29,6 +29,18 @@ const warehouseRows = [
   { id: "w2", branch_id: "b2", name: "Warehouse 1 - 2nd Branch", is_default: true },
 ];
 
+// jsdom's matchMedia answers "no" to everything, which is a laptop; this one is a phone.
+const onPhone = () =>
+  vi.spyOn(window, "matchMedia").mockImplementation(
+    (query) =>
+      ({
+        matches: query.includes("max-width: 639px"),
+        media: query,
+        addEventListener: () => undefined,
+        removeEventListener: () => undefined,
+      }) as unknown as MediaQueryList,
+  );
+
 const draw = (page: React.ReactNode) =>
   render(
     <QueryClientProvider
@@ -190,6 +202,39 @@ describe("Rice (Bigas) page", () => {
 
     fireEvent.click(within(again).getByRole("button", { name: "Sacks (25 kg)" }));
     expect(within(again).getByText("27.0")).toBeInTheDocument();
+  });
+
+  it("on a phone puts the grade, branch and warehouse under the variety, so the sacks stay in view", async () => {
+    onPhone();
+    const row = {
+      branch_id: "b1",
+      branch: { name: "Main Branch" },
+      variety: { code: "RC222" },
+      grade_name: "Graded Rice",
+      quantity_kg: 1000,
+    };
+    vi.mocked(buyingService.listRiceStock).mockResolvedValue([
+      { ...row, id: "s1", warehouse_id: "w1", warehouse: { name: "Warehouse 1 - Main Branch" } },
+      { ...row, id: "s2", warehouse_id: "w3", warehouse: { name: "Warehouse 2 - Main Branch" } },
+      { ...row, id: "s3", branch_id: "b2", branch: { name: "2nd Branch" }, warehouse_id: "w2" },
+    ]);
+    useAuthStore.setState({ user: owner });
+    draw(<RicePurchasesPage />);
+    const stock = screen.getByTestId("rice-stock-index");
+
+    expect(
+      await within(stock).findByText("Graded Rice · Main Branch · Warehouse 2 - Main Branch"),
+    ).toBeInTheDocument();
+    expect(within(stock).getByText("Graded Rice · 2nd Branch")).toBeInTheDocument();
+    // Three columns, the sacks one included, rather than a table wider than the screen.
+    expect(
+      within(stock)
+        .getAllByRole("columnheader")
+        .map((h) => h.textContent),
+    ).toEqual(["Variety", "Stock (kg)", "Sacks (50 kg)"]);
+
+    fireEvent.click(within(stock).getByRole("button", { name: "Sacks (50 kg)" }));
+    expect(within(stock).getByRole("button", { name: "Sacks (25 kg)" })).toBeInTheDocument();
   });
 
   it("names the warehouse too once a branch's rice sits in more than one", async () => {
