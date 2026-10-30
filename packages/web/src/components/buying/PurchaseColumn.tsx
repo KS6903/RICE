@@ -271,6 +271,8 @@ export function PurchaseDetails({
   canRemoveRecovery?: boolean;
 }) {
   const [calculating, setCalculating] = useState(false);
+  // Where the open calculator draws its Close and Record buttons: this window's footer.
+  const [actionsHost, setActionsHost] = useState<HTMLElement | null>(null);
   const anyWet = (p.items ?? []).some((l: any) => l.is_wet);
   const cols: Col[] =
     kind === "palay"
@@ -341,7 +343,12 @@ export function PurchaseDetails({
         // Straight in the footer, which wraps: on a phone the buttons share the
         // width (and drop to a second row when a translation is long) instead of
         // being squeezed until their words break.
-        (kind === "palay" || onEdit || onHistory) && (
+        (kind === "palay" || onEdit || onHistory) &&
+        (calculating ? (
+          // The open calculator's own buttons take the footer, so there is one
+          // bar at the bottom, not two stacked over its fields.
+          <div ref={setActionsHost} className="contents" />
+        ) : (
           <>
             {kind === "palay" && (
               <button
@@ -368,7 +375,7 @@ export function PurchaseDetails({
               </button>
             )}
           </>
-        )
+        ))
       }
     >
       <dl className="grid grid-cols-2 gap-3 sm:grid-cols-3">
@@ -441,6 +448,7 @@ export function PurchaseDetails({
               purchase={p}
               canRecord={canRecordRecovery}
               onClose={() => setCalculating(false)}
+              actionsHost={actionsHost}
             />
           )}
         </>

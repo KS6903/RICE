@@ -4,10 +4,12 @@
 // and the bran. The result can be recorded on the purchase, or the calculator
 // just closed. The formulas, with their sources, are in mappers/RecoveryMapper.ts.
 import { useEffect, useId, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Calculator, Trash2 } from "lucide-react";
 import ConfirmDialog from "../ConfirmDialog";
 import Select from "../Select";
+import { useIsPhone } from "../../hooks/useIsPhone";
 import {
   WEIGHT_UNITS,
   computeRecovery,
@@ -99,12 +101,17 @@ export default function RecoveryCalculator({
   purchase,
   canRecord,
   onClose,
+  actionsHost,
 }: {
   purchase: any;
   /** Whoever buys palay may record the result; others only calculate. */
   canRecord: boolean;
   onClose: () => void;
+  /** The window's footer: the Close and Record buttons are drawn there, so they
+   *  stay in one place instead of floating over the fields. Null until it exists. */
+  actionsHost: HTMLElement | null;
 }) {
+  const phone = useIsPhone();
   const lines: any[] = purchase.items ?? [];
   const [lineId, setLineId] = useState<string>(lines[0]?.id ?? "");
   const line = lines.find((l) => l.id === lineId) ?? lines[0];
@@ -253,7 +260,9 @@ export default function RecoveryCalculator({
               value={sample}
               onChange={setSample}
               placeholder={unit === "kg" ? t("e.g. 50") : t("e.g. 500")}
-              autoFocus
+              // On a phone the keyboard waits for a tap: opened unasked it covered
+              // most of the window.
+              autoFocus={!phone}
             />
             <Amount
               label={t("Sample moisture %")}
@@ -382,31 +391,39 @@ export default function RecoveryCalculator({
         </p>
       )}
 
-      <div className="sticky -bottom-4 -mx-4 -mb-4 mt-4 flex flex-wrap items-center justify-end gap-2 rounded-b-2xl border-t border-soft bg-[rgb(var(--surface-raised))] px-4 py-3">
-        {canRecord && (
-          <p className="w-full text-xs text-muted sm:mr-auto sm:w-auto">
-            {t("Recording saves this result on the purchase. No stock changes.")}
-          </p>
+      {canRecord && (
+        <p className="mt-4 text-xs text-muted">
+          {t("Recording saves this result on the purchase. No stock changes.")}
+        </p>
+      )}
+
+      {/* The window's footer, the one bar that stays at the bottom whatever the
+          keyboard does. Not a bar of its own inside the scrolling body, which on a
+          phone sat over the fields and, with the keyboard up, hid most of them. */}
+      {actionsHost &&
+        createPortal(
+          <>
+            <button
+              type="button"
+              className="btn-secondary flex-auto sm:flex-none"
+              onClick={onClose}
+              disabled={save.isPending}
+            >
+              {t("Close calculator")}
+            </button>
+            {canRecord && (
+              <button
+                type="button"
+                className="btn-primary flex-auto sm:flex-none"
+                onClick={() => body && save.mutate(body)}
+                disabled={!body || save.isPending}
+              >
+                {save.isPending ? t("Saving…") : t("Record result")}
+              </button>
+            )}
+          </>,
+          actionsHost,
         )}
-        <button
-          type="button"
-          className="btn-secondary flex-auto sm:flex-none"
-          onClick={onClose}
-          disabled={save.isPending}
-        >
-          {t("Close calculator")}
-        </button>
-        {canRecord && (
-          <button
-            type="button"
-            className="btn-primary flex-auto sm:flex-none"
-            onClick={() => body && save.mutate(body)}
-            disabled={!body || save.isPending}
-          >
-            {save.isPending ? t("Saving…") : t("Record result")}
-          </button>
-        )}
-      </div>
     </section>
   );
 }

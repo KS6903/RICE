@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { User } from "@rice-mill/shared";
 import PurchaseColumn from "./PurchaseColumn";
@@ -71,6 +71,9 @@ const openCalculator = async (purchase: any = palay, canBuy = true) => {
   return screen.findByTestId("recovery-calculator");
 };
 
+/** The calculator's Close and Record buttons are in the window's footer, not in the calculator. */
+const inWindow = () => within(screen.getByTestId("purchase-details"));
+
 const fill = (calc: HTMLElement, label: string, value: string) =>
   fireEvent.change(within(calc).getByLabelText(label), { target: { value } });
 
@@ -134,7 +137,7 @@ describe("The recovery calculator on a palay purchase", () => {
     fill(calc, "Head rice (g)", "26");
 
     expect(within(within(calc).getByTestId("recovery-result")).getByText("65.0%")).toBeTruthy();
-    fireEvent.click(within(calc).getByRole("button", { name: "Record result" }));
+    fireEvent.click(inWindow().getByRole("button", { name: "Record result" }));
 
     await waitFor(() =>
       expect(record).toHaveBeenCalledWith("p1", {
@@ -175,7 +178,7 @@ describe("The recovery calculator on a palay purchase", () => {
     const calc = await openCalculator();
     fillTest(calc);
 
-    fireEvent.click(within(calc).getByRole("button", { name: "Record result" }));
+    fireEvent.click(inWindow().getByRole("button", { name: "Record result" }));
 
     await waitFor(() =>
       expect(record).toHaveBeenCalledWith("p1", {
@@ -196,10 +199,46 @@ describe("The recovery calculator on a palay purchase", () => {
     const calc = await openCalculator();
     fillTest(calc);
 
-    fireEvent.click(within(calc).getByRole("button", { name: "Close calculator" }));
+    fireEvent.click(inWindow().getByRole("button", { name: "Close calculator" }));
 
     expect(screen.queryByTestId("recovery-calculator")).toBeNull();
     expect(record).not.toHaveBeenCalled();
+    // The window's own buttons are back in its footer.
+    expect(inWindow().getByRole("button", { name: "Recovery" })).toBeTruthy();
+    expect(inWindow().queryByRole("button", { name: "Close calculator" })).toBeNull();
+  });
+
+  it("keeps Close and Record in the window's footer, the only bar at the bottom", async () => {
+    const calc = await openCalculator();
+
+    const close = inWindow().getByRole("button", { name: "Close calculator" });
+    const record = inWindow().getByRole("button", { name: "Record result" });
+    // Not inside the scrolling calculator, so nothing floats over its fields.
+    expect(calc.contains(close)).toBe(false);
+    expect(calc.contains(record)).toBe(false);
+    expect(close.parentElement).toBe(record.parentElement);
+    expect(close.closest(".border-t")).toBeTruthy();
+    // The window's usual buttons give the footer up while the calculator is open.
+    expect(inWindow().queryByRole("button", { name: "Recovery" })).toBeNull();
+    expect(inWindow().queryByRole("button", { name: "Edit" })).toBeNull();
+  });
+
+  it("opens the keyboard on the sample at once, except on a phone", async () => {
+    const calc = await openCalculator();
+    expect(document.activeElement).toBe(within(calc).getByLabelText("Palay sample (kg)"));
+    cleanup();
+
+    vi.spyOn(window, "matchMedia").mockImplementation(
+      (query: string) =>
+        ({
+          matches: query.includes("max-width: 639px"),
+          media: query,
+          addEventListener: () => undefined,
+          removeEventListener: () => undefined,
+        }) as unknown as MediaQueryList,
+    );
+    const onPhone = await openCalculator();
+    expect(document.activeElement).not.toBe(within(onPhone).getByLabelText("Palay sample (kg)"));
   });
 
   it("won't record weights that can't be true", async () => {
@@ -212,7 +251,7 @@ describe("The recovery calculator on a palay purchase", () => {
     );
     expect(within(calc).queryByTestId("recovery-result")).toBeNull();
     expect(
-      (within(calc).getByRole("button", { name: "Record result" }) as HTMLButtonElement).disabled,
+      (inWindow().getByRole("button", { name: "Record result" }) as HTMLButtonElement).disabled,
     ).toBe(true);
   });
 
@@ -221,8 +260,8 @@ describe("The recovery calculator on a palay purchase", () => {
     fillTest(calc);
 
     expect(within(calc).getByTestId("recovery-result")).toBeTruthy();
-    expect(within(calc).queryByRole("button", { name: "Record result" })).toBeNull();
-    expect(within(calc).getByRole("button", { name: "Close calculator" })).toBeTruthy();
+    expect(inWindow().queryByRole("button", { name: "Record result" })).toBeNull();
+    expect(inWindow().getByRole("button", { name: "Close calculator" })).toBeTruthy();
   });
 });
 
