@@ -8,7 +8,7 @@
 # provisioner credential is in scope — the entrypoint is overridden per class.
 # Pinned by digest like the GitHub Actions, so every build starts from the same
 # bytes. Dependabot's docker entry proposes 3.11.x patch and digest refreshes.
-FROM python:3.11.17-slim@sha256:e88e9763f943ec1834f992a4b51e0f24500486803e8bc534e5767af9ea65f6ce
+FROM python:3.11.17-slim@sha256:b7a9e5f6a93d6d4a31f129bbd4bdee69efccb6ded0fb230d78aafaf37af98377
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
