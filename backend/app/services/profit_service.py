@@ -45,7 +45,12 @@ LOOKBACK_DAYS = 90
 # count invoiced and paid only, as the Reports page's profit and loss does.
 SOLD_STATUSES = ("confirmed", "delivered", "invoiced", "paid")
 INVOICED_STATUSES = ("invoiced", "paid")
-BYPRODUCTS = ("ipa", "darak", "binlid")
+BYPRODUCTS = ("ipa", "darak", "binlid", "mata_mata")
+# What's lost to dust and moisture, of the palay; binlid and mata-mata are a small
+# part of what milling leaves, never more than these.
+LOSS_PCT = 2.5
+MAX_BINLID_PCT = 3.0
+MAX_MATA_PCT = 1.5
 
 
 def is_boss(user: Any) -> bool:
@@ -54,6 +59,22 @@ def is_boss(user: Any) -> bool:
     if getattr(user, "is_platform_admin", False) or getattr(user, "custom_role", None) is not None:
         return False
     return getattr(getattr(user, "role", None), "name", None) == "owner"
+
+
+def estimate_byproducts(recovery_pct: float) -> dict[str, float]:
+    """The by-products a recovery should leave, as % of the palay: an estimate only.
+    Of 100 kg the husk is 20 and the rest brown rice. Brown rice that doesn't come out
+    as rice, after the loss, is bran first (about 10), then binlid and mata-mata, two
+    parts to one. Same as the web app's estimateByproducts."""
+    left = max(100 - HULL_PCT - recovery_pct - LOSS_PCT, 0.0)
+    darak = min(BRAN_PCT, left)
+    rest = left - darak
+    return {
+        "ipa": HULL_PCT,
+        "darak": darak,
+        "binlid": min(MAX_BINLID_PCT, rest * 2 / 3),
+        "mata_mata": min(MAX_MATA_PCT, rest / 3),
+    }
 
 
 def _round_up_half_peso(price: float) -> float:
@@ -230,7 +251,16 @@ class ProfitService(BaseService):
                 continue
             row = out.setdefault(
                 next(iter(varieties)),
-                {"input": 0.0, "milled": 0.0, "head": 0.0, "head_input": 0.0, "ipa": 0.0, "darak": 0.0, "binlid": 0.0},
+                {
+                    "input": 0.0,
+                    "milled": 0.0,
+                    "head": 0.0,
+                    "head_input": 0.0,
+                    "ipa": 0.0,
+                    "darak": 0.0,
+                    "binlid": 0.0,
+                    "mata_mata": 0.0,
+                },
             )
             row.setdefault("rice_varieties", set())
             batch_input = sum(float(i.input_weight_kg) for i in b.inputs)
@@ -374,8 +404,10 @@ class ProfitService(BaseService):
 
         market_price, market_source = ProfitService._market_price(v, made, data["market"])
 
-        def share(kind: str, fallback: float) -> float:
-            return made[kind] / made["input"] * 100 if made else fallback
+        estimated = estimate_byproducts(recovery)
+
+        def share(kind: str) -> float:
+            return made[kind] / made["input"] * 100 if made else estimated[kind]
 
         return {
             "variety_id": str(v.id),
@@ -387,13 +419,15 @@ class ProfitService(BaseService):
             "recovery_pct": recovery,
             "recovery_source": source,
             "head_pct": made["head"] / made["head_input"] * 100 if made and made["head_input"] > 0 else None,
-            "ipa_pct": share("ipa", HULL_PCT),
-            "darak_pct": share("darak", BRAN_PCT),
-            "binlid_pct": share("binlid", 0.0),
+            "ipa_pct": share("ipa"),
+            "darak_pct": share("darak"),
+            "binlid_pct": share("binlid"),
+            "mata_mata_pct": share("mata_mata"),
             "yields_source": "batches" if made else "default",
             "ipa_price": data["byproduct_price"].get("ipa"),
             "darak_price": data["byproduct_price"].get("darak"),
             "binlid_price": data["byproduct_price"].get("binlid"),
+            "mata_mata_price": data["byproduct_price"].get("mata_mata"),
             "other_cost_per_kg": data["other_cost_per_kg"],
             "market_price": market_price,
             "market_source": market_source,

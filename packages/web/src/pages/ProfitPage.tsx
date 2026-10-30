@@ -6,23 +6,25 @@
 import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { format, startOfMonth } from "date-fns";
-import { AlertTriangle, Calculator, CheckCircle2, TrendingUp } from "lucide-react";
+import { AlertTriangle, Calculator, CheckCircle2, ChevronDown, TrendingUp } from "lucide-react";
 import { Amount, Stat } from "../components/buying/RecoveryCalculator";
 import { peso } from "../components/buying/money";
-import DatePicker from "../components/DatePicker";
+import DateRangePicker from "../components/DateRangePicker";
 import LoadingRows from "../components/LoadingRows";
 import Select from "../components/Select";
 import { useAccess } from "../hooks/useAccess";
-import { byproductLabel } from "../mappers/byproductNames";
 import { parseAmount, computeRecovery } from "../mappers/RecoveryMapper";
-import { BRAN_PCT, DEFAULT_RECOVERY_PCT, HULL_PCT } from "../mappers/MillingMapper";
+import { DEFAULT_RECOVERY_PCT } from "../mappers/MillingMapper";
 import {
   BENCHMARKS,
+  estimateByproducts,
   HIGH_RECOVERY_PCT,
   LOW_RECOVERY_PCT,
   pricePlan,
   priceSteps,
   profitAt,
+  standardWeight,
+  type ByproductEstimate,
   type PricePlan,
 } from "../mappers/ProfitMapper";
 import {
@@ -83,47 +85,105 @@ type Form = {
   moisture: string;
   recovery: string;
   head: string;
-  ipa: string;
-  darak: string;
   binlid: string;
-  ipaPrice: string;
-  darakPrice: string;
+  darak: string;
+  mata: string;
+  ipa: string;
   binlidPrice: string;
+  darakPrice: string;
+  mataPrice: string;
+  ipaPrice: string;
+  crhKg: string;
+  crhPrice: string;
+  tikiKg: string;
+  tikiPrice: string;
+  dayamiKg: string;
+  dayamiPrice: string;
   otherPerKg: string;
   market: string;
 };
 
+// Nothing is filled in until someone types or picks a variety: the fields show a grey
+// example, and the by-products their estimate from the recovery.
 const BLANK: Form = {
-  palayKg: "1000",
+  palayKg: "",
   palayPrice: "",
   moisture: "",
-  recovery: String(DEFAULT_RECOVERY_PCT),
+  recovery: "",
   head: "",
-  ipa: String(HULL_PCT),
-  darak: String(BRAN_PCT),
-  binlid: "0",
-  ipaPrice: "",
-  darakPrice: "",
+  binlid: "",
+  darak: "",
+  mata: "",
+  ipa: "",
   binlidPrice: "",
+  darakPrice: "",
+  mataPrice: "",
+  ipaPrice: "",
+  crhKg: "",
+  crhPrice: "",
+  tikiKg: "",
+  tikiPrice: "",
+  dayamiKg: "",
+  dayamiPrice: "",
   otherPerKg: "",
   market: "",
 };
 
-const fromRecords = (d: ProfitDefaults): Form => ({
-  palayKg: field(d.palay_kg) || BLANK.palayKg,
-  palayPrice: field(d.palay_price),
-  moisture: field(d.moisture_pct),
-  recovery: field(d.recovery_pct),
-  head: field(d.head_pct),
-  ipa: field(d.ipa_pct),
-  darak: field(d.darak_pct),
-  binlid: field(d.binlid_pct),
-  ipaPrice: field(d.ipa_price),
-  darakPrice: field(d.darak_price),
-  binlidPrice: field(d.binlid_price),
-  otherPerKg: d.other_cost_per_kg > 0 ? field(d.other_cost_per_kg) : "",
-  market: field(d.market_price),
-});
+/** The by-products a recovery gives, in the order a mill names them. */
+const mainByproducts = (): {
+  key: keyof ByproductEstimate;
+  priceKey: keyof Form;
+  name: string;
+  example: number;
+}[] => [
+  { key: "binlid", priceKey: "binlidPrice", name: t("Binlid (Broken Rice)"), example: 18 },
+  { key: "darak", priceKey: "darakPrice", name: t("Darak (Rice Bran)"), example: 8 },
+  {
+    key: "mata",
+    priceKey: "mataPrice",
+    name: t("Mata-mata (Fine Brokens / Rice Grits)"),
+    example: 12,
+  },
+  { key: "ipa", priceKey: "ipaPrice", name: t("Ipa (Rice Husk / Hull)"), example: 1 },
+];
+
+/** The by-products only some mills have, behind a button: counted in kilos if present,
+ *  nothing if not, and never estimated. */
+const moreByproducts = (): { kgKey: keyof Form; priceKey: keyof Form; name: string }[] => [
+  {
+    kgKey: "crhKg",
+    priceKey: "crhPrice",
+    name: t("Carbonized Rice Hull (CRH) (Partially Burned Husk)"),
+  },
+  { kgKey: "tikiKg", priceKey: "tikiPrice", name: t("Tiki-Tiki (Food-Grade Fine Bran)") },
+  { kgKey: "dayamiKg", priceKey: "dayamiPrice", name: t("Dayami (Rice Straw)") },
+];
+
+const example = (value: number) => t("e.g. {{value}}", { value });
+
+/** What the records fill in for a variety. Without batches to read them from, the
+ *  by-product shares stay empty and show their estimate. */
+const fromRecords = (d: ProfitDefaults): Form => {
+  const weighed = d.yields_source === "batches";
+  return {
+    ...BLANK,
+    palayKg: field(d.palay_kg),
+    palayPrice: field(d.palay_price),
+    moisture: field(d.moisture_pct),
+    recovery: field(d.recovery_pct),
+    head: field(d.head_pct),
+    binlid: weighed ? field(d.binlid_pct) : "",
+    darak: weighed ? field(d.darak_pct) : "",
+    mata: weighed ? field(d.mata_mata_pct) : "",
+    ipa: weighed ? field(d.ipa_pct) : "",
+    binlidPrice: field(d.binlid_price),
+    darakPrice: field(d.darak_price),
+    mataPrice: field(d.mata_mata_price),
+    ipaPrice: field(d.ipa_price),
+    otherPerKg: d.other_cost_per_kg > 0 ? field(d.other_cost_per_kg) : "",
+    market: field(d.market_price),
+  };
+};
 
 function VerdictNote({
   plan,
@@ -195,6 +255,7 @@ function Calculate({ settings }: { settings: ProfitSettings }) {
   const [varietyId, setVarietyId] = useState("");
   const [form, setForm] = useState<Form>(BLANK);
   const [sellAt, setSellAt] = useState("");
+  const [showMore, setShowMore] = useState(false);
   const set = (key: keyof Form) => (value: string) => setForm((f) => ({ ...f, [key]: value }));
 
   const { data: varieties = [] } = useQuery<any[]>({
@@ -215,21 +276,23 @@ function Calculate({ settings }: { settings: ProfitSettings }) {
   const n = (text: string) => parseAmount(text) ?? 0;
   const palayKg = n(form.palayKg);
   const recoveryPct = n(form.recovery);
-  const ipaPct = n(form.ipa);
-  const darakPct = n(form.darak);
-  const binlidPct = n(form.binlid);
+  const moisturePct = parseAmount(form.moisture);
   const market = parseAmount(form.market);
+  const main = mainByproducts();
+  const more = moreByproducts();
+  // Until the real share is typed, each by-product comes from the recovery.
+  const estimate = recoveryPct > 0 ? estimateByproducts(recoveryPct) : null;
+  const typedShare = (key: keyof ByproductEstimate) => parseAmount(form[key]);
+  const shareOf = (key: keyof ByproductEstimate) => typedShare(key) ?? estimate?.[key] ?? 0;
+  const anyEstimated = estimate != null && main.some((b) => typedShare(b.key) == null);
   const plan = pricePlan({
     palayKg,
     palayPrice: n(form.palayPrice),
-    moisturePct: parseAmount(form.moisture),
+    moisturePct,
     recoveryPct,
     otherCosts: palayKg * n(form.otherPerKg),
-    byproducts: [
-      { pct: ipaPct, price: n(form.ipaPrice) },
-      { pct: darakPct, price: n(form.darakPrice) },
-      { pct: binlidPct, price: n(form.binlidPrice) },
-    ],
+    byproducts: main.map((b) => ({ pct: shareOf(b.key), price: n(form[b.priceKey]) })),
+    extraIncome: more.reduce((sum, b) => sum + n(form[b.kgKey]) * n(form[b.priceKey]), 0),
     targetMarginPct: settings.target_margin_pct,
     marketPrice: market,
   });
@@ -239,8 +302,8 @@ function Calculate({ settings }: { settings: ProfitSettings }) {
     moisturePct: null,
     milledKg: recoveryPct,
     headKg: parseAmount(form.head),
-    huskKg: ipaPct,
-    branKg: darakPct,
+    huskKg: shareOf("ipa"),
+    branKg: shareOf("darak"),
   });
   const headTooMuch = parseAmount(form.head) != null && n(form.head) > recoveryPct;
   const typedPrice = parseAmount(sellAt);
@@ -281,11 +344,17 @@ function Calculate({ settings }: { settings: ProfitSettings }) {
               {t("The palay")}
             </p>
             <div className="grid grid-cols-2 gap-3">
-              <Amount label={t("Palay (kg)")} value={form.palayKg} onChange={set("palayKg")} />
+              <Amount
+                label={t("Palay (kg)")}
+                value={form.palayKg}
+                onChange={set("palayKg")}
+                placeholder={example(1000)}
+              />
               <Amount
                 label={t("Palay price per kg (₱)")}
                 value={form.palayPrice}
                 onChange={set("palayPrice")}
+                placeholder={example(20)}
               />
               <Amount
                 label={t("Moisture %")}
@@ -297,7 +366,7 @@ function Calculate({ settings }: { settings: ProfitSettings }) {
                 label={t("Other costs per kg of palay (₱)")}
                 value={form.otherPerKg}
                 onChange={set("otherPerKg")}
-                placeholder="0"
+                placeholder={example(1)}
                 hint={t("Drying, labor, power: what milling costs you.")}
               />
             </div>
@@ -311,6 +380,7 @@ function Calculate({ settings }: { settings: ProfitSettings }) {
                 label={t("Milling recovery %")}
                 value={form.recovery}
                 onChange={set("recovery")}
+                placeholder={example(DEFAULT_RECOVERY_PCT)}
                 hint={sourceText(records)}
               />
               <Amount
@@ -321,44 +391,90 @@ function Calculate({ settings }: { settings: ProfitSettings }) {
                 hint={t("The whole grains, at least ¾ of their length.")}
               />
             </div>
-            <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3">
-              <Amount label={`${byproductLabel("ipa")} %`} value={form.ipa} onChange={set("ipa")} />
-              <Amount
-                label={`${byproductLabel("darak")} %`}
-                value={form.darak}
-                onChange={set("darak")}
-              />
-              <Amount
-                label={`${byproductLabel("binlid")} %`}
-                value={form.binlid}
-                onChange={set("binlid")}
-              />
+            <p className="mt-3 text-xs text-muted">
+              {estimate
+                ? t(
+                    "The by-products are estimated from the recovery. Type the real share if you weighed it.",
+                  )
+                : t("Enter the recovery and the by-products are estimated for you.")}
+            </p>
+            <div className="mt-2 grid grid-cols-2 gap-3" data-testid="byproduct-shares">
+              {main.map((b) => {
+                const estimated = estimate && typedShare(b.key) == null;
+                const kg = (standardWeight(palayKg, moisturePct) * shareOf(b.key)) / 100;
+                return (
+                  <Amount
+                    key={b.key}
+                    label={`${b.name} %`}
+                    value={form[b.key]}
+                    onChange={set(b.key)}
+                    placeholder={estimate ? field(estimate[b.key]) : t("Auto")}
+                    hint={
+                      estimated
+                        ? palayKg > 0
+                          ? t("Estimate only: about {{amount}}", { amount: kilos(kg) })
+                          : t("Estimate only")
+                        : undefined
+                    }
+                  />
+                );
+              })}
             </div>
           </div>
           <div>
             <p className="mb-2 text-[10px] font-bold uppercase tracking-wide text-muted">
               {t("What you sell for")}
             </p>
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-              <Amount
-                label={t("{{name}} per kg (₱)", { name: byproductLabel("ipa") })}
-                value={form.ipaPrice}
-                onChange={set("ipaPrice")}
-                placeholder="0"
-              />
-              <Amount
-                label={t("{{name}} per kg (₱)", { name: byproductLabel("darak") })}
-                value={form.darakPrice}
-                onChange={set("darakPrice")}
-                placeholder="0"
-              />
-              <Amount
-                label={t("{{name}} per kg (₱)", { name: byproductLabel("binlid") })}
-                value={form.binlidPrice}
-                onChange={set("binlidPrice")}
-                placeholder="0"
-              />
+            <div className="grid grid-cols-2 gap-3">
+              {main.map((b) => (
+                <Amount
+                  key={b.key}
+                  label={t("{{name}} per kg (₱)", { name: b.name })}
+                  value={form[b.priceKey]}
+                  onChange={set(b.priceKey)}
+                  placeholder={example(b.example)}
+                />
+              ))}
             </div>
+            <button
+              type="button"
+              className="btn-secondary mt-3"
+              aria-expanded={showMore}
+              onClick={() => setShowMore((open) => !open)}
+            >
+              {showMore ? t("Hide other by-products") : t("Other by-products")}
+              <ChevronDown
+                size={16}
+                aria-hidden
+                className={`transition-transform ${showMore ? "rotate-180" : ""}`}
+              />
+            </button>
+            {showMore && (
+              <div className="mt-3 space-y-3" data-testid="more-byproducts">
+                <p className="text-xs text-muted">
+                  {t("Only if you have them. Leave them empty if you don't.")}
+                </p>
+                {more.map((b) => (
+                  <div key={b.kgKey}>
+                    <p className="mb-1 text-xs font-semibold text-secondary">{b.name}</p>
+                    <div className="grid grid-cols-2 gap-3">
+                      <Amount
+                        label={t("{{name}} (kg)", { name: b.name })}
+                        value={form[b.kgKey]}
+                        onChange={set(b.kgKey)}
+                        placeholder="0"
+                      />
+                      <Amount
+                        label={t("{{name}} per kg (₱)", { name: b.name })}
+                        value={form[b.priceKey]}
+                        onChange={set(b.priceKey)}
+                        placeholder="0"
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
             <div className="mt-3 max-w-[50%] sm:max-w-[33%]">
               <Amount
                 label={t("Market price of rice per kg (₱)")}
@@ -392,7 +508,11 @@ function Calculate({ settings }: { settings: ProfitSettings }) {
                 <Stat
                   label={t("By-products bring in")}
                   value={peso(plan.byproductIncome)}
-                  sub={t("Taken off the rice's cost")}
+                  sub={
+                    anyEstimated
+                      ? t("An estimate, taken off the rice's cost")
+                      : t("Taken off the rice's cost")
+                  }
                 />
               </dl>
               <VerdictNote
@@ -422,7 +542,12 @@ function Calculate({ settings }: { settings: ProfitSettings }) {
               )}
 
               <div className="mt-4 max-w-[50%]">
-                <Amount label={t("Sell at (₱ per kg)")} value={sellAt} onChange={setSellAt} />
+                <Amount
+                  label={t("Sell at (₱ per kg)")}
+                  value={sellAt}
+                  onChange={setSellAt}
+                  placeholder={example(40)}
+                />
               </div>
               {typedProfit != null && (
                 <p
@@ -510,19 +635,34 @@ function Calculate({ settings }: { settings: ProfitSettings }) {
               </>
             )}
             <Stat
-              label={byproductLabel("ipa")}
-              value={percent(ipaPct)}
+              label={t("Ipa (Rice Husk / Hull)")}
+              value={percent(shareOf("ipa"))}
               sub={t("Usual {{range}}", { range: BENCHMARKS.husk })}
             />
             <Stat
-              label={byproductLabel("darak")}
-              value={percent(darakPct)}
+              label={t("Darak (Rice Bran)")}
+              value={percent(shareOf("darak"))}
               sub={t("Usual {{range}}", { range: BENCHMARKS.bran })}
             />
-            {binlidPct > 0 && <Stat label={byproductLabel("binlid")} value={percent(binlidPct)} />}
+            {shareOf("binlid") > 0 && (
+              <Stat label={t("Binlid (Broken Rice)")} value={percent(shareOf("binlid"))} />
+            )}
+            {shareOf("mata") > 0 && (
+              <Stat
+                label={t("Mata-mata (Fine Brokens / Rice Grits)")}
+                value={percent(shareOf("mata"))}
+              />
+            )}
             <Stat
               label={t("Not accounted for")}
-              value={percent(100 - recoveryPct - ipaPct - darakPct - binlidPct)}
+              value={percent(
+                100 -
+                  recoveryPct -
+                  shareOf("ipa") -
+                  shareOf("darak") -
+                  shareOf("binlid") -
+                  shareOf("mata"),
+              )}
               sub={t("Usual {{range}}", { range: BENCHMARKS.loss })}
             />
             {plan && plan.standardKg !== palayKg && (
@@ -637,10 +777,16 @@ function Period() {
             )}
           </p>
         </div>
-        <div className="flex flex-wrap gap-2">
-          <DatePicker aria-label={t("From")} value={start} onChange={setStart} />
-          <DatePicker aria-label={t("To")} value={end} onChange={setEnd} />
-        </div>
+        <DateRangePicker
+          aria-label={t("Period")}
+          start={start}
+          end={end}
+          onChange={(from, to) => {
+            setStart(from);
+            setEnd(to);
+          }}
+          className="w-full sm:w-72"
+        />
       </div>
       <div className="card overflow-hidden p-0 sm:overflow-x-auto">
         {isLoading || !data ? (

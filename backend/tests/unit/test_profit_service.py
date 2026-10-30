@@ -5,7 +5,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from app.services.profit_service import is_boss, price_plan, staff_view
+from app.services.profit_service import estimate_byproducts, is_boss, price_plan, staff_view
 
 LOT = {
     "palay_kg": 1000.0,
@@ -91,6 +91,26 @@ def test_staff_get_no_figures_without_a_plan():
         "estimated_profit_per_kg": None,
         "verdict": "no_data",
     }
+
+
+def test_the_by_products_are_estimated_from_the_recovery():
+    estimate = estimate_byproducts(65.0)
+    assert estimate["ipa"] == 20
+    assert estimate["darak"] == 10
+    assert estimate["binlid"] == pytest.approx(2.5 * 2 / 3)
+    assert estimate["mata_mata"] == pytest.approx(2.5 / 3)
+
+
+def test_a_high_recovery_leaves_less_bran_and_no_brokens():
+    assert estimate_byproducts(70.0) == {"ipa": 20, "darak": 7.5, "binlid": 0, "mata_mata": 0}
+    assert estimate_byproducts(85.0)["darak"] == 0
+
+
+def test_a_low_recovery_caps_the_binlid_and_mata_mata():
+    estimate = estimate_byproducts(50.0)
+    assert estimate["darak"] == 10
+    assert estimate["binlid"] == 3
+    assert estimate["mata_mata"] == 1.5
 
 
 def _user(role, *, platform_admin=False, custom=None):

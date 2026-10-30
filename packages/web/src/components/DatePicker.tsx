@@ -24,7 +24,8 @@ import {
   startOfMonth,
   startOfWeek,
 } from "date-fns";
-import { currentLanguage, currentLocale, DEFAULT_LANGUAGE, t } from "../i18n";
+import { WEEKDAYS } from "../utils/weekdays";
+import { t } from "../i18n";
 
 type Props = {
   /** "yyyy-MM-dd", the same as an <input type="date">. */
@@ -46,14 +47,6 @@ type Props = {
 
 const WIDTH = 288; // w-72
 const HEIGHT = 376;
-/** Sunday first: the language's short day names, two letters in English (Su, Mo). */
-const WEEKDAYS = Array.from({ length: 7 }, (_, i) => {
-  // 1 January 2023 was a Sunday.
-  const name = new Intl.DateTimeFormat(currentLocale(), { weekday: "short" }).format(
-    new Date(2023, 0, 1 + i),
-  );
-  return currentLanguage().code === DEFAULT_LANGUAGE ? name.slice(0, 2) : name;
-});
 const ISO = "yyyy-MM-dd";
 const YEARS_PER_PAGE = 12;
 

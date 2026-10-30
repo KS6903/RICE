@@ -11,7 +11,9 @@
 //  Target price  = break-even ÷ (1 − target margin), rounded up to ₱0.50.
 //  Recommended   = what the market pays when that's above break-even, else the
 //                  target price. At or below break-even it's a losing game.
-import { STANDARD_MOISTURE_PCT } from "./MillingMapper";
+//  By-products   = estimated from the recovery, until the real ones are typed:
+//                  see estimateByproducts.
+import { BRAN_PCT, HULL_PCT, STANDARD_MOISTURE_PCT } from "./MillingMapper";
 
 export type ProfitInput = {
   palayKg: number;
@@ -21,6 +23,8 @@ export type ProfitInput = {
   otherCosts: number;
   /** Each by-product: % of the palay, ₱ per kg. */
   byproducts: { pct: number; price: number }[];
+  /** What the by-products counted in kilos bring in, not as a share of the palay. */
+  extraIncome?: number;
   targetMarginPct: number;
   marketPrice: number | null;
 };
@@ -49,6 +53,36 @@ export type PricePlan = {
 export const LOW_RECOVERY_PCT = 55;
 export const HIGH_RECOVERY_PCT = 72;
 
+/** What's lost to dust and moisture, of the palay. Binlid and mata-mata are a small
+ *  part of what milling leaves, never more than these. */
+const LOSS_PCT = 2.5;
+const MAX_BINLID_PCT = 3;
+const MAX_MATA_PCT = 1.5;
+
+export type ByproductEstimate = { ipa: number; darak: number; binlid: number; mata: number };
+
+/** The by-products a recovery should leave, as % of the palay: an estimate only. Of
+ *  100 kg, the husk is 20 and the rest is brown rice. Brown rice that doesn't come out
+ *  as rice, after the loss, is bran first (about 10), then binlid and mata-mata, two
+ *  parts to one. Same as the server's estimate_byproducts. */
+export function estimateByproducts(recoveryPct: number): ByproductEstimate {
+  const left = Math.max(100 - HULL_PCT - recoveryPct - LOSS_PCT, 0);
+  const darak = Math.min(BRAN_PCT, left);
+  const rest = left - darak;
+  return {
+    ipa: HULL_PCT,
+    darak,
+    binlid: Math.min(MAX_BINLID_PCT, (rest * 2) / 3),
+    mata: Math.min(MAX_MATA_PCT, rest / 3),
+  };
+}
+
+/** The palay's weight at 14% moisture: wetter is weighed down, drier left as is. */
+export const standardWeight = (kg: number, moisturePct: number | null) =>
+  moisturePct != null && moisturePct > STANDARD_MOISTURE_PCT && moisturePct < 100
+    ? (kg * (100 - moisturePct)) / (100 - STANDARD_MOISTURE_PCT)
+    : kg;
+
 /** Rounded up to the next ₱0.50, never under it. The inner round stops float noise
  *  from pushing an exact ₱34.50 up to ₱35. */
 const roundUpHalfPeso = (price: number) =>
@@ -57,18 +91,14 @@ const roundUpHalfPeso = (price: number) =>
 /** The selling price for a lot of palay, or null until there's rice to price and a
  *  cost to cover. */
 export function pricePlan(i: ProfitInput): PricePlan | null {
-  const m = i.moisturePct;
-  const standardKg =
-    m != null && m > STANDARD_MOISTURE_PCT && m < 100
-      ? (i.palayKg * (100 - m)) / (100 - STANDARD_MOISTURE_PCT)
-      : i.palayKg;
+  const standardKg = standardWeight(i.palayKg, i.moisturePct);
   const riceKg = (standardKg * i.recoveryPct) / 100;
   const totalCost = i.palayKg * i.palayPrice + i.otherCosts;
   if (!(riceKg > 0) || !(totalCost > 0)) return null;
 
   const byproductIncome = i.byproducts.reduce(
     (s, b) => s + ((standardKg * b.pct) / 100) * b.price,
-    0,
+    i.extraIncome ?? 0,
   );
   const breakEven = (totalCost - byproductIncome) / riceKg;
   const targetPrice = roundUpHalfPeso(breakEven / (1 - i.targetMarginPct / 100));

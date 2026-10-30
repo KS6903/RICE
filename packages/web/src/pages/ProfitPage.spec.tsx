@@ -41,9 +41,9 @@ const typeTheLot = () => {
   type("Palay price per kg (₱)", "20");
   type("Other costs per kg of palay (₱)", "1");
   type("Milling recovery %", "65");
-  type("Ipa (Rice Hull) %", "22.5");
+  type("Ipa (Rice Husk / Hull) %", "22.5");
   type("Darak (Rice Bran) %", "9.5");
-  type("Ipa (Rice Hull) per kg (₱)", "1");
+  type("Ipa (Rice Husk / Hull) per kg (₱)", "1");
   type("Darak (Rice Bran) per kg (₱)", "8");
 };
 
@@ -69,6 +69,60 @@ describe("Profit calculator, for the Boss", () => {
   beforeEach(() => {
     useAuthStore.setState({ user: owner });
     vi.spyOn(profitService, "varieties").mockResolvedValue([]);
+  });
+
+  it("starts with nothing filled in, only grey examples", async () => {
+    draw();
+    await screen.findByTestId("profit-calculator");
+    for (const label of ["Palay (kg)", "Palay price per kg (₱)", "Milling recovery %"]) {
+      expect(screen.getByLabelText(label)).toHaveValue(null);
+    }
+    expect(screen.getByLabelText("Palay (kg)")).toHaveAttribute("placeholder", "e.g. 1000");
+    expect(screen.getByLabelText("Ipa (Rice Husk / Hull) %")).toHaveValue(null);
+    expect(screen.queryByTestId("profit-result")).not.toBeInTheDocument();
+    expect(screen.queryByText(/Estimate only/)).not.toBeInTheDocument();
+  });
+
+  it("estimates the by-products once the recovery is in, until the real one is typed", async () => {
+    draw();
+    await screen.findByTestId("profit-calculator");
+    type("Palay (kg)", "1000");
+    type("Milling recovery %", "65");
+
+    const darak = screen.getByLabelText("Darak (Rice Bran) %");
+    expect(darak).toHaveValue(null);
+    expect(darak).toHaveAttribute("placeholder", "10");
+    expect(screen.getByLabelText("Ipa (Rice Husk / Hull) %")).toHaveAttribute("placeholder", "20");
+    const shares = screen.getByTestId("byproduct-shares");
+    expect(within(shares).getAllByText(/Estimate only/)).toHaveLength(4);
+    expect(shares).toHaveTextContent("about 100 kg");
+
+    // The estimate follows the recovery.
+    type("Milling recovery %", "70");
+    expect(darak).toHaveAttribute("placeholder", "7.5");
+
+    // A typed share is the real one: no longer an estimate.
+    type("Darak (Rice Bran) %", "9");
+    expect(within(shares).getAllByText(/Estimate only/)).toHaveLength(3);
+  });
+
+  it("keeps the other by-products behind a button, empty, and counts them only if entered", async () => {
+    draw();
+    await screen.findByTestId("profit-calculator");
+    typeTheLot();
+    expect(screen.queryByTestId("more-byproducts")).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Other by-products" }));
+    const more = screen.getByTestId("more-byproducts");
+    expect(more).toHaveTextContent("Carbonized Rice Hull (CRH)");
+    expect(more).toHaveTextContent("Tiki-Tiki");
+    expect(more).toHaveTextContent("Dayami");
+    expect(within(more).getByLabelText("Dayami (Rice Straw) (kg)")).toHaveValue(null);
+    expect(screen.getByTestId("profit-result")).toHaveTextContent("₱985.00");
+
+    type("Dayami (Rice Straw) (kg)", "100");
+    type("Dayami (Rice Straw) per kg (₱)", "2");
+    expect(screen.getByTestId("profit-result")).toHaveTextContent("₱1,185.00");
   });
 
   it("works out the selling price, the break-even and the profit", async () => {

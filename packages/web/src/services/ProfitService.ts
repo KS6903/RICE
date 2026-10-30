@@ -15,10 +15,12 @@ export type ProfitDefaults = {
   ipa_pct: number;
   darak_pct: number;
   binlid_pct: number;
+  mata_mata_pct: number;
   yields_source: "batches" | "default";
   ipa_price: number | null;
   darak_price: number | null;
   binlid_price: number | null;
+  mata_mata_price: number | null;
   other_cost_per_kg: number;
   market_price: number | null;
   market_source: "variety" | "milled" | "all" | null;
