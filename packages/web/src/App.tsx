@@ -239,7 +239,11 @@ function AppRoutes() {
           path="profit"
           element={
             <RoleGate section="profit">
-              <FeatureGate code="profit" label={t("Profit calculator")} requires={t("Pro or Enterprise")}>
+              <FeatureGate
+                code="profit"
+                label={t("Profit calculator")}
+                requires={t("Pro or Enterprise")}
+              >
                 <LazyPage component={ProfitPage} />
               </FeatureGate>
             </RoleGate>

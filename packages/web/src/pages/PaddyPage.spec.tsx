@@ -328,7 +328,8 @@ describe("PaddyPage: its own To do window (Pro plans and up)", () => {
     const header = screen.getByRole("heading", { name: "Palay (Paddy)" }).parentElement
       ?.parentElement as HTMLElement;
     expect(header).toContainElement(button);
-    expect(header.lastElementChild).toBe(button);
+    expect(header.lastElementChild).toContainElement(button);
+    expect(button.parentElement?.lastElementChild).toBe(button);
     expect(header.className).toMatch(/items-center/);
   });
 

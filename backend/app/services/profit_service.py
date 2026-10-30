@@ -15,10 +15,11 @@ from __future__ import annotations
 import math
 import uuid
 from datetime import date, timedelta
+from decimal import Decimal
 from typing import Any, Iterable
 
 from sqlalchemy import func, or_
-from sqlalchemy.orm import Session, selectinload
+from sqlalchemy.orm import selectinload
 
 from ..core.branch_scope import viewed_branch
 from ..core.exceptions import NotFoundError
@@ -157,9 +158,9 @@ class ProfitService(BaseService):
             raise NotFoundError("Company not found")
         with self.transaction():
             if target_margin_pct is not None:
-                company.profit_target_margin_pct = target_margin_pct
+                company.profit_target_margin_pct = Decimal(str(target_margin_pct))
             if staff_profit_pct is not None:
-                company.staff_profit_pct = staff_profit_pct
+                company.staff_profit_pct = Decimal(str(staff_profit_pct))
         return self.get_settings()
 
     # ── what fills the calculator ─────────────────────────────────────────────
@@ -176,7 +177,7 @@ class ProfitService(BaseService):
             .all()
         )
 
-    def _palay_bought(self, since: date, until: date | None = None) -> dict[uuid.UUID, dict]:
+    def _palay_bought(self, since: date, until: date | None = None) -> dict[uuid.UUID | None, dict]:
         """Per variety since a date: kilos as bought, what they cost, and the moisture
         they were bought at, averaged over the kilos it was read for."""
         items = (
@@ -191,7 +192,7 @@ class ProfitService(BaseService):
             )
             .all()
         )
-        out: dict[uuid.UUID, dict] = {}
+        out: dict[uuid.UUID | None, dict] = {}
         for i in items:
             kg = float(i.net_weight_kg)
             row = out.setdefault(i.variety_id, {"kg": 0.0, "amount": 0.0, "moist_kg": 0.0, "moist_sum": 0.0})
@@ -218,10 +219,10 @@ class ProfitService(BaseService):
         return q.all()
 
     @staticmethod
-    def _yields(batches: list[MillingBatch]) -> dict[uuid.UUID, dict]:
+    def _yields(batches: list[MillingBatch]) -> dict[uuid.UUID | None, dict]:
         """Per variety: what its batches gave. A batch of several varieties can't say
         which gave what, so it is left out."""
-        out: dict[uuid.UUID, dict] = {}
+        out: dict[uuid.UUID | None, dict] = {}
         for b in batches:
             varieties = {i.variety_id for i in b.inputs}
             if len(varieties) != 1 or None in varieties:
@@ -316,7 +317,7 @@ class ProfitService(BaseService):
         since = self._today() - timedelta(days=LOOKBACK_DAYS)
         batches = self._batches(since)
         market_rows = self._sold("milled_rice", SOLD_STATUSES, since)
-        market: dict[uuid.UUID, list[float]] = {}
+        market: dict[uuid.UUID | None, list[float]] = {}
         for variety, _, kg, amount in market_rows:
             row = market.setdefault(variety, [0.0, 0.0])
             row[0] += float(kg or 0)
