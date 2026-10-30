@@ -28,6 +28,11 @@ import { t } from "../../i18n";
 
 const percent = (n: number) => `${n.toFixed(1)}%`;
 
+/** The two footer buttons share one row on a phone, a little smaller below 360px
+ *  wide so "Close calculator" stays on one line there too. */
+const FOOTER_BUTTON =
+  "min-w-0 flex-1 max-sm:!px-3 max-sm:text-sm max-[359px]:!px-2 max-[359px]:text-xs sm:flex-none";
+
 /** A saved record changed: what shows it should be fetched again. */
 function useRefreshPurchases() {
   const qc = useQueryClient();
@@ -405,7 +410,7 @@ export default function RecoveryCalculator({
           <>
             <button
               type="button"
-              className="btn-secondary flex-auto sm:flex-none"
+              className={`btn-secondary ${FOOTER_BUTTON}`}
               onClick={onClose}
               disabled={save.isPending}
             >
@@ -414,7 +419,7 @@ export default function RecoveryCalculator({
             {canRecord && (
               <button
                 type="button"
-                className="btn-primary flex-auto sm:flex-none"
+                className={`btn-primary ${FOOTER_BUTTON}`}
                 onClick={() => body && save.mutate(body)}
                 disabled={!body || save.isPending}
               >

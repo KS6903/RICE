@@ -346,8 +346,10 @@ export function PurchaseDetails({
         (kind === "palay" || onEdit || onHistory) &&
         (calculating ? (
           // The open calculator's own buttons take the footer, so there is one
-          // bar at the bottom, not two stacked over its fields.
-          <div ref={setActionsHost} className="contents" />
+          // bar at the bottom, not two stacked over its fields. On a phone they
+          // share one row that never wraps (a second row ate the space the keyboard
+          // left); from sm up they're plain footer buttons again.
+          <div ref={setActionsHost} className="flex w-full gap-2 sm:contents" />
         ) : (
           <>
             {kind === "palay" && (
