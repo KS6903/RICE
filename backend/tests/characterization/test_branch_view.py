@@ -6,10 +6,13 @@ or with one naming no branch of the mill, everything is as it always was.
 """
 
 import uuid
+from decimal import Decimal
 from types import SimpleNamespace
 
 from app.core import branch_scope
 from app.models.company import Branch
+from app.models.paddy import PalayInventory
+from app.models.reference import RiceVariety
 
 BEARER = {"X-Client-Type": "bearer"}
 
@@ -74,6 +77,30 @@ def test_reports_add_up_the_branch_being_viewed(client, db_session, seed_owner):
 
     assert spent({**boss, "X-Branch": str(north.id)}) == 100.0
     assert spent({**boss, "X-Branch": "all"}) == 350.0
+
+
+def test_the_palay_stock_is_the_branch_being_viewed(client, db_session, seed_owner):
+    north = _north(db_session, seed_owner)
+    variety = db_session.query(RiceVariety).filter(RiceVariety.company_id.is_(None)).first()
+    for branch_id, kg in ((seed_owner.branch_id, "500"), (north.id, "900")):
+        db_session.add(
+            PalayInventory(
+                company_id=seed_owner.company_id, branch_id=branch_id, variety_id=variety.id, quantity_kg=Decimal(kg)
+            )
+        )
+    db_session.flush()
+    boss = _boss(client)
+
+    def kilos(view: str | None) -> list[float]:
+        headers = {**boss, "X-Branch": view} if view else boss
+        res = client.get("/api/paddy/inventory", headers=headers)
+        assert res.status_code == 200, res.text
+        return sorted(row["quantity_kg"] for row in res.json())
+
+    assert kilos(str(seed_owner.branch_id)) == [500.0]
+    assert kilos(str(north.id)) == [900.0]
+    assert kilos("all") == [500.0, 900.0]
+    assert kilos(None) == [500.0, 900.0]
 
 
 def test_a_branch_that_isnt_the_mills_is_ignored(client, db_session, seed_owner):

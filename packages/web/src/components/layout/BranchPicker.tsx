@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
 import { Building2 } from "lucide-react";
 import Select from "../Select";
 import { authService } from "../../services/AuthService";
@@ -9,6 +9,14 @@ import { useBranchStore } from "../../stores/branchStore";
 import { t } from "../../i18n";
 
 const ALL = "all";
+
+/** Load what's on the screen again, for the branch now chosen. A request still in
+ *  flight was sent before it (a page that was opening when the picker did), and
+ *  invalidating alone keeps it when the query has no data yet, so it's dropped first. */
+function reloadForBranch(qc: QueryClient) {
+  void qc.cancelQueries();
+  void qc.invalidateQueries();
+}
 
 /**
  * The top bar's branch picker, for the Boss and Admins of a mill with more than
@@ -52,7 +60,7 @@ export default function BranchPicker({ className = "" }: { className?: string })
     if (!chooses || !several) {
       if (view !== null) {
         setView(null, user.id);
-        qc.invalidateQueries();
+        reloadForBranch(qc);
       }
       return;
     }
@@ -60,7 +68,7 @@ export default function BranchPicker({ className = "" }: { className?: string })
     if (owner === user.id && known) return;
     setView(defaultView, user.id);
     // What loaded before the picker opened was for every branch.
-    qc.invalidateQueries();
+    reloadForBranch(qc);
   }, [user, chooses, isSuccess, several, branches, view, owner, defaultView, setView, qc]);
 
   if (!user || !chooses || !several || view === null) return null;
@@ -83,7 +91,7 @@ export default function BranchPicker({ className = "" }: { className?: string })
         value={view}
         onChange={(v) => {
           setView(v, user.id);
-          qc.invalidateQueries();
+          reloadForBranch(qc);
         }}
         options={options}
         className="flex-1 min-w-0"

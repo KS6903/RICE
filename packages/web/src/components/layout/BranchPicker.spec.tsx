@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryClient, QueryClientProvider, useQuery } from "@tanstack/react-query";
 import type { User } from "@rice-mill/shared";
 import BranchPicker from "./BranchPicker";
 import { authService } from "../../services/AuthService";
@@ -70,6 +70,39 @@ describe("BranchPicker", () => {
     fireEvent.click(screen.getByRole("button", { name: "Open here by default" }));
     await waitFor(() => expect(authService.setBranchView).toHaveBeenCalledWith("b-north"));
     await waitFor(() => expect(useAuthStore.getState().user?.branch_view_default).toBe("b-north"));
+  });
+
+  it("reloads a page that was still loading when the picker opened, for the branch", async () => {
+    useAuthStore.setState({ user: boss() });
+    let release!: () => void;
+    const held = new Promise<void>((resolve) => (release = resolve));
+    // Stands in for a page's first request: sent before the picker has a branch.
+    const sent: (string | null)[] = [];
+    function Stock() {
+      const { data } = useQuery({
+        queryKey: ["stock"],
+        queryFn: async () => {
+          const branch = useBranchStore.getState().view;
+          sent.push(branch);
+          await held;
+          return branch;
+        },
+      });
+      return <p>{data === undefined ? "loading" : `stock for ${data}`}</p>;
+    }
+    render(
+      <QueryClientProvider
+        client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}
+      >
+        <Stock />
+        <BranchPicker />
+      </QueryClientProvider>,
+    );
+    await waitFor(() => expect(useBranchStore.getState().view).toBe("b-main"));
+    await waitFor(() => expect(sent).toEqual([null, "b-main"]));
+
+    release();
+    expect(await screen.findByText("stock for b-main")).toBeInTheDocument();
   });
 
   it("isn't there for a mill with one branch", async () => {
