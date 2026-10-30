@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import { MemoryRouter, useNavigate } from "react-router-dom";
 import ReloadOnPageChange from "./ReloadOnPageChange";
+import { useHelpStore } from "../stores/helpStore";
 
 // Only the sign-out in progress matters here; the store itself is not needed.
 const pendingLogout = vi.hoisted(() => vi.fn<() => Promise<void> | null>(() => null));
@@ -57,6 +58,7 @@ describe("ReloadOnPageChange", () => {
   afterEach(() => {
     Object.defineProperty(window, "location", { configurable: true, value: original });
     delete (window as any).electronAPI;
+    useHelpStore.setState({ touring: false });
     vi.useRealTimers();
   });
 
@@ -130,6 +132,26 @@ describe("ReloadOnPageChange", () => {
 
   it("does not reload on a link click in the desktop app", () => {
     (window as any).electronAPI = { isElectron: true };
+    draw();
+    const link = screen.getByText("This page");
+    link.addEventListener("click", (e) => e.preventDefault());
+    fireEvent.click(link);
+    expect(reload).not.toHaveBeenCalled();
+  });
+
+  it("changes pages in place while the guided tour runs, which keeps its place in memory", () => {
+    useHelpStore.setState({ touring: true });
+    draw();
+    act(() => go("/purchases"));
+    expect(reload).not.toHaveBeenCalled();
+    // Done: the tour stops, then takes the person back to where they started.
+    useHelpStore.setState({ touring: false });
+    act(() => go("/costs"));
+    expect(reload).toHaveBeenCalledTimes(1);
+  });
+
+  it("leaves a click on the page's own link alone while the guided tour runs", () => {
+    useHelpStore.setState({ touring: true });
     draw();
     const link = screen.getByText("This page");
     link.addEventListener("click", (e) => e.preventDefault());

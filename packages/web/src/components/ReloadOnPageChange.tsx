@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 import { useLocation } from "react-router-dom";
 import { isElectronRuntime } from "../services/runtime";
 import { pendingLogout } from "../stores/authStore";
+import { useHelpStore } from "../stores/helpStore";
 
 const STAMP = "page-reload-at";
 // Two page changes closer than this are a redirect, not a person moving on, and
@@ -22,7 +23,7 @@ function reloadPage() {
  *  a modifier key keeps its own behaviour. Runs in the capture phase, ahead of
  *  the router's own handler, which then sees the click already handled. */
 function reloadOnSamePageLink(event: MouseEvent) {
-  if (event.defaultPrevented || event.button !== 0) return;
+  if (event.defaultPrevented || event.button !== 0 || useHelpStore.getState().touring) return;
   if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
   const link = (event.target as Element | null)?.closest?.("a[href]") as HTMLAnchorElement | null;
   if (!link || (link.target && link.target !== "_self") || link.hasAttribute("download")) return;
@@ -39,9 +40,11 @@ function reloadOnSamePageLink(event: MouseEvent) {
 /** Every time the person goes to another page, the browser loads it afresh, as
  *  if they had pressed refresh: the link changes and the page starts clean, not
  *  just swaps in place. Only the path counts; a tab or filter in the query does
- *  not. A click on a link to the page already open reloads it too. The desktop
- *  app holds its tokens in memory only, so a reload would sign it out: there
- *  pages change in place. Rendered inside the Router. */
+ *  not. A click on a link to the page already open reloads it too. The guided
+ *  tour walks the pages with its place held in memory, so while it runs they
+ *  change in place. The desktop app holds its tokens in memory only, so a reload
+ *  would sign it out: there pages change in place too. Rendered inside the
+ *  Router. */
 export default function ReloadOnPageChange() {
   const { pathname } = useLocation();
   const shown = useRef(pathname);
@@ -49,7 +52,7 @@ export default function ReloadOnPageChange() {
   useEffect(() => {
     if (shown.current === pathname) return;
     shown.current = pathname;
-    if (isElectronRuntime()) return;
+    if (isElectronRuntime() || useHelpStore.getState().touring) return;
     try {
       const last = Number(sessionStorage.getItem(STAMP) ?? 0);
       if (Date.now() - last < REDIRECT_WINDOW_MS) return;
