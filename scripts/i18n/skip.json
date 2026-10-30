@@ -3,7 +3,8 @@
   "files": [
     "packages/web/src/utils/phPaymentProviders.ts",
     "packages/web/src/main.tsx",
-    "packages/web/src/boot.tsx"
+    "packages/web/src/boot.tsx",
+    "packages/web/src/hooks/useIsPhone.ts"
   ],
   "strings": [
     "SameSite={{same_site}}",

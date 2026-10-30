@@ -118,6 +118,7 @@ ALL_FEATURES = [
     "cash_count",
     "collections",
     "page_todo",
+    "profit",
 ]
 
 

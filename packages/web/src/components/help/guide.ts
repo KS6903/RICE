@@ -15,6 +15,9 @@ export const PAGE_WHAT: Record<string, string> = {
   "/byproducts": t(
     "Record the ipa, darak and binlid you buy: weight and price per kg. It's added to your by-product stock.",
   ),
+  "/profit": t(
+    "From your recovery and costs, the price to sell at so you don't lose money, what it earns, and a warning when it's a losing game. Only you see this until you open it to staff.",
+  ),
   "/milling": t(
     "Record the palay going into the mill and whose it is. Oraiza estimates the rice, ipa and darak that come out; type the weighed kilos to replace them. Palay leaves your stock; the rice and by-products go into Inventory.",
   ),

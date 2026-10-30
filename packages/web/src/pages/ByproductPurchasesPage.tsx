@@ -21,6 +21,7 @@ import FieldCaption from "../components/FieldCaption";
 import Select from "../components/Select";
 import DatePicker from "../components/DatePicker";
 import Modal from "../components/Modal";
+import ProfitLink from "../components/buying/ProfitLink";
 import PurchaseColumn from "../components/buying/PurchaseColumn";
 import SaleColumn from "../components/buying/SaleColumn";
 import { peso } from "../components/buying/money";
@@ -120,7 +121,7 @@ export default function ByproductPurchasesPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-3">
         <div>
           <h2 className="text-xl font-bold text-gray-900 dark:text-slate-100">
             {t("By-products")}
@@ -129,6 +130,7 @@ export default function ByproductPurchasesPage() {
             {t("Ipa, darak and binlid you buy, and what's in stock")}
           </p>
         </div>
+        <ProfitLink />
       </div>
 
       <Modal

@@ -23,6 +23,7 @@ import Select from "../components/Select";
 import DatePicker from "../components/DatePicker";
 import Modal from "../components/Modal";
 import PalayTodo from "../components/buying/PalayTodo";
+import ProfitLink from "../components/buying/ProfitLink";
 import PurchaseColumn from "../components/buying/PurchaseColumn";
 import SaleColumn from "../components/buying/SaleColumn";
 import WetDryChoice from "../components/buying/WetDryChoice";
@@ -209,7 +210,10 @@ export default function PaddyPage() {
             {t("Procurement and palay inventory")}
           </p>
         </div>
-        {hasTodo && <PalayTodo purchases={purchases} canRecord={canEdit("paddy")} />}
+        <div className="flex flex-wrap items-center justify-end gap-2">
+          <ProfitLink />
+          {hasTodo && <PalayTodo purchases={purchases} canRecord={canEdit("paddy")} />}
+        </div>
       </div>
 
       <Modal

@@ -21,6 +21,7 @@ import {
   Wrench,
   ShoppingBasket,
   Boxes,
+  Calculator,
 } from "lucide-react";
 import type { AppSection } from "@rice-mill/shared";
 import { t } from "../../i18n";
@@ -38,6 +39,7 @@ export const FEATURE_PLAN: Record<string, PlanName> = {
   collections: "Pro",
   employees: "Pro",
   page_todo: "Pro",
+  profit: "Pro",
   automations: "Enterprise",
 };
 export const PLAN_ORDER: PlanName[] = ["Basic", "Pro", "Enterprise"];
@@ -99,6 +101,14 @@ export const NAV_GROUPS: { title: string | null; items: NavEntry[] }[] = [
         feature: "paddy",
         section: "paddy",
         hint: t("Record the ipa, darak and binlid you buy"),
+      },
+      {
+        to: "/profit",
+        label: t("Profit calculator"),
+        icon: Calculator,
+        feature: "profit",
+        section: "profit",
+        hint: t("The price to sell at from your recovery, and what it earns"),
       },
       {
         to: "/milling",

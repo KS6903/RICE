@@ -1,8 +1,9 @@
 import uuid
 from datetime import datetime
+from decimal import Decimal
 from typing import TYPE_CHECKING
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Index, Integer, String, Text, text
+from sqlalchemy import Boolean, DateTime, ForeignKey, Index, Integer, Numeric, String, Text, text
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -60,6 +61,11 @@ class Company(Base, TimestampMixin):
     # How the Palay page counts the palay in stock, as the Boss chose: sacks,
     # cavans, kilos or all three. NULL until chosen, which shows all three.
     palay_stock_view: Mapped[str | None] = mapped_column(String(10))
+    # The Profit calculator's settings, the Boss's alone: the margin the recommended
+    # price aims for, and how much of the real profit staff are shown. NULL until
+    # changed, which is the defaults in services/profit_service.py.
+    profit_target_margin_pct: Mapped[Decimal | None] = mapped_column(Numeric(5, 2))
+    staff_profit_pct: Mapped[Decimal | None] = mapped_column(Numeric(5, 2))
     provisioning_requested_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     provisioned_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     provisioning_error: Mapped[str | None] = mapped_column(String(120))

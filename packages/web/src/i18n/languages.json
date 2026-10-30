@@ -5,56 +5,56 @@
    "tag": "ab",
    "name": "Abkhaz",
    "english": "Abkhaz",
-   "version": "150c9065f1"
+   "version": "042b831fd3"
   },
   {
    "code": "ace",
    "tag": "ace",
    "name": "Acehnese",
    "english": "Acehnese",
-   "version": "0ff955c92b"
+   "version": "5c296b60e1"
   },
   {
    "code": "ach",
    "tag": "ach",
    "name": "Acholi",
    "english": "Acholi",
-   "version": "17adc456d8"
+   "version": "c7b4d8e07c"
   },
   {
    "code": "aa",
    "tag": "aa",
    "name": "Afar",
    "english": "Afar",
-   "version": "579cc0c727"
+   "version": "153f088e80"
   },
   {
    "code": "af",
    "tag": "af",
    "name": "Afrikaans",
    "english": "Afrikaans",
-   "version": "8a23444f54"
+   "version": "4bfe7266e3"
   },
   {
    "code": "sq",
    "tag": "sq",
    "name": "Shqip",
    "english": "Albanian",
-   "version": "b6ee241f1d"
+   "version": "1d177fb357"
   },
   {
    "code": "alz",
    "tag": "alz",
    "name": "Alur",
    "english": "Alur",
-   "version": "69a73fb3c6"
+   "version": "db762c8dbe"
   },
   {
    "code": "am",
    "tag": "am",
    "name": "አማርኛ",
    "english": "Amharic",
-   "version": "07daae06f7"
+   "version": "3b600e1ba1"
   },
   {
    "code": "ar",
@@ -62,56 +62,56 @@
    "name": "العربية",
    "english": "Arabic",
    "rtl": true,
-   "version": "ea3d9fac18"
+   "version": "80fa376586"
   },
   {
    "code": "hy",
    "tag": "hy",
    "name": "Հայերեն",
    "english": "Armenian",
-   "version": "d4edab3090"
+   "version": "625feb8b41"
   },
   {
    "code": "as",
    "tag": "as",
    "name": "অসমীয়া",
    "english": "Assamese",
-   "version": "b2d19c977e"
+   "version": "203b2e8ad6"
   },
   {
    "code": "av",
    "tag": "av",
    "name": "Avar",
    "english": "Avar",
-   "version": "0eedc27caf"
+   "version": "40984c91f9"
   },
   {
    "code": "awa",
    "tag": "awa",
    "name": "Awadhi",
    "english": "Awadhi",
-   "version": "6cc6b7a466"
+   "version": "ccb6a3e6bc"
   },
   {
    "code": "ay",
    "tag": "ay",
    "name": "Aymara",
    "english": "Aymara",
-   "version": "3c1d0d5f9c"
+   "version": "388016d046"
   },
   {
    "code": "az",
    "tag": "az",
    "name": "Azərbaycan",
    "english": "Azerbaijani",
-   "version": "fd730a3125"
+   "version": "7da2811d9a"
   },
   {
    "code": "ban",
    "tag": "ban",
    "name": "Balinese",
    "english": "Balinese",
-   "version": "2ef0386b2a"
+   "version": "575c40c481"
   },
   {
    "code": "bal",
@@ -119,238 +119,238 @@
    "name": "Baluchi",
    "english": "Baluchi",
    "rtl": true,
-   "version": "5a9a2b031a"
+   "version": "b385a0a7ed"
   },
   {
    "code": "bm",
    "tag": "bm",
    "name": "Bamanakan",
    "english": "Bambara",
-   "version": "c57a3f5594"
+   "version": "7d29dbdbcf"
   },
   {
    "code": "bci",
    "tag": "bci",
    "name": "Baoulé",
    "english": "Baoulé",
-   "version": "883824aeea"
+   "version": "a578f049cd"
   },
   {
    "code": "ba",
    "tag": "ba",
    "name": "Башҡорт",
    "english": "Bashkir",
-   "version": "eb2259f5e4"
+   "version": "5698438e7b"
   },
   {
    "code": "eu",
    "tag": "eu",
    "name": "Euskara",
    "english": "Basque",
-   "version": "7cfbe3e840"
+   "version": "6ad2b4a965"
   },
   {
    "code": "btx",
    "tag": "btx",
    "name": "Batak Karo",
    "english": "Batak Karo",
-   "version": "8ec2689a0b"
+   "version": "5345c1866f"
   },
   {
    "code": "bts",
    "tag": "bts",
    "name": "Batak Simalungun",
    "english": "Batak Simalungun",
-   "version": "f28a183599"
+   "version": "8c68dd02de"
   },
   {
    "code": "bbc",
    "tag": "bbc",
    "name": "Batak Toba",
    "english": "Batak Toba",
-   "version": "6431decdcd"
+   "version": "fbb4d725df"
   },
   {
    "code": "be",
    "tag": "be",
    "name": "Беларуская",
    "english": "Belarusian",
-   "version": "83c74fff87"
+   "version": "a066572b55"
   },
   {
    "code": "bem",
    "tag": "bem",
    "name": "Ichibemba",
    "english": "Bemba",
-   "version": "d2aafbaaa7"
+   "version": "2c6f5816a0"
   },
   {
    "code": "bn",
    "tag": "bn",
    "name": "বাংলা",
    "english": "Bengali",
-   "version": "24582eafa3"
+   "version": "89c5ebc908"
   },
   {
    "code": "bew",
    "tag": "bew",
    "name": "Betawi",
    "english": "Betawi",
-   "version": "d9af24e553"
+   "version": "d949cf17d9"
   },
   {
    "code": "bho",
    "tag": "bho",
    "name": "भोजपुरी",
    "english": "Bhojpuri",
-   "version": "fb1983e0da"
+   "version": "709a5700ca"
   },
   {
    "code": "bik",
    "tag": "bik",
    "name": "Bikol",
    "english": "Bikol",
-   "version": "d5c0fc288f"
+   "version": "ae770e18f3"
   },
   {
    "code": "bs",
    "tag": "bs",
    "name": "Bosanski",
    "english": "Bosnian",
-   "version": "823e22c49a"
+   "version": "dd146a6891"
   },
   {
    "code": "br",
    "tag": "br",
    "name": "Brezhoneg",
    "english": "Breton",
-   "version": "dbf8a86539"
+   "version": "52b983886a"
   },
   {
    "code": "bg",
    "tag": "bg",
    "name": "Български",
    "english": "Bulgarian",
-   "version": "890bb6fff4"
+   "version": "b12b7d203e"
   },
   {
    "code": "bua",
    "tag": "bua",
    "name": "Буряад",
    "english": "Buryat",
-   "version": "f0181ae75f"
+   "version": "2a6471300e"
   },
   {
    "code": "yue",
    "tag": "yue",
    "name": "粵語",
    "english": "Cantonese",
-   "version": "f67c097e1f"
+   "version": "9f33213c97"
   },
   {
    "code": "ca",
    "tag": "ca",
    "name": "Català",
    "english": "Catalan",
-   "version": "9d1b0e1a99"
+   "version": "6412504194"
   },
   {
    "code": "ceb",
    "tag": "ceb",
    "name": "Bisaya",
    "english": "Cebuano",
-   "version": "7f64c34640"
+   "version": "dc9919e09d"
   },
   {
    "code": "ch",
    "tag": "ch",
    "name": "Chamorro",
    "english": "Chamorro",
-   "version": "f1c93f3f1d"
+   "version": "ab79426eba"
   },
   {
    "code": "ce",
    "tag": "ce",
    "name": "Нохчийн",
    "english": "Chechen",
-   "version": "0b4f4eae91"
+   "version": "5fd1c9a182"
   },
   {
    "code": "ny",
    "tag": "ny",
    "name": "Chichewa",
    "english": "Chichewa",
-   "version": "77595817a0"
+   "version": "54569cc29f"
   },
   {
    "code": "zh-CN",
    "tag": "zh-CN",
    "name": "中文（中国）",
    "english": "Chinese (Simplified)",
-   "version": "facd82af17"
+   "version": "66103e8568"
   },
   {
    "code": "zh-TW",
    "tag": "zh-TW",
    "name": "中文（台灣）",
    "english": "Chinese (Traditional)",
-   "version": "30597e633a"
+   "version": "9fe6a87a86"
   },
   {
    "code": "chk",
    "tag": "chk",
    "name": "Chuukese",
    "english": "Chuukese",
-   "version": "7e15abce38"
+   "version": "f249e216a0"
   },
   {
    "code": "cv",
    "tag": "cv",
    "name": "Чӑваш чӗлхи",
    "english": "Chuvash",
-   "version": "ba3c29484a"
+   "version": "9808fbafae"
   },
   {
    "code": "co",
    "tag": "co",
    "name": "Corsican",
    "english": "Corsican",
-   "version": "be3a83fbd6"
+   "version": "2d83e9c3d7"
   },
   {
    "code": "crh",
    "tag": "crh",
    "name": "Crimean Tatar (Cyrillic)",
    "english": "Crimean Tatar (Cyrillic)",
-   "version": "838cda3408"
+   "version": "120e0153eb"
   },
   {
    "code": "crh-Latn",
    "tag": "crh-Latn",
    "name": "Crimean Tatar (Latin)",
    "english": "Crimean Tatar (Latin)",
-   "version": "38783ebc86"
+   "version": "aabd0456f6"
   },
   {
    "code": "hr",
    "tag": "hr",
    "name": "Hrvatski",
    "english": "Croatian",
-   "version": "6f315f6f94"
+   "version": "e1d47a4bf9"
   },
   {
    "code": "cs",
    "tag": "cs",
    "name": "Čeština",
    "english": "Czech",
-   "version": "986895bb7f"
+   "version": "f003fba0ed"
   },
   {
    "code": "da",
    "tag": "da",
    "name": "Dansk",
    "english": "Danish",
-   "version": "aae0c3b1d6"
+   "version": "7610aa8e32"
   },
   {
    "code": "fa-AF",
@@ -358,7 +358,7 @@
    "name": "دری",
    "english": "Dari",
    "rtl": true,
-   "version": "0e280b4e56"
+   "version": "cc1a0b678a"
   },
   {
    "code": "dv",
@@ -366,49 +366,49 @@
    "name": "Dhivehi",
    "english": "Dhivehi",
    "rtl": true,
-   "version": "5a8be255bc"
+   "version": "2bf7deee9b"
   },
   {
    "code": "din",
    "tag": "din",
    "name": "Dinka",
    "english": "Dinka",
-   "version": "11c37d67a9"
+   "version": "e1545f282a"
   },
   {
    "code": "doi",
    "tag": "doi",
    "name": "डोगरी",
    "english": "Dogri",
-   "version": "cb1224e1c0"
+   "version": "fa1028ee61"
   },
   {
    "code": "dov",
    "tag": "dov",
    "name": "Dombe",
    "english": "Dombe",
-   "version": "b363410227"
+   "version": "dcf5d5788c"
   },
   {
    "code": "nl",
    "tag": "nl",
    "name": "Nederlands",
    "english": "Dutch",
-   "version": "221e83b171"
+   "version": "4d481add26"
   },
   {
    "code": "dyu",
    "tag": "dyu",
    "name": "Dyula",
    "english": "Dyula",
-   "version": "d894160e11"
+   "version": "4e3017f31b"
   },
   {
    "code": "dz",
    "tag": "dz",
    "name": "རྫོང་ཁ",
    "english": "Dzongkha",
-   "version": "bd5e518691"
+   "version": "43ffbe8e60"
   },
   {
    "code": "en",
@@ -421,161 +421,161 @@
    "tag": "eo",
    "name": "Esperanto",
    "english": "Esperanto",
-   "version": "19f20582fb"
+   "version": "8fed9e9b76"
   },
   {
    "code": "et",
    "tag": "et",
    "name": "Eesti",
    "english": "Estonian",
-   "version": "a1b6c35194"
+   "version": "9d02c91462"
   },
   {
    "code": "ee",
    "tag": "ee",
    "name": "Eʋegbe",
    "english": "Ewe",
-   "version": "ffaa0fc5a0"
+   "version": "8acc21004d"
   },
   {
    "code": "fo",
    "tag": "fo",
    "name": "Føroyskt",
    "english": "Faroese",
-   "version": "88f97c2aa0"
+   "version": "dffba4e3c8"
   },
   {
    "code": "fj",
    "tag": "fj",
    "name": "Fijian",
    "english": "Fijian",
-   "version": "b593fcb466"
+   "version": "840f1ddd75"
   },
   {
    "code": "fi",
    "tag": "fi",
    "name": "Suomi",
    "english": "Finnish",
-   "version": "92389f08e8"
+   "version": "54d0215167"
   },
   {
    "code": "fon",
    "tag": "fon",
    "name": "Fon",
    "english": "Fon",
-   "version": "73395d64c1"
+   "version": "0d25243b2a"
   },
   {
    "code": "fr",
    "tag": "fr",
    "name": "Français",
    "english": "French",
-   "version": "5429c3b393"
+   "version": "2da449e786"
   },
   {
    "code": "fr-CA",
    "tag": "fr-CA",
    "name": "Français canadien",
    "english": "French (Canada)",
-   "version": "ad22de2631"
+   "version": "21f293ef0e"
   },
   {
    "code": "fy",
    "tag": "fy",
    "name": "Frysk",
    "english": "Frisian",
-   "version": "f73295d5c5"
+   "version": "f3bfb390d1"
   },
   {
    "code": "fur",
    "tag": "fur",
    "name": "Furlan",
    "english": "Friulian",
-   "version": "434ddc9084"
+   "version": "3e3001493a"
   },
   {
    "code": "ff",
    "tag": "ff",
    "name": "Pulaar",
    "english": "Fulani",
-   "version": "cc336b57a1"
+   "version": "f26c90a5e0"
   },
   {
    "code": "gaa",
    "tag": "gaa",
    "name": "Gã",
    "english": "Ga",
-   "version": "baf04fc456"
+   "version": "612c890c8e"
   },
   {
    "code": "gl",
    "tag": "gl",
    "name": "Galego",
    "english": "Galician",
-   "version": "56fab454a4"
+   "version": "e3e83b7497"
   },
   {
    "code": "ka",
    "tag": "ka",
    "name": "Ქართული",
    "english": "Georgian",
-   "version": "f3e10fbc04"
+   "version": "09854930f8"
   },
   {
    "code": "de",
    "tag": "de",
    "name": "Deutsch",
    "english": "German",
-   "version": "6d7650a70d"
+   "version": "3ac19c8602"
   },
   {
    "code": "el",
    "tag": "el",
    "name": "Ελληνικά",
    "english": "Greek",
-   "version": "783295d62b"
+   "version": "8272e65508"
   },
   {
    "code": "gn",
    "tag": "gn",
    "name": "Guarani",
    "english": "Guarani",
-   "version": "7c63a6efeb"
+   "version": "902b199215"
   },
   {
    "code": "gu",
    "tag": "gu",
    "name": "ગુજરાતી",
    "english": "Gujarati",
-   "version": "3631d354f0"
+   "version": "bc079ef7b2"
   },
   {
    "code": "ht",
    "tag": "ht",
    "name": "Haitian Creole",
    "english": "Haitian Creole",
-   "version": "3708d1bf39"
+   "version": "ca23be1769"
   },
   {
    "code": "cnh",
    "tag": "cnh",
    "name": "Hakha Chin",
    "english": "Hakha Chin",
-   "version": "6e07ad5226"
+   "version": "6206a1498f"
   },
   {
    "code": "ha",
    "tag": "ha",
    "name": "Hausa",
    "english": "Hausa",
-   "version": "a07f54ead3"
+   "version": "16aeb2d7f9"
   },
   {
    "code": "haw",
    "tag": "haw",
    "name": "ʻŌlelo Hawaiʻi",
    "english": "Hawaiian",
-   "version": "968f031fb6"
+   "version": "d8501b8317"
   },
   {
    "code": "iw",
@@ -583,252 +583,252 @@
    "name": "עברית",
    "english": "Hebrew",
    "rtl": true,
-   "version": "07ef33ef1f"
+   "version": "6e07987c81"
   },
   {
    "code": "hil",
    "tag": "hil",
    "name": "Hiligaynon",
    "english": "Hiligaynon",
-   "version": "a6d66c3ae2"
+   "version": "44e3289e83"
   },
   {
    "code": "hi",
    "tag": "hi",
    "name": "हिन्दी",
    "english": "Hindi",
-   "version": "69e9ecda5f"
+   "version": "603e59d589"
   },
   {
    "code": "hmn",
    "tag": "hmn",
    "name": "Hmong",
    "english": "Hmong",
-   "version": "970be39038"
+   "version": "a1c492fbea"
   },
   {
    "code": "hu",
    "tag": "hu",
    "name": "Magyar",
    "english": "Hungarian",
-   "version": "0de560bb2a"
+   "version": "4f876b5227"
   },
   {
    "code": "hrx",
    "tag": "hrx",
    "name": "Hunsrik",
    "english": "Hunsrik",
-   "version": "842501db5a"
+   "version": "c444f1cb55"
   },
   {
    "code": "iba",
    "tag": "iba",
    "name": "Iban",
    "english": "Iban",
-   "version": "9a4a4e6a07"
+   "version": "7263d54284"
   },
   {
    "code": "is",
    "tag": "is",
    "name": "Íslenska",
    "english": "Icelandic",
-   "version": "bc0bd07cbf"
+   "version": "9b96f33983"
   },
   {
    "code": "ig",
    "tag": "ig",
    "name": "Igbo",
    "english": "Igbo",
-   "version": "3cb8ccd9e1"
+   "version": "4d469dc0cb"
   },
   {
    "code": "ilo",
    "tag": "ilo",
    "name": "Ilokano",
    "english": "Ilocano",
-   "version": "519157eb0f"
+   "version": "bce9e0ea94"
   },
   {
    "code": "id",
    "tag": "id",
    "name": "Indonesia",
    "english": "Indonesian",
-   "version": "74d8b4f93a"
+   "version": "f690e748bb"
   },
   {
    "code": "iu-Latn",
    "tag": "iu-Latn",
    "name": "Inuktut (Latin)",
    "english": "Inuktut (Latin)",
-   "version": "b32c43a103"
+   "version": "ad48669b18"
   },
   {
    "code": "iu",
    "tag": "iu",
    "name": "Inuktut (Syllabics)",
    "english": "Inuktut (Syllabics)",
-   "version": "f8bfc5bab8"
+   "version": "3d80da59e9"
   },
   {
    "code": "ga",
    "tag": "ga",
    "name": "Gaeilge",
    "english": "Irish",
-   "version": "e49dd36893"
+   "version": "f47ade1ce6"
   },
   {
    "code": "it",
    "tag": "it",
    "name": "Italiano",
    "english": "Italian",
-   "version": "1d91774e78"
+   "version": "067d0eee64"
   },
   {
    "code": "jam",
    "tag": "jam",
    "name": "Jamaican Patois",
    "english": "Jamaican Patois",
-   "version": "5f658dcdcd"
+   "version": "49f0717637"
   },
   {
    "code": "ja",
    "tag": "ja",
    "name": "日本語",
    "english": "Japanese",
-   "version": "3bd512392d"
+   "version": "f8cd533765"
   },
   {
    "code": "jw",
    "tag": "jv",
    "name": "Jawa",
    "english": "Javanese",
-   "version": "a2319ae82a"
+   "version": "90172c15eb"
   },
   {
    "code": "kac",
    "tag": "kac",
    "name": "Jingpo",
    "english": "Jingpo",
-   "version": "36b1a19d63"
+   "version": "80d18cd763"
   },
   {
    "code": "kl",
    "tag": "kl",
    "name": "Kalaallisut",
    "english": "Kalaallisut",
-   "version": "94bf9fe16a"
+   "version": "7a78318fc1"
   },
   {
    "code": "kn",
    "tag": "kn",
    "name": "ಕನ್ನಡ",
    "english": "Kannada",
-   "version": "5759fe44aa"
+   "version": "06f8f15cc1"
   },
   {
    "code": "kr",
    "tag": "kr",
    "name": "Kanuri",
    "english": "Kanuri",
-   "version": "01c3cf9ba8"
+   "version": "2eb2e3a833"
   },
   {
    "code": "pam",
    "tag": "pam",
    "name": "Kapampangan",
    "english": "Kapampangan",
-   "version": "2a1b183978"
+   "version": "3442e4070a"
   },
   {
    "code": "kk",
    "tag": "kk",
    "name": "Қазақ тілі",
    "english": "Kazakh",
-   "version": "ef5a4ee100"
+   "version": "e795dcfc21"
   },
   {
    "code": "kha",
    "tag": "kha",
    "name": "Khasi",
    "english": "Khasi",
-   "version": "8fdd40ba0d"
+   "version": "14337128d0"
   },
   {
    "code": "km",
    "tag": "km",
    "name": "ខ្មែរ",
    "english": "Khmer",
-   "version": "5d78a8508c"
+   "version": "dcd4ca974a"
   },
   {
    "code": "cgg",
    "tag": "cgg",
    "name": "Rukiga",
    "english": "Kiga",
-   "version": "07b144e7cf"
+   "version": "58cbb27f1d"
   },
   {
    "code": "kg",
    "tag": "kg",
    "name": "Kikongo",
    "english": "Kikongo",
-   "version": "97f9c46721"
+   "version": "5f632195f9"
   },
   {
    "code": "rw",
    "tag": "rw",
    "name": "Ikinyarwanda",
    "english": "Kinyarwanda",
-   "version": "eaf3645506"
+   "version": "6f3b318cc2"
   },
   {
    "code": "ktu",
    "tag": "ktu",
    "name": "Kituba",
    "english": "Kituba",
-   "version": "510e0cd176"
+   "version": "466dd0e9df"
   },
   {
    "code": "trp",
    "tag": "trp",
    "name": "Kokborok",
    "english": "Kokborok",
-   "version": "73aaf3dc3f"
+   "version": "7850a2584a"
   },
   {
    "code": "kv",
    "tag": "kv",
    "name": "Komi",
    "english": "Komi",
-   "version": "dcaa5dc909"
+   "version": "1eb5625de4"
   },
   {
    "code": "gom",
    "tag": "gom",
    "name": "कोंकणी",
    "english": "Konkani",
-   "version": "85bc38f9ff"
+   "version": "584b05175f"
   },
   {
    "code": "ko",
    "tag": "ko",
    "name": "한국어",
    "english": "Korean",
-   "version": "3024bf7e43"
+   "version": "4e2988933d"
   },
   {
    "code": "kri",
    "tag": "kri",
    "name": "Krio",
    "english": "Krio",
-   "version": "0bfaac7929"
+   "version": "a48c326148"
   },
   {
    "code": "ku",
    "tag": "ku",
    "name": "Kurdî (kurmancî)",
    "english": "Kurdish (Kurmanji)",
-   "version": "0f9d3cd11a"
+   "version": "4ffaf22d87"
   },
   {
    "code": "ckb",
@@ -836,140 +836,140 @@
    "name": "کوردیی ناوەندی",
    "english": "Kurdish (Sorani)",
    "rtl": true,
-   "version": "e76a7e2fb1"
+   "version": "c692af7a7d"
   },
   {
    "code": "ky",
    "tag": "ky",
    "name": "Кыргызча",
    "english": "Kyrgyz",
-   "version": "dc11a83f5e"
+   "version": "5cb5c2a159"
   },
   {
    "code": "lo",
    "tag": "lo",
    "name": "ລາວ",
    "english": "Lao",
-   "version": "4388d0cf6d"
+   "version": "76a0d003b4"
   },
   {
    "code": "ltg",
    "tag": "ltg",
    "name": "Latgalian",
    "english": "Latgalian",
-   "version": "e256d3f8c6"
+   "version": "067f94e7c3"
   },
   {
    "code": "la",
    "tag": "la",
    "name": "Latin",
    "english": "Latin",
-   "version": "0f27cdbe73"
+   "version": "92bd1c51bd"
   },
   {
    "code": "lv",
    "tag": "lv",
    "name": "Latviešu",
    "english": "Latvian",
-   "version": "79ad69c6c4"
+   "version": "192ea76c67"
   },
   {
    "code": "lij",
    "tag": "lij",
    "name": "Ligure",
    "english": "Ligurian",
-   "version": "aa5217ac0d"
+   "version": "29f0eca2cc"
   },
   {
    "code": "li",
    "tag": "li",
    "name": "Limburgish",
    "english": "Limburgish",
-   "version": "48f362dad8"
+   "version": "51a405f6e7"
   },
   {
    "code": "ln",
    "tag": "ln",
    "name": "Lingála",
    "english": "Lingala",
-   "version": "1fb45a11b3"
+   "version": "955bbe3473"
   },
   {
    "code": "lt",
    "tag": "lt",
    "name": "Lietuvių",
    "english": "Lithuanian",
-   "version": "16872722d0"
+   "version": "de3c2a59ac"
   },
   {
    "code": "lmo",
    "tag": "lmo",
    "name": "Lombard",
    "english": "Lombard",
-   "version": "f425a512b2"
+   "version": "8b9415043a"
   },
   {
    "code": "lg",
    "tag": "lg",
    "name": "Luganda",
    "english": "Luganda",
-   "version": "c7bbf9e8c3"
+   "version": "f656435791"
   },
   {
    "code": "luo",
    "tag": "luo",
    "name": "Dholuo",
    "english": "Luo",
-   "version": "e5f44985fe"
+   "version": "8fa8315d8b"
   },
   {
    "code": "lb",
    "tag": "lb",
    "name": "Lëtzebuergesch",
    "english": "Luxembourgish",
-   "version": "9e64ad0586"
+   "version": "ecbc78de94"
   },
   {
    "code": "mk",
    "tag": "mk",
    "name": "Македонски",
    "english": "Macedonian",
-   "version": "f604c79222"
+   "version": "a925466a13"
   },
   {
    "code": "mad",
    "tag": "mad",
    "name": "Madurese",
    "english": "Madurese",
-   "version": "420a07c348"
+   "version": "e7b2781837"
   },
   {
    "code": "mai",
    "tag": "mai",
    "name": "मैथिली",
    "english": "Maithili",
-   "version": "369be67b05"
+   "version": "d45ca1703e"
   },
   {
    "code": "mak",
    "tag": "mak",
    "name": "Makassar",
    "english": "Makassar",
-   "version": "1f43f9edc6"
+   "version": "42637b1f66"
   },
   {
    "code": "mg",
    "tag": "mg",
    "name": "Malagasy",
    "english": "Malagasy",
-   "version": "9f7ef1ac5e"
+   "version": "b9384e6eb4"
   },
   {
    "code": "ms",
    "tag": "ms",
    "name": "Melayu",
    "english": "Malay",
-   "version": "eac7bc51a5"
+   "version": "353f4b9ef9"
   },
   {
    "code": "ms-Arab",
@@ -977,147 +977,147 @@
    "name": "Melayu (Arab)",
    "english": "Malay (Jawi)",
    "rtl": true,
-   "version": "753155d36f"
+   "version": "bdddc14d0c"
   },
   {
    "code": "ml",
    "tag": "ml",
    "name": "മലയാളം",
    "english": "Malayalam",
-   "version": "a218a60b2d"
+   "version": "9d25be9bec"
   },
   {
    "code": "mt",
    "tag": "mt",
    "name": "Malti",
    "english": "Maltese",
-   "version": "bda27b726f"
+   "version": "617e7511a3"
   },
   {
    "code": "mam",
    "tag": "mam",
    "name": "Mam",
    "english": "Mam",
-   "version": "79094b7484"
+   "version": "1d4672d91e"
   },
   {
    "code": "gv",
    "tag": "gv",
    "name": "Gaelg",
    "english": "Manx",
-   "version": "185fb4bcaf"
+   "version": "1c7ba89168"
   },
   {
    "code": "mi",
    "tag": "mi",
    "name": "Maori",
    "english": "Maori",
-   "version": "64242316ea"
+   "version": "d7ba34cbf2"
   },
   {
    "code": "mr",
    "tag": "mr",
    "name": "मराठी",
    "english": "Marathi",
-   "version": "90de5e9068"
+   "version": "81962a6502"
   },
   {
    "code": "mh",
    "tag": "mh",
    "name": "Marshallese",
    "english": "Marshallese",
-   "version": "3167001abd"
+   "version": "4b97ec99eb"
   },
   {
    "code": "mwr",
    "tag": "mwr",
    "name": "Marwadi",
    "english": "Marwadi",
-   "version": "1da799b80b"
+   "version": "26731ec0c3"
   },
   {
    "code": "mfe",
    "tag": "mfe",
    "name": "Kreol morisien",
    "english": "Mauritian Creole",
-   "version": "5244c0b60d"
+   "version": "141f3ef2c2"
   },
   {
    "code": "chm",
    "tag": "chm",
    "name": "Meadow Mari",
    "english": "Meadow Mari",
-   "version": "4c9d3759ce"
+   "version": "8faca7c038"
   },
   {
    "code": "mni-Mtei",
    "tag": "mni-Mtei",
    "name": "মৈতৈলোন্ (মীতৈ ময়েক)",
    "english": "Meiteilon (Manipuri)",
-   "version": "2084707738"
+   "version": "b7f4ba9815"
   },
   {
    "code": "min",
    "tag": "min",
    "name": "Minang",
    "english": "Minang",
-   "version": "60336fcb87"
+   "version": "dce16b4c90"
   },
   {
    "code": "lus",
    "tag": "lus",
    "name": "Mizo",
    "english": "Mizo",
-   "version": "1d21795801"
+   "version": "de675280b2"
   },
   {
    "code": "mn",
    "tag": "mn",
    "name": "Монгол",
    "english": "Mongolian",
-   "version": "2321db6471"
+   "version": "5cdf8db847"
   },
   {
    "code": "my",
    "tag": "my",
    "name": "မြန်မာ",
    "english": "Myanmar (Burmese)",
-   "version": "851c516e5b"
+   "version": "7d79425625"
   },
   {
    "code": "nhe",
    "tag": "nhe",
    "name": "Nahuatl (Eastern Huasteca)",
    "english": "Nahuatl (Eastern Huasteca)",
-   "version": "866fc80e72"
+   "version": "e3d9762e2a"
   },
   {
    "code": "ndc-ZW",
    "tag": "ndc-ZW",
    "name": "Ndau",
    "english": "Ndau",
-   "version": "11f42a1159"
+   "version": "f498837836"
   },
   {
    "code": "nr",
    "tag": "nr",
    "name": "Ndebele (South)",
    "english": "Ndebele (South)",
-   "version": "89eb68a17d"
+   "version": "028e6437ec"
   },
   {
    "code": "new",
    "tag": "new",
    "name": "Nepalbhasa (Newari)",
    "english": "Nepalbhasa (Newari)",
-   "version": "c0958f5ad3"
+   "version": "0d9ae09190"
   },
   {
    "code": "ne",
    "tag": "ne",
    "name": "नेपाली",
    "english": "Nepali",
-   "version": "31625c1e47"
+   "version": "f3580f542e"
   },
   {
    "code": "bm-Nkoo",
@@ -1125,63 +1125,63 @@
    "name": "Bamanakan (Nkoo)",
    "english": "NKo",
    "rtl": true,
-   "version": "79f80c1c62"
+   "version": "a262a60cb2"
   },
   {
    "code": "no",
    "tag": "no",
    "name": "Norsk",
    "english": "Norwegian",
-   "version": "49323c4ca0"
+   "version": "d9830c87e0"
   },
   {
    "code": "nus",
    "tag": "nus",
    "name": "Thok Nath",
    "english": "Nuer",
-   "version": "f526290a72"
+   "version": "818dff1dd5"
   },
   {
    "code": "oc",
    "tag": "oc",
    "name": "Occitan",
    "english": "Occitan",
-   "version": "b5063637c5"
+   "version": "81646cba8f"
   },
   {
    "code": "or",
    "tag": "or",
    "name": "ଓଡ଼ିଆ",
    "english": "Odia (Oriya)",
-   "version": "5dfe145263"
+   "version": "3d423a1f67"
   },
   {
    "code": "om",
    "tag": "om",
    "name": "Oromoo",
    "english": "Oromo",
-   "version": "390dea252b"
+   "version": "60cc075988"
   },
   {
    "code": "os",
    "tag": "os",
    "name": "Ирон",
    "english": "Ossetian",
-   "version": "d07445aeaa"
+   "version": "d0aec3a017"
   },
   {
    "code": "pag",
    "tag": "pag",
    "name": "Pangasinan",
    "english": "Pangasinan",
-   "version": "3a09078496"
+   "version": "c91cac31ac"
   },
   {
    "code": "pap",
    "tag": "pap",
    "name": "Papiamento",
    "english": "Papiamento",
-   "version": "58eeb42c80"
+   "version": "f0fa39ba57"
   },
   {
    "code": "ps",
@@ -1189,7 +1189,7 @@
    "name": "پښتو",
    "english": "Pashto",
    "rtl": true,
-   "version": "6eb0af1f17"
+   "version": "d85a9fb87d"
   },
   {
    "code": "fa",
@@ -1197,35 +1197,35 @@
    "name": "فارسی",
    "english": "Persian",
    "rtl": true,
-   "version": "2ccd1c1f57"
+   "version": "3e7b08a557"
   },
   {
    "code": "pl",
    "tag": "pl",
    "name": "Polski",
    "english": "Polish",
-   "version": "90a618aad0"
+   "version": "b207237892"
   },
   {
    "code": "pt",
    "tag": "pt",
    "name": "Português",
    "english": "Portuguese (Brazil)",
-   "version": "d993d6c6c1"
+   "version": "861fc1a090"
   },
   {
    "code": "pt-PT",
    "tag": "pt-PT",
    "name": "Português europeu",
    "english": "Portuguese (Portugal)",
-   "version": "c2260394ac"
+   "version": "12cb5b18e5"
   },
   {
    "code": "pa",
    "tag": "pa",
    "name": "ਪੰਜਾਬੀ",
    "english": "Punjabi (Gurmukhi)",
-   "version": "ecd4dc8568"
+   "version": "21d317b6e8"
   },
   {
    "code": "pa-Arab",
@@ -1233,154 +1233,154 @@
    "name": "پنجابی (عربی)",
    "english": "Punjabi (Shahmukhi)",
    "rtl": true,
-   "version": "284d41e7a4"
+   "version": "583c97d78a"
   },
   {
    "code": "qu",
    "tag": "qu",
    "name": "Runasimi",
    "english": "Quechua",
-   "version": "c5a1688158"
+   "version": "c4f1d89e67"
   },
   {
    "code": "kek",
    "tag": "kek",
    "name": "Qʼeqchiʼ",
    "english": "Qʼeqchiʼ",
-   "version": "378ffe1d00"
+   "version": "7f96069f29"
   },
   {
    "code": "rom",
    "tag": "rom",
    "name": "Romani",
    "english": "Romani",
-   "version": "65a4b17499"
+   "version": "97bc17716e"
   },
   {
    "code": "ro",
    "tag": "ro",
    "name": "Română",
    "english": "Romanian",
-   "version": "a17b2e333f"
+   "version": "e25cf345c5"
   },
   {
    "code": "rn",
    "tag": "rn",
    "name": "Ikirundi",
    "english": "Rundi",
-   "version": "1eaa38f28c"
+   "version": "07d337c7de"
   },
   {
    "code": "ru",
    "tag": "ru",
    "name": "Русский",
    "english": "Russian",
-   "version": "db4c77e259"
+   "version": "49fb856c22"
   },
   {
    "code": "se",
    "tag": "se",
    "name": "Davvisámegiella",
    "english": "Sami (North)",
-   "version": "1a2e1da3f3"
+   "version": "6cf9f8535d"
   },
   {
    "code": "sm",
    "tag": "sm",
    "name": "Samoan",
    "english": "Samoan",
-   "version": "d6e7702d78"
+   "version": "54710ef3a7"
   },
   {
    "code": "sg",
    "tag": "sg",
    "name": "Sängö",
    "english": "Sango",
-   "version": "a50684e67a"
+   "version": "9b15f237e3"
   },
   {
    "code": "sa",
    "tag": "sa",
    "name": "संस्कृत भाषा",
    "english": "Sanskrit",
-   "version": "976db261ce"
+   "version": "17c1f6da37"
   },
   {
    "code": "sat-Latn",
    "tag": "sat-Latn",
    "name": "ᱥᱟᱱᱛᱟᱲᱤ (ᱞᱮᱴᱤᱱ)",
    "english": "Santali (Latin)",
-   "version": "1fdc521554"
+   "version": "540d845698"
   },
   {
    "code": "sat",
    "tag": "sat",
    "name": "ᱥᱟᱱᱛᱟᱲᱤ",
    "english": "Santali (Ol Chiki)",
-   "version": "197936471e"
+   "version": "79c4520a9a"
   },
   {
    "code": "gd",
    "tag": "gd",
    "name": "Gàidhlig",
    "english": "Scots Gaelic",
-   "version": "6a94cb1a3a"
+   "version": "ad5c216034"
   },
   {
    "code": "nso",
    "tag": "nso",
    "name": "Sesotho sa Leboa",
    "english": "Sepedi",
-   "version": "731c0ab0ab"
+   "version": "20ec5e0d99"
   },
   {
    "code": "sr",
    "tag": "sr",
    "name": "Српски",
    "english": "Serbian",
-   "version": "c85c68d6bb"
+   "version": "d9145139ae"
   },
   {
    "code": "st",
    "tag": "st",
    "name": "Sesotho",
    "english": "Sesotho",
-   "version": "2b93aa6784"
+   "version": "cc7a1f1bb4"
   },
   {
    "code": "crs",
    "tag": "crs",
    "name": "Seychellois Creole",
    "english": "Seychellois Creole",
-   "version": "0817daee7f"
+   "version": "81ee7817a2"
   },
   {
    "code": "shn",
    "tag": "shn",
    "name": "တႆး",
    "english": "Shan",
-   "version": "b89c7dd866"
+   "version": "fd94c8f978"
   },
   {
    "code": "sn",
    "tag": "sn",
    "name": "ChiShona",
    "english": "Shona",
-   "version": "d452014aaa"
+   "version": "8268af45bf"
   },
   {
    "code": "scn",
    "tag": "scn",
    "name": "Sicilianu",
    "english": "Sicilian",
-   "version": "e220e1ee19"
+   "version": "6625eac3b6"
   },
   {
    "code": "szl",
    "tag": "szl",
    "name": "Ślōnski",
    "english": "Silesian",
-   "version": "58a53f6b95"
+   "version": "71ae5d68bd"
   },
   {
    "code": "sd",
@@ -1388,259 +1388,259 @@
    "name": "سنڌي",
    "english": "Sindhi",
    "rtl": true,
-   "version": "26e01832a3"
+   "version": "ddcec09cf1"
   },
   {
    "code": "si",
    "tag": "si",
    "name": "සිංහල",
    "english": "Sinhala",
-   "version": "cd081f692c"
+   "version": "a16359bd19"
   },
   {
    "code": "sk",
    "tag": "sk",
    "name": "Slovenčina",
    "english": "Slovak",
-   "version": "38b42154aa"
+   "version": "1e5680b92c"
   },
   {
    "code": "sl",
    "tag": "sl",
    "name": "Slovenščina",
    "english": "Slovenian",
-   "version": "2ad9430d5b"
+   "version": "20c6214921"
   },
   {
    "code": "so",
    "tag": "so",
    "name": "Soomaali",
    "english": "Somali",
-   "version": "34f0a58de9"
+   "version": "1bbf18ca39"
   },
   {
    "code": "es",
    "tag": "es",
    "name": "Español",
    "english": "Spanish",
-   "version": "5f0460ba0f"
+   "version": "bda995c6b2"
   },
   {
    "code": "su",
    "tag": "su",
    "name": "Basa Sunda",
    "english": "Sundanese",
-   "version": "ac54198a94"
+   "version": "e7228c06d9"
   },
   {
    "code": "sus",
    "tag": "sus",
    "name": "Susu",
    "english": "Susu",
-   "version": "b06ba42d18"
+   "version": "93366f380d"
   },
   {
    "code": "sw",
    "tag": "sw",
    "name": "Kiswahili",
    "english": "Swahili",
-   "version": "6f5d556dca"
+   "version": "543f33700f"
   },
   {
    "code": "ss",
    "tag": "ss",
    "name": "Swati",
    "english": "Swati",
-   "version": "d5622a4710"
+   "version": "37c50384d8"
   },
   {
    "code": "sv",
    "tag": "sv",
    "name": "Svenska",
    "english": "Swedish",
-   "version": "4b300725bf"
+   "version": "5c6ed655a3"
   },
   {
    "code": "tl",
    "tag": "tl",
    "name": "Tagalog",
    "english": "Tagalog",
-   "version": "6466d0671f"
+   "version": "7ee97c81cf"
   },
   {
    "code": "ty",
    "tag": "ty",
    "name": "Tahitian",
    "english": "Tahitian",
-   "version": "93daea25f0"
+   "version": "d10839bd68"
   },
   {
    "code": "tg",
    "tag": "tg",
    "name": "Тоҷикӣ",
    "english": "Tajik",
-   "version": "7f6d67d1ec"
+   "version": "626e0dce96"
   },
   {
    "code": "ber-Latn",
    "tag": "ber-Latn",
    "name": "Tamazight",
    "english": "Tamazight",
-   "version": "1beac695b8"
+   "version": "6dbff8f463"
   },
   {
    "code": "ber",
    "tag": "ber",
    "name": "Tamazight (Tifinagh)",
    "english": "Tamazight (Tifinagh)",
-   "version": "2f8ec11557"
+   "version": "5f2fa2203a"
   },
   {
    "code": "ta",
    "tag": "ta",
    "name": "தமிழ்",
    "english": "Tamil",
-   "version": "8021bc3466"
+   "version": "333027b772"
   },
   {
    "code": "tt",
    "tag": "tt",
    "name": "Татар",
    "english": "Tatar",
-   "version": "974672c617"
+   "version": "8312e304d1"
   },
   {
    "code": "te",
    "tag": "te",
    "name": "తెలుగు",
    "english": "Telugu",
-   "version": "c035bc529e"
+   "version": "c00500b412"
   },
   {
    "code": "tet",
    "tag": "tet",
    "name": "Tetum",
    "english": "Tetum",
-   "version": "39d2060fc0"
+   "version": "6c58502813"
   },
   {
    "code": "th",
    "tag": "th",
    "name": "ไทย",
    "english": "Thai",
-   "version": "36ed0b0217"
+   "version": "544c650126"
   },
   {
    "code": "bo",
    "tag": "bo",
    "name": "བོད་སྐད་",
    "english": "Tibetan",
-   "version": "3d16481e02"
+   "version": "e85c3664f0"
   },
   {
    "code": "ti",
    "tag": "ti",
    "name": "ትግርኛ",
    "english": "Tigrinya",
-   "version": "96e60f58b1"
+   "version": "9ddc16c65e"
   },
   {
    "code": "tiv",
    "tag": "tiv",
    "name": "Tiv",
    "english": "Tiv",
-   "version": "c42a16cd81"
+   "version": "5ca8191713"
   },
   {
    "code": "tpi",
    "tag": "tpi",
    "name": "Tok Pisin",
    "english": "Tok Pisin",
-   "version": "56d5c245f9"
+   "version": "9ff72ca6f8"
   },
   {
    "code": "to",
    "tag": "to",
    "name": "Lea fakatonga",
    "english": "Tongan",
-   "version": "6c101c043e"
+   "version": "48798024b5"
   },
   {
    "code": "lua",
    "tag": "lua",
    "name": "Tshiluba",
    "english": "Tshiluba",
-   "version": "cac41e36e6"
+   "version": "068d2e973e"
   },
   {
    "code": "ts",
    "tag": "ts",
    "name": "Tsonga",
    "english": "Tsonga",
-   "version": "e8d0826e90"
+   "version": "c6bfb53452"
   },
   {
    "code": "tn",
    "tag": "tn",
    "name": "Setswana",
    "english": "Tswana",
-   "version": "6962429dad"
+   "version": "4ea4cab206"
   },
   {
    "code": "tcy",
    "tag": "tcy",
    "name": "Tulu",
    "english": "Tulu",
-   "version": "9e29676bc3"
+   "version": "7d0c628f79"
   },
   {
    "code": "tum",
    "tag": "tum",
    "name": "Tumbuka",
    "english": "Tumbuka",
-   "version": "891198618c"
+   "version": "efc5928014"
   },
   {
    "code": "tr",
    "tag": "tr",
    "name": "Türkçe",
    "english": "Turkish",
-   "version": "574cde3740"
+   "version": "dc74cb3bf0"
   },
   {
    "code": "tk",
    "tag": "tk",
    "name": "Türkmen dili",
    "english": "Turkmen",
-   "version": "3b25b37b4b"
+   "version": "02fe1b6f6b"
   },
   {
    "code": "tyv",
    "tag": "tyv",
    "name": "Тыва",
    "english": "Tuvan",
-   "version": "79c2fcba43"
+   "version": "2cf865f2b9"
   },
   {
    "code": "ak",
    "tag": "ak",
    "name": "Twi",
    "english": "Twi",
-   "version": "a8f288c306"
+   "version": "2b238faa8b"
   },
   {
    "code": "udm",
    "tag": "udm",
    "name": "Udmurt",
    "english": "Udmurt",
-   "version": "39ac90ccd3"
+   "version": "2aabc7ee22"
   },
   {
    "code": "uk",
    "tag": "uk",
    "name": "Українська",
    "english": "Ukrainian",
-   "version": "3d33e9cbf5"
+   "version": "6ebcaae85e"
   },
   {
    "code": "ur",
@@ -1648,7 +1648,7 @@
    "name": "اردو",
    "english": "Urdu",
    "rtl": true,
-   "version": "fcab1be3d2"
+   "version": "26f89982fc"
   },
   {
    "code": "ug",
@@ -1656,70 +1656,70 @@
    "name": "ئۇيغۇرچە",
    "english": "Uyghur",
    "rtl": true,
-   "version": "3fb7c609fd"
+   "version": "9bda90e873"
   },
   {
    "code": "uz",
    "tag": "uz",
    "name": "O‘zbek",
    "english": "Uzbek",
-   "version": "a1484de4b8"
+   "version": "ab8abd1978"
   },
   {
    "code": "ve",
    "tag": "ve",
    "name": "Venda",
    "english": "Venda",
-   "version": "c5990c04c2"
+   "version": "9acdb008d3"
   },
   {
    "code": "vec",
    "tag": "vec",
    "name": "Veneto",
    "english": "Venetian",
-   "version": "498c09a33e"
+   "version": "82efbed29b"
   },
   {
    "code": "vi",
    "tag": "vi",
    "name": "Tiếng Việt",
    "english": "Vietnamese",
-   "version": "78f3125600"
+   "version": "9395ac6efe"
   },
   {
    "code": "war",
    "tag": "war",
    "name": "Waray",
    "english": "Waray",
-   "version": "bbbf787a1b"
+   "version": "08651e0749"
   },
   {
    "code": "cy",
    "tag": "cy",
    "name": "Cymraeg",
    "english": "Welsh",
-   "version": "74ae296b96"
+   "version": "62b79f8a4e"
   },
   {
    "code": "wo",
    "tag": "wo",
    "name": "Wolof",
    "english": "Wolof",
-   "version": "003d6b5261"
+   "version": "cf96753a5d"
   },
   {
    "code": "xh",
    "tag": "xh",
    "name": "IsiXhosa",
    "english": "Xhosa",
-   "version": "9c1bcd1d93"
+   "version": "d73b83595f"
   },
   {
    "code": "sah",
    "tag": "sah",
    "name": "Саха тыла",
    "english": "Yakut",
-   "version": "ba9eec3505"
+   "version": "aa8c5a1b60"
   },
   {
    "code": "yi",
@@ -1727,35 +1727,35 @@
    "name": "ייִדיש",
    "english": "Yiddish",
    "rtl": true,
-   "version": "1872de10e3"
+   "version": "a0e132cd6a"
   },
   {
    "code": "yo",
    "tag": "yo",
    "name": "Èdè Yorùbá",
    "english": "Yoruba",
-   "version": "d6fed903a2"
+   "version": "f1cd5b0545"
   },
   {
    "code": "yua",
    "tag": "yua",
    "name": "Yucatec Maya",
    "english": "Yucatec Maya",
-   "version": "75cacd7c47"
+   "version": "c6957c6998"
   },
   {
    "code": "zap",
    "tag": "zap",
    "name": "Zapotec",
    "english": "Zapotec",
-   "version": "27f3375f59"
+   "version": "1040301f28"
   },
   {
    "code": "zu",
    "tag": "zu",
    "name": "IsiZulu",
    "english": "Zulu",
-   "version": "c25daeccf5"
+   "version": "d1217e9ba0"
   }
  ]
 }

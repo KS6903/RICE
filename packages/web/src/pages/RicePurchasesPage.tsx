@@ -24,6 +24,7 @@ import FieldCaption from "../components/FieldCaption";
 import Select from "../components/Select";
 import DatePicker from "../components/DatePicker";
 import Modal from "../components/Modal";
+import ProfitLink from "../components/buying/ProfitLink";
 import PurchaseColumn from "../components/buying/PurchaseColumn";
 import SaleColumn from "../components/buying/SaleColumn";
 import { peso } from "../components/buying/money";
@@ -130,7 +131,7 @@ export default function RicePurchasesPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-3">
         <div>
           <h2 className="text-xl font-bold text-gray-900 dark:text-slate-100">
             {t("Rice (Bigas)")}
@@ -139,6 +140,7 @@ export default function RicePurchasesPage() {
             {t("Milled rice you buy, and the rice in stock")}
           </p>
         </div>
+        <ProfitLink />
       </div>
 
       <Modal

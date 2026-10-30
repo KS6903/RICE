@@ -51,7 +51,7 @@ const moistureOf = (line: any): string => {
   return m != null ? String(Number(m)) : "";
 };
 
-function Amount({
+export function Amount({
   label,
   value,
   onChange,
@@ -87,7 +87,7 @@ function Amount({
   );
 }
 
-function Stat({ label, value, sub }: { label: string; value: string; sub?: string }) {
+export function Stat({ label, value, sub }: { label: string; value: string; sub?: string }) {
   return (
     <div className="rounded-xl bg-slate-50 px-3 py-2 ring-1 ring-soft dark:bg-slate-800/50">
       <dt className="text-[10px] font-bold uppercase tracking-wide text-muted">{label}</dt>

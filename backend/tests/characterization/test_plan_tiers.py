@@ -41,6 +41,9 @@ def _plans() -> dict[str, list[str]]:
     plans["enterprise"] += ["automations", "drying_advisor", "canva_inventory"]
     plans["enterprise"] = sorted(set(plans["enterprise"]))
     plans["pro"] += ["canva_inventory"]
+    # 030_profit_calculator.
+    plans["pro"] += ["profit"]
+    plans["enterprise"] += ["profit"]
     return plans
 
 
@@ -58,6 +61,7 @@ PAGES = {
     "/api/cash/": "pro",
     "/api/collections/": "pro",
     "/api/employees/": "pro",
+    "/api/profit/varieties": "pro",
     "/api/drying-advisory": "basic",
     "/api/automations/": "enterprise",
     "/api/actions/": "enterprise",
@@ -88,6 +92,13 @@ def test_the_palay_pages_to_do_window_is_for_pro_and_enterprise_only():
     assert todo.CODE == "page_todo"
     assert todo.PLANS == ("pro", "enterprise")
     assert "page_todo" not in PLANS["free"] + PLANS["basic"]
+
+
+def test_the_profit_calculator_is_for_pro_and_enterprise_only():
+    profit = _migration("030_profit_calculator")
+    assert profit.CODE == "profit"
+    assert profit.PLANS == ("pro", "enterprise")
+    assert "profit" not in PLANS["free"] + PLANS["basic"]
 
 
 def test_free_no_longer_includes_milling():

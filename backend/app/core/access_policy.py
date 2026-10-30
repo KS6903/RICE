@@ -47,6 +47,9 @@ SECTION_ACCESS: dict[str, dict[str, str]] = {
         "automations": "full",
         # Their own tasks for everyone; owners and admins see all (api/actions).
         "tasks": "full",
+        # Closed to everyone but the Boss until the Boss opens it; what staff
+        # then see is a lower figure (services/profit_service.py).
+        "profit": "full",
     },
     "admin": {
         "dashboard": "full",
@@ -64,6 +67,7 @@ SECTION_ACCESS: dict[str, dict[str, str]] = {
         "automations": "full",
         # Their own tasks for everyone; owners and admins see all (api/actions).
         "tasks": "full",
+        "profit": "none",
     },
     "accountant": {
         "dashboard": "full",
@@ -81,6 +85,7 @@ SECTION_ACCESS: dict[str, dict[str, str]] = {
         "automations": "view",
         # Their own tasks for everyone; owners and admins see all (api/actions).
         "tasks": "full",
+        "profit": "none",
     },
     "cashier": {
         "dashboard": "full",
@@ -98,6 +103,7 @@ SECTION_ACCESS: dict[str, dict[str, str]] = {
         "automations": "none",
         # Their own tasks for everyone; owners and admins see all (api/actions).
         "tasks": "full",
+        "profit": "none",
     },
     "mill_operator": {
         "dashboard": "full",
@@ -115,6 +121,7 @@ SECTION_ACCESS: dict[str, dict[str, str]] = {
         "automations": "none",
         # Their own tasks for everyone; owners and admins see all (api/actions).
         "tasks": "full",
+        "profit": "none",
     },
     "encoder": {
         "dashboard": "full",
@@ -134,6 +141,7 @@ SECTION_ACCESS: dict[str, dict[str, str]] = {
         "automations": "none",
         # Their own tasks for everyone; owners and admins see all (api/actions).
         "tasks": "full",
+        "profit": "none",
     },
 }
 

@@ -26,7 +26,8 @@ export type AppSection =
   | "users"
   | "settings"
   | "automations"
-  | "tasks";
+  | "tasks"
+  | "profit";
 
 /** "full" = view + create/edit/delete · "view" = read-only · "none" = hidden/blocked. */
 export type AccessLevel = "full" | "view" | "none";
@@ -46,12 +47,13 @@ const ALL_FULL: Record<AppSection, AccessLevel> = {
   settings: "full",
   automations: "full",
   tasks: "full",
+  profit: "full",
 };
 
 export const ROLE_ACCESS: Record<Role, Record<AppSection, AccessLevel>> = {
   // Management — full run of the mill.
   owner: { ...ALL_FULL },
-  admin: { ...ALL_FULL },
+  admin: { ...ALL_FULL, profit: "none" },
 
   // Back office — books, payroll, and reporting; reads operations but doesn't run them.
   accountant: {
@@ -69,6 +71,7 @@ export const ROLE_ACCESS: Record<Role, Record<AppSection, AccessLevel>> = {
     settings: "none",
     automations: "view",
     tasks: "full", // their own tasks
+    profit: "none", // the Boss opens it to a role
   },
 
   // Front desk / point of sale — takes orders, checks stock.
@@ -87,6 +90,7 @@ export const ROLE_ACCESS: Record<Role, Record<AppSection, AccessLevel>> = {
     settings: "none",
     automations: "none",
     tasks: "full", // their own tasks
+    profit: "none", // the Boss opens it to a role
   },
 
   // Floor staff — runs milling, manages warehouse stock and dispatch.
@@ -105,6 +109,7 @@ export const ROLE_ACCESS: Record<Role, Record<AppSection, AccessLevel>> = {
     settings: "none",
     automations: "none",
     tasks: "full", // their own tasks
+    profit: "none", // the Boss opens it to a role
   },
 
   // Secretary / data entry — encodes palay intake, milling batches (custom
@@ -124,6 +129,7 @@ export const ROLE_ACCESS: Record<Role, Record<AppSection, AccessLevel>> = {
     settings: "none",
     automations: "none",
     tasks: "full", // their own tasks
+    profit: "none", // the Boss opens it to a role
   },
 };
 
