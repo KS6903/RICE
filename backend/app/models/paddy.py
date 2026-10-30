@@ -115,15 +115,17 @@ class PalayRecoveryTest(Base, TimestampMixin):
         UUID(as_uuid=True), ForeignKey("palay_purchases.id", ondelete="CASCADE"), nullable=False
     )
     variety_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("rice_varieties.id"))
-    sample_kg: Mapped[Decimal] = mapped_column(Numeric(10, 3), nullable=False)
+    # Weighed in kilos or grams on the screen and kept in kilos, to the milligram:
+    # a small sample in grams must give the same percent here as it did there.
+    sample_kg: Mapped[Decimal] = mapped_column(Numeric(12, 6), nullable=False)
     # The sample's moisture, when it was read.
     sample_moisture_pct: Mapped[Decimal | None] = mapped_column(Numeric(5, 2))
     # Milled rice out, brokens included; the head rice (kernels at least three
     # quarters whole) is part of it. Husk and bran are what the milling took off.
-    milled_kg: Mapped[Decimal] = mapped_column(Numeric(10, 3), nullable=False)
-    head_rice_kg: Mapped[Decimal | None] = mapped_column(Numeric(10, 3))
-    husk_kg: Mapped[Decimal | None] = mapped_column(Numeric(10, 3))
-    bran_kg: Mapped[Decimal | None] = mapped_column(Numeric(10, 3))
+    milled_kg: Mapped[Decimal] = mapped_column(Numeric(12, 6), nullable=False)
+    head_rice_kg: Mapped[Decimal | None] = mapped_column(Numeric(12, 6))
+    husk_kg: Mapped[Decimal | None] = mapped_column(Numeric(12, 6))
+    bran_kg: Mapped[Decimal | None] = mapped_column(Numeric(12, 6))
     # Milled rice as a percent of the sample, and the head rice as a percent of it.
     recovery_pct: Mapped[Decimal] = mapped_column(Numeric(5, 2), nullable=False)
     head_rice_pct: Mapped[Decimal | None] = mapped_column(Numeric(5, 2))

@@ -82,6 +82,27 @@ def test_the_head_rice_husk_bran_and_moisture_are_optional(auth_client):
     assert test["sample_moisture_pct"] is None
 
 
+def test_a_sample_weighed_in_grams_keeps_its_precision(auth_client):
+    # The screen takes grams and sends kilos: 50 g of palay giving 32.5 g of rice
+    # is 65%, as the calculator showed, not whatever three decimals would round to.
+    variety = _variety(auth_client)
+    purchase = _buy(auth_client, variety)
+
+    done = _ok(
+        auth_client.post(
+            f"/api/paddy/purchases/{purchase['id']}/recovery",
+            json={"sample_kg": "0.05", "milled_kg": "0.0325", "head_rice_kg": "0.026", "husk_kg": "0.0105"},
+        )
+    )
+
+    [test] = done["recovery_tests"]
+    assert float(test["recovery_pct"]) == 65
+    assert float(test["head_rice_pct"]) == 52
+    assert float(test["sample_kg"]) == 0.05
+    assert float(test["milled_kg"]) == 0.0325
+    assert float(test["husk_kg"]) == 0.0105
+
+
 def test_a_test_that_cannot_add_up_is_refused(auth_client):
     variety = _variety(auth_client)
     purchase = _buy(auth_client, variety)

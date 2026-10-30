@@ -57,6 +57,34 @@ export const parseAmount = (v: string): number | null => {
   return Number.isFinite(n) && n >= 0 ? n : null;
 };
 
+/** What the calculator's weights are typed in: a sample is often weighed in grams. */
+export type WeightUnit = "kg" | "g";
+export const WEIGHT_UNITS: WeightUnit[] = ["kg", "g"];
+const G_PER_KG = 1000;
+
+/** Kilos in an amount weighed in `unit`, to the milligram: what the server keeps. */
+export const toKg = (amount: number, unit: WeightUnit): number => {
+  const kg = unit === "g" ? amount / G_PER_KG : amount;
+  return Math.round(kg * 1e6) / 1e6;
+};
+
+/** A typed amount shown again in another unit, the weight unchanged ("100" kg is
+ *  "100000" g). A blank or unreadable amount is left as it is. */
+export const convertAmount = (text: string, from: WeightUnit, to: WeightUnit): string => {
+  const n = parseAmount(text);
+  if (n == null || from === to) return text;
+  const converted = from === "kg" ? n * G_PER_KG : n / G_PER_KG;
+  // toPrecision drops float noise: 0.1 kg is 100 g, not 100.00000000000001.
+  return String(Number(converted.toPrecision(12)));
+};
+
+/** Kilos as people read them: under a kilo, in grams ("32.5 g"). */
+export const formatWeight = (kg: unknown): string => {
+  const n = Number(kg ?? 0);
+  if (n > 0 && n < 1) return `${Number((n * G_PER_KG).toPrecision(6)).toLocaleString()} g`;
+  return `${n.toLocaleString()} kg`;
+};
+
 const pct = (part: number, whole: number) => (part / whole) * 100;
 
 export function recoveryProblem(i: RecoveryInput): RecoveryProblem | null {

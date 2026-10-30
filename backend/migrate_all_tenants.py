@@ -152,6 +152,13 @@ _extra_ddl: list[str] = [
     "ALTER TABLE byproduct_purchases ADD COLUMN IF NOT EXISTS warehouse_id UUID REFERENCES warehouses(id) ON DELETE SET NULL",
     "ALTER TABLE milled_rice_inventory ADD COLUMN IF NOT EXISTS warehouse_id UUID REFERENCES warehouses(id) ON DELETE SET NULL",
     "ALTER TABLE byproduct_inventory ADD COLUMN IF NOT EXISTS warehouse_id UUID REFERENCES warehouses(id) ON DELETE SET NULL",
+    # A recovery test is weighed in kilos or grams and kept in kilos to the milligram
+    # (the table was first made with three decimals).
+    "ALTER TABLE palay_recovery_tests ALTER COLUMN sample_kg TYPE NUMERIC(12, 6)",
+    "ALTER TABLE palay_recovery_tests ALTER COLUMN milled_kg TYPE NUMERIC(12, 6)",
+    "ALTER TABLE palay_recovery_tests ALTER COLUMN head_rice_kg TYPE NUMERIC(12, 6)",
+    "ALTER TABLE palay_recovery_tests ALTER COLUMN husk_kg TYPE NUMERIC(12, 6)",
+    "ALTER TABLE palay_recovery_tests ALTER COLUMN bran_kg TYPE NUMERIC(12, 6)",
 ]
 
 

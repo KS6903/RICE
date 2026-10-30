@@ -3,24 +3,28 @@
 // calculator shows the recovery rate, the head rice and broken rice, the husk
 // and the bran. The result can be recorded on the purchase, or the calculator
 // just closed. The formulas, with their sources, are in mappers/RecoveryMapper.ts.
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Calculator, Trash2 } from "lucide-react";
 import ConfirmDialog from "../ConfirmDialog";
 import Select from "../Select";
 import {
+  WEIGHT_UNITS,
   computeRecovery,
+  convertAmount,
+  formatWeight,
   parseAmount,
   recoveryGap,
   recoveryProblem,
+  toKg,
   type RecoveryInput,
   type RecoveryProblem,
+  type WeightUnit,
 } from "../../mappers/RecoveryMapper";
 import { paddyService, type RecoveryTestForm } from "../../services/PaddyService";
 import { t } from "../../i18n";
 
 const percent = (n: number) => `${n.toFixed(1)}%`;
-const kg = (v: unknown) => `${Number(v ?? 0).toLocaleString()} ${t("kg")}`;
 
 /** A saved record changed: what shows it should be fetched again. */
 function useRefreshPurchases() {
@@ -104,6 +108,9 @@ export default function RecoveryCalculator({
   const lines: any[] = purchase.items ?? [];
   const [lineId, setLineId] = useState<string>(lines[0]?.id ?? "");
   const line = lines.find((l) => l.id === lineId) ?? lines[0];
+  // The weights are typed in kilos or grams (a small sample is often weighed in
+  // grams) and go to the server in kilos.
+  const [unit, setUnit] = useState<WeightUnit>("kg");
   const [sample, setSample] = useState("");
   const [moisture, setMoisture] = useState(() => moistureOf(lines[0]));
   const [milled, setMilled] = useState("");
@@ -111,6 +118,7 @@ export default function RecoveryCalculator({
   const [husk, setHusk] = useState("");
   const [bran, setBran] = useState("");
   const panel = useRef<HTMLElement>(null);
+  const unitLabel = useId();
   const refresh = useRefreshPurchases();
 
   useEffect(() => {
@@ -125,13 +133,17 @@ export default function RecoveryCalculator({
 
   const moisturePct = parseAmount(moisture);
   const moistureTooHigh = moisturePct != null && moisturePct > 100;
+  const kgOf = (text: string) => {
+    const n = parseAmount(text);
+    return n == null ? null : toKg(n, unit);
+  };
   const input: RecoveryInput = {
-    sampleKg: parseAmount(sample),
+    sampleKg: kgOf(sample),
     moisturePct: moistureTooHigh ? null : moisturePct,
-    milledKg: parseAmount(milled),
-    headKg: parseAmount(head),
-    huskKg: parseAmount(husk),
-    branKg: parseAmount(bran),
+    milledKg: kgOf(milled),
+    headKg: kgOf(head),
+    huskKg: kgOf(husk),
+    branKg: kgOf(bran),
   };
   const result = computeRecovery(input);
   const problem = recoveryProblem(input);
@@ -162,6 +174,17 @@ export default function RecoveryCalculator({
   });
   const error = (save.error as any)?.response?.data?.detail;
 
+  /** Switch the unit: what's typed is shown again in it, the weights unchanged. */
+  const changeUnit = (to: WeightUnit) => {
+    if (to === unit) return;
+    setSample(convertAmount(sample, unit, to));
+    setMilled(convertAmount(milled, unit, to));
+    setHead(convertAmount(head, unit, to));
+    setHusk(convertAmount(husk, unit, to));
+    setBran(convertAmount(bran, unit, to));
+    setUnit(to);
+  };
+
   const pickLine = (id: string) => {
     setLineId(id);
     setMoisture(moistureOf(lines.find((l) => l.id === id)));
@@ -174,15 +197,34 @@ export default function RecoveryCalculator({
       aria-label={t("Recovery calculator")}
       data-testid="recovery-calculator"
     >
-      <div className="flex items-start gap-2">
-        <Calculator size={18} className="mt-0.5 shrink-0 text-brand-600" aria-hidden />
-        <div>
-          <h4 className="text-sm font-bold text-primary">{t("Recovery calculator")}</h4>
-          <p className="text-xs text-muted">
-            {t(
-              "Mill a small sample of this palay, weigh what comes out, and see how much rice it gives.",
-            )}
-          </p>
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex items-start gap-2">
+          <Calculator size={18} className="mt-0.5 shrink-0 text-brand-600" aria-hidden />
+          <div>
+            <h4 className="text-sm font-bold text-primary">{t("Recovery calculator")}</h4>
+            <p className="text-xs text-muted">
+              {t(
+                "Mill a small sample of this palay, weigh what comes out, and see how much rice it gives.",
+              )}
+            </p>
+          </div>
+        </div>
+        <div className="flex shrink-0 items-center gap-2 text-xs text-muted">
+          <span id={unitLabel}>{t("Weigh in")}</span>
+          <div role="radiogroup" aria-labelledby={unitLabel} className="seg">
+            {WEIGHT_UNITS.map((u) => (
+              <button
+                key={u}
+                type="button"
+                role="radio"
+                aria-checked={unit === u}
+                className={`seg-btn !px-3 ${unit === u ? "is-active" : ""}`}
+                onClick={() => changeUnit(u)}
+              >
+                {u}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
@@ -205,10 +247,10 @@ export default function RecoveryCalculator({
         <div>
           <div className="grid grid-cols-2 gap-3">
             <Amount
-              label={t("Palay sample (kg)")}
+              label={t("Palay sample ({{unit}})", { unit })}
               value={sample}
               onChange={setSample}
-              placeholder={t("e.g. 50")}
+              placeholder={unit === "kg" ? t("e.g. 50") : t("e.g. 500")}
               autoFocus
             />
             <Amount
@@ -218,26 +260,26 @@ export default function RecoveryCalculator({
               placeholder={t("Optional")}
             />
             <Amount
-              label={t("Milled rice (kg)")}
+              label={t("Milled rice ({{unit}})", { unit })}
               value={milled}
               onChange={setMilled}
               hint={t("All the rice that came out, brokens too.")}
             />
             <Amount
-              label={t("Head rice (kg)")}
+              label={t("Head rice ({{unit}})", { unit })}
               value={head}
               onChange={setHead}
               placeholder={t("Optional")}
               hint={t("The whole grains, at least ¾ of their length.")}
             />
             <Amount
-              label={t("Husk (kg)")}
+              label={t("Husk ({{unit}})", { unit })}
               value={husk}
               onChange={setHusk}
               placeholder={t("Optional")}
             />
             <Amount
-              label={t("Bran (kg)")}
+              label={t("Bran ({{unit}})", { unit })}
               value={bran}
               onChange={setBran}
               placeholder={t("Optional")}
@@ -409,8 +451,8 @@ export function RecoveryTests({ purchase, canRemove }: { purchase: any; canRemov
               <tr key={x.id}>
                 <td className="px-3 py-2">{new Date(x.created_at).toLocaleDateString()}</td>
                 <td className="px-3 py-2">{x.variety_code ?? "—"}</td>
-                <td className="px-3 py-2 text-right tabular-nums">{kg(x.sample_kg)}</td>
-                <td className="px-3 py-2 text-right tabular-nums">{kg(x.milled_kg)}</td>
+                <td className="px-3 py-2 text-right tabular-nums">{formatWeight(x.sample_kg)}</td>
+                <td className="px-3 py-2 text-right tabular-nums">{formatWeight(x.milled_kg)}</td>
                 <td className="px-3 py-2 text-right font-semibold tabular-nums">
                   {percent(Number(x.recovery_pct))}
                 </td>
@@ -447,7 +489,7 @@ export function RecoveryTests({ purchase, canRemove }: { purchase: any; canRemov
         {removing &&
           t("{{pct}} recovery from a {{sample}} sample. It stays in the purchase's history.", {
             pct: percent(Number(removing.recovery_pct)),
-            sample: kg(removing.sample_kg),
+            sample: formatWeight(removing.sample_kg),
           })}
       </ConfirmDialog>
     </section>

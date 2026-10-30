@@ -1,9 +1,12 @@
 import { describe, expect, it } from "vitest";
 import {
   computeRecovery,
+  convertAmount,
+  formatWeight,
   parseAmount,
   recoveryGap,
   recoveryProblem,
+  toKg,
   type RecoveryInput,
 } from "./RecoveryMapper";
 
@@ -105,6 +108,43 @@ describe("recoveryGap", () => {
   it("falls back to the mill's 65% for a variety without one", () => {
     expect(recoveryGap(67, null)).toEqual({ usual: 65, points: 2 });
     expect(recoveryGap(67, 0)).toEqual({ usual: 65, points: 2 });
+  });
+});
+
+describe("weights in kilos or grams", () => {
+  it("turns an amount into kilos to the milligram", () => {
+    expect(toKg(50, "kg")).toBe(50);
+    expect(toKg(50, "g")).toBe(0.05);
+    expect(toKg(32.5, "g")).toBe(0.0325);
+    // No float noise for the server to refuse: 123.4 g is 0.1234 kg, not 0.12340000000000001.
+    expect(toKg(123.4, "g")).toBe(0.1234);
+  });
+
+  it("gives the same recovery whichever unit the weights were typed in", () => {
+    const inKg = computeRecovery(sample({ sampleKg: 0.05, milledKg: 0.0325 }));
+    const inGrams = computeRecovery(sample({ sampleKg: toKg(50, "g"), milledKg: toKg(32.5, "g") }));
+    expect(inGrams?.recoveryPct).toBeCloseTo(65, 5);
+    expect(inGrams?.recoveryPct).toBeCloseTo(inKg?.recoveryPct ?? 0, 9);
+  });
+
+  it("shows a typed amount again in the other unit, the weight unchanged", () => {
+    expect(convertAmount("100", "kg", "g")).toBe("100000");
+    expect(convertAmount("32.5", "g", "kg")).toBe("0.0325");
+    expect(convertAmount("0.1", "kg", "g")).toBe("100");
+    expect(convertAmount("12.3", "kg", "kg")).toBe("12.3");
+  });
+
+  it("leaves a blank or unreadable amount alone when the unit changes", () => {
+    expect(convertAmount("", "kg", "g")).toBe("");
+    expect(convertAmount("abc", "g", "kg")).toBe("abc");
+  });
+
+  it("reads kilos under a kilo as grams", () => {
+    expect(formatWeight("100.000")).toBe("100 kg");
+    expect(formatWeight(1)).toBe("1 kg");
+    expect(formatWeight("0.0325")).toBe("32.5 g");
+    expect(formatWeight("0.05")).toBe("50 g");
+    expect(formatWeight(null)).toBe("0 kg");
   });
 });
 

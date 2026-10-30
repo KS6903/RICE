@@ -124,6 +124,52 @@ describe("The recovery calculator on a palay purchase", () => {
     expect(within(result).getByText("65.0%")).toBeTruthy();
   });
 
+  it("takes the weights in grams and records them in kilos", async () => {
+    const record = vi.spyOn(paddyService, "recordRecovery").mockResolvedValue(palay);
+    const calc = await openCalculator();
+
+    fireEvent.click(within(calc).getByRole("radio", { name: "g" }));
+    fill(calc, "Palay sample (g)", "50");
+    fill(calc, "Milled rice (g)", "32.5");
+    fill(calc, "Head rice (g)", "26");
+
+    expect(within(within(calc).getByTestId("recovery-result")).getByText("65.0%")).toBeTruthy();
+    fireEvent.click(within(calc).getByRole("button", { name: "Record result" }));
+
+    await waitFor(() =>
+      expect(record).toHaveBeenCalledWith("p1", {
+        variety_id: "v1",
+        sample_kg: 0.05,
+        sample_moisture_pct: null,
+        milled_kg: 0.0325,
+        head_rice_kg: 0.026,
+        husk_kg: null,
+        bran_kg: null,
+      }),
+    );
+  });
+
+  it("shows what was typed in the other unit when the unit changes, the result the same", async () => {
+    const calc = await openCalculator();
+    fill(calc, "Palay sample (kg)", "100");
+    fill(calc, "Milled rice (kg)", "65");
+
+    fireEvent.click(within(calc).getByRole("radio", { name: "g" }));
+
+    expect((within(calc).getByLabelText("Palay sample (g)") as HTMLInputElement).value).toBe(
+      "100000",
+    );
+    expect((within(calc).getByLabelText("Milled rice (g)") as HTMLInputElement).value).toBe(
+      "65000",
+    );
+    expect(within(within(calc).getByTestId("recovery-result")).getByText("65.0%")).toBeTruthy();
+
+    fireEvent.click(within(calc).getByRole("radio", { name: "kg" }));
+    expect((within(calc).getByLabelText("Palay sample (kg)") as HTMLInputElement).value).toBe(
+      "100",
+    );
+  });
+
   it("records the result on the purchase and closes", async () => {
     const record = vi.spyOn(paddyService, "recordRecovery").mockResolvedValue(palay);
     const calc = await openCalculator();
@@ -212,6 +258,22 @@ describe("The recovery tests saved on a purchase", () => {
     expect(within(list).getByText("65.0%")).toBeTruthy();
     expect(within(list).getByText("52.0%")).toBeTruthy();
     expect(within(list).getByText("Mill Boss")).toBeTruthy();
+  });
+
+  it("read a sample under a kilo in grams", () => {
+    useAuthStore.setState({ user: boss });
+    const small = {
+      ...tested,
+      recovery_tests: [
+        { ...tested.recovery_tests[0], sample_kg: "0.050000", milled_kg: "0.032500" },
+      ],
+    };
+    draw(small);
+    fireEvent.click(screen.getByText(small.reference_no));
+
+    const list = screen.getByTestId("recovery-tests");
+    expect(within(list).getByText("50 g")).toBeTruthy();
+    expect(within(list).getByText("32.5 g")).toBeTruthy();
   });
 
   it("show nothing when there are none", () => {

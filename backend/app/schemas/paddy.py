@@ -114,12 +114,13 @@ class RecoveryIn(BaseModel):
     client. Head rice is part of the milled rice, which includes its brokens."""
 
     variety_id: uuid.UUID | None = None
-    sample_kg: Decimal = Field(gt=0, max_digits=10, decimal_places=3)
+    # Kilos to the milligram: the screen takes kilos or grams and sends kilos.
+    sample_kg: Decimal = Field(gt=0, max_digits=12, decimal_places=6)
     sample_moisture_pct: Decimal | None = Field(None, ge=0, le=100)
-    milled_kg: Decimal = Field(gt=0, max_digits=10, decimal_places=3)
-    head_rice_kg: Decimal | None = Field(None, ge=0, max_digits=10, decimal_places=3)
-    husk_kg: Decimal | None = Field(None, ge=0, max_digits=10, decimal_places=3)
-    bran_kg: Decimal | None = Field(None, ge=0, max_digits=10, decimal_places=3)
+    milled_kg: Decimal = Field(gt=0, max_digits=12, decimal_places=6)
+    head_rice_kg: Decimal | None = Field(None, ge=0, max_digits=12, decimal_places=6)
+    husk_kg: Decimal | None = Field(None, ge=0, max_digits=12, decimal_places=6)
+    bran_kg: Decimal | None = Field(None, ge=0, max_digits=12, decimal_places=6)
 
     @model_validator(mode="after")
     def _adds_up(self) -> "RecoveryIn":
