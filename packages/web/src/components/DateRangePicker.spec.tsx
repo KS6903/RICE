@@ -52,7 +52,7 @@ describe("DateRangePicker", () => {
     draw();
     fireEvent.click(screen.getByRole("button", { name: "Period" }));
     expect(day("2026-10-15")).toHaveAttribute("aria-pressed", "true");
-    expect(day("2026-11-01")).toHaveAttribute("aria-pressed", "false");
+    expect(day("2026-09-30")).toHaveAttribute("aria-pressed", "false");
   });
 
   it("moves to another month without losing the first day", () => {
