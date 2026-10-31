@@ -781,8 +781,7 @@ class AdminService(BaseService):
                 "average": round(sum(r for r, _ in rows) / len(rows), 2) if rows else None,
                 "by_rating": by_rating,
                 "reasons": [
-                    {"code": code, "count": count}
-                    for code, count in sorted(reasons.items(), key=lambda item: -item[1])
+                    {"code": code, "count": count} for code, count in sorted(reasons.items(), key=lambda item: -item[1])
                 ],
             },
             "items": [
