@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 
-def test_a_rating_with_its_reasons_reaches_bossadmin(auth_client, admin_client):
+def test_a_rating_with_its_reasons_reaches_bossadmin(make_auth_client):
+    # One client underneath: each make_auth_client call signs it in as someone new.
+    auth_client = make_auth_client(features=[], username="boss")
     assert auth_client.get("/api/feedback").json() is None
 
     res = auth_client.post(
@@ -15,6 +17,7 @@ def test_a_rating_with_its_reasons_reaches_bossadmin(auth_client, admin_client):
 
     auth_client.post("/api/feedback", json={"rating": 5, "reasons": ["saves_time"]})
 
+    admin_client = make_auth_client(features=[], username="admin", is_platform_admin=True)
     page = admin_client.get("/api/admin/feedback").json()
     assert page["summary"]["count"] == 2
     assert page["summary"]["average"] == 3.5
