@@ -10,6 +10,7 @@ from .compliance import ComplianceReport
 from .costs import Expense, ExpenseCategory
 from .dispatch import Agent, Miller
 from .employee import Employee
+from .feedback import AppFeedback
 from .fleet import DispatchTrip, Driver, Truck
 from .job_run import JobRun
 from .legal import LegalAcceptance
@@ -40,7 +41,6 @@ from .sales import Invoice, Payment, PriceList, SalesOrder, SalesOrderItem
 from .stock_count import StockCount, StockCountLine
 from .subscription import Subscription, SubscriptionPlan
 from .supplier_customer import AdvanceSettlement, Customer, PalayPayment, Supplier, SupplierAdvance
-from .feedback import AppFeedback
 from .sync import SyncConflict, SyncLog
 from .upgrade_request import UpgradeRequest
 from .user import CompanyRole, Role, User
@@ -57,6 +57,7 @@ from .warehouse import (
 )
 
 __all__ = [
+    "AppFeedback",
     "ActionItem",
     "AutomationRule",
     "AutomationSettings",
