@@ -75,7 +75,7 @@ def _place(db: Session, layout: WarehouseLayout, batch: MillingBatch, variety_id
             company_id=batch.company_id,
             layout_id=layout.id,
             zone_id=zone.id,
-            pallet_code=_next_pallet_code(db, batch.company_id),
+            pallet_code=_next_pallet_code(db, layout.company_id),
             x_m=zone.x_m + Decimal("0.25") + col * (PALLET_W_M + SPACING_M),
             y_m=zone.y_m + Decimal("0.5") + row * (PALLET_D_M + SPACING_M),
             z_layer=0,

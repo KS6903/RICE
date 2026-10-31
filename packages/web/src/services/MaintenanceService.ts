@@ -19,6 +19,8 @@ export type Machine = {
 
 export type MachineIn = {
   name: string;
+  /** The Catalog machine this is: then it counts only the batches run on it. */
+  milling_equipment_id?: string | null;
   every_hours: number | null;
   every_tonnes: number | null;
   every_days: number | null;

@@ -417,7 +417,9 @@ class SavingsService(BaseService):
             .filter(*([MillingEquipment.branch_id == branch] if branch else []))
             .all()
         )
-        per_day = sum(float(m.capacity_kg_per_hr) * float(m.rated_hours_per_day) for m in machines)  # type: ignore[arg-type]
+        per_day = 0.0
+        for m in machines:  # both figures are there: filtered above
+            per_day += float(m.capacity_kg_per_hr or 0) * float(m.rated_hours_per_day or 0)
         days = int(settings["working_days_per_week"])
         today = self._today()
         monday = today - timedelta(days=today.weekday())
