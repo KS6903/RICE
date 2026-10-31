@@ -12,7 +12,6 @@ import {
   Gauge,
   HandCoins,
   LayoutGrid,
-  PiggyBank,
   Scale,
   ShieldAlert,
   Wheat,
@@ -22,6 +21,7 @@ import { peso } from "../components/buying/money";
 import EmptyState from "../components/EmptyState";
 import FieldCaption from "../components/FieldCaption";
 import LoadingRows from "../components/LoadingRows";
+import PiggyBankIcon from "../components/PiggyBankIcon";
 import Select from "../components/Select";
 import { useAccess } from "../hooks/useAccess";
 import { useFeature } from "../hooks/useFeature";
@@ -1365,7 +1365,7 @@ export default function SavingsPage() {
     <div className="space-y-6">
       <div>
         <h2 className="flex items-center gap-2 text-xl font-bold text-gray-900 dark:text-slate-100">
-          <PiggyBank size={22} aria-hidden /> {t("Savings")}
+          <PiggyBankIcon size={22} /> {t("Savings")}
         </h2>
         <p className="text-sm text-gray-500 dark:text-slate-400">
           {t("Where your mill loses money, and what's stopping it")}

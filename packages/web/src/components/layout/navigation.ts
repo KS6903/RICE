@@ -22,8 +22,8 @@ import {
   ShoppingBasket,
   Boxes,
   Calculator,
-  PiggyBank,
 } from "lucide-react";
+import PiggyBankIcon from "../PiggyBankIcon";
 import type { AppSection } from "@rice-mill/shared";
 import { t } from "../../i18n";
 
@@ -226,7 +226,7 @@ export const NAV_GROUPS: { title: string | null; items: NavEntry[] }[] = [
       {
         to: "/savings",
         label: t("Savings"),
-        icon: PiggyBank,
+        icon: PiggyBankIcon,
         feature: "profit",
         // The mill's real costs and margins, so the Boss's, like the Profit calculator.
         section: "profit",
