@@ -53,6 +53,15 @@ function MachineCard({ machine, canEdit }: { machine: Machine; canEdit: boolean 
       void queryClient.invalidateQueries({ queryKey: ["maintenance-log", machine.id] });
     },
   });
+  const { data: catalog = [] } = useQuery<any[]>({
+    queryKey: ["equipment"],
+    queryFn: () => millingService.listEquipment(),
+    enabled: canEdit,
+  });
+  const link = useMutation({
+    mutationFn: (id: string) => maintenanceService.link(machine.id, id || null),
+    onSuccess: () => void queryClient.invalidateQueries({ queryKey: ["maintenance"] }),
+  });
   const status = STATUS[machine.status];
   return (
     <article aria-labelledby={`machine-${machine.id}`} className="card !p-5 space-y-3">
@@ -66,6 +75,23 @@ function MachineCard({ machine, canEdit }: { machine: Machine; canEdit: boolean 
         {t("Since its last service on")} {day(machine.last_service_on)}: {machine.summary}.
       </p>
       {machine.notes && <p className="text-xs text-muted">{machine.notes}</p>}
+      {canEdit && catalog.length > 0 && (
+        <label className="block text-xs text-secondary">
+          {t("Count only batches run on")}
+          <select
+            className="input mt-1"
+            value={(machine as any).milling_equipment_id ?? ""}
+            onChange={(e) => link.mutate(e.target.value)}
+          >
+            <option value="">{t("All milling")}</option>
+            {catalog.map((m: any) => (
+              <option key={m.id} value={m.id}>
+                {m.name}
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
       <div className="flex flex-wrap gap-2">
         {canEdit && (
           <button type="button" className="btn-primary" onClick={() => setServicing((s) => !s)}>

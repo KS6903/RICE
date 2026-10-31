@@ -42,6 +42,18 @@ export function blend(
   return { streamPct: share * 100, streamKg: totalKg * share, headKg: totalKg * (1 - share) };
 }
 
+export type BatchLimits = {
+  mrr_alert_pct: number;
+  broken_alert_pct: number;
+  unaccounted_alert_pct: number;
+};
+
+const DEFAULT_LIMITS: BatchLimits = {
+  mrr_alert_pct: BENCHMARK_MRR_PCT,
+  broken_alert_pct: BENCHMARK_BROKEN_PCT,
+  unaccounted_alert_pct: BENCHMARK_UNACCOUNTED_PCT,
+};
+
 type BatchLike = {
   inputs?: { input_weight_kg: number | string }[];
   outputs?: {
@@ -59,8 +71,12 @@ export type BatchFlags = {
   overUnaccounted: boolean;
 };
 
-/** A batch against the benchmarks, for the Milling page on every plan. */
-export function batchFlags(batch: BatchLike): BatchFlags {
+/** A batch against the mill's limits, for the Milling page on every plan. */
+export function batchFlags(batch: BatchLike, limits: Partial<BatchLimits> = {}): BatchFlags {
+  const { mrr_alert_pct, broken_alert_pct, unaccounted_alert_pct } = {
+    ...DEFAULT_LIMITS,
+    ...limits,
+  };
   const inputKg = (batch.inputs ?? []).reduce((s, i) => s + Number(i.input_weight_kg), 0);
   const outputs = batch.outputs ?? [];
   const outKg = outputs.reduce((s, o) => s + Number(o.output_weight_kg), 0);
@@ -77,10 +93,10 @@ export function batchFlags(batch: BatchLike): BatchFlags {
   const unaccountedKg = complete && inputKg > 0 ? inputKg - outKg : null;
   const unaccountedPct = unaccountedKg != null ? (unaccountedKg / inputKg) * 100 : null;
   return {
-    lowRecovery: milledKg > 0 && inputKg > 0 && (milledKg / inputKg) * 100 < BENCHMARK_MRR_PCT,
-    highBroken: brokenPct != null && brokenPct > BENCHMARK_BROKEN_PCT,
+    lowRecovery: milledKg > 0 && inputKg > 0 && (milledKg / inputKg) * 100 < mrr_alert_pct,
+    highBroken: brokenPct != null && brokenPct > broken_alert_pct,
     unaccountedKg,
     unaccountedPct,
-    overUnaccounted: unaccountedPct != null && Math.abs(unaccountedPct) > BENCHMARK_UNACCOUNTED_PCT,
+    overUnaccounted: unaccountedPct != null && Math.abs(unaccountedPct) > unaccounted_alert_pct,
   };
 }

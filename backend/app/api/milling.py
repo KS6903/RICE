@@ -48,6 +48,16 @@ def get_milling_service(
 # ── Equipment ─────────────────────────────────────────────────────────────────
 
 
+@router.get("/limits")
+def limits(svc: MillingService = Depends(get_milling_service)):
+    return svc.limits()
+
+
+@router.get("/lots")
+def lots(variety_id: uuid.UUID | None = None, svc: MillingService = Depends(get_milling_service)):
+    return svc.lots(variety_id)
+
+
 @router.get("/equipment")
 def list_equipment(include_inactive: bool = False, svc: MillingService = Depends(get_milling_service)):
     return svc.list_equipment(include_inactive=include_inactive)

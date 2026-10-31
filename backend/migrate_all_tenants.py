@@ -39,6 +39,7 @@ from app.core.tenancy import (
     tenant_tables,
 )
 from app.models.company import Company
+from app.services import palay_lots
 
 # One-off ALTERs to apply inside each client schema (e.g. "ALTER TABLE sales_orders
 # ADD COLUMN IF NOT EXISTS …"). Keep idempotent.
@@ -234,6 +235,7 @@ def migrate_all() -> int:
             _backfill_warehouses(session, company.id)
             seed_default_expense_categories(session, company.id)
             sync_system_varieties(session)
+            palay_lots.backfill(session, company.id)
             if settings.PROVISIONER_DATABASE_URL is not None:
                 grant_runtime_schema_access(session, schema)
             session.commit()

@@ -27,6 +27,8 @@ router = APIRouter(
     ]
 )
 price_router = APIRouter(dependencies=[Depends(require_section_access("sales"))])
+# The purchase form asks what a farmer owes in vale: anyone who buys palay may ask.
+paddy_router = APIRouter(dependencies=[Depends(require_section_access("paddy"))])
 
 
 class SettingsIn(BaseModel):
@@ -35,6 +37,18 @@ class SettingsIn(BaseModel):
     mrr_alert_pct: float | None = Field(None, ge=40, le=80)
     broken_alert_pct: float | None = Field(None, ge=1, le=60)
     unaccounted_alert_pct: float | None = Field(None, ge=0, le=20)
+    head_low_pct: float | None = Field(None, ge=0, le=100)
+    bran_low_pct: float | None = Field(None, ge=0, le=100)
+    bran_high_pct: float | None = Field(None, ge=0, le=100)
+    hull_low_pct: float | None = Field(None, ge=0, le=100)
+    hull_high_pct: float | None = Field(None, ge=0, le=100)
+    binlid_high_pct: float | None = Field(None, ge=0, le=100)
+    broken_spike_points: float | None = Field(None, ge=0, le=50)
+    wholesale_price: float | None = Field(None, ge=0, le=1_000)
+    block_below_cost: bool | None = None
+    hold_moisture_over: float | None = Field(None, ge=0, le=100)
+    auto_hold_readings: bool | None = None
+    fresh_days: dict[str, int] | None = None
     break_even_utilization_pct: float | None = Field(None, ge=1, le=100)
     optimal_low_pct: float | None = Field(None, ge=1, le=100)
     optimal_high_pct: float | None = Field(None, ge=1, le=100)
@@ -82,7 +96,20 @@ class AdvanceIn(BaseModel):
     note: str | None = Field(None, max_length=500)
 
 
+class PaymentIn(BaseModel):
+    supplier_id: uuid.UUID
+    paid_on: date
+    amount: Decimal = Field(gt=0, max_digits=14, decimal_places=2)
+    note: str | None = Field(None, max_length=300)
+
+
+class PalletDateIn(BaseModel):
+    milling_date: date
+
+
 class PriceLine(BaseModel):
+    item_type: Literal["milled_rice", "byproduct", "palay"] = "milled_rice"
+    byproduct_type: str | None = Field(None, max_length=20)
     variety_id: uuid.UUID | None = None
     price: float = Field(ge=0)
 
@@ -141,6 +168,26 @@ def pick_first(pallet_id: uuid.UUID, body: PickFirstIn, svc: SavingsService = De
     return svc.pick_first(pallet_id, body.reason)
 
 
+@router.post("/pallets/{pallet_id}/date")
+def set_pallet_date(pallet_id: uuid.UUID, body: PalletDateIn, svc: SavingsService = Depends(get_service)):
+    return svc.set_pallet_date(pallet_id, body.milling_date)
+
+
+@router.post("/floor-plan")
+def setup_floor(svc: SavingsService = Depends(get_service)):
+    return svc.setup_floor()
+
+
+@router.get("/farmers")
+def farmers(svc: SavingsService = Depends(get_service)):
+    return svc.farmer_balances()
+
+
+@router.post("/farmers/pay")
+def pay_farmer(body: PaymentIn, svc: SavingsService = Depends(get_service)):
+    return svc.pay_farmer(body)
+
+
 @router.post("/holds", status_code=201)
 def place_hold(body: HoldIn, svc: SavingsService = Depends(get_service)):
     return svc.place_hold(body)
@@ -179,6 +226,16 @@ def create_advance(body: AdvanceIn, svc: SavingsService = Depends(get_service)):
 @router.post("/advances/{advance_id}/void")
 def void_advance(advance_id: uuid.UUID, svc: SavingsService = Depends(get_service)):
     return svc.void_advance(advance_id)
+
+
+@price_router.get("/orders/{order_id}/pick-list")
+def pick_list(order_id: uuid.UUID, svc: SavingsService = Depends(get_service)):
+    return svc.pick_list(order_id)
+
+
+@paddy_router.get("/suppliers/{supplier_id}/vale")
+def supplier_vale(supplier_id: uuid.UUID, svc: SavingsService = Depends(get_service)):
+    return svc.supplier_vale(supplier_id)
 
 
 @price_router.post("/price-check")

@@ -99,9 +99,26 @@ def edit_equipment(
     equipment_id: uuid.UUID, body: EquipmentIn, current_user=Depends(get_current_user), db: Session = Depends(get_db)
 ):
     e = _machine(db, equipment_id)
-    for name, value in body.model_dump(exclude={"notes"}).items():
+    # exclude_unset for the link: a form that doesn't send it keeps it.
+    link = body.model_dump(exclude_unset=True, include={"milling_equipment_id"})
+    for name, value in {**body.model_dump(exclude={"notes", "milling_equipment_id"}), **link}.items():
         setattr(e, name, value)
     e.notes = body.notes or None
+    db.commit()
+    today, zone = _now(current_user)
+    return _out(db, e, today, zone)
+
+
+class LinkIn(BaseModel):
+    milling_equipment_id: uuid.UUID | None = None
+
+
+@router.post("/{equipment_id}/link", dependencies=write)
+def link_machine(
+    equipment_id: uuid.UUID, body: LinkIn, current_user=Depends(get_current_user), db: Session = Depends(get_db)
+):
+    e = _machine(db, equipment_id)
+    e.milling_equipment_id = body.milling_equipment_id
     db.commit()
     today, zone = _now(current_user)
     return _out(db, e, today, zone)

@@ -25,6 +25,16 @@ DEFAULT_SETTINGS: dict = {
     "mrr_alert_pct": 63.0,
     "broken_alert_pct": 8.0,
     "unaccounted_alert_pct": 2.0,
+    # The other shares of a batch. Head rice starts at the app's own 48%: 63% is the
+    # recovery line, which counts brokens too.
+    "head_low_pct": 48.0,
+    "bran_low_pct": 8.0,
+    "bran_high_pct": 10.0,
+    "hull_low_pct": 18.0,
+    "hull_high_pct": 22.0,
+    "binlid_high_pct": 8.0,
+    # A batch this many points over the machine's recent brokens is drifting.
+    "broken_spike_points": 3.0,
     "break_even_utilization_pct": 63.0,
     "optimal_low_pct": 80.0,
     "optimal_high_pct": 85.0,
@@ -33,6 +43,15 @@ DEFAULT_SETTINGS: dict = {
     "cif_usd_per_ton": None,
     "usd_php": None,
     "landed_other_per_kg": 0.0,
+    # Today's wholesale rice price, when typed; else what the mill's own sales averaged.
+    "wholesale_price": None,
+    # Refuse a sale under cost, unless the Boss or an admin approves it.
+    "block_below_cost": False,
+    # Hold new rice wetter than this, and a zone's pallets when its reading is over target.
+    "hold_moisture_over": None,
+    "auto_hold_readings": False,
+    # Days each by-product keeps, by type; darak falls back to bran_fresh_days.
+    "fresh_days": {},
     "packaging_per_sack": 0.0,
     "kg_per_sack": 50.0,
     "bran_fresh_days": 7,
@@ -115,6 +134,41 @@ def batch_alerts(balance: dict, settings: dict) -> list[str]:
     if balance["complete"] and abs(balance["unaccounted_pct"] or 0) > settings["unaccounted_alert_pct"]:
         alerts.append("unaccounted")
     return alerts
+
+
+def range_alerts(balance: dict, settings: dict) -> list[str]:
+    """Shares outside their ranges. A share nobody recorded says nothing."""
+    alerts = []
+    if balance["head_pct"] is not None and balance["head_pct"] < settings["head_low_pct"]:
+        alerts.append("low_head")
+    if balance["darak_kg"] > 0 and not settings["bran_low_pct"] <= balance["darak_pct"] <= settings["bran_high_pct"]:
+        alerts.append("bran_range")
+    if balance["ipa_kg"] > 0 and not settings["hull_low_pct"] <= balance["ipa_pct"] <= settings["hull_high_pct"]:
+        alerts.append("hull_range")
+    if balance["binlid_kg"] > 0 and balance["binlid_pct"] > settings["binlid_high_pct"]:
+        alerts.append("binlid_high")
+    return alerts
+
+
+def likely_cause(alerts: Iterable[str]) -> str | None:
+    """What the broken limits point to: a guide for where to look, never a finding.
+    Kilos missing suggests spills or pilferage; brokens without missing kilos, the
+    rollers and polishers."""
+    found = set(alerts)
+    if "unaccounted" in found:
+        return "missing_kilos"
+    if found & {"high_broken", "broken_spike", "binlid_high"}:
+        return "machine"
+    if "low_recovery" in found:
+        return "palay_or_machine"
+    return None
+
+
+def fresh_days_for(kind: str, settings: dict) -> int | None:
+    days = (settings.get("fresh_days") or {}).get(kind)
+    if days:
+        return int(days)
+    return int(settings["bran_fresh_days"]) if kind == "darak" else None
 
 
 def blend(head_broken_pct: float, stream_broken_pct: float, target_pct: float, total_kg: float) -> dict | None:

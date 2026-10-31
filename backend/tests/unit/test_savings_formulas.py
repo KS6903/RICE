@@ -13,10 +13,13 @@ from app.services.savings_formulas import (
     DEFAULT_SETTINGS,
     batch_alerts,
     blend,
+    fresh_days_for,
     landed_price,
+    likely_cause,
     mass_balance,
     max_palay_price,
     payable_weight,
+    range_alerts,
     unsold_since,
     utilization_band,
 )
@@ -113,3 +116,25 @@ def test_unsold_since_finds_the_oldest_stock_left():
     assert unsold_since(50, [(new, 100), (old, 100)]) == new
     assert unsold_since(150, [(new, 100), (old, 100)]) == old
     assert unsold_since(300, [(new, 100), (old, 100)]) is None  # older than the ledger
+
+
+def test_shares_out_of_range_are_flagged_only_when_recorded():
+    balance = mass_balance(
+        1000, [("milled_rice", 650, 30.0), ("ipa", 260, None), ("darak", 50, None), ("binlid", 90, None)]
+    )
+    assert range_alerts(balance, DEFAULT_SETTINGS) == ["low_head", "bran_range", "hull_range", "binlid_high"]
+    assert range_alerts(mass_balance(1000, [("milled_rice", 650, None)]), DEFAULT_SETTINGS) == []
+
+
+def test_the_cause_says_where_to_look():
+    assert likely_cause(["unaccounted", "high_broken"]) == "missing_kilos"
+    assert likely_cause(["broken_spike"]) == "machine"
+    assert likely_cause(["low_recovery"]) == "palay_or_machine"
+    assert likely_cause(["low_head"]) is None
+
+
+def test_each_byproduct_keeps_for_its_own_days():
+    settings = {**DEFAULT_SETTINGS, "fresh_days": {"binlid": 30}}
+    assert fresh_days_for("binlid", settings) == 30
+    assert fresh_days_for("darak", settings) == DEFAULT_SETTINGS["bran_fresh_days"]
+    assert fresh_days_for("ipa", settings) is None

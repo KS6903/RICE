@@ -90,6 +90,23 @@ class SupplierAdvance(Base, TimestampMixin):
     )
 
 
+class PalayPayment(Base):
+    """Money paid to a farmer against a palay purchase."""
+
+    __tablename__ = "palay_payments"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    company_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("companies.id"))
+    purchase_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("palay_purchases.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    paid_on: Mapped[date] = mapped_column(Date, nullable=False)
+    amount: Mapped[Decimal] = mapped_column(Numeric(14, 2), nullable=False)
+    note: Mapped[str | None] = mapped_column(String(300))
+    created_by: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc, nullable=False)
+
+
 class AdvanceSettlement(Base):
     """Part of a vale taken off a palay purchase."""
 

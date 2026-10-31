@@ -18,7 +18,9 @@ from ..core.branch_scope import viewed_branch
 from ..core.exceptions import ConflictError, NotFoundError, ValidationError
 from ..core.security import get_user_features
 from ..core.timezones import local_today
-from ..models.company import Company
+from ..models.buying import ByproductPurchase, ByproductPurchaseItem
+from ..models.company import Branch, Company
+from ..models.costs import Expense, ExpenseCategory
 from ..models.milling import (
     ByproductInventory,
     MillingBatch,
@@ -28,18 +30,33 @@ from ..models.milling import (
     StockMovement,
 )
 from ..models.paddy import KG_PER_CAVAN, PalayPurchase, PalayPurchaseItem
-from ..models.supplier_customer import AdvanceSettlement, Customer, Supplier, SupplierAdvance
-from ..models.warehouse import Pallet, RiceBatch, StockHold, WarehouseLayout, WarehouseZone, ZoneReading
-from . import pallet_flow
+from ..models.sales import SalesOrder, SalesOrderItem
+from ..models.supplier_customer import AdvanceSettlement, Customer, PalayPayment, Supplier, SupplierAdvance
+from ..models.user import User
+from ..models.warehouse import (
+    Pallet,
+    PalletMovement,
+    RiceBatch,
+    StockHold,
+    WarehouseLayout,
+    WarehouseZone,
+    ZoneReading,
+)
+from . import notification_service, pallet_flow
 from .base import BaseService
-from .profit_service import BYPRODUCTS, ProfitService, price_plan
+from .canva_bootstrap import bootstrap_layout, bootstrap_pallets_from_inventory
+from .profit_service import BYPRODUCTS, ProfitService, is_boss, price_plan
 from .record_changes import log_changes
+from .rice_shelf_life import aging_status, compute_best_before
 from .savings_formulas import (
     DEFAULT_SETTINGS,
     batch_alerts,
+    fresh_days_for,
     landed_price,
+    likely_cause,
     mass_balance,
     max_palay_price,
+    range_alerts,
     settings_for,
     unsold_since,
     utilization_band,
@@ -48,6 +65,10 @@ from .savings_formulas import (
 # Auto-imported pallets were given a date when the floor plan was first made.
 ASSUMED_DATE_CLIENT = "Mill stock (auto-imported)"
 LOOKBACK_DAYS = 90
+# Purchases before Savings kept no record of what was paid, so none count as owed.
+PAYABLES_FROM = date(2026, 10, 31)
+# How many earlier batches a machine's usual brokens are read from.
+SPIKE_WINDOW = 10
 
 
 def apply_advances(db: Session, purchase: PalayPurchase, wanted: Decimal | None) -> None:
@@ -90,10 +111,38 @@ def advance_deducted(db: Session, purchase_id: uuid.UUID) -> Decimal:
     )
 
 
-def price_floor(db: Session, user: Any) -> dict[uuid.UUID | None, float]:
-    """The lowest price per kg that covers each rice variety's cost, packaging included;
-    the None key is the mill's average, for a rice no batch has made yet. Empty on a
-    plan without the Profit calculator, or with nothing to work it from."""
+def amount_paid(db: Session, purchase_id: uuid.UUID) -> Decimal:
+    return Decimal(
+        db.query(func.sum(PalayPayment.amount)).filter(PalayPayment.purchase_id == purchase_id).scalar() or 0
+    )
+
+
+def overhead_per_kg(db: Session, svc: ProfitService) -> float:
+    """Production expenses not tied to a batch (the month's power bill, the payroll),
+    spread over the palay milled in the same days."""
+    since = svc._today() - timedelta(days=LOOKBACK_DAYS)
+    spent = (
+        db.query(func.sum(Expense.amount))
+        .join(ExpenseCategory, ExpenseCategory.id == Expense.category_id)
+        .filter(
+            Expense.company_id == svc._company_id,
+            Expense.batch_id.is_(None),
+            Expense.expense_date >= since,
+            ExpenseCategory.is_production_cost.is_(True),
+            *svc._viewed(Expense),
+        )
+        .scalar()
+    )
+    milled = sum(float(i.input_weight_kg) for b in svc._batches(since) for i in b.inputs)
+    return float(spent or 0) / milled if milled > 0 else 0.0
+
+
+def price_floor(db: Session, user: Any) -> dict:
+    """The lowest price per kg that covers each good: milled rice by variety (the None
+    key is the mill's average, for a rice no batch has made yet), palay at what it cost,
+    a by-product at what it cost when bought in. Empty on a plan without the Profit
+    calculator, or with nothing to work it from. By-products the mill made have no
+    floor: the rice carries the palay's whole cost."""
     if "profit" not in get_user_features(user, db):
         return {}
     svc = ProfitService(db, user)
@@ -101,18 +150,21 @@ def price_floor(db: Session, user: Any) -> dict[uuid.UUID | None, float]:
     extra = settings_for(db.get(Company, user.company_id))
     packaging = float(extra["packaging_per_sack"]) / max(float(extra["kg_per_sack"]), 1.0)
     data = svc._gather()
-    floors: dict[uuid.UUID | None, float] = {}
+    overhead = overhead_per_kg(db, svc)
+    rice: dict[uuid.UUID | None, float] = {}
+    palay: dict[uuid.UUID | None, float] = {}
     evens: list[float] = []
     for v in svc._palay_varieties():
         d = svc._variety_defaults(v, data)
         if d["palay_price"] is None:
             continue
+        palay[v.id] = d["palay_price"]
         plan = price_plan(
             palay_kg=d["palay_kg"],
             palay_price=d["palay_price"],
             moisture_pct=d["moisture_pct"],
             recovery_pct=d["recovery_pct"],
-            other_costs=d["palay_kg"] * d["other_cost_per_kg"],
+            other_costs=d["palay_kg"] * (d["other_cost_per_kg"] + overhead),
             byproducts=[(d[f"{k}_pct"], d[f"{k}_price"] or 0.0) for k in BYPRODUCTS],
             target_margin_pct=settings["target_margin_pct"],
             market_price=d["market_price"],
@@ -122,11 +174,48 @@ def price_floor(db: Session, user: Any) -> dict[uuid.UUID | None, float]:
         even = plan["break_even"] + packaging
         evens.append(even)
         made = data["yields"].get(v.id) or {}
-        for rice in {v.id, *made.get("rice_varieties", ())}:
-            floors[rice] = max(floors.get(rice, 0.0), even)
+        for variety in {v.id, *made.get("rice_varieties", ())}:
+            rice[variety] = max(rice.get(variety, 0.0), even)
     if evens:
-        floors[None] = sum(evens) / len(evens)
-    return floors
+        rice[None] = sum(evens) / len(evens)
+    since = svc._today() - timedelta(days=LOOKBACK_DAYS)
+    bought = (
+        db.query(
+            ByproductPurchaseItem.byproduct_type,
+            func.sum(ByproductPurchaseItem.weight_kg * ByproductPurchaseItem.price_per_kg)
+            / func.nullif(func.sum(ByproductPurchaseItem.weight_kg), 0),
+        )
+        .join(ByproductPurchase, ByproductPurchase.id == ByproductPurchaseItem.purchase_id)
+        .filter(
+            ByproductPurchase.company_id == user.company_id,
+            ByproductPurchase.purchase_date >= since,
+            ByproductPurchase.status != "cancelled",
+        )
+        .group_by(ByproductPurchaseItem.byproduct_type)
+        .all()
+    )
+    return {"rice": rice, "palay": palay, "byproduct": {kind: float(price) for kind, price in bought if price}}
+
+
+def floor_for(floors: dict, item_type: str | None, variety_id: Any, byproduct_type: str | None) -> float | None:
+    if not floors:
+        return None
+    if item_type == "byproduct":
+        return floors["byproduct"].get(byproduct_type)
+    if item_type == "palay":
+        return floors["palay"].get(variety_id)
+    return floors["rice"].get(variety_id, floors["rice"].get(None))
+
+
+def below_cost_lines(db: Session, user: Any, items: Any) -> list:
+    """The sale lines priced under what they cost."""
+    floors = price_floor(db, user)
+    out = []
+    for item in items:
+        floor = floor_for(floors, item.item_type, item.variety_id, item.byproduct_type)
+        if floor is not None and float(item.unit_price_per_kg) < floor:
+            out.append(item)
+    return out
 
 
 class SavingsService(BaseService):
@@ -221,7 +310,8 @@ class SavingsService(BaseService):
             .all()
         )
         out = []
-        for b in rows:
+        recent: dict[Any, list[float]] = {}
+        for b in sorted(rows, key=lambda r: r.start_datetime):  # oldest first: a machine's history builds up
             if not b.outputs:  # still milling, with nothing weighed yet
                 continue
             balance = mass_balance(
@@ -235,15 +325,25 @@ class SavingsService(BaseService):
                     for o in b.outputs
                 ],
             )
+            alerts = batch_alerts(balance, settings) + range_alerts(balance, settings)
+            usual = recent.setdefault(b.equipment_id, [])
+            broken = balance["broken_pct"]
+            if broken is not None:
+                if len(usual) >= 3 and broken > sum(usual) / len(usual) + settings["broken_spike_points"]:
+                    alerts.append("broken_spike")
+                usual.append(broken)
+                del usual[:-SPIKE_WINDOW]
             out.append(
                 {
                     "id": str(b.id),
                     "batch_no": b.batch_no,
                     "start_datetime": b.start_datetime,
                     "balance": balance,
-                    "alerts": batch_alerts(balance, settings),
+                    "alerts": alerts,
+                    "cause": likely_cause(alerts),
                 }
             )
+        out.reverse()
         return out
 
     def trace(self, batch_id: uuid.UUID) -> dict:
@@ -285,10 +385,21 @@ class SavingsService(BaseService):
                     else None,
                 }
             )
+        sold = (
+            self.db.query(SalesOrder.order_no, Customer.name, func.sum(PalletMovement.weight_kg))
+            .select_from(PalletMovement)
+            .join(RiceBatch, RiceBatch.pallet_id == PalletMovement.pallet_id)
+            .join(SalesOrder, SalesOrder.id == PalletMovement.order_id)
+            .outerjoin(Customer, Customer.id == SalesOrder.customer_id)
+            .filter(RiceBatch.milling_batch_id == b.id, PalletMovement.movement_type == pallet_flow.SOLD)
+            .group_by(SalesOrder.order_no, Customer.name)
+            .all()
+        )
         return {
             "id": str(b.id),
             "batch_no": b.batch_no,
             "client": customer.name if customer else None,
+            "sold": [{"order_no": no, "customer": who, "weight_kg": float(kg)} for no, who, kg in sold],
             "lots": lots,
             "outputs": [{"output_type": o.output_type, "weight_kg": float(o.output_weight_kg)} for o in b.outputs],
             "input_kg": sum(float(i.input_weight_kg) for i in b.inputs),
@@ -309,7 +420,7 @@ class SavingsService(BaseService):
         rows = []
         for v in profit._palay_varieties():
             d = profit._variety_defaults(v, data)
-            if d["palay_price"] is None and d["market_price"] is None:
+            if d["palay_price"] is None and d["market_price"] is None and not settings["wholesale_price"]:
                 continue
 
             def most(price: float | None, d: dict = d) -> float | None:
@@ -324,7 +435,8 @@ class SavingsService(BaseService):
                     target_margin_pct=margin,
                 )
 
-            prices = [p for p in (d["market_price"], landed) if p is not None]
+            market = settings["wholesale_price"] or d["market_price"]
+            prices = [p for p in (market, landed) if p is not None]
             rows.append(
                 {
                     "variety_id": d["variety_id"],
@@ -332,8 +444,8 @@ class SavingsService(BaseService):
                     "name": d["name"],
                     "paying_per_kg": d["palay_price"],
                     "recovery_pct": d["recovery_pct"],
-                    "market_price": d["market_price"],
-                    "max_at_market": most(d["market_price"]),
+                    "market_price": market,
+                    "max_at_market": most(market),
                     "max_at_import": most(landed),
                     "max_buy": most(min(prices)) if prices else None,
                 }
@@ -350,11 +462,13 @@ class SavingsService(BaseService):
         profit = ProfitService(self.db, self.current_user)
         margin = profit.get_settings()["target_margin_pct"]
         data = profit._gather()
+        overhead = overhead_per_kg(self.db, profit)
         rows = []
         for v in profit._palay_varieties():
             d = profit._variety_defaults(v, data)
             if d["palay_price"] is None:
                 continue
+            d["other_cost_per_kg"] += overhead
             plan = price_plan(
                 palay_kg=d["palay_kg"],
                 palay_price=d["palay_price"],
@@ -386,7 +500,40 @@ class SavingsService(BaseService):
                     "below_cost": market is not None and market < total,
                 }
             )
-        return {"kg_per_sack": kg_per_sack, "rows": rows}
+        return {"kg_per_sack": kg_per_sack, "rows": rows, "per_ton": self._cost_per_ton()}
+
+    def _cost_per_ton(self) -> list[dict]:
+        """Each production expense per ton of palay milled, over the same 90 days: power,
+        fuel, labor and the rest, tied to a batch or not."""
+        since = self._today() - timedelta(days=LOOKBACK_DAYS)
+        milled = (
+            self.db.query(func.sum(MillingBatchInput.input_weight_kg))
+            .join(MillingBatch, MillingBatch.id == MillingBatchInput.batch_id)
+            .filter(
+                MillingBatch.company_id == self._company_id,
+                MillingBatch.status != "cancelled",
+                func.date(MillingBatch.start_datetime) >= since,
+                *self._viewed(MillingBatch),
+            )
+            .scalar()
+        )
+        tons = float(milled or 0) / 1000
+        if tons <= 0:
+            return []
+        rows = (
+            self.db.query(ExpenseCategory.name, func.sum(Expense.amount))
+            .join(Expense, Expense.category_id == ExpenseCategory.id)
+            .filter(
+                Expense.company_id == self._company_id,
+                Expense.expense_date >= since,
+                ExpenseCategory.is_production_cost.is_(True),
+                *self._viewed(Expense),
+            )
+            .group_by(ExpenseCategory.name)
+            .order_by(ExpenseCategory.name)
+            .all()
+        )
+        return [{"category": name, "per_ton": float(amount) / tons} for name, amount in rows]
 
     def price_check(self, items: list[dict]) -> list[dict]:
         """Which proposed prices are under cost. Only the Boss gets the figure: anyone
@@ -395,10 +542,39 @@ class SavingsService(BaseService):
         boss = getattr(getattr(self.current_user, "role", None), "name", None) == "owner"
         out = []
         for item in items:
-            floor = floors.get(item["variety_id"], floors.get(None))
+            floor = floor_for(floors, item.get("item_type"), item["variety_id"], item.get("byproduct_type"))
             below = floor is not None and item["price"] < floor
             out.append({"below": below, "floor": round(floor, 2) if boss and floor is not None else None})
         return out
+
+    def pick_list(self, order_id: uuid.UUID) -> list[dict]:
+        """The pallets a sale took, and where they stand: what to pull for the truck."""
+        order = self.db.get(SalesOrder, order_id)
+        if order is None or order.company_id != self._company_id:
+            raise NotFoundError("Order not found")
+        rows = (
+            self.db.query(Pallet.pallet_code, WarehouseZone.name, func.sum(PalletMovement.weight_kg))
+            .select_from(PalletMovement)
+            .join(Pallet, Pallet.id == PalletMovement.pallet_id)
+            .outerjoin(WarehouseZone, WarehouseZone.id == Pallet.zone_id)
+            .filter(PalletMovement.order_id == order_id, PalletMovement.movement_type == pallet_flow.SOLD)
+            .group_by(Pallet.pallet_code, WarehouseZone.name)
+            .order_by(Pallet.pallet_code)
+            .all()
+        )
+        return [{"pallet_code": code, "zone": zone, "weight_kg": float(kg)} for code, zone, kg in rows]
+
+    def supplier_vale(self, supplier_id: uuid.UUID) -> dict:
+        """What a farmer still owes in vale, for the purchase form. Only that figure."""
+        self.assert_company_fk(Supplier, supplier_id, label="Supplier")
+        advances = (
+            self.db.query(SupplierAdvance)
+            .options(selectinload(SupplierAdvance.settlements))
+            .filter(SupplierAdvance.supplier_id == supplier_id, SupplierAdvance.is_void.is_(False))
+            .all()
+        )
+        owed = sum(float(a.amount) - sum(float(x.amount) for x in a.settlements) for a in advances)
+        return {"open": owed}
 
     def capacity(self) -> dict:
         """Palay milled today, this week and each of the last eight weeks, against what
@@ -601,13 +777,28 @@ class SavingsService(BaseService):
             )
             since = unsold_since(float(on_hand or 0), [(w, float(k)) for w, k in receipts])
             days = (today - since.date()).days if isinstance(since, datetime) else None
+            keeps = fresh_days_for(kind, settings)
+            waiting = (
+                self.db.query(func.sum(SalesOrderItem.quantity_kg), func.min(SalesOrder.order_date))
+                .join(SalesOrder, SalesOrder.id == SalesOrderItem.order_id)
+                .filter(
+                    SalesOrder.company_id == self._company_id,
+                    SalesOrder.status == "confirmed",
+                    SalesOrderItem.byproduct_type == kind,
+                    *self._viewed(SalesOrder),
+                )
+                .one()
+            )
             out.append(
                 {
                     "byproduct_type": kind,
                     "on_hand_kg": float(on_hand or 0),
-                    "sold_30d_kg": -float(sold or 0),
+                    "sold_30d_kg": abs(float(sold or 0)),
                     "oldest_days": days,
-                    "stale": kind == "darak" and days is not None and days > int(settings["bran_fresh_days"]),
+                    "fresh_days": keeps,
+                    "stale": keeps is not None and days is not None and days > keeps,
+                    "awaiting_dispatch_kg": float(waiting[0] or 0),
+                    "awaiting_days": (today - waiting[1]).days if waiting[1] else None,
                 }
             )
         return sorted(out, key=lambda r: r["byproduct_type"])
@@ -743,7 +934,95 @@ class SavingsService(BaseService):
                     read_by=self.current_user.id,
                 )
             )
-        return {"zone_id": str(zone.id)}
+            over = (
+                data.humidity_pct is not None
+                and zone.target_humidity_pct is not None
+                and data.humidity_pct > zone.target_humidity_pct
+            ) or (data.temp_c is not None and zone.target_temp_c is not None and data.temp_c > zone.target_temp_c)
+            held = self._zone_out_of_range(zone, layout) if over else 0
+        return {"zone_id": str(zone.id), "out_of_range": bool(over), "held_pallets": held}
+
+    def _zone_out_of_range(self, zone: WarehouseZone, layout: WarehouseLayout) -> int:
+        """Tell the Boss, on every plan, and hold what's stored there if the mill says to."""
+        held = 0
+        if self.get_settings()["auto_hold_readings"]:
+            pallets = (
+                self.db.query(Pallet)
+                .options(selectinload(Pallet.batches))
+                .filter(Pallet.zone_id == zone.id, Pallet.status == "in_storage")
+                .all()
+            )
+            for pallet in pallets:
+                first = pallet.batches[0] if pallet.batches else None
+                pallet.status = "on_hold"
+                self.db.add(
+                    StockHold(
+                        company_id=self._company_id,
+                        branch_id=layout.branch_id,
+                        pallet_id=pallet.id,
+                        stock_type="milled_rice",
+                        variety_id=first.variety_id if first else None,
+                        weight_kg=pallet.weight_kg,
+                        reason="other",
+                        note=f"{zone.name}: reading over target",
+                        placed_by=self.current_user.id,
+                    )
+                )
+                held += 1
+        bosses = [u.id for u in self.db.query(User).filter(User.company_id == self._company_id).all() if is_boss(u)]
+        notification_service.notify(
+            self.db,
+            company_id=self._company_id,
+            user_ids=bosses,
+            kind="savings.zone_reading",
+            title=f"{zone.name}: humidity or temperature over target",
+            body=f"{held} pallets put on hold." if held else "Check the stock stored there.",
+            link="/savings",
+            dedupe_key=f"zone_reading:{zone.id}:{self._today().isoformat()}",
+        )
+        return held
+
+    def setup_floor(self) -> dict:
+        """Give the branch a floor plan and pallets for the rice it holds, for a mill that
+        hasn't opened the Warehouse tab, so FIFO has something to work on."""
+        branch_id = viewed_branch(self.db) or self.current_user.branch_id
+        branch = self.db.get(Branch, branch_id) if branch_id else None
+        if branch is None or branch.company_id != self._company_id:
+            raise ValidationError("Choose a branch first.")
+        with self.transaction():
+            layout = (
+                self.db.query(WarehouseLayout)
+                .filter(WarehouseLayout.branch_id == branch.id, WarehouseLayout.deleted_at.is_(None))
+                .first()
+            )
+            made = 0
+            if layout is None:
+                layout = bootstrap_layout(self.db, branch, is_default=True)
+                made = bootstrap_pallets_from_inventory(self.db, layout)
+        return {"pallets": made}
+
+    def set_pallet_date(self, pallet_id: uuid.UUID, milled_on: date) -> dict:
+        """Replace a pallet's assumed milling date with the real one, so FIFO is right."""
+        pallet = self._pallet(pallet_id)
+        if milled_on > self._today():
+            raise ValidationError("The milling date can't be in the future.")
+        with self.transaction():
+            for row in pallet.batches:
+                row.milling_date = milled_on
+                row.best_before_date = compute_best_before(milled_on, row.moisture_pct)
+                row.status = aging_status(milled_on, row.moisture_pct, self._today())
+                if row.client_name == ASSUMED_DATE_CLIENT:
+                    row.client_name = "Mill stock"
+            self.db.add(
+                PalletMovement(
+                    pallet_id=pallet.id,
+                    user_id=self.current_user.id,
+                    movement_type="dated",
+                    from_zone_id=pallet.zone_id,
+                    notes=f"Milling date set to {milled_on.isoformat()}",
+                )
+            )
+        return {"id": str(pallet.id)}
 
     # ── vale ──────────────────────────────────────────────────────────────────
 
@@ -773,6 +1052,90 @@ class SavingsService(BaseService):
                 }
             )
         return {"rows": out, "open_php": sum(r["open"] for r in out)}
+
+    def farmer_balances(self) -> list[dict]:
+        """Each farmer's account, for purchases since the mill began recording payments:
+        what they delivered, what vale and payments have gone against it, what's left to
+        pay, and what they still owe in vale."""
+        purchases = (
+            self.db.query(PalayPurchase)
+            .options(selectinload(PalayPurchase.items), selectinload(PalayPurchase.supplier))
+            .filter(
+                PalayPurchase.company_id == self._company_id,
+                PalayPurchase.supplier_id.isnot(None),
+                PalayPurchase.status != "cancelled",
+                PalayPurchase.purchase_date >= PAYABLES_FROM,
+                *self._viewed(PalayPurchase),
+            )
+            .all()
+        )
+        vale = self.advances()["rows"]
+        rows: dict[str, dict] = {}
+
+        def row(supplier_id: str, name: str | None) -> dict:
+            return rows.setdefault(
+                supplier_id,
+                {
+                    "supplier_id": supplier_id,
+                    "supplier": name,
+                    "bought": 0.0,
+                    "vale": 0.0,
+                    "paid": 0.0,
+                    "vale_open": 0.0,
+                },
+            )
+
+        for p in purchases:
+            r = row(str(p.supplier_id), p.supplier.name if p.supplier else None)
+            r["bought"] += float(sum((i.total_amount for i in p.items), Decimal(0)))
+            r["vale"] += float(advance_deducted(self.db, p.id))
+            r["paid"] += float(amount_paid(self.db, p.id))
+        for a in vale:
+            row(a["supplier_id"], a["supplier"])["vale_open"] += a["open"]
+        for r in rows.values():
+            r["to_pay"] = round(r["bought"] - r["vale"] - r["paid"], 2)
+        return sorted(rows.values(), key=lambda r: r["supplier"] or "")
+
+    def pay_farmer(self, data: Any) -> dict:
+        """Money paid to a farmer goes against their oldest unpaid purchases."""
+        self.assert_company_fk(Supplier, data.supplier_id, label="Supplier")
+        purchases = (
+            self.db.query(PalayPurchase)
+            .options(selectinload(PalayPurchase.items))
+            .filter(
+                PalayPurchase.company_id == self._company_id,
+                PalayPurchase.supplier_id == data.supplier_id,
+                PalayPurchase.status != "cancelled",
+                PalayPurchase.purchase_date >= PAYABLES_FROM,
+            )
+            .order_by(PalayPurchase.purchase_date, PalayPurchase.created_at)
+            .all()
+        )
+        left = Decimal(data.amount)
+        with self.transaction():
+            for p in purchases:
+                if left <= 0:
+                    break
+                total = sum((Decimal(i.total_amount) for i in p.items), Decimal(0))
+                owed = total - advance_deducted(self.db, p.id) - amount_paid(self.db, p.id)
+                take = min(owed, left).quantize(Decimal("0.01"))
+                if take <= 0:
+                    continue
+                self.db.add(
+                    PalayPayment(
+                        company_id=self._company_id,
+                        purchase_id=p.id,
+                        paid_on=data.paid_on,
+                        amount=take,
+                        note=(data.note or "").strip() or None,
+                        created_by=self.current_user.id,
+                    )
+                )
+                self.db.flush()
+                left -= take
+            if left == Decimal(data.amount):
+                raise ConflictError("Nothing is left to pay this farmer.", code="nothing_to_pay")
+        return {"unapplied": float(left)}
 
     def create_advance(self, data: Any) -> dict:
         self.assert_company_fk(Supplier, data.supplier_id, label="Supplier")

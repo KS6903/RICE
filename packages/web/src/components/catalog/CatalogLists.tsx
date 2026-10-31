@@ -430,6 +430,74 @@ export function VarietiesList() {
 }
 
 function EquipmentRow({ e, onToggle }: { e: any; onToggle: () => void }) {
+  const qc = useQueryClient();
+  const [editing, setEditing] = useState(false);
+  const [capacity, setCapacity] = useState(String(e.capacity_kg_per_hr ?? ""));
+  const [hours, setHours] = useState(String(e.rated_hours_per_day ?? ""));
+  const [counts, setCounts] = useState<boolean>(e.counts_for_capacity !== false);
+  const save = useMutation({
+    mutationFn: () =>
+      millingService.updateEquipment(e.id, {
+        capacity_kg_per_hr: capacity ? parseFloat(capacity) : undefined,
+        rated_hours_per_day: hours ? parseFloat(hours) : undefined,
+        counts_for_capacity: counts,
+      }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["equipment-all"] });
+      qc.invalidateQueries({ queryKey: ["equipment"] });
+      setEditing(false);
+    },
+  });
+  if (editing) {
+    return (
+      <tr>
+        <td className="px-4 py-3 font-semibold text-primary">{e.name}</td>
+        <td className="px-4 py-3" colSpan={3}>
+          <div className="flex flex-wrap items-end gap-3">
+            <label className="text-xs text-secondary">
+              {t("Capacity (kg/hr)")}
+              <input
+                className="input"
+                type="number"
+                min="0"
+                value={capacity}
+                onChange={(ev) => setCapacity(ev.target.value)}
+              />
+            </label>
+            <label className="text-xs text-secondary">
+              {t("Rated hours a day")}
+              <input
+                className="input"
+                type="number"
+                min="0"
+                max="24"
+                value={hours}
+                onChange={(ev) => setHours(ev.target.value)}
+              />
+            </label>
+            <label className="flex items-center gap-2 text-sm text-secondary">
+              <input
+                type="checkbox"
+                checked={counts}
+                onChange={(ev) => setCounts(ev.target.checked)}
+              />
+              {t("Sets the mill's capacity (one machine per line)")}
+            </label>
+          </div>
+        </td>
+        <td className="px-4 py-3">
+          <button
+            type="button"
+            className="text-xs font-semibold text-primary"
+            disabled={save.isPending}
+            onClick={() => save.mutate()}
+          >
+            {t("Save")}
+          </button>
+        </td>
+      </tr>
+    );
+  }
   return (
     <tr
       className={`hover:bg-slate-50/50 dark:hover:bg-slate-700/15 transition-colors ${
@@ -440,6 +508,7 @@ function EquipmentRow({ e, onToggle }: { e: any; onToggle: () => void }) {
       <td className="px-4 py-3 text-secondary">{e.model || "—"}</td>
       <td className="px-4 py-3 text-secondary">
         {e.capacity_kg_per_hr ? `${e.capacity_kg_per_hr} kg/hr` : "—"}
+        {e.rated_hours_per_day ? ` · ${e.rated_hours_per_day} ${t("hours a day")}` : ""}
       </td>
       <td className="px-4 py-3">
         {e.is_active ? (
@@ -449,6 +518,13 @@ function EquipmentRow({ e, onToggle }: { e: any; onToggle: () => void }) {
         )}
       </td>
       <td className="px-4 py-3">
+        <button
+          type="button"
+          onClick={() => setEditing(true)}
+          className="mr-3 text-xs font-semibold text-secondary hover:text-primary"
+        >
+          {t("Edit")}
+        </button>
         <button
           onClick={onToggle}
           className={`text-xs font-semibold inline-flex items-center gap-1 ${

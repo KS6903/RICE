@@ -20,6 +20,7 @@ from ..models.sync import SyncConflict, SyncLog
 from ..models.user import User
 from ..repositories.sync import SyncConflictRepository, SyncLogRepository
 from ..schemas.sync import ConflictResolutionValue, JsonScalar, SyncRecord
+from ..services import stock_ledger
 from ..services.base import BaseService
 
 logger = logging.getLogger("ricemill.sync")
@@ -382,7 +383,29 @@ class SyncService(BaseService):
                     )
                 )
             for_review = self._check_offline_orders(sanitized)
+            self._post_offline_stock(sanitized)
         return {"synced": len(sanitized), "conflicts": 0, "for_review": for_review}
+
+    def _post_offline_stock(self, sanitized: Sequence[tuple[SyncRecord, dict[str, JsonScalar]]]) -> None:
+        """Sales made offline take their goods when they sync, and give them back if the
+        order was cancelled. A line that can't be posted is logged and doesn't stop the
+        sync: it's only a stock figure, and the sale itself is safe in the log."""
+        user = self.current_user
+        for record, payload in sanitized:
+            try:
+                with self.db.begin_nested():
+                    if record.table_name == "sales_order_items" and record.operation == "INSERT":
+                        stock_ledger.post_offline_item(
+                            self.db, user, user.company_id, user.branch_id, record.record_id, dict(payload)
+                        )
+                    elif (
+                        record.table_name == "sales_orders"
+                        and record.operation == "UPDATE"
+                        and payload.get("status") == "cancelled"
+                    ):
+                        stock_ledger.unpost_offline_order(self.db, user, uuid.UUID(str(record.record_id)))
+            except Exception:
+                logger.exception("offline sale stock failed", extra={"record_id": str(record.record_id)})
 
     def _check_offline_orders(self, sanitized: Sequence[tuple[SyncRecord, dict[str, JsonScalar]]]) -> int:
         """New orders taken offline go past the credit-limit guard; send the ones

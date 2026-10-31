@@ -17,6 +17,8 @@ class BatchInputIn(BaseModel):
     grade_id: uuid.UUID | None = None
     input_weight_kg: Decimal
     moisture_content_pct: Decimal | None = None
+    # The purchase line this palay came from, when the operator knows; else the oldest.
+    purchase_item_id: uuid.UUID | None = None
 
 
 class BatchOutputIn(BaseModel):

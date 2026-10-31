@@ -88,7 +88,8 @@ class PurchaseItemIn(BaseModel):
     tare_weight_kg: Decimal = Decimal("0")
     moisture_content_pct: Decimal | None = None
     impurity_pct: Decimal | None = Field(None, ge=0, le=100)
-    weight_source: Literal["manual", "scale"] = "manual"
+    # Blank on a line edited on screen that never said: as typed.
+    weight_source: Literal["manual", "scale"] | None = "manual"
     price_per_cavan: Decimal
     is_wet: bool = False
     dried_weight_kg: Decimal | None = Field(None, gt=0)

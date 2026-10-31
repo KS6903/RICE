@@ -97,13 +97,14 @@ export default function NewSaleModal({ kind, onClose }: { kind: TradeKind; onClo
     setForm((f) => ({ ...f, items: f.items.map((l, i) => (i === idx ? { ...l, ...patch } : l)) }));
 
   const save = useMutation({
-    mutationFn: (approve: boolean) =>
+    mutationFn: (approve: boolean | "cost") =>
       salesService.createOrder({
         customer_id: form.customer_id,
         order_date: form.order_date,
         discount_pct: "0",
         remarks: form.remarks || null,
-        approve_over_limit: approve || undefined,
+        approve_over_limit: approve === true || undefined,
+        approve_below_cost: approve === "cost" || undefined,
         items: form.items.map((l) => ({
           item_type: SALE_ITEM_TYPE[kind],
           variety_id: kind === "byproduct" ? null : l.variety_id,
@@ -277,7 +278,14 @@ export default function NewSaleModal({ kind, onClose }: { kind: TradeKind; onClo
           ))}
         </div>
 
-        {kind === "rice" && <BelowCostWarning lines={form.items} />}
+        <BelowCostWarning
+          lines={form.items.map((l) => ({
+            ...l,
+            item_type: SALE_ITEM_TYPE[kind],
+            variety_id: kind === "byproduct" ? null : l.variety_id,
+            byproduct_type: kind === "byproduct" ? l.byproduct_type : null,
+          }))}
+        />
 
         {error && (
           <div
@@ -293,6 +301,16 @@ export default function NewSaleModal({ kind, onClose }: { kind: TradeKind; onClo
                 disabled={save.isPending}
               >
                 {t("Approve over the limit")}
+              </button>
+            )}
+            {error.code === "below_cost" && canApprove && (
+              <button
+                type="button"
+                className="btn-secondary"
+                onClick={() => save.mutate("cost")}
+                disabled={save.isPending}
+              >
+                {t("Approve below cost")}
               </button>
             )}
           </div>

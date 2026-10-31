@@ -52,6 +52,7 @@ class OrderCreate(BaseModel):
     # Only counts from an owner or admin, when the credit-limit guard would
     # otherwise stop the order (automations, Enterprise).
     approve_over_limit: bool = False
+    approve_below_cost: bool = False
 
 
 class OrderUpdate(BaseModel):

@@ -173,8 +173,9 @@ export default function SalesPage() {
   });
 
   const createOrder = useMutation({
-    mutationFn: (body: typeof orderForm & { approve_over_limit?: boolean }) =>
-      salesService.createOrder(body),
+    mutationFn: (
+      body: typeof orderForm & { approve_over_limit?: boolean; approve_below_cost?: boolean },
+    ) => salesService.createOrder(body),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["sales-orders"] });
       setShowOrderForm(false);
@@ -448,6 +449,16 @@ export default function SalesPage() {
                   disabled={createOrder.isPending}
                 >
                   {t("Approve over the limit")}
+                </button>
+              )}
+              {orderError.code === "below_cost" && canApprove && (
+                <button
+                  type="button"
+                  className="btn-secondary"
+                  onClick={() => createOrder.mutate({ ...orderForm, approve_below_cost: true })}
+                  disabled={createOrder.isPending}
+                >
+                  {t("Approve below cost")}
                 </button>
               )}
             </div>

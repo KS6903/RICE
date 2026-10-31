@@ -244,6 +244,7 @@ class SalesService(BaseService):
             )
             raise ConflictError(f"{over.describe()} {who}", code="over_credit_limit")
         stock_ledger.check_holds(self.db, data.items, self.current_user.company_id, self.current_user.branch_id)
+        self._check_below_cost(data)
         with self.transaction():
             order = self.orders.add(
                 SalesOrder(
@@ -271,6 +272,24 @@ class SalesService(BaseService):
                 credit.report(self.db, self.current_user.company, over, order, self.current_user, approved=approved)
         self.db.refresh(order)
         return order
+
+    def _check_below_cost(self, data) -> None:
+        """Refuse a price under cost when the mill says to, unless the Boss or an admin
+        approves it. The message has no figure: it may be read by anyone who sells."""
+        from ..services.savings_formulas import settings_for
+        from ..services.savings_service import below_cost_lines
+
+        if not settings_for(self.current_user.company)["block_below_cost"]:
+            return
+        if data.approve_below_cost and credit.can_approve(self.current_user):
+            return
+        if below_cost_lines(self.db, self.current_user, data.items):
+            who = (
+                "Approve it to go ahead."
+                if credit.can_approve(self.current_user)
+                else "An owner or admin can approve it."
+            )
+            raise ConflictError(f"This price is below the mill's minimum. {who}", code="below_cost")
 
     def update_order(self, order_id: uuid.UUID, body) -> SalesOrder:
         order = self.orders.get_for_company(order_id, self.current_user.company_id)

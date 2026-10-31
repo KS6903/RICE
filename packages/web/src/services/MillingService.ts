@@ -7,6 +7,16 @@ export type BatchInputForm = {
   grade_id: string;
   input_weight_kg: string;
   moisture_content_pct: string;
+  /** The purchase line this palay came from, when known; else the oldest. */
+  purchase_item_id?: string;
+};
+
+export type PalayLot = {
+  id: string;
+  reference_no: string;
+  purchase_date: string;
+  supplier: string | null;
+  free_kg: number;
 };
 
 export type BatchOutputForm = {
@@ -81,6 +91,7 @@ export class MillingService {
         moisture_content_pct: i.moisture_content_pct ? parseFloat(i.moisture_content_pct) : null,
         variety_id: i.variety_id || null,
         grade_id: i.grade_id || null,
+        purchase_item_id: i.purchase_item_id || null,
       })),
       outputs: form.outputs.map(({ weight_manual: _manual, ...o }) => ({
         ...o,
@@ -89,6 +100,20 @@ export class MillingService {
         variety_id: o.variety_id || null,
       })),
     };
+  }
+
+  limits(): Promise<{
+    mrr_alert_pct: number;
+    broken_alert_pct: number;
+    unaccounted_alert_pct: number;
+  }> {
+    return this.http.get("/milling/limits").then((r) => r.data);
+  }
+
+  lots(varietyId: string): Promise<PalayLot[]> {
+    return this.http
+      .get("/milling/lots", { params: varietyId ? { variety_id: varietyId } : {} })
+      .then((r) => r.data);
   }
 
   createBatch(form: BatchForm): Promise<any> {

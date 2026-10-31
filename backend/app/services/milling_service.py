@@ -42,6 +42,7 @@ from ..services.base import BaseService
 from ..services.byproduct_kind_service import byproduct_name
 from ..services.canva_color import pick_unused_color
 from ..services.record_changes import changed_fields, log_changes, show
+from ..services.savings_formulas import settings_for
 from ..services.warehouses import default_warehouse_id, warehouse_ids_of
 
 
@@ -91,6 +92,16 @@ class MillingService(BaseService):
                 setattr(eq, field, val)
         self.db.refresh(eq)
         return eq
+
+    # ── what the batch form and list need from Savings ────────────────────────
+
+    def limits(self) -> dict:
+        """The limits a batch is flagged against. Limits only: no cost or margin."""
+        settings = settings_for(self.current_user.company)
+        return {k: settings[k] for k in ("mrr_alert_pct", "broken_alert_pct", "unaccounted_alert_pct")}
+
+    def lots(self, variety_id: uuid.UUID | None) -> list[dict]:
+        return palay_lots.available(self.db, self.current_user.company_id, self.current_user.branch_id, variety_id)
 
     # ── clients (custom milling) ──────────────────────────────────────────────
     # A mill operator has no Sales access, so the batch form reads and adds
@@ -168,13 +179,15 @@ class MillingService(BaseService):
             )
             total_input_kg = Decimal("0")
             for inp in data.inputs:
-                row = MillingBatchInput(batch_id=batch.id, **inp.model_dump())
+                row = MillingBatchInput(batch_id=batch.id, **inp.model_dump(exclude={"purchase_item_id"}))
                 self.db.add(row)
                 total_input_kg += inp.input_weight_kg
                 # A client's palay was never in the mill's stock.
                 if not batch.customer_id:
                     self.db.flush()
-                    palay_lots.allocate(self.db, batch.company_id, batch.branch_id, row)
+                    palay_lots.allocate(
+                        self.db, batch.company_id, batch.branch_id, row, chosen=getattr(inp, "purchase_item_id", None)
+                    )
                     self._deduct_palay(inp, str(batch.id))
             _check_adds_up(total_input_kg, data.outputs)
 
@@ -265,11 +278,13 @@ class MillingService(BaseService):
                 for old_in in list(b.inputs):
                     b.inputs.remove(old_in)
                 for inp in data.inputs:
-                    row = MillingBatchInput(batch_id=b.id, **inp.model_dump())
+                    row = MillingBatchInput(batch_id=b.id, **inp.model_dump(exclude={"purchase_item_id"}))
                     self.db.add(row)
                     if not b.customer_id:
                         self.db.flush()
-                        palay_lots.allocate(self.db, b.company_id, b.branch_id, row)
+                        palay_lots.allocate(
+                            self.db, b.company_id, b.branch_id, row, chosen=getattr(inp, "purchase_item_id", None)
+                        )
             if data.outputs is not None:
                 for old_out in list(b.outputs):
                     b.outputs.remove(old_out)

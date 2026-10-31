@@ -22,9 +22,10 @@ from ..core.exceptions import ConflictError, ValidationError
 from ..core.timezones import tenant_zone
 from ..models.company import Company
 from ..models.milling import MillingBatch
-from ..models.warehouse import Pallet, PalletMovement, RiceBatch, WarehouseLayout, WarehouseZone
+from ..models.warehouse import Pallet, PalletMovement, RiceBatch, StockHold, WarehouseLayout, WarehouseZone
 from .canva_bootstrap import KG_PER_PALLET, KG_PER_SACK, _next_pallet_code
 from .rice_shelf_life import aging_status, compute_best_before
+from .savings_formulas import settings_for
 
 SOLD = "sold"
 RETURNED = "returned"
@@ -103,6 +104,21 @@ def _place(db: Session, layout: WarehouseLayout, batch: MillingBatch, variety_id
                 status=aging_status(milled_on, moisture),
             )
         )
+        limit = settings_for(company)["hold_moisture_over"]
+        if limit is not None and moisture is not None and moisture > Decimal(str(limit)):
+            pallet.status = "on_hold"
+            db.add(
+                StockHold(
+                    company_id=batch.company_id,
+                    branch_id=batch.branch_id,
+                    pallet_id=pallet.id,
+                    stock_type="milled_rice",
+                    variety_id=variety_id,
+                    weight_kg=chunk,
+                    reason="moisture",
+                    note=f"Milled at {moisture:.1f}% moisture, over the {limit}% limit",
+                )
+            )
         db.flush()
         slot += 1
 

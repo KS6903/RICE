@@ -24,6 +24,7 @@ import LoadingRows from "../components/LoadingRows";
 import PiggyBankIcon from "../components/PiggyBankIcon";
 import Select from "../components/Select";
 import { useAccess } from "../hooks/useAccess";
+import { useByproductKinds } from "../hooks/useByproductKinds";
 import { useFeature } from "../hooks/useFeature";
 import { blend } from "../mappers/SavingsMapper";
 import { paddyService } from "../services/PaddyService";
@@ -34,6 +35,7 @@ import {
   type SavingsSettings,
   type UtilizationBand,
 } from "../services/SavingsService";
+import { varietyOptions } from "../utils/varieties";
 import { t } from "../i18n";
 
 const kilos = (n: number) =>
@@ -407,6 +409,12 @@ function Buying({
       >
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
           <SettingField
+            label={t("Today's wholesale rice (₱/kg)")}
+            name="wholesale_price"
+            settings={settings}
+            onSave={onSave}
+          />
+          <SettingField
             label={t("CIF price (US$ per ton)")}
             name="cif_usd_per_ton"
             settings={settings}
@@ -499,7 +507,19 @@ const ALERT_TEXT = (alert: BatchRow["alerts"][number]): string =>
     low_recovery: t("Low recovery"),
     high_broken: t("High brokens"),
     unaccounted: t("Kilos missing"),
+    low_head: t("Low head rice"),
+    bran_range: t("Darak out of range"),
+    hull_range: t("Ipa out of range"),
+    binlid_high: t("High binlid"),
+    broken_spike: t("Brokens jumped"),
   })[alert];
+
+const CAUSE_TEXT = (cause: NonNullable<BatchRow["cause"]>): string =>
+  ({
+    missing_kilos: t("Look for spills, leaks or pilferage."),
+    machine: t("Check the rollers and polishers."),
+    palay_or_machine: t("Check the palay's quality and the machine's settings."),
+  })[cause];
 
 function TraceDetails({ id }: { id: string }) {
   const { data } = useQuery({
@@ -534,6 +554,15 @@ function TraceDetails({ id }: { id: string }) {
         </li>
       ))}
       {data.lots.length === 0 && <li>{t("Milled before lots were tracked.")}</li>}
+      {data.sold.map((sale) => (
+        <li key={sale.order_no}>
+          {t("{{kg}} sold on {{order}} to {{customer}}", {
+            kg: kilos(sale.weight_kg),
+            order: sale.order_no,
+            customer: sale.customer ?? t("no customer"),
+          })}
+        </li>
+      ))}
     </ul>
   );
 }
@@ -630,6 +659,11 @@ function Milling({
                     >
                       {b.batch_no}
                     </button>
+                    {b.cause && (
+                      <span className="mt-1 block text-xs text-secondary">
+                        {CAUSE_TEXT(b.cause)}
+                      </span>
+                    )}
                     {b.alerts.length > 0 && (
                       <span className="mt-1 flex flex-wrap gap-1">
                         {b.alerts.map((a) => (
@@ -691,6 +725,48 @@ function Milling({
             settings={settings}
             onSave={onSave}
           />
+          <SettingField
+            label={t("Head rice under %")}
+            name="head_low_pct"
+            settings={settings}
+            onSave={onSave}
+          />
+          <SettingField
+            label={t("Darak from %")}
+            name="bran_low_pct"
+            settings={settings}
+            onSave={onSave}
+          />
+          <SettingField
+            label={t("Darak to %")}
+            name="bran_high_pct"
+            settings={settings}
+            onSave={onSave}
+          />
+          <SettingField
+            label={t("Ipa from %")}
+            name="hull_low_pct"
+            settings={settings}
+            onSave={onSave}
+          />
+          <SettingField
+            label={t("Ipa to %")}
+            name="hull_high_pct"
+            settings={settings}
+            onSave={onSave}
+          />
+          <SettingField
+            label={t("Binlid over %")}
+            name="binlid_high_pct"
+            settings={settings}
+            onSave={onSave}
+          />
+          <SettingField
+            label={t("Brokens jump over usual by (points)")}
+            name="broken_spike_points"
+            settings={settings}
+            onSave={onSave}
+          />
         </div>
       </Section>
       <BlendCalculator />
@@ -749,7 +825,52 @@ function Warehouse({
       }),
     onSuccess: refresh,
   });
-  const error = apiDetail(pick.error ?? hold.error ?? clear.error ?? reading.error);
+  const setup = useMutation({
+    mutationFn: () => savingsService.setupFloorPlan(),
+    onSuccess: refresh,
+  });
+  const setDate = useMutation({
+    mutationFn: (v: { id: string; milling_date: string }) =>
+      savingsService.setPalletDate(v.id, v.milling_date),
+    onSuccess: refresh,
+  });
+  const [stock, setStock] = useState({
+    stock_type: "byproduct",
+    variety_id: "",
+    byproduct_type: "",
+    weight_kg: "",
+    reason: "moisture" as HoldReason,
+    note: "",
+  });
+  const { data: varieties = [] } = useQuery<any[]>({
+    queryKey: ["varieties"],
+    queryFn: () => paddyService.listVarieties(),
+  });
+  const { active: byproductKinds } = useByproductKinds();
+  const holdStock = useMutation({
+    mutationFn: () =>
+      savingsService.placeHold({
+        stock_type: stock.stock_type,
+        variety_id: stock.stock_type === "byproduct" ? undefined : stock.variety_id,
+        byproduct_type: stock.stock_type === "byproduct" ? stock.byproduct_type : undefined,
+        weight_kg: Number(stock.weight_kg),
+        reason: stock.reason,
+        note: stock.note || undefined,
+      }),
+    onSuccess: () => {
+      refresh();
+      setStock((s) => ({ ...s, weight_kg: "", note: "" }));
+    },
+  });
+  const error = apiDetail(
+    pick.error ??
+      hold.error ??
+      clear.error ??
+      reading.error ??
+      setup.error ??
+      setDate.error ??
+      holdStock.error,
+  );
   if (!data) return <LoadingRows rows={4} />;
 
   return (
@@ -766,9 +887,19 @@ function Warehouse({
         )}
       >
         {data.pallets.length === 0 ? (
-          <p className="text-sm text-secondary">
-            {t("No pallets yet. Pallets come from milling, once the branch has a floor plan.")}
-          </p>
+          <div className="space-y-2">
+            <p className="text-sm text-secondary">
+              {t("No pallets yet. Pallets come from milling, once the branch has a floor plan.")}
+            </p>
+            <button
+              type="button"
+              className="btn-secondary"
+              disabled={setup.isPending}
+              onClick={() => setup.mutate()}
+            >
+              {t("Set up the floor plan")}
+            </button>
+          </div>
         ) : (
           <>
             <div className="grid gap-3 sm:grid-cols-2">
@@ -807,7 +938,20 @@ function Warehouse({
                   <Cell>
                     {format(new Date(p.milling_date), "MMM d, yyyy")}
                     {p.date_assumed && (
-                      <span className="ml-2 text-xs text-secondary">{t("date assumed")}</span>
+                      <label className="ml-2 text-xs text-secondary">
+                        {t("date assumed. Real date:")}{" "}
+                        <input
+                          type="date"
+                          className="input inline-block w-36"
+                          aria-label={t("Real milling date of {{pallet}}", {
+                            pallet: p.pallet_code,
+                          })}
+                          onChange={(e) =>
+                            e.target.value &&
+                            setDate.mutate({ id: p.id, milling_date: e.target.value })
+                          }
+                        />
+                      </label>
                     )}
                   </Cell>
                   <Cell>
@@ -853,6 +997,83 @@ function Warehouse({
         title={t("On hold")}
         hint={t("Held stock can't be sold or picked until someone clears it.")}
       >
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+          <FieldCaption label={t("Hold")}>
+            <Select
+              value={stock.stock_type}
+              onChange={(v) => setStock((s) => ({ ...s, stock_type: v, variety_id: "" }))}
+              options={[
+                { value: "byproduct", label: t("By-product") },
+                { value: "milled_rice", label: t("Milled rice") },
+                { value: "palay", label: t("Palay") },
+              ]}
+            />
+          </FieldCaption>
+          {stock.stock_type === "byproduct" ? (
+            <FieldCaption label={t("By-product")}>
+              <Select
+                value={stock.byproduct_type}
+                onChange={(v) => setStock((s) => ({ ...s, byproduct_type: v }))}
+                placeholder={t("Choose")}
+                options={byproductKinds.map((k: any) => ({
+                  value: k.code ?? k.value ?? k.name,
+                  label: k.name ?? k.label ?? k.code,
+                }))}
+              />
+            </FieldCaption>
+          ) : (
+            <FieldCaption label={t("Variety")}>
+              <Select
+                value={stock.variety_id}
+                onChange={(v) => setStock((s) => ({ ...s, variety_id: v }))}
+                placeholder={t("Choose")}
+                options={varietyOptions(varieties, stock.stock_type === "palay" ? "palay" : "rice")}
+              />
+            </FieldCaption>
+          )}
+          <FieldCaption label={t("Kilos")}>
+            <input
+              className="input"
+              type="number"
+              min={0}
+              value={stock.weight_kg}
+              onChange={(e) => setStock((s) => ({ ...s, weight_kg: e.target.value }))}
+            />
+          </FieldCaption>
+          <FieldCaption label={t("Reason")}>
+            <Select
+              value={stock.reason}
+              onChange={(v) => setStock((s) => ({ ...s, reason: v as HoldReason }))}
+              options={REASONS()}
+            />
+          </FieldCaption>
+        </div>
+        <button
+          type="button"
+          className="btn-secondary"
+          disabled={
+            holdStock.isPending ||
+            !(Number(stock.weight_kg) > 0) ||
+            (stock.stock_type === "byproduct" ? !stock.byproduct_type : !stock.variety_id)
+          }
+          onClick={() => holdStock.mutate()}
+        >
+          {t("Put on hold")}
+        </button>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <SettingField
+            label={t("Hold new rice wetter than %")}
+            name="hold_moisture_over"
+            settings={settings}
+            onSave={onSave}
+          />
+          <Toggle
+            checked={settings.auto_hold_readings}
+            onChange={(next) => onSave({ auto_hold_readings: next })}
+            label={t("Hold a zone's pallets when its reading is over target")}
+            hint={t("You're told about every reading over target either way.")}
+          />
+        </div>
         {data.holds.length === 0 ? (
           <p className="text-sm text-secondary">{t("Nothing on hold.")}</p>
         ) : (
@@ -958,18 +1179,19 @@ function Warehouse({
           "On hand, what sold, and how long the oldest has sat. Sell darak while it's fresh.",
         )}
       >
-        <div className="max-w-xs">
-          <SettingField
-            label={t("Darak stays fresh for (days)")}
-            name="bran_fresh_days"
-            settings={settings}
-            onSave={onSave}
-          />
-        </div>
         {data.byproducts.length === 0 ? (
           <p className="text-sm text-secondary">{t("No by-products in stock yet.")}</p>
         ) : (
-          <Table head={[t("By-product"), t("On hand"), t("Sold, 30 days"), t("Oldest")]}>
+          <Table
+            head={[
+              t("By-product"),
+              t("On hand"),
+              t("Sold, 30 days"),
+              t("Oldest"),
+              t("Keeps for (days)"),
+              t("Sold, not yet delivered"),
+            ]}
+          >
             {data.byproducts.map((b) => (
               <tr key={b.byproduct_type}>
                 <Cell strong>{b.byproduct_type}</Cell>
@@ -982,6 +1204,36 @@ function Warehouse({
                     <span className={b.stale ? "badge-red" : "badge-gray"}>
                       {t("{{count}} days", { count: b.oldest_days })}
                     </span>
+                  )}
+                </Cell>
+                <Cell>
+                  <input
+                    key={b.fresh_days ?? "none"}
+                    className="input w-20"
+                    type="number"
+                    min={1}
+                    aria-label={t("Days {{kind}} keeps", { kind: b.byproduct_type })}
+                    defaultValue={b.fresh_days ?? ""}
+                    onBlur={(e) => {
+                      const next = Number(e.target.value);
+                      if (next > 0 && next !== b.fresh_days) {
+                        onSave({
+                          fresh_days: { ...settings.fresh_days, [b.byproduct_type]: next },
+                        });
+                      }
+                    }}
+                  />
+                </Cell>
+                <Cell>
+                  {b.awaiting_dispatch_kg > 0 ? (
+                    <span className={b.stale ? "badge-red" : "badge-gray"}>
+                      {kilos(b.awaiting_dispatch_kg)}
+                      {b.awaiting_days != null
+                        ? ` · ${t("{{count}} days", { count: b.awaiting_days })}`
+                        : ""}
+                    </span>
+                  ) : (
+                    "—"
                   )}
                 </Cell>
               </tr>
@@ -1118,7 +1370,7 @@ function Costs({
       <Section
         title={t("Cost per sack")}
         hint={t(
-          "From the last 90 days. Fuel, power and labor count when an expense is linked to a batch; drying counts when its cost is recorded.",
+          "From the last 90 days. Expenses linked to a batch count there; the rest of your production expenses are spread over all the palay milled. Leave packaging at 0 if sacks are in your expenses.",
         )}
       >
         <div className="grid grid-cols-2 gap-3 max-w-md">
@@ -1135,6 +1387,24 @@ function Costs({
             onSave={onSave}
           />
         </div>
+        <Toggle
+          checked={settings.block_below_cost}
+          onChange={(next) => onSave({ block_below_cost: next })}
+          label={t("Refuse sales below cost")}
+          hint={t(
+            "Off, sale forms only warn. On, a price below cost needs you or an admin to approve it.",
+          )}
+        />
+        {cost && cost.per_ton.length > 0 && (
+          <Table head={[t("Expense"), t("Per ton of palay")]}>
+            {cost.per_ton.map((row) => (
+              <tr key={row.category}>
+                <Cell>{row.category}</Cell>
+                <Cell strong>{peso(row.per_ton)}</Cell>
+              </tr>
+            ))}
+          </Table>
+        )}
         {!cost ? (
           <LoadingRows />
         ) : cost.rows.length === 0 ? (
@@ -1207,7 +1477,24 @@ function Vale() {
     mutationFn: (id: string) => savingsService.voidAdvance(id),
     onSuccess: refresh,
   });
-  const error = apiDetail(create.error ?? remove.error);
+  const { data: farmers } = useQuery({
+    queryKey: ["savings-farmers"],
+    queryFn: savingsService.farmers,
+  });
+  const [paying, setPaying] = useState<Record<string, string>>({});
+  const pay = useMutation({
+    mutationFn: (supplierId: string) =>
+      savingsService.payFarmer({
+        supplier_id: supplierId,
+        paid_on: format(new Date(), "yyyy-MM-dd"),
+        amount: Number(paying[supplierId]),
+      }),
+    onSuccess: (_r, supplierId) => {
+      qc.invalidateQueries({ queryKey: ["savings-farmers"] });
+      setPaying((p) => ({ ...p, [supplierId]: "" }));
+    },
+  });
+  const error = apiDetail(create.error ?? remove.error ?? pay.error);
   return (
     <div className="space-y-6">
       <Section
@@ -1277,6 +1564,63 @@ function Vale() {
         >
           {t("Save vale")}
         </button>
+      </Section>
+      <Section
+        title={t("Farmer accounts")}
+        hint={t(
+          "Purchases since the mill began recording payments here: what's left to pay each farmer.",
+        )}
+      >
+        {!farmers ? (
+          <LoadingRows />
+        ) : farmers.length === 0 ? (
+          <p className="text-sm text-secondary">{t("No purchases from a named farmer yet.")}</p>
+        ) : (
+          <Table
+            head={[
+              t("Farmer"),
+              t("Delivered"),
+              t("Vale taken off"),
+              t("Paid"),
+              t("To pay"),
+              t("Vale still owed"),
+              t("Pay (₱)"),
+            ]}
+          >
+            {farmers.map((f) => (
+              <tr key={f.supplier_id}>
+                <Cell strong>{f.supplier ?? "—"}</Cell>
+                <Cell>{peso(f.bought)}</Cell>
+                <Cell>{peso(f.vale)}</Cell>
+                <Cell>{peso(f.paid)}</Cell>
+                <Cell strong>{peso(f.to_pay)}</Cell>
+                <Cell>{peso(f.vale_open)}</Cell>
+                <Cell>
+                  <span className="flex items-center gap-2">
+                    <input
+                      className="input w-28"
+                      type="number"
+                      min={0}
+                      aria-label={t("Amount to pay {{farmer}}", { farmer: f.supplier ?? "" })}
+                      value={paying[f.supplier_id] ?? ""}
+                      onChange={(e) =>
+                        setPaying((p) => ({ ...p, [f.supplier_id]: e.target.value }))
+                      }
+                    />
+                    <button
+                      type="button"
+                      className="text-xs font-semibold text-secondary hover:text-primary"
+                      disabled={!(Number(paying[f.supplier_id]) > 0) || pay.isPending}
+                      onClick={() => pay.mutate(f.supplier_id)}
+                    >
+                      {t("Save payment")}
+                    </button>
+                  </span>
+                </Cell>
+              </tr>
+            ))}
+          </Table>
+        )}
       </Section>
       <Section
         title={t("Vale given")}

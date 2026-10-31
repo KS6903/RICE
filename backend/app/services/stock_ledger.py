@@ -85,7 +85,38 @@ def _model_of(item: Any) -> Any:
     return {"byproduct": ByproductInventory, "palay": PalayInventory}.get(item.item_type, MilledRiceInventory)
 
 
-def _take(db: Session, user: Any, order: SalesOrder, item: SalesOrderItem) -> None:
+def post_offline_item(db: Session, user: Any, company_id: Any, branch_id: Any, record_id: Any, payload: dict) -> bool:
+    """A sale line entered on the desktop app while offline, now synced: it takes its
+    goods as a sale here would. Safe to repeat: a line that already took them is left
+    alone, since a push can be sent twice. Doesn't commit; True when stock moved."""
+    note = f"Offline line {record_id}"
+    if db.query(StockMovement.id).filter(StockMovement.notes == note).first() is not None:
+        return False
+
+    def as_id(value: Any) -> uuid.UUID | None:
+        return uuid.UUID(str(value)) if value else None
+
+    order_id = as_id(payload.get("order_id"))
+    order: Any = _Offline(order_id, "", company_id, branch_id)
+    item = _Line(
+        str(payload.get("item_type") or "milled_rice"),
+        as_id(payload.get("variety_id")),
+        payload.get("grade_name"),
+        payload.get("byproduct_type"),
+    )
+    item.quantity_kg = Decimal(str(payload["quantity_kg"]))
+    _take(db, user, order, item, note=note)  # type: ignore[arg-type]
+    pallet_flow.consume_for_item(db, user, order, item)
+    return True
+
+
+def unpost_offline_order(db: Session, user: Any, order_id: uuid.UUID) -> None:
+    """An order cancelled on the desktop app: what its lines took goes back."""
+    reverse_source(db, user, "sales_order", order_id, "Offline order cancelled")
+    pallet_flow.restore_for_order(db, user, _Offline(order_id, "", None, None))
+
+
+def _take(db: Session, user: Any, order: Any, item: Any, *, note: str | None = None) -> None:
     model = _model_of(item)
     where = _matches(model, item, order.company_id, order.branch_id)
     if not where:
@@ -119,7 +150,7 @@ def _take(db: Session, user: Any, order: SalesOrder, item: SalesOrderItem) -> No
             continue
         inv.quantity_kg = Decimal(inv.quantity_kg or 0) - take
         remaining -= take
-        record(db, user, inv, -take, "sales_order", order.id, f"Order {order.order_no}")
+        record(db, user, inv, -take, "sales_order", order.id, note or f"Order {order.order_no}")
 
 
 def post_order(db: Session, user: Any, order: SalesOrder) -> None:
@@ -202,6 +233,17 @@ def check_holds(db: Session, items: Any, company_id: Any, branch_id: Any) -> Non
             )
 
 
+class _Offline:
+    """The parts of an order that say where its goods come from, for one that exists
+    only on the desktop apps."""
+
+    def __init__(self, order_id: Any, order_no: str, company_id: Any, branch_id: Any) -> None:
+        self.id = order_id
+        self.order_no = order_no
+        self.company_id = company_id
+        self.branch_id = branch_id
+
+
 class _Line:
     """The parts of a sale line that say which stock it takes."""
 
@@ -210,3 +252,4 @@ class _Line:
         self.variety_id = variety_id
         self.grade_name = grade_name
         self.byproduct_type = byproduct_type
+        self.quantity_kg = Decimal(0)

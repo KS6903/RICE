@@ -1,4 +1,4 @@
-import { batchFlags, BENCHMARK_BROKEN_PCT, BENCHMARK_MRR_PCT } from "../mappers/SavingsMapper";
+import { batchFlags, type BatchLimits } from "../mappers/SavingsMapper";
 import { useState } from "react";
 import { useEscapeKey } from "../hooks/useEscapeKey";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -66,12 +66,46 @@ const ARRANGEMENTS: { value: ClientArrangement; label: string; stock: string }[]
 ];
 const arrangementLabel = Object.fromEntries(ARRANGEMENTS.map((a) => [a.value, a.label]));
 
-/** Under a batch's recovery: what's off against the benchmarks. */
-function BatchFlagNotes({ batch }: { batch: any }) {
-  const flags = batchFlags(batch);
+/** Which purchase a batch's palay came from. Left alone, the oldest. */
+function LotSelect({
+  varietyId,
+  value,
+  onChange,
+}: {
+  varietyId: string;
+  value: string;
+  onChange: (id: string) => void;
+}) {
+  const { data: lots = [] } = useQuery({
+    queryKey: ["palay-lots", varietyId],
+    queryFn: () => millingService.lots(varietyId),
+    enabled: !!varietyId,
+  });
+  if (!varietyId || lots.length === 0) return null;
+  return (
+    <FieldCaption label={t("From purchase")}>
+      <Select
+        aria-label={t("From purchase")}
+        value={value}
+        onChange={onChange}
+        options={[
+          { value: "", label: t("Oldest first") },
+          ...lots.map((l) => ({
+            value: l.id,
+            label: `${l.reference_no}${l.supplier ? `, ${l.supplier}` : ""} (${Math.round(l.free_kg).toLocaleString()} ${t("kg")})`,
+          })),
+        ]}
+      />
+    </FieldCaption>
+  );
+}
+
+/** Under a batch's recovery: what's off against the mill's limits. */
+function BatchFlagNotes({ batch, limits }: { batch: any; limits?: BatchLimits }) {
+  const flags = batchFlags(batch, limits);
   const notes = [
-    flags.lowRecovery && t("Under the {{pct}}% benchmark", { pct: BENCHMARK_MRR_PCT }),
-    flags.highBroken && t("Broken rice over {{pct}}%", { pct: BENCHMARK_BROKEN_PCT }),
+    flags.lowRecovery && t("Under your {{pct}}% limit", { pct: limits?.mrr_alert_pct ?? 63 }),
+    flags.highBroken && t("Broken rice over {{pct}}%", { pct: limits?.broken_alert_pct ?? 8 }),
     flags.overUnaccounted &&
       flags.unaccountedKg != null &&
       t("{{kg}} kg unaccounted for", {
@@ -121,6 +155,10 @@ export default function MillingPage() {
   });
   const clientById = Object.fromEntries(clients.map((c) => [c.id, c]));
 
+  const { data: limits } = useQuery({
+    queryKey: ["milling-limits"],
+    queryFn: () => millingService.limits(),
+  });
   const [form, setForm] = useState({
     equipment_id: "",
     customer_id: "",
@@ -436,6 +474,15 @@ export default function MillingPage() {
                     options={varietyOptions(varieties, "palay")}
                   />
                 </FieldCaption>
+                <LotSelect
+                  varietyId={inp.variety_id}
+                  value={inp.purchase_item_id ?? ""}
+                  onChange={(v) => {
+                    const inputs = [...form.inputs];
+                    inputs[idx].purchase_item_id = v;
+                    setForm((f) => ({ ...f, inputs }));
+                  }}
+                />
                 <FieldCaption label={t("Palay weight (kg)")}>
                   <input
                     className="input"
@@ -675,7 +722,7 @@ export default function MillingPage() {
                   </td>
                   <td className="px-4 py-3">
                     {recovery != null ? `${recovery.toFixed(1)}%` : "—"}
-                    <BatchFlagNotes batch={b} />
+                    <BatchFlagNotes batch={b} limits={limits} />
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex justify-end gap-3">

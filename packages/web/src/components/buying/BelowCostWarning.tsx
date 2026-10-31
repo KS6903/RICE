@@ -10,11 +10,21 @@ import { t } from "../../i18n";
 export default function BelowCostWarning({
   lines,
 }: {
-  lines: { variety_id?: string | null; unit_price_per_kg: string }[];
+  lines: {
+    item_type?: string;
+    byproduct_type?: string | null;
+    variety_id?: string | null;
+    unit_price_per_kg: string;
+  }[];
 }) {
   const priced = lines
-    .filter((l) => l.variety_id && Number(l.unit_price_per_kg) > 0)
-    .map((l) => ({ variety_id: l.variety_id as string, price: Number(l.unit_price_per_kg) }));
+    .filter((l) => (l.variety_id || l.byproduct_type) && Number(l.unit_price_per_kg) > 0)
+    .map((l) => ({
+      item_type: l.item_type ?? "milled_rice",
+      byproduct_type: l.byproduct_type || null,
+      variety_id: l.variety_id || null,
+      price: Number(l.unit_price_per_kg),
+    }));
   const { data } = useQuery({
     queryKey: ["price-check", priced],
     queryFn: () => savingsService.priceCheck(priced),

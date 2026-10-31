@@ -37,6 +37,12 @@ export class MaintenanceService {
     return this.http.get("/equipment/").then((r) => r.data);
   }
 
+  link(id: string, millingEquipmentId: string | null): Promise<Machine> {
+    return this.http
+      .post(`/equipment/${id}/link`, { milling_equipment_id: millingEquipmentId })
+      .then((r) => r.data);
+  }
+
   add(body: MachineIn): Promise<Machine> {
     return this.http.post("/equipment/", body).then((r) => r.data);
   }

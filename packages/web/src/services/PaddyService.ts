@@ -18,6 +18,8 @@ export type PurchaseItemForm = {
   moisture_content_pct: string;
   /** Dirt and empty grains, as a percent of the weight. */
   impurity_pct: string;
+  /** "scale" when the weight was read off the scale. */
+  weight_source: "manual" | "scale";
   /** What the buyer types; the price per cavan is worked out from it. */
   price_per_kg: string;
   /** Bought wet: saved as Wet, and completed once its drying is recorded from the
@@ -38,6 +40,7 @@ export const blankPurchaseItem = (): PurchaseItemForm => ({
   tare_weight_kg: "0",
   moisture_content_pct: "",
   impurity_pct: "",
+  weight_source: "manual",
   price_per_kg: "",
   is_wet: false,
 });
@@ -70,6 +73,10 @@ export type PurchaseForm = {
   branch_id?: string | null;
   /** The warehouse in that branch; left out, the branch's first. */
   warehouse_id?: string | null;
+  /** The farmer or trader; left out, none named. */
+  supplier_id?: string | null;
+  /** Vale to take off. Blank: all the farmer owes that the purchase can carry. */
+  advance_deduction?: string;
   purchase_date: string;
   delivery_type: string;
   remarks: string;
@@ -203,6 +210,8 @@ export class PaddyService {
   static toPurchasePayload(form: PurchaseForm) {
     return {
       ...form,
+      supplier_id: form.supplier_id || null,
+      advance_deduction: numberOrNull(form.advance_deduction ?? ""),
       items: form.items.map((i) => ({
         variety_id: i.variety_id || null,
         grade_id: i.grade_id || null,
@@ -212,10 +221,16 @@ export class PaddyService {
         tare_weight_kg: parseFloat(i.tare_weight_kg) || 0,
         moisture_content_pct: numberOrNull(i.moisture_content_pct),
         impurity_pct: numberOrNull(i.impurity_pct),
+        weight_source: i.weight_source,
         price_per_cavan: pricePerCavan(i.price_per_kg),
         is_wet: i.is_wet,
       })),
     };
+  }
+
+  /** What a farmer still owes in vale. */
+  supplierVale(id: string): Promise<{ open: number }> {
+    return this.http.get(`/savings/suppliers/${id}/vale`).then((r) => r.data);
   }
 
   createPurchase(form: PurchaseForm): Promise<any> {

@@ -40,6 +40,7 @@ describe("PaddyService.toPurchasePayload", () => {
       tare_weight_kg: 50,
       moisture_content_pct: 14,
       impurity_pct: null,
+      weight_source: "manual",
       price_per_cavan: 1200,
       is_wet: false,
     });
@@ -52,6 +53,7 @@ describe("PaddyService.toPurchasePayload", () => {
       tare_weight_kg: 0,
       moisture_content_pct: null,
       impurity_pct: null,
+      weight_source: "manual",
       price_per_cavan: 1000,
       is_wet: false,
     });

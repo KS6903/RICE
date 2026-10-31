@@ -19,6 +19,18 @@ export type SavingsSettings = {
   packaging_per_sack: number;
   kg_per_sack: number;
   bran_fresh_days: number;
+  head_low_pct: number;
+  bran_low_pct: number;
+  bran_high_pct: number;
+  hull_low_pct: number;
+  hull_high_pct: number;
+  binlid_high_pct: number;
+  broken_spike_points: number;
+  wholesale_price: number | null;
+  block_below_cost: boolean;
+  hold_moisture_over: number | null;
+  auto_hold_readings: boolean;
+  fresh_days: Record<string, number>;
 };
 
 export type UtilizationBand =
@@ -69,7 +81,17 @@ export type BatchRow = {
   batch_no: string;
   start_datetime: string;
   balance: BatchBalance;
-  alerts: ("low_recovery" | "high_broken" | "unaccounted")[];
+  alerts: (
+    | "low_recovery"
+    | "high_broken"
+    | "unaccounted"
+    | "low_head"
+    | "bran_range"
+    | "hull_range"
+    | "binlid_high"
+    | "broken_spike"
+  )[];
+  cause: "missing_kilos" | "machine" | "palay_or_machine" | null;
 };
 export type BatchTrace = {
   id: string;
@@ -87,6 +109,7 @@ export type BatchTrace = {
     dried_moisture_pct: number | null;
   }[];
   outputs: { output_type: string; weight_kg: number }[];
+  sold: { order_no: string; customer: string | null; weight_kg: number }[];
 };
 
 export type PalletRow = {
@@ -127,7 +150,10 @@ export type ByproductRow = {
   on_hand_kg: number;
   sold_30d_kg: number;
   oldest_days: number | null;
+  fresh_days: number | null;
   stale: boolean;
+  awaiting_dispatch_kg: number;
+  awaiting_days: number | null;
 };
 export type WarehouseSavings = {
   pallets: PalletRow[];
@@ -175,6 +201,7 @@ export type CostPerSack = {
     market: number | null;
     below_cost: boolean;
   }[];
+  per_ton: { category: string; per_ton: number }[];
 };
 export type Advances = {
   open_php: number;
@@ -189,6 +216,16 @@ export type Advances = {
     open: number;
     note: string | null;
   }[];
+};
+
+export type FarmerBalance = {
+  supplier_id: string;
+  supplier: string | null;
+  bought: number;
+  vale: number;
+  paid: number;
+  to_pay: number;
+  vale_open: number;
 };
 
 export class SavingsService {
@@ -213,6 +250,7 @@ export class SavingsService {
   placeHold = (body: {
     pallet_id?: string;
     stock_type?: string;
+    variety_id?: string;
     byproduct_type?: string;
     weight_kg?: number;
     reason: HoldReason;
@@ -233,10 +271,27 @@ export class SavingsService {
     amount: number;
     note?: string;
   }) => this.http.post("/savings/advances", body).then((r) => r.data);
+  farmers = (): Promise<FarmerBalance[]> => this.http.get("/savings/farmers").then((r) => r.data);
+  payFarmer = (body: { supplier_id: string; paid_on: string; amount: number; note?: string }) =>
+    this.http.post("/savings/farmers/pay", body).then((r) => r.data);
+  setPalletDate = (id: string, milling_date: string) =>
+    this.http.post(`/savings/pallets/${id}/date`, { milling_date }).then((r) => r.data);
+  setupFloorPlan = (): Promise<{ pallets: number }> =>
+    this.http.post("/savings/floor-plan").then((r) => r.data);
   voidAdvance = (id: string) => this.http.post(`/savings/advances/${id}/void`).then((r) => r.data);
+  /** The pallets a sale took, and where they stand. */
+  pickList = (
+    orderId: string,
+  ): Promise<{ pallet_code: string; zone: string | null; weight_kg: number }[]> =>
+    this.http.get(`/savings/orders/${orderId}/pick-list`).then((r) => r.data);
   /** Which proposed prices are under cost. Only the Boss's answer carries the figure. */
   priceCheck = (
-    items: { variety_id: string | null; price: number }[],
+    items: {
+      item_type?: string;
+      byproduct_type?: string | null;
+      variety_id: string | null;
+      price: number;
+    }[],
   ): Promise<{ below: boolean; floor: number | null }[]> =>
     this.http.post("/savings/price-check", { items }).then((r) => r.data);
 }

@@ -12,6 +12,7 @@ import EmptyState from "../EmptyState";
 import LoadingRows from "../LoadingRows";
 import Modal from "../Modal";
 import NewSaleModal from "./NewSaleModal";
+import { savingsService } from "../../services/SavingsService";
 import { peso } from "./money";
 import {
   GOODS,
@@ -220,6 +221,7 @@ export function SaleDetails({
           </tbody>
         </table>
       </div>
+      <PickList orderId={o.id} />
 
       <div className="mt-3 space-y-1 text-sm text-right">
         {mine.others > 0 && (
@@ -248,5 +250,30 @@ export function SaleDetails({
         </p>
       )}
     </Modal>
+  );
+}
+
+/** The pallets this sale took, oldest first, and where they stand: what to pull. */
+function PickList({ orderId }: { orderId: string }) {
+  const { data = [] } = useQuery({
+    queryKey: ["pick-list", orderId],
+    queryFn: () => savingsService.pickList(orderId),
+    retry: false,
+  });
+  if (data.length === 0) return null;
+  return (
+    <div className="mt-4">
+      <p className="text-[10px] font-bold uppercase tracking-wide text-muted">
+        {t("Pallets to pull")}
+      </p>
+      <ul className="mt-1 space-y-1 text-sm text-primary">
+        {data.map((p) => (
+          <li key={p.pallet_code}>
+            {p.pallet_code}
+            {p.zone ? `, ${p.zone}` : ""}: {p.weight_kg.toLocaleString()} {t("kg")}
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }

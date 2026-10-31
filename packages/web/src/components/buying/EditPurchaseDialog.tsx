@@ -65,6 +65,7 @@ const BLANK: Record<TradeKind, Line> = {
     tare_weight_kg: "0",
     moisture_content_pct: "",
     impurity_pct: "",
+    weight_source: "",
     price_per_cavan: "",
     is_wet: "",
     dried_weight_kg: "",

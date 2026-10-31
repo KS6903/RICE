@@ -45,7 +45,7 @@ from ..services.base import BaseService
 from ..services.canva_color import pick_unused_color
 from ..services.record_changes import changed_fields, log_changes, show
 from ..services.savings_formulas import payable_weight, settings_for
-from ..services.savings_service import advance_deducted, apply_advances
+from ..services.savings_service import advance_deducted, amount_paid, apply_advances
 from ..services.warehouses import default_warehouse_id, warehouse_for, warehouse_map
 
 
@@ -230,7 +230,9 @@ class PaddyService(BaseService):
         session = object_session(p)
         deducted = float(advance_deducted(session, p.id)) if session is not None else 0.0
         data["advance_deducted"] = deducted
-        data["net_to_pay"] = round(data["total_amount"] - deducted, 2)
+        paid = float(amount_paid(session, p.id)) if session is not None else 0.0
+        data["paid"] = paid
+        data["net_to_pay"] = round(data["total_amount"] - deducted - paid, 2)
         creator = p.creator
         data["created_by_name"] = creator.full_name if creator else None
         data["created_by_role"] = creator.role.name if creator and creator.role else None
@@ -289,6 +291,7 @@ class PaddyService(BaseService):
         self._check_weight_lock(p, data)
         before = _purchase_state(p)
         vale_before = advance_deducted(self.db, p.id)
+        supplier_before = p.supplier_id
         with self.transaction():
             for field, val in fields.items():
                 if field != "weight_change_reason":
@@ -309,8 +312,9 @@ class PaddyService(BaseService):
             self.db.flush()
             self.db.expire(p)
             if data.items is not None or "supplier_id" in fields:
-                # What it took stands, as far as the corrected purchase can carry it.
-                apply_advances(self.db, p, vale_before)
+                # What it took stands, as far as the corrected purchase can carry it. A
+                # different farmer's vale comes off in full.
+                apply_advances(self.db, p, None if supplier_before != p.supplier_id else vale_before)
             changes = changed_fields(before, _purchase_state(p), PURCHASE_FIELDS)
             if data.weight_change_reason and changes:
                 changes.append(f"Reason: {data.weight_change_reason.strip()}")
@@ -568,6 +572,7 @@ class PaddyService(BaseService):
         """Save one line of a purchase, put it in stock, and file its drying when
         it came with the after-drying weight."""
         values = d.model_dump()
+        values["weight_source"] = values.get("weight_source") or "manual"
         if values["gross_weight_kg"] is None:
             # Not weighed: a cavan is 50 kg, and so is a sack taken as 1 cavan.
             values["gross_weight_kg"] = (values["cavan_count"] or values["sack_count"]) * KG_PER_CAVAN

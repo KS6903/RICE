@@ -12,6 +12,7 @@ import {
 import { Container, LayoutGrid, Scale, ShoppingBag, Wheat, type LucideIcon } from "lucide-react";
 import { format } from "date-fns";
 import QuickAdd from "../components/QuickAdd";
+import ScaleButton from "../components/buying/ScaleButton";
 import { useAccess } from "../hooks/useAccess";
 import { useFeature } from "../hooks/useFeature";
 import { useIsPhone } from "../hooks/useIsPhone";
@@ -106,6 +107,8 @@ export default function PaddyPage() {
     purchase_date: format(new Date(), "yyyy-MM-dd"),
     delivery_type: "delivered",
     remarks: "",
+    supplier_id: "",
+    advance_deduction: "",
     items: [blankPurchaseItem()],
   });
 
@@ -115,6 +118,18 @@ export default function PaddyPage() {
     setShowForm(false);
     setAttempted(false);
   };
+
+  const { data: suppliers = [] } = useQuery<any[]>({
+    queryKey: ["suppliers"],
+    queryFn: () => paddyService.listSuppliers(),
+    enabled: showForm,
+  });
+  const { data: vale } = useQuery({
+    queryKey: ["supplier-vale", form.supplier_id],
+    queryFn: () => paddyService.supplierVale(form.supplier_id),
+    enabled: !!form.supplier_id,
+    retry: false,
+  });
 
   const createMutation = useMutation({
     mutationFn: (body: typeof form) =>
@@ -252,6 +267,38 @@ export default function PaddyPage() {
               />
             </div>
             <PurchaseWarehouseField warehouse={warehouse} />
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-slate-200 mb-1">
+                {t("Farmer or trader")}
+              </label>
+              <Select
+                aria-label={t("Farmer or trader")}
+                value={form.supplier_id}
+                onChange={(v) => setForm((f) => ({ ...f, supplier_id: v, advance_deduction: "" }))}
+                options={[
+                  { value: "", label: t("Not named") },
+                  ...suppliers
+                    .filter((s) => s.is_active !== false)
+                    .map((s) => ({ value: s.id, label: s.name })),
+                ]}
+              />
+            </div>
+            {Number(vale?.open ?? 0) > 0 && (
+              <FieldCaption
+                label={t("Vale to take off, of {{amount}} owed", {
+                  amount: `₱${Number(vale?.open).toLocaleString()}`,
+                })}
+              >
+                <input
+                  className="input"
+                  type="number"
+                  min={0}
+                  placeholder={t("All it can carry")}
+                  value={form.advance_deduction}
+                  onChange={(e) => setForm((f) => ({ ...f, advance_deduction: e.target.value }))}
+                />
+              </FieldCaption>
+            )}
           </div>
           <div className="space-y-3">
             <div className="flex items-center justify-between">
@@ -394,7 +441,15 @@ export default function PaddyPage() {
                           type="number"
                           min={0}
                           value={item.gross_weight_kg}
+                          readOnly={item.weight_source === "scale"}
                           onChange={text(idx, "gross_weight_kg")}
+                        />
+                        <ScaleButton
+                          fromScale={item.weight_source === "scale"}
+                          onRead={(kg) =>
+                            setItem(idx, { gross_weight_kg: String(kg), weight_source: "scale" })
+                          }
+                          onClear={() => setItem(idx, { weight_source: "manual" })}
                         />
                       </FieldCaption>
                       <FieldCaption label={t("Tare: sacks (kg)")}>
