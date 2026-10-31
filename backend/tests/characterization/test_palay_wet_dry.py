@@ -217,7 +217,7 @@ def test_correcting_a_purchase_with_dried_lines_replaces_them_and_their_drying(a
                         "is_wet": True,
                         "moisture_content_pct": "24",
                     }
-                ]
+                ],
             },
         )
     )
