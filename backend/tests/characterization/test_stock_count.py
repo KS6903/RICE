@@ -12,7 +12,7 @@ import pytest
 from app.automations.base import RecipeContext
 from app.automations.recipes import RECIPES
 from app.models.automation import AutomationRule
-from app.models.company import Company
+from app.models.company import Branch, Company
 from app.models.milling import ByproductInventory, MilledRiceInventory
 from app.models.notification import Notification
 from app.models.reference import RiceVariety
@@ -97,6 +97,45 @@ def test_lines_not_on_the_sheet_are_refused(auth_client, stock):
         json={"lines": [{"kind": "palay", "inventory_id": str(uuid.uuid4()), "counted_kg": "10"}]},
     )
     assert res.status_code == 400
+
+
+def test_a_count_is_of_one_branch(auth_client, db_session, company, seed_owner):
+    main = db_session.query(Branch).filter(Branch.company_id == company.id).one()
+    second = Branch(company_id=company.id, name="2nd Branch")
+    db_session.add(second)
+    db_session.flush()
+    here = ByproductInventory(company_id=company.id, branch_id=main.id, byproduct_type="darak", quantity_kg=Decimal(80))
+    there = ByproductInventory(
+        company_id=company.id, branch_id=second.id, byproduct_type="darak", quantity_kg=Decimal(90)
+    )
+    db_session.add_all([here, there])
+    db_session.commit()
+
+    sheet = auth_client.get("/api/stock-counts/").json()["sheet"]
+    assert {line["branch_id"] for line in sheet} == {str(main.id), str(second.id)}
+
+    line = {"kind": "byproduct", "inventory_id": str(there.id), "counted_kg": "90"}
+    wrong = auth_client.post("/api/stock-counts/", json={"lines": [line], "branch_id": str(main.id)})
+    assert wrong.status_code == 400
+
+    res = auth_client.post("/api/stock-counts/", json={"lines": [line], "branch_id": str(second.id)})
+    assert res.status_code == 201, res.text
+    assert res.json()["branch"] == "2nd Branch"
+    assert auth_client.get("/api/stock-counts/").json()["counts"][0]["branch"] == "2nd Branch"
+
+
+def test_the_way_to_count_is_kept_for_the_mill(auth_client, stock):
+    rice, _ = stock
+    page = auth_client.get("/api/stock-counts/").json()
+    assert page["choices"] == {"defaults": {}, "lines": {}}
+
+    choices = {"defaults": {"palay": {"unit": "kg"}}, "lines": {str(rice.id): {"unit": "sacks", "sack_kg": 25.0}}}
+    res = auth_client.put("/api/stock-counts/choices", json=choices)
+    assert res.status_code == 200, res.text
+    assert auth_client.get("/api/stock-counts/").json()["choices"] == choices
+
+    bad = {"defaults": {}, "lines": {str(rice.id): {"sack_kg": 0}}}
+    assert auth_client.put("/api/stock-counts/choices", json=bad).status_code == 422
 
 
 def test_the_reminder_comes_when_the_stock_wasnt_counted_lately(db_session, company, seed_owner, stock):

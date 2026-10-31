@@ -40,6 +40,7 @@ from .sales import Invoice, Payment, PriceList, SalesOrder, SalesOrderItem
 from .stock_count import StockCount, StockCountLine
 from .subscription import Subscription, SubscriptionPlan
 from .supplier_customer import AdvanceSettlement, Customer, PalayPayment, Supplier, SupplierAdvance
+from .feedback import AppFeedback
 from .sync import SyncConflict, SyncLog
 from .upgrade_request import UpgradeRequest
 from .user import CompanyRole, Role, User

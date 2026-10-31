@@ -3,18 +3,28 @@
 // than the allowance wait for the owner. A count changes no stock: corrections
 // are made in Inventory.
 //
-// The sheet is grouped the way a counter walks the floor (branch, then rice,
-// palay and by-products), and a line can be counted in sacks plus loose kilos:
-// the page works out the kilos. An unsaved count is kept in this browser, so a
-// refresh halfway through the warehouse loses nothing.
+// A count is of one branch, picked at the top. The sheet is grouped the way a
+// counter walks the floor (rice, palay and by-products), and a line can be
+// counted in sacks plus loose kilos: the page works out the kilos. Each kind of
+// stock has a default way to count, and each line can have its own; the mill
+// keeps these for the next count. An unsaved count is kept in this browser, so
+// a refresh halfway through the warehouse loses nothing.
 import { useEffect, useRef, useState } from "react";
 import type { KeyboardEvent } from "react";
-import { Link } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { CheckCircle2, Circle } from "lucide-react";
 import { useAccess } from "../hooks/useAccess";
 import { useAuthStore } from "../stores/authStore";
-import { stockCountService, type SheetLine, type StockCount } from "../services/StockCountService";
+import { useBranchStore } from "../stores/branchStore";
+import Select from "../components/Select";
+import {
+  stockCountService,
+  type CountChoices,
+  type CountUnit as Unit,
+  type SheetLine,
+  type StockCount,
+  type StockCountPage as PageData,
+} from "../services/StockCountService";
 import { t } from "../i18n";
 
 const kg = (n: number) => `${n.toLocaleString(undefined, { maximumFractionDigits: 1 })} kg`;
@@ -27,17 +37,83 @@ const day = (iso: string) =>
 const key = (line: SheetLine) => `${line.kind}:${line.inventory_id}`;
 const digits = (raw: string) => raw.replace(/[^\d.]/g, "");
 
-const KINDS: { kind: SheetLine["kind"]; title: string }[] = [
+type Kind = SheetLine["kind"];
+const KINDS: { kind: Kind; title: string }[] = [
   { kind: "milled_rice", title: t("Milled rice") },
   { kind: "palay", title: t("Palay") },
   { kind: "byproduct", title: t("By-products") },
 ];
 
-type Unit = "sacks" | "kg";
+// Lines of a mill with several branches whose stock has no branch on record.
+const NO_BRANCH = "none";
+const branchOf = (line: SheetLine) => line.branch_id ?? NO_BRANCH;
+
 // What was typed for one line: whole sacks and loose kilos (in kilos mode the
 // kilos are the whole count).
 type Entry = { sacks?: string; kg?: string };
-type Draft = { entries: Record<string, Entry>; note: string; unit: Unit; sackKg: string };
+type Draft = { entries: Record<string, Entry>; note: string; branch: string | null };
+
+// How to count, as it's being typed: each kind's default, and what a line changes.
+type Choices = {
+  defaults: Record<Kind, { unit: Unit; sackKg: string }>;
+  lines: Record<string, { unit?: Unit; sackKg?: string }>;
+};
+
+function fromApi(saved: CountChoices): Choices {
+  const fallback = (kind: Kind) => ({
+    unit: saved.defaults[kind]?.unit ?? ("sacks" as Unit),
+    sackKg: String(saved.defaults[kind]?.sack_kg ?? 50),
+  });
+  return {
+    defaults: {
+      milled_rice: fallback("milled_rice"),
+      palay: fallback("palay"),
+      byproduct: fallback("byproduct"),
+    },
+    lines: Object.fromEntries(
+      Object.entries(saved.lines).map(([id, c]) => [
+        id,
+        {
+          ...(c.unit ? { unit: c.unit } : {}),
+          ...(c.sack_kg ? { sackKg: String(c.sack_kg) } : {}),
+        },
+      ]),
+    ),
+  };
+}
+
+// A sack size still being typed isn't saved.
+const sackSize = (raw?: string) => {
+  const n = Number(raw);
+  return n > 0 && n <= 1000 ? { sack_kg: n } : {};
+};
+
+function toApi(choices: Choices): CountChoices {
+  return {
+    defaults: Object.fromEntries(
+      Object.entries(choices.defaults).map(([kind, c]) => [
+        kind,
+        { unit: c.unit, ...sackSize(c.sackKg) },
+      ]),
+    ),
+    lines: Object.fromEntries(
+      Object.entries(choices.lines).map(([id, c]) => [
+        id,
+        { ...(c.unit ? { unit: c.unit } : {}), ...sackSize(c.sackKg) },
+      ]),
+    ),
+  };
+}
+
+const pick = (line: SheetLine, choices: Choices) => {
+  const own = choices.lines[line.inventory_id];
+  const base = choices.defaults[line.kind];
+  return {
+    unit: own?.unit ?? base.unit,
+    sackKg: own?.sackKg ?? base.sackKg,
+    custom: own?.unit !== undefined || own?.sackKg !== undefined,
+  };
+};
 
 const blank = (e: Entry | undefined) => !e || ((e.sacks ?? "") === "" && (e.kg ?? "") === "");
 const totalKg = (e: Entry, unit: Unit, sackKg: number) =>
@@ -84,6 +160,7 @@ function CountCard({ count, manager }: { count: StockCount; manager: boolean }) 
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <span className="font-semibold text-primary">
           {day(count.date)}
+          {count.branch ? `, ${count.branch}` : ""}
           {count.counted_by ? `, by ${count.counted_by}` : ""}
         </span>
         {out.length === 0 ? (
@@ -159,22 +236,68 @@ function CountCard({ count, manager }: { count: StockCount; manager: boolean }) 
   );
 }
 
+function UnitSwitch({
+  label,
+  value,
+  labels,
+  small = false,
+  onChange,
+}: {
+  label: string;
+  value: Unit;
+  labels: Record<Unit, string>;
+  small?: boolean;
+  onChange: (unit: Unit) => void;
+}) {
+  return (
+    <div
+      role="radiogroup"
+      aria-label={label}
+      className="inline-flex rounded-xl p-0.5 ring-1 ring-soft"
+    >
+      {(["sacks", "kg"] as const).map((option) => (
+        <button
+          key={option}
+          type="button"
+          role="radio"
+          aria-checked={value === option}
+          onClick={() => onChange(option)}
+          className={`rounded-lg font-semibold transition-colors ${
+            small ? "px-2 py-1 text-xs" : "px-3 py-1.5 text-sm"
+          } ${
+            value === option
+              ? "bg-grad-brand text-white shadow-grad-glow"
+              : "text-secondary hover:text-primary"
+          }`}
+        >
+          {labels[option]}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 function CountRow({
   line,
   entry,
-  unit,
-  sackKg,
+  choice,
   onChange,
+  onUnit,
+  onSackKg,
+  onUseDefault,
   onEnter,
 }: {
   line: SheetLine;
   entry: Entry | undefined;
-  unit: Unit;
-  sackKg: number;
+  choice: ReturnType<typeof pick>;
   onChange: (entry: Entry) => void;
+  onUnit: (unit: Unit) => void;
+  onSackKg: (sackKg: string) => void;
+  onUseDefault: () => void;
   onEnter: (e: KeyboardEvent<HTMLInputElement>) => void;
 }) {
   const done = !blank(entry);
+  const { unit } = choice;
   const field = "input !py-2 text-right text-base tabular-nums";
   return (
     <li className="flex flex-wrap items-center gap-x-3 gap-y-2 py-3">
@@ -191,6 +314,37 @@ function CountRow({
         <span className="text-sm font-medium text-primary first-letter:uppercase">
           {line.item || line.label}
         </span>
+      </span>
+      <span className="flex flex-wrap items-center gap-2">
+        <UnitSwitch
+          small
+          label={t("{{label}}, count in", { label: line.label })}
+          value={unit}
+          labels={{ sacks: t("Sacks"), kg: t("Kilos") }}
+          onChange={onUnit}
+        />
+        {unit === "sacks" && (
+          <label className="flex items-center gap-1 text-xs text-secondary">
+            <input
+              aria-label={t("{{label}}, kilos per sack", { label: line.label })}
+              inputMode="decimal"
+              className="input !py-1 w-14 text-right text-xs tabular-nums"
+              value={choice.sackKg}
+              onChange={(e) => onSackKg(digits(e.target.value))}
+            />
+            {t("kg a sack")}
+          </label>
+        )}
+        {choice.custom && (
+          <button
+            type="button"
+            aria-label={t("{{label}}, use the default", { label: line.label })}
+            className="text-xs font-semibold text-secondary hover:text-primary"
+            onClick={onUseDefault}
+          >
+            {t("Use default")}
+          </button>
+        )}
       </span>
       <span className="flex items-center gap-2">
         {unit === "sacks" && (
@@ -224,67 +378,115 @@ function CountRow({
       </span>
       {unit === "sacks" && (
         <span className="w-24 text-right text-sm tabular-nums text-secondary" aria-live="polite">
-          {done ? `= ${kg(totalKg(entry!, unit, sackKg))}` : ""}
+          {done ? `= ${kg(totalKg(entry!, unit, Number(choice.sackKg) || 0))}` : ""}
         </span>
       )}
     </li>
   );
 }
 
-export default function StockCountPage() {
+function CountSheet({ data }: { data: PageData }) {
   const queryClient = useQueryClient();
-  const { canEdit } = useAccess();
-  const userId = useAuthStore((s) => s.user?.id) ?? "anyone";
-  const storeKey = `stock-count-draft:${userId}`;
-  const page = useQuery({ queryKey: ["stock-count"], queryFn: () => stockCountService.page() });
+  const user = useAuthStore((s) => s.user);
+  const storeKey = `stock-count-draft:${user?.id ?? "anyone"}`;
+  const topBarBranch = useBranchStore((s) => s.view);
+  const { sheet } = data;
 
   const [draft] = useState(() => loadDraft(storeKey));
   const [entries, setEntries] = useState<Record<string, Entry>>(draft.entries ?? {});
   const [note, setNote] = useState(draft.note ?? "");
-  const [unit, setUnit] = useState<Unit>(draft.unit ?? "sacks");
-  const [sackKg, setSackKg] = useState(draft.sackKg ?? "50");
+  const [picked, setPicked] = useState<string | null>(draft.branch ?? null);
+  const [choices, setChoices] = useState<Choices>(() => fromApi(data.choices));
   const sheetRef = useRef<HTMLElement>(null);
-  const perSack = Number(sackKg) || 0;
+
+  const branches = [...new Map(sheet.map((l) => [branchOf(l), l.branch ?? ""])).entries()]
+    .map(([value, name]) => ({ value, label: name || t("No branch") }))
+    .sort((a, b) => a.label.localeCompare(b.label));
+  const severalBranches = sheet.some((l) => l.branch) || branches.length > 1;
+  // What was picked here, else the top bar's branch, else the person's own.
+  const branch =
+    [picked, topBarBranch, user?.branch_id].find(
+      (id) => id && branches.some((b) => b.value === id),
+    ) ??
+    branches[0]?.value ??
+    NO_BRANCH;
+  const lines = sheet.filter((l) => branchOf(l) === branch);
 
   useEffect(() => {
     const started = Object.values(entries).some((e) => !blank(e)) || note.trim() !== "";
-    keepDraft(storeKey, started ? { entries, note, unit, sackKg } : null);
-  }, [storeKey, entries, note, unit, sackKg]);
+    keepDraft(storeKey, started ? { entries, note, branch: picked } : null);
+  }, [storeKey, entries, note, picked]);
+
+  const saveChoices = useMutation({
+    mutationFn: (next: CountChoices) => stockCountService.saveChoices(next),
+    onSuccess: (saved) =>
+      queryClient.setQueryData<PageData>(["stock-count"], (old) =>
+        old ? { ...old, choices: saved } : old,
+      ),
+  });
+  const { mutate: sendChoices } = saveChoices;
+  // Kept for the mill a moment after the last change, not on every keystroke.
+  const savedChoices = useRef(JSON.stringify(toApi(choices)));
+  useEffect(() => {
+    const next = toApi(choices);
+    const text = JSON.stringify(next);
+    if (text === savedChoices.current) return;
+    const timer = setTimeout(() => {
+      savedChoices.current = text;
+      sendChoices(next);
+    }, 600);
+    return () => clearTimeout(timer);
+  }, [choices, sendChoices]);
 
   const save = useMutation({
-    mutationFn: (sheet: SheetLine[]) =>
+    mutationFn: (counted: SheetLine[]) =>
       stockCountService.record({
-        lines: sheet
-          .filter((line) => !blank(entries[key(line)]))
-          .map((line) => ({
+        lines: counted.map((line) => {
+          const { unit, sackKg } = pick(line, choices);
+          return {
             kind: line.kind,
             inventory_id: line.inventory_id,
-            counted_kg: asDecimal(totalKg(entries[key(line)], unit, perSack)),
-          })),
+            counted_kg: asDecimal(totalKg(entries[key(line)], unit, Number(sackKg) || 0)),
+          };
+        }),
         note,
+        branch_id: branch === NO_BRANCH ? null : branch,
       }),
-    onSuccess: () => {
-      setEntries({});
+    onSuccess: (_, counted) => {
+      // Lines typed for another branch wait for that branch's count.
+      const done = new Set(counted.map(key));
+      setEntries((all) => Object.fromEntries(Object.entries(all).filter(([k]) => !done.has(k))));
       setNote("");
-      keepDraft(storeKey, null);
       void queryClient.invalidateQueries({ queryKey: ["stock-count"] });
     },
   });
 
-  // Switching to kilos folds the sacks in, so no count changes underneath.
-  const switchUnit = (next: Unit) => {
-    if (next === unit) return;
-    if (next === "kg") {
-      setEntries((all) =>
-        Object.fromEntries(
-          Object.entries(all).map(([k, e]) => [
-            k,
-            blank(e) ? e : { kg: asDecimal(totalKg(e, "sacks", perSack)) },
-          ]),
-        ),
-      );
-    }
-    setUnit(next);
+  // A line going from sacks to kilos folds its sacks in, so no count changes underneath.
+  const changeChoices = (next: Choices) => {
+    setEntries((all) => {
+      const folded = { ...all };
+      for (const line of sheet) {
+        const e = all[key(line)];
+        const before = pick(line, choices);
+        if (e && !blank(e) && before.unit === "sacks" && pick(line, next).unit === "kg") {
+          folded[key(line)] = { kg: asDecimal(totalKg(e, "sacks", Number(before.sackKg) || 0)) };
+        }
+      }
+      return folded;
+    });
+    setChoices(next);
+  };
+  const changeDefault = (kind: Kind, change: Partial<Choices["defaults"][Kind]>) =>
+    changeChoices({
+      ...choices,
+      defaults: { ...choices.defaults, [kind]: { ...choices.defaults[kind], ...change } },
+    });
+  const changeLine = (line: SheetLine, change: Choices["lines"][string] | null) => {
+    const { [line.inventory_id]: own, ...others } = choices.lines;
+    changeChoices({
+      ...choices,
+      lines: change ? { ...others, [line.inventory_id]: { ...own, ...change } } : others,
+    });
   };
 
   // Enter moves on to the next box, top to bottom, like a paper sheet.
@@ -297,6 +499,145 @@ export default function StockCountPage() {
     boxes[boxes.indexOf(e.currentTarget) + 1]?.focus();
   };
 
+  const counted = lines.filter((line) => !blank(entries[key(line)]));
+  const sacksWithoutSize = counted.some((line) => {
+    const { unit, sackKg } = pick(line, choices);
+    return unit === "sacks" && !(Number(sackKg) > 0);
+  });
+
+  return (
+    <section ref={sheetRef} aria-label={t("Count sheet")} className="card space-y-5">
+      {sheet.length === 0 ? (
+        <p className="text-sm text-secondary">{t("There's no stock on record to count.")}</p>
+      ) : (
+        <>
+          {severalBranches && (
+            <div className="max-w-xs">
+              <label htmlFor="stock-count-branch" className="form-label">
+                {t("Branch you're counting")}
+              </label>
+              <Select
+                id="stock-count-branch"
+                value={branch}
+                onChange={setPicked}
+                options={branches}
+              />
+            </div>
+          )}
+
+          {KINDS.map(({ kind, title }) => {
+            const ofKind = lines.filter((line) => line.kind === kind);
+            if (ofKind.length === 0) return null;
+            const done = ofKind.filter((line) => !blank(entries[key(line)])).length;
+            const base = choices.defaults[kind];
+            return (
+              <div key={kind} role="group" aria-label={title} className="space-y-2">
+                <div className="flex items-baseline justify-between">
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-muted">{title}</h3>
+                  <span className="text-xs text-muted tabular-nums">
+                    {t("{{done}} of {{linesCount}}", { done, linesCount: ofKind.length })}
+                  </span>
+                </div>
+                <div className="flex flex-wrap items-center gap-3">
+                  <UnitSwitch
+                    label={t("Default for {{title}}", { title })}
+                    value={base.unit}
+                    labels={{ sacks: t("Sacks + kg"), kg: t("Kilos only") }}
+                    onChange={(unit) => changeDefault(kind, { unit })}
+                  />
+                  {base.unit === "sacks" && (
+                    <label className="flex items-center gap-2 text-sm text-secondary">
+                      {t("One sack is")}
+                      <input
+                        aria-label={t("Kilos per sack, {{title}}", { title })}
+                        inputMode="decimal"
+                        className="input !py-1.5 w-20 text-right tabular-nums"
+                        value={base.sackKg}
+                        onChange={(e) => changeDefault(kind, { sackKg: digits(e.target.value) })}
+                      />
+                      {t("kg")}
+                    </label>
+                  )}
+                </div>
+                <ul className="divide-y divide-slate-100 dark:divide-slate-800">
+                  {ofKind.map((line) => (
+                    <CountRow
+                      key={key(line)}
+                      line={line}
+                      entry={entries[key(line)]}
+                      choice={pick(line, choices)}
+                      onChange={(entry) => setEntries((all) => ({ ...all, [key(line)]: entry }))}
+                      onUnit={(unit) => changeLine(line, { unit })}
+                      onSackKg={(sackKg) => changeLine(line, { sackKg })}
+                      onUseDefault={() => changeLine(line, null)}
+                      onEnter={nextBox}
+                    />
+                  ))}
+                </ul>
+              </div>
+            );
+          })}
+        </>
+      )}
+      <div>
+        <label htmlFor="stock-note" className="form-label">
+          {t("Note (optional)")}
+        </label>
+        <input
+          id="stock-note"
+          className="input"
+          maxLength={500}
+          value={note}
+          onChange={(e) => setNote(e.target.value)}
+        />
+      </div>
+      {save.isError && (
+        <p className="text-sm text-rose-600 dark:text-rose-400" role="alert">
+          {errorText(save.error, t("Couldn't save the count. Try again."))}
+        </p>
+      )}
+      {saveChoices.isError && (
+        <p className="text-sm text-rose-600 dark:text-rose-400" role="alert">
+          {errorText(saveChoices.error, t("Couldn't keep your sack and kilo choices."))}
+        </p>
+      )}
+      <div className="sticky bottom-3 z-10 -mx-2 flex items-center gap-3 rounded-xl glass-strong px-3 py-2.5 shadow-lg ring-1 ring-soft">
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-semibold text-primary tabular-nums">
+            {t("{{filled}} of {{sheetCount}} counted", {
+              filled: counted.length,
+              sheetCount: lines.length,
+            })}
+          </p>
+          <div className="mt-1 h-1.5 rounded-full bg-slate-200 dark:bg-slate-700">
+            <div
+              className="h-1.5 rounded-full bg-emerald-500 transition-[width]"
+              style={{ width: `${lines.length ? (counted.length / lines.length) * 100 : 0}%` }}
+            />
+          </div>
+          {sacksWithoutSize && (
+            <p className="mt-1 text-xs text-amber-700 dark:text-amber-400">
+              {t("Enter how many kilos one sack holds.")}
+            </p>
+          )}
+        </div>
+        <button
+          type="button"
+          className="btn-primary shrink-0"
+          disabled={counted.length === 0 || sacksWithoutSize || save.isPending}
+          onClick={() => save.mutate(counted)}
+        >
+          {save.isPending ? t("Saving…") : t("Save the count")}
+        </button>
+      </div>
+    </section>
+  );
+}
+
+export default function StockCountPage() {
+  const { canEdit } = useAccess();
+  const page = useQuery({ queryKey: ["stock-count"], queryFn: () => stockCountService.page() });
+
   if (page.isLoading) return <div className="card skeleton h-64" aria-busy="true" />;
   if (page.isError || !page.data) {
     return (
@@ -307,169 +648,16 @@ export default function StockCountPage() {
       </div>
     );
   }
-  const { sheet, tolerance_pct, manager, counts } = page.data;
-  const filled = sheet.filter((line) => !blank(entries[key(line)])).length;
-  const branches = [...new Set(sheet.map((line) => line.branch ?? ""))].sort();
-  const sacksWithoutSize = unit === "sacks" && perSack <= 0;
+  const { manager, counts } = page.data;
 
   return (
     <div className="space-y-6">
       <header>
         <h1 className="text-2xl font-bold text-primary">{t("Stock count")}</h1>
-        <p className="text-secondary mt-1 max-w-2xl">
-          {t(
-            "Count what's on the floor. The records stay hidden until it's saved, so the count stays honest. Lines out by more than {{tolerance_pct}}% go to the owner; stock is corrected in",
-            { tolerance_pct },
-          )}{" "}
-          <Link to="/inventory" className="link">
-            {t("Inventory")}
-          </Link>
-          .
-        </p>
       </header>
 
       {canEdit("inventory") ? (
-        <section ref={sheetRef} aria-label={t("Count sheet")} className="card space-y-5">
-          {sheet.length === 0 ? (
-            <p className="text-sm text-secondary">{t("There's no stock on record to count.")}</p>
-          ) : (
-            <>
-              <div className="flex flex-wrap items-center gap-3">
-                <div
-                  role="radiogroup"
-                  aria-label={t("Count in")}
-                  className="inline-flex rounded-xl p-1 ring-1 ring-soft"
-                >
-                  {(
-                    [
-                      ["sacks", t("Sacks + kg")],
-                      ["kg", t("Kilos only")],
-                    ] as const
-                  ).map(([value, label]) => (
-                    <button
-                      key={value}
-                      type="button"
-                      role="radio"
-                      aria-checked={unit === value}
-                      onClick={() => switchUnit(value)}
-                      className={`rounded-lg px-3 py-1.5 text-sm font-semibold transition-colors ${
-                        unit === value
-                          ? "bg-grad-brand text-white shadow-grad-glow"
-                          : "text-secondary hover:text-primary"
-                      }`}
-                    >
-                      {label}
-                    </button>
-                  ))}
-                </div>
-                {unit === "sacks" && (
-                  <label className="flex items-center gap-2 text-sm text-secondary">
-                    {t("One sack is")}
-                    <input
-                      aria-label={t("Kilos per sack")}
-                      inputMode="decimal"
-                      className="input !py-1.5 w-20 text-right tabular-nums"
-                      value={sackKg}
-                      onChange={(e) => setSackKg(digits(e.target.value))}
-                    />
-                    {t("kg")}
-                  </label>
-                )}
-              </div>
-
-              {branches.map((branch) => (
-                <div key={branch || "all"} className="space-y-4">
-                  {branch && (
-                    <h2 className="text-lg font-bold text-primary border-b border-soft pb-1">
-                      {branch}
-                    </h2>
-                  )}
-                  {KINDS.map(({ kind, title }) => {
-                    const lines = sheet.filter(
-                      (line) => line.kind === kind && (line.branch ?? "") === branch,
-                    );
-                    if (lines.length === 0) return null;
-                    const done = lines.filter((line) => !blank(entries[key(line)])).length;
-                    return (
-                      <div
-                        key={kind}
-                        role="group"
-                        aria-label={branch ? `${title}, ${branch}` : title}
-                      >
-                        <div className="flex items-baseline justify-between">
-                          <h3 className="text-xs font-bold uppercase tracking-wider text-muted">
-                            {title}
-                          </h3>
-                          <span className="text-xs text-muted tabular-nums">
-                            {t("{{done}} of {{linesCount}}", { done, linesCount: lines.length })}
-                          </span>
-                        </div>
-                        <ul className="divide-y divide-slate-100 dark:divide-slate-800">
-                          {lines.map((line) => (
-                            <CountRow
-                              key={key(line)}
-                              line={line}
-                              entry={entries[key(line)]}
-                              unit={unit}
-                              sackKg={perSack}
-                              onChange={(entry) =>
-                                setEntries((all) => ({ ...all, [key(line)]: entry }))
-                              }
-                              onEnter={nextBox}
-                            />
-                          ))}
-                        </ul>
-                      </div>
-                    );
-                  })}
-                </div>
-              ))}
-            </>
-          )}
-          <div>
-            <label htmlFor="stock-note" className="form-label">
-              {t("Note (optional)")}
-            </label>
-            <input
-              id="stock-note"
-              className="input"
-              maxLength={500}
-              value={note}
-              onChange={(e) => setNote(e.target.value)}
-            />
-          </div>
-          {save.isError && (
-            <p className="text-sm text-rose-600 dark:text-rose-400" role="alert">
-              {errorText(save.error, t("Couldn't save the count. Try again."))}
-            </p>
-          )}
-          <div className="sticky bottom-3 z-10 -mx-2 flex items-center gap-3 rounded-xl glass-strong px-3 py-2.5 shadow-lg ring-1 ring-soft">
-            <div className="min-w-0 flex-1">
-              <p className="text-sm font-semibold text-primary tabular-nums">
-                {t("{{filled}} of {{sheetCount}} counted", { filled, sheetCount: sheet.length })}
-              </p>
-              <div className="mt-1 h-1.5 rounded-full bg-slate-200 dark:bg-slate-700">
-                <div
-                  className="h-1.5 rounded-full bg-emerald-500 transition-[width]"
-                  style={{ width: `${sheet.length ? (filled / sheet.length) * 100 : 0}%` }}
-                />
-              </div>
-              {sacksWithoutSize && (
-                <p className="mt-1 text-xs text-amber-700 dark:text-amber-400">
-                  {t("Enter how many kilos one sack holds.")}
-                </p>
-              )}
-            </div>
-            <button
-              type="button"
-              className="btn-primary shrink-0"
-              disabled={filled === 0 || sacksWithoutSize || save.isPending}
-              onClick={() => save.mutate(sheet)}
-            >
-              {save.isPending ? t("Saving…") : t("Save the count")}
-            </button>
-          </div>
-        </section>
+        <CountSheet data={page.data} />
       ) : (
         <p className="text-sm text-secondary">
           {t("Only staff who manage the stock can count it.")}

@@ -22,6 +22,7 @@ from ..core.security import invalidate_company_features
 from ..core.tenancy import tenant_session
 from ..models.company import Branch, Company
 from ..models.costs import Expense
+from ..models.feedback import AppFeedback
 from ..models.legal import LegalAcceptance
 from ..models.milling import MillingBatch
 from ..models.paddy import PalayPurchase
@@ -756,6 +757,48 @@ class AdminService(BaseService):
             made_at=summary.created_at[:10],
         )
         return summary.as_dict()
+
+    def list_feedback(self, rating: int | None = None) -> dict:
+        """What the mills said in Settings > Feedback: the whole picture, and the
+        latest responses (of one rating, when given)."""
+        rows = self.db.query(AppFeedback.rating, AppFeedback.reasons).all()
+        by_rating = {str(n): 0 for n in range(1, 6)}
+        reasons: dict[str, int] = {}
+        for row_rating, row_reasons in rows:
+            by_rating[str(row_rating)] += 1
+            for code in row_reasons:
+                reasons[code] = reasons.get(code, 0) + 1
+
+        query = self.db.query(AppFeedback, Company.name, User.full_name, User.username)
+        query = query.join(Company, Company.id == AppFeedback.company_id)
+        query = query.outerjoin(User, User.id == AppFeedback.user_id)
+        if rating is not None:
+            query = query.filter(AppFeedback.rating == rating)
+        items = query.order_by(AppFeedback.created_at.desc()).limit(200).all()
+        return {
+            "summary": {
+                "count": len(rows),
+                "average": round(sum(r for r, _ in rows) / len(rows), 2) if rows else None,
+                "by_rating": by_rating,
+                "reasons": [
+                    {"code": code, "count": count}
+                    for code, count in sorted(reasons.items(), key=lambda item: -item[1])
+                ],
+            },
+            "items": [
+                {
+                    "id": str(feedback.id),
+                    "company_id": str(feedback.company_id),
+                    "company_name": company_name,
+                    "user_name": full_name or username,
+                    "rating": feedback.rating,
+                    "reasons": feedback.reasons,
+                    "other_text": feedback.other_text,
+                    "created_at": feedback.created_at.isoformat(),
+                }
+                for feedback, company_name, full_name, username in items
+            ],
+        }
 
     def list_all_users(self) -> list[dict]:
         db = self.db

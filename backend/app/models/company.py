@@ -69,6 +69,10 @@ class Company(Base, TimestampMixin):
     # The Savings page's settings, the Boss's alone; what's not here is the default
     # in services/savings_formulas.py.
     savings_settings: Mapped[dict | None] = mapped_column(JSONB)
+    # How the Stock count page counts: per kind of stock and per stock line, sacks
+    # or kilos and the kilos in a sack, as {"defaults": {...}, "lines": {...}}.
+    # NULL until changed: sacks of 50 kg.
+    stock_count_settings: Mapped[dict | None] = mapped_column(JSONB)
     provisioning_requested_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     provisioned_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     provisioning_error: Mapped[str | None] = mapped_column(String(120))

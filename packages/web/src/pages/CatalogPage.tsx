@@ -22,7 +22,7 @@ type List = {
   key: string;
   label: string;
   /** What it's for, one line under the tabs. */
-  what: string;
+  what?: string;
   feature: string;
   /** The page whose edit right it needs. */
   section: AppSection;
@@ -34,7 +34,6 @@ const LISTS: List[] = [
   {
     key: "varieties",
     label: t("Varieties"),
-    what: t("The varieties and grades you buy, mill and sell. Hide one you no longer handle."),
     feature: "paddy",
     section: "paddy",
     render: () => <VarietiesList />,
@@ -122,11 +121,6 @@ export default function CatalogPage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-primary">{t("Catalog")}</h1>
-        <p className="text-secondary mt-1 max-w-2xl">
-          {t(
-            "The lists you fill in once and every page picks from: varieties, by-products, categories, machines, trucks, the people you deal with.",
-          )}
-        </p>
       </div>
 
       {mine.length === 0 ? (
@@ -156,7 +150,7 @@ export default function CatalogPage() {
           </div>
           {current && (
             <section role="tabpanel" aria-label={current.label} className="space-y-3">
-              <p className="text-sm text-secondary">{current.what}</p>
+              {current.what && <p className="text-sm text-secondary">{current.what}</p>}
               {current.render()}
             </section>
           )}
@@ -191,7 +185,8 @@ export default function CatalogPage() {
                     <ul className="mt-1 space-y-1 text-sm text-secondary">
                       {lists.map((l) => (
                         <li key={l.key}>
-                          <span className="font-medium text-primary/70">{l.label}</span>: {l.what}
+                          <span className="font-medium text-primary/70">{l.label}</span>
+                          {l.what && `: ${l.what}`}
                         </li>
                       ))}
                     </ul>

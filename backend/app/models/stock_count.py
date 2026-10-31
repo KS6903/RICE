@@ -26,6 +26,8 @@ class StockCount(Base, TimestampMixin):
     company_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("companies.id", ondelete="CASCADE"), nullable=False
     )
+    # The branch counted, when the mill has several.
+    branch_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("branches.id"))
     count_date: Mapped[date] = mapped_column(Date, nullable=False)
     note: Mapped[str | None] = mapped_column(String(500))
     counted_by: Mapped[uuid.UUID | None] = mapped_column(

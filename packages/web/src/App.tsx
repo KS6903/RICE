@@ -55,6 +55,7 @@ const AdminTenantDetail = lazy(() => import("./pages/admin/AdminTenantDetail"));
 const AdminUsers = lazy(() => import("./pages/admin/AdminUsers"));
 const AdminUpgradeRequests = lazy(() => import("./pages/admin/AdminUpgradeRequests"));
 const AdminSettingsPage = lazy(() => import("./pages/admin/AdminSettingsPage"));
+const AdminFeedback = lazy(() => import("./pages/admin/AdminFeedback"));
 const LegalPage = lazy(() => import("./pages/LegalPage"));
 const RetrieveDataPage = lazy(() => import("./pages/RetrieveDataPage"));
 
@@ -194,6 +195,7 @@ function AppRoutes() {
         <Route path="tenants/:id" element={<LazyPage component={AdminTenantDetail} />} />
         <Route path="users" element={<LazyPage component={AdminUsers} />} />
         <Route path="upgrade-requests" element={<LazyPage component={AdminUpgradeRequests} />} />
+        <Route path="feedback" element={<LazyPage component={AdminFeedback} />} />
         <Route path="settings" element={<LazyPage component={AdminSettingsPage} />} />
       </Route>
 

@@ -225,6 +225,11 @@ def missing_subscription_count(svc: AdminService = Depends(get_admin_service)):
 # ── Upgrade-request inbox ─────────────────────────────────────────────────────
 
 
+@router.get("/feedback")
+def list_feedback(rating: int | None = None, svc: AdminService = Depends(get_admin_service)):
+    return svc.list_feedback(rating)
+
+
 @router.get("/upgrade-requests")
 def list_upgrade_requests(status_filter: str | None = "pending", svc: AdminService = Depends(get_admin_service)):
     return svc.list_upgrade_requests(status_filter)

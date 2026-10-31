@@ -40,6 +40,7 @@ import {
   Sun,
   Moon,
   Download,
+  MessageSquare,
 } from "lucide-react";
 import { addDays, differenceInCalendarDays, format, parseISO, subDays } from "date-fns";
 import { useCurrentPlan } from "../hooks/useFeature";
@@ -49,6 +50,7 @@ import ActivityLogList from "../components/activity/ActivityLogList";
 import BackupCodes from "../components/BackupCodes";
 import TotpSetup from "../components/TotpSetup";
 import DataExport from "../components/DataExport";
+import FeedbackTab from "../components/FeedbackTab";
 import ConfirmDialog from "../components/ConfirmDialog";
 import DeviceSessionCard from "../components/DeviceSessionCard";
 import AccountClosureCard from "../components/AccountClosureCard";
@@ -68,7 +70,8 @@ type Tab =
   | "profile"
   | "appearance"
   | "password"
-  | "sessions";
+  | "sessions"
+  | "feedback";
 
 const LABEL = "block text-sm font-semibold text-secondary mb-1.5";
 const TABLE_HEAD =
@@ -100,6 +103,7 @@ export default function SettingsPage() {
     { key: "appearance", label: t("Appearance"), icon: Palette },
     { key: "password", label: t("Password"), icon: KeyRound },
     { key: "sessions", label: t("Devices"), icon: MonitorSmartphone },
+    { key: "feedback", label: t("Feedback"), icon: MessageSquare },
   ];
 
   return (
@@ -159,6 +163,7 @@ export default function SettingsPage() {
           {tab === "appearance" && <AppearanceTab />}
           {tab === "password" && <PasswordTab />}
           {tab === "sessions" && <SessionsTab />}
+          {tab === "feedback" && <FeedbackTab />}
         </main>
       </div>
     </div>

@@ -67,13 +67,6 @@ function VarietyRow({
         )}
       </td>
       <td className="px-4 py-3">
-        {v.is_active ? (
-          <span className="badge-green">{t("Shown")}</span>
-        ) : (
-          <span className="badge-gray">{t("Hidden")}</span>
-        )}
-      </td>
-      <td className="px-4 py-3">
         <div className="flex justify-end gap-4">
           <button
             type="button"
@@ -157,7 +150,7 @@ function VarietyEditRow({
           onChange={(e) => setEdit({ ...edit, recovery: e.target.value })}
         />
       </td>
-      <td className="px-4 py-2.5" colSpan={3}>
+      <td className="px-4 py-2.5" colSpan={2}>
         <div className="flex justify-end gap-2">
           <button type="button" onClick={onCancel} className="btn-secondary">
             {t("Cancel")}
@@ -276,11 +269,6 @@ export function VarietiesList() {
 
   return (
     <div className="space-y-4">
-      <p className="text-sm text-secondary">
-        {t(
-          "Palay and rice have their own lists. Add your own varieties, or edit the default ones (NSIC Rc 222 and the rest for palay, Dinorado and the rest for rice). Hide a variety you don't use: it leaves the lists you pick from until you unhide it.",
-        )}
-      </p>
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div role="group" aria-label={t("Variety list")} className="flex gap-2">
           {(
@@ -376,15 +364,7 @@ export function VarietiesList() {
         <table className="w-full text-sm">
           <thead className="bg-gradient-to-r from-emerald-50/80 via-cyan-50/60 to-violet-50/80 dark:from-emerald-900/20 dark:via-cyan-900/10 dark:to-violet-900/20 border-b border-soft">
             <tr>
-              {[
-                t("Code"),
-                t("Name"),
-                t("Category"),
-                t("Recovery %"),
-                t("Source"),
-                t("Status"),
-                "",
-              ].map((h) => (
+              {[t("Code"), t("Name"), t("Category"), t("Recovery %"), t("Source"), ""].map((h) => (
                 <th key={h} className={TABLE_HEAD}>
                   {h}
                 </th>
@@ -395,7 +375,7 @@ export function VarietiesList() {
             {rows(shown)}
             {shown.length === 0 && (
               <tr>
-                <td colSpan={7} className="px-4 py-8 text-center text-muted font-medium">
+                <td colSpan={6} className="px-4 py-8 text-center text-muted font-medium">
                   {t("No varieties shown")}
                 </td>
               </tr>

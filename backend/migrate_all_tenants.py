@@ -51,6 +51,8 @@ _extra_ddl: list[str] = [
         f"ON {table} (company_id, canva_color_hex) WHERE canva_color_hex IS NOT NULL"
         for table in ("suppliers", "customers", "agents", "millers")
     ),
+    # The branch a stock count was of, when the mill has several.
+    "ALTER TABLE stock_counts ADD COLUMN IF NOT EXISTS branch_id UUID REFERENCES branches(id)",
     # Failed notification emails are retried (notification_service.RETRY_AFTER).
     "ALTER TABLE notifications ADD COLUMN IF NOT EXISTS email_attempts SMALLINT NOT NULL DEFAULT 0",
     "ALTER TABLE notifications ADD COLUMN IF NOT EXISTS email_retry_at TIMESTAMPTZ",

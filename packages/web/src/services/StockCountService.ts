@@ -9,11 +9,23 @@ export type SheetLine = {
   /** The label in parts: the item alone, and the branch when there are several. */
   item: string;
   branch: string | null;
+  /** Set only when the mill has several branches. */
+  branch_id: string | null;
+};
+
+export type CountUnit = "sacks" | "kg";
+/** How a line or kind of stock is counted; what's left out follows the default. */
+export type CountChoice = { unit?: CountUnit; sack_kg?: number };
+export type CountChoices = {
+  defaults: Partial<Record<SheetLine["kind"], CountChoice>>;
+  /** By inventory_id. */
+  lines: Record<string, CountChoice>;
 };
 
 export type StockCount = {
   id: string;
   date: string;
+  branch: string | null;
   note: string | null;
   counted_by: string | null;
   needs_review: boolean;
@@ -34,6 +46,7 @@ export type StockCountPage = {
   sheet: SheetLine[];
   tolerance_pct: number;
   manager: boolean;
+  choices: CountChoices;
   counts: StockCount[];
 };
 
@@ -47,8 +60,13 @@ export class StockCountService {
   record(body: {
     lines: { kind: SheetLine["kind"]; inventory_id: string; counted_kg: string }[];
     note: string;
+    branch_id: string | null;
   }): Promise<StockCount> {
     return this.http.post("/stock-counts/", body).then((r) => r.data);
+  }
+
+  saveChoices(choices: CountChoices): Promise<CountChoices> {
+    return this.http.put("/stock-counts/choices", choices).then((r) => r.data);
   }
 
   review(id: string, note: string): Promise<StockCount> {

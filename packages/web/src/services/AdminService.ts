@@ -48,6 +48,25 @@ export type TenantLegalAcceptances = {
   not_accepted_current: LedgerUser[];
 };
 
+export type AdminFeedbackPage = {
+  summary: {
+    count: number;
+    average: number | null;
+    by_rating: Record<string, number>;
+    reasons: { code: string; count: number }[];
+  };
+  items: {
+    id: string;
+    company_id: string;
+    company_name: string;
+    user_name: string | null;
+    rating: number;
+    reasons: string[];
+    other_text: string | null;
+    created_at: string;
+  }[];
+};
+
 export class AdminService {
   constructor(private http = api) {}
 
@@ -156,6 +175,13 @@ export class AdminService {
   }
   rejectRequest(id: string, body: Record<string, unknown> = {}): Promise<any> {
     return this.http.post(`/admin/upgrade-requests/${id}/reject`, body).then((r) => r.data);
+  }
+
+  // ── feedback ────────────────────────────────────────────────────────────────
+  listFeedback(rating: number | null): Promise<AdminFeedbackPage> {
+    return this.http
+      .get("/admin/feedback", { params: rating ? { rating } : {} })
+      .then((r) => r.data);
   }
 
   // ── users ───────────────────────────────────────────────────────────────────

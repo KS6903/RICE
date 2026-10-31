@@ -19,6 +19,7 @@ from ..automations import actions, stock_count
 from ..core.database import get_db
 from ..core.security import get_current_user, require_feature, require_section_access
 from ..core.timezones import tenant_zone
+from ..models.company import Branch
 from ..models.stock_count import StockCount
 from ..models.user import User
 
@@ -35,6 +36,19 @@ class LineIn(BaseModel):
 class CountIn(BaseModel):
     lines: list[LineIn] = Field(min_length=1, max_length=500)
     note: str = Field("", max_length=500)
+    branch_id: uuid.UUID | None = None
+
+
+class Choice(BaseModel):
+    """How one line or kind of stock is counted; what's left out follows the default."""
+
+    unit: Literal["sacks", "kg"] | None = None
+    sack_kg: float | None = Field(None, gt=0, le=1000)
+
+
+class ChoicesIn(BaseModel):
+    defaults: dict[Literal["milled_rice", "palay", "byproduct"], Choice] = {}
+    lines: dict[uuid.UUID, Choice] = Field(default_factory=dict, max_length=5000)
 
 
 class ReviewIn(BaseModel):
@@ -45,12 +59,13 @@ def _today(user) -> date:
     return datetime.now(tenant_zone(user.company.timezone)).date()
 
 
-def _out(count: StockCount, tolerance: float, users: dict[uuid.UUID, User]) -> dict:
+def _out(count: StockCount, tolerance: float, users: dict[uuid.UUID, User], branches: dict[uuid.UUID, str]) -> dict:
     counter = users.get(count.counted_by) if count.counted_by else None
     reviewer = users.get(count.reviewed_by) if count.reviewed_by else None
     return {
         "id": str(count.id),
         "date": count.count_date.isoformat(),
+        "branch": branches.get(count.branch_id) if count.branch_id else None,
         "note": count.note,
         "counted_by": actions.name(counter) if counter else None,
         "needs_review": stock_count.needs_review(count, tolerance),
@@ -73,11 +88,16 @@ def _users(db: Session, company_id) -> dict[uuid.UUID, User]:
     return {u.id: u for u in db.query(User).filter(User.company_id == company_id)}
 
 
+def _branches(db: Session, company_id) -> dict[uuid.UUID, str]:
+    return {b.id: b.name for b in db.query(Branch).filter(Branch.company_id == company_id)}
+
+
 @router.get("/")
 def counts_and_sheet(current_user=Depends(get_current_user), db: Session = Depends(get_db)):
     _, params = stock_count.params_for(db)
     counts = db.query(StockCount).order_by(StockCount.count_date.desc(), StockCount.created_at.desc()).limit(12).all()
     users = _users(db, current_user.company_id)
+    branches = _branches(db, current_user.company_id)
     return {
         # No recorded quantities: a blind count.
         "sheet": [
@@ -87,23 +107,40 @@ def counts_and_sheet(current_user=Depends(get_current_user), db: Session = Depen
                 "label": line.label,
                 "item": line.item,
                 "branch": line.branch,
+                "branch_id": str(line.branch_id) if line.branch_id else None,
             }
             for line in stock_count.sheet(db, current_user.company_id)
         ],
         "tolerance_pct": params.tolerance_pct,
         "manager": actions.is_manager(current_user),
-        "counts": [_out(c, params.tolerance_pct, users) for c in counts],
+        "choices": current_user.company.stock_count_settings or {"defaults": {}, "lines": {}},
+        "counts": [_out(c, params.tolerance_pct, users, branches) for c in counts],
     }
+
+
+@router.put("/choices", dependencies=write)
+def save_choices(body: ChoicesIn, current_user=Depends(get_current_user), db: Session = Depends(get_db)):
+    choices = body.model_dump(mode="json", exclude_none=True)
+    current_user.company.stock_count_settings = choices
+    db.commit()
+    return choices
 
 
 @router.post("/", status_code=status.HTTP_201_CREATED, dependencies=write)
 def record_count(body: CountIn, current_user=Depends(get_current_user), db: Session = Depends(get_db)):
-    on_sheet = {(line.kind, line.inventory_id) for line in stock_count.sheet(db, current_user.company_id)}
+    lines = stock_count.sheet(db, current_user.company_id)
+    on_sheet = {(line.kind, line.inventory_id) for line in lines}
     counted: dict[tuple[str, uuid.UUID], Decimal] = {
         (line.kind, line.inventory_id): line.counted_kg for line in body.lines
     }
     if not set(counted) <= on_sheet:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Some lines aren't on the stock sheet.")
+    if body.branch_id is not None and any(
+        line.branch_id != body.branch_id for line in lines if (line.kind, line.inventory_id) in counted
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Some lines aren't in the branch being counted."
+        )
     count = stock_count.save(
         db,
         current_user.company,
@@ -111,11 +148,13 @@ def record_count(body: CountIn, current_user=Depends(get_current_user), db: Sess
         day=_today(current_user),
         counted=counted,
         note=body.note.strip() or None,
+        branch_id=body.branch_id,
     )
     db.commit()
     db.refresh(count)
     _, params = stock_count.params_for(db)
-    return _out(count, params.tolerance_pct, _users(db, current_user.company_id))
+    company_id = current_user.company_id
+    return _out(count, params.tolerance_pct, _users(db, company_id), _branches(db, company_id))
 
 
 @router.post("/{count_id}/review")
@@ -130,4 +169,5 @@ def review(count_id: uuid.UUID, body: ReviewIn, current_user=Depends(get_current
     count.review_note = body.note.strip()
     db.commit()
     _, params = stock_count.params_for(db)
-    return _out(count, params.tolerance_pct, _users(db, current_user.company_id))
+    company_id = current_user.company_id
+    return _out(count, params.tolerance_pct, _users(db, company_id), _branches(db, company_id))

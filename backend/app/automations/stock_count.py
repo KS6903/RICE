@@ -44,6 +44,8 @@ class SheetLine:
     # The label in parts, so the sheet can group by branch and kind.
     item: str = ""
     branch: str | None = None
+    # Only when the mill has several branches: there's nothing to pick otherwise.
+    branch_id: uuid.UUID | None = None
 
 
 def sheet(db: Session, company_id: uuid.UUID) -> list[SheetLine]:
@@ -56,7 +58,9 @@ def sheet(db: Session, company_id: uuid.UUID) -> list[SheetLine]:
     def line(kind: str, row, kind_name: str, item: str) -> SheetLine:
         branch = branches.get(row.branch_id) if many else None
         label = f"{kind_name}, {item}" + (f", {branch}" if branch else "")
-        return SheetLine(kind, row.id, label, Decimal(row.quantity_kg or 0), item, branch)
+        return SheetLine(
+            kind, row.id, label, Decimal(row.quantity_kg or 0), item, branch, row.branch_id if many else None
+        )
 
     lines = [
         line("milled_rice", r, "Milled rice", rice_name(names.get(r.variety_id), r.grade_name))
@@ -101,12 +105,13 @@ def save(
     day: date,
     counted: dict[tuple[str, uuid.UUID], Decimal],
     note: str | None,
+    branch_id: uuid.UUID | None = None,
 ) -> StockCount:
     """Record a count, taking each line's recorded quantity now. Lines not on
     the sheet are refused by the caller; lines left out weren't counted.
     Tells the owner when lines are out. Doesn't commit."""
     by_key = {(line.kind, line.inventory_id): line for line in sheet(db, company.id)}
-    count = StockCount(company_id=company.id, count_date=day, note=note, counted_by=user.id)
+    count = StockCount(company_id=company.id, branch_id=branch_id, count_date=day, note=note, counted_by=user.id)
     for key, quantity in counted.items():
         line = by_key[key]
         count.lines.append(

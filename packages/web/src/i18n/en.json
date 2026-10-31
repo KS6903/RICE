@@ -45,6 +45,8 @@
   "{{count}} people have this role. To delete it, give them another role first._other": "{{count}} people have this role. To delete it, give them another role first.",
   "{{count}} tenants without a subscription_one": "{{count}} tenant without a subscription",
   "{{count}} tenants without a subscription_other": "{{count}} tenants without a subscription",
+  "{{count}} responses_one": "{{count}} response",
+  "{{count}} responses_other": "{{count}} responses",
   "{{count}} users. Your plan has no user limit._one": "{{count}} user. Your plan has no user limit.",
   "{{count}} users. Your plan has no user limit._other": "{{count}} users. Your plan has no user limit.",
   "{{count}} users_one": "{{count}} user",
