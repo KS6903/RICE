@@ -24,6 +24,7 @@ export default function RecordDryingDialog({
   const qc = useQueryClient();
   const [weight, setWeight] = useState("");
   const [moisture, setMoisture] = useState("");
+  const [cost, setCost] = useState("");
   const [attempted, setAttempted] = useState(false);
 
   const save = useMutation({
@@ -31,6 +32,7 @@ export default function RecordDryingDialog({
       paddyService.recordDried(purchase.id, line.id, {
         dried_weight_kg: parseFloat(weight),
         dried_moisture_pct: parseFloat(moisture),
+        drying_cost: cost ? parseFloat(cost) : null,
       }),
     onSuccess: () => {
       for (const key of [
@@ -108,6 +110,16 @@ export default function RecordDryingDialog({
             />
           </FieldCaption>
         </div>
+        <FieldCaption label={t("What the drying cost (₱)")}>
+          <input
+            className="input"
+            type="number"
+            min={0}
+            placeholder={t("Optional")}
+            value={cost}
+            onChange={(e) => setCost(e.target.value)}
+          />
+        </FieldCaption>
         <p className="text-sm text-secondary">
           {t("The palay in stock becomes this weight, and the line is marked dry and completed.")}
         </p>

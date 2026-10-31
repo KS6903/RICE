@@ -181,7 +181,11 @@ def variety_economics(ctx: RecipeContext, days: int = 30) -> list[dict[str, Any]
         for vid, kg_, cost, moist in db.query(
             PalayPurchaseItem.variety_id,
             func.sum(net),
-            func.sum(net / KG_PER_CAVAN * PalayPurchaseItem.price_per_cavan),
+            func.sum(
+                func.coalesce(PalayPurchaseItem.payable_weight_kg, net)
+                / KG_PER_CAVAN
+                * PalayPurchaseItem.price_per_cavan
+            ),
             func.sum(net * PalayPurchaseItem.moisture_content_pct) / func.nullif(func.sum(net), 0),
         )
         .join(PalayPurchase, PalayPurchase.id == PalayPurchaseItem.purchase_id)

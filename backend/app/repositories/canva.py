@@ -154,7 +154,7 @@ class PalletRepository(BaseRepository[Pallet]):
         """Pallets with batches → variety AND grade eager-loaded (canva + rack-view)."""
         return (
             self.db.query(Pallet)
-            .filter(Pallet.layout_id == layout_id)
+            .filter(Pallet.layout_id == layout_id, Pallet.status != "dispatched")
             .options(
                 joinedload(Pallet.batches).joinedload(RiceBatch.variety),
                 joinedload(Pallet.batches).joinedload(RiceBatch.grade),
@@ -166,7 +166,7 @@ class PalletRepository(BaseRepository[Pallet]):
         """Pallets with batches → variety eager-loaded (aging-report)."""
         return (
             self.db.query(Pallet)
-            .filter(Pallet.layout_id == layout_id)
+            .filter(Pallet.layout_id == layout_id, Pallet.status != "dispatched")
             .options(joinedload(Pallet.batches).joinedload(RiceBatch.variety))
             .all()
         )

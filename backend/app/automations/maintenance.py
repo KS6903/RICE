@@ -64,11 +64,13 @@ def usage(db: Session, e: Equipment, today: date, zone: ZoneInfo) -> Usage:
     """Milling from the day of the last service on: counting that whole day
     errs towards servicing early, never late."""
     since = datetime.combine(e.last_service_on, time(0, 0), tzinfo=zone)
-    finished = (
+    finished = [
         MillingBatch.status == "completed",
         MillingBatch.start_datetime >= since,
         MillingBatch.end_datetime.isnot(None),
-    )
+    ]
+    if e.milling_equipment_id is not None:
+        finished.append(MillingBatch.equipment_id == e.milling_equipment_id)
     seconds = (
         db.query(func.sum(func.extract("epoch", MillingBatch.end_datetime - MillingBatch.start_datetime)))
         .filter(*finished)

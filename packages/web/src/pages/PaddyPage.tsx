@@ -427,6 +427,16 @@ export default function PaddyPage() {
                           onChange={text(idx, "moisture_content_pct")}
                         />
                       </FieldCaption>
+                      <FieldCaption label={t("Impurities %")}>
+                        <input
+                          className="input"
+                          placeholder={t("Optional")}
+                          type="number"
+                          min={0}
+                          value={item.impurity_pct}
+                          onChange={text(idx, "impurity_pct")}
+                        />
+                      </FieldCaption>
                       <FieldCaption label={t("Price per kg (₱)")} error={flag(problems.price)}>
                         <input
                           className="input"

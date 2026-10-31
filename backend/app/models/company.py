@@ -66,6 +66,9 @@ class Company(Base, TimestampMixin):
     # changed, which is the defaults in services/profit_service.py.
     profit_target_margin_pct: Mapped[Decimal | None] = mapped_column(Numeric(5, 2))
     staff_profit_pct: Mapped[Decimal | None] = mapped_column(Numeric(5, 2))
+    # The Savings page's settings, the Boss's alone; what's not here is the default
+    # in services/savings_formulas.py.
+    savings_settings: Mapped[dict | None] = mapped_column(JSONB)
     provisioning_requested_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     provisioned_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     provisioning_error: Mapped[str | None] = mapped_column(String(120))

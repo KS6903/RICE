@@ -24,6 +24,7 @@ from ..repositories.inventory import (
     MilledRiceInventoryRepository,
 )
 from ..repositories.paddy import PalayInventoryRepository
+from ..services import stock_ledger
 from ..services.base import BaseService
 from ..services.byproduct_kind_service import ByproductKindService
 from ..services.warehouses import warehouse_for, warehouse_map
@@ -142,7 +143,10 @@ class InventoryService(BaseService):
 
         with self.transaction():
             if inv:
+                before = inv.quantity_kg
                 inv.quantity_kg = max(Decimal("0"), inv.quantity_kg + data.quantity_kg)
+                if data.inventory_type != "palay":
+                    stock_ledger.record(self.db, self.current_user, inv, inv.quantity_kg - before, "adjustment")
         if inv:
             self.db.refresh(inv)
         return {"adjusted": True, "new_quantity_kg": float(inv.quantity_kg) if inv else 0}
@@ -203,6 +207,7 @@ class InventoryService(BaseService):
                     )
                     self.db.add(inv)
                 inv.quantity_kg = inv.quantity_kg + data.quantity_kg
+                stock_ledger.record(self.db, self.current_user, inv, data.quantity_kg, "stock_added")
 
             elif data.inventory_type == "byproduct":
                 # By-product type is a free-form slug so owners can introduce their
@@ -224,6 +229,7 @@ class InventoryService(BaseService):
                     )
                     self.db.add(inv)
                 inv.quantity_kg = inv.quantity_kg + data.quantity_kg
+                stock_ledger.record(self.db, self.current_user, inv, data.quantity_kg, "stock_added")
 
             else:
                 raise ValidationError("inventory_type must be one of: palay, milled_rice, byproduct.")

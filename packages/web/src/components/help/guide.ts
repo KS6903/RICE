@@ -18,6 +18,9 @@ export const PAGE_WHAT: Record<string, string> = {
   "/profit": t(
     "From your recovery and costs, the price to sell at so you don't lose money, what it earns, and a warning when it's a losing game. Only you see this until you open it to staff.",
   ),
+  "/savings": t(
+    "Everything that stops your mill losing money, in one place: what palay you pay for, where each batch's kilos went, the oldest rice going out first, stock on hold, cost per sack, capacity use and vale. Only you see this.",
+  ),
   "/milling": t(
     "Record the palay going into the mill and whose it is. Oraiza estimates the rice, ipa and darak that come out; type the weighed kilos to replace them. Palay leaves your stock; the rice and by-products go into Inventory.",
   ),

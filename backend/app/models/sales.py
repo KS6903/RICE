@@ -53,6 +53,9 @@ class SalesOrder(Base, TimestampMixin):
     assigned_agent_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("agents.id"))
     assigned_miller_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("millers.id"))
     delivered_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # When its goods left stock. None: an older order, from before sales moved stock,
+    # which never does (services/stock_ledger.py).
+    stock_posted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     # Who delivers it: "customer" (they collect it, or send their own courier) or
     # "mill" (the rice mill's own courier). The plate number and the driver are
     # required with either; the phone and the note are optional.

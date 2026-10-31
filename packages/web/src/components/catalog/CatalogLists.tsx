@@ -469,7 +469,14 @@ export function MachinesList() {
   const qc = useQueryClient();
   const [showHistory, setShowHistory] = useState(false);
   const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState({ name: "", model: "", capacity_kg_per_hr: "" });
+  const blank = {
+    name: "",
+    model: "",
+    capacity_kg_per_hr: "",
+    rated_hours_per_day: "",
+    counts_for_capacity: true,
+  };
+  const [form, setForm] = useState(blank);
 
   const { data: equipment = [] } = useQuery({
     queryKey: ["equipment-all"],
@@ -483,12 +490,13 @@ export function MachinesList() {
       millingService.createEquipment({
         ...b,
         capacity_kg_per_hr: b.capacity_kg_per_hr ? parseFloat(b.capacity_kg_per_hr) : null,
+        rated_hours_per_day: b.rated_hours_per_day ? parseFloat(b.rated_hours_per_day) : null,
       }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["equipment-all"] });
       qc.invalidateQueries({ queryKey: ["equipment"] });
       setShowForm(false);
-      setForm({ name: "", model: "", capacity_kg_per_hr: "" });
+      setForm(blank);
     },
   });
 
@@ -544,6 +552,26 @@ export function MachinesList() {
                 onChange={(e) => setForm((f) => ({ ...f, capacity_kg_per_hr: e.target.value }))}
               />
             </div>
+            <div>
+              <label className={LABEL}>{t("Rated hours a day")}</label>
+              <input
+                className="input"
+                type="number"
+                min="0"
+                max="24"
+                placeholder="10"
+                value={form.rated_hours_per_day}
+                onChange={(e) => setForm((f) => ({ ...f, rated_hours_per_day: e.target.value }))}
+              />
+            </div>
+            <label className="flex items-center gap-2 text-sm text-secondary">
+              <input
+                type="checkbox"
+                checked={form.counts_for_capacity}
+                onChange={(e) => setForm((f) => ({ ...f, counts_for_capacity: e.target.checked }))}
+              />
+              {t("Sets the mill's capacity (one machine per line)")}
+            </label>
           </div>
           {create.isError && (
             <p className="text-sm font-medium text-rose-600 dark:text-rose-400">

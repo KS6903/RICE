@@ -3,6 +3,7 @@ import { useEscapeKey } from "../hooks/useEscapeKey";
 import { Link } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { salesService } from "../services/SalesService";
+import BelowCostWarning from "../components/buying/BelowCostWarning";
 import LegalNotice from "../components/LegalNotice";
 import { inventoryService } from "../services/InventoryService";
 import {
@@ -417,6 +418,7 @@ export default function SalesPage() {
                 </FieldCaption>
               </div>
             ))}
+            <BelowCostWarning lines={orderForm.items} />
             {milledLoaded && milled.length === 0 && (
               <p className="text-sm text-amber-700 dark:text-amber-400">
                 {tx(

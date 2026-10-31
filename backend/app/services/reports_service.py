@@ -18,7 +18,7 @@ from ..core.branch_scope import viewed_branch
 from ..core.timezones import local_today
 from ..models.costs import Expense
 from ..models.milling import ByproductInventory, MilledRiceInventory, MillingBatch
-from ..models.paddy import PalayInventory, PalayPurchase, PalayPurchaseItem
+from ..models.paddy import KG_PER_CAVAN, PalayInventory, PalayPurchase, PalayPurchaseItem
 from ..models.sales import Invoice, SalesOrder
 from ..services.base import BaseService
 
@@ -51,7 +51,12 @@ class ReportsService(BaseService):
         )
 
         cogs = (
-            self.db.query(func.sum(PalayPurchaseItem.price_per_cavan * PalayPurchaseItem.cavan_count))
+            self.db.query(
+                func.sum(
+                    PalayPurchaseItem.price_per_cavan
+                    * func.coalesce(PalayPurchaseItem.payable_weight_kg / KG_PER_CAVAN, PalayPurchaseItem.cavan_count)
+                )
+            )
             .join(PalayPurchase, PalayPurchase.id == PalayPurchaseItem.purchase_id)
             .filter(
                 PalayPurchase.company_id == self._company_id,

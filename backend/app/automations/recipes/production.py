@@ -36,7 +36,11 @@ def _hours_ago(ctx: RecipeContext, at) -> str:
 class MillingQualityParams(BaseModel):
     expected_recovery: float = PydanticField(63, ge=40, le=80)
     allowance: float = PydanticField(3, ge=0, le=20)
-    broken_over: float = PydanticField(15, ge=1, le=60)
+    # Under this is poor whatever the variety's usual recovery: the Philippine benchmark.
+    recovery_floor: float = PydanticField(63, ge=40, le=80)
+    broken_over: float = PydanticField(8, ge=1, le=60)
+    # Kilos nobody can account for, once the batch's by-products are recorded.
+    unaccounted_over: float = PydanticField(2, ge=0, le=20)
     email: bool = True
 
 
@@ -85,7 +89,7 @@ def _milling_quality(ctx: RecipeContext, params: BaseModel) -> list[Notice]:
         if input_kg and milled is not None:
             recovery = Decimal(milled) / input_kg * 100
             expected = expected_recovery(inputs, fallback)
-            if recovery < expected - Decimal(str(params.allowance)):
+            if recovery < expected - Decimal(str(params.allowance)) or recovery < Decimal(str(params.recovery_floor)):
                 problems.append(
                     f"Recovery {recovery:.1f}%: {kg(milled)} of rice from {kg(input_kg)} of palay. "
                     f"Expected about {expected:.0f}%."
@@ -94,6 +98,21 @@ def _milling_quality(ctx: RecipeContext, params: BaseModel) -> list[Notice]:
             broken = Decimal(broken_weighted) / Decimal(broken_kg)
             if broken > Decimal(str(params.broken_over)):
                 problems.append(f"Broken rice {broken:.1f}%, over your {params.broken_over:g}% limit.")
+        byproduct_kg, all_out_kg = (
+            db.query(
+                func.sum(MillingBatchOutput.output_weight_kg).filter(MillingBatchOutput.output_type != "milled_rice"),
+                func.sum(MillingBatchOutput.output_weight_kg),
+            )
+            .filter(MillingBatchOutput.batch_id == batch.id)
+            .one()
+        )
+        if input_kg and byproduct_kg:
+            gap = input_kg - Decimal(all_out_kg)
+            if abs(gap) / input_kg * 100 > Decimal(str(params.unaccounted_over)):
+                problems.append(
+                    f"{kg(abs(gap))} of palay unaccounted for ({abs(gap) / input_kg * 100:.1f}%), "
+                    f"over your {params.unaccounted_over:g}% limit."
+                )
         if not problems:
             continue
         operator = db.get(User, batch.operator_id) if batch.operator_id else None
@@ -125,7 +144,9 @@ MILLING_QUALITY = Recipe(
             "Used for varieties that don't have their own typical recovery set.",
         ),
         Field("allowance", "Tell me when recovery is under that by", "number", unit="points"),
+        Field("recovery_floor", "Or recovery is under", "percent"),
         Field("broken_over", "Or broken rice is over", "percent"),
+        Field("unaccounted_over", "Or palay unaccounted for is over", "percent"),
         EMAIL_FIELD,
     ),
     schedule=_every_tick,

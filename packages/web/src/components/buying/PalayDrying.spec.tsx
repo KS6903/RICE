@@ -129,6 +129,7 @@ describe("Palay purchases: wet in red, dry in green and completed", () => {
       expect(record).toHaveBeenCalledWith("p1", "p1-line", {
         dried_weight_kg: 800,
         dried_moisture_pct: 14,
+        drying_cost: null,
       }),
     );
   });

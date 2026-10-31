@@ -19,7 +19,7 @@ from decimal import ROUND_HALF_UP, Decimal
 from typing import Any, Sequence
 
 from sqlalchemy import case, func
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, object_session
 
 from ..core.exceptions import ConflictError, NotFoundError, PermissionDeniedError, ValidationError
 from ..models.company import Branch, Company
@@ -44,6 +44,8 @@ from ..repositories.paddy import (
 from ..services.base import BaseService
 from ..services.canva_color import pick_unused_color
 from ..services.record_changes import changed_fields, log_changes, show
+from ..services.savings_formulas import payable_weight, settings_for
+from ..services.savings_service import advance_deducted, apply_advances
 from ..services.warehouses import default_warehouse_id, warehouse_for, warehouse_map
 
 
@@ -188,6 +190,10 @@ class PaddyService(BaseService):
                 "net_weight_kg": i.net_weight_kg,
                 "moisture_content_pct": i.moisture_content_pct,
                 "price_per_cavan": i.price_per_cavan,
+                "impurity_pct": i.impurity_pct,
+                "payable_weight_kg": i.payable_weight_kg,
+                "weight_source": i.weight_source,
+                "weighed_at": i.weighed_at,
                 "is_wet": i.is_wet,
                 "is_drying": i.is_drying,
                 "dried_weight_kg": i.dried_weight_kg,
@@ -220,6 +226,11 @@ class PaddyService(BaseService):
         data["is_drying"] = any(i.is_drying for i in p.items)
         data["total_kg"] = float(sum((i.net_weight_kg for i in p.items), Decimal("0")))
         data["total_amount"] = float(sum((i.total_amount for i in p.items), Decimal("0")))
+        # What's left to pay the farmer once any vale is taken off.
+        session = object_session(p)
+        deducted = float(advance_deducted(session, p.id)) if session is not None else 0.0
+        data["advance_deducted"] = deducted
+        data["net_to_pay"] = round(data["total_amount"] - deducted, 2)
         creator = p.creator
         data["created_by_name"] = creator.full_name if creator else None
         data["created_by_role"] = creator.role.name if creator and creator.role else None
@@ -257,6 +268,9 @@ class PaddyService(BaseService):
             )
             lines = [self._add_line(purchase, item_data, branch_id) for item_data in data.items]
             _settle_status(purchase, lines)
+            self.db.flush()
+            self.db.expire(purchase, ["items"])
+            apply_advances(self.db, purchase, data.advance_deduction)
         self.db.refresh(purchase)
         return purchase
 
@@ -272,11 +286,16 @@ class PaddyService(BaseService):
         for item_data in data.items or []:
             self.assert_company_fk(RiceVariety, item_data.variety_id, label="Variety", allow_shared=True)
             self.assert_company_fk(QualityGrade, item_data.grade_id, label="Grade", allow_shared=True)
+        self._check_weight_lock(p, data)
         before = _purchase_state(p)
+        vale_before = advance_deducted(self.db, p.id)
         with self.transaction():
             for field, val in fields.items():
-                setattr(p, field, val)
+                if field != "weight_change_reason":
+                    setattr(p, field, val)
             if data.items is not None:
+                # A corrected purchase keeps the way it was paid, whatever the setting is now.
+                deduct = any(old.payable_weight_kg is not None for old in p.items)
                 # A drying record points at its line, so it goes before the line does.
                 self.db.query(DryingRecord).filter(
                     DryingRecord.purchase_item_id.in_([old.id for old in p.items])
@@ -285,10 +304,16 @@ class PaddyService(BaseService):
                     self._apply_inventory_movement(old, "out", str(p.id), p.branch_id, p.warehouse_id)
                     p.items.remove(old)
                 self.db.flush()
-                lines = [self._add_line(p, item_data, p.branch_id) for item_data in data.items]
+                lines = [self._add_line(p, item_data, p.branch_id, deduct=deduct) for item_data in data.items]
                 _settle_status(p, lines)
             self.db.flush()
             self.db.expire(p)
+            if data.items is not None or "supplier_id" in fields:
+                # What it took stands, as far as the corrected purchase can carry it.
+                apply_advances(self.db, p, vale_before)
+            changes = changed_fields(before, _purchase_state(p), PURCHASE_FIELDS)
+            if data.weight_change_reason and changes:
+                changes.append(f"Reason: {data.weight_change_reason.strip()}")
             log_changes(
                 self.db,
                 user=self.current_user,
@@ -296,10 +321,36 @@ class PaddyService(BaseService):
                 entity_type="palay_purchase",
                 entity_id=p.id,
                 entity_label=p.reference_no,
-                lines=changed_fields(before, _purchase_state(p), PURCHASE_FIELDS),
+                lines=changes,
             )
         self.db.refresh(p)
         return p
+
+    def _check_weight_lock(self, p: PalayPurchase, data) -> None:
+        """A saved weight changes only by the Boss or an admin, and with a reason, when
+        the mill locks weights."""
+        if data.items is None or not settings_for(self.current_user.company)["weight_lock"]:
+            return
+
+        def weights(rows) -> list[tuple]:
+            return sorted(
+                (
+                    str(r.variety_id or ""),
+                    Decimal(r.gross_weight_kg or (r.cavan_count or r.sack_count or 0) * KG_PER_CAVAN).normalize(),
+                    Decimal(r.tare_weight_kg or 0).normalize(),
+                )
+                for r in rows
+            )
+
+        if weights(p.items) == weights(data.items):
+            return
+        role = getattr(getattr(self.current_user, "role", None), "name", None)
+        if role not in ("owner", "admin"):
+            raise ConflictError(
+                "Saved weights are locked. Ask the Boss or an admin to change them.", code="weight_locked"
+            )
+        if not (data.weight_change_reason or "").strip():
+            raise ConflictError("Say why this weight is changing.", code="weight_reason_required")
 
     def record_drying(self, purchase_id: uuid.UUID, item_id: uuid.UUID, data) -> PalayPurchase:
         """A wet line is dry: record what it weighs now and its moisture. Its stock
@@ -330,7 +381,7 @@ class PaddyService(BaseService):
                 source_id=p.id,
                 notes=f"Dried: {show(wet_kg)} kg to {show(data.dried_weight_kg)} kg",
             )
-            self._close_drying_record(item, p)
+            self._close_drying_record(item, p, data.drying_cost)
             _settle_status(p, list(p.items))
             log_changes(
                 self.db,
@@ -511,7 +562,9 @@ class PaddyService(BaseService):
         count = self.db.query(PalayInventoryMovement).count() + 1
         return f"PP-{today}-{count:04d}"
 
-    def _add_line(self, purchase: PalayPurchase, d, branch_id: uuid.UUID | None) -> PalayPurchaseItem:
+    def _add_line(
+        self, purchase: PalayPurchase, d, branch_id: uuid.UUID | None, *, deduct: bool | None = None
+    ) -> PalayPurchaseItem:
         """Save one line of a purchase, put it in stock, and file its drying when
         it came with the after-drying weight."""
         values = d.model_dump()
@@ -520,6 +573,10 @@ class PaddyService(BaseService):
             values["gross_weight_kg"] = (values["cavan_count"] or values["sack_count"]) * KG_PER_CAVAN
             values["tare_weight_kg"] = Decimal("0")
         item = PalayPurchaseItem(purchase_id=purchase.id, **values)
+        if item.weight_source == "scale":
+            item.weighed_at = datetime.now(timezone.utc)
+        if settings_for(self.current_user.company)["pay_deductions"] if deduct is None else deduct:
+            item.payable_weight_kg = payable_weight(item.net_weight_kg, item.moisture_content_pct, item.impurity_pct)
         if item.cavan_count is None:
             item.cavan_count = item.net_weight_kg / KG_PER_CAVAN
         if item.dried_weight_kg is not None:
@@ -531,7 +588,9 @@ class PaddyService(BaseService):
             self._close_drying_record(item, purchase)
         return item
 
-    def _close_drying_record(self, item: PalayPurchaseItem, purchase: PalayPurchase) -> None:
+    def _close_drying_record(
+        self, item: PalayPurchaseItem, purchase: PalayPurchase, cost: Decimal | None = None
+    ) -> None:
         """Note the drying as done, so the automations that watch for wet palay
         not yet drying leave it alone."""
         now = datetime.now(timezone.utc)
@@ -542,7 +601,7 @@ class PaddyService(BaseService):
                 end_datetime=item.dried_at or now,
                 initial_moisture_pct=item.moisture_content_pct,
                 final_moisture_pct=item.dried_moisture_pct,
-                drying_cost=0,
+                drying_cost=cost or 0,
                 operator_id=self.current_user.id,
             )
         )
@@ -651,6 +710,10 @@ def _palay_line(i: PalayPurchaseItem) -> str:
     parts += [f"{show(i.gross_weight_kg)} kg gross", f"{show(i.tare_weight_kg)} kg tare"]
     if i.moisture_content_pct is not None:
         parts.append(f"{show(i.moisture_content_pct)}% moisture")
+    if i.impurity_pct is not None:
+        parts.append(f"{show(i.impurity_pct)}% impurities")
+    if i.payable_weight_kg is not None:
+        parts.append(f"paid on {show(i.payable_weight_kg)} kg")
     if i.is_wet:
         if i.dried_weight_kg is None:
             parts.append("wet")

@@ -37,6 +37,7 @@ from ..repositories.inventory import (
 from ..repositories.milling import MillingBatchRepository, MillingEquipmentRepository
 from ..repositories.paddy import PalayInventoryRepository
 from ..repositories.sales import CustomerRepository
+from ..services import palay_lots, pallet_flow, stock_ledger
 from ..services.base import BaseService
 from ..services.byproduct_kind_service import byproduct_name
 from ..services.canva_color import pick_unused_color
@@ -167,11 +168,15 @@ class MillingService(BaseService):
             )
             total_input_kg = Decimal("0")
             for inp in data.inputs:
-                self.db.add(MillingBatchInput(batch_id=batch.id, **inp.model_dump()))
+                row = MillingBatchInput(batch_id=batch.id, **inp.model_dump())
+                self.db.add(row)
                 total_input_kg += inp.input_weight_kg
                 # A client's palay was never in the mill's stock.
                 if not batch.customer_id:
+                    self.db.flush()
+                    palay_lots.allocate(self.db, batch.company_id, batch.branch_id, row)
                     self._deduct_palay(inp, str(batch.id))
+            _check_adds_up(total_input_kg, data.outputs)
 
             for out in data.outputs:
                 recovery = (out.output_weight_kg / total_input_kg * 100) if total_input_kg > 0 else None
@@ -186,7 +191,10 @@ class MillingService(BaseService):
                     )
                 )
                 if self._mill_keeps(batch, out):
-                    self._apply_output(out, self.current_user.branch_id)
+                    self._apply_output(out, self.current_user.branch_id, batch_id=batch.id)
+            self.db.flush()
+            self.db.expire(batch, ["inputs", "outputs"])
+            pallet_flow.sync_batch(self.db, batch)
         self.db.refresh(batch)
         return batch
 
@@ -198,6 +206,7 @@ class MillingService(BaseService):
             b.end_datetime = end_datetime
             b.status = "completed"
             total_input_kg = sum((i.input_weight_kg for i in b.inputs), Decimal("0")) or Decimal("1")
+            _check_adds_up(total_input_kg, [*b.outputs, *outputs])
             for out in outputs:
                 recovery = out.output_weight_kg / total_input_kg * 100 if out.output_type == "milled_rice" else None
                 self.db.add(
@@ -211,7 +220,10 @@ class MillingService(BaseService):
                     )
                 )
                 if self._mill_keeps(b, out):
-                    self._apply_output(out, self.current_user.branch_id)
+                    self._apply_output(out, self.current_user.branch_id, batch_id=b.id)
+            self.db.flush()
+            self.db.expire(b, ["inputs", "outputs"])
+            pallet_flow.sync_batch(self.db, b)
         self.db.refresh(b)
         return b
 
@@ -253,7 +265,11 @@ class MillingService(BaseService):
                 for old_in in list(b.inputs):
                     b.inputs.remove(old_in)
                 for inp in data.inputs:
-                    self.db.add(MillingBatchInput(batch_id=b.id, **inp.model_dump()))
+                    row = MillingBatchInput(batch_id=b.id, **inp.model_dump())
+                    self.db.add(row)
+                    if not b.customer_id:
+                        self.db.flush()
+                        palay_lots.allocate(self.db, b.company_id, b.branch_id, row)
             if data.outputs is not None:
                 for old_out in list(b.outputs):
                     b.outputs.remove(old_out)
@@ -271,6 +287,7 @@ class MillingService(BaseService):
             self.db.expire(b)
             # The recovery follows the corrected kilos.
             total_input_kg = sum((i.input_weight_kg for i in b.inputs), Decimal("0"))
+            _check_adds_up(total_input_kg, b.outputs)
             for saved in b.outputs:
                 saved.milling_recovery_pct = (
                     saved.output_weight_kg / total_input_kg * 100
@@ -279,6 +296,7 @@ class MillingService(BaseService):
                 )
             if moves_stock:
                 self._batch_stock(b, 1)
+                pallet_flow.sync_batch(self.db, b)
             self.db.flush()
             self.db.expire(b)
             log_changes(
@@ -303,7 +321,7 @@ class MillingService(BaseService):
                 self._palay_move(inp, b.id, b.branch_id, -sign)
         for out in b.outputs:
             if self._mill_keeps(b, out):
-                self._apply_output(out, b.branch_id, sign)
+                self._apply_output(out, b.branch_id, sign, batch_id=b.id)
 
     def _batch_state(self, b: MillingBatch) -> dict[str, Any]:
         """A batch as its edit log compares it, times in the mill's own zone."""
@@ -402,7 +420,9 @@ class MillingService(BaseService):
             )
         )
 
-    def _apply_output(self, out, branch_id: uuid.UUID | None, sign: int = 1) -> None:
+    def _apply_output(
+        self, out, branch_id: uuid.UUID | None, sign: int = 1, *, batch_id: uuid.UUID | None = None
+    ) -> None:
         """Put an output into stock (sign 1), or take it out again (-1)."""
         company_id = self.current_user.company_id
         warehouse_id = default_warehouse_id(self.db, branch_id)  # outputs go to the branch's first
@@ -422,6 +442,7 @@ class MillingService(BaseService):
                 self.db.add(inv)
                 self.db.flush()
             inv.quantity_kg += sign * out.output_weight_kg
+            stock_ledger.record(self.db, self.current_user, inv, sign * out.output_weight_kg, "milling_batch", batch_id)
         else:
             inv = self.byproducts.find_bucket(company_id, branch_id, out.output_type, warehouse_id)
             if not inv:
@@ -435,6 +456,16 @@ class MillingService(BaseService):
                 self.db.add(inv)
                 self.db.flush()
             inv.quantity_kg += sign * out.output_weight_kg
+            stock_ledger.record(self.db, self.current_user, inv, sign * out.output_weight_kg, "milling_batch", batch_id)
+
+
+def _check_adds_up(input_kg: Decimal, outputs) -> None:
+    """What came out can't weigh more than what went in."""
+    out_kg = sum((Decimal(o.output_weight_kg) for o in outputs), Decimal(0))
+    if input_kg > 0 and out_kg > input_kg:
+        raise ValidationError(
+            f"The outputs add up to {show(out_kg)} kg, more than the {show(input_kg)} kg of palay that went in."
+        )
 
 
 # ── the edit log ──────────────────────────────────────────────────────────────

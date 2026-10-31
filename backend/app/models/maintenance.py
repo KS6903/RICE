@@ -16,8 +16,9 @@ class Equipment(Base, TimestampMixin):
     running hours, tonnes of palay milled, days, or any of them.
 
     Use since the last service is worked out from the milling batches finished
-    since then: their running time and the palay that went in. Batches aren't
-    tied to a machine, so each machine counts all of the mill's milling.
+    since then: their running time and the palay that went in. Linked to a machine
+    from the Catalog, it counts only the batches that name that machine; otherwise
+    all of the mill's milling.
     """
 
     __tablename__ = "equipment"
@@ -27,6 +28,9 @@ class Equipment(Base, TimestampMixin):
         UUID(as_uuid=True), ForeignKey("companies.id", ondelete="CASCADE"), nullable=False
     )
     name: Mapped[str] = mapped_column(String(120), nullable=False)
+    milling_equipment_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("milling_equipment.id", ondelete="SET NULL")
+    )
     every_hours: Mapped[int | None] = mapped_column(Integer)
     every_tonnes: Mapped[Decimal | None] = mapped_column(Numeric(10, 1))
     every_days: Mapped[int | None] = mapped_column(Integer)

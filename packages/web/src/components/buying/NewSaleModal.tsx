@@ -15,6 +15,7 @@ import Select from "../Select";
 import DatePicker from "../DatePicker";
 import FieldCaption from "../FieldCaption";
 import QuickAdd from "../QuickAdd";
+import BelowCostWarning from "./BelowCostWarning";
 import { peso } from "./money";
 import { GOODS, SALE_ITEM_TYPE, gradeLabel, type TradeKind } from "./trade";
 import { sortGrades } from "../../utils/grades";
@@ -275,6 +276,8 @@ export default function NewSaleModal({ kind, onClose }: { kind: TradeKind; onClo
             </div>
           ))}
         </div>
+
+        {kind === "rice" && <BelowCostWarning lines={form.items} />}
 
         {error && (
           <div

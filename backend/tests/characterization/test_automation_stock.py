@@ -92,7 +92,7 @@ def test_low_recovery_and_high_broken_rice_are_flagged(db_session, company, vari
             "Poor milling batch: MB-LOW",
             "Recovery 59.0%: 590 kg of rice from 1,000 kg of palay. Expected about 65%.",
         ),
-        ("Poor milling batch: MB-BROKEN", "Broken rice 22.0%, over your 15% limit."),
+        ("Poor milling batch: MB-BROKEN", "Broken rice 22.0%, over your 8% limit."),
     ]
 
 

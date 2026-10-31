@@ -22,6 +22,7 @@ import {
   ShoppingBasket,
   Boxes,
   Calculator,
+  PiggyBank,
 } from "lucide-react";
 import type { AppSection } from "@rice-mill/shared";
 import { t } from "../../i18n";
@@ -221,6 +222,15 @@ export const NAV_GROUPS: { title: string | null; items: NavEntry[] }[] = [
         feature: "dashboard",
         section: "reports",
         hint: t("Profit and loss, who owes you, stock value"),
+      },
+      {
+        to: "/savings",
+        label: t("Savings"),
+        icon: PiggyBank,
+        feature: "profit",
+        // The mill's real costs and margins, so the Boss's, like the Profit calculator.
+        section: "profit",
+        hint: t("Where your mill loses money, and what's stopping it"),
       },
     ],
   },

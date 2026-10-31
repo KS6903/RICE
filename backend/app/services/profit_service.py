@@ -28,7 +28,7 @@ from ..models.buying import ByproductPurchase, ByproductPurchaseItem, RicePurcha
 from ..models.company import Company
 from ..models.costs import Expense, ExpenseCategory
 from ..models.milling import MillingBatch
-from ..models.paddy import KG_PER_CAVAN, PalayPurchase, PalayPurchaseItem, PalayRecoveryTest
+from ..models.paddy import DryingRecord, PalayPurchase, PalayPurchaseItem, PalayRecoveryTest
 from ..models.reference import RiceVariety
 from ..models.sales import SalesOrder, SalesOrderItem
 from ..services.base import BaseService
@@ -219,7 +219,7 @@ class ProfitService(BaseService):
             kg = float(i.net_weight_kg)
             row = out.setdefault(i.variety_id, {"kg": 0.0, "amount": 0.0, "moist_kg": 0.0, "moist_sum": 0.0})
             row["kg"] += kg
-            row["amount"] += kg / float(KG_PER_CAVAN) * float(i.price_per_cavan)
+            row["amount"] += float(i.total_amount)
             if i.moisture_content_pct is not None:
                 row["moist_kg"] += kg
                 row["moist_sum"] += kg * float(i.moisture_content_pct)
@@ -327,7 +327,8 @@ class ProfitService(BaseService):
         return q.group_by(SalesOrderItem.variety_id, SalesOrderItem.byproduct_type).all()
 
     def _other_cost_per_kg(self, batches: list[MillingBatch]) -> float:
-        """Production expenses linked to these batches, per kilo of palay they milled."""
+        """Production expenses linked to these batches, and what the palay of the same
+        days cost to dry, per kilo of palay they milled."""
         milled = sum(float(i.input_weight_kg) for b in batches for i in b.inputs)
         if not batches or milled <= 0:
             return 0.0
@@ -341,7 +342,19 @@ class ProfitService(BaseService):
             )
             .scalar()
         )
-        return float(spent or 0) / milled
+        started = min(b.start_datetime for b in batches)
+        dried = (
+            self.db.query(func.sum(DryingRecord.drying_cost))
+            .join(PalayPurchaseItem, PalayPurchaseItem.id == DryingRecord.purchase_item_id)
+            .join(PalayPurchase, PalayPurchase.id == PalayPurchaseItem.purchase_id)
+            .filter(
+                PalayPurchase.company_id == self._company_id,
+                DryingRecord.start_datetime >= started,
+                *self._viewed(PalayPurchase),
+            )
+            .scalar()
+        )
+        return (float(spent or 0) + float(dried or 0)) / milled
 
     def _gather(self) -> dict:
         """Everything the averages come from, read once for all the varieties."""

@@ -27,6 +27,7 @@ from ..repositories.sales import (
     PriceListRepository,
     SalesOrderRepository,
 )
+from ..services import stock_ledger
 from ..services.base import BaseService
 from ..services.canva_color import pick_unused_color
 from ..services.delivery_rules import check_can_unmark, has_courier
@@ -242,6 +243,7 @@ class SalesService(BaseService):
                 else "An owner or admin can approve it."
             )
             raise ConflictError(f"{over.describe()} {who}", code="over_credit_limit")
+        stock_ledger.check_holds(self.db, data.items, self.current_user.company_id, self.current_user.branch_id)
         with self.transaction():
             order = self.orders.add(
                 SalesOrder(
@@ -262,6 +264,9 @@ class SalesService(BaseService):
             )
             for item in data.items:
                 self.db.add(SalesOrderItem(order_id=order.id, **item.model_dump()))
+            self.db.flush()
+            self.db.expire(order, ["items"])
+            stock_ledger.post_order(self.db, self.current_user, order)
             if over:
                 credit.report(self.db, self.current_user.company, over, order, self.current_user, approved=approved)
         self.db.refresh(order)
@@ -286,6 +291,11 @@ class SalesService(BaseService):
             # here; exclude_unset preserves the old "only touch sent fields" semantics.
             for f, val in body.model_dump(exclude_unset=True).items():
                 setattr(order, f, val)
+            # Cancelling puts its goods back; taking the cancellation back takes them again.
+            if new_status == "cancelled":
+                stock_ledger.unpost_order(self.db, self.current_user, order, keep_posted=True)
+            elif before["status"] == "cancelled" and new_status is not None and order.stock_posted_at is not None:
+                stock_ledger.post_order(self.db, self.current_user, order)
             self._log_order(order, before)
         self.db.refresh(order)
         return order
@@ -310,7 +320,13 @@ class SalesService(BaseService):
                 if f in sent:
                     setattr(order, f, sent[f])
             if data.items is not None:
+                # An order that moved stock moves it again as corrected.
+                posted = order.stock_posted_at is not None and order.status != "cancelled"
+                if posted:
+                    stock_ledger.unpost_order(self.db, self.current_user, order)
                 order.items = [SalesOrderItem(**i.model_dump()) for i in data.items]
+                if posted:
+                    stock_ledger.post_order(self.db, self.current_user, order)
             self.db.flush()
             self.db.expire(order, ["customer"])
             subtotal = sum((i.quantity_kg * i.unit_price_per_kg for i in order.items), Decimal(0))

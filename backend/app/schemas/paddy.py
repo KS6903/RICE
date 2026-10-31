@@ -87,6 +87,8 @@ class PurchaseItemIn(BaseModel):
     gross_weight_kg: Decimal | None = None
     tare_weight_kg: Decimal = Decimal("0")
     moisture_content_pct: Decimal | None = None
+    impurity_pct: Decimal | None = Field(None, ge=0, le=100)
+    weight_source: Literal["manual", "scale"] = "manual"
     price_per_cavan: Decimal
     is_wet: bool = False
     dried_weight_kg: Decimal | None = Field(None, gt=0)
@@ -106,6 +108,8 @@ class DriedIn(BaseModel):
 
     dried_weight_kg: Decimal = Field(gt=0)
     dried_moisture_pct: Decimal | None = Field(None, ge=0, le=100)
+    # What the drying cost, in fuel and labor, when it's known.
+    drying_cost: Decimal | None = Field(None, ge=0, max_digits=10, decimal_places=2)
 
 
 class RecoveryIn(BaseModel):
@@ -148,6 +152,8 @@ class PurchaseCreate(BaseModel):
     purchase_date: date
     delivery_type: str | None = None
     remarks: str | None = None
+    # Vale to take off this purchase. None: all the farmer owes that it can carry.
+    advance_deduction: Decimal | None = Field(None, ge=0, max_digits=14, decimal_places=2)
     items: list[PurchaseItemIn]
 
 
@@ -161,6 +167,8 @@ class PurchaseEdit(BaseModel):
     delivery_type: str | None = Field(None, max_length=20)
     remarks: str | None = Field(None, max_length=2000)
     items: list[PurchaseItemIn] | None = Field(None, min_length=1)
+    # Why a saved weight is changing, when the mill locks weights.
+    weight_change_reason: str | None = Field(None, max_length=300)
 
 
 class PurchaseUpdate(BaseModel):

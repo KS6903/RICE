@@ -120,7 +120,10 @@ class Pallet(Base, TimestampMixin):
     depth_m: Mapped[Decimal] = mapped_column(Numeric(4, 2), default=Decimal("1.2"), nullable=False)
     sack_count: Mapped[int] = mapped_column(Integer, nullable=False)
     weight_kg: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
-    status: Mapped[str] = mapped_column(String(20), default="in_storage", nullable=False)
+    status: Mapped[str] = mapped_column(String(20), default="in_storage", nullable=False)  # dispatched, on_hold
+    # Set to send this pallet out before older ones, with why: FIFO's one way round,
+    # logged as a movement (services/pallet_flow.py).
+    pick_first_reason: Mapped[str | None] = mapped_column(String(300))
 
     layout: Mapped["WarehouseLayout"] = relationship("WarehouseLayout", back_populates="pallets")
     zone: Mapped["WarehouseZone | None"] = relationship("WarehouseZone")
@@ -183,6 +186,53 @@ class PalletMovement(Base):
     to_x_m: Mapped[Decimal | None] = mapped_column(Numeric(8, 2))
     to_y_m: Mapped[Decimal | None] = mapped_column(Numeric(8, 2))
     notes: Mapped[str | None] = mapped_column(Text)
+    # What a sale took from the pallet, so cancelling the order can put it back.
+    weight_kg: Mapped[Decimal | None] = mapped_column(Numeric(10, 2))
+    order_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), index=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc)
 
     pallet: Mapped["Pallet"] = relationship("Pallet", back_populates="movements")
+
+
+class StockHold(Base):
+    """Stock kept from sale until cleared: wet, pests, mould, a failed check. On a
+    pallet it holds that pallet; otherwise the kilos of a variety or by-product."""
+
+    __tablename__ = "stock_holds"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    company_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("companies.id"))
+    branch_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("branches.id"))
+    pallet_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("pallets.id", ondelete="SET NULL")
+    )
+    stock_type: Mapped[str] = mapped_column(String(20), nullable=False)  # milled_rice, byproduct, palay
+    variety_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("rice_varieties.id"))
+    grade_name: Mapped[str | None] = mapped_column(String(30))
+    byproduct_type: Mapped[str | None] = mapped_column(String(20))
+    weight_kg: Mapped[Decimal] = mapped_column(Numeric(12, 3), nullable=False)
+    reason: Mapped[str] = mapped_column(String(30), nullable=False)  # moisture, pests, mould, contaminant, other
+    note: Mapped[str | None] = mapped_column(String(500))
+    placed_by: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"))
+    placed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc, nullable=False)
+    cleared_by: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"))
+    cleared_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    cleared_note: Mapped[str | None] = mapped_column(String(500))
+
+
+class ZoneReading(Base):
+    """A humidity and temperature reading typed in for a storage zone, compared with
+    the zone's targets."""
+
+    __tablename__ = "zone_readings"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    company_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("companies.id"))
+    zone_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("warehouse_zones.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    humidity_pct: Mapped[Decimal | None] = mapped_column(Numeric(5, 2))
+    temp_c: Mapped[Decimal | None] = mapped_column(Numeric(4, 1))
+    note: Mapped[str | None] = mapped_column(String(300))
+    read_by: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"))
+    read_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc, nullable=False)

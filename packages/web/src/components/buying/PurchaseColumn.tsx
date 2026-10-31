@@ -223,6 +223,16 @@ const LINE_COLUMNS: Record<TradeKind, Col[]> = {
       value: (l) => (l.moisture_content_pct != null ? `${Number(l.moisture_content_pct)}%` : "—"),
       numeric: true,
     },
+    {
+      label: t("Impurities"),
+      value: (l) => (l.impurity_pct != null ? `${Number(l.impurity_pct)}%` : "—"),
+      numeric: true,
+    },
+    {
+      label: t("Paid on"),
+      value: (l) => (l.payable_weight_kg != null ? kg(l.payable_weight_kg) : kg(l.net_weight_kg)),
+      numeric: true,
+    },
     { label: t("Per cavan"), value: (l) => peso(Number(l.price_per_cavan ?? 0)), numeric: true },
   ],
   rice: [
@@ -438,6 +448,18 @@ export function PurchaseDetails({
                 {peso(Number(p.total_amount ?? 0))}
               </td>
             </tr>
+            {Number(p.advance_deducted ?? 0) > 0 && (
+              <tr>
+                <td colSpan={cols.length} className="px-2 py-2 text-right text-muted">
+                  {t("Vale taken off {{amount}}. To pay:", {
+                    amount: peso(Number(p.advance_deducted)),
+                  })}
+                </td>
+                <td className="px-2 py-2 text-right font-bold tabular-nums text-primary">
+                  {peso(Number(p.net_to_pay ?? 0))}
+                </td>
+              </tr>
+            )}
           </tfoot>
         </table>
       </div>

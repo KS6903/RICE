@@ -16,6 +16,8 @@ export type PurchaseItemForm = {
   tare_weight_kg: string;
   /** Moisture when bought: for wet palay, before drying. */
   moisture_content_pct: string;
+  /** Dirt and empty grains, as a percent of the weight. */
+  impurity_pct: string;
   /** What the buyer types; the price per cavan is worked out from it. */
   price_per_kg: string;
   /** Bought wet: saved as Wet, and completed once its drying is recorded from the
@@ -35,6 +37,7 @@ export const blankPurchaseItem = (): PurchaseItemForm => ({
   gross_weight_kg: "",
   tare_weight_kg: "0",
   moisture_content_pct: "",
+  impurity_pct: "",
   price_per_kg: "",
   is_wet: false,
 });
@@ -81,6 +84,8 @@ export type PurchaseEdit = {
   delivery_type: string | null;
   remarks: string | null;
   items: Record<string, unknown>[];
+  /** Why a saved weight is changing, when the mill locks weights. */
+  weight_change_reason?: string;
 };
 
 /** A milling-recovery test on a purchase's palay: the sample and what came out of
@@ -159,7 +164,11 @@ export class PaddyService {
   recordDried(
     purchaseId: string,
     itemId: string,
-    body: { dried_weight_kg: number; dried_moisture_pct: number | null },
+    body: {
+      dried_weight_kg: number;
+      dried_moisture_pct: number | null;
+      drying_cost?: number | null;
+    },
   ): Promise<any> {
     return this.http
       .post(`/paddy/purchases/${purchaseId}/items/${itemId}/dried`, body)
@@ -202,6 +211,7 @@ export class PaddyService {
         gross_weight_kg: numberOrNull(i.gross_weight_kg),
         tare_weight_kg: parseFloat(i.tare_weight_kg) || 0,
         moisture_content_pct: numberOrNull(i.moisture_content_pct),
+        impurity_pct: numberOrNull(i.impurity_pct),
         price_per_cavan: pricePerCavan(i.price_per_kg),
         is_wet: i.is_wet,
       })),

@@ -159,6 +159,21 @@ _extra_ddl: list[str] = [
     "ALTER TABLE palay_recovery_tests ALTER COLUMN head_rice_kg TYPE NUMERIC(12, 6)",
     "ALTER TABLE palay_recovery_tests ALTER COLUMN husk_kg TYPE NUMERIC(12, 6)",
     "ALTER TABLE palay_recovery_tests ALTER COLUMN bran_kg TYPE NUMERIC(12, 6)",
+    # The Savings page: what a load is paid at, and how its weight was taken.
+    "ALTER TABLE palay_purchase_items ADD COLUMN IF NOT EXISTS impurity_pct NUMERIC(5, 2)",
+    "ALTER TABLE palay_purchase_items ADD COLUMN IF NOT EXISTS payable_weight_kg NUMERIC(10, 3)",
+    "ALTER TABLE palay_purchase_items ADD COLUMN IF NOT EXISTS weight_source VARCHAR(20) NOT NULL DEFAULT 'manual'",
+    "ALTER TABLE palay_purchase_items ADD COLUMN IF NOT EXISTS weighed_at TIMESTAMPTZ",
+    # Orders from now on move stock; NULL marks the older ones, which never do.
+    "ALTER TABLE sales_orders ADD COLUMN IF NOT EXISTS stock_posted_at TIMESTAMPTZ",
+    "ALTER TABLE milling_equipment ADD COLUMN IF NOT EXISTS rated_hours_per_day NUMERIC(4, 1)",
+    "ALTER TABLE milling_equipment ADD COLUMN IF NOT EXISTS counts_for_capacity BOOLEAN NOT NULL DEFAULT true",
+    "ALTER TABLE equipment ADD COLUMN IF NOT EXISTS milling_equipment_id UUID "
+    "REFERENCES milling_equipment(id) ON DELETE SET NULL",
+    "ALTER TABLE pallets ADD COLUMN IF NOT EXISTS pick_first_reason VARCHAR(300)",
+    "ALTER TABLE pallet_movements ADD COLUMN IF NOT EXISTS weight_kg NUMERIC(10, 2)",
+    "ALTER TABLE pallet_movements ADD COLUMN IF NOT EXISTS order_id UUID",
+    "CREATE INDEX IF NOT EXISTS ix_pallet_movements_order_id ON pallet_movements (order_id)",
 ]
 
 

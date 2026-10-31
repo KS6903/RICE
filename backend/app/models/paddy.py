@@ -70,6 +70,15 @@ class PalayPurchaseItem(Base):
     cavan_count: Mapped[Decimal | None] = mapped_column(Numeric(8, 2))
     # Moisture when bought; for wet palay, the moisture before drying.
     moisture_content_pct: Mapped[Decimal | None] = mapped_column(Numeric(5, 2))
+    # Dirt, stones and empty grains, as a percent of the weight.
+    impurity_pct: Mapped[Decimal | None] = mapped_column(Numeric(5, 2))
+    # What is paid for, when the mill takes off excess moisture and impurities: fixed
+    # when the line is saved, so changing the setting later moves no old amount. None:
+    # paid at the net weight (services/savings_formulas.py).
+    payable_weight_kg: Mapped[Decimal | None] = mapped_column(Numeric(10, 3))
+    # How the weight got here: "manual" or "scale", and when it was read.
+    weight_source: Mapped[str] = mapped_column(String(20), nullable=False, default="manual", server_default="manual")
+    weighed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     price_per_cavan: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
     # Bought wet: counted in stock at its wet weight until the after-drying weight
     # and moisture are recorded, and the line is then complete.
@@ -97,9 +106,14 @@ class PalayPurchaseItem(Base):
         return self.dried_weight_kg if self.dried_weight_kg is not None else self.net_weight_kg
 
     @property
+    def paid_weight_kg(self) -> Decimal:
+        """The kilos paid for: the payable weight when deductions were taken."""
+        return self.payable_weight_kg if self.payable_weight_kg is not None else self.net_weight_kg
+
+    @property
     def total_amount(self) -> Decimal:
-        # Paid on the weight it was bought at, wet or not.
-        return (self.net_weight_kg / KG_PER_CAVAN) * self.price_per_cavan
+        # Paid on the weight it was bought at, wet or not, less any deductions taken.
+        return (self.paid_weight_kg / KG_PER_CAVAN) * self.price_per_cavan
 
 
 class PalayRecoveryTest(Base, TimestampMixin):

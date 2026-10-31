@@ -1,3 +1,4 @@
+import { batchFlags, BENCHMARK_BROKEN_PCT, BENCHMARK_MRR_PCT } from "../mappers/SavingsMapper";
 import { useState } from "react";
 import { useEscapeKey } from "../hooks/useEscapeKey";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -64,6 +65,28 @@ const ARRANGEMENTS: { value: ClientArrangement; label: string; stock: string }[]
   },
 ];
 const arrangementLabel = Object.fromEntries(ARRANGEMENTS.map((a) => [a.value, a.label]));
+
+/** Under a batch's recovery: what's off against the benchmarks. */
+function BatchFlagNotes({ batch }: { batch: any }) {
+  const flags = batchFlags(batch);
+  const notes = [
+    flags.lowRecovery && t("Under the {{pct}}% benchmark", { pct: BENCHMARK_MRR_PCT }),
+    flags.highBroken && t("Broken rice over {{pct}}%", { pct: BENCHMARK_BROKEN_PCT }),
+    flags.overUnaccounted &&
+      flags.unaccountedKg != null &&
+      t("{{kg}} kg unaccounted for", {
+        kg: Math.abs(flags.unaccountedKg).toLocaleString(undefined, { maximumFractionDigits: 0 }),
+      }),
+  ].filter(Boolean);
+  if (notes.length === 0) return null;
+  return (
+    <ul data-testid="batch-flags" className="mt-1 text-xs font-medium text-rose-600 dark:text-rose-400">
+      {notes.map((note) => (
+        <li key={String(note)}>{note}</li>
+      ))}
+    </ul>
+  );
+}
 
 export default function MillingPage() {
   const qc = useQueryClient();
@@ -649,6 +672,7 @@ export default function MillingPage() {
                   </td>
                   <td className="px-4 py-3">
                     {recovery != null ? `${recovery.toFixed(1)}%` : "—"}
+                    <BatchFlagNotes batch={b} />
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex justify-end gap-3">

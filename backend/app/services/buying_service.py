@@ -24,6 +24,7 @@ from ..models.milling import ByproductInventory, MilledRiceInventory
 from ..models.reference import RiceVariety
 from ..models.supplier_customer import Supplier
 from ..repositories.inventory import ByproductInventoryRepository, MilledRiceInventoryRepository
+from ..services import stock_ledger
 from ..services.base import BaseService
 from ..services.byproduct_kind_service import ByproductKindService, byproduct_name
 from ..services.paddy_service import PURCHASE_FIELDS, purchase_place, purchase_state
@@ -169,6 +170,7 @@ class BuyingService(BaseService):
             self.db.add(stock)
         stock.quantity_kg = (stock.quantity_kg or Decimal("0")) + sign * item.weight_kg
         self.db.flush()
+        stock_ledger.record(self.db, self.current_user, stock, sign * item.weight_kg, "rice_purchase", item.purchase_id)
 
     # ── by-products ───────────────────────────────────────────────────────────
 
@@ -215,6 +217,9 @@ class BuyingService(BaseService):
             self.db.add(stock)
         stock.quantity_kg = (stock.quantity_kg or Decimal("0")) + sign * item.weight_kg
         self.db.flush()
+        stock_ledger.record(
+            self.db, self.current_user, stock, sign * item.weight_kg, "byproduct_purchase", item.purchase_id
+        )
 
     # ── corrections ───────────────────────────────────────────────────────────
 

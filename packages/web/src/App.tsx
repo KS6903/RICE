@@ -29,6 +29,7 @@ const PaddyPage = lazy(() => import("./pages/PaddyPage"));
 const RicePurchasesPage = lazy(() => import("./pages/RicePurchasesPage"));
 const ByproductPurchasesPage = lazy(() => import("./pages/ByproductPurchasesPage"));
 const ProfitPage = lazy(() => import("./pages/ProfitPage"));
+const SavingsPage = lazy(() => import("./pages/SavingsPage"));
 const MillingPage = lazy(() => import("./pages/MillingPage"));
 const InventoryPage = lazy(() => import("./pages/InventoryPage"));
 const SalesPage = lazy(() => import("./pages/SalesPage"));
@@ -245,6 +246,16 @@ function AppRoutes() {
                 requires={t("Pro or Enterprise")}
               >
                 <LazyPage component={ProfitPage} />
+              </FeatureGate>
+            </RoleGate>
+          }
+        />
+        <Route
+          path="savings"
+          element={
+            <RoleGate section="profit">
+              <FeatureGate code="profit" label={t("Savings")} requires={t("Pro or Enterprise")}>
+                <LazyPage component={SavingsPage} />
               </FeatureGate>
             </RoleGate>
           }

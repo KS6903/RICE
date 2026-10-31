@@ -123,6 +123,12 @@ def _recovery(username: str, reset: bool) -> str:
     return _with_session(lambda db: seed_demo_recovery.seed(db, username))
 
 
+def _savings(username: str, reset: bool) -> str:
+    import seed_demo_savings
+
+    return _with_session(lambda db: seed_demo_savings.seed(db, username))
+
+
 PARTS: dict[str, Callable[[str, bool], str]] = {
     "base": _base,
     "staff": _staff,
@@ -135,6 +141,7 @@ PARTS: dict[str, Callable[[str, bool], str]] = {
     "roles": _roles,
     "byproducts": _byproducts,
     "recovery": _recovery,
+    "savings": _savings,
 }
 
 

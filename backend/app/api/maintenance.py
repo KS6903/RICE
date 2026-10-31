@@ -27,6 +27,8 @@ write = [Depends(require_section_access("milling", write=True))]
 
 class EquipmentIn(BaseModel):
     name: str = Field(..., min_length=1, max_length=120)
+    # The Catalog machine this is: then it counts only the batches run on it.
+    milling_equipment_id: uuid.UUID | None = None
     every_hours: int | None = Field(None, ge=1, le=100_000)
     every_tonnes: Decimal | None = Field(None, gt=0, le=1_000_000, max_digits=10, decimal_places=1)
     every_days: int | None = Field(None, ge=1, le=3_650)
@@ -51,6 +53,7 @@ def _out(db: Session, e: Equipment, today: date, zone) -> dict:
     return {
         "id": str(e.id),
         "name": e.name,
+        "milling_equipment_id": str(e.milling_equipment_id) if e.milling_equipment_id else None,
         "every_hours": e.every_hours,
         "every_tonnes": float(e.every_tonnes) if e.every_tonnes is not None else None,
         "every_days": e.every_days,

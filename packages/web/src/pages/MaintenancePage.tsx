@@ -1,6 +1,7 @@
 // Maintenance: each machine against the manufacturer's service interval, in
 // running hours, tonnes milled or days, counted from the milling since its last
 // service. Recording a service starts the count again.
+import { millingService } from "../services/MillingService";
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Plus, Wrench } from "lucide-react";
@@ -141,6 +142,11 @@ function MachineCard({ machine, canEdit }: { machine: Machine; canEdit: boolean 
 export function AddMachine({ onDone }: { onDone: () => void }) {
   const queryClient = useQueryClient();
   const [name, setName] = useState("");
+  const [machineId, setMachineId] = useState("");
+  const { data: catalog = [] } = useQuery<any[]>({
+    queryKey: ["equipment"],
+    queryFn: () => millingService.listEquipment(),
+  });
   const [hours, setHours] = useState("");
   const [tonnes, setTonnes] = useState("");
   const [days, setDays] = useState("");
@@ -149,6 +155,7 @@ export function AddMachine({ onDone }: { onDone: () => void }) {
     mutationFn: () =>
       maintenanceService.add({
         name,
+        milling_equipment_id: machineId || null,
         every_hours: hours ? Number(hours) : null,
         every_tonnes: tonnes ? Number(tonnes) : null,
         every_days: days ? Number(days) : null,
@@ -185,6 +192,26 @@ export function AddMachine({ onDone }: { onDone: () => void }) {
           </label>
           <DatePicker id="machine-last" max={isoToday()} value={last} onChange={setLast} />
         </div>
+        {catalog.length > 0 && (
+          <div>
+            <label htmlFor="machine-link" className="form-label">
+              {t("Count only batches run on")}
+            </label>
+            <select
+              id="machine-link"
+              className="input"
+              value={machineId}
+              onChange={(e) => setMachineId(e.target.value)}
+            >
+              <option value="">{t("All milling")}</option>
+              {catalog.map((m: any) => (
+                <option key={m.id} value={m.id}>
+                  {m.name}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
         <div>
           <label htmlFor="machine-hours" className="form-label">
             {t("Every (running hours)")}

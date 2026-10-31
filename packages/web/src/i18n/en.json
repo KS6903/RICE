@@ -50,5 +50,7 @@
   "{{count}} users_one": "{{count}} user",
   "{{count}} users_other": "{{count}} users",
   "{{count}} warehouses_one": "{{count}} warehouse",
-  "{{count}} warehouses_other": "{{count}} warehouses"
+  "{{count}} warehouses_other": "{{count}} warehouses",
+  "{{count}} days_one": "{{count}} day",
+  "{{count}} days_other": "{{count}} days"
 }

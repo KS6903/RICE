@@ -8,7 +8,7 @@ from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from ..core.database import Base
-from .base import TimestampMixin
+from .base import TimestampMixin, now_utc
 
 if TYPE_CHECKING:
     from .reference import QualityGrade, RiceVariety
@@ -24,6 +24,10 @@ class MillingEquipment(Base):
     name: Mapped[str] = mapped_column(String(100), nullable=False)
     model: Mapped[str | None] = mapped_column(String(100))
     capacity_kg_per_hr: Mapped[Decimal | None] = mapped_column(Numeric(8, 2))
+    # The hours a day it is meant to run, and whether it sets the mill's capacity: a
+    # huller and polisher in one line are counted once, not twice.
+    rated_hours_per_day: Mapped[Decimal | None] = mapped_column(Numeric(4, 1))
+    counts_for_capacity: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default="true")
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
 
 
@@ -73,6 +77,28 @@ class MillingBatchInput(Base):
     batch: Mapped["MillingBatch"] = relationship("MillingBatch", back_populates="inputs")
     variety: Mapped["RiceVariety"] = relationship("RiceVariety")
     grade: Mapped["QualityGrade"] = relationship("QualityGrade")
+    lots: Mapped[list["MillingInputLot"]] = relationship(
+        "MillingInputLot", back_populates="input", cascade="all, delete-orphan"
+    )
+
+
+class MillingInputLot(Base):
+    """Which purchase line a batch input's palay came from, oldest first
+    (services/palay_lots.py). Palay stock itself is pooled by variety and grade."""
+
+    __tablename__ = "milling_input_lots"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    input_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("milling_batch_inputs.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    # A line replaced by an edit to its purchase leaves the kilos without a source.
+    purchase_item_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("palay_purchase_items.id", ondelete="SET NULL"), index=True
+    )
+    weight_kg: Mapped[Decimal] = mapped_column(Numeric(10, 3), nullable=False)
+
+    input: Mapped["MillingBatchInput"] = relationship("MillingBatchInput", back_populates="lots")
 
 
 class MillingBatchOutput(Base):
@@ -119,3 +145,31 @@ class ByproductInventory(Base):
     )
     byproduct_type: Mapped[str] = mapped_column(String(20), nullable=False)  # ipa, darak, binlid
     quantity_kg: Mapped[Decimal] = mapped_column(Numeric(12, 3), default=0)
+
+
+class StockMovement(Base):
+    """One change to a milled-rice or by-product balance, or palay sold: the ledger
+    behind Inventory's totals (services/stock_ledger.py). Rows start when this table
+    did, so stock older than that has no row. Reversing a source writes the opposite
+    row, never deletes one."""
+
+    __tablename__ = "stock_movements"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    company_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("companies.id"))
+    branch_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("branches.id"))
+    warehouse_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("warehouses.id", ondelete="SET NULL")
+    )
+    stock_type: Mapped[str] = mapped_column(String(20), nullable=False)  # milled_rice, byproduct, palay
+    inventory_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False, index=True)
+    variety_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("rice_varieties.id"))
+    grade_name: Mapped[str | None] = mapped_column(String(30))
+    byproduct_type: Mapped[str | None] = mapped_column(String(20))
+    delta_kg: Mapped[Decimal] = mapped_column(Numeric(12, 3), nullable=False)
+    balance_after_kg: Mapped[Decimal] = mapped_column(Numeric(12, 3), nullable=False)
+    source_type: Mapped[str] = mapped_column(String(30), nullable=False)  # sales_order, milling_batch, purchase, …
+    source_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), index=True)
+    notes: Mapped[str | None] = mapped_column(Text)
+    created_by: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc, nullable=False)

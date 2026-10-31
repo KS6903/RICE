@@ -76,10 +76,14 @@ class EquipmentCreate(BaseModel):
     name: str
     model: str | None = None
     capacity_kg_per_hr: Decimal | None = None
+    rated_hours_per_day: Decimal | None = Field(None, ge=0, le=24)
+    counts_for_capacity: bool = True
 
 
 class EquipmentUpdate(BaseModel):
     name: str | None = None
     model: str | None = None
     capacity_kg_per_hr: Decimal | None = None
+    rated_hours_per_day: Decimal | None = Field(None, ge=0, le=24)
+    counts_for_capacity: bool | None = None
     is_active: bool | None = None

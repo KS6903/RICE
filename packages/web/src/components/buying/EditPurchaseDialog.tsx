@@ -34,6 +34,7 @@ const NUMBERS: Record<
     { key: "gross_weight_kg", label: t("Kilos (est.)"), optional: true },
     { key: "tare_weight_kg", label: t("Tare kg") },
     { key: "moisture_content_pct", label: t("Moisture %"), optional: true },
+    { key: "impurity_pct", label: t("Impurities %"), optional: true },
     { key: "price_per_cavan", label: t("₱ per cavan") },
     { key: "dried_weight_kg", label: t("Weight after drying (kg)"), optional: true, wetOnly: true },
     {
@@ -63,6 +64,7 @@ const BLANK: Record<TradeKind, Line> = {
     gross_weight_kg: "",
     tare_weight_kg: "0",
     moisture_content_pct: "",
+    impurity_pct: "",
     price_per_cavan: "",
     is_wet: "",
     dried_weight_kg: "",
@@ -201,6 +203,7 @@ export default function EditPurchaseDialog({
   const [date, setDate] = useState<string>(purchase.purchase_date ?? "");
   const [delivery, setDelivery] = useState<string>(purchase.delivery_type ?? "");
   const [remarks, setRemarks] = useState<string>(purchase.remarks ?? "");
+  const [weightReason, setWeightReason] = useState("");
   const [lines, setLines] = useState<Line[]>(() =>
     (purchase.items ?? []).map((i: any) => fromItem(kind, i)),
   );
@@ -234,6 +237,9 @@ export default function EditPurchaseDialog({
         delivery_type: delivery || null,
         remarks: remarks.trim() || null,
         items: lines.map((l) => toItem(kind, l)),
+        ...(kind === "palay" && weightReason.trim()
+          ? { weight_change_reason: weightReason.trim() }
+          : {}),
       }),
     onSuccess: () => {
       for (const key of [...AFFECTED[kind], "inventory-summary", "record-history"]) {
@@ -453,6 +459,20 @@ export default function EditPurchaseDialog({
             onChange={(e) => setRemarks(e.target.value)}
           />
         </label>
+
+        {kind === "palay" && (
+          <label className="block">
+            <span className="block mb-1 text-xs font-medium text-secondary">
+              {t("Reason, if a weight changed")}
+            </span>
+            <input
+              className="input"
+              maxLength={300}
+              value={weightReason}
+              onChange={(e) => setWeightReason(e.target.value)}
+            />
+          </label>
+        )}
 
         {attempted && !valid && (
           <p role="alert" className="text-sm font-medium text-rose-600 dark:text-rose-400">

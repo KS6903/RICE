@@ -48,6 +48,7 @@ def test_a_palay_purchase_is_corrected_and_its_stock_follows(auth_client, db_ses
             json={
                 "supplier_id": second["id"],
                 "items": [{**line, "gross_weight_kg": "1200", "moisture_content_pct": "14"}],
+                "weight_change_reason": "Scale was off",
             },
         )
     )
