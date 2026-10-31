@@ -399,7 +399,7 @@ class SavingsService(BaseService):
             "id": str(b.id),
             "batch_no": b.batch_no,
             "client": customer.name if customer else None,
-            "sold": [{"order_no": no, "customer": who, "weight_kg": float(kg)} for no, who, kg in sold],
+            "sold": [{"order_no": no, "customer": who, "weight_kg": float(kg or 0)} for no, who, kg in sold],
             "lots": lots,
             "outputs": [{"output_type": o.output_type, "weight_kg": float(o.output_weight_kg)} for o in b.outputs],
             "input_kg": sum(float(i.input_weight_kg) for i in b.inputs),
@@ -562,7 +562,7 @@ class SavingsService(BaseService):
             .order_by(Pallet.pallet_code)
             .all()
         )
-        return [{"pallet_code": code, "zone": zone, "weight_kg": float(kg)} for code, zone, kg in rows]
+        return [{"pallet_code": code, "zone": zone, "weight_kg": float(kg or 0)} for code, zone, kg in rows]
 
     def supplier_vale(self, supplier_id: uuid.UUID) -> dict:
         """What a farmer still owes in vale, for the purchase form. Only that figure."""

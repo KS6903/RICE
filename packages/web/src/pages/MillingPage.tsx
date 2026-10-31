@@ -166,7 +166,15 @@ export default function MillingPage() {
     client_notes: "",
     start_datetime: format(new Date(), "yyyy-MM-dd'T'HH:mm"),
     remarks: "",
-    inputs: [{ variety_id: "", grade_id: "", input_weight_kg: "", moisture_content_pct: "" }],
+    inputs: [
+      {
+        variety_id: "",
+        grade_id: "",
+        input_weight_kg: "",
+        moisture_content_pct: "",
+        purchase_item_id: "",
+      },
+    ],
     outputs: [
       blankOutput("milled_rice", "Straight Mill Rice"),
       blankOutput("ipa"),
@@ -447,6 +455,7 @@ export default function MillingPage() {
                           grade_id: "",
                           input_weight_kg: "",
                           moisture_content_pct: "",
+                          purchase_item_id: "",
                         },
                       ],
                     }))

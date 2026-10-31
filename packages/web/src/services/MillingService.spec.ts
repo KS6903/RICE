@@ -34,6 +34,7 @@ describe("MillingService.toBatchPayload", () => {
       grade_id: null,
       input_weight_kg: 500,
       moisture_content_pct: 14,
+      purchase_item_id: null,
     });
     expect(payload.outputs[0]).toMatchObject({
       output_type: "milled_rice",
