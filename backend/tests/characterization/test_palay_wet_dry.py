@@ -208,6 +208,7 @@ def test_correcting_a_purchase_with_dried_lines_replaces_them_and_their_drying(a
         auth_client.patch(
             f"/api/paddy/purchases/{purchase['id']}",
             json={
+                "weight_change_reason": "Recounted",
                 "items": [
                     {
                         "variety_id": line["variety_id"],

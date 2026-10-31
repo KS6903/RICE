@@ -85,6 +85,7 @@ describe("MaintenancePage", () => {
     await waitFor(() =>
       expect(add).toHaveBeenCalledWith({
         name: "Polisher",
+        milling_equipment_id: null,
         every_hours: null,
         every_tonnes: 500,
         every_days: null,

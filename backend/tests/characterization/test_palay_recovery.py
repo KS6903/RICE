@@ -127,7 +127,11 @@ def test_correcting_the_purchase_lines_keeps_its_recovery_tests(auth_client):
     _ok(auth_client.post(f"/api/paddy/purchases/{purchase['id']}/recovery", json=_test(variety)))
 
     line = {"variety_id": variety["id"], "gross_weight_kg": "1200", "price_per_cavan": "1200"}
-    edited = _ok(auth_client.patch(f"/api/paddy/purchases/{purchase['id']}", json={"items": [line]}))
+    edited = _ok(
+        auth_client.patch(
+            f"/api/paddy/purchases/{purchase['id']}", json={"items": [line], "weight_change_reason": "Reweighed"}
+        )
+    )
 
     assert edited["total_kg"] == 1200.0
     [test] = edited["recovery_tests"]

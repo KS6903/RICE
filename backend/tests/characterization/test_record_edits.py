@@ -63,6 +63,7 @@ def test_a_palay_purchase_is_corrected_and_its_stock_follows(auth_client, db_ses
         "Supplier: Mang Ben → Aling Rosa",
         "Lines: RC400, 1,000 kg gross, 50 kg tare, ₱1,200/cavan"
         " → RC400, 1,200 kg gross, 50 kg tare, 14% moisture, ₱1,200/cavan",
+        "Reason: Scale was off",
     ]
 
 
