@@ -80,7 +80,10 @@ function BatchFlagNotes({ batch }: { batch: any }) {
   ].filter(Boolean);
   if (notes.length === 0) return null;
   return (
-    <ul data-testid="batch-flags" className="mt-1 text-xs font-medium text-rose-600 dark:text-rose-400">
+    <ul
+      data-testid="batch-flags"
+      className="mt-1 text-xs font-medium text-rose-600 dark:text-rose-400"
+    >
       {notes.map((note) => (
         <li key={String(note)}>{note}</li>
       ))}
