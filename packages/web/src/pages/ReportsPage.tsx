@@ -27,37 +27,102 @@ import { useFeature } from "../hooks/useFeature";
 import { useThemeStore } from "../stores/themeStore";
 import { t } from "../i18n";
 
+type ChartView = "bar" | "line";
+
+/** Every chart on this page: one series of pesos, drawn the way the page's switch says. */
+function ReportChart({
+  view,
+  data,
+  xKey,
+  yKey,
+  name,
+  color,
+  height,
+  average,
+}: {
+  view: ChartView;
+  data: object[];
+  xKey: string;
+  yKey: string;
+  name: string;
+  color: string;
+  height: number;
+  average?: number;
+}) {
+  const theme = useThemeStore((s) => s.theme);
+  const isDark = theme === "dark";
+  const gridColor = isDark ? "rgba(148,163,184,0.18)" : "rgba(15,23,42,0.1)";
+  const axisColor = isDark ? "#cbd5e1" : "#334155";
+  const axisTick = { fontSize: 11, fill: axisColor, fontWeight: 500 };
+  const Chart = view === "bar" ? BarChart : LineChart;
+
+  return (
+    <ResponsiveContainer width="100%" height={height}>
+      <Chart data={data} margin={{ left: -10, right: 8, top: 4 }}>
+        <CartesianGrid strokeDasharray="3 3" stroke={gridColor} />
+        <XAxis dataKey={xKey} tick={axisTick} axisLine={{ stroke: gridColor }} tickLine={false} />
+        <YAxis
+          tick={axisTick}
+          axisLine={{ stroke: gridColor }}
+          tickLine={false}
+          tickFormatter={(v) => `₱${(v / 1000).toFixed(0)}k`}
+        />
+        {/* The tooltip takes the app's surface and ink in either theme, and the
+            hover highlight behind a bar is a faint wash rather than the library's
+            pale grey (near-white on a dark page). */}
+        <Tooltip
+          formatter={(v: number) => [`₱${v.toLocaleString()}`, name]}
+          contentStyle={{
+            backgroundColor: "rgb(var(--surface-raised))",
+            border: "1px solid rgb(var(--line))",
+            borderRadius: 12,
+            boxShadow: "0 8px 24px -8px rgba(15,23,42,0.25)",
+            fontWeight: 500,
+          }}
+          labelStyle={{ color: "rgb(var(--ink))", fontWeight: 600 }}
+          cursor={{
+            fill: isDark ? "rgba(148,163,184,0.10)" : "rgba(15,23,42,0.05)",
+            stroke: gridColor,
+          }}
+        />
+        {average !== undefined && (
+          <ReferenceLine
+            y={average}
+            stroke={color}
+            strokeDasharray="4 4"
+            label={{ value: t("Avg"), position: "insideTopRight", fontSize: 11, fill: color }}
+          />
+        )}
+        {view === "bar" ? (
+          <Bar dataKey={yKey} fill={color} radius={[4, 4, 0, 0]} maxBarSize={48} />
+        ) : (
+          <Line
+            type="monotone"
+            dataKey={yKey}
+            stroke={color}
+            strokeWidth={3}
+            dot={{ r: 3, fill: color }}
+            activeDot={{ r: 6, strokeWidth: 2, stroke: "#fff" }}
+          />
+        )}
+      </Chart>
+    </ResponsiveContainer>
+  );
+}
+
 export default function ReportsPage() {
   const [dateRange, setDateRange] = useState({
     start: format(startOfMonth(new Date()), "yyyy-MM-dd"),
     end: format(endOfMonth(new Date()), "yyyy-MM-dd"),
   });
   const [revenueYear, setRevenueYear] = useState(new Date().getFullYear());
-  const [revenueChart, setRevenueChart] = useState<"bar" | "line">("bar");
+  const [chartView, setChartView] = useState<ChartView>("bar");
+  const chartViews = [
+    { view: "bar", label: t("Bar"), Icon: BarChart3 },
+    { view: "line", label: t("Line"), Icon: LineChartIcon },
+  ] as const;
 
   const hasAdvanced = useFeature("reports_advanced");
-  const theme = useThemeStore((s) => s.theme);
-  const isDark = theme === "dark";
-  const gridColor = isDark ? "rgba(148,163,184,0.18)" : "rgba(15,23,42,0.1)";
-  const axisColor = isDark ? "#cbd5e1" : "#334155";
-  // One look for every chart here, in either theme: the tooltip takes the
-  // app's surface and ink, and the hover highlight behind a bar is a faint
-  // wash rather than the library's pale grey (near-white on a dark page).
-  const tooltipStyle = {
-    contentStyle: {
-      backgroundColor: "rgb(var(--surface-raised))",
-      border: t("1px solid rgb(var(--line))"),
-      borderRadius: 12,
-      boxShadow: "0 8px 24px -8px rgba(15,23,42,0.25)",
-      fontWeight: 500,
-    },
-    labelStyle: { color: "rgb(var(--ink))", fontWeight: 600 },
-    cursor: {
-      fill: isDark ? "rgba(148,163,184,0.10)" : "rgba(15,23,42,0.05)",
-      stroke: gridColor,
-    },
-  };
-  const axisTick = { fontSize: 11, fill: axisColor, fontWeight: 500 };
 
   const { data: pnl } = useQuery({
     queryKey: ["pnl", dateRange.start, dateRange.end],
@@ -97,13 +162,29 @@ export default function ReportsPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-xl font-bold text-gray-900 dark:text-slate-100">
-          {t("Reports & Analytics")}
-        </h2>
-        <p className="text-sm text-gray-500 dark:text-slate-400">
-          {t("Profit & Loss, AR aging, inventory valuation, compliance")}
-        </p>
+      <div className="flex items-start justify-between flex-wrap gap-3">
+        <div>
+          <h2 className="text-xl font-bold text-gray-900 dark:text-slate-100">
+            {t("Reports & Analytics")}
+          </h2>
+          <p className="text-sm text-gray-500 dark:text-slate-400">
+            {t("Profit & Loss, AR aging, inventory valuation, compliance")}
+          </p>
+        </div>
+        <div className="seg" role="radiogroup" aria-label={t("Chart type")}>
+          {chartViews.map(({ view, label, Icon }) => (
+            <button
+              key={view}
+              type="button"
+              role="radio"
+              aria-checked={chartView === view}
+              className={`seg-btn ${chartView === view ? "is-active" : ""}`}
+              onClick={() => setChartView(view)}
+            >
+              <Icon size={14} aria-hidden /> {label}
+            </button>
+          ))}
+        </div>
       </div>
 
       <div className="card space-y-4">
@@ -164,28 +245,15 @@ export default function ReportsPage() {
                 {pnl.gross_margin_pct}%
               </span>
             </div>
-            <ResponsiveContainer width="100%" height={220}>
-              <BarChart data={pnlData}>
-                <CartesianGrid strokeDasharray="3 3" stroke={gridColor} />
-                <XAxis
-                  dataKey="name"
-                  tick={axisTick}
-                  axisLine={{ stroke: gridColor }}
-                  tickLine={false}
-                />
-                <YAxis
-                  tick={axisTick}
-                  axisLine={{ stroke: gridColor }}
-                  tickLine={false}
-                  tickFormatter={(v) => `₱${(v / 1000).toFixed(0)}k`}
-                />
-                <Tooltip
-                  formatter={(v: number) => [`₱${v.toLocaleString()}`, t("Amount")]}
-                  {...tooltipStyle}
-                />
-                <Bar dataKey="amount" fill="#16a34a" radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
+            <ReportChart
+              view={chartView}
+              data={pnlData}
+              xKey="name"
+              yKey="amount"
+              name={t("Amount")}
+              color="#16a34a"
+              height={220}
+            />
           </>
         )}
       </div>
@@ -200,29 +268,6 @@ export default function ReportsPage() {
             </p>
           </div>
           <div className="flex items-center gap-3 flex-wrap">
-            {/* Bar / line toggle */}
-            <div className="inline-flex items-center rounded-lg bg-slate-100 dark:bg-slate-800 p-0.5">
-              <button
-                onClick={() => setRevenueChart("bar")}
-                className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold transition-colors ${
-                  revenueChart === "bar"
-                    ? "bg-white dark:bg-slate-700 text-primary shadow-sm"
-                    : "text-secondary hover:text-primary"
-                }`}
-              >
-                <BarChart3 size={14} /> {t("Bar")}
-              </button>
-              <button
-                onClick={() => setRevenueChart("line")}
-                className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold transition-colors ${
-                  revenueChart === "line"
-                    ? "bg-white dark:bg-slate-700 text-primary shadow-sm"
-                    : "text-secondary hover:text-primary"
-                }`}
-              >
-                <LineChartIcon size={14} /> {t("Line")}
-              </button>
-            </div>
             {/* Year picker */}
             <div className="flex items-center gap-2">
               <button
@@ -258,77 +303,16 @@ export default function ReportsPage() {
                 </div>
               ))}
             </div>
-            <ResponsiveContainer width="100%" height={260}>
-              {revenueChart === "bar" ? (
-                <BarChart data={revenueAnnual} margin={{ left: -10, right: 8, top: 4 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke={gridColor} />
-                  <XAxis
-                    dataKey="month_name"
-                    tick={{ fontSize: 12, fill: axisColor, fontWeight: 500 }}
-                    axisLine={{ stroke: gridColor }}
-                    tickLine={false}
-                  />
-                  <YAxis
-                    tick={{ fontSize: 12, fill: axisColor, fontWeight: 500 }}
-                    axisLine={{ stroke: gridColor }}
-                    tickLine={false}
-                    tickFormatter={(v) => `₱${(v / 1000).toFixed(0)}k`}
-                  />
-                  <Tooltip
-                    formatter={(v: number) => [`₱${v.toLocaleString()}`, t("Revenue")]}
-                    {...tooltipStyle}
-                  />
-                  <ReferenceLine
-                    y={revenueAnnual.reduce((sum, m) => sum + m.revenue, 0) / 12}
-                    stroke="#10b981"
-                    strokeDasharray="4 4"
-                    label={{ value: "Avg", position: "right", fontSize: 11, fill: "#10b981" }}
-                  />
-                  <Bar dataKey="revenue" fill="#10b981" radius={[4, 4, 0, 0]} maxBarSize={48} />
-                </BarChart>
-              ) : (
-                <LineChart data={revenueAnnual} margin={{ left: -10, right: 8, top: 4 }}>
-                  <defs>
-                    <linearGradient id="revLineFill" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="#10b981" stopOpacity={0.35} />
-                      <stop offset="100%" stopColor="#10b981" stopOpacity={0} />
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke={gridColor} />
-                  <XAxis
-                    dataKey="month_name"
-                    tick={{ fontSize: 12, fill: axisColor, fontWeight: 500 }}
-                    axisLine={{ stroke: gridColor }}
-                    tickLine={false}
-                  />
-                  <YAxis
-                    tick={{ fontSize: 12, fill: axisColor, fontWeight: 500 }}
-                    axisLine={{ stroke: gridColor }}
-                    tickLine={false}
-                    tickFormatter={(v) => `₱${(v / 1000).toFixed(0)}k`}
-                  />
-                  <Tooltip
-                    formatter={(v: number) => [`₱${v.toLocaleString()}`, t("Revenue")]}
-                    {...tooltipStyle}
-                  />
-                  <ReferenceLine
-                    y={revenueAnnual.reduce((sum, m) => sum + m.revenue, 0) / 12}
-                    stroke="#10b981"
-                    strokeDasharray="4 4"
-                    label={{ value: "Avg", position: "right", fontSize: 11, fill: "#10b981" }}
-                  />
-                  <Line
-                    type="monotone"
-                    dataKey="revenue"
-                    stroke="#10b981"
-                    strokeWidth={3}
-                    fill="url(#revLineFill)"
-                    dot={{ r: 3, fill: "#10b981" }}
-                    activeDot={{ r: 6, strokeWidth: 2, stroke: "#fff" }}
-                  />
-                </LineChart>
-              )}
-            </ResponsiveContainer>
+            <ReportChart
+              view={chartView}
+              data={revenueAnnual}
+              xKey="month_name"
+              yKey="revenue"
+              name={t("Revenue")}
+              color="#10b981"
+              height={260}
+              average={revenueAnnual.reduce((sum, m) => sum + m.revenue, 0) / 12}
+            />
             <p className="text-right text-sm text-secondary">
               {t("Total:")}{" "}
               <span className="font-semibold text-primary">
@@ -361,28 +345,15 @@ export default function ReportsPage() {
             <span className="sr-only">{t("Loading")}</span>
           </div>
         ) : arData.length > 0 ? (
-          <ResponsiveContainer width="100%" height={200}>
-            <BarChart data={arData}>
-              <CartesianGrid strokeDasharray="3 3" stroke={gridColor} />
-              <XAxis
-                dataKey="bucket"
-                tick={axisTick}
-                axisLine={{ stroke: gridColor }}
-                tickLine={false}
-              />
-              <YAxis
-                tick={axisTick}
-                axisLine={{ stroke: gridColor }}
-                tickLine={false}
-                tickFormatter={(v) => `₱${(v / 1000).toFixed(0)}k`}
-              />
-              <Tooltip
-                formatter={(v: number) => [`₱${v.toLocaleString()}`, t("Owed")]}
-                {...tooltipStyle}
-              />
-              <Bar dataKey="amount" fill="#f59e0b" radius={[4, 4, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
+          <ReportChart
+            view={chartView}
+            data={arData}
+            xKey="bucket"
+            yKey="amount"
+            name={t("Owed")}
+            color="#f59e0b"
+            height={200}
+          />
         ) : (
           <p className="text-sm text-gray-400 text-center py-8">
             {t("No outstanding receivables")}

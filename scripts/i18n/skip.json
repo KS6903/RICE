@@ -40,6 +40,7 @@
     "Regular-Milled Rice",
     "packages/web/src/components/layout/navigation.ts:Basic",
     "packages/web/src/components/layout/navigation.ts:Pro",
-    "packages/web/src/components/layout/navigation.ts:Enterprise"
+    "packages/web/src/components/layout/navigation.ts:Enterprise",
+    "1px solid rgb(var(--line))"
   ]
 }
