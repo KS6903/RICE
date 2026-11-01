@@ -41,6 +41,8 @@ DEFAULT_SETTINGS: dict = {
     "working_days_per_week": 6,
     "tariff_pct": 15.0,
     "cif_usd_per_ton": None,
+    # Added to Vietnam's FOB price when the Boss fills the CIF price from public prices.
+    "freight_usd_per_ton": 0.0,
     "usd_php": None,
     "landed_other_per_kg": 0.0,
     # Today's wholesale rice price, when typed; else what the mill's own sales averaged.
@@ -56,6 +58,24 @@ DEFAULT_SETTINGS: dict = {
     "kg_per_sack": 50.0,
     "bran_fresh_days": 7,
 }
+
+
+# PNS/BAFS 290:2019, Table 2: most brokens (brewers included) each milled rice grade allows.
+PNS_BROKEN_GRADES = (
+    (5.0, "premium"),
+    (10.0, "grade_1"),
+    (15.0, "grade_2"),
+    (25.0, "grade_3"),
+    (35.0, "grade_4"),
+    (45.0, "grade_5"),
+)
+
+
+def pns_grade(broken_pct: float | None) -> str | None:
+    """The national grade going by brokens alone: the standard grades other defects too."""
+    if broken_pct is None:
+        return None
+    return next((grade for limit, grade in PNS_BROKEN_GRADES if broken_pct <= limit), "off_grade")
 
 
 def settings_for(company) -> dict:

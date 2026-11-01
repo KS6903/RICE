@@ -1,17 +1,24 @@
-// Reading a weighing scale from the browser. Most truck-scale indicators send their
-// reading over a serial line as plain text, over and over, in formats like these:
+// Reading a weighing scale from the browser. Truck-scale indicators send their reading
+// over a serial line, over and over, in one of these (9600 8N1 or slower):
 //
-//   ST,GS,+  12450 kg      (stable, gross)
-//   US,GS,+  12380 kg      (still settling)
-//   =0012450               (no marks at all)
+//   ST,GS,+  12450 kg            a line, stable and gross
+//   US,GS,+  12380 kg            a line, still settling
+//   ww000.000kg                  XK3190-A12: gross ww, net wn, tare wt
+//   <STX>+001250 0 XX<ETX>       XK3190-A9+ tF=0: sign, 6 digits, decimals, XOR check
+//   51.0700=                     XK3190-A9+ tF=2 and 3: digits reversed, so this is 70.15
 //
-// Which of them a given scale sends depends on its model, so this reads the number and
-// the stable mark rather than one brand's layout.
+// Which of them a given scale sends depends on its model and settings, so this reads them
+// all. An indicator set to answer commands only (A9+ tF=1) sends nothing until asked, and
+// has to be set back to one of the continuous modes.
 
 export type ScaleReading = { kg: number; stable: boolean };
 
+const STX = "\x02";
+const ETX = "\x03";
+
 /** One line from a scale, or null when it holds no weight. */
 export function parseScaleLine(line: string): ScaleReading | null {
+  if (/^\s*wt/i.test(line)) return null; // the tare, not what's on the deck
   const match = line.match(/([-+]?)\s*(\d+(?:\.\d+)?)\s*(kg|lb|g|t)?\s*$/i);
   if (!match || match[1] === "-") return null;
   const value = Number(match[2]);
@@ -28,6 +35,35 @@ export function parseScaleLine(line: string): ScaleReading | null {
   // Marked unstable or in motion: not a weight to save. No mark: only repeats can tell.
   const stable = !/\b(US|MO|MOTION)\b/i.test(line);
   return { kg: Math.round(kg * 1000) / 1000, stable };
+}
+
+/** An XK3190-A9+ continuous frame, without its end mark. Null if damaged on the way. */
+export function parseChecksumFrame(frame: string): ScaleReading | null {
+  const match = frame.match(/^\x02([-+])(\d{6})(\d)([0-9A-F]{2})$/);
+  if (!match) return null;
+  let check = 0;
+  for (const char of frame.slice(1, 9)) check ^= char.charCodeAt(0);
+  if (check !== parseInt(match[4], 16) || match[1] === "-") return null;
+  return { kg: Number(match[2]) / 10 ** Number(match[3]), stable: true };
+}
+
+/** Splits what has arrived into readings, and what's left waiting for the rest of a frame. */
+export function readFrames(buffer: string): { readings: ScaleReading[]; rest: string } {
+  const readings: ScaleReading[] = [];
+  const ends = /[\r\n=\x03]/g;
+  let start = 0;
+  for (let end = ends.exec(buffer); end; end = ends.exec(buffer)) {
+    const frame = buffer.slice(start, end.index);
+    start = end.index + 1;
+    if (!frame.trim()) continue;
+    const reading = frame.startsWith(STX)
+      ? end[0] === ETX
+        ? parseChecksumFrame(frame)
+        : null
+      : parseScaleLine(end[0] === "=" ? [...frame].reverse().join("") : frame);
+    if (reading) readings.push(reading);
+  }
+  return { readings, rest: buffer.slice(start) };
 }
 
 /** The weight once the scale has settled: the same figure this many times running. */
@@ -56,15 +92,11 @@ export async function readScale(baudRate: number, timeoutMs = 15_000): Promise<n
       const { value, done } = await reader.read();
       if (done) break;
       buffer += decoder.decode(value, { stream: true });
-      const lines = buffer.split(/[\r\n]+/);
-      buffer = lines.pop() ?? "";
-      for (const line of lines) {
-        const reading = parseScaleLine(line);
-        if (!reading) continue;
-        readings.push(reading);
-        const kg = settled(readings);
-        if (kg != null) return kg;
-      }
+      const framed = readFrames(buffer);
+      buffer = framed.rest;
+      readings.push(...framed.readings);
+      const kg = settled(readings);
+      if (kg != null) return kg;
     }
     throw new Error("no_stable_weight");
   } finally {

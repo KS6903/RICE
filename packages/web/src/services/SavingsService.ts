@@ -14,6 +14,7 @@ export type SavingsSettings = {
   working_days_per_week: number;
   tariff_pct: number;
   cif_usd_per_ton: number | null;
+  freight_usd_per_ton: number;
   usd_php: number | null;
   landed_other_per_kg: number;
   packaging_per_sack: number;
@@ -62,6 +63,15 @@ export type MaxBuyRow = {
 };
 export type MaxBuy = { landed_price: number | null; target_margin_pct: number; rows: MaxBuyRow[] };
 
+export type MarketPrice = { name: string; per_kg: number; month: string };
+export type MarketPrices = {
+  vietnam_5pct: { usd_per_ton: number; month: string } | null;
+  table_tariff_pct: number | null;
+  usd_php: { rate: number; date: string } | null;
+  palay_farmgate: MarketPrice[];
+  rice_retail: MarketPrice[];
+};
+
 export type BatchBalance = {
   input_kg: number;
   milled_kg: number;
@@ -76,11 +86,14 @@ export type BatchBalance = {
   unaccounted_pct: number | null;
   complete: boolean;
 };
+export type PnsGrade =
+  "premium" | "grade_1" | "grade_2" | "grade_3" | "grade_4" | "grade_5" | "off_grade";
 export type BatchRow = {
   id: string;
   batch_no: string;
   start_datetime: string;
   balance: BatchBalance;
+  pns_grade: PnsGrade | null;
   alerts: (
     | "low_recovery"
     | "high_broken"
@@ -236,6 +249,7 @@ export class SavingsService {
   saveSettings = (body: Partial<SavingsSettings>): Promise<SavingsSettings> =>
     this.http.put("/savings/settings", body).then((r) => r.data);
   maxBuy = (): Promise<MaxBuy> => this.http.get("/savings/max-buy").then((r) => r.data);
+  market = (): Promise<MarketPrices> => this.http.get("/savings/market").then((r) => r.data);
   batches = (): Promise<BatchRow[]> => this.http.get("/savings/batches").then((r) => r.data);
   trace = (id: string): Promise<BatchTrace> =>
     this.http.get(`/savings/batches/${id}/trace`).then((r) => r.data);

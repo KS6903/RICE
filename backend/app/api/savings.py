@@ -16,6 +16,7 @@ from sqlalchemy.orm import Session
 
 from ..core.database import get_db
 from ..core.security import get_current_user, require_feature, require_section_access
+from ..services.market_prices import market_prices
 from ..services.savings_service import SavingsService
 from .profit import require_boss
 
@@ -55,6 +56,7 @@ class SettingsIn(BaseModel):
     working_days_per_week: int | None = Field(None, ge=1, le=7)
     tariff_pct: float | None = Field(None, ge=0, le=200)
     cif_usd_per_ton: float | None = Field(None, ge=0, le=100_000)
+    freight_usd_per_ton: float | None = Field(None, ge=0, le=10_000)
     usd_php: float | None = Field(None, ge=0, le=1_000)
     landed_other_per_kg: float | None = Field(None, ge=0, le=1_000)
     packaging_per_sack: float | None = Field(None, ge=0, le=10_000)
@@ -141,6 +143,11 @@ def set_settings(body: SettingsIn, svc: SavingsService = Depends(get_service)):
 @router.get("/max-buy")
 def max_buy(svc: SavingsService = Depends(get_service)):
     return svc.max_buy()
+
+
+@router.get("/market")
+def market():
+    return market_prices()
 
 
 @router.get("/batches")

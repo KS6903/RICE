@@ -557,3 +557,10 @@ def test_offline_sales_take_stock_once_and_give_it_back(auth_client, db_session)
     stock_ledger.unpost_offline_order(db_session, user, order_id)
     db_session.refresh(row)
     assert row.quantity_kg == Decimal("500")
+
+
+def test_public_prices_are_the_bosss_and_freight_is_a_setting(auth_client, monkeypatch):
+    prices = {"vietnam_5pct": {"usd_per_ton": 418.5, "month": "2026-09"}, "table_tariff_pct": 15.0}
+    monkeypatch.setattr("app.api.savings.market_prices", lambda: prices)
+    assert _ok(auth_client.get("/api/savings/market")) == prices
+    assert _ok(auth_client.put("/api/savings/settings", json={"freight_usd_per_ton": 30}))["freight_usd_per_ton"] == 30

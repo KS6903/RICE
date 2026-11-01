@@ -51,6 +51,8 @@ TTL_WEATHER = 10 * 60  # current weather — matches the upstream's freshness
 TTL_WEATHER_FORECAST = 30 * 60  # hourly/daily forecast — changes slowly, heavier call
 TTL_IP_GEO = 60 * 60  # IP → coordinates — public IPs move rarely
 TTL_DRYING_ADVISORY = 3 * 60 * 60  # LLM advisory — expensive; refreshed a few times/day
+TTL_MARKET_PRICES = 6 * 60 * 60  # public prices — published daily at the quickest
+TTL_MARKET_PRICES_FAILED = 10 * 60  # a source that's down is asked again soon, not every load
 
 
 class _Cache:

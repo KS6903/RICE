@@ -56,6 +56,7 @@ from .savings_formulas import (
     likely_cause,
     mass_balance,
     max_palay_price,
+    pns_grade,
     range_alerts,
     settings_for,
     unsold_since,
@@ -339,6 +340,7 @@ class SavingsService(BaseService):
                     "batch_no": b.batch_no,
                     "start_datetime": b.start_datetime,
                     "balance": balance,
+                    "pns_grade": pns_grade(broken),
                     "alerts": alerts,
                     "cause": likely_cause(alerts),
                 }

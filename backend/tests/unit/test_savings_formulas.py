@@ -19,6 +19,7 @@ from app.services.savings_formulas import (
     mass_balance,
     max_palay_price,
     payable_weight,
+    pns_grade,
     range_alerts,
     unsold_since,
     utilization_band,
@@ -138,3 +139,14 @@ def test_each_byproduct_keeps_for_its_own_days():
     assert fresh_days_for("binlid", settings) == 30
     assert fresh_days_for("darak", settings) == DEFAULT_SETTINGS["bran_fresh_days"]
     assert fresh_days_for("ipa", settings) is None
+
+
+def test_pns_grade_goes_by_the_standards_brokens_limits():
+    assert pns_grade(None) is None
+    assert pns_grade(5) == "premium"
+    assert pns_grade(5.1) == "grade_1"
+    assert pns_grade(10) == "grade_1"
+    assert pns_grade(15) == "grade_2"
+    assert pns_grade(25) == "grade_3"
+    assert pns_grade(45) == "grade_5"
+    assert pns_grade(45.1) == "off_grade"

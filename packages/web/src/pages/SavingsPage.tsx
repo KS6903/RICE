@@ -32,6 +32,8 @@ import {
   savingsService,
   type BatchRow,
   type HoldReason,
+  type MarketPrice,
+  type PnsGrade,
   type SavingsSettings,
   type UtilizationBand,
 } from "../services/SavingsService";
@@ -75,6 +77,29 @@ const BAND_BADGE: Record<UtilizationBand, string> = {
   optimal: "badge-green",
   over_target: "badge-yellow",
 };
+
+const PNS_GRADE_TEXT = (grade: PnsGrade): string =>
+  ({
+    premium: t("Premium"),
+    grade_1: t("Grade 1"),
+    grade_2: t("Grade 2"),
+    grade_3: t("Grade 3"),
+    grade_4: t("Grade 4"),
+    grade_5: t("Grade 5"),
+    off_grade: t("Off-grade"),
+  })[grade];
+
+// The server names public prices in English; shown in the viewer's language.
+const marketName = (name: string): string =>
+  ({
+    "Palay, fancy": t("Palay, fancy"),
+    "Palay, other varieties": t("Palay, other varieties"),
+    "Rice, regular-milled": t("Rice, regular-milled"),
+    "Rice, well-milled": t("Rice, well-milled"),
+    "Rice, special": t("Rice, special"),
+  })[name] ?? name;
+
+const monthLabel = (month: string) => format(new Date(`${month}-01T00:00:00`), "MMM yyyy");
 
 const REASONS = (): { value: HoldReason; label: string }[] => [
   { value: "moisture", label: t("High moisture") },
@@ -376,6 +401,29 @@ function Buying({
   onSave: (patch: Partial<SavingsSettings>) => void;
 }) {
   const { data } = useQuery({ queryKey: ["savings-max-buy"], queryFn: savingsService.maxBuy });
+  const { data: market, isLoading: marketLoading } = useQuery({
+    queryKey: ["savings-market"],
+    queryFn: savingsService.market,
+    staleTime: 60 * 60 * 1000,
+  });
+  const fillFromMarket = () => {
+    if (!market) return;
+    onSave({
+      ...(market.vietnam_5pct && {
+        cif_usd_per_ton: market.vietnam_5pct.usd_per_ton + (settings.freight_usd_per_ton || 0),
+      }),
+      ...(market.usd_php && { usd_php: market.usd_php.rate }),
+      ...(market.table_tariff_pct != null && { tariff_pct: market.table_tariff_pct }),
+    });
+  };
+  const priceLine = (p: MarketPrice) => (
+    <li key={p.name} className="flex justify-between gap-3">
+      <span className="text-secondary">
+        {marketName(p.name)} ({monthLabel(p.month)})
+      </span>
+      <span className="font-medium text-primary">{peso(p.per_kg)}</span>
+    </li>
+  );
   return (
     <div className="space-y-6">
       <Section
@@ -402,6 +450,66 @@ function Buying({
         />
       </Section>
       <Section
+        title={t("Public prices")}
+        hint={t(
+          "The latest published figures: World Bank, European Central Bank and the Philippine Statistics Authority. The tariff is what the government's price table gives. The rate charged is what customs last ordered, so check it before relying on this.",
+        )}
+      >
+        {marketLoading ? (
+          <LoadingRows />
+        ) : !market ||
+          (!market.vietnam_5pct &&
+            !market.usd_php &&
+            !market.palay_farmgate.length &&
+            !market.rice_retail.length) ? (
+          <p className="text-sm text-secondary">
+            {t("Public prices can't be reached right now. You can still type them below.")}
+          </p>
+        ) : (
+          <>
+            <ul className="space-y-1 text-sm">
+              {market.vietnam_5pct && (
+                <li className="flex justify-between gap-3">
+                  <span className="text-secondary">
+                    {t("Vietnam 5% broken, FOB, US$ per ton")} (
+                    {monthLabel(market.vietnam_5pct.month)})
+                  </span>
+                  <span className="font-medium text-primary">
+                    {market.vietnam_5pct.usd_per_ton.toFixed(2)}
+                  </span>
+                </li>
+              )}
+              {market.table_tariff_pct != null && (
+                <li className="flex justify-between gap-3">
+                  <span className="text-secondary">{t("Rice tariff from the price table")}</span>
+                  <span className="font-medium text-primary">{market.table_tariff_pct}%</span>
+                </li>
+              )}
+              {market.usd_php && (
+                <li className="flex justify-between gap-3">
+                  <span className="text-secondary">
+                    {t("Pesos per US$")} ({market.usd_php.date})
+                  </span>
+                  <span className="font-medium text-primary">{market.usd_php.rate.toFixed(2)}</span>
+                </li>
+              )}
+              {market.palay_farmgate.map(priceLine)}
+              {market.rice_retail.map(priceLine)}
+            </ul>
+            <div className="flex flex-wrap items-center gap-3">
+              <button type="button" className="btn-secondary" onClick={fillFromMarket}>
+                {t("Use for imported rice")}
+              </button>
+              <span className="text-xs text-secondary">
+                {t(
+                  "Fills in the CIF price (FOB plus your freight), the exchange rate and the tariff. No public source publishes wholesale rice, so type that, or leave it to your own sales.",
+                )}
+              </span>
+            </div>
+          </>
+        )}
+      </Section>
+      <Section
         title={t("Imported rice")}
         hint={t(
           "Imported rice sets a ceiling on what you can sell for. The rice tariff can change each quarter, so check the current rate before relying on this.",
@@ -415,18 +523,27 @@ function Buying({
             onSave={onSave}
           />
           <SettingField
+            key={`cif-${settings.cif_usd_per_ton}`}
             label={t("CIF price (US$ per ton)")}
             name="cif_usd_per_ton"
             settings={settings}
             onSave={onSave}
           />
           <SettingField
+            label={t("Freight (US$ per ton)")}
+            name="freight_usd_per_ton"
+            settings={settings}
+            onSave={onSave}
+          />
+          <SettingField
+            key={`fx-${settings.usd_php}`}
             label={t("Pesos per US$")}
             name="usd_php"
             settings={settings}
             onSave={onSave}
           />
           <SettingField
+            key={`tariff-${settings.tariff_pct}`}
             label={t("Rice tariff %")}
             name="tariff_pct"
             settings={settings}
@@ -640,6 +757,7 @@ function Milling({
               t("Recovery %"),
               t("Head rice %"),
               t("Broken %"),
+              t("Grade by brokens"),
               t("Binlid %"),
               t("Darak %"),
               t("Ipa %"),
@@ -678,6 +796,7 @@ function Milling({
                   <Cell>{percent(row.recovery_pct)}</Cell>
                   <Cell>{percent(row.head_pct)}</Cell>
                   <Cell>{percent(row.broken_pct)}</Cell>
+                  <Cell>{b.pns_grade ? PNS_GRADE_TEXT(b.pns_grade) : "—"}</Cell>
                   <Cell>{percent(row.binlid_pct)}</Cell>
                   <Cell>{percent(row.darak_pct)}</Cell>
                   <Cell>{percent(row.ipa_pct)}</Cell>
@@ -691,7 +810,7 @@ function Milling({
               if (open === b.id) {
                 rows.push(
                   <tr key={`${b.id}-trace`}>
-                    <td colSpan={9} className="px-3 py-3">
+                    <td colSpan={10} className="px-3 py-3">
                       <TraceDetails id={b.id} />
                     </td>
                   </tr>,
@@ -704,7 +823,9 @@ function Milling({
       </Section>
       <Section
         title={t("Alert limits")}
-        hint={t("A batch past any of these is flagged here. Change them to suit your mill.")}
+        hint={t(
+          "A batch past any of these is flagged here. Change them to suit your mill. The national standard (PNS/BAFS 290:2019) allows brokens up to 5% for Premium, 10% for Grade 1, 15% for Grade 2 and 25% for Grade 3. It grades other defects too, so a batch's grade here goes by brokens alone.",
+        )}
       >
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
           <SettingField

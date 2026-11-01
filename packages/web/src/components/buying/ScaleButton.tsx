@@ -7,7 +7,7 @@ import { readScale, scaleSupported } from "../../utils/scale";
 import { t } from "../../i18n";
 
 const BAUD_KEY = "rice-mill-scale-baud";
-const BAUD_RATES = [1200, 2400, 4800, 9600, 19200];
+const BAUD_RATES = [600, 1200, 2400, 4800, 9600, 19200];
 
 function savedBaud(): number {
   try {
