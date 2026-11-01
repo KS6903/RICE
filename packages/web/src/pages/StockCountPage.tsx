@@ -651,9 +651,7 @@ export default function StockCountPage() {
   return (
     <div className="space-y-6">
       <p className="text-sm text-secondary max-w-2xl">
-        {t(
-          "Count what's on the floor, then see it against the records. A count changes no stock.",
-        )}
+        {t("Count what's on the floor, then see it against the records. A count changes no stock.")}
       </p>
 
       {canEdit("inventory") ? (
