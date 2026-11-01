@@ -192,10 +192,12 @@ describe("StockCountPage", () => {
     );
   });
 
-  it("folds a line's sacks into kilos when it switches, and goes back to the default", async () => {
+  it("folds a line's sacks into kilos when it switches, and keeps that as the line's default", async () => {
     useAuthStore.setState({ user: owner });
     vi.spyOn(stockCountService, "page").mockResolvedValue(page);
-    vi.spyOn(stockCountService, "saveChoices").mockResolvedValue({ defaults: {}, lines: {} });
+    const keep = vi
+      .spyOn(stockCountService, "saveChoices")
+      .mockResolvedValue({ defaults: {}, lines: {} });
     draw();
     const sheet = await screen.findByRole("region", { name: "Count sheet" });
     const rice = "Milled rice, NSIC Rc222 (grade Premium)";
@@ -203,8 +205,10 @@ describe("StockCountPage", () => {
     const own = within(sheet).getByRole("radiogroup", { name: `${rice}, count in` });
     fireEvent.click(within(own).getByRole("radio", { name: "Kilos" }));
     expect(within(sheet).getByLabelText(rice)).toHaveValue("100");
-    fireEvent.click(within(sheet).getByRole("button", { name: `${rice}, use the default` }));
-    expect(within(sheet).getByLabelText(`${rice}, loose kg`)).toHaveValue("100");
+    await waitFor(() =>
+      expect(keep).toHaveBeenCalledWith(expect.objectContaining({ lines: { r1: { unit: "kg" } } })),
+    );
+    expect(within(sheet).queryByRole("button", { name: /default/i })).not.toBeInTheDocument();
   });
 
   it("counts one branch at a time, and keeps what was typed for the other", async () => {

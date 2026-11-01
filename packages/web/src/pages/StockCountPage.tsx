@@ -111,7 +111,6 @@ const pick = (line: SheetLine, choices: Choices) => {
   return {
     unit: own?.unit ?? base.unit,
     sackKg: own?.sackKg ?? base.sackKg,
-    custom: own?.unit !== undefined || own?.sackKg !== undefined,
   };
 };
 
@@ -284,7 +283,6 @@ function CountRow({
   onChange,
   onUnit,
   onSackKg,
-  onUseDefault,
   onEnter,
 }: {
   line: SheetLine;
@@ -293,7 +291,6 @@ function CountRow({
   onChange: (entry: Entry) => void;
   onUnit: (unit: Unit) => void;
   onSackKg: (sackKg: string) => void;
-  onUseDefault: () => void;
   onEnter: (e: KeyboardEvent<HTMLInputElement>) => void;
 }) {
   const done = !blank(entry);
@@ -334,16 +331,6 @@ function CountRow({
             />
             {t("kg a sack")}
           </label>
-        )}
-        {choice.custom && (
-          <button
-            type="button"
-            aria-label={t("{{label}}, use the default", { label: line.label })}
-            className="text-xs font-semibold text-secondary hover:text-primary"
-            onClick={onUseDefault}
-          >
-            {t("Use default")}
-          </button>
         )}
       </span>
       <span className="flex items-center gap-2">
@@ -427,16 +414,27 @@ function CountSheet({ data }: { data: PageData }) {
   const { mutate: sendChoices } = saveChoices;
   // Kept for the mill a moment after the last change, not on every keystroke.
   const savedChoices = useRef(JSON.stringify(toApi(choices)));
+  const unsavedChoices = useRef<CountChoices | null>(null);
   useEffect(() => {
     const next = toApi(choices);
     const text = JSON.stringify(next);
+    unsavedChoices.current = null;
     if (text === savedChoices.current) return;
+    unsavedChoices.current = next;
     const timer = setTimeout(() => {
       savedChoices.current = text;
+      unsavedChoices.current = null;
       sendChoices(next);
     }, 600);
     return () => clearTimeout(timer);
   }, [choices, sendChoices]);
+  // Leaving the page right after a change still keeps it.
+  useEffect(
+    () => () => {
+      if (unsavedChoices.current) sendChoices(unsavedChoices.current);
+    },
+    [sendChoices],
+  );
 
   const save = useMutation({
     mutationFn: (counted: SheetLine[]) =>
@@ -481,13 +479,14 @@ function CountSheet({ data }: { data: PageData }) {
       ...choices,
       defaults: { ...choices.defaults, [kind]: { ...choices.defaults[kind], ...change } },
     });
-  const changeLine = (line: SheetLine, change: Choices["lines"][string] | null) => {
-    const { [line.inventory_id]: own, ...others } = choices.lines;
+  const changeLine = (line: SheetLine, change: Choices["lines"][string]) =>
     changeChoices({
       ...choices,
-      lines: change ? { ...others, [line.inventory_id]: { ...own, ...change } } : others,
+      lines: {
+        ...choices.lines,
+        [line.inventory_id]: { ...choices.lines[line.inventory_id], ...change },
+      },
     });
-  };
 
   // Enter moves on to the next box, top to bottom, like a paper sheet.
   const nextBox = (e: KeyboardEvent<HTMLInputElement>) => {
@@ -569,7 +568,6 @@ function CountSheet({ data }: { data: PageData }) {
                       onChange={(entry) => setEntries((all) => ({ ...all, [key(line)]: entry }))}
                       onUnit={(unit) => changeLine(line, { unit })}
                       onSackKg={(sackKg) => changeLine(line, { sackKg })}
-                      onUseDefault={() => changeLine(line, null)}
                       onEnter={nextBox}
                     />
                   ))}
