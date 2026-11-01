@@ -128,8 +128,8 @@ def _notifications(username: str, reset: bool) -> str:
     """The small mill's starter set on the Pro mills, leaving out what's Enterprise's."""
     from app.automations import presets
     from app.core.tenancy import set_search_path
-    from app.models.user import User
     from app.models.subscription import Subscription
+    from app.models.user import User
 
     def work(db) -> str:
         user = db.query(User).filter(User.username == username, User.company_id.is_not(None)).first()
