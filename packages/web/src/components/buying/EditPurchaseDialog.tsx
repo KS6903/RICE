@@ -267,15 +267,10 @@ export default function EditPurchaseDialog({
 
   // The cavans and the kilos of a palay line are the same amount, 50 kg to the cavan.
   const setNumber = (i: number, key: string, value: string) => {
-    const linked =
-      kind !== "palay"
-        ? {}
-        : key === "cavan_count"
-          ? { gross_weight_kg: kilosFromCavans(value) }
-          : key === "gross_weight_kg"
-            ? { cavan_count: cavansFromKilos(value) }
-            : {};
-    setLine(i, { [key]: value, ...linked });
+    const patch: Line = { [key]: value };
+    if (kind === "palay" && key === "cavan_count") patch.gross_weight_kg = kilosFromCavans(value);
+    if (kind === "palay" && key === "gross_weight_kg") patch.cavan_count = cavansFromKilos(value);
+    setLine(i, patch);
   };
 
   // A variety, grade or by-product the purchase has but the list hides stays pickable.

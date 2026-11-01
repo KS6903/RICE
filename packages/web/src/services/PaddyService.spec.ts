@@ -80,10 +80,7 @@ describe("purchaseLineProblems", () => {
   });
 
   it("is satisfied by the cavans or the kilos, with a price", () => {
-    for (const counted of [
-      { cavan_count: "20" },
-      { gross_weight_kg: "1000" },
-    ]) {
+    for (const counted of [{ cavan_count: "20" }, { gross_weight_kg: "1000" }]) {
       const line = { ...blankPurchaseItem(), ...counted, price_per_kg: "24" };
       expect(purchaseLineProblems(line)).toEqual({ counted: false, price: false });
       expect(purchaseLineReady(line)).toBe(true);

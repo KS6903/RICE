@@ -8,7 +8,7 @@ import { useHelpStore } from "../stores/helpStore";
 const pendingLogout = vi.hoisted(() => vi.fn<() => Promise<void> | null>(() => null));
 vi.mock("../stores/authStore", () => ({ pendingLogout }));
 
-let go: ReturnType<typeof useNavigate>;
+let go: (to: string, options?: { replace?: boolean }) => void;
 let drawnPath: string;
 function Nav() {
   go = useNavigate();

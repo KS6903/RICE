@@ -471,9 +471,7 @@ describe("PaddyPage: how the palay in stock is counted", () => {
 
     fireEvent.click(within(views).getByRole("radio", { name: "Kilos" }));
 
-    await waitFor(() =>
-      expect(within(views).getByRole("radio", { name: "Cavans" })).toBeChecked(),
-    );
+    await waitFor(() => expect(within(views).getByRole("radio", { name: "Cavans" })).toBeChecked());
   });
 
   it("lets only the Boss change it, between the cavans and the kilos", async () => {
