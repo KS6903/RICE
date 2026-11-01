@@ -1,4 +1,4 @@
-"""Every recipe an Enterprise tenant can switch on, by code, in page order."""
+"""Every recipe a tenant can switch on, by code, in page order. Pro has the plain ones."""
 
 from __future__ import annotations
 

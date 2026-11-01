@@ -129,7 +129,7 @@ def test_key_clauses_survive_edits():
 
     privacy = flat("privacy")
     assert "10173" in privacy
-    assert "National Privacy Commission" in privacy
+    assert "data privacy regulator" in privacy
     assert "72 hours" in privacy
     assert "Service providers (sub-processors)" in privacy  # was the sub-processor register
     assert "Have I Been Pwned" in privacy
@@ -168,4 +168,4 @@ def test_placeholder_check_flags_todo_values():
     # placeholder Terms of Service reach production.
     if problems:
         assert all("legal" not in p or ".md:" in p for p in problems)
-        assert any("provider_legal_name" in p for p in problems)
+        assert any("provider_address" in p for p in problems)

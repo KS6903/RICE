@@ -39,6 +39,7 @@ export const FEATURE_PLAN: Record<string, PlanName> = {
   employees: "Pro",
   page_todo: "Pro",
   profit: "Pro",
+  notifications: "Pro",
   automations: "Enterprise",
 };
 export const PLAN_ORDER: PlanName[] = ["Basic", "Pro", "Enterprise"];
@@ -231,7 +232,7 @@ export const NAV_GROUPS: { title: string | null; items: NavEntry[] }[] = [
         to: "/automations",
         label: t("Automations"),
         icon: Workflow,
-        feature: "automations",
+        feature: "notifications",
         section: "automations",
         hint: t("Reports and alerts that run by themselves"),
         beta: true,

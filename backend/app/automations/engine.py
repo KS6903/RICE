@@ -7,16 +7,16 @@ and dead-runner recovery), the recipe builds its notices, and they go to the
 rule's recipients as notifications. The notifications job emails them.
 
 Entitlement is read from the database on every tick, not from the features
-cache. A tenant that moved off Enterprise has its rules skipped, not deleted,
-and on its return only runs due from then on happen: no burst of missed
-digests.
+cache. A tenant that moved down a plan has the rules it lost skipped, not
+deleted, and on its return only runs due from then on happen: no burst of
+missed digests.
 """
 
 from __future__ import annotations
 
 import logging
 import uuid
-from collections.abc import Sequence
+from collections.abc import Collection, Sequence
 from datetime import datetime, timedelta
 
 from pydantic import BaseModel, ValidationError
@@ -39,17 +39,30 @@ from .recipes import RECIPES
 
 logger = logging.getLogger("ricemill.automations")
 
-FEATURE = "automations"
+FEATURE = "automations"  # Enterprise: everything here
+NOTIFICATIONS_FEATURE = "notifications"  # Pro: the recipes that aren't enterprise_only
 
 
 def job_name(recipe_code: str) -> str:
     return f"automation.{recipe_code}"
 
 
-def entitled(db: Session, company_id: uuid.UUID) -> bool:
-    """True when the tenant's subscription is active and its plan includes automations."""
+def covers(features: Collection[str], recipe: Recipe) -> bool:
+    """Whether a plan with these features runs this recipe."""
+    return FEATURE in features or (NOTIFICATIONS_FEATURE in features and not recipe.enterprise_only)
+
+
+def plan_features(db: Session, company_id: uuid.UUID) -> list[str]:
+    """What the tenant's plan includes, or nothing while its subscription isn't active."""
     sub = db.query(Subscription).filter(Subscription.company_id == company_id).first()
-    return bool(sub and sub.plan and is_active(sub) and FEATURE in (sub.plan.features or []))
+    return list(sub.plan.features or []) if sub and sub.plan and is_active(sub) else []
+
+
+def entitled(db: Session, company_id: uuid.UUID, recipe: Recipe | None = None) -> bool:
+    """True when the tenant's plan runs this recipe; with none named, whether it has
+    Enterprise's automations."""
+    features = plan_features(db, company_id)
+    return covers(features, recipe) if recipe else FEATURE in features
 
 
 def eligible_users(db: Session, company_id: uuid.UUID, recipe: Recipe) -> list[User]:
@@ -139,7 +152,10 @@ def run_due_automations(ctx: JobContext, *, ai: bool = False) -> str:
     company = ctx.company
     assert company is not None, "automations are a tenant job"
     settings = ai_settings(ctx.db, company.id)
-    ai_on = bool(settings and settings.ai_enabled)
+    features = plan_features(ctx.db, company.id)
+    # AI and tracking are Enterprise's, whatever was set before a move down a plan.
+    full = FEATURE in features
+    ai_on = bool(settings and settings.ai_enabled and full)
     rules: list[tuple[AutomationRule, Recipe, BaseModel]] = []
     for rule in ctx.db.query(AutomationRule).filter(AutomationRule.enabled.is_(True)).all():
         recipe = RECIPES.get(rule.recipe)
@@ -155,8 +171,10 @@ def run_due_automations(ctx: JobContext, *, ai: bool = False) -> str:
             rules.append((rule, recipe, params))
     if not rules:
         return "no automations switched on"
-    if not entitled(ctx.db, company.id):
-        return f"{len(rules)} automation(s) paused: the plan doesn't include automations"
+    paused = len(rules)
+    rules = [r for r in rules if covers(features, r[1])]
+    if not rules:
+        return f"{paused} automation(s) paused: the plan doesn't include automations"
     if ai and not ai_on:
         return f"{len(rules)} AI automation(s) paused: AI is switched off"
     language = settings.ai_language if settings else "en"
@@ -174,7 +192,8 @@ def run_due_automations(ctx: JobContext, *, ai: bool = False) -> str:
             notices = recipe.build(context, params)
             user_ids = recipient_ids(ctx.db, company.id, recipe, rule.recipients or [])
             new = deliver(ctx.db, company, recipe, notices, user_ids, email=bool(getattr(params, "email", True)))
-            actions.track(ctx.db, company, rule, recipe, notices, now=ctx.now)
+            if full:
+                actions.track(ctx.db, company, rule, recipe, notices, now=ctx.now)
             ctx.db.commit()
             finish_run(ctx.db, run_id, "succeeded", f"{new} notice(s) to {len(user_ids)} recipient(s)")
             ran += 1
@@ -206,7 +225,7 @@ def send_test(db: Session, company: Company, recipe: Recipe, user: User, *, now:
     rule = db.query(AutomationRule).filter(AutomationRule.recipe == recipe.code).first()
     params = parse_params(recipe, rule.params if rule else None)
     settings = ai_settings(db, company.id)
-    ai_on = bool(settings and settings.ai_enabled)
+    ai_on = bool(settings and settings.ai_enabled and entitled(db, company.id))
     if recipe.uses_ai and not ai_on:
         raise RecipeProblem("Switch on AI for your automations first, at the top of the AI advisor section.")
     if asks_ai(recipe, params, ai_on):

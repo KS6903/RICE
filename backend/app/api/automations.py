@@ -1,8 +1,10 @@
-"""Automations HTTP controller (Enterprise only).
+"""Automations HTTP controller.
 
-Plan gate: require_feature("automations") answers 402 for tenants not on
-Enterprise. Role gate: the "automations" section; owners and admins manage,
-accountants can look, everyone else gets 403.
+Plan gate: Pro opens the page and the plain notifications (the notifications
+feature); AI, the recipes marked enterprise, and tracking alerts as tasks are
+Enterprise's (automations). 402 for what the plan lacks. Role gate: the
+"automations" section; owners and admins manage, accountants can look, everyone
+else gets 403.
 
 AI recipes send the mill's records to DeepSeek, so they also need the tenant's
 AI switch on (PUT /ai), which only an owner can flip.
@@ -22,7 +24,7 @@ from ..automations.base import Recipe, RecipeProblem
 from ..automations.recipes import RECIPES
 from ..automations.sources import saved_locations
 from ..core.database import get_db
-from ..core.security import get_current_user, require_feature, require_section_access
+from ..core.security import get_current_user, get_user_features, require_feature, require_section_access
 from ..core.timezones import tenant_zone
 from ..models.automation import AutomationRule, AutomationSettings
 from ..models.job_run import JobRun
@@ -30,9 +32,21 @@ from ..models.user import User
 from ..services.notification_service import undelivered_emails
 
 router = APIRouter(
-    dependencies=[Depends(require_feature("automations")), Depends(require_section_access("automations"))]
+    dependencies=[
+        Depends(require_feature("notifications", "automations")),
+        Depends(require_section_access("automations")),
+    ]
 )
 manage = [Depends(require_section_access("automations", write=True))]
+
+
+def _has_enterprise(user: User, db: Session) -> bool:
+    return user.is_platform_admin or "automations" in get_user_features(user, db)
+
+
+def _check_plan(recipe: Recipe, user: User, db: Session) -> None:
+    if recipe.enterprise_only and not _has_enterprise(user, db):
+        raise HTTPException(status_code=status.HTTP_402_PAYMENT_REQUIRED, detail="This one is on the Enterprise plan.")
 
 
 class AISettingsUpdate(BaseModel):
@@ -92,7 +106,7 @@ def _tenant_options(db: Session, company_id: uuid.UUID, field: RecipeField) -> l
     return []
 
 
-def _serialize(db: Session, company_id: uuid.UUID, recipe: Recipe, rule: AutomationRule | None) -> dict:
+def _serialize(db: Session, company_id: uuid.UUID, recipe: Recipe, rule: AutomationRule | None, *, full: bool) -> dict:
     params = engine.parse_params(recipe, rule.params if rule else None)
     candidates = engine.eligible_users(db, company_id, recipe)
     chosen = [str(x) for x in (rule.recipients if rule else [])]
@@ -115,6 +129,7 @@ def _serialize(db: Session, company_id: uuid.UUID, recipe: Recipe, rule: Automat
                 ],
             }
             for f in recipe.fields
+            if full or f.name != "ai_advice"  # AI is Enterprise's
         ],
         "params": params.model_dump(),
         "enabled": bool(rule and rule.enabled),
@@ -127,6 +142,7 @@ def _serialize(db: Session, company_id: uuid.UUID, recipe: Recipe, rule: Automat
         ],
         "last_run": _last_run(db, company_id, recipe),
         "uses_ai": recipe.uses_ai,
+        "locked": recipe.enterprise_only and not full,
         "ai_optional": recipe.ai_optional,
         "track": bool(rule and rule.track),
         "track_assignee": str(rule.track_assignee) if rule and rule.track_assignee else None,
@@ -174,16 +190,18 @@ def _health(db: Session, company_id: uuid.UUID) -> dict:
 @router.get("/")
 def list_automations(current_user=Depends(get_current_user), db: Session = Depends(get_db)):
     rules = {r.recipe: r for r in db.query(AutomationRule).all()}
+    full = _has_enterprise(current_user, db)
     return {
         "recipes": [
-            _serialize(db, current_user.company_id, recipe, rules.get(code)) for code, recipe in RECIPES.items()
+            _serialize(db, current_user.company_id, recipe, rules.get(code), full=full)
+            for code, recipe in RECIPES.items()
         ],
         "ai": _ai_out(db, current_user.company_id),
         "health": _health(db, current_user.company_id),
     }
 
 
-@router.put("/ai", dependencies=manage)
+@router.put("/ai", dependencies=[*manage, Depends(require_feature("automations"))])
 def update_ai(body: AISettingsUpdate, current_user=Depends(get_current_user), db: Session = Depends(get_db)):
     """Switch AI on or off for the mill's automations, and pick its language.
     Owner only: it sends the mill's records abroad, the owner's decision to make."""
@@ -205,14 +223,17 @@ def update_ai(body: AISettingsUpdate, current_user=Depends(get_current_user), db
 
 
 @router.get("/presets")
-def list_presets():
+def list_presets(current_user=Depends(get_current_user), db: Session = Depends(get_db)):
+    full = _has_enterprise(current_user, db)
     return {
         "presets": [
             {
                 "code": p.code,
                 "title": p.title,
                 "description": p.description,
-                "recipes": [{"code": c, "title": RECIPES[c].title} for c in p.recipes],
+                "recipes": [
+                    {"code": c, "title": RECIPES[c].title} for c in p.recipes if full or not RECIPES[c].enterprise_only
+                ],
             }
             for p in presets.PRESETS.values()
         ]
@@ -225,7 +246,9 @@ def apply_preset(code: str, current_user=Depends(get_current_user), db: Session 
     preset = presets.PRESETS.get(code)
     if preset is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No such starter set")
-    switched = presets.apply(db, current_user.company_id, preset, current_user.id)
+    switched = presets.apply(
+        db, current_user.company_id, preset, current_user.id, full=_has_enterprise(current_user, db)
+    )
     db.commit()
     return {"switched_on": switched}
 
@@ -235,6 +258,8 @@ def update_automation(
     code: str, body: RuleUpdate, current_user=Depends(get_current_user), db: Session = Depends(get_db)
 ):
     recipe = _recipe(code)
+    _check_plan(recipe, current_user, db)
+    full = _has_enterprise(current_user, db)
     if recipe.uses_ai and body.enabled and not engine.ai_enabled(db, current_user.company_id):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -252,7 +277,7 @@ def update_automation(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"These people can't receive this automation: their role has no access to {recipe.section}.",
         )
-    if body.track_assignee is not None and body.track_assignee not in eligible:
+    if full and body.track_assignee is not None and body.track_assignee not in eligible:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"That person can't be given these tasks: their role has no access to {recipe.section}.",
@@ -264,21 +289,23 @@ def update_automation(
     rule.enabled = body.enabled
     rule.params = params.model_dump()
     rule.recipients = [str(i) for i in dict.fromkeys(body.recipients)]
-    if body.track is not None:
-        rule.track = body.track
-    if "track_assignee" in body.model_fields_set:
-        rule.track_assignee = body.track_assignee
-    if body.track_due_hours is not None:
-        rule.track_due_hours = body.track_due_hours
+    if full:  # a To do list is Enterprise's
+        if body.track is not None:
+            rule.track = body.track
+        if "track_assignee" in body.model_fields_set:
+            rule.track_assignee = body.track_assignee
+        if body.track_due_hours is not None:
+            rule.track_due_hours = body.track_due_hours
     rule.updated_by = current_user.id
     db.commit()
     db.refresh(rule)
-    return _serialize(db, current_user.company_id, recipe, rule)
+    return _serialize(db, current_user.company_id, recipe, rule, full=full)
 
 
 @router.post("/{code}/test", dependencies=manage)
 def send_test(code: str, current_user=Depends(get_current_user), db: Session = Depends(get_db)):
     recipe = _recipe(code)
+    _check_plan(recipe, current_user, db)
     company = current_user.company
     try:
         result = engine.send_test(

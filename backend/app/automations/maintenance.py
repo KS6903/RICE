@@ -128,6 +128,7 @@ def _build(ctx: RecipeContext, params: BaseModel) -> list[Notice]:
 
 RECIPE_DEF = Recipe(
     code="maintenance_due",
+    enterprise=True,
     title="Machine servicing",
     description=(
         "Each morning, a machine that has reached, or nearly reached, its service interval in running "

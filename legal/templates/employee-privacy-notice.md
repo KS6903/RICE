@@ -84,10 +84,9 @@ allows, to damages for unlawful processing, and to obtain a copy in a portable e
 To exercise any of these, contact [ name ], [ email ], [ phone ]. We will acknowledge within 5
 working days and respond within 15 calendar days.
 
-You may also complain to the **National Privacy Commission**, 5th Floor Delegation Building, PICC
-Complex, Roxas Boulevard, Pasay City, complaints@privacy.gov.ph.
+You may also complain to the data privacy regulator.
 
 ### If there is a data breach
 
-If a breach happens that puts your information at risk, we will notify the National Privacy
-Commission and you within 72 hours of knowing about it, as the law requires.
+If a breach happens that puts your information at risk, we will notify the data privacy
+regulator and you within 72 hours of knowing about it, as the law requires.

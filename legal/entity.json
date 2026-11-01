@@ -3,17 +3,15 @@
 
   "product_name": "Oraiza",
   "provider_name": "K Systematics",
-  "provider_legal_name": "TODO: registered business/corporate name exactly as on the SEC or DTI certificate",
-  "provider_registration": "TODO: SEC/DTI registration number",
+  "provider_legal_name": "K Systematics",
   "provider_address": "TODO: registered principal office address",
   "provider_country": "Republic of the Philippines",
 
-  "contact_email": "support@oraizaph.com",
-  "legal_email": "legal@oraizaph.com",
+  "contact_email": "support@oraiza.com",
+  "legal_email": "legal@oraiza.com",
   "dpo_name": "TODO: full name of your Data Protection Officer",
-  "dpo_email": "dpo@oraizaph.com",
+  "dpo_email": "dpo@oraiza.com",
   "dpo_phone": "TODO: DPO contact number",
-  "npc_registration": "TODO: NPC registration number, or the string 'not yet required' — see legal/EXPOSURE_REVIEW.md",
 
   "db_host_provider": "TODO: managed Postgres provider, e.g. Neon / Supabase / AWS RDS",
   "db_host_region": "TODO: region, e.g. Singapore (ap-southeast-1)",

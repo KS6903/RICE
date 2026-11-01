@@ -8,7 +8,7 @@ from decimal import Decimal
 from uuid import uuid4
 
 from app.models.milling import ByproductInventory, MilledRiceInventory, StockMovement
-from app.models.warehouse import Pallet, RiceBatch
+from app.models.warehouse import Pallet, RiceBatch, WarehouseZone, ZoneReading
 
 STAFF = "cashier"
 
@@ -403,8 +403,6 @@ def test_wet_rice_is_held_as_it_is_milled_when_the_mill_says_so(auth_client, db_
 
 
 def test_a_reading_over_target_holds_the_zones_pallets_when_asked(auth_client, db_session):
-    from app.models.warehouse import WarehouseZone
-
     variety = _variety(auth_client)
     _floor_plan(auth_client, _branch_id(auth_client))
     _milled(auth_client, variety["id"])
@@ -564,3 +562,72 @@ def test_public_prices_are_the_bosss_and_freight_is_a_setting(auth_client, monke
     monkeypatch.setattr("app.api.savings.market_prices", lambda: prices)
     assert _ok(auth_client.get("/api/savings/market")) == prices
     assert _ok(auth_client.put("/api/savings/settings", json={"freight_usd_per_ton": 30}))["freight_usd_per_ton"] == 30
+
+
+# ── sensors of any brand ─────────────────────────────────────────────────────
+
+
+def _zone_for_sensor(client, db_session):
+    _floor_plan(client, _branch_id(client))
+    zone = db_session.query(WarehouseZone).first()
+    zone.target_humidity_pct = Decimal(70)
+    db_session.flush()
+    return zone
+
+
+def _sensor(client, zone, **fields):
+    body = {"name": "Gauge", "zone_id": str(zone.id), **fields}
+    return _ok(client.post("/api/savings/sensors", json=body), 201)
+
+
+def test_a_sensor_sends_readings_through_its_secret_link(auth_client, db_session):
+    zone = _zone_for_sensor(auth_client, db_session)
+    made = _sensor(auth_client, zone, min_minutes=15)
+    assert "link" not in _ok(auth_client.get("/api/savings/sensors"))[0]
+    link = made["link"]
+
+    res = _ok(auth_client.get(f"{link}?humidity=65&temperature=27.5"))
+    assert res == {"saved": True, "out_of_range": False}
+    reading = db_session.query(ZoneReading).filter(ZoneReading.zone_id == zone.id).one()
+    assert reading.humidity_pct == Decimal("65.00")
+    assert reading.note == "Sensor: Gauge"
+
+    # Calling more often than the mill keeps a reading saves nothing more.
+    assert _ok(auth_client.post(link, json={"humidity": 66}))["saved"] is False
+    assert db_session.query(ZoneReading).filter(ZoneReading.zone_id == zone.id).count() == 1
+
+
+def test_a_mill_names_its_sensors_own_fields(auth_client, db_session):
+    zone = _zone_for_sensor(auth_client, db_session)
+    made = _sensor(auth_client, zone, humidity_field="data.rh1", temp_field="data.t1", temp_unit="f", temp_offset="1")
+    res = _ok(auth_client.post(made["link"], json={"data": {"rh1": "71%", "t1": 86}}))
+    assert res == {"saved": True, "out_of_range": True}
+    row = _ok(auth_client.get("/api/savings/sensors"))[0]
+    assert row["last_humidity_pct"] == 71
+    assert row["last_temp_c"] == 31
+    assert '"rh1"' in row["last_payload"]
+
+
+def test_a_call_without_a_reading_is_kept_to_look_at(auth_client, db_session):
+    zone = _zone_for_sensor(auth_client, db_session)
+    made = _sensor(auth_client, zone)
+    assert _ok(auth_client.post(made["link"], json={"foo": 1}))["saved"] is False
+    assert db_session.query(ZoneReading).filter(ZoneReading.zone_id == zone.id).count() == 0
+    assert '"foo"' in _ok(auth_client.get("/api/savings/sensors"))[0]["last_payload"]
+
+
+def test_a_wrong_or_replaced_link_finds_nothing(auth_client, db_session):
+    zone = _zone_for_sensor(auth_client, db_session)
+    made = _sensor(auth_client, zone)
+    assert auth_client.get(f"{made['link']}x?humidity=60").status_code == 404
+    assert auth_client.get("/api/sensors/in/nonsense?humidity=60").status_code == 404
+    fresh = _ok(auth_client.post(f"/api/savings/sensors/{made['id']}/new-link"))
+    assert auth_client.get(f"{made['link']}?humidity=60").status_code == 404
+    assert auth_client.get(f"{fresh['link']}?humidity=60").status_code == 200
+    assert auth_client.delete(f"/api/savings/sensors/{made['id']}").status_code == 204
+    assert auth_client.get(f"{fresh['link']}?humidity=60").status_code == 404
+
+
+def test_sensors_are_managed_by_the_boss_alone(make_auth_client):
+    staff = make_auth_client(features=["profit"], username="sensorstaff", role_name=STAFF)
+    assert staff.get("/api/savings/sensors").status_code == 403

@@ -71,27 +71,26 @@
     "enabled": true
   },
 
-  // Non-secret configuration. Replace example.com with the real domain before
-  // deploying. Secrets are set with `wrangler secret put` — never listed here.
+  // Non-secret configuration. Replace smtp.example.com with the real mail server
+  // before deploying. Secrets are set with `wrangler secret put` — never listed here.
   "vars": {
     // How many API instances the Worker load-balances stateless /api/* across.
     // Must not exceed the ApiContainer max_instances above.
     "API_INSTANCES": "3",
     "RUNTIME_DATABASE_ROLE": "ricemill_app",
-    // TODO(deploy): replace with the real host once one exists. On workers.dev
-    // these are "oraiza.<subdomain>.workers.dev".
-    "ALLOWED_ORIGINS": "https://app.example.com",
-    "TRUSTED_HOSTS": "app.example.com",
-    "FRONTEND_BASE_URL": "https://app.example.com",
+    // oraiza.com, to be bought: production can't work until it is and DNS is live.
+    "ALLOWED_ORIGINS": "https://app.oraiza.com",
+    "TRUSTED_HOSTS": "app.oraiza.com",
+    "FRONTEND_BASE_URL": "https://app.oraiza.com",
     // Empty on a *.workers.dev host: workers.dev is on the Public Suffix List, so
     // a Domain attribute naming it is rejected and the session cookie is dropped.
-    // Set this only for a real domain you own (e.g. "oraiza.ph").
+    // Set this only for a real domain you own (e.g. "oraiza.com").
     "COOKIE_DOMAIN": "",
     "MFA_REQUIRED_ROLES": "owner,admin",
     "SMTP_HOST": "smtp.example.com",
     "SMTP_PORT": "587",
-    "SMTP_FROM_EMAIL": "no-reply@example.com",
-    "SMTP_USERNAME": "no-reply@example.com"
+    "SMTP_FROM_EMAIL": "no-reply@oraiza.com",
+    "SMTP_USERNAME": "no-reply@oraiza.com"
   },
 
   // ── The preview Worker (`wrangler deploy --env preview`) ───────────────────

@@ -113,6 +113,7 @@ ALL_FEATURES = [
     "compliance_reports",
     "drying_advisor",
     "automations",
+    "notifications",
     "dispatch",
     "field_operators",
     "cash_count",

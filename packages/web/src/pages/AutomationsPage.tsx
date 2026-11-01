@@ -33,6 +33,7 @@ import {
 import Select from "../components/Select";
 import TimePicker from "../components/TimePicker";
 import { useAccess } from "../hooks/useAccess";
+import { useFeature } from "../hooks/useFeature";
 import {
   automationsService,
   type AISettings,
@@ -580,6 +581,7 @@ function AutomationCard({
   const [params, setParams] = useState<Params>(automation.params);
   const [recipients, setRecipients] = useState<string[]>(automation.recipients);
   const [tracking, setTracking] = useState(trackingOf(automation));
+  const canTrack = useFeature("automations");
   const [showRuns, setShowRuns] = useState(false);
   const [testNote, setTestNote] = useState<string | null>(null);
 
@@ -665,12 +667,17 @@ function AutomationCard({
             {automation.uses_ai && (
               <span className="badge-violet ml-2 align-middle">{t("AI")}</span>
             )}
+            {automation.locked && (
+              <span className="badge-yellow ml-2 align-middle">{t("Enterprise")}</span>
+            )}
           </h3>
         </div>
         <Switch
           checked={enabled}
           label={automation.title}
-          disabled={readOnly || save.isPending || (aiOff && !automation.enabled)}
+          disabled={
+            readOnly || automation.locked || save.isPending || (aiOff && !automation.enabled)
+          }
           onChange={() => save.mutate(!automation.enabled)}
         />
       </div>
@@ -680,7 +687,9 @@ function AutomationCard({
           then, or they'd show a gap. */}
       <div className="mt-auto group-has-[[aria-expanded=true]]/grid:mt-0 flex items-center justify-between gap-3">
         <div className="min-w-0 flex-1">
-          {aiOff ? (
+          {automation.locked ? (
+            <span className="text-sm text-muted">{t("On the Enterprise plan.")}</span>
+          ) : aiOff ? (
             <span className="text-sm text-muted">
               {automation.enabled
                 ? t("Paused: AI is switched off.")
@@ -772,13 +781,15 @@ function AutomationCard({
             )}
           </fieldset>
 
-          <TrackingFields
-            code={automation.code}
-            tracking={tracking}
-            candidates={automation.candidates}
-            disabled={readOnly}
-            onChange={setTracking}
-          />
+          {canTrack && (
+            <TrackingFields
+              code={automation.code}
+              tracking={tracking}
+              candidates={automation.candidates}
+              disabled={readOnly}
+              onChange={setTracking}
+            />
+          )}
 
           <div className="flex flex-wrap items-center gap-3">
             <button
@@ -1097,6 +1108,7 @@ function HealthNotice({ health }: { health: AutomationsHealth }) {
 
 export default function AutomationsPage() {
   const { isReadOnly, canEdit, role } = useAccess();
+  const hasEnterprise = useFeature("automations");
   const readOnly = isReadOnly("automations");
   const list = useQuery({ queryKey: ["automations"], queryFn: () => automationsService.list() });
   // Only the groups this page has tabs for.
@@ -1137,7 +1149,6 @@ export default function AutomationsPage() {
       <header>
         <div className="flex items-center gap-3 flex-wrap">
           <h1 className="text-2xl font-bold text-primary">{t("Automations")}</h1>
-          <span className="badge-yellow">{t("Enterprise")}</span>
           <span className="badge-violet" data-testid="automations-beta">
             {t("Beta")}
           </span>
@@ -1218,7 +1229,7 @@ export default function AutomationsPage() {
               >
                 {/* In the AI tab, where the recipes it governs are: the everyday
                     tabs come first, and stay about the mill's own work. */}
-                {current.key === "advisor" && ai && (
+                {current.key === "advisor" && ai && hasEnterprise && (
                   <AISettingsCard ai={ai} isOwner={role === "owner"} />
                 )}
                 {current.key === "receivables" && (

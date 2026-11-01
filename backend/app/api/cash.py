@@ -1,6 +1,6 @@
 """Cash count HTTP controller (Pro and up, `cash_count` feature): the drawer
 counted at close, against what it should hold. The alert to the owner when a
-count is out comes from the cash-count automation, which stays Enterprise.
+count is out comes from the cash-count automation, which is on Pro too.
 
 Anyone with sales access sees the counts; counting needs sales write access
 (cashiers, owners, admins, accountants). Reviewing a difference is for owners

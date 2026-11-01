@@ -290,3 +290,41 @@ def test_send_test_says_when_email_is_not_set_up(auth_client):
         "email": "not_set_up",
         "to": None,
     }
+
+
+# ── Pro has the notifications, Enterprise the rest ───────────────────────────
+
+
+def test_pro_opens_notifications_and_not_what_is_enterprises(make_auth_client):
+    client = make_auth_client(features=["notifications"], username="prouser")
+    recipes = {r["code"]: r for r in client.get("/api/automations/").json()["recipes"]}
+    assert not recipes["milling_quality"]["locked"]
+    assert not recipes["low_stock"]["locked"]
+    for code in ("credit_guard", "ai_buying_advisor", "scheduled_report", "stock_count", "maintenance_due"):
+        assert recipes[code]["locked"], code
+        assert client.put(f"/api/automations/{code}", json={"enabled": True}).status_code == 402
+        assert client.post(f"/api/automations/{code}/test").status_code == 402
+    assert client.put("/api/automations/ai", json={"enabled": True}).status_code == 402
+    assert all(f["name"] != "ai_advice" for f in recipes["owner_digest"]["fields"])
+    assert client.put("/api/automations/milling_quality", json={"enabled": True}).status_code == 200
+
+
+def test_pro_cant_track_alerts_as_tasks(make_auth_client):
+    client = make_auth_client(features=["notifications"], username="protrack")
+    saved = client.put("/api/automations/low_stock", json={"enabled": True, "track": True}).json()
+    assert saved["enabled"] is True
+    assert saved["track"] is False
+
+
+def test_a_starter_set_on_pro_leaves_out_what_is_enterprises(make_auth_client):
+    client = make_auth_client(features=["notifications"], username="proset")
+    listed = {p["code"]: p for p in client.get("/api/automations/presets").json()["presets"]}
+    assert "credit_guard" not in [r["code"] for r in listed["growing"]["recipes"]]
+    switched = client.post("/api/automations/presets/growing").json()["switched_on"]
+    assert switched and "credit_guard" not in switched
+    assert "due_reminders" in switched
+
+
+def test_enterprise_still_has_everything(auth_client):
+    recipes = auth_client.get("/api/automations/").json()["recipes"]
+    assert not any(r["locked"] for r in recipes)

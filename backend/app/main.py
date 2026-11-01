@@ -159,6 +159,7 @@ app.include_router(profit.router, prefix="/api/profit", tags=["Profit"], depende
 app.include_router(savings.router, prefix="/api/savings", tags=["Savings"], dependencies=mfa_gate)
 app.include_router(savings.price_router, prefix="/api/savings", tags=["Savings"], dependencies=mfa_gate)
 app.include_router(savings.paddy_router, prefix="/api/savings", tags=["Savings"], dependencies=mfa_gate)
+app.include_router(savings.sensor_router, prefix="/api/sensors", tags=["Savings"])
 app.include_router(sync.router, prefix="/api/sync", tags=["Sync"], dependencies=mfa_gate)
 app.include_router(admin.router, prefix="/api/admin", tags=["Platform Admin"], dependencies=mfa_gate)
 app.include_router(employees.router, prefix="/api/employees", tags=["Employees"], dependencies=mfa_gate)

@@ -362,7 +362,11 @@ function AppRoutes() {
           path="automations"
           element={
             <RoleGate section="automations">
-              <FeatureGate code="automations" label={t("Automations")} requires={t("Enterprise")}>
+              <FeatureGate
+                code="notifications"
+                label={t("Automations")}
+                requires={t("Pro or Enterprise")}
+              >
                 <LazyPage component={AutomationsPage} />
               </FeatureGate>
             </RoleGate>

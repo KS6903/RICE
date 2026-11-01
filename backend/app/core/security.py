@@ -444,14 +444,15 @@ def get_user_features(user, db: Session) -> list[str]:
     return features
 
 
-def require_feature(feature: str):
-    """FastAPI dependency that enforces the user's plan includes a given feature."""
+def require_feature(feature: str, *or_features: str):
+    """FastAPI dependency that enforces the user's plan includes a given feature, or
+    any of the others named."""
 
     def checker(current_user=Depends(get_current_user), db: Session = Depends(get_db)):
         if current_user.is_platform_admin:
             return current_user
         features = get_user_features(current_user, db)
-        if feature not in features:
+        if feature not in features and not any(f in features for f in or_features):
             raise HTTPException(
                 status_code=status.HTTP_402_PAYMENT_REQUIRED,
                 detail=f"This feature ('{feature}') is not included in your current plan. Please contact your platform administrator to upgrade.",

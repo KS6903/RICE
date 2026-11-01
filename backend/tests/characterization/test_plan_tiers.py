@@ -44,6 +44,9 @@ def _plans() -> dict[str, list[str]]:
     # 030_profit_calculator.
     plans["pro"] += ["profit"]
     plans["enterprise"] += ["profit"]
+    # 034_pro_notifications.
+    plans["pro"] += ["notifications"]
+    plans["enterprise"] += ["notifications"]
     return plans
 
 
@@ -63,7 +66,7 @@ PAGES = {
     "/api/employees/": "pro",
     "/api/profit/varieties": "pro",
     "/api/drying-advisory": "basic",
-    "/api/automations/": "enterprise",
+    "/api/automations/": "pro",
     "/api/actions/": "enterprise",
     "/api/stock-counts/": "enterprise",
     "/api/equipment/": "enterprise",

@@ -1,6 +1,6 @@
 // Active employees without the government numbers a Philippine employer reports
 // contributions and taxes under. The list is plain data, shown on every plan; the
-// monthly reminder is an automation, offered to Enterprise mills only, and switched
+// monthly reminder is an automation, offered to Pro and Enterprise mills, and switched
 // here rather than on the Automations page, beside the people it is about.
 import { useCallback, useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -119,7 +119,7 @@ export default function GovernmentIdsNotice({
 }) {
   const [open, setOpen] = useState(false);
   const [minimized, setMinimized] = useMinimized();
-  const hasAutomations = useFeature("automations");
+  const hasAutomations = useFeature("notifications");
   const { canEdit } = useAccess();
   const missing = employees
     .filter((e) => e.is_active && !e.date_terminated)

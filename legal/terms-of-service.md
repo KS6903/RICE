@@ -1,8 +1,7 @@
 # Terms of Service
 
 These Terms govern your use of {{product_name}}, a rice mill management service operated by
-{{provider_legal_name}} (registration {{provider_registration}}), trading as {{provider_name}},
-with its principal office at {{provider_address}}, {{provider_country}} ("we", "us", "the
+{{provider_name}}, with its principal office at {{provider_address}}, {{provider_country}} ("we", "us", "the
 Provider").
 
 By creating an account, clicking to accept, or using the Service, the person accepting and the
@@ -210,7 +209,7 @@ where a separate written service level agreement says so.
 ## 9. Personal information we process for you
 
 This section is the written outsourcing agreement required by section 21 of the Data Privacy Act,
-Rule X of its Implementing Rules and Regulations, and NPC Circulars 16-01 and 16-03. Where it
+and Rule X of its Implementing Rules and Regulations. Where it
 conflicts with any other part of these Terms on the handling of personal information, this section
 prevails.
 
@@ -251,7 +250,7 @@ Authorised Users, as the Privacy Policy describes.
 - (c) you are responsible for the accuracy, quality and legality of your Customer Data, and for
   deciding who in your organisation may see it. Configure roles and branch access accordingly;
 - (d) if you process the personal information of 1,000 or more individuals, you may be required to
-  register your data processing systems with the National Privacy Commission and to designate your
+  register your data processing systems with the data privacy regulator and to designate your
   own Data Protection Officer. That obligation is yours, not ours.
 
 9.4 **Our duties as Processor.** We will:
@@ -266,7 +265,7 @@ Authorised Users, as the Privacy Policy describes.
 - (d) assist you, by appropriate technical and organisational measures and taking account of the
   nature of processing, to respond to requests from data subjects exercising their rights;
 - (e) assist you with security, breach notification, privacy impact assessments and consultation
-  with the National Privacy Commission, taking account of the information available to us;
+  with the data privacy regulator, taking account of the information available to us;
 - (f) at your choice, delete or return personal information at the end of the Service, as section
   17.4 provides;
 - (g) make available the information reasonably necessary to demonstrate compliance with this
@@ -316,8 +315,7 @@ will describe, to the extent known, the nature of the breach; the categories and
 of data subjects and records; the likely consequences; the measures taken or proposed; and a
 contact point. We will supply further information as it becomes available, take reasonable steps to
 contain and remediate the breach, preserve evidence, and assist you in meeting your own 72-hour
-notification duty to the National Privacy Commission and to affected data subjects under NPC
-Circular 16-03. We will not make any public statement identifying you as affected without your
+notification duty to the data privacy regulator and to affected data subjects. We will not make any public statement identifying you as affected without your
 prior written consent, unless a law or regulator requires it.
 
 9.9 **Liability.** Sections 13 and 14 apply to this section, except where the Data Privacy Act does

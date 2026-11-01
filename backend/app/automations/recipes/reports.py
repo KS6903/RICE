@@ -207,6 +207,7 @@ def _scheduled_report(ctx: RecipeContext, params: BaseModel) -> list[Notice]:
 
 SCHEDULED_REPORT = Recipe(
     code="scheduled_report",
+    enterprise=True,
     title="Scheduled report",
     description="A report on a schedule, with a spreadsheet (CSV) attached to the email.",
     group="reports",

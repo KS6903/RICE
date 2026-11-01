@@ -86,6 +86,36 @@ export type BatchBalance = {
   unaccounted_pct: number | null;
   complete: boolean;
 };
+export type Sensor = {
+  id: string;
+  name: string;
+  zone_id: string;
+  humidity_field: string;
+  temp_field: string;
+  temp_unit: "c" | "f";
+  humidity_offset: number;
+  temp_offset: number;
+  min_minutes: number;
+  last_seen_at: string | null;
+  last_read_at: string | null;
+  last_humidity_pct: number | null;
+  last_temp_c: number | null;
+  last_payload: string | null;
+  /** Shown once, when it's made or replaced. */
+  link?: string;
+};
+export type SensorIn = Pick<
+  Sensor,
+  | "name"
+  | "zone_id"
+  | "humidity_field"
+  | "temp_field"
+  | "temp_unit"
+  | "humidity_offset"
+  | "temp_offset"
+  | "min_minutes"
+>;
+
 export type PnsGrade =
   "premium" | "grade_1" | "grade_2" | "grade_3" | "grade_4" | "grade_5" | "off_grade";
 export type BatchRow = {
@@ -250,6 +280,15 @@ export class SavingsService {
     this.http.put("/savings/settings", body).then((r) => r.data);
   maxBuy = (): Promise<MaxBuy> => this.http.get("/savings/max-buy").then((r) => r.data);
   market = (): Promise<MarketPrices> => this.http.get("/savings/market").then((r) => r.data);
+  sensors = (): Promise<Sensor[]> => this.http.get("/savings/sensors").then((r) => r.data);
+  addSensor = (body: SensorIn): Promise<Sensor> =>
+    this.http.post("/savings/sensors", body).then((r) => r.data);
+  updateSensor = (id: string, body: SensorIn): Promise<Sensor> =>
+    this.http.put(`/savings/sensors/${id}`, body).then((r) => r.data);
+  newSensorLink = (id: string): Promise<Sensor> =>
+    this.http.post(`/savings/sensors/${id}/new-link`).then((r) => r.data);
+  deleteSensor = (id: string): Promise<void> =>
+    this.http.delete(`/savings/sensors/${id}`).then(() => undefined);
   batches = (): Promise<BatchRow[]> => this.http.get("/savings/batches").then((r) => r.data);
   trace = (id: string): Promise<BatchTrace> =>
     this.http.get(`/savings/batches/${id}/trace`).then((r) => r.data);

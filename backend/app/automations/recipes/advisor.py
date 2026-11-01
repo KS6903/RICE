@@ -1363,6 +1363,7 @@ def _month_in_review(ctx: RecipeContext, params: BaseModel) -> list[Notice]:
 
 MONTH_IN_REVIEW = Recipe(
     code="month_in_review",
+    enterprise=True,
     title="Month in review",
     description=(
         "On the 1st, last month's sales, costs and profit against the month before, with a spreadsheet. "

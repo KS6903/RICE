@@ -1,5 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { parseChecksumFrame, parseScaleLine, readFrames, settled } from "./scale";
+import {
+  DEFAULT_SCALE_SETTINGS,
+  askBytes,
+  parseChecksumFrame,
+  parseScaleLine,
+  readFrames,
+  settled,
+  showRaw,
+} from "./scale";
 
 // An XK3190-A9+ continuous frame, with its XOR check as the manual describes.
 const a9Frame = (body: string) => {
@@ -38,6 +46,33 @@ describe("readFrames", () => {
     const good = a9Frame("+0124500");
     expect(readFrames(good.replace("2450", "2451")).readings).toEqual([]);
     expect(parseChecksumFrame(a9Frame("-0124500").slice(0, -1))).toBeNull();
+  });
+});
+
+describe("a scale set up by hand", () => {
+  const fixed = { ...DEFAULT_SCALE_SETTINGS, format: "fixed" as const, start: 4, length: 6 };
+
+  it("reads the weight from its place in the line", () => {
+    expect(readFrames("AB 012450 XY\r\n", fixed).readings).toEqual([{ kg: 12450, stable: true }]);
+    expect(readFrames("AB 012450 XY\r\n", { ...fixed, decimals: 2 }).readings).toEqual([
+      { kg: 124.5, stable: true },
+    ]);
+  });
+
+  it("uses the unit it's told when the scale doesn't say", () => {
+    const tons = { ...DEFAULT_SCALE_SETTINGS, unit: "t" as const };
+    expect(readFrames("12.45\r\n", tons).readings).toEqual([{ kg: 12450, stable: true }]);
+    expect(readFrames("500 kg\r\n", tons).readings).toEqual([{ kg: 500, stable: true }]);
+  });
+
+  it("reads digits that come backwards in a plain line", () => {
+    const reversed = { ...DEFAULT_SCALE_SETTINGS, reversed: true };
+    expect(readFrames("51.0700\r\n", reversed).readings).toEqual([{ kg: 70.15, stable: true }]);
+  });
+
+  it("turns what a person typed into what's sent, and what came into what they can read", () => {
+    expect([...askBytes("\\x02P\\r\\n")]).toEqual([2, 80, 13, 10]);
+    expect(showRaw("\x02+1\r\n")).toBe("\\x02+1\\r\\n\n");
   });
 });
 

@@ -5,19 +5,23 @@ costs and margins, so the Boss's alone. ``price_router`` is the one exception: t
 forms ask it whether a price is under cost, and anyone who can sell may ask.
 """
 
+import json
 import uuid
 from datetime import date
 from decimal import Decimal
 from typing import Literal
+from urllib.parse import parse_qsl
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from ..core.database import get_db
+from ..core.ratelimit import limiter
 from ..core.security import get_current_user, require_feature, require_section_access
 from ..services.market_prices import market_prices
 from ..services.savings_service import SavingsService
+from ..services.sensors import SensorService, receive
 from .profit import require_boss
 
 router = APIRouter(
@@ -30,6 +34,9 @@ router = APIRouter(
 price_router = APIRouter(dependencies=[Depends(require_section_access("sales"))])
 # The purchase form asks what a farmer owes in vale: anyone who buys palay may ask.
 paddy_router = APIRouter(dependencies=[Depends(require_section_access("paddy"))])
+# A sensor's call: no login, it has only the secret link.
+sensor_router = APIRouter()
+SENSOR_BODY_LIMIT = 20_000
 
 
 class SettingsIn(BaseModel):
@@ -79,6 +86,17 @@ class ClearIn(BaseModel):
     note: str | None = Field(None, max_length=500)
 
 
+class SensorIn(BaseModel):
+    name: str = Field(min_length=1, max_length=100)
+    zone_id: uuid.UUID
+    humidity_field: str | None = Field(None, max_length=100)
+    temp_field: str | None = Field(None, max_length=100)
+    temp_unit: Literal["c", "f"] = "c"
+    humidity_offset: Decimal = Field(Decimal(0), ge=-50, le=50, max_digits=5, decimal_places=2)
+    temp_offset: Decimal = Field(Decimal(0), ge=-50, le=50, max_digits=5, decimal_places=2)
+    min_minutes: int = Field(15, ge=1, le=1440)
+
+
 class ReadingIn(BaseModel):
     zone_id: uuid.UUID
     humidity_pct: Decimal | None = Field(None, ge=0, le=100)
@@ -122,6 +140,10 @@ class PriceCheckIn(BaseModel):
 
 def get_service(db: Session = Depends(get_db), current_user=Depends(get_current_user)) -> SavingsService:
     return SavingsService(db, current_user)
+
+
+def get_sensors(db: Session = Depends(get_db), current_user=Depends(get_current_user)) -> SensorService:
+    return SensorService(db, current_user)
 
 
 @router.get("/overview")
@@ -208,6 +230,54 @@ def clear_hold(hold_id: uuid.UUID, body: ClearIn, svc: SavingsService = Depends(
 @router.post("/readings", status_code=201)
 def add_reading(body: ReadingIn, svc: SavingsService = Depends(get_service)):
     return svc.add_reading(body)
+
+
+@router.get("/sensors")
+def list_sensors(svc: SensorService = Depends(get_sensors)):
+    return svc.list_sensors()
+
+
+@router.post("/sensors", status_code=201)
+def add_sensor(body: SensorIn, svc: SensorService = Depends(get_sensors)):
+    return svc.add_sensor(body)
+
+
+@router.put("/sensors/{sensor_id}")
+def update_sensor(sensor_id: uuid.UUID, body: SensorIn, svc: SensorService = Depends(get_sensors)):
+    return svc.update_sensor(sensor_id, body)
+
+
+@router.post("/sensors/{sensor_id}/new-link")
+def new_sensor_link(sensor_id: uuid.UUID, svc: SensorService = Depends(get_sensors)):
+    return svc.new_link(sensor_id)
+
+
+@router.delete("/sensors/{sensor_id}", status_code=204)
+def delete_sensor(sensor_id: uuid.UUID, svc: SensorService = Depends(get_sensors)):
+    svc.delete_sensor(sensor_id)
+
+
+async def _sensor_payload(request: Request) -> dict | list:
+    """What a sensor sent, whichever way: the address's query, JSON, or a form."""
+    payload: dict = dict(request.query_params)
+    body = await request.body()
+    if len(body) > SENSOR_BODY_LIMIT:
+        raise HTTPException(status_code=413, detail="Too much for one reading")
+    if not body:
+        return payload
+    try:
+        parsed = json.loads(body)
+    except ValueError:
+        parsed = dict(parse_qsl(body.decode("utf-8", "ignore")))
+    if isinstance(parsed, dict):
+        return {**payload, **parsed}
+    return parsed if isinstance(parsed, list) else payload
+
+
+@sensor_router.api_route("/in/{token}", methods=["GET", "POST", "PUT"])
+@limiter.limit("60/minute")
+def sensor_in(request: Request, token: str, payload=Depends(_sensor_payload), db: Session = Depends(get_db)):
+    return receive(db, token, payload)
 
 
 @router.get("/capacity")

@@ -103,13 +103,16 @@ PRESETS: dict[str, Preset] = {
 }
 
 
-def apply(db: Session, company_id: uuid.UUID, preset: Preset, user_id: uuid.UUID) -> list[str]:
+def apply(db: Session, company_id: uuid.UUID, preset: Preset, user_id: uuid.UUID, *, full: bool = True) -> list[str]:
     """Switch the set's automations on and track the ones it tracks. Returns
-    the codes newly switched on. Doesn't commit."""
+    the codes newly switched on. Doesn't commit. Without Enterprise (``full``),
+    it leaves out what's Enterprise's alone, and tracks nothing."""
     rules = {r.recipe: r for r in db.query(AutomationRule).all()}
     switched: list[str] = []
     for code in preset.recipes:
         recipe = RECIPES[code]
+        if recipe.enterprise_only and not full:
+            continue
         rule = rules.get(code)
         if rule is None:
             rule = AutomationRule(
@@ -121,7 +124,7 @@ def apply(db: Session, company_id: uuid.UUID, preset: Preset, user_id: uuid.UUID
             rule.enabled = True
             rule.updated_by = user_id
             switched.append(code)
-    for code, role, hours in preset.tracked:
+    for code, role, hours in preset.tracked if full else ():
         rule = rules[code]
         if rule.track:
             continue  # already tracked as the mill set it up

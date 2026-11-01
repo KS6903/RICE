@@ -20,8 +20,9 @@ from app.core.tenancy import set_search_path
 from app.models.milling import MillingEquipment
 from app.models.supplier_customer import Supplier, SupplierAdvance
 from app.models.user import User
-from app.models.warehouse import WarehouseLayout, WarehouseZone, ZoneReading
+from app.models.warehouse import StorageSensor, WarehouseLayout, WarehouseZone, ZoneReading
 from app.services.savings_service import SavingsService
+from app.services.sensors import SensorService
 
 
 def seed(db, username: str) -> str:
@@ -67,4 +68,18 @@ def seed(db, username: str) -> str:
     if zone and not db.query(ZoneReading.id).filter(ZoneReading.zone_id == zone.id).first():
         svc.add_reading(SimpleNamespace(zone_id=zone.id, humidity_pct=Decimal("68"), temp_c=Decimal("29"), note=None))
         done.append("a zone reading")
+    if zone and not db.query(StorageSensor.id).first():
+        SensorService(db, user).add_sensor(
+            SimpleNamespace(
+                name="Demo gauge",
+                zone_id=zone.id,
+                humidity_field=None,
+                temp_field=None,
+                temp_unit="c",
+                humidity_offset=Decimal(0),
+                temp_offset=Decimal(0),
+                min_minutes=15,
+            )
+        )
+        done.append("a sensor")
     return f"{username}: {', '.join(done) or 'already seeded'}"

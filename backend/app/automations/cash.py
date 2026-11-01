@@ -126,7 +126,7 @@ def report(db: Session, company: Company, count: CashCount, user: User) -> None:
     from .engine import deliver, entitled, recipient_ids
 
     rule, params = params_for(db)
-    if rule is None or not rule.enabled or not entitled(db, company.id):
+    if rule is None or not rule.enabled or not entitled(db, company.id, RECIPE_DEF):
         return
     diff = count.difference
     if abs(diff) <= params.tolerance:

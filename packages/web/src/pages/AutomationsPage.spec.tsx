@@ -75,6 +75,7 @@ const owner: User = {
   full_name: "Mill Owner",
   role: "owner",
   company_id: "c1",
+  features: ["notifications", "automations"],
 };
 
 const aiOffSettings = {

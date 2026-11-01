@@ -212,6 +212,7 @@ def _credit_guard(ctx: RecipeContext, params: BaseModel) -> list[Notice]:
 
 CREDIT_GUARD = Recipe(
     code=credit.RECIPE,
+    enterprise=True,
     title="Credit limit guard",
     description=(
         "When an order would take a customer over their credit limit, warn you or stop it until you approve. "

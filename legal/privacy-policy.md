@@ -1,9 +1,8 @@
 # Privacy Policy
 
-{{provider_legal_name}}, trading as {{provider_name}}, operates {{product_name}}. This notice
-explains how we handle personal information, and is issued under Republic Act No. 10173, the Data
-Privacy Act of 2012, its Implementing Rules and Regulations, and the issuances of the National
-Privacy Commission (NPC).
+{{provider_name}} operates {{product_name}}. This notice explains how we handle personal
+information, and is issued under Republic Act No. 10173, the Data Privacy Act of 2012, and its
+Implementing Rules and Regulations.
 
 ## 1. Two different roles
 
@@ -251,7 +250,7 @@ Under sections 16 and 18 of the Data Privacy Act you have the right to:
 - **damages**, where you suffer because of inaccurate, incomplete, outdated, false, unlawfully
   obtained or unauthorised use of your information;
 - **data portability**, to obtain a copy in a structured, commonly used, electronic format; and
-- **lodge a complaint** with the National Privacy Commission.
+- **lodge a complaint** with the data privacy regulator.
 
 Your rights over a deceased or incapacitated person's information may be exercised by their lawful
 heirs or assigns.
@@ -268,8 +267,8 @@ they control it. Contact them directly for the fastest result.
 ## 8. If there is a data breach
 
 If a personal data breach occurs that meets the notification criteria in section 20(f) of the Data
-Privacy Act and NPC Circular 16-03, we will notify the National Privacy Commission and the affected
-data subjects within 72 hours of knowledge of the breach. Where we are a Processor, we will notify
+Privacy Act, we will notify the data privacy regulator and the affected data subjects within 72
+hours of knowledge of the breach. Where we are a Processor, we will notify
 the affected mill without undue delay and in any event within 24 hours of knowledge, so that the
 mill can meet its own 72-hour deadline. We maintain a breach record and an incident response
 procedure.
@@ -310,14 +309,6 @@ acknowledged and when.
 
 {{dpo_phone}}
 
-{{provider_legal_name}}, {{provider_address}}
+{{provider_name}}, {{provider_address}}
 
-NPC registration: {{npc_registration}}
-
-If you are not satisfied with our response, you may complain to:
-
-**National Privacy Commission**
-
-5th Floor, Delegation Building, PICC Complex, Roxas Boulevard, Pasay City 1307, Metro Manila
-
-complaints@privacy.gov.ph  ·  privacy.gov.ph
+If you are not satisfied with our response, you may complain to the data privacy regulator.

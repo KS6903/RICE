@@ -181,8 +181,9 @@ Ordered by how much exposure each removes.
    2201 that this review cannot make.
 3. **Appoint a Data Protection Officer and decide on NPC registration.** Registration is generally
    required when processing sensitive personal information of 1,000 or more individuals. Count
-   across all tenants, since we are the Processor for all of them. The Privacy Policy already has a
-   field for the registration number.
+   across all tenants, since we are the Processor for all of them. The documents no longer name a registration
+   number or the Commission: by the owner's decision on 2026-11-01, they say "the data privacy
+   regulator". That changes the wording, not the duty.
 4. **Get professional indemnity / technology errors and omissions insurance.** A liability cap
    limits what a court can award. Insurance covers the cost of defending the claim, which is
    usually the larger number.

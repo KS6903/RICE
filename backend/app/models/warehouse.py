@@ -220,6 +220,35 @@ class StockHold(Base):
     cleared_note: Mapped[str | None] = mapped_column(String(500))
 
 
+class StorageSensor(Base):
+    """A sensor of any brand sending a zone's readings to a secret link. Only the link's
+    hash is kept. Fields left empty fall back on the common names (services/sensors.py)."""
+
+    __tablename__ = "storage_sensors"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    company_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("companies.id"))
+    zone_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("warehouse_zones.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    name: Mapped[str] = mapped_column(String(100), nullable=False)
+    token_hash: Mapped[str] = mapped_column(String(64), nullable=False, unique=True)
+    humidity_field: Mapped[str | None] = mapped_column(String(100))
+    temp_field: Mapped[str | None] = mapped_column(String(100))
+    temp_unit: Mapped[str] = mapped_column(String(1), nullable=False, default="c")
+    humidity_offset: Mapped[Decimal] = mapped_column(Numeric(5, 2), nullable=False, default=0)
+    temp_offset: Mapped[Decimal] = mapped_column(Numeric(5, 2), nullable=False, default=0)
+    # Keep a reading at most this often, however often the sensor calls.
+    min_minutes: Mapped[int] = mapped_column(Integer, nullable=False, default=15)
+    last_seen_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    last_read_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    last_humidity_pct: Mapped[Decimal | None] = mapped_column(Numeric(5, 2))
+    last_temp_c: Mapped[Decimal | None] = mapped_column(Numeric(4, 1))
+    # What it last sent, so a Boss can see which field holds what.
+    last_payload: Mapped[str | None] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc, nullable=False)
+
+
 class ZoneReading(Base):
     """A humidity and temperature reading typed in for a storage zone, compared with
     the zone's targets."""

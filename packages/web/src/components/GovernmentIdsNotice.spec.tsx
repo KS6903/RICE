@@ -77,7 +77,7 @@ describe("GovernmentIdsNotice", () => {
   });
 
   it("switches the monthly reminder on for an Enterprise owner", async () => {
-    useAuthStore.setState({ user: { ...owner, features: ["employees", "automations"] } });
+    useAuthStore.setState({ user: { ...owner, features: ["employees", "notifications"] } });
     vi.spyOn(automationsService, "list").mockResolvedValue({ recipes: [reminder] });
     const update = vi
       .spyOn(automationsService, "update")
@@ -119,7 +119,7 @@ describe("GovernmentIdsNotice", () => {
   });
 
   it("puts the list and the monthly reminder away with the rest when minimized", async () => {
-    useAuthStore.setState({ user: { ...owner, features: ["employees", "automations"] } });
+    useAuthStore.setState({ user: { ...owner, features: ["employees", "notifications"] } });
     vi.spyOn(automationsService, "list").mockResolvedValue({ recipes: [reminder] });
     draw();
     const box = screen.getByRole("region", { name: "Missing government numbers" });

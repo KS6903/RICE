@@ -22,6 +22,7 @@ import EmptyState from "../components/EmptyState";
 import FieldCaption from "../components/FieldCaption";
 import LoadingRows from "../components/LoadingRows";
 import PiggyBankIcon from "../components/PiggyBankIcon";
+import SensorsSection from "../components/savings/SensorsSection";
 import Select from "../components/Select";
 import { useAccess } from "../hooks/useAccess";
 import { useByproductKinds } from "../hooks/useByproductKinds";
@@ -1222,7 +1223,9 @@ function Warehouse({
 
       <Section
         title={t("Humidity and temperature")}
-        hint={t("Type in what the gauge says. Readings over a zone's target are flagged.")}
+        hint={t(
+          "Type in what the gauge says, or connect a sensor below. Readings over a zone's target are flagged.",
+        )}
       >
         {data.zones.length === 0 ? (
           <p className="text-sm text-secondary">{t("No storage zones yet.")}</p>
@@ -1293,6 +1296,8 @@ function Warehouse({
           </Table>
         )}
       </Section>
+
+      <SensorsSection zones={data.zones} />
 
       <Section
         title={t("By-products")}

@@ -118,10 +118,17 @@ class Recipe:
     # The DeepSeek model its AI calls use, "pro" or "flash" (automations.ai.Model);
     # set on every recipe that calls the AI, and only on those.
     ai_model: Model | None = None
+    # Enterprise's alone (the automations feature). Every other recipe is a plain
+    # notification, on Pro too (the notifications feature).
+    enterprise: bool = False
 
     def __post_init__(self) -> None:
         if (self.uses_ai or self.ai_optional) != (self.ai_model is not None):
             raise ValueError(f"{self.code}: a recipe names a model exactly when it calls the AI")
+
+    @property
+    def enterprise_only(self) -> bool:
+        return self.enterprise or self.uses_ai
 
     @property
     def model(self) -> Model:

@@ -19,6 +19,7 @@ tenant it has already seeded, so running this twice changes nothing:
                warehouse where a mill has one (seed_demo_buying.py)
   milling      two batches milled for a customer, for the Client column
                (seed_demo_milling.py)
+  notifications  the starter notifications on the Pro mills
   automations  sixty days of activity for the Enterprise recipes, mill1 only
                (seed_demo_automations.py; --reset replaces it)
   roles        a Warehouse Manager role of the mill's own, given to nobody
@@ -123,6 +124,28 @@ def _recovery(username: str, reset: bool) -> str:
     return _with_session(lambda db: seed_demo_recovery.seed(db, username))
 
 
+def _notifications(username: str, reset: bool) -> str:
+    """The small mill's starter set on the Pro mills, leaving out what's Enterprise's."""
+    from app.automations import presets
+    from app.core.tenancy import set_search_path
+    from app.models.user import User
+    from app.models.subscription import Subscription
+
+    def work(db) -> str:
+        user = db.query(User).filter(User.username == username, User.company_id.is_not(None)).first()
+        sub = db.query(Subscription).filter(Subscription.company_id == user.company_id).first() if user else None
+        if not sub or not sub.plan or "notifications" not in (sub.plan.features or []):
+            return f"{username}: plan has no notifications — skipped"
+        if "automations" in sub.plan.features:
+            return f"{username}: Enterprise, set up by the automations part — skipped"
+        set_search_path(db, user.company.schema_name)
+        on = presets.apply(db, user.company_id, presets.PRESETS["small"], user.id, full=False)
+        db.commit()
+        return f"{username}: {len(on)} notification(s) switched on"
+
+    return _with_session(work)
+
+
 def _savings(username: str, reset: bool) -> str:
     import seed_demo_savings
 
@@ -138,6 +161,7 @@ PARTS: dict[str, Callable[[str, bool], str]] = {
     "buying": _buying,
     "milling": _milling,
     "automations": _automations,
+    "notifications": _notifications,
     "roles": _roles,
     "byproducts": _byproducts,
     "recovery": _recovery,

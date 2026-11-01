@@ -37,6 +37,8 @@ export type Automation = {
   description: string;
   group: AutomationGroup;
   section?: string;
+  /** On the Enterprise plan, and this mill isn't. */
+  locked?: boolean;
   fields: AutomationField[];
   params: Record<string, string | number | boolean>;
   enabled: boolean;

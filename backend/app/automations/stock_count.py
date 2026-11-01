@@ -185,6 +185,7 @@ def _reminder(ctx: RecipeContext, params: BaseModel) -> list[Notice]:
 
 RECIPE_DEF = Recipe(
     code=RECIPE,
+    enterprise=True,
     title="Stock count",
     description=(
         "A reminder to count the stock every week or month, and the owner hears at once when a count "
