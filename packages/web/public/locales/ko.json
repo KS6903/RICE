@@ -890,7 +890,7 @@
  "Female": "여성",
  "Field Operators": "현장 운영자",
  "Field operators (agents and millers)": "현장 운영자(에이전트 및 제분업자)",
- "Fills in the CIF price (FOB plus your freight), the exchange rate and the tariff. No public source publishes wholesale rice, so type that, or leave it to your own sales.": "CIF 가격(FOB + 화물), 환율 및 관세를 입력합니다. 쌀 도매를 게시하는 공개 소스가 없으므로 직접 입력하거나 판매에 맡기십시오.",
+ "Fills in the CIF price (FOB plus your freight), the exchange rate and the tariff. There's no up-to-date public figure for wholesale rice here, so type that, or leave it to your own sales.": "CIF 가격(FOB + 화물), 환율 및 관세를 입력합니다. 여기에는 쌀 도매에 대한 최신 공개 수치가 없으므로 직접 입력하거나 판매에 맡기십시오.",
  "Filter by rating": "평가별로 필터링",
  "Financial Summary": "재무 요약",
  "Find oldest": "가장 오래된 찾기",

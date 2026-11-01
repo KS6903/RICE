@@ -891,7 +891,7 @@
  "Female": "Mwanakadzi",
  "Field Operators": "Vashandi vemunda",
  "Field operators (agents and millers)": "Vashandi vemunda (vamiririri uye millers)",
- "Fills in the CIF price (FOB plus your freight), the exchange rate and the tariff. No public source publishes wholesale rice, so type that, or leave it to your own sales.": "Inodzadza mutengo weCIF (FOB pamwe nemitoro yako), mutengo wekuchinjana uye mutengo. Akuna public source inobudisa mupunga we wholesale, saka taipa izvozvo, kana kuzvisiya kune zvaunotengesa.",
+ "Fills in the CIF price (FOB plus your freight), the exchange rate and the tariff. There's no up-to-date public figure for wholesale rice here, so type that, or leave it to your own sales.": "Inodzadza mutengo weCIF (FOB pamwe nemitoro yako), mutengo wekuchinjana uye mutengo. Akuna nhamba yevanhu yemazuva ano yemupunga we wholesale pano, saka taipa izvozvo, kana kuzvisiya kune zvaunotengesa.",
  "Filter by rating": "Sefa ngekuyera",
  "Financial Summary": "Mupfupiso wezvemari",
  "Find oldest": "Tsvaka yekare",

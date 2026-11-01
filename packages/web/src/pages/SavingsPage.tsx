@@ -502,7 +502,7 @@ function Buying({
               </button>
               <span className="text-xs text-secondary">
                 {t(
-                  "Fills in the CIF price (FOB plus your freight), the exchange rate and the tariff. No public source publishes wholesale rice, so type that, or leave it to your own sales.",
+                  "Fills in the CIF price (FOB plus your freight), the exchange rate and the tariff. There's no up-to-date public figure for wholesale rice here, so type that, or leave it to your own sales.",
                 )}
               </span>
             </div>

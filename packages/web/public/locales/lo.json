@@ -890,7 +890,7 @@
  "Female": "ເພດຍິງ",
  "Field Operators": "ຜູ້ປະກອບການພາກສະຫນາມ",
  "Field operators (agents and millers)": "ຜູ້ປະກອບການພາກສະໜາມ (ຕົວແທນ ແລະໂຮງສີ)",
- "Fills in the CIF price (FOB plus your freight), the exchange rate and the tariff. No public source publishes wholesale rice, so type that, or leave it to your own sales.": "ຕື່ມຂໍ້ມູນໃສ່ລາຄາ CIF (FOB ບວກຄ່າຂົນສົ່ງຂອງທ່ານ), ອັດຕາແລກປ່ຽນ ແລະອັດຕາພາສີ. ບໍ່ມີແຫຼ່ງສາທາລະນະໃດເຜີຍແຜ່ເຂົ້າຂາຍຍົກ, ພິມແບບນັ້ນ, ຫຼືປ່ອຍໃຫ້ມັນຂາຍເອງ.",
+ "Fills in the CIF price (FOB plus your freight), the exchange rate and the tariff. There's no up-to-date public figure for wholesale rice here, so type that, or leave it to your own sales.": "ຕື່ມຂໍ້ມູນໃສ່ລາຄາ CIF (FOB ບວກຄ່າຂົນສົ່ງຂອງທ່ານ), ອັດຕາແລກປ່ຽນ ແລະອັດຕາພາສີ. ບໍ່ມີຕົວເລກສາທາລະນະທີ່ທັນສະ ໄໝ ສຳ ລັບການຂາຍສົ່ງເຂົ້າຢູ່ທີ່ນີ້, ປະເພດນັ້ນ, ຫຼືປ່ອຍໃຫ້ມັນຂາຍເອງ.",
  "Filter by rating": "ກັ່ນຕອງຕາມການຈັດອັນດັບ",
  "Financial Summary": "ສະຫຼຸບການເງິນ",
  "Find oldest": "ຊອກຫາທີ່ເກົ່າແກ່ທີ່ສຸດ",

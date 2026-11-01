@@ -891,7 +891,7 @@
  "Female": "Эмэгтэй",
  "Field Operators": "Талбайн операторууд",
  "Field operators (agents and millers)": "Талбайн операторууд (агент ба тээрэмчид)",
- "Fills in the CIF price (FOB plus your freight), the exchange rate and the tariff. No public source publishes wholesale rice, so type that, or leave it to your own sales.": "CIF үнэ (FOB дээр нэмэх нь таны ачаа), валютын ханш, тарифыг бөглөнө. Олон нийтийн ямар ч эх сурвалж бөөний будаа нийтлэхгүй тул үүнийг бичнэ үү эсвэл өөрийн борлуулалтад үлдээнэ үү.",
+ "Fills in the CIF price (FOB plus your freight), the exchange rate and the tariff. There's no up-to-date public figure for wholesale rice here, so type that, or leave it to your own sales.": "CIF үнэ (FOB дээр нэмэх нь таны ачаа), валютын ханш, тарифыг бөглөнө. Энд бөөний будааны талаар сүүлийн үеийн олны танил хүн байхгүй тул үүнийг бичнэ үү, эсвэл өөрийн борлуулалтад үлдээгээрэй.",
  "Filter by rating": "Үнэлгээгээр шүүнэ үү",
  "Financial Summary": "Санхүүгийн хураангуй",
  "Find oldest": "Хамгийн ахмадыг нь ол",

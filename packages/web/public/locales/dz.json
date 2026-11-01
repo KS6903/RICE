@@ -890,7 +890,7 @@
  "Female": "མོ",
  "Field Operators": "ས་སྒོ་བཀོལ་སྤྱོད་པ་ཚུ།",
  "Field operators (agents and millers)": "ས་སྒོའི་བཀོལ་སྤྱོད་པ་ཚུ་ (ལས་ཚབ་དང་ འཕྲུལ་ཁང་ཚུ་)",
- "Fills in the CIF price (FOB plus your freight), the exchange rate and the tariff. No public source publishes wholesale rice, so type that, or leave it to your own sales.": "སི་ཨའི་ཨེཕ་གོང་ཚད་ (ཨེཕ་ཨོ་བི་དང་ཁྱོད་ཀྱི་སྐྱེལ་འདྲེན་) བརྗེ་སོར་གྱི་གོང་ཚད་དང་ ཁྲལ་ཚུ་བཀངམ་ཨིན། མི་མང་གི་ཐོན་ཁུངས་གཅིག་གིས་ཡང་ ཆུམ་སྦུང་ཚོང་དཔར་བསྐྲུན་འབད་མི་བཏུབ་པས་ དེ་སྦེ་ཡིག་དཔར་རྐྱབས་ ཡང་ན་ ཁྱོད་རའི་ཚོང་འབྲེལ་ལུ་བཞག།",
+ "Fills in the CIF price (FOB plus your freight), the exchange rate and the tariff. There's no up-to-date public figure for wholesale rice here, so type that, or leave it to your own sales.": "སི་ཨའི་ཨེཕ་གོང་ཚད་ (ཨེཕ་ཨོ་བི་དང་ཁྱོད་ཀྱི་སྐྱེལ་འདྲེན་) བརྗེ་སོར་གྱི་གོང་ཚད་དང་ ཁྲལ་ཚུ་བཀངམ་ཨིན། འདི་ཁར་ ཆུམ་སྦུང་ཚོང་གི་དོན་ལུ་ དུས་མཐུན་གྱི་ མི་མང་གི་གྱངས་ཁ་མེདཔ་ལས་ དེ་ཡིག་དཔར་རྐྱབས་ ཡང་ན་ ཁྱོད་རའི་ཚོང་འབྲེལ་ལུ་ བཞག་དགོ།",
  "Filter by rating": "གནས་རིམ་གྱིས་ཚགས་མ་བཙུགས།",
  "Financial Summary": "དངུལ་རྩིས་གནད་བསྡུས།",
  "Find oldest": "རྙིང་ཤོས་འཚོལ།",

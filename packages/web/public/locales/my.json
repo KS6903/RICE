@@ -890,7 +890,7 @@
  "Female": "အပျို",
  "Field Operators": "ကွင်းဆင်းလုပ်ကိုင်သူများ",
  "Field operators (agents and millers)": "ကွင်းဆင်းအော်ပရေတာများ (အေးဂျင့်များနှင့် ဆန်စက်များ)",
- "Fills in the CIF price (FOB plus your freight), the exchange rate and the tariff. No public source publishes wholesale rice, so type that, or leave it to your own sales.": "CIF စျေးနှုန်း (FOB နှင့် သင့်ကုန်စည်ပို့ဆောင်မှု)၊ ငွေလဲနှုန်းနှင့် အကောက်ခွန်တို့ကို ဖြည့်စွက်ပါ။ အများသူငှာ မည်သည့်အရင်းအမြစ်မှ လက်ကားဆန်ကို ထုတ်ဝေခြင်းမရှိသောကြောင့် ထိုသို့ရိုက်ထည့်ပါ သို့မဟုတ် သင့်ကိုယ်ပိုင်ရောင်းချမှုတွင် ထားလိုက်ပါ။",
+ "Fills in the CIF price (FOB plus your freight), the exchange rate and the tariff. There's no up-to-date public figure for wholesale rice here, so type that, or leave it to your own sales.": "CIF စျေးနှုန်း (FOB နှင့် သင့်ကုန်စည်ပို့ဆောင်မှု)၊ ငွေလဲနှုန်းနှင့် အကောက်ခွန်တို့ကို ဖြည့်စွက်ပါ။ ဤနေရာတွင် လက်ကားဆန်အတွက် နောက်ဆုံးပေါ် အများသူငှာ ပုံမရှိပါ၊ ထို့ကြောင့် ရိုက်ထည့်ပါ သို့မဟုတ် သင့်ကိုယ်ပိုင်ရောင်းချမှုတွင် ထားလိုက်ပါ။",
  "Filter by rating": "အဆင့်သတ်မှတ်ခြင်းဖြင့် စစ်ထုတ်ပါ။",
  "Financial Summary": "ဘဏ္ဍာရေးအကျဉ်းချုပ်",
  "Find oldest": "အသက်အကြီးဆုံးရှာပါ။",

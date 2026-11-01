@@ -890,7 +890,7 @@
  "Female": "女性",
  "Field Operators": "フィールドオペレーター",
  "Field operators (agents and millers)": "フィールドオペレーター（代理店と製粉業者）",
- "Fills in the CIF price (FOB plus your freight), the exchange rate and the tariff. No public source publishes wholesale rice, so type that, or leave it to your own sales.": "CIF価格（FOBプラス運賃）、為替レート、関税を入力します。米の卸売りを公表している公的情報源はないので、それを入力するか、独自の販売に任せてください。",
+ "Fills in the CIF price (FOB plus your freight), the exchange rate and the tariff. There's no up-to-date public figure for wholesale rice here, so type that, or leave it to your own sales.": "CIF価格（FOBプラス運賃）、為替レート、関税を入力します。ここには米卸売に関する最新の公表情報はないので、それを入力するか、各自の営業に任せてください。",
  "Filter by rating": "評価でフィルタリングする",
  "Financial Summary": "財務概要",
  "Find oldest": "最も古いものを検索",

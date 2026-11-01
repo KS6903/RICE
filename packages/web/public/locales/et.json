@@ -891,7 +891,7 @@
  "Female": "Naine",
  "Field Operators": "Välioperaatorid",
  "Field operators (agents and millers)": "Põlluoperaatorid (agendid ja freesid)",
- "Fills in the CIF price (FOB plus your freight), the exchange rate and the tariff. No public source publishes wholesale rice, so type that, or leave it to your own sales.": "Täidab CIF-hinna (FOB pluss teie kaubavedu), vahetuskursi ja tariifi. Ükski avalik allikas ei avalda riisi hulgimüügist, nii et tippige see või jätke see oma müügi hooleks.",
+ "Fills in the CIF price (FOB plus your freight), the exchange rate and the tariff. There's no up-to-date public figure for wholesale rice here, so type that, or leave it to your own sales.": "Täidab CIF-hinna (FOB pluss teie kaubavedu), vahetuskursi ja tariifi. Siin pole riisi hulgimüügiga seotud värsket avaliku elu tegelast, nii et tippige see või jätke see oma müügi hooleks.",
  "Filter by rating": "Filtreeri reitingu järgi",
  "Financial Summary": "Finantskokkuvõte",
  "Find oldest": "Leia vanim",

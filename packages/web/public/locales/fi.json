@@ -891,7 +891,7 @@
  "Female": "Naaras",
  "Field Operators": "Kenttäoperaattorit",
  "Field operators (agents and millers)": "Kenttäoperaattorit (agentit ja myllyt)",
- "Fills in the CIF price (FOB plus your freight), the exchange rate and the tariff. No public source publishes wholesale rice, so type that, or leave it to your own sales.": "Täyttää CIF-hinnan (FOB plus rahtisi), valuuttakurssin ja tariffin. Mikään julkinen lähde ei julkaise tukkuriisiä, joten kirjoita se tai jätä se omaan myyntiisi.",
+ "Fills in the CIF price (FOB plus your freight), the exchange rate and the tariff. There's no up-to-date public figure for wholesale rice here, so type that, or leave it to your own sales.": "Täyttää CIF-hinnan (FOB plus rahtisi), valuuttakurssin ja tariffin. Täällä ei ole ajankohtaista tukkuriisin julkisuuden henkilöä, joten kirjoita se tai jätä se omaan myyntiisi.",
  "Filter by rating": "Suodata luokituksen mukaan",
  "Financial Summary": "Taloudellinen yhteenveto",
  "Find oldest": "Etsi vanhin",
