@@ -41,7 +41,6 @@ const AutomationsPage = lazy(() => import("./pages/AutomationsPage"));
 const TasksPage = lazy(() => import("./pages/TasksPage"));
 const CollectionsPage = lazy(() => import("./pages/CollectionsPage"));
 const CashCountPage = lazy(() => import("./pages/CashCountPage"));
-const StockCountPage = lazy(() => import("./pages/StockCountPage"));
 const CatalogPage = lazy(() => import("./pages/CatalogPage"));
 const UsersPage = lazy(() => import("./pages/UsersPage"));
 const EmployeesPage = lazy(() => import("./pages/EmployeesPage"));
@@ -379,16 +378,8 @@ function AppRoutes() {
             </RoleGate>
           }
         />
-        <Route
-          path="stock-count"
-          element={
-            <RoleGate section="inventory">
-              <FeatureGate code="automations" label={t("Stock count")} requires={t("Enterprise")}>
-                <LazyPage component={StockCountPage} />
-              </FeatureGate>
-            </RoleGate>
-          }
-        />
+        {/* Now a tab of Inventory; alerts already sent still link here. */}
+        <Route path="stock-count" element={<Navigate to="/inventory?tab=count" replace />} />
         <Route
           path="cash"
           element={

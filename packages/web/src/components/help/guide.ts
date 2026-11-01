@@ -27,9 +27,6 @@ export const PAGE_WHAT: Record<string, string> = {
   "/inventory": t(
     "Everything in your warehouses, by branch. Already had stock before Oraiza? Enter it once with Add inventory.",
   ),
-  "/stock-count": t(
-    "Count what's really on hand. You see what the records say only after saving, so the count stays honest.",
-  ),
   "/catalog": t(
     "The lists you fill in once and every page picks from: varieties, by-products, categories, machines, trucks and the people you deal with.",
   ),

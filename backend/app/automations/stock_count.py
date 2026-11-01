@@ -146,8 +146,8 @@ def report(db: Session, company: Company, count: StockCount, user: User) -> None
     ]
     notice = Notice(
         title=f"Stock count on {count.count_date:%a %d %b}: {plural(len(out), 'line')} out",
-        body=f"Counted by {who}.\n" + "\n".join(lines) + "\nReview it on the Stock count page.",
-        link="/stock-count",
+        body=f"Counted by {who}.\n" + "\n".join(lines) + "\nReview it on the Stock count tab in Inventory.",
+        link="/inventory?tab=count",
         dedupe_key=f"{RECIPE}:diff:{count.id}",
     )
     managers = {u.id for u in actions.team(db, company.id) if actions.is_manager(u)}
@@ -174,10 +174,10 @@ def _reminder(ctx: RecipeContext, params: BaseModel) -> list[Notice]:
         Notice(
             title="Time to count the stock",
             body=(
-                f"The stock hasn't been counted {when}. Count it on the Stock count page: "
+                f"The stock hasn't been counted {when}. Count it on the Stock count tab in Inventory: "
                 "lines out by more than your allowance go to the owner to look at."
             ),
-            link="/stock-count",
+            link="/inventory?tab=count",
             dedupe_key=f"{RECIPE}:remind:{ctx.local_today.isoformat()}",
         )
     ]

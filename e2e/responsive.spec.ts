@@ -18,7 +18,7 @@ const millPages = [
   "/automations",
   "/milling?tab=maintenance",
   "/catalog",
-  "/stock-count",
+  "/inventory?tab=count",
   "/tasks",
   "/collections",
   "/cash",

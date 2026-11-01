@@ -1,6 +1,6 @@
-import { useState, useMemo } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import {
   Package,
   Wheat,
@@ -17,6 +17,7 @@ import {
   Sparkles,
   ArrowRight,
   Plus,
+  ClipboardList,
 } from "lucide-react";
 import NewWarehouseView from "../components/warehouse/NewWarehouseView";
 import LoadingRows from "../components/LoadingRows";
@@ -32,6 +33,10 @@ import {
   isSplit,
 } from "../components/inventory/locationShades";
 import { useAuthStore } from "../stores/authStore";
+import { useAccess } from "../hooks/useAccess";
+import { useFeature } from "../hooks/useFeature";
+import FeatureGate from "../components/FeatureGate";
+import StockCountPage from "./StockCountPage";
 import { inventoryService } from "../services/InventoryService";
 import {
   warehousesService,
@@ -50,7 +55,7 @@ import { useReorderableTabs } from "../hooks/useReorderableTabs";
 import Select from "../components/Select";
 import { t } from "../i18n";
 
-type ViewMode = "classic" | "spreadsheet" | "cards" | "bins" | "warehouse";
+type ViewMode = "classic" | "spreadsheet" | "cards" | "bins" | "warehouse" | "count";
 
 const TYPE_COLORS: Record<
   UnifiedItem["type"],
@@ -83,6 +88,7 @@ const VIEWS: { key: ViewMode; label: string; icon: React.ElementType }[] = [
   { key: "warehouse", label: t("Warehouse"), icon: Warehouse },
   { key: "classic", label: t("Classic"), icon: List },
   { key: "spreadsheet", label: t("Spreadsheet"), icon: Table2 },
+  { key: "count", label: t("Stock count"), icon: ClipboardList },
 ];
 
 export default function InventoryPage() {
@@ -96,14 +102,33 @@ export default function InventoryPage() {
   };
   // The tabs can be dragged into any order, remembered per account. The page
   // opens on whichever one is first.
+  // Stock count is Enterprise; only those who can change the plan see what other
+  // plans add.
+  const { canEdit } = useAccess();
+  const hasStockCount = useFeature("automations");
+  const showStockCount = hasStockCount || canEdit("settings");
   const tabs = useReorderableTabs(
     "rice-mill-inventory-tabs",
-    VIEWS.map((v) => v.key),
+    VIEWS.filter((v) => showStockCount || v.key !== "count").map((v) => v.key),
   );
   const orderedViews = tabs.order
     .map((key) => VIEWS.find((v) => v.key === key))
     .filter((v): v is (typeof VIEWS)[number] => !!v);
-  const [view, setView] = useState<ViewMode>(() => orderedViews[0]?.key ?? "cards");
+  const [params, setParams] = useSearchParams();
+  const askedForCount = params.get("tab") === "count";
+  const [view, setView] = useState<ViewMode>(() =>
+    askedForCount ? "count" : (orderedViews[0]?.key ?? "cards"),
+  );
+  // A link to the count (an alert, say) opens that tab, even from this page. The
+  // flag then leaves the address, so the other tabs don't have to clear it.
+  useEffect(() => {
+    if (!askedForCount) return;
+    setView("count");
+    const next = new URLSearchParams(params);
+    next.delete("tab");
+    setParams(next, { replace: true });
+  }, [askedForCount, params, setParams]);
+  const counting = view === "count";
   const [selected, setSelected] = useState<UnifiedItem | null>(null);
   const [showAdd, setShowAdd] = useState(false);
 
@@ -200,18 +225,23 @@ export default function InventoryPage() {
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            <WarehousePicker
-              branches={branches as any[]}
-              selectedId={branchFilter}
-              onSelect={pickBranch}
-            />
-            <Select
-              className="!w-auto min-w-[13rem]"
-              aria-label={t("Sort inventory by")}
-              value={sort}
-              onChange={(v) => isInventorySort(v) && setSort(v)}
-              options={INVENTORY_SORTS}
-            />
+            {/* A count picks its own branch, and has nothing to sort. */}
+            {!counting && (
+              <>
+                <WarehousePicker
+                  branches={branches as any[]}
+                  selectedId={branchFilter}
+                  onSelect={pickBranch}
+                />
+                <Select
+                  className="!w-auto min-w-[13rem]"
+                  aria-label={t("Sort inventory by")}
+                  value={sort}
+                  onChange={(v) => isInventorySort(v) && setSort(v)}
+                  options={INVENTORY_SORTS}
+                />
+              </>
+            )}
             {canAddInventory && (
               <button
                 type="button"
@@ -226,7 +256,7 @@ export default function InventoryPage() {
         </div>
 
         {/* The branch's warehouses: pick one, and add, rename or delete them */}
-        {contextBranch && (
+        {contextBranch && !counting && (
           <WarehouseStrip
             branchId={contextBranch.id}
             branchName={contextBranch.name}
@@ -275,7 +305,7 @@ export default function InventoryPage() {
 
         {/* The list views wait for all three kinds of stock: until then a page that
             is only loading would say the inventory is empty. */}
-        {stockLoading && view !== "warehouse" ? (
+        {stockLoading && view !== "warehouse" && !counting ? (
           <div className="card !p-0">
             <LoadingRows rows={5} />
           </div>
@@ -303,6 +333,11 @@ export default function InventoryPage() {
             branchFilter={branchFilter}
             setBranchFilter={pickBranch}
           />
+        )}
+        {counting && (
+          <FeatureGate code="automations" label={t("Stock count")} requires={t("Enterprise")}>
+            <StockCountPage />
+          </FeatureGate>
         )}
 
         <InventoryDetailDrawer

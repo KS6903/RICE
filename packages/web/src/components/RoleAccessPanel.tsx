@@ -25,6 +25,7 @@ const errorText = (e: any, fallback: string) => e?.response?.data?.detail || fal
 /** Pages the sidebar doesn't list on its own, and tabs that open with their page. */
 const EXTRA: Record<string, { label: string; also: string[] }> = {
   milling: { label: t("Milling"), also: [t("Maintenance")] },
+  inventory: { label: t("Inventory"), also: [t("Stock count")] },
   settings: {
     label: t("Settings"),
     also: [t("Billing, company, branches, activity log. Everyone keeps their own account.")],

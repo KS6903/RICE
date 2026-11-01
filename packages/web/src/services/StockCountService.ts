@@ -1,4 +1,4 @@
-// StockCountService — typed API client for the Stock count page: the stock on
+// StockCountService — typed API client for the Stock count tab: the stock on
 // the floor against the records (Enterprise, with the automations).
 import api from "./api";
 

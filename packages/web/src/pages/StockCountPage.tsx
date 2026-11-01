@@ -1,4 +1,4 @@
-// Stock count: weigh or count what's on the floor, line by line, without seeing
+// The Stock count tab of the Inventory page: weigh or count what's on the floor, line by line, without seeing
 // what the records say. Saved, it's set against the records; lines out by more
 // than the allowance wait for the owner. A count changes no stock: corrections
 // are made in Inventory.
@@ -650,9 +650,11 @@ export default function StockCountPage() {
 
   return (
     <div className="space-y-6">
-      <header>
-        <h1 className="text-2xl font-bold text-primary">{t("Stock count")}</h1>
-      </header>
+      <p className="text-sm text-secondary max-w-2xl">
+        {t(
+          "Count what's on the floor, then see it against the records. A count changes no stock.",
+        )}
+      </p>
 
       {canEdit("inventory") ? (
         <CountSheet data={page.data} />
