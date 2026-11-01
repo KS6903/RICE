@@ -8,7 +8,10 @@ import "./index.css";
 import "./stores/themeStore";
 import { queryClient } from "./services/queryClient";
 import { googleClientId, googleSignInEnabled } from "./utils/googleSignIn";
+import { protectFieldsFromWheel } from "./utils/fieldWheel";
 import { registerSW } from "virtual:pwa-register";
+
+protectFieldsFromWheel();
 
 // The offline cache is for the browser. The desktop app (app://oraiza) has its
 // own offline store, and its scheme can't host a service worker anyway.
