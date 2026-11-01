@@ -177,9 +177,7 @@ def exported_tables() -> list[Table]:
 def exported_columns(table: Table) -> list:
     """Every column but stored files and what's left out on purpose."""
     return [
-        c
-        for c in table.columns
-        if not isinstance(c.type, LargeBinary) and (table.name, c.name) not in LEFT_OUT_COLUMNS
+        c for c in table.columns if not isinstance(c.type, LargeBinary) and (table.name, c.name) not in LEFT_OUT_COLUMNS
     ]
 
 
