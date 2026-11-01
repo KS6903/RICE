@@ -2,7 +2,8 @@ import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-route
 import { lazy, Suspense, useEffect, type ComponentType } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useAuthStore } from "./stores/authStore";
-import { useIdleLogout } from "./hooks/useIdleLogout";
+import { idleSigningOut, useIdleLogout } from "./hooks/useIdleLogout";
+import useReloadOnPageChange from "./hooks/useReloadOnPageChange";
 import { useVisualViewport } from "./hooks/useVisualViewport";
 import { authService } from "./services/AuthService";
 import AppShell from "./components/layout/AppShell";
@@ -14,7 +15,6 @@ import AccountClosedGate from "./components/AccountClosedGate";
 import PasswordChangeGate from "./components/PasswordChangeGate";
 import EmailVerificationGate from "./components/EmailVerificationGate";
 import LegalAcceptanceGate from "./components/LegalAcceptanceGate";
-import ReloadOnPageChange from "./components/ReloadOnPageChange";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { t } from "./i18n";
 
@@ -126,6 +126,7 @@ function TenantRoute({ children }: { children: React.ReactNode }) {
   const user = useAuthStore((s) => s.user);
   const { pathname } = useLocation();
   if (!isAuthenticated) {
+    if (idleSigningOut()) return null;
     if (pathname !== "/") return <Navigate to="/" replace />;
     return <LazyPage component={HomePage} />;
   }
@@ -136,7 +137,7 @@ function TenantRoute({ children }: { children: React.ReactNode }) {
 function AdminRoute({ children }: { children: React.ReactNode }) {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated());
   const user = useAuthStore((s) => s.user);
-  if (!isAuthenticated) return <Navigate to="/login" replace />;
+  if (!isAuthenticated) return idleSigningOut() ? null : <Navigate to="/login" replace />;
   if (!user?.is_platform_admin) return <Navigate to="/" replace />;
   return <>{children}</>;
 }
@@ -146,7 +147,8 @@ function AdminRoute({ children }: { children: React.ReactNode }) {
  *  relevant mandatory screen. The /verify-email link route stays reachable so a
  *  user can complete verification from the gate. */
 function AppRoutes() {
-  const { pathname } = useLocation();
+  const location = useReloadOnPageChange();
+  const { pathname } = location;
   const mustChangePassword = useAuthStore((s) => !!s.user?.password_change_required);
   const mustEnroll = useAuthStore((s) => !!s.user?.mfa_enrollment_required);
   const mustVerify = useAuthStore((s) => !!s.user?.email_verification_required);
@@ -166,7 +168,7 @@ function AppRoutes() {
   if (mustVerify && pathname !== "/verify-email" && !onLegalPage) return <EmailVerificationGate />;
   if (mustAccept && !onLegalPage) return <LegalAcceptanceGate />;
   return (
-    <Routes>
+    <Routes location={location}>
       <Route path="/login" element={<LazyPage component={LoginPage} />} />
       <Route path="/signup" element={<LazyPage component={SignupPage} />} />
       <Route path="/forgot-password" element={<LazyPage component={ForgotPasswordPage} />} />
@@ -450,7 +452,6 @@ export default function App() {
     <BrowserRouter>
       <AuthSessionSync />
       <IdleLogout />
-      <ReloadOnPageChange />
       <ErrorBoundary>
         <AppRoutes />
       </ErrorBoundary>

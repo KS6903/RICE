@@ -27,8 +27,8 @@ test.describe("Buy and sell through the forms", () => {
     await page.getByRole("listbox").getByRole("option").first().click();
     await page.getByRole("button", { name: "Grade", exact: true }).click();
     await page.getByRole("listbox").getByRole("option").first().click();
-    await page.getByLabel("Kilos (est.)").fill("2000");
-    await page.getByLabel("Tare: sacks (kg)").fill("20");
+    await page.getByLabel("Kilos").fill("2000");
+    await page.getByLabel("Tare (kg)").fill("20");
     await page.getByLabel("Moisture %").fill("14");
     await page.getByLabel("Price per kg (₱)").fill("23");
     await page.getByRole("button", { name: "Save Purchase" }).click();

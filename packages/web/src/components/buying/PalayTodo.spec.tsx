@@ -7,7 +7,7 @@ const line = (id: string, over: Record<string, unknown> = {}) => ({
   id,
   variety_code: "NSIC Rc 222",
   grade_code: null,
-  sack_count: "20.00",
+  cavan_count: "20.00",
   net_weight_kg: "1000.000",
   moisture_content_pct: "24.00",
   is_wet: true,
@@ -71,7 +71,7 @@ describe("The Palay page's To do window", () => {
     expect(items[0]).toHaveTextContent("PP-OLDER");
     expect(items[0]).toHaveTextContent("RC160");
     expect(items[0]).toHaveTextContent("1,000 kg");
-    expect(items[0]).toHaveTextContent("20 sacks");
+    expect(items[0]).toHaveTextContent("20 cavans");
     expect(items[0]).toHaveTextContent("Mang Ben");
     expect(items[1]).toHaveTextContent("PP-NEWER");
     expect(todoWindow.queryByText("PP-DRY")).toBeNull();

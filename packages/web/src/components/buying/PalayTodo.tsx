@@ -85,11 +85,13 @@ export default function PalayTodo({
                   </p>
                   <p className="text-xs text-muted sm:truncate">
                     {kg(line.net_weight_kg)}
-                    {line.sack_count != null && (
+                    {line.cavan_count != null && (
                       <>
                         {" "}
                         ·{" "}
-                        {t("{{sacks}} sacks", { sacks: Number(line.sack_count).toLocaleString() })}
+                        {t("{{cavans}} cavans", {
+                          cavans: Number(line.cavan_count).toLocaleString(),
+                        })}
                       </>
                     )}
                     {" · "}

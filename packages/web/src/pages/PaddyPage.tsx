@@ -3,13 +3,15 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   paddyService,
   blankPurchaseItem,
+  cavansFromKilos,
+  kilosFromCavans,
   pricePerCavan,
   purchaseLineProblems,
   purchaseLineReady,
   type PurchaseItemForm,
   type StockView,
 } from "../services/PaddyService";
-import { Container, LayoutGrid, Scale, ShoppingBag, Wheat, type LucideIcon } from "lucide-react";
+import { Container, Scale, Wheat, type LucideIcon } from "lucide-react";
 import { format } from "date-fns";
 import QuickAdd from "../components/QuickAdd";
 import ScaleButton from "../components/buying/ScaleButton";
@@ -41,21 +43,40 @@ import { STOCK_CELL as CELL, STOCK_FIGURE as FIGURE, stockDetails } from "../uti
 import { varietyOptions } from "../utils/varieties";
 import { t } from "../i18n";
 
-type Unit = Exclude<StockView, "all">;
+type Unit = "cavans" | "kilos";
+
+const VIEW_KEY = ["palay-stock-view"];
 
 /** The picture on each way of viewing the stock, like a grid / list switch. */
-const viewIcons: Record<StockView, LucideIcon> = {
-  all: LayoutGrid,
-  sacks: ShoppingBag,
+const viewIcons: Record<Unit, LucideIcon> = {
   cavans: Container,
   kilos: Scale,
 };
 
-/** A figure for the stock table, to a decimal; a dash when the server sent none. */
-const amount = (v: unknown) =>
+/** A figure for the stock table; a dash when the server sent none. Cavans to two
+ *  decimals, so they multiply back to the kilos they stand for. */
+const amount = (v: unknown, unit: Unit) =>
   v == null || Number.isNaN(Number(v))
     ? "—"
-    : Number(v).toLocaleString(undefined, { maximumFractionDigits: 1 });
+    : Number(v).toLocaleString(undefined, { maximumFractionDigits: unit === "cavans" ? 2 : 1 });
+
+/** Both ways of saying a thing, one on top of the other with the other hidden.
+ *  The space stays the size of the wider, so switching moves nothing on the page:
+ *  only the words change, in place. */
+function UnitSwap({ unit, cavans, kilos }: { unit: Unit; cavans: string; kilos: string }) {
+  const layer = (shown: boolean) =>
+    `col-start-1 row-start-1 transition-[opacity,visibility] duration-150 motion-reduce:transition-none ${shown ? "" : "invisible opacity-0"}`;
+  return (
+    <span className="inline-grid">
+      <span className={layer(unit === "cavans")} aria-hidden={unit !== "cavans" || undefined}>
+        {cavans}
+      </span>
+      <span className={layer(unit === "kilos")} aria-hidden={unit !== "kilos" || undefined}>
+        {kilos}
+      </span>
+    </span>
+  );
+}
 
 /** The price per cavan worked out from a price per kilo, for the read-only field. */
 const cavanPrice = (pricePerKg: string) => {
@@ -86,13 +107,20 @@ export default function PaddyPage() {
     queryKey: ["palay-inventory"],
     queryFn: () => paddyService.listInventory(),
   });
-  const { data: stockView = "all" } = useQuery<StockView>({
-    queryKey: ["palay-stock-view"],
+  const { data: stockView, isLoading: viewLoading } = useQuery<StockView>({
+    queryKey: VIEW_KEY,
     queryFn: () => paddyService.getStockView(),
   });
+  const unit: Unit = stockView === "kilos" ? "kilos" : "cavans";
+  // The table switches at the click; the choice is saved behind it.
   const chooseView = useMutation({
-    mutationFn: (view: StockView) => paddyService.setStockView(view),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["palay-stock-view"] }),
+    mutationFn: (view: Unit) => paddyService.setStockView(view),
+    onMutate: (view) => {
+      const before = qc.getQueryData<StockView>(VIEW_KEY);
+      qc.setQueryData(VIEW_KEY, view);
+      return { before };
+    },
+    onError: (_error, _view, context) => qc.setQueryData(VIEW_KEY, context?.before),
   });
 
   // Which branch and warehouse the palay goes into (owner/admin pick the branch;
@@ -157,9 +185,8 @@ export default function PaddyPage() {
     (e: { target: { value: string } }) =>
       setItem(idx, { [key]: e.target.value } as Partial<PurchaseItemForm>);
 
-  // A line needs something counted (sacks, cavans or kilos; the last two are
-  // optional estimates) and a price. Wet palay is saved as Wet: it is completed
-  // when its drying is recorded from the purchase's details.
+  // A line needs its cavans or kilos and a price. Wet palay is saved as Wet: it is
+  // completed when its drying is recorded from the purchase's details.
   const ready = form.items.every(purchaseLineReady);
   const submit = () => {
     setAttempted(true);
@@ -167,52 +194,18 @@ export default function PaddyPage() {
   };
   const saveError = (createMutation.error as any)?.response?.data?.detail;
 
-  // How the stock is counted: the Boss picks sacks, cavans, kilos or all. "All" is
-  // too wide for a phone, which shows the sacks.
-  const units: Record<Unit, { label: string; word: string; stock: string; wet: string }> = {
-    sacks: {
-      label: t("Sacks"),
-      word: t("sacks"),
-      stock: "quantity_sacks",
-      wet: "wet_sacks",
-    },
-    cavans: {
-      label: t("Cavans (est.)"),
-      word: t("cavans"),
-      stock: "quantity_cavans",
-      wet: "wet_cavans",
-    },
-    kilos: { label: t("Kilos (est.)"), word: t("kg"), stock: "quantity_kg", wet: "wet_kg" },
-  };
-  // "All" leaves out the cavans while they read the same as the sacks on every row
-  // (sacks of 50 kg): the column would only repeat itself.
-  const cavansRepeatSacks =
-    inventory.length > 0 &&
-    inventory.every(
-      (i: any) =>
-        i.quantity_sacks != null && amount(i.quantity_sacks) === amount(i.quantity_cavans),
-    );
-  const shownUnits: Unit[] =
-    stockView === "all"
-      ? cavansRepeatSacks
-        ? ["sacks", "kilos"]
-        : ["sacks", "cavans", "kilos"]
-      : [stockView];
-  const unitClass = (u: Unit) =>
-    stockView === "all" && u !== "sacks" ? "hidden sm:table-cell" : "";
-  // A phone has room for the variety and the amounts: the grade, and the branch and
+  // A phone has room for the variety and the amount: the grade, and the branch and
   // warehouse when there are several, go in small print under the variety.
   const phone = useIsPhone();
   const stockColumns = phone
-    ? 1 + shownUnits.length
-    : 2 + Number(stockInSeveralBranches) + Number(stockInSeveralWarehouses) + shownUnits.length;
-  const viewOptions: { value: StockView; label: string }[] = [
-    { value: "all", label: t("All") },
-    { value: "sacks", label: t("Sacks") },
-    { value: "cavans", label: t("Cavans (estimated)") },
-    { value: "kilos", label: t("Kilos (estimated)") },
+    ? 2
+    : 3 + Number(stockInSeveralBranches) + Number(stockInSeveralWarehouses);
+  // No figures until the Boss's choice is known, or they would change under the eye.
+  const shownInventory = viewLoading ? [] : inventory;
+  const viewOptions: { value: Unit; label: string }[] = [
+    { value: "cavans", label: t("Cavans") },
+    { value: "kilos", label: t("Kilos") },
   ];
-  const firstUnit = units[shownUnits[0]];
 
   return (
     <div className="space-y-6">
@@ -409,50 +402,52 @@ export default function PaddyPage() {
                     <p className="mb-2 text-[10px] font-bold uppercase tracking-wide text-muted">
                       {t("How much")}
                     </p>
-                    <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
                       <FieldCaption
-                        label={t("Sacks")}
-                        error={flag(problems.counted, t("Enter the sacks, cavans or kilos."))}
+                        label={t("Cavans")}
+                        error={flag(problems.counted, t("Enter the cavans or kilos."))}
                       >
                         <input
                           className="input"
-                          type="number"
-                          min={0}
-                          value={item.sack_count}
-                          onChange={text(idx, "sack_count")}
-                        />
-                      </FieldCaption>
-                      <FieldCaption label={t("Cavans (est.)")}>
-                        <input
-                          className="input"
-                          placeholder={t("Optional")}
                           type="number"
                           min={0}
                           value={item.cavan_count}
-                          onChange={text(idx, "cavan_count")}
+                          readOnly={item.weight_source === "scale"}
+                          onChange={(e) =>
+                            setItem(idx, {
+                              cavan_count: e.target.value,
+                              gross_weight_kg: kilosFromCavans(e.target.value),
+                            })
+                          }
                         />
                       </FieldCaption>
-                      <FieldCaption
-                        label={item.is_wet ? t("Wet weight (kg, est.)") : t("Kilos (est.)")}
-                      >
+                      <FieldCaption label={item.is_wet ? t("Wet weight (kg)") : t("Kilos")}>
                         <input
                           className="input"
-                          placeholder={t("Optional")}
                           type="number"
                           min={0}
                           value={item.gross_weight_kg}
                           readOnly={item.weight_source === "scale"}
-                          onChange={text(idx, "gross_weight_kg")}
+                          onChange={(e) =>
+                            setItem(idx, {
+                              gross_weight_kg: e.target.value,
+                              cavan_count: cavansFromKilos(e.target.value),
+                            })
+                          }
                         />
                         <ScaleButton
                           fromScale={item.weight_source === "scale"}
                           onRead={(kg) =>
-                            setItem(idx, { gross_weight_kg: String(kg), weight_source: "scale" })
+                            setItem(idx, {
+                              gross_weight_kg: String(kg),
+                              cavan_count: cavansFromKilos(String(kg)),
+                              weight_source: "scale",
+                            })
                           }
                           onClear={() => setItem(idx, { weight_source: "manual" })}
                         />
                       </FieldCaption>
-                      <FieldCaption label={t("Tare: sacks (kg)")}>
+                      <FieldCaption label={t("Tare (kg)")}>
                         <input
                           className="input"
                           placeholder="0"
@@ -527,7 +522,7 @@ export default function PaddyPage() {
             <p role="alert" className="text-sm text-rose-600 dark:text-rose-400">
               {typeof saveError === "string"
                 ? saveError
-                : t("Couldn't save. Check the sacks, cavans or kilos, and the price.")}
+                : t("Couldn't save. Check the cavans or kilos, and the price.")}
             </p>
           )}
           <div className="flex gap-2 justify-end">
@@ -562,11 +557,10 @@ export default function PaddyPage() {
                       key={value}
                       type="button"
                       role="radio"
-                      aria-checked={stockView === value}
+                      aria-checked={unit === value}
                       title={label}
-                      disabled={chooseView.isPending}
-                      className={`seg-btn !px-2.5 ${stockView === value ? "is-active" : ""}`}
-                      onClick={() => stockView !== value && chooseView.mutate(value)}
+                      className={`seg-btn !px-2.5 ${unit === value ? "is-active" : ""}`}
+                      onClick={() => unit !== value && chooseView.mutate(value)}
                     >
                       <Icon className="h-4 w-4" aria-hidden="true" />
                       <span className="sr-only">{label}</span>
@@ -583,31 +577,31 @@ export default function PaddyPage() {
             <thead className="bg-gray-50 dark:bg-slate-900/50 border-b border-gray-200 dark:border-slate-700">
               <tr>
                 {[
-                  { key: "variety", label: t("Variety"), cls: "" },
-                  ...(phone ? [] : [{ key: "grade", label: t("Grade"), cls: "" }]),
+                  { key: "variety", label: t("Variety") },
+                  ...(phone ? [] : [{ key: "grade", label: t("Grade") }]),
                   ...(stockInSeveralBranches && !phone
-                    ? [{ key: "branch", label: t("Branch"), cls: "" }]
+                    ? [{ key: "branch", label: t("Branch") }]
                     : []),
                   ...(stockInSeveralWarehouses && !phone
-                    ? [{ key: "warehouse", label: t("Warehouse"), cls: "" }]
+                    ? [{ key: "warehouse", label: t("Warehouse") }]
                     : []),
-                  ...shownUnits.map((u) => ({
-                    key: u,
-                    label: units[u].label,
-                    cls: unitClass(u),
-                  })),
                 ].map((h) => (
                   <th
                     key={h.key}
-                    className={`${CELL} text-left font-medium text-gray-600 dark:text-slate-300 ${h.cls}`}
+                    className={`${CELL} text-left font-medium text-gray-600 dark:text-slate-300`}
                   >
                     {h.label}
                   </th>
                 ))}
+                <th
+                  className={`${FIGURE} text-right font-medium text-gray-600 dark:text-slate-300`}
+                >
+                  <UnitSwap unit={unit} cavans={t("Cavans")} kilos={t("Kilos")} />
+                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100 dark:divide-slate-700">
-              {inventory.map((i: any) => {
+              {shownInventory.map((i: any) => {
                 const under = stockDetails(
                   i.grade?.code,
                   stockInSeveralBranches && (i.branch?.name || t("Unassigned")),
@@ -615,9 +609,15 @@ export default function PaddyPage() {
                 );
                 const wet = Number(i.wet_kg) > 0 && (
                   <span className={phone ? "badge-red" : "badge-red ml-2 align-middle"}>
-                    {t("{{amount}} wet", {
-                      amount: `${amount(i[firstUnit.wet])} ${firstUnit.word}`,
-                    })}
+                    <UnitSwap
+                      unit={unit}
+                      cavans={t("{{amount}} wet", {
+                        amount: `${amount(i.wet_cavans, "cavans")} ${t("cavans")}`,
+                      })}
+                      kilos={t("{{amount}} wet", {
+                        amount: `${amount(i.wet_kg, "kilos")} ${t("kg")}`,
+                      })}
+                    />
                   </span>
                 );
                 return (
@@ -644,25 +644,24 @@ export default function PaddyPage() {
                         )}
                       </>
                     )}
-                    {shownUnits.map((u, n) => (
-                      <td
-                        key={u}
-                        className={`${FIGURE} tabular-nums ${n === 0 ? "font-medium" : "text-gray-500 dark:text-slate-400"} ${unitClass(u)}`}
-                      >
-                        {amount(i[units[u].stock])}
-                      </td>
-                    ))}
+                    <td className={`${FIGURE} text-right font-medium tabular-nums`}>
+                      <UnitSwap
+                        unit={unit}
+                        cavans={amount(i.quantity_cavans, "cavans")}
+                        kilos={amount(i.quantity_kg, "kilos")}
+                      />
+                    </td>
                   </tr>
                 );
               })}
-              {inventoryLoading ? (
+              {inventoryLoading || viewLoading ? (
                 <tr>
                   <td colSpan={stockColumns}>
                     <LoadingRows rows={2} />
                   </td>
                 </tr>
               ) : (
-                inventory.length === 0 && (
+                shownInventory.length === 0 && (
                   <tr>
                     <td colSpan={stockColumns} className="px-4 py-8 text-center text-muted">
                       {t(

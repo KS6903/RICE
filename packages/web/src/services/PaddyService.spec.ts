@@ -3,6 +3,8 @@ import {
   PaddyService,
   blankPurchaseItem,
   pricePerCavan,
+  cavansFromKilos,
+  kilosFromCavans,
   purchaseLineProblems,
   purchaseLineReady,
 } from "./PaddyService";
@@ -34,7 +36,6 @@ describe("PaddyService.toPurchasePayload", () => {
     expect(payload.items[0]).toEqual({
       variety_id: "v1",
       grade_id: null,
-      sack_count: null,
       cavan_count: null,
       gross_weight_kg: 1000,
       tare_weight_kg: 50,
@@ -47,7 +48,6 @@ describe("PaddyService.toPurchasePayload", () => {
     expect(payload.items[1]).toEqual({
       variety_id: null,
       grade_id: null,
-      sack_count: null,
       cavan_count: null,
       gross_weight_kg: 500,
       tare_weight_kg: 0,
@@ -59,16 +59,15 @@ describe("PaddyService.toPurchasePayload", () => {
     });
   });
 
-  it("counts in sacks: cavans and kilos left blank are sent as nothing", () => {
+  it("sends cavans with no weight as nothing for the kilos", () => {
     const payload = PaddyService.toPurchasePayload({
       purchase_date: "2026-10-29",
       delivery_type: "delivered",
       remarks: "",
-      items: [{ ...blankPurchaseItem(), sack_count: "20", price_per_kg: "24" }],
+      items: [{ ...blankPurchaseItem(), cavan_count: "20", price_per_kg: "24" }],
     });
     expect(payload.items[0]).toMatchObject({
-      sack_count: 20,
-      cavan_count: null,
+      cavan_count: 20,
       gross_weight_kg: null,
     });
   });
@@ -80,9 +79,8 @@ describe("purchaseLineProblems", () => {
     expect(purchaseLineReady(blankPurchaseItem())).toBe(false);
   });
 
-  it("is satisfied by the sacks, the cavans or the kilos, with a price", () => {
+  it("is satisfied by the cavans or the kilos, with a price", () => {
     for (const counted of [
-      { sack_count: "20" },
       { cavan_count: "20" },
       { gross_weight_kg: "1000" },
     ]) {
@@ -93,8 +91,22 @@ describe("purchaseLineProblems", () => {
   });
 
   it("asks for nothing more of wet palay: it is saved as Wet", () => {
-    const wet = { ...blankPurchaseItem(), is_wet: true, sack_count: "20", price_per_kg: "24" };
+    const wet = { ...blankPurchaseItem(), is_wet: true, cavan_count: "20", price_per_kg: "24" };
     expect(purchaseLineReady(wet)).toBe(true);
+  });
+});
+
+describe("cavans and kilos", () => {
+  it("are the same amount, 50 kg to the cavan", () => {
+    expect(kilosFromCavans("20")).toBe("1000");
+    expect(cavansFromKilos("1000")).toBe("20");
+    expect(kilosFromCavans("2.5")).toBe("125");
+    expect(cavansFromKilos("13417")).toBe("268.34");
+  });
+
+  it("stay blank while nothing is typed", () => {
+    expect(kilosFromCavans("")).toBe("");
+    expect(cavansFromKilos("")).toBe("");
   });
 });
 

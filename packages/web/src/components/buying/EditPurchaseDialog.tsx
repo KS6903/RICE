@@ -7,7 +7,12 @@ import { Plus, Trash2 } from "lucide-react";
 import RecordDialog from "../sales/RecordDialog";
 import Select from "../Select";
 import DatePicker from "../DatePicker";
-import { paddyService, type PurchaseEdit } from "../../services/PaddyService";
+import {
+  cavansFromKilos,
+  kilosFromCavans,
+  paddyService,
+  type PurchaseEdit,
+} from "../../services/PaddyService";
 import { buyingService } from "../../services/BuyingService";
 import { useByproductKinds } from "../../hooks/useByproductKinds";
 import { MILLED_GRADES } from "../../mappers/InventoryMapper";
@@ -26,12 +31,13 @@ type Line = Record<string, string>;
 /** The numbers on a line, as each kind's create takes them. */
 const NUMBERS: Record<
   TradeKind,
-  { key: string; label: string; optional?: boolean; wetOnly?: boolean }[]
+  { key: string; label: string; optional?: boolean; wetOnly?: boolean; notShown?: boolean }[]
 > = {
   palay: [
-    { key: "sack_count", label: t("Sacks"), optional: true },
-    { key: "cavan_count", label: t("Cavans (est.)"), optional: true },
-    { key: "gross_weight_kg", label: t("Kilos (est.)"), optional: true },
+    // An older purchase may have its sacks counted: kept as they were, not asked for.
+    { key: "sack_count", label: t("Sacks"), optional: true, notShown: true },
+    { key: "cavan_count", label: t("Cavans"), optional: true },
+    { key: "gross_weight_kg", label: t("Kilos"), optional: true },
     { key: "tare_weight_kg", label: t("Tare kg") },
     { key: "moisture_content_pct", label: t("Moisture %"), optional: true },
     { key: "impurity_pct", label: t("Impurities %"), optional: true },
@@ -147,7 +153,7 @@ function lineMissing(kind: TradeKind, l: Line): Set<string> {
     if (!n.optional && l[n.key] === "") missing.add(n.key);
   }
   if (kind === "palay") {
-    if (palayKg(l) <= 0) missing.add("sack_count");
+    if (palayKg(l) <= 0) missing.add("cavan_count");
     if (l.is_wet === "yes" && l.dried_weight_kg !== "" && num(l.dried_weight_kg) <= 0) {
       missing.add("dried_weight_kg");
     }
@@ -258,6 +264,19 @@ export default function EditPurchaseDialog({
 
   const setLine = (i: number, patch: Line) =>
     setLines((ls) => ls.map((l, j) => (j === i ? { ...l, ...patch } : l)));
+
+  // The cavans and the kilos of a palay line are the same amount, 50 kg to the cavan.
+  const setNumber = (i: number, key: string, value: string) => {
+    const linked =
+      kind !== "palay"
+        ? {}
+        : key === "cavan_count"
+          ? { gross_weight_kg: kilosFromCavans(value) }
+          : key === "gross_weight_kg"
+            ? { cavan_count: cavansFromKilos(value) }
+            : {};
+    setLine(i, { [key]: value, ...linked });
+  };
 
   // A variety, grade or by-product the purchase has but the list hides stays pickable.
   const withCurrent = (
@@ -412,7 +431,7 @@ export default function EditPurchaseDialog({
                 )}
                 <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
                   {NUMBERS[kind]
-                    .filter((n) => !n.wetOnly || l.is_wet === "yes")
+                    .filter((n) => !n.notShown && (!n.wetOnly || l.is_wet === "yes"))
                     .map((n) => (
                       <FieldCaption
                         key={n.key}
@@ -430,7 +449,7 @@ export default function EditPurchaseDialog({
                             value: i + 1,
                           })}
                           value={l[n.key]}
-                          onChange={(e) => setLine(i, { [n.key]: e.target.value })}
+                          onChange={(e) => setNumber(i, n.key, e.target.value)}
                         />
                       </FieldCaption>
                     ))}

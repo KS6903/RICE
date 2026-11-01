@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { useAuthStore } from "../stores/authStore";
 
 /**
@@ -25,15 +25,28 @@ const ACTIVITY_EVENTS = [
 // stops propagation) without ever blocking the event.
 const LISTENER_OPTS: AddEventListenerOptions = { capture: true, passive: true };
 
+let goingToLogin = false;
+
+/** An idle sign-out is on its way to the login page. The pages that send a
+ *  signed-out visitor elsewhere wait, or they would send them there instead. */
+export function idleSigningOut(): boolean {
+  return goingToLogin;
+}
+
 /**
  * Signs the user out and sends them to `/login?reason=idle` after `timeoutMs`
  * of inactivity. No-op while logged out. Must be used inside the Router.
  */
 export function useIdleLogout(timeoutMs: number = IDLE_TIMEOUT_MS): void {
   const navigate = useNavigate();
+  const { pathname } = useLocation();
   // isAuthenticated() is derived and wouldn't re-run this effect when it flips,
   // so subscribe to the underlying fields that change on login/logout.
   const isAuthed = useAuthStore((s) => !!s.user || !!s.accessToken);
+
+  useEffect(() => {
+    if (pathname === "/login") goingToLogin = false;
+  }, [pathname]);
 
   useEffect(() => {
     if (!isAuthed) return;
@@ -44,6 +57,7 @@ export function useIdleLogout(timeoutMs: number = IDLE_TIMEOUT_MS): void {
     const expire = () => {
       const { user, accessToken, logout } = useAuthStore.getState();
       if (!user && !accessToken) return; // already signed out elsewhere
+      goingToLogin = true;
       void logout();
       navigate("/login?reason=idle", { replace: true });
     };

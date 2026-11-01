@@ -61,7 +61,7 @@ beforeEach(() => {
   vi.spyOn(paddyService, "listGrades").mockResolvedValue([]);
   vi.spyOn(paddyService, "listInventory").mockResolvedValue([]);
   vi.spyOn(paddyService, "getStockView").mockResolvedValue("all");
-  setView = vi.spyOn(paddyService, "setStockView").mockResolvedValue("sacks");
+  setView = vi.spyOn(paddyService, "setStockView").mockResolvedValue("kilos");
   create = vi.spyOn(paddyService, "createPurchase").mockResolvedValue({ id: "p1" });
   listBranches = vi.spyOn(inventoryService, "getBranches").mockResolvedValue(warehouses);
   vi.spyOn(warehousesService, "list").mockResolvedValue(warehouseRows);
@@ -73,7 +73,7 @@ afterEach(() => {
 });
 
 const fillAndSave = () => {
-  fireEvent.change(screen.getByLabelText("Kilos (est.)"), { target: { value: "1000" } });
+  fireEvent.change(screen.getByLabelText("Kilos"), { target: { value: "1000" } });
   fireEvent.change(screen.getByPlaceholderText("₱/kg"), { target: { value: "24" } });
   fireEvent.click(screen.getByRole("button", { name: "Save Purchase" }));
 };
@@ -196,7 +196,7 @@ describe("PaddyPage: which branch and warehouse a new purchase is stored in", ()
   });
 });
 
-describe("PaddyPage: a purchase line counted in sacks, bought wet or dry", () => {
+describe("PaddyPage: a purchase line in cavans or kilos, bought wet or dry", () => {
   const open = () => {
     useAuthStore.setState({ user: owner });
     draw();
@@ -219,17 +219,39 @@ describe("PaddyPage: a purchase line counted in sacks, bought wet or dry", () =>
     ]);
   });
 
-  it("saves a line with only the sacks and the price: cavans and kilos are optional", async () => {
+  it("asks for no sacks, and calls nothing an estimate", async () => {
     open();
-    fireEvent.change(await screen.findByLabelText("Sacks"), { target: { value: "20" } });
+    await screen.findByLabelText("Cavans");
+    expect(screen.queryByLabelText("Sacks")).toBeNull();
+    expect(screen.queryByText(/\(est\.\)|estimated/)).toBeNull();
+    expect(screen.getByLabelText("Tare (kg)")).toBeInTheDocument();
+  });
+
+  it("keeps the cavans and the kilos the same amount, whichever is typed", async () => {
+    open();
+    const cavans = await screen.findByLabelText("Cavans");
+    const kilos = screen.getByLabelText("Kilos");
+
+    fireEvent.change(cavans, { target: { value: "20" } });
+    expect(kilos).toHaveValue(1000);
+
+    fireEvent.change(kilos, { target: { value: "1250" } });
+    expect(cavans).toHaveValue(25);
+
+    fireEvent.change(cavans, { target: { value: "" } });
+    expect(kilos).toHaveValue(null);
+  });
+
+  it("saves a line with the cavans and the price, the kilos worked out", async () => {
+    open();
+    fireEvent.change(await screen.findByLabelText("Cavans"), { target: { value: "20" } });
     fireEvent.change(screen.getByPlaceholderText("₱/kg"), { target: { value: "24" } });
     fireEvent.click(screen.getByRole("button", { name: "Save Purchase" }));
 
     await waitFor(() => expect(create).toHaveBeenCalled());
     expect(create.mock.calls[0][0].items[0]).toMatchObject({
-      sack_count: "20",
-      cavan_count: "",
-      gross_weight_kg: "",
+      cavan_count: "20",
+      gross_weight_kg: "1000",
       price_per_kg: "24",
       is_wet: false,
     });
@@ -243,14 +265,14 @@ describe("PaddyPage: a purchase line counted in sacks, bought wet or dry", () =>
     fireEvent.click(save);
 
     const notices = screen.getAllByTestId("field-error").map((n) => n.textContent);
-    expect(notices).toEqual(["Enter the sacks, cavans or kilos.", "This field needs an input."]);
+    expect(notices).toEqual(["Enter the cavans or kilos.", "This field needs an input."]);
     expect(screen.getByRole("alert")).toHaveTextContent(
       "Some fields still need an input. Fill in the ones marked in red.",
     );
     expect(create).not.toHaveBeenCalled();
 
     // Each notice goes once its field is filled in.
-    fireEvent.change(screen.getByLabelText("Sacks"), { target: { value: "20" } });
+    fireEvent.change(screen.getByLabelText("Cavans"), { target: { value: "20" } });
     expect(screen.getAllByTestId("field-error").map((n) => n.textContent)).toEqual([
       "This field needs an input.",
     ]);
@@ -306,13 +328,13 @@ describe("PaddyPage: a purchase line counted in sacks, bought wet or dry", () =>
     expect(screen.getByText("Wet").className).not.toMatch(/rose|red|emerald/);
     expect(screen.getByText("Dry").className).not.toMatch(/rose|red|emerald/);
 
-    fireEvent.change(screen.getByLabelText("Sacks"), { target: { value: "20" } });
+    fireEvent.change(screen.getByLabelText("Cavans"), { target: { value: "20" } });
     fireEvent.change(screen.getByPlaceholderText("₱/kg"), { target: { value: "24" } });
     fireEvent.click(screen.getByRole("button", { name: "Save Purchase" }));
 
     await waitFor(() => expect(create).toHaveBeenCalled());
     const line = create.mock.calls[0][0].items[0];
-    expect(line).toMatchObject({ is_wet: true, sack_count: "20", price_per_kg: "24" });
+    expect(line).toMatchObject({ is_wet: true, cavan_count: "20", price_per_kg: "24" });
     expect(line).not.toHaveProperty("dried_weight_kg");
   });
 });
@@ -362,27 +384,22 @@ describe("PaddyPage: how the palay in stock is counted", () => {
     vi.mocked(paddyService.listInventory).mockResolvedValue(stock);
   });
 
-  it("shows sacks, cavans and kilos by default, the sacks first", async () => {
+  // What a cell says: the other unit is there too, faded out, to hold the width.
+  const said = (el: HTMLElement) =>
+    Array.from(el.querySelectorAll<HTMLElement>("span.inline-grid > span"))
+      .filter((s) => !s.hasAttribute("aria-hidden"))
+      .map((s) => s.textContent)
+      .join(" ") || el.textContent;
+
+  it("shows the cavans when a mill has picked nothing, or sacks or all before", async () => {
     useAuthStore.setState({ user: encoder });
     draw();
 
-    const headers = await within(stockTable()).findAllByRole("columnheader");
-    expect(headers.map((h) => h.textContent)).toEqual([
-      "Variety",
-      "Grade",
-      "Sacks",
-      "Cavans (est.)",
-      "Kilos (est.)",
-    ]);
     const row = (await within(stockTable()).findByText("NSIC Rc 222")).closest("tr") as HTMLElement;
-    expect(
-      within(row)
-        .getAllByRole("cell")
-        .map((c) => c.textContent),
-    ).toEqual(["NSIC Rc 222" + "4.6 sacks wet", "—", "18.5", "20", "1,000"]);
-    // Phones show the sacks alone: the other two columns are hidden below the sm breakpoint.
-    expect(headers[3]).toHaveClass("hidden", "sm:table-cell");
-    expect(headers[2]).not.toHaveClass("hidden");
+    const headers = within(stockTable()).getAllByRole("columnheader");
+    expect(headers.map(said)).toEqual(["Variety", "Grade", "Cavans"]);
+    expect(within(row).getAllByRole("cell").map(said).slice(1)).toEqual(["—", "20"]);
+    expect(within(row).getByText("5 cavans wet")).toBeInTheDocument();
   });
 
   it("on a phone puts the grade, branch and wet palay under the variety, the amounts beside it", async () => {
@@ -403,74 +420,63 @@ describe("PaddyPage: how the palay in stock is counted", () => {
     draw();
 
     const headers = await within(stockTable()).findAllByRole("columnheader");
-    // No Grade or Branch column; the cavans and kilos are the ones a phone hides by CSS.
-    expect(headers.map((h) => h.textContent)).toEqual([
-      "Variety",
-      "Sacks",
-      "Cavans (est.)",
-      "Kilos (est.)",
-    ]);
+    // No Grade or Branch column.
+    expect(headers.map(said)).toEqual(["Variety", "Cavans"]);
     const grade = await within(stockTable()).findByText("A · Main Branch");
     const first = grade.closest("td") as HTMLElement;
     expect(first).toHaveTextContent("NSIC Rc 222");
-    expect(within(first).getByText("4.6 sacks wet")).toBeInTheDocument();
+    expect(within(first).getByText("5 cavans wet")).toBeInTheDocument();
     const second = within(stockTable()).getByText("2nd Branch").closest("td") as HTMLElement;
     expect(second).toHaveTextContent("NSIC Rc 222");
     expect(within(second).queryByText(/wet/)).toBeNull();
   });
 
-  it("leaves out the cavans when they read the same as the sacks on every row", async () => {
-    vi.mocked(paddyService.listInventory).mockResolvedValue([
-      { ...stock[0], quantity_sacks: 20, quantity_cavans: 20, quantity_kg: 1000 },
-      { ...stock[0], id: "i2", quantity_sacks: 268.3, quantity_cavans: 268.3, quantity_kg: 13417 },
+  it("shows the kilos when that's what the Boss picked, on every screen", async () => {
+    vi.mocked(paddyService.getStockView).mockResolvedValue("kilos");
+    useAuthStore.setState({ user: encoder });
+    draw();
+
+    const row = (await within(stockTable()).findByText("NSIC Rc 222")).closest("tr") as HTMLElement;
+    await waitFor(() => expect(said(within(row).getAllByRole("cell")[2])).toBe("1,000"));
+    expect(within(stockTable()).getAllByRole("columnheader").map(said)).toEqual([
+      "Variety",
+      "Grade",
+      "Kilos",
     ]);
-    useAuthStore.setState({ user: encoder });
+  });
+
+  it("switches at the click, keeping both in the cell so nothing moves", async () => {
+    useAuthStore.setState({ user: owner });
     draw();
+    const views = await screen.findByRole("radiogroup", { name: "View by" });
+    const row = (await within(stockTable()).findByText("NSIC Rc 222")).closest("tr") as HTMLElement;
+    const figure = within(row).getAllByRole("cell")[2];
+    expect(figure).toHaveTextContent("201,000");
+
+    fireEvent.click(within(views).getByRole("radio", { name: "Kilos" }));
+
+    // Without waiting for the server's answer.
+    expect(said(figure)).toBe("1,000");
+    expect(figure).toHaveTextContent("201,000");
+    expect(within(views).getByRole("radio", { name: "Kilos" })).toBeChecked();
+    await waitFor(() => expect(setView).toHaveBeenCalledWith("kilos"));
+  });
+
+  it("goes back when the choice couldn't be saved", async () => {
+    setView.mockRejectedValue(new Error("offline"));
+    useAuthStore.setState({ user: owner });
+    draw();
+    const views = await screen.findByRole("radiogroup", { name: "View by" });
+    await within(stockTable()).findByText("NSIC Rc 222");
+
+    fireEvent.click(within(views).getByRole("radio", { name: "Kilos" }));
 
     await waitFor(() =>
-      expect(
-        within(stockTable())
-          .getAllByRole("columnheader")
-          .map((h) => h.textContent),
-      ).toEqual(["Variety", "Grade", "Sacks", "Kilos (est.)"]),
+      expect(within(views).getByRole("radio", { name: "Cavans" })).toBeChecked(),
     );
   });
 
-  it("keeps the cavans as soon as one row's differ from its sacks", async () => {
-    vi.mocked(paddyService.listInventory).mockResolvedValue([
-      { ...stock[0], quantity_sacks: 20, quantity_cavans: 20 },
-      { ...stock[0], id: "i2", quantity_sacks: 18.5, quantity_cavans: 20 },
-    ]);
-    useAuthStore.setState({ user: encoder });
-    draw();
-
-    await waitFor(() =>
-      expect(
-        within(stockTable())
-          .getAllByRole("columnheader")
-          .map((h) => h.textContent),
-      ).toEqual(["Variety", "Grade", "Sacks", "Cavans (est.)", "Kilos (est.)"]),
-    );
-  });
-
-  it("shows only the one the Boss picked, on every screen", async () => {
-    vi.mocked(paddyService.getStockView).mockResolvedValue("cavans");
-    useAuthStore.setState({ user: encoder });
-    draw();
-
-    await waitFor(() =>
-      expect(
-        within(stockTable())
-          .getAllByRole("columnheader")
-          .map((h) => h.textContent),
-      ).toEqual(["Variety", "Grade", "Cavans (est.)"]),
-    );
-    const headers = within(stockTable()).getAllByRole("columnheader");
-    expect(headers.some((h) => h.className.includes("hidden"))).toBe(false);
-    expect(await within(stockTable()).findByText("5 cavans wet")).toBeInTheDocument();
-  });
-
-  it("lets only the Boss change it", async () => {
+  it("lets only the Boss change it, between the cavans and the kilos", async () => {
     useAuthStore.setState({ user: encoder });
     const { unmount } = draw();
     await within(stockTable()).findByText("NSIC Rc 222");
@@ -479,11 +485,12 @@ describe("PaddyPage: how the palay in stock is counted", () => {
 
     useAuthStore.setState({ user: owner });
     draw();
-    // An icon for each way of viewing, the current one pressed in.
     const views = await screen.findByRole("radiogroup", { name: "View by" });
-    expect(within(views).getAllByRole("radio")).toHaveLength(4);
-    expect(within(views).getByRole("radio", { name: "All" })).toBeChecked();
-    fireEvent.click(within(views).getByRole("radio", { name: "Sacks" }));
-    await waitFor(() => expect(setView).toHaveBeenCalledWith("sacks"));
+    expect(
+      within(views)
+        .getAllByRole("radio")
+        .map((r) => r.textContent),
+    ).toEqual(["Cavans", "Kilos"]);
+    expect(within(views).getByRole("radio", { name: "Cavans" })).toBeChecked();
   });
 });

@@ -110,7 +110,7 @@ describe("Correcting a saved purchase", () => {
     );
     const dialog = await screen.findByTestId("edit-purchase");
 
-    fireEvent.change(within(dialog).getByLabelText("Kilos (est.) of line 1"), {
+    fireEvent.change(within(dialog).getByLabelText("Kilos of line 1"), {
       target: { value: "1200" },
     });
     fireEvent.change(within(dialog).getByLabelText("Moisture % of line 1"), {
@@ -130,7 +130,7 @@ describe("Correcting a saved purchase", () => {
             variety_id: "v1",
             grade_id: null,
             sack_count: null,
-            cavan_count: null,
+            cavan_count: 24,
             gross_weight_kg: 1200,
             tare_weight_kg: 50,
             moisture_content_pct: 14,
@@ -180,7 +180,7 @@ describe("Correcting a saved purchase", () => {
       within(screen.getByTestId("purchase-details")).getByRole("button", { name: /Edit/ }),
     );
     const dialog = await screen.findByTestId("edit-purchase");
-    fireEvent.change(within(dialog).getByLabelText("Kilos (est.) of line 1"), {
+    fireEvent.change(within(dialog).getByLabelText("Kilos of line 1"), {
       target: { value: "40" },
     });
     expect(within(dialog).queryByTestId("field-error")).toBeNull();

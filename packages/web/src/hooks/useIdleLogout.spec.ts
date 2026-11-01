@@ -3,9 +3,12 @@ import { renderHook } from "@testing-library/react";
 import { useIdleLogout, IDLE_TIMEOUT_MS } from "./useIdleLogout";
 import { useAuthStore } from "../stores/authStore";
 
-// useNavigate is the only router dependency; mock it so the hook needs no Router.
+// The router is mocked so the hook needs no Router.
 const navigate = vi.hoisted(() => vi.fn());
-vi.mock("react-router-dom", () => ({ useNavigate: () => navigate }));
+vi.mock("react-router-dom", () => ({
+  useNavigate: () => navigate,
+  useLocation: () => ({ pathname: "/sales" }),
+}));
 
 describe("useIdleLogout", () => {
   let logout: ReturnType<typeof vi.fn>;

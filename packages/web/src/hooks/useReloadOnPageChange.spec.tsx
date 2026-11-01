@@ -1,16 +1,21 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import { MemoryRouter, useNavigate } from "react-router-dom";
-import ReloadOnPageChange from "./ReloadOnPageChange";
+import useReloadOnPageChange from "./useReloadOnPageChange";
 import { useHelpStore } from "../stores/helpStore";
 
 // Only the sign-out in progress matters here; the store itself is not needed.
 const pendingLogout = vi.hoisted(() => vi.fn<() => Promise<void> | null>(() => null));
 vi.mock("../stores/authStore", () => ({ pendingLogout }));
 
-let go: (to: string) => void;
+let go: ReturnType<typeof useNavigate>;
+let drawnPath: string;
 function Nav() {
   go = useNavigate();
+  return null;
+}
+function Reloader() {
+  drawnPath = useReloadOnPageChange().pathname;
   return null;
 }
 
@@ -22,7 +27,7 @@ function draw() {
   render(
     <MemoryRouter initialEntries={["/sales"]}>
       <Nav />
-      <ReloadOnPageChange />
+      <Reloader />
       <a href="/sales">This page</a>
       <a href="/sales?tab=unpaid" onClick={stay}>
         Other tab
@@ -40,7 +45,7 @@ function draw() {
   );
 }
 
-describe("ReloadOnPageChange", () => {
+describe("useReloadOnPageChange", () => {
   const reload = vi.fn();
   const original = window.location;
 
@@ -71,6 +76,19 @@ describe("ReloadOnPageChange", () => {
     draw();
     act(() => go("/purchases"));
     expect(reload).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps drawing the page being left, so the new one is drawn only once", () => {
+    draw();
+    act(() => go("/purchases"));
+    expect(drawnPath).toBe("/sales");
+  });
+
+  it("stays in place for a redirect: the page has just loaded clean", () => {
+    draw();
+    act(() => go("/purchases", { replace: true }));
+    expect(reload).not.toHaveBeenCalled();
+    expect(drawnPath).toBe("/purchases");
   });
 
   it("leaves a query change on the same page alone", () => {

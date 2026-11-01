@@ -211,8 +211,8 @@ const LINE_COLUMNS: Record<TradeKind, Col[]> = {
     { label: t("Variety"), value: (l) => l.variety_code ?? "—" },
     { label: t("Grade"), value: (l) => l.grade_code ?? "—" },
     {
-      label: t("Sacks"),
-      value: (l) => (l.sack_count != null ? Number(l.sack_count).toLocaleString() : "—"),
+      label: t("Cavans"),
+      value: (l) => (l.cavan_count != null ? Number(l.cavan_count).toLocaleString() : "—"),
       numeric: true,
     },
     { label: t("Gross"), value: (l) => kg(l.gross_weight_kg), numeric: true },

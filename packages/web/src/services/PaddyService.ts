@@ -8,9 +8,8 @@ import type { ChangeEntry } from "./SalesService";
 export type PurchaseItemForm = {
   variety_id: string;
   grade_id: string;
-  /** Counted in sacks; cavans and kilos are optional (kilos not weighed are
-   *  taken from the cavans, or else the sacks). */
-  sack_count: string;
+  /** The cavans and the kilos are the same amount, 50 kg to the cavan: the form
+   *  fills in each from the other. */
   cavan_count: string;
   gross_weight_kg: string;
   tare_weight_kg: string;
@@ -27,14 +26,14 @@ export type PurchaseItemForm = {
   is_wet: boolean;
 };
 
-/** How the Palay page counts the stock, the Boss's choice for the whole mill. */
-export type StockView = "sacks" | "cavans" | "kilos" | "all";
+/** How the Palay page counts the stock, the Boss's choice for the whole mill. A
+ *  mill may still have "sacks" or "all" saved from before: those read as cavans. */
+export type StockView = "cavans" | "kilos" | "sacks" | "all";
 
 /** A palay line with nothing filled in. */
 export const blankPurchaseItem = (): PurchaseItemForm => ({
   variety_id: "",
   grade_id: "",
-  sack_count: "",
   cavan_count: "",
   gross_weight_kg: "",
   tare_weight_kg: "0",
@@ -51,17 +50,30 @@ const numberOrNull = (v: string) =>
 /** A cavan of palay is 50 kg, as on the server. */
 const KG_PER_CAVAN = 50;
 
+const figure = (v: number, decimals: number) => String(Number(v.toFixed(decimals)));
+
+/** The kilos in a typed number of cavans; blank when nothing is typed. */
+export const kilosFromCavans = (cavans: string): string => {
+  const count = numberOrNull(cavans);
+  return count === null ? "" : figure(count * KG_PER_CAVAN, 3);
+};
+
+/** The cavans in a typed weight, to the two decimals the server keeps. */
+export const cavansFromKilos = (kilos: string): string => {
+  const weight = numberOrNull(kilos);
+  return weight === null ? "" : figure(weight / KG_PER_CAVAN, 2);
+};
+
 /** The price per cavan for a price per kilo, to the centavo; null until a price is typed. */
 export const pricePerCavan = (pricePerKg: string): number | null => {
   const perKg = numberOrNull(pricePerKg);
   return perKg === null ? null : Math.round(perKg * KG_PER_CAVAN * 100) / 100;
 };
 
-/** What a palay line still lacks before it can be saved (true: missing): something
- *  counted (sacks, cavans or kilos; the last two are optional estimates) and a
- *  price. Wet palay needs nothing more: it is saved as Wet. */
+/** What a palay line still lacks before it can be saved (true: missing): the cavans
+ *  or kilos, and a price. Wet palay needs nothing more: it is saved as Wet. */
 export const purchaseLineProblems = (i: PurchaseItemForm) => ({
-  counted: !(i.sack_count || i.cavan_count || i.gross_weight_kg),
+  counted: !(i.cavan_count || i.gross_weight_kg),
   price: i.price_per_kg === "",
 });
 
@@ -163,7 +175,7 @@ export class PaddyService {
   }
 
   /** The Boss only. */
-  setStockView(view: StockView): Promise<StockView> {
+  setStockView(view: "cavans" | "kilos"): Promise<StockView> {
     return this.http.put("/paddy/stock-view", { view }).then((r) => r.data.view);
   }
 
@@ -215,7 +227,6 @@ export class PaddyService {
       items: form.items.map((i) => ({
         variety_id: i.variety_id || null,
         grade_id: i.grade_id || null,
-        sack_count: numberOrNull(i.sack_count),
         cavan_count: numberOrNull(i.cavan_count),
         gross_weight_kg: numberOrNull(i.gross_weight_kg),
         tare_weight_kg: parseFloat(i.tare_weight_kg) || 0,

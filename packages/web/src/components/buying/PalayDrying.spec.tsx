@@ -32,7 +32,7 @@ const purchase = (id: string, ref: string, isWet: boolean, dried: boolean) => ({
     {
       id: `${id}-line`,
       variety_code: "NSIC Rc 222",
-      sack_count: "20.00",
+      cavan_count: "20.00",
       gross_weight_kg: "1000.000",
       tare_weight_kg: "0.000",
       net_weight_kg: "1000.000",
@@ -86,13 +86,13 @@ describe("Palay purchases: wet in red, dry in green and completed", () => {
     }
   });
 
-  it("shows each line's sacks, condition, and what it weighs after drying", () => {
+  it("shows each line's cavans, condition, and what it weighs after drying", () => {
     useAuthStore.setState({ user: boss });
     draw();
     fireEvent.click(screen.getByText("PP-DRIED"));
 
     const details = within(screen.getByTestId("purchase-details"));
-    expect(details.getByRole("columnheader", { name: "Sacks" })).toBeInTheDocument();
+    expect(details.getByRole("columnheader", { name: "Cavans" })).toBeInTheDocument();
     expect(details.getByText("Dried")).toHaveClass("badge-green");
     expect(details.getByText("800 kg · 14%")).toBeInTheDocument();
   });

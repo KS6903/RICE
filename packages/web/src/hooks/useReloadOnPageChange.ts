@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { useLocation } from "react-router-dom";
+import { NavigationType, useLocation, useNavigationType, type Location } from "react-router-dom";
 import { isElectronRuntime } from "../services/runtime";
 import { pendingLogout } from "../stores/authStore";
 import { useHelpStore } from "../stores/helpStore";
@@ -37,31 +37,48 @@ function reloadOnSamePageLink(event: MouseEvent) {
   reloadPage();
 }
 
+/** Whether a page change loads the page afresh. A redirect (a replace) doesn't: it
+ *  only corrects where the person landed, on a page that has just loaded clean. */
+function reloadsOnChange(type: NavigationType): boolean {
+  if (type === NavigationType.Replace) return false;
+  if (isElectronRuntime() || useHelpStore.getState().touring) return false;
+  try {
+    return Date.now() - Number(sessionStorage.getItem(STAMP) ?? 0) >= REDIRECT_WINDOW_MS;
+  } catch {
+    return true;
+  }
+}
+
 /** Every time the person goes to another page, the browser loads it afresh, as
  *  if they had pressed refresh: the link changes and the page starts clean, not
  *  just swaps in place. Only the path counts; a tab or filter in the query does
  *  not. A click on a link to the page already open reloads it too. The guided
  *  tour walks the pages with its place held in memory, so while it runs they
  *  change in place. The desktop app holds its tokens in memory only, so a reload
- *  would sign it out: there pages change in place too. Rendered inside the
- *  Router. */
-export default function ReloadOnPageChange() {
-  const { pathname } = useLocation();
-  const shown = useRef(pathname);
+ *  would sign it out: there pages change in place too.
+ *
+ *  Returns the location to draw. While the browser fetches the new document it
+ *  stays the page the person is leaving: drawing the new one here too would show
+ *  it twice, once now and once when the reload wipes it and starts again. Called
+ *  inside the Router. */
+export default function useReloadOnPageChange(): Location {
+  const location = useLocation();
+  const type = useNavigationType();
+  const drawn = useRef(location);
+
+  if (location.pathname === drawn.current.pathname || !reloadsOnChange(type)) {
+    drawn.current = location;
+  }
 
   useEffect(() => {
-    if (shown.current === pathname) return;
-    shown.current = pathname;
-    if (isElectronRuntime() || useHelpStore.getState().touring) return;
+    if (location.pathname === drawn.current.pathname) return;
     try {
-      const last = Number(sessionStorage.getItem(STAMP) ?? 0);
-      if (Date.now() - last < REDIRECT_WINDOW_MS) return;
       sessionStorage.setItem(STAMP, String(Date.now()));
     } catch {
       // No session storage: reload anyway.
     }
     reloadPage();
-  }, [pathname]);
+  }, [location.pathname]);
 
   useEffect(() => {
     if (isElectronRuntime()) return;
@@ -69,5 +86,5 @@ export default function ReloadOnPageChange() {
     return () => document.removeEventListener("click", reloadOnSamePageLink, true);
   }, []);
 
-  return null;
+  return drawn.current;
 }
