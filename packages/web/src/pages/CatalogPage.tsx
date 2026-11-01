@@ -65,7 +65,7 @@ const LISTS: List[] = [
   {
     key: "service",
     label: t("Service intervals"),
-    what: t("The machines on the Maintenance page, and how often each is serviced."),
+    what: t("The machines on the Maintenance tab in Milling, and how often each is serviced."),
     feature: "automations",
     section: "milling",
     render: () => <ServiceIntervalsList />,

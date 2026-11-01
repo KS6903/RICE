@@ -1,4 +1,4 @@
-// Maintenance: each machine against the manufacturer's service interval, in
+// The Maintenance tab of the Milling page: each machine against the manufacturer's service interval, in
 // running hours, tonnes milled or days, counted from the milling since its last
 // service. Recording a service starts the count again.
 import { millingService } from "../services/MillingService";
@@ -306,22 +306,19 @@ export default function MaintenancePage() {
 
   return (
     <div className="space-y-6">
-      <header className="flex items-start justify-between gap-3 flex-wrap">
-        <div>
-          <h1 className="text-2xl font-bold text-primary">{t("Maintenance")}</h1>
-          <p className="text-secondary mt-1 max-w-2xl">
-            {t(
-              "Each machine against its service interval, counted from the milling since its last service.",
-            )}
-          </p>
-        </div>
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <p className="text-sm text-gray-500 dark:text-slate-400 max-w-2xl">
+          {t(
+            "Each machine against its service interval, counted from the milling since its last service.",
+          )}
+        </p>
         {editable && !adding && (
           <button type="button" className="btn-primary" onClick={() => setAdding(true)}>
             <Plus size={16} aria-hidden />
             {t("Add a machine")}
           </button>
         )}
-      </header>
+      </div>
       {adding && <AddMachine onDone={() => setAdding(false)} />}
       {list.isLoading ? (
         <div className="card skeleton h-40" aria-busy="true" />

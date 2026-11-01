@@ -1,5 +1,6 @@
 import { batchFlags, type BatchLimits } from "../mappers/SavingsMapper";
 import { useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { useEscapeKey } from "../hooks/useEscapeKey";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { millingService, type ClientArrangement } from "../services/MillingService";
@@ -9,6 +10,9 @@ import { Factory, History, Pencil, Plus, X } from "lucide-react";
 import { format } from "date-fns";
 import QuickAdd from "../components/QuickAdd";
 import { useAccess } from "../hooks/useAccess";
+import { useFeature } from "../hooks/useFeature";
+import FeatureGate from "../components/FeatureGate";
+import MaintenancePage from "./MaintenancePage";
 import { useOpenOnArrival } from "../hooks/useOpenOnArrival";
 import EmptyState from "../components/EmptyState";
 import LoadingRows from "../components/LoadingRows";
@@ -125,7 +129,7 @@ function BatchFlagNotes({ batch, limits }: { batch: any; limits?: BatchLimits })
   );
 }
 
-export default function MillingPage() {
+function BatchesTab() {
   const qc = useQueryClient();
   const { canEdit } = useAccess();
   // Correcting a saved batch needs edit power; its history, either that or
@@ -235,15 +239,10 @@ export default function MillingPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-xl font-bold text-gray-900 dark:text-slate-100">
-            {t("Milling Operations")}
-          </h2>
-          <p className="text-sm text-gray-500 dark:text-slate-400">
-            {t("Track milling batches, recovery rate, and by-products")}
-          </p>
-        </div>
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <p className="text-sm text-gray-500 dark:text-slate-400">
+          {t("Track milling batches, recovery rate, and by-products")}
+        </p>
         {canEdit("milling") && (
           <button onClick={() => setShowForm(!showForm)} className="btn-primary">
             <Plus size={16} /> {t("New Batch")}
@@ -808,6 +807,54 @@ export default function MillingPage() {
           label={historyOf.batch_no}
           onClose={() => setHistoryOf(null)}
         />
+      )}
+    </div>
+  );
+}
+
+export default function MillingPage() {
+  const { canEdit } = useAccess();
+  const hasMaintenance = useFeature("automations");
+  // Only those who can change the plan see what other plans add.
+  const showTabs = hasMaintenance || canEdit("settings");
+  const [params, setParams] = useSearchParams();
+  const tab = params.get("tab") === "maintenance" ? "maintenance" : "batches";
+  const tabs = [
+    { key: "batches", label: t("Batches") },
+    { key: "maintenance", label: t("Maintenance") },
+  ];
+
+  return (
+    <div className="space-y-6">
+      <h2 className="text-xl font-bold text-gray-900 dark:text-slate-100">
+        {t("Milling Operations")}
+      </h2>
+      {showTabs && (
+        <div
+          role="tablist"
+          aria-label={t("Milling Operations")}
+          className="seg w-full max-w-full overflow-x-auto sm:w-auto"
+        >
+          {tabs.map((item) => (
+            <button
+              key={item.key}
+              type="button"
+              role="tab"
+              aria-selected={tab === item.key}
+              className={`seg-btn flex-1 justify-center sm:flex-none ${tab === item.key ? "is-active" : ""}`}
+              onClick={() => setParams(item.key === "batches" ? {} : { tab: item.key })}
+            >
+              {item.label}
+            </button>
+          ))}
+        </div>
+      )}
+      {tab === "maintenance" ? (
+        <FeatureGate code="automations" label={t("Maintenance")} requires={t("Enterprise")}>
+          <MaintenancePage />
+        </FeatureGate>
+      ) : (
+        <BatchesTab />
       )}
     </div>
   );

@@ -16,7 +16,7 @@ const millPages = [
   "/users",
   "/employees",
   "/automations",
-  "/maintenance",
+  "/milling?tab=maintenance",
   "/catalog",
   "/stock-count",
   "/tasks",

@@ -1,7 +1,7 @@
-// Stock > Catalog's service intervals: how often each machine on the
-// Maintenance page is serviced (Enterprise, with the automations). Recording a
-// service stays on the Maintenance page; here the Boss adds machines and sets
-// their intervals.
+// Stock > Catalog's service intervals: how often each machine on Milling's
+// Maintenance tab is serviced (Enterprise, with the automations). Recording a
+// service stays on that tab; here the Boss adds machines and sets their
+// intervals.
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Pencil, Plus } from "lucide-react";
@@ -89,7 +89,7 @@ export function ServiceIntervalsList() {
     <div className="space-y-4">
       <p className="text-sm text-secondary">
         {t(
-          "Use the manufacturer's intervals, in running hours, tonnes of palay milled or days; the machine is due at whichever comes first. Record each service on the Maintenance page.",
+          "Use the manufacturer's intervals, in running hours, tonnes of palay milled or days; the machine is due at whichever comes first. Record each service on the Maintenance tab in Milling.",
         )}
       </p>
       {!adding && (

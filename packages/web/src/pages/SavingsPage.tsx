@@ -313,7 +313,7 @@ function Overview({ onOpen }: { onOpen: (tab: Tab) => void }) {
         {
           name: t("Machine maintenance"),
           text: t("Service rollers and polishers before they crush head rice."),
-          to: "/maintenance",
+          to: "/milling?tab=maintenance",
           note: onEnterprise,
         },
       ],

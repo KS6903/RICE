@@ -48,7 +48,6 @@ describe("tourStops", () => {
     const t = titles({ ...owner, features: ["dashboard", "paddy", "milling", "sales"] });
     expect(t).toContain("Milling");
     expect(t).not.toContain("Automations");
-    expect(t).not.toContain("Maintenance");
   });
 });
 

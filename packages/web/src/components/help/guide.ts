@@ -24,7 +24,6 @@ export const PAGE_WHAT: Record<string, string> = {
   "/milling": t(
     "Record the palay going into the mill and whose it is. Oraiza estimates the rice, ipa and darak that come out; type the weighed kilos to replace them. Palay leaves your stock; the rice and by-products go into Inventory.",
   ),
-  "/maintenance": t("When each machine is due for service, counted from the milling it has done."),
   "/inventory": t(
     "Everything in your warehouses, by branch. Already had stock before Oraiza? Enter it once with Add inventory.",
   ),

@@ -22,16 +22,17 @@ import { tx } from "../i18n/tx";
 export const ROLE_ACCESS_QUERY_KEY = ["role-access"];
 const errorText = (e: any, fallback: string) => e?.response?.data?.detail || fallback;
 
-/** Pages the sidebar doesn't list on its own. */
+/** Pages the sidebar doesn't list on its own, and tabs that open with their page. */
 const EXTRA: Record<string, { label: string; also: string[] }> = {
+  milling: { label: t("Milling"), also: [t("Maintenance")] },
   settings: {
     label: t("Settings"),
     also: [t("Billing, company, branches, activity log. Everyone keeps their own account.")],
   },
 };
 
-/** What a page is called, and the other pages that open with it (Maintenance goes
- *  with Milling, Collections and Cash count with Sales), as the sidebar has them. */
+/** What a page is called, and the other pages that open with it (Collections and
+ *  Cash count go with Sales), as the sidebar has them. */
 function describeSection(section: string): { label: string; also: string[] } {
   if (EXTRA[section]) return EXTRA[section];
   const items = NAV_GROUPS.flatMap((g) => g.items).filter((i) => i.section === section);

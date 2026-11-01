@@ -119,8 +119,8 @@ def _build(ctx: RecipeContext, params: BaseModel) -> list[Notice]:
     return [
         Notice(
             title=title,
-            body="\n".join(lines) + "\nRecord the service on the Maintenance page when it's done.",
-            link="/maintenance",
+            body="\n".join(lines) + "\nRecord the service on the Maintenance tab in Milling when it's done.",
+            link="/milling?tab=maintenance",
             dedupe_key=f"maintenance_due:{ctx.local_today.isoformat()}",
         )
     ]

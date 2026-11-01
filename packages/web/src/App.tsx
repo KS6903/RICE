@@ -43,7 +43,6 @@ const CollectionsPage = lazy(() => import("./pages/CollectionsPage"));
 const CashCountPage = lazy(() => import("./pages/CashCountPage"));
 const StockCountPage = lazy(() => import("./pages/StockCountPage"));
 const CatalogPage = lazy(() => import("./pages/CatalogPage"));
-const MaintenancePage = lazy(() => import("./pages/MaintenancePage"));
 const UsersPage = lazy(() => import("./pages/UsersPage"));
 const EmployeesPage = lazy(() => import("./pages/EmployeesPage"));
 const SettingsPage = lazy(() => import("./pages/SettingsPage"));
@@ -370,16 +369,8 @@ function AppRoutes() {
             </RoleGate>
           }
         />
-        <Route
-          path="maintenance"
-          element={
-            <RoleGate section="milling">
-              <FeatureGate code="automations" label={t("Maintenance")} requires={t("Enterprise")}>
-                <LazyPage component={MaintenancePage} />
-              </FeatureGate>
-            </RoleGate>
-          }
-        />
+        {/* Now a tab of Milling; alerts already sent still link here. */}
+        <Route path="maintenance" element={<Navigate to="/milling?tab=maintenance" replace />} />
         <Route
           path="catalog"
           element={
