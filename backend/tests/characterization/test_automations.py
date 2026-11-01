@@ -261,12 +261,26 @@ def test_rules_pause_when_the_tenant_leaves_enterprise(db_session, seed_owner):
     company = db_session.get(Company, seed_owner.company_id)
     _enable_digest(db_session, company)
     plan = db_session.query(Subscription).filter(Subscription.company_id == company.id).one().plan
-    plan.features = [f for f in plan.features if f != "automations"]
+    plan.features = [f for f in plan.features if f not in ("automations", "notifications")]
     db_session.commit()
     assert _run(db_session, company).endswith("paused: the plan doesn't include automations")
     assert _notices(db_session, seed_owner.id) == []
     # The rule is kept, switched on, for when they come back.
     assert db_session.query(AutomationRule).one().enabled is True
+
+
+def test_a_mill_moved_down_to_pro_keeps_its_plain_alerts_only(db_session, seed_owner):
+    company = db_session.get(Company, seed_owner.company_id)
+    _enable_digest(db_session, company)
+    plan = db_session.query(Subscription).filter(Subscription.company_id == company.id).one().plan
+    plan.features = [f for f in plan.features if f != "automations"]
+    db_session.commit()
+    assert not _run(db_session, company).endswith("paused: the plan doesn't include automations")
+
+    rule = db_session.query(AutomationRule).one()
+    rule.recipe = "scheduled_report"
+    db_session.commit()
+    assert _run(db_session, company).endswith("paused: the plan doesn't include automations")
 
 
 def test_send_test_reaches_only_the_person_who_asked(auth_client, db_session, seed_owner, monkeypatch):

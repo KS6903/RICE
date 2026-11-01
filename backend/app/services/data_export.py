@@ -120,6 +120,8 @@ _LOCATION_COLUMNS = (
 # A column in the mill's own tables named like this would be a credential, not
 # a business record; tests fail if one appears, so it's decided on, not leaked.
 SECRET_COLUMN = re.compile(r"password|secret|token|hash|otp|api_key|credential|private_key", re.I)
+# Decided on: a sensor's link can be replaced, and what proves it never leaves.
+LEFT_OUT_COLUMNS = {("storage_sensors", "token_hash")}
 
 README = """\
 {app}: everything {company} has stored with us
@@ -173,8 +175,12 @@ def exported_tables() -> list[Table]:
 
 
 def exported_columns(table: Table) -> list:
-    """Every column but stored files."""
-    return [c for c in table.columns if not isinstance(c.type, LargeBinary)]
+    """Every column but stored files and what's left out on purpose."""
+    return [
+        c
+        for c in table.columns
+        if not isinstance(c.type, LargeBinary) and (table.name, c.name) not in LEFT_OUT_COLUMNS
+    ]
 
 
 def _slug(name: str) -> str:
