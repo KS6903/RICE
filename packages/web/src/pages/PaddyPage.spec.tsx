@@ -453,10 +453,11 @@ describe("PaddyPage: how the palay in stock is counted", () => {
     const figure = within(row).getAllByRole("cell")[2];
     expect(figure).toHaveTextContent("201,000");
 
+    // The server never answers: the table doesn't wait for it.
+    setView.mockImplementation(() => new Promise(() => undefined));
     fireEvent.click(within(views).getByRole("radio", { name: "Kilos" }));
 
-    // Without waiting for the server's answer.
-    expect(said(figure)).toBe("1,000");
+    await waitFor(() => expect(said(figure)).toBe("1,000"));
     expect(figure).toHaveTextContent("201,000");
     expect(within(views).getByRole("radio", { name: "Kilos" })).toBeChecked();
     await waitFor(() => expect(setView).toHaveBeenCalledWith("kilos"));
