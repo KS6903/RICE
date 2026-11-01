@@ -55,6 +55,19 @@ def test_pink_sheet_without_the_column_gives_nothing():
     assert read_pink_sheet(_workbook(), column="Rice, Thai 5%") is None
 
 
+@pytest.mark.parametrize(
+    "xml",
+    [
+        b'<!DOCTYPE lolz [<!ENTITY lol "lol">]><workbook/>',
+        b'<?xml version="1.0"?><!ENTITY x "y"><workbook/>',
+        "<!DOCTYPE lolz><workbook/>".encode("utf-16"),
+    ],
+)
+def test_a_workbook_with_a_dtd_is_refused(xml):
+    with pytest.raises(ValueError):
+        market._parse_xml(xml)
+
+
 def test_openstat_csv_takes_each_commoditys_latest_month():
     text = (
         '"Geolocation","Commodity","2026 January","2026 September","2026 October","2026 Annual"\n'
@@ -69,7 +82,17 @@ def test_openstat_csv_takes_each_commoditys_latest_month():
 
 @pytest.mark.parametrize(
     ("price", "rate"),
-    [(418.5, 15.0), (368, 15.0), (367.9, 20.0), (350, 20.0), (349, 25.0), (332, 25.0), (331, 30.0), (316, 30.0), (315, 35.0)],
+    [
+        (418.5, 15.0),
+        (368, 15.0),
+        (367.9, 20.0),
+        (350, 20.0),
+        (349, 25.0),
+        (332, 25.0),
+        (331, 30.0),
+        (316, 30.0),
+        (315, 35.0),
+    ],
 )
 def test_tariff_follows_the_circulars_table(price, rate):
     assert tariff_for_price(price) == rate

@@ -39,7 +39,7 @@ export function parseScaleLine(line: string): ScaleReading | null {
 
 /** An XK3190-A9+ continuous frame, without its end mark. Null if damaged on the way. */
 export function parseChecksumFrame(frame: string): ScaleReading | null {
-  const match = frame.match(/^\x02([-+])(\d{6})(\d)([0-9A-F]{2})$/);
+  const match = frame.startsWith(STX) && frame.slice(1).match(/^([-+])(\d{6})(\d)([0-9A-F]{2})$/);
   if (!match) return null;
   let check = 0;
   for (const char of frame.slice(1, 9)) check ^= char.charCodeAt(0);
@@ -50,17 +50,18 @@ export function parseChecksumFrame(frame: string): ScaleReading | null {
 /** Splits what has arrived into readings, and what's left waiting for the rest of a frame. */
 export function readFrames(buffer: string): { readings: ScaleReading[]; rest: string } {
   const readings: ScaleReading[] = [];
-  const ends = /[\r\n=\x03]/g;
   let start = 0;
-  for (let end = ends.exec(buffer); end; end = ends.exec(buffer)) {
-    const frame = buffer.slice(start, end.index);
-    start = end.index + 1;
+  for (let i = 0; i < buffer.length; i++) {
+    const end = buffer[i];
+    if (end !== "\r" && end !== "\n" && end !== "=" && end !== ETX) continue;
+    const frame = buffer.slice(start, i);
+    start = i + 1;
     if (!frame.trim()) continue;
     const reading = frame.startsWith(STX)
-      ? end[0] === ETX
+      ? end === ETX
         ? parseChecksumFrame(frame)
         : null
-      : parseScaleLine(end[0] === "=" ? [...frame].reverse().join("") : frame);
+      : parseScaleLine(end === "=" ? [...frame].reverse().join("") : frame);
     if (reading) readings.push(reading);
   }
   return { readings, rest: buffer.slice(start) };

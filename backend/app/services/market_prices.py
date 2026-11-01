@@ -88,22 +88,30 @@ def _read_member(book: zipfile.ZipFile, name: str) -> bytes:
     return book.read(name)
 
 
+def _parse_xml(xml: bytes) -> ElementTree.Element:
+    """A part of a downloaded workbook. XML attacks need a DTD, and a workbook never has
+    one, so one that does is refused. A NUL means another encoding, which could hide it."""
+    if b"\x00" in xml or b"<!DOCTYPE" in xml or b"<!ENTITY" in xml:
+        raise ValueError("the workbook's XML has a DTD")
+    return ElementTree.fromstring(xml)  # nosec B314
+
+
 def read_pink_sheet(content: bytes, column: str = PINK_SHEET_COLUMN) -> dict | None:
     """The latest month with a price in the workbook's Monthly Prices sheet."""
     with zipfile.ZipFile(io.BytesIO(content)) as book:
         shared = []
         if "xl/sharedStrings.xml" in book.namelist():
-            for item in ElementTree.fromstring(_read_member(book, "xl/sharedStrings.xml")):
+            for item in _parse_xml(_read_member(book, "xl/sharedStrings.xml")):
                 shared.append("".join(t.text or "" for t in item.iter(f"{_MAIN}t")))
-        workbook = ElementTree.fromstring(_read_member(book, "xl/workbook.xml"))
+        workbook = _parse_xml(_read_member(book, "xl/workbook.xml"))
         sheet_id = next(
             (s.get(f"{_REL}id") for s in workbook.iter(f"{_MAIN}sheet") if s.get("name") == "Monthly Prices"), None
         )
-        rels = ElementTree.fromstring(_read_member(book, "xl/_rels/workbook.xml.rels"))
+        rels = _parse_xml(_read_member(book, "xl/_rels/workbook.xml.rels"))
         target = next((r.get("Target") for r in rels if r.get("Id") == sheet_id), None)
         if target is None:
             return None
-        sheet = ElementTree.fromstring(_read_member(book, "xl/" + target.lstrip("/").removeprefix("xl/")))
+        sheet = _parse_xml(_read_member(book, "xl/" + target.lstrip("/").removeprefix("xl/")))
 
     price_column = None
     latest = None
