@@ -178,11 +178,7 @@ export default function Sidebar({ open, onClose }: { open: boolean; onClose: () 
       <div className="relative px-5 py-5 border-b border-soft">
         <div className="flex items-center gap-2.5">
           <div className="h-10 w-10">
-            <img
-              src={oraizaLogo}
-              alt={t("Oraiza")}
-              className="h-full w-full object-contain"
-            />
+            <img src={oraizaLogo} alt={t("Oraiza")} className="h-full w-full object-contain" />
           </div>
           <div className="min-w-0 flex-1">
             <h1 className="text-base font-bold tracking-tight text-primary leading-tight truncate">
