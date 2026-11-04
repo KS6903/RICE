@@ -6,7 +6,7 @@ import PasswordInput from "../components/PasswordInput";
 import { Building2, Building, AlertCircle, ArrowRight, ArrowLeft, Check } from "lucide-react";
 import { GoogleLogin } from "@react-oauth/google";
 import { googleSignInEnabled } from "../utils/googleSignIn";
-import riceLogo from "../assets/Rice_Logo.svg";
+import oraizaLogo from "../assets/Oraiza_Logo.svg";
 import { legalService } from "../services/LegalService";
 import TurnstileWidget, { type TurnstileHandle } from "../components/TurnstileWidget";
 import { enterApp, safeNext, withNext } from "../utils/next";
@@ -216,11 +216,11 @@ export default function SignupPage() {
 
         <div className="relative flex items-center gap-3 text-white">
           <Link to="/" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
-            <div className="h-11 w-11 rounded-xl bg-white/15 grid place-items-center ring-1 ring-white/30">
+            <div className="h-11 w-11">
               <img
-                src={riceLogo}
+                src={oraizaLogo}
                 alt={t("Oraiza")}
-                className="h-full w-full object-contain brightness-0 invert"
+                className="h-full w-full object-contain"
               />
             </div>
             <p className="text-lg font-bold tracking-tight">{t("Oraiza")}</p>
@@ -274,11 +274,11 @@ export default function SignupPage() {
             to="/"
             className="lg:hidden flex items-center gap-3 mb-6 hover:opacity-80 transition-opacity"
           >
-            <div className="h-11 w-11 rounded-xl bg-grad-brand grid place-items-center shadow-grad-glow">
+            <div className="h-11 w-11">
               <img
-                src={riceLogo}
+                src={oraizaLogo}
                 alt={t("Oraiza")}
-                className="h-full w-full object-contain brightness-0 invert"
+                className="h-full w-full object-contain"
               />
             </div>
             <p className="text-lg font-bold tracking-tight text-primary">{t("Oraiza")}</p>

@@ -1,7 +1,7 @@
 import { useId, useState } from "react";
 import { NavLink } from "react-router-dom";
 import { ChevronDown, Settings, Lock, X } from "lucide-react";
-import riceLogo from "../../assets/Rice_Logo.svg";
+import oraizaLogo from "../../assets/Oraiza_Logo.svg";
 import { clsx } from "clsx";
 import { planHas } from "../../hooks/useFeature";
 import { useAccess } from "../../hooks/useAccess";
@@ -177,11 +177,11 @@ export default function Sidebar({ open, onClose }: { open: boolean; onClose: () 
 
       <div className="relative px-5 py-5 border-b border-soft">
         <div className="flex items-center gap-2.5">
-          <div className="h-10 w-10 rounded-xl bg-grad-brand grid place-items-center shadow-grad-glow">
+          <div className="h-10 w-10">
             <img
-              src={riceLogo}
+              src={oraizaLogo}
               alt={t("Oraiza")}
-              className="h-full w-full object-contain brightness-0 invert"
+              className="h-full w-full object-contain"
             />
           </div>
           <div className="min-w-0 flex-1">

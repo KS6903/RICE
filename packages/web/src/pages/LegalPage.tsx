@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, useLocation, useParams } from "react-router-dom";
 import { ArrowLeft, ArrowUp } from "lucide-react";
 import Markdown from "../components/Markdown";
-import riceLogo from "../assets/Rice_Logo.svg";
+import oraizaLogo from "../assets/Oraiza_Logo.svg";
 import { legalService, type LegalDocument, type LegalIndex } from "../services/LegalService";
 import { t } from "../i18n";
 
@@ -115,11 +115,11 @@ export default function LegalPage() {
       <header className="sticky top-0 z-10 border-b border-soft bg-[rgb(var(--surface))]">
         <div className="mx-auto max-w-3xl px-6 py-4 flex items-center justify-between gap-4">
           <Link to="/" className="flex items-center gap-2.5" aria-label={t("Back to Oraiza")}>
-            <div className="h-9 w-9 rounded-xl bg-grad-brand grid place-items-center shadow-grad-glow">
+            <div className="h-9 w-9">
               <img
-                src={riceLogo}
+                src={oraizaLogo}
                 alt={t("Oraiza")}
-                className="h-full w-full object-contain brightness-0 invert"
+                className="h-full w-full object-contain"
               />
             </div>
             <span className="text-lg font-bold tracking-tight text-primary">{t("Oraiza")}</span>
