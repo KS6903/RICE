@@ -4,8 +4,8 @@ import { observeViewport, positionPopover } from "../utils/popoverPosition";
 /** Coordinates for a menu portalled out of a glass/scrolling container. */
 export function usePopoverPosition(
   open: boolean,
-  trigger: RefObject<HTMLElement>,
-  popup: RefObject<HTMLElement>,
+  trigger: RefObject<HTMLElement | null>,
+  popup: RefObject<HTMLElement | null>,
   width: number,
   height: number,
 ) {

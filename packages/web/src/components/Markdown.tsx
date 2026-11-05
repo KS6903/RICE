@@ -109,7 +109,7 @@ export default function Markdown({ source, idPrefix }: Props) {
         .replace(/[^a-z0-9]+/g, "-")
         .replace(/^-|-$/g, "");
       const id = idPrefix ? `${idPrefix}-${slug}` : slug;
-      const Tag = `h${Math.min(level + 1, 6)}` as unknown as keyof JSX.IntrinsicElements;
+      const Tag = `h${Math.min(level + 1, 6)}` as unknown as keyof React.JSX.IntrinsicElements;
       out.push(
         <Tag key={`h-${i}`} id={id} className={cls[level]}>
           {content}

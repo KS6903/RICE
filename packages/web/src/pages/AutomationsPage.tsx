@@ -208,7 +208,7 @@ function InfoTip({
   const [hover, setHover] = useState(false);
   const [pinned, setPinned] = useState(false);
   const [place, setPlace] = useState<TipPlace | null>(null);
-  const leaveTimer = useRef<number>();
+  const leaveTimer = useRef<number | undefined>(undefined);
   const open = hover || pinned;
 
   const enter = () => {
