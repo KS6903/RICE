@@ -308,7 +308,7 @@ export default function CheckoutPage() {
                     type="button"
                     onClick={() => payOnline.mutate("paymongo")}
                     disabled={leaving}
-                    className="btn-primary !h-auto !py-3 flex-col !items-start text-left"
+                    className="btn-primary h-auto! py-3! flex-col items-start! text-left"
                   >
                     <span className="flex items-center gap-2 text-base">
                       {payOnline.isPending && payOnline.variables === "paymongo" ? (
@@ -328,7 +328,7 @@ export default function CheckoutPage() {
                     type="button"
                     onClick={() => payOnline.mutate("paypal")}
                     disabled={leaving}
-                    className="btn-secondary !h-auto !py-3 flex-col !items-start text-left"
+                    className="btn-secondary h-auto! py-3! flex-col items-start! text-left"
                   >
                     <span className="flex items-center gap-2 text-base">
                       {payOnline.isPending && payOnline.variables === "paypal" ? (

@@ -154,7 +154,7 @@ function CountCard({ count, manager }: { count: StockCount; manager: boolean }) 
   return (
     <article
       aria-label={t("Count of {{date}}", { date: day(count.date) })}
-      className="card !p-4 space-y-2"
+      className="card p-4! space-y-2"
     >
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <span className="font-semibold text-primary">
@@ -204,7 +204,7 @@ function CountCard({ count, manager }: { count: StockCount; manager: boolean }) 
       )}
       {count.needs_review && manager && (
         <div className="flex flex-wrap items-end gap-2">
-          <div className="flex-1 min-w-[12rem]">
+          <div className="flex-1 min-w-48">
             <label htmlFor={`stock-review-${count.id}`} className="form-label">
               {t("What you found")}
             </label>
@@ -295,10 +295,10 @@ function CountRow({
 }) {
   const done = !blank(entry);
   const { unit } = choice;
-  const field = "input !py-2 text-right text-base tabular-nums";
+  const field = "input py-2! text-right text-base tabular-nums";
   return (
     <li className="flex flex-wrap items-center gap-x-3 gap-y-2 py-3">
-      <span className="flex min-w-[10rem] flex-1 items-center gap-2">
+      <span className="flex min-w-40 flex-1 items-center gap-2">
         {done ? (
           <CheckCircle2
             size={18}
@@ -325,7 +325,7 @@ function CountRow({
             <input
               aria-label={t("{{label}}, kilos per sack", { label: line.label })}
               inputMode="decimal"
-              className="input !py-1 w-14 text-right text-xs tabular-nums"
+              className="input py-1! w-14 text-right text-xs tabular-nums"
               value={choice.sackKg}
               onChange={(e) => onSackKg(digits(e.target.value))}
             />
@@ -550,7 +550,7 @@ function CountSheet({ data }: { data: PageData }) {
                       <input
                         aria-label={t("Kilos per sack, {{title}}", { title })}
                         inputMode="decimal"
-                        className="input !py-1.5 w-20 text-right tabular-nums"
+                        className="input py-1.5! w-20 text-right tabular-nums"
                         value={base.sackKg}
                         onChange={(e) => changeDefault(kind, { sackKg: digits(e.target.value) })}
                       />

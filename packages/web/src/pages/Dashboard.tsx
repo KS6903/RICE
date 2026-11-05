@@ -37,19 +37,19 @@ type Tone = "emerald" | "violet" | "cyan" | "amber";
 const TONE_STYLES: Record<Tone, { ring: string; iconBg: string }> = {
   emerald: {
     ring: "ring-emerald-500/30",
-    iconBg: "bg-gradient-to-br from-emerald-400 to-emerald-600",
+    iconBg: "bg-linear-to-br from-emerald-400 to-emerald-600",
   },
   violet: {
     ring: "ring-violet-500/30",
-    iconBg: "bg-gradient-to-br from-violet-400 to-violet-600",
+    iconBg: "bg-linear-to-br from-violet-400 to-violet-600",
   },
   cyan: {
     ring: "ring-cyan-500/30",
-    iconBg: "bg-gradient-to-br from-cyan-400 to-cyan-600",
+    iconBg: "bg-linear-to-br from-cyan-400 to-cyan-600",
   },
   amber: {
     ring: "ring-amber-500/30",
-    iconBg: "bg-gradient-to-br from-amber-400 to-amber-600",
+    iconBg: "bg-linear-to-br from-amber-400 to-amber-600",
   },
 };
 
@@ -89,7 +89,7 @@ function StatCard({
       <div className="flex items-start justify-between gap-3">
         {/* min-w-0 + flex-1: the text takes what's left beside the icon, and its
             width (not the figure's) is what 100cqi measures. */}
-        <div className="min-w-0 flex-1 [container-type:inline-size]">
+        <div className="min-w-0 flex-1 @container">
           <p className="text-sm font-bold uppercase tracking-wide text-muted">{label}</p>
           <p
             className="mt-2 font-extrabold leading-tight tracking-tight text-primary truncate"
@@ -193,7 +193,7 @@ export default function Dashboard() {
             aria-hidden
           />
           <div
-            className="absolute inset-0 pointer-events-none bg-[radial-gradient(ellipse_at_top_right,_rgba(255,255,255,0.2),_transparent_55%)]"
+            className="absolute inset-0 pointer-events-none bg-[radial-gradient(ellipse_at_top_right,rgba(255,255,255,0.2),transparent_55%)]"
             aria-hidden
           />
           <div
@@ -392,7 +392,7 @@ export default function Dashboard() {
                     </div>
                     <div className="h-2 rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden">
                       <div
-                        className={`h-full bg-gradient-to-r ${colors[type] || "from-emerald-400 to-emerald-600"} rounded-full transition-all`}
+                        className={`h-full bg-linear-to-r ${colors[type] || "from-emerald-400 to-emerald-600"} rounded-full transition-all`}
                         style={{ width: `${Math.max(pct, 2)}%` }}
                       />
                     </div>

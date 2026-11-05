@@ -9,7 +9,7 @@ describe("TruncatedText", () => {
   afterEach(() => vi.useRealTimers());
 
   it("cuts the text short in its cell and carries the whole of it as the hover title", () => {
-    render(<TruncatedText text={NAME} className="max-w-[10rem]" />);
+    render(<TruncatedText text={NAME} className="max-w-40" />);
     const el = screen.getByText(NAME);
     expect(el.className).toContain("truncate");
     expect(el.getAttribute("title")).toBe(NAME);

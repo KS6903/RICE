@@ -75,7 +75,7 @@ export default function InvoicePreviewModal({ order, onClose, onGenerate, pendin
 
   return createPortal(
     <div
-      className="dialog-viewport fixed inset-0 z-[70] flex items-center justify-center p-4"
+      className="dialog-viewport fixed inset-0 z-70 flex items-center justify-center p-4"
       role="dialog"
       aria-modal="true"
       aria-labelledby="invoice-preview-title"
@@ -83,7 +83,7 @@ export default function InvoicePreviewModal({ order, onClose, onGenerate, pendin
       <button
         type="button"
         aria-label={t("Close")}
-        className="absolute inset-0 bg-slate-900/50 backdrop-blur-sm"
+        className="absolute inset-0 bg-slate-900/50 backdrop-blur-xs"
         onClick={() => !pending && onClose()}
       />
       <div
@@ -102,7 +102,7 @@ export default function InvoicePreviewModal({ order, onClose, onGenerate, pendin
             aria-label={t("Close")}
             onClick={onClose}
             disabled={pending}
-            className="btn-ghost !p-1.5"
+            className="btn-ghost p-1.5!"
           >
             <XIcon size={16} />
           </button>
@@ -110,7 +110,7 @@ export default function InvoicePreviewModal({ order, onClose, onGenerate, pendin
 
         {/* The sheet: stays white like paper, in dark mode too */}
         <div className="flex-1 overflow-y-auto px-4 pb-4">
-          <div className="rounded-xl bg-white p-6 text-slate-900 shadow-sm ring-1 ring-slate-200 sm:p-8">
+          <div className="rounded-xl bg-white p-6 text-slate-900 shadow-xs ring-1 ring-slate-200 sm:p-8">
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div>
                 <p className="text-2xl font-extrabold tracking-tight">{t("INVOICE")}</p>

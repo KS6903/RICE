@@ -137,7 +137,7 @@ function DebtorDetail({ debtor, canRecord }: { debtor: Debtor; canRecord: boolea
       <Step n={3} title={t("Reminder to send")}>
         <textarea
           aria-label={t("Reminder message")}
-          className="input min-h-[7rem]"
+          className="input min-h-28"
           value={message}
           onChange={(e) => setMessage(e.target.value)}
         />
@@ -292,7 +292,7 @@ export default function CollectionsPage() {
           </p>
         </div>
       ) : (
-        <div className="grid gap-5 lg:grid-cols-[minmax(16rem,22rem)_1fr] [&>*]:min-w-0">
+        <div className="grid gap-5 lg:grid-cols-[minmax(16rem,22rem)_1fr] *:min-w-0">
           <Step n={1} title={t("Who to call first")}>
             <ol className="space-y-2">
               {customers.map((d) => {
@@ -303,7 +303,7 @@ export default function CollectionsPage() {
                       type="button"
                       aria-current={active ? "true" : undefined}
                       onClick={() => setPicked(d.customer.id)}
-                      className={`w-full text-left card !p-3 transition-colors ${
+                      className={`w-full text-left card p-3! transition-colors ${
                         active ? "ring-2 ring-emerald-500" : "hover:bg-[rgb(var(--ink)/0.03)]"
                       }`}
                     >

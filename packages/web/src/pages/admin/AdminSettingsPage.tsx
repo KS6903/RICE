@@ -85,7 +85,7 @@ function PlanRow({
           <Icon size={15} className="text-emerald-500 shrink-0" />
           {plan.name}
           {!plan.is_active && (
-            <span className="badge-gray !text-[10px] !py-0.5">{t("inactive")}</span>
+            <span className="badge-gray text-[10px]! py-0.5!">{t("inactive")}</span>
           )}
         </span>
       </td>
@@ -259,7 +259,7 @@ function PlansTab() {
               <Check size={14} /> {t("Saved")}
             </span>
           )}
-          <button onClick={openNew} className="btn-primary !py-2 !text-sm">
+          <button onClick={openNew} className="btn-primary py-2! text-sm!">
             <Plus size={15} />
             {t("New plan")}
           </button>
@@ -466,7 +466,7 @@ function PlansTab() {
               type="checkbox"
               checked={form.is_active}
               onChange={(e) => setForm((f) => ({ ...f, is_active: e.target.checked }))}
-              className="h-4 w-4 rounded border-line accent-emerald-600 cursor-pointer"
+              className="h-4 w-4 rounded-sm border-line accent-emerald-600 cursor-pointer"
             />
             <span className="text-sm font-medium text-secondary">
               {t("Plan is active (visible to tenants)")}

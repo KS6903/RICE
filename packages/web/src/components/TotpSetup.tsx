@@ -37,7 +37,7 @@ export default function TotpSetup({ secret, otpauthUri }: { secret: string; otpa
       </p>
 
       <div className="flex justify-center">
-        <div className="rounded-2xl bg-white p-1.5 shadow-sm ring-1 ring-slate-900/10">
+        <div className="rounded-2xl bg-white p-1.5 shadow-xs ring-1 ring-slate-900/10">
           <QRCodeSVG
             value={otpauthUri}
             size={200}

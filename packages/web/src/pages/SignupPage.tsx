@@ -199,7 +199,7 @@ export default function SignupPage() {
           aria-hidden
         />
         <div
-          className="absolute inset-0 pointer-events-none bg-[radial-gradient(ellipse_at_bottom_left,_rgba(255,255,255,0.18),_transparent_60%)]"
+          className="absolute inset-0 pointer-events-none bg-[radial-gradient(ellipse_at_bottom_left,rgba(255,255,255,0.18),transparent_60%)]"
           aria-hidden
         />
         {/* Soft glows drawn as gradients, not blur filters, and nothing here
@@ -227,7 +227,7 @@ export default function SignupPage() {
           <h2 className="text-4xl xl:text-5xl font-bold leading-[1.05] tracking-tight">
             {t("Start free.")}
             <br />
-            <span className="bg-gradient-to-r from-white via-cyan-200 to-emerald-200 bg-clip-text text-transparent">
+            <span className="bg-linear-to-r from-white via-cyan-200 to-emerald-200 bg-clip-text text-transparent">
               {t("No card required.")}
             </span>
           </h2>
@@ -460,7 +460,7 @@ export default function SignupPage() {
                     setAcceptedTerms(e.target.checked);
                     if (e.target.checked && error === TICK_TERMS) setError("");
                   }}
-                  className="mt-0.5 h-5 w-5 shrink-0 rounded accent-emerald-500"
+                  className="mt-0.5 h-5 w-5 shrink-0 rounded-sm accent-emerald-500"
                   data-testid="signup-accept-terms"
                 />
                 <span className="text-sm text-secondary leading-snug">
@@ -523,9 +523,9 @@ export default function SignupPage() {
               {googleSignInEnabled() && (
                 <>
                   <div className="relative flex items-center">
-                    <div className="flex-grow border-t border-slate-200 dark:border-slate-800"></div>
-                    <span className="flex-shrink-0 mx-4 text-sm text-secondary">{t("or")}</span>
-                    <div className="flex-grow border-t border-slate-200 dark:border-slate-800"></div>
+                    <div className="grow border-t border-slate-200 dark:border-slate-800"></div>
+                    <span className="shrink-0 mx-4 text-sm text-secondary">{t("or")}</span>
+                    <div className="grow border-t border-slate-200 dark:border-slate-800"></div>
                   </div>
 
                   <div className="relative flex justify-center w-full [&>div]:w-full">

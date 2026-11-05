@@ -25,8 +25,8 @@ export default function PageLoadingBar() {
   return (
     <div role="status" data-testid="page-loading">
       <span className="sr-only">{t("Loading")}</span>
-      <div className="fixed inset-x-0 top-0 z-[70] h-0.5 overflow-hidden" aria-hidden>
-        <div className="h-full w-full animate-shimmer bg-gradient-to-r from-transparent via-emerald-500 to-transparent motion-reduce:animate-none" />
+      <div className="fixed inset-x-0 top-0 z-70 h-0.5 overflow-hidden" aria-hidden>
+        <div className="h-full w-full animate-shimmer bg-linear-to-r from-transparent via-emerald-500 to-transparent motion-reduce:animate-none" />
       </div>
     </div>
   );

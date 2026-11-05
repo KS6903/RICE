@@ -40,14 +40,14 @@ export default function DateTimePicker({ value, onChange, id, disabled, classNam
         id={id}
         aria-label={`${label} date`}
         disabled={disabled}
-        className="min-w-0 flex-1 basis-[10rem]"
+        className="min-w-0 flex-1 basis-40"
         value={date}
         onChange={(d) => onChange(`${d}T${time || DEFAULT_TIME}`)}
       />
       <TimePicker
         aria-label={`${label} time`}
         disabled={disabled}
-        className="min-w-0 flex-1 basis-[8rem]"
+        className="min-w-0 flex-1 basis-32"
         value={time}
         onChange={(t) => onChange(`${date || todayIso()}T${t}`)}
       />

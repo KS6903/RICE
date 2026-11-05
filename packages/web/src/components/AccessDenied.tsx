@@ -16,7 +16,7 @@ export default function AccessDenied({ section }: { section?: string }) {
 
   return (
     <div className="flex items-center justify-center py-16">
-      <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 max-w-md w-full p-8 text-center">
+      <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xs border border-slate-200 dark:border-slate-700 max-w-md w-full p-8 text-center">
         <div className="w-14 h-14 mx-auto bg-slate-100 dark:bg-slate-700 rounded-full flex items-center justify-center mb-4">
           <ShieldX size={24} className="text-slate-500 dark:text-slate-400" />
         </div>

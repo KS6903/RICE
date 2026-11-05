@@ -198,7 +198,7 @@ export default function Select({
         className={clsx(
           "input flex items-center gap-2 text-left disabled:cursor-not-allowed disabled:opacity-65",
           // Keep the focus ring while the menu (not the field) has focus.
-          open && "!border-emerald-500 shadow-[0_0_0_3px_rgba(16,185,129,0.22)]",
+          open && "border-emerald-500! shadow-[0_0_0_3px_rgba(16,185,129,0.22)]",
           className,
         )}
       >
@@ -227,7 +227,7 @@ export default function Select({
             aria-label={id ? undefined : aria["aria-label"]}
             aria-activedescendant={`${listId}-${active}`}
             onKeyDown={onListKeyDown}
-            className="fixed z-[70] max-h-72 overflow-y-auto rounded-xl bg-white p-1 shadow-2xl ring-1 ring-soft outline-none animate-panel-in dark:bg-slate-900"
+            className="fixed z-70 max-h-72 overflow-y-auto rounded-xl bg-white p-1 shadow-2xl ring-1 ring-soft outline-hidden animate-panel-in dark:bg-slate-900"
             style={place}
           >
             {options.map((option, i) => {

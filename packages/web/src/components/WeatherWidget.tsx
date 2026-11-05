@@ -47,7 +47,7 @@ function ViewSwitch({ view, onChange }: { view: View; onChange: (v: View) => voi
           className={clsx(
             "shrink-0 whitespace-nowrap rounded-[0.65rem] px-3 py-1 text-xs font-semibold transition-colors",
             view === o.id
-              ? "bg-white text-primary shadow-sm dark:bg-slate-700"
+              ? "bg-white text-primary shadow-xs dark:bg-slate-700"
               : "text-muted hover:text-primary",
           )}
         >
@@ -138,7 +138,7 @@ export default function WeatherWidget({ variant = "compact" }: { variant?: Varia
           {tempLabel}C
         </span>
         <span
-          className="hidden 2xl:inline text-xs text-secondary truncate max-w-[8rem]"
+          className="hidden 2xl:inline text-xs text-secondary truncate max-w-32"
           data-testid="weather-location"
         >
           {placeLabel}

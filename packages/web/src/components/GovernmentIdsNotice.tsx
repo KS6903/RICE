@@ -138,7 +138,7 @@ export default function GovernmentIdsNotice({
     return (
       <section
         aria-label={t("Missing government numbers")}
-        className="card !py-2 flex items-center justify-between gap-3 border border-amber-300 dark:border-amber-800/60"
+        className="card py-2! flex items-center justify-between gap-3 border border-amber-300 dark:border-amber-800/60"
       >
         <p className="flex items-center gap-2 text-sm text-primary">
           <IdCard size={16} className="shrink-0 text-amber-600 dark:text-amber-400" aria-hidden />
@@ -146,7 +146,7 @@ export default function GovernmentIdsNotice({
         </p>
         <button
           type="button"
-          className="btn-ghost !p-1.5 -mr-1.5 shrink-0"
+          className="btn-ghost p-1.5! -mr-1.5 shrink-0"
           aria-label={t("Expand")}
           title={t("Expand")}
           aria-expanded={false}
@@ -195,7 +195,7 @@ export default function GovernmentIdsNotice({
         {/* The top right corner, whatever the width. */}
         <button
           type="button"
-          className="btn-ghost !p-1.5 -mr-1.5 -mt-1.5 shrink-0"
+          className="btn-ghost p-1.5! -mr-1.5 -mt-1.5 shrink-0"
           aria-label={t("Minimize")}
           title={t("Minimize")}
           onClick={() => setMinimized(true)}

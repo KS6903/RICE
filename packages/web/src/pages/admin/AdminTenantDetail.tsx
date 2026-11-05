@@ -554,7 +554,7 @@ function SubscriptionManager({ tenantId, tenantName }: { tenantId: string; tenan
                 <PlanIcon code={selectedPlan.code} />
                 <span className="font-bold text-primary">{selectedPlan.name}</span>
                 {tier === "trial" && (
-                  <span className="ml-1 inline-flex items-center text-[10px] font-bold uppercase tracking-wide bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-200 px-1.5 py-0.5 rounded">
+                  <span className="ml-1 inline-flex items-center text-[10px] font-bold uppercase tracking-wide bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-200 px-1.5 py-0.5 rounded-sm">
                     {t("Trial")}
                   </span>
                 )}
@@ -576,7 +576,7 @@ function SubscriptionManager({ tenantId, tenantName }: { tenantId: string; tenan
                   {(selectedPlan.features as string[]).map((f) => (
                     <span
                       key={f}
-                      className="bg-surface border border-soft text-secondary text-[10px] px-1.5 py-0.5 rounded"
+                      className="bg-surface border border-soft text-secondary text-[10px] px-1.5 py-0.5 rounded-sm"
                     >
                       {f.replace(/_/g, " ")}
                     </span>
@@ -593,7 +593,7 @@ function SubscriptionManager({ tenantId, tenantName }: { tenantId: string; tenan
                 type="checkbox"
                 checked={isPermanent}
                 onChange={(e) => handlePermanentChange(e.target.checked)}
-                className="mt-0.5 h-4 w-4 rounded border-line accent-emerald-600 focus:ring-emerald-500"
+                className="mt-0.5 h-4 w-4 rounded-sm border-line accent-emerald-600 focus:ring-emerald-500"
               />
               <span className="flex-1">
                 <span className="flex items-center gap-1.5 text-sm font-semibold text-primary">

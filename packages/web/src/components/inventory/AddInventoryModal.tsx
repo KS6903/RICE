@@ -305,7 +305,7 @@ export default function AddInventoryModal({
       <button
         type="button"
         aria-label={t("Close")}
-        className="absolute inset-0 bg-slate-900/45 backdrop-blur-sm"
+        className="absolute inset-0 bg-slate-900/45 backdrop-blur-xs"
         onClick={onClose}
       />
       <div
@@ -325,7 +325,7 @@ export default function AddInventoryModal({
             type="button"
             aria-label={t("Close")}
             onClick={onClose}
-            className="btn-ghost !p-1.5"
+            className="btn-ghost p-1.5!"
           >
             <XIcon size={16} />
           </button>
@@ -354,7 +354,7 @@ export default function AddInventoryModal({
                     onClick={() => setType(key)}
                     className={`flex flex-col items-center gap-1 px-2 py-2.5 rounded-lg ring-1 transition-all ${
                       sel
-                        ? "bg-emerald-500/10 ring-emerald-400 text-primary shadow-sm"
+                        ? "bg-emerald-500/10 ring-emerald-400 text-primary shadow-xs"
                         : "ring-soft text-secondary hover:ring-emerald-300 hover:bg-slate-50/50 dark:hover:bg-slate-700/30"
                     }`}
                   >
@@ -534,18 +534,18 @@ export default function AddInventoryModal({
               <span aria-hidden className="shrink-0 mt-0.5">
                 ⚠
               </span>
-              <p className="min-w-0 break-words">{errorMsg}</p>
+              <p className="min-w-0 wrap-break-word">{errorMsg}</p>
             </div>
           )}
 
           <div className="flex flex-wrap items-center justify-end gap-2 pt-1 border-t border-soft -mx-5 px-5 -mb-5 py-3 mt-4 sticky bottom-0 bg-[rgb(var(--surface-raised))]">
-            <button type="button" onClick={onClose} className="btn-secondary !py-1.5 !px-3 text-sm">
+            <button type="button" onClick={onClose} className="btn-secondary py-1.5! px-3! text-sm">
               {t("Cancel")}
             </button>
             <button
               type="submit"
               disabled={!formValid || mutation.isPending}
-              className="btn-primary !py-1.5 !px-3 text-sm disabled:opacity-50"
+              className="btn-primary py-1.5! px-3! text-sm disabled:opacity-50"
             >
               {mutation.isPending ? t("Adding…") : t("Add stock")}
             </button>

@@ -218,7 +218,7 @@ function RoleRow({ entry, sections }: { entry: RoleAccessEntry; sections: string
         {entry.editable ? (
           <button
             type="button"
-            className="btn-secondary !py-1.5 text-sm shrink-0"
+            className="btn-secondary py-1.5! text-sm shrink-0"
             aria-expanded={open}
             aria-controls={panelId}
             aria-label={
@@ -326,7 +326,7 @@ function CustomRoleRow({ role, sections }: { role: CustomRoleEntry; sections: st
     <li className="py-3">
       <div className="flex items-center justify-between gap-3">
         <div className="min-w-0">
-          <p className="text-sm font-semibold text-primary break-words">{role.name}</p>
+          <p className="text-sm font-semibold text-primary wrap-break-word">{role.name}</p>
           <p className="text-xs text-secondary">
             {summary(role.access, sections)} {holders}
           </p>
@@ -338,7 +338,7 @@ function CustomRoleRow({ role, sections }: { role: CustomRoleEntry; sections: st
         </div>
         <button
           type="button"
-          className="btn-secondary !py-1.5 text-sm shrink-0"
+          className="btn-secondary py-1.5! text-sm shrink-0"
           aria-expanded={open}
           aria-controls={panelId}
           aria-label={
@@ -572,7 +572,7 @@ export default function RoleAccessPanel() {
                   {!adding && (
                     <button
                       type="button"
-                      className="btn-secondary !py-1.5 text-sm"
+                      className="btn-secondary py-1.5! text-sm"
                       onClick={() => setAdding(true)}
                     >
                       <Plus size={16} aria-hidden /> {t("Add a role")}

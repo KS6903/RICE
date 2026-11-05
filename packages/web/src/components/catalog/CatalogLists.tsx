@@ -362,7 +362,7 @@ export function VarietiesList() {
 
       <div className="card overflow-hidden p-0">
         <table className="w-full text-sm">
-          <thead className="bg-gradient-to-r from-emerald-50/80 via-cyan-50/60 to-violet-50/80 dark:from-emerald-900/20 dark:via-cyan-900/10 dark:to-violet-900/20 border-b border-soft">
+          <thead className="bg-linear-to-r from-emerald-50/80 via-cyan-50/60 to-violet-50/80 dark:from-emerald-900/20 dark:via-cyan-900/10 dark:to-violet-900/20 border-b border-soft">
             <tr>
               {[t("Code"), t("Name"), t("Category"), t("Recovery %"), t("Source"), ""].map((h) => (
                 <th key={h} className={TABLE_HEAD}>
@@ -651,7 +651,7 @@ export function MachinesList() {
 
       <div className="card overflow-hidden p-0">
         <table className="w-full text-sm">
-          <thead className="bg-gradient-to-r from-emerald-50/80 via-cyan-50/60 to-violet-50/80 dark:from-emerald-900/20 dark:via-cyan-900/10 dark:to-violet-900/20 border-b border-soft">
+          <thead className="bg-linear-to-r from-emerald-50/80 via-cyan-50/60 to-violet-50/80 dark:from-emerald-900/20 dark:via-cyan-900/10 dark:to-violet-900/20 border-b border-soft">
             <tr>
               {[t("Name"), t("Model"), t("Capacity"), t("Status"), ""].map((h) => (
                 <th key={h} className={TABLE_HEAD}>
@@ -806,7 +806,7 @@ export function ExpenseCategoriesList() {
           <label className="flex items-center gap-2.5 text-sm font-medium text-secondary cursor-pointer select-none">
             <input
               type="checkbox"
-              className="h-4 w-4 rounded border-soft accent-emerald-500 cursor-pointer"
+              className="h-4 w-4 rounded-sm border-soft accent-emerald-500 cursor-pointer"
               checked={form.is_production_cost}
               onChange={(e) => setForm((f) => ({ ...f, is_production_cost: e.target.checked }))}
             />
@@ -834,7 +834,7 @@ export function ExpenseCategoriesList() {
 
       <div className="card overflow-hidden p-0">
         <table className="w-full text-sm">
-          <thead className="bg-gradient-to-r from-emerald-50/80 via-cyan-50/60 to-violet-50/80 dark:from-emerald-900/20 dark:via-cyan-900/10 dark:to-violet-900/20 border-b border-soft">
+          <thead className="bg-linear-to-r from-emerald-50/80 via-cyan-50/60 to-violet-50/80 dark:from-emerald-900/20 dark:via-cyan-900/10 dark:to-violet-900/20 border-b border-soft">
             <tr>
               {[t("Name"), t("Type"), t("Source"), ""].map((h) => (
                 <th key={h} className={TABLE_HEAD}>
@@ -1079,7 +1079,7 @@ export function ByproductsList() {
 
       <div className="card overflow-hidden p-0">
         <table className="w-full text-sm">
-          <thead className="bg-gradient-to-r from-emerald-50/80 via-cyan-50/60 to-violet-50/80 dark:from-emerald-900/20 dark:via-cyan-900/10 dark:to-violet-900/20 border-b border-soft">
+          <thead className="bg-linear-to-r from-emerald-50/80 via-cyan-50/60 to-violet-50/80 dark:from-emerald-900/20 dark:via-cyan-900/10 dark:to-violet-900/20 border-b border-soft">
             <tr>
               {[t("Name"), t("Source"), t("Status"), ""].map((h) => (
                 <th key={h} className={TABLE_HEAD}>

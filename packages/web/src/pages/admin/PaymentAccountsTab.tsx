@@ -179,7 +179,7 @@ function AccountCard({ plan }: { plan: SubscriptionPlan }) {
 
         <div className="md:w-56 shrink-0 space-y-2">
           <p className={LABEL}>{t("QR code")}</p>
-          <div className="aspect-square w-full max-w-[14rem] rounded-xl border border-dashed border-slate-300 dark:border-slate-600 bg-white grid place-items-center overflow-hidden">
+          <div className="aspect-square w-full max-w-56 rounded-xl border border-dashed border-slate-300 dark:border-slate-600 bg-white grid place-items-center overflow-hidden">
             {plan.payment_qr_key ? (
               <img
                 src={mediaUrl(plan.payment_qr_key)}
@@ -210,7 +210,7 @@ function AccountCard({ plan }: { plan: SubscriptionPlan }) {
               type="button"
               onClick={() => fileInput.current?.click()}
               disabled={upload.isPending}
-              className="btn-secondary flex-1 !px-3 !text-sm"
+              className="btn-secondary flex-1 px-3! text-sm!"
             >
               {upload.isPending ? (
                 <Loader2 size={14} className="animate-spin" />
@@ -224,7 +224,7 @@ function AccountCard({ plan }: { plan: SubscriptionPlan }) {
                 type="button"
                 onClick={() => remove.mutate()}
                 disabled={remove.isPending}
-                className="btn-secondary !px-3 !text-sm"
+                className="btn-secondary px-3! text-sm!"
                 aria-label={t("Remove {{name}} QR code", { name: plan.name })}
                 title={t("Remove")}
               >

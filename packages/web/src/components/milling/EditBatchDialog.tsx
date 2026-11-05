@@ -287,7 +287,7 @@ export default function EditBatchDialog({
                 </label>
                 <button
                   type="button"
-                  className="btn-ghost !p-2 mb-0.5"
+                  className="btn-ghost p-2! mb-0.5"
                   aria-label={t("Remove palay {{value}}", { value: i + 1 })}
                   disabled={inputs.length === 1}
                   onClick={() => setInputs((xs) => xs.filter((_, j) => j !== i))}
@@ -348,7 +348,7 @@ export default function EditBatchDialog({
                 </label>
                 <button
                   type="button"
-                  className="btn-ghost !p-2 mb-0.5"
+                  className="btn-ghost p-2! mb-0.5"
                   aria-label={t("Remove output {{value}}", { value: i + 1 })}
                   onClick={() => setOutputs((xs) => xs.filter((_, j) => j !== i))}
                 >
@@ -379,7 +379,7 @@ export default function EditBatchDialog({
         <label className="block">
           <span className="block mb-1 text-xs font-medium text-secondary">{t("Remarks")}</span>
           <textarea
-            className="input min-h-[4rem]"
+            className="input min-h-16"
             aria-label={t("Remarks")}
             value={remarks}
             onChange={(e) => setRemarks(e.target.value)}

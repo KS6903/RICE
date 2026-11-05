@@ -29,7 +29,7 @@ const PasswordInput = forwardRef<HTMLInputElement, Props>(function PasswordInput
         aria-label={shown ? t("Hide password") : t("Show password")}
         aria-pressed={shown}
         title={shown ? t("Hide password") : t("Show password")}
-        className="absolute inset-y-0 right-0 grid w-11 place-items-center rounded-r-xl text-muted transition-colors hover:text-primary focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-emerald-500 disabled:opacity-50"
+        className="absolute inset-y-0 right-0 grid w-11 place-items-center rounded-r-xl text-muted transition-colors hover:text-primary focus-visible:outline-solid focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-emerald-500 disabled:opacity-50"
       >
         {shown ? <EyeOff size={18} /> : <Eye size={18} />}
       </button>

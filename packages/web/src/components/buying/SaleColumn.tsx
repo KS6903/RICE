@@ -97,7 +97,7 @@ export default function SaleColumn({ kind }: { kind: TradeKind }) {
                   <button
                     type="button"
                     onClick={() => setOpen(o)}
-                    className="flex w-full items-start justify-between gap-3 px-4 py-3 text-left hover:bg-gray-50 dark:hover:bg-slate-900/50 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-emerald-400"
+                    className="flex w-full items-start justify-between gap-3 px-4 py-3 text-left hover:bg-gray-50 dark:hover:bg-slate-900/50 focus:outline-hidden focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-emerald-400"
                   >
                     <div className="min-w-0">
                       <p className="font-mono text-xs text-muted">{o.order_no}</p>

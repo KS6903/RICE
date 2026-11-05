@@ -1,6 +1,6 @@
 # Design
 
-Captures the committed visual system in `packages/web/src/index.css` + `tailwind.config.ts`.
+Captures the committed visual system in `packages/web/src/index.css` (Tailwind 4: the theme is its `@theme` block).
 This is the source of truth for keeping every surface (including `/admin`) on-brand.
 
 ## Theme

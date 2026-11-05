@@ -114,7 +114,7 @@ function TypeBadge({ kind }: { kind: OperatorKind }) {
       : "bg-amber-100 text-amber-800 dark:bg-amber-950/40 dark:text-amber-200";
   return (
     <span
-      className={`inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded ${style}`}
+      className={`inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-sm ${style}`}
       data-testid={`type-badge-${kind}`}
     >
       <Icon size={10} />
@@ -127,7 +127,7 @@ function SupplierTypeBadge({ type }: { type: string | null }) {
   const meta = SUPPLIER_TYPES.find((s) => s.value === type);
   return (
     <span
-      className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200"
+      className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-sm bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200"
       data-testid="type-badge-supplier"
     >
       <Sprout size={10} />
@@ -249,7 +249,7 @@ export function FieldOperatorsContent() {
               className="absolute left-3 top-1/2 -translate-y-1/2 text-muted pointer-events-none"
             />
             <input
-              className="input !pl-8"
+              className="input pl-8!"
               placeholder={t("Search by name…")}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
@@ -505,7 +505,7 @@ function OperatorsPanel({
       </div>
 
       {error && (
-        <div className="card !py-3 bg-rose-50 dark:bg-rose-950/30 ring-1 ring-rose-200 dark:ring-rose-800/60 flex items-center gap-2 text-sm">
+        <div className="card py-3! bg-rose-50 dark:bg-rose-950/30 ring-1 ring-rose-200 dark:ring-rose-800/60 flex items-center gap-2 text-sm">
           <AlertCircle size={14} className="text-rose-600 dark:text-rose-400" />
           <span className="text-rose-900 dark:text-rose-100">{error}</span>
         </div>
@@ -689,7 +689,7 @@ function DeactivatedOperatorRow({
       </td>
       <td className="px-4 py-3 text-secondary text-xs">
         {row.deactivated_by ? (
-          <TruncatedText text={row.deactivated_by} className="max-w-[9rem] sm:max-w-[14rem]" />
+          <TruncatedText text={row.deactivated_by} className="max-w-36 sm:max-w-56" />
         ) : (
           "—"
         )}
@@ -768,7 +768,7 @@ function EditOperatorRow({
       </td>
       <td className="px-3 py-2">
         <input
-          className="input !py-1 text-sm"
+          className="input py-1! text-sm"
           value={name}
           data-testid="edit-name"
           onChange={(e) => setName(e.target.value)}
@@ -779,7 +779,7 @@ function EditOperatorRow({
       </td>
       <td className="px-3 py-2">
         <input
-          className="input !py-1 text-sm"
+          className="input py-1! text-sm"
           value={contact}
           placeholder={t("Contact person")}
           onChange={(e) => setContact(e.target.value)}
@@ -787,7 +787,7 @@ function EditOperatorRow({
       </td>
       <td className="px-3 py-2">
         <input
-          className="input !py-1 text-sm"
+          className="input py-1! text-sm"
           value={phone}
           placeholder={t("Phone")}
           onChange={(e) => setPhone(e.target.value)}
@@ -797,14 +797,14 @@ function EditOperatorRow({
         {row.kind === "agent" ? (
           <div className="flex items-center gap-1.5">
             <Select
-              className="!py-1 text-sm !w-auto min-w-[10rem]"
+              className="py-1! text-sm w-auto! min-w-40"
               aria-label={t("Agent type")}
               value={agentType}
               onChange={setAgentType}
               options={AGENT_TYPE_OPTIONS}
             />
             <input
-              className="input !py-1 text-sm w-16"
+              className="input py-1! text-sm w-16"
               type="number"
               step="0.01"
               placeholder="%"
@@ -815,7 +815,7 @@ function EditOperatorRow({
         ) : (
           <div className="flex items-center gap-1.5">
             <input
-              className="input !py-1 text-sm w-20"
+              className="input py-1! text-sm w-20"
               type="number"
               step="0.01"
               placeholder="kg/hr"
@@ -823,7 +823,7 @@ function EditOperatorRow({
               onChange={(e) => setCapacity(e.target.value)}
             />
             <input
-              className="input !py-1 text-sm w-20"
+              className="input py-1! text-sm w-20"
               type="number"
               step="0.0001"
               placeholder={t("₱/kg")}
@@ -916,7 +916,7 @@ function NewOperatorForm({
         <button
           type="button"
           onClick={onClose}
-          className="btn-ghost !p-1.5"
+          className="btn-ghost p-1.5!"
           aria-label={t("Close")}
         >
           <XIcon size={16} />
@@ -934,7 +934,7 @@ function NewOperatorForm({
               onClick={() => setKind(k)}
               className={`px-3 py-1.5 rounded-md text-xs font-semibold capitalize transition-all ${
                 kind === k
-                  ? "bg-white dark:bg-slate-900 text-primary shadow-sm"
+                  ? "bg-white dark:bg-slate-900 text-primary shadow-xs"
                   : "text-secondary hover:text-primary"
               }`}
             >
@@ -1121,7 +1121,7 @@ function SuppliersPanel({
       </div>
 
       {error && (
-        <div className="card !py-3 bg-rose-50 dark:bg-rose-950/30 ring-1 ring-rose-200 dark:ring-rose-800/60 flex items-center gap-2 text-sm">
+        <div className="card py-3! bg-rose-50 dark:bg-rose-950/30 ring-1 ring-rose-200 dark:ring-rose-800/60 flex items-center gap-2 text-sm">
           <AlertCircle size={14} className="text-rose-600 dark:text-rose-400" />
           <span className="text-rose-900 dark:text-rose-100">{error}</span>
         </div>
@@ -1321,7 +1321,7 @@ function SupplierForm({
         <button
           type="button"
           onClick={onClose}
-          className="btn-ghost !p-1.5"
+          className="btn-ghost p-1.5!"
           aria-label={t("Close")}
         >
           <XIcon size={16} />

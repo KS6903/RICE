@@ -99,7 +99,7 @@ export default function FeedbackTab() {
               {[...reasonsFor(rating), OTHER_REASON].map((code) => (
                 <label
                   key={code}
-                  className="flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm font-medium text-primary ring-1 ring-soft cursor-pointer has-[:checked]:ring-2 has-[:checked]:ring-emerald-500"
+                  className="flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm font-medium text-primary ring-1 ring-soft cursor-pointer has-checked:ring-2 has-checked:ring-emerald-500"
                 >
                   <input
                     type="checkbox"

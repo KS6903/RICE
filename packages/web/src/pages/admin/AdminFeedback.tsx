@@ -49,7 +49,7 @@ export default function AdminFeedback() {
       {data && (
         <>
           <section aria-label={t("Summary")} className="grid gap-4 md:grid-cols-3">
-            <div className="card !p-4">
+            <div className="card p-4!">
               <p className="text-xs font-semibold text-muted">{t("Average rating")}</p>
               <p className="mt-1 text-3xl font-bold text-primary tabular-nums">
                 {data.summary.average == null ? "0" : data.summary.average.toFixed(1)}
@@ -58,7 +58,7 @@ export default function AdminFeedback() {
                 {t("{{count}} responses", { count: data.summary.count })}
               </p>
             </div>
-            <div className="card !p-4 space-y-1">
+            <div className="card p-4! space-y-1">
               <p className="text-xs font-semibold text-muted">{t("Ratings")}</p>
               {[5, 4, 3, 2, 1].map((n) => {
                 const count = data.summary.by_rating[String(n)] ?? 0;
@@ -77,7 +77,7 @@ export default function AdminFeedback() {
                 );
               })}
             </div>
-            <div className="card !p-4 space-y-1">
+            <div className="card p-4! space-y-1">
               <p className="text-xs font-semibold text-muted">{t("Top reasons")}</p>
               {data.summary.reasons.slice(0, 5).map((r) => (
                 <div key={r.code} className="flex justify-between gap-2 text-sm text-secondary">
@@ -108,7 +108,7 @@ export default function AdminFeedback() {
           ) : (
             <ul className="space-y-3" aria-label={t("Feedback")}>
               {data.items.map((item) => (
-                <li key={item.id} className="card !p-4 space-y-2">
+                <li key={item.id} className="card p-4! space-y-2">
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <span className="inline-flex flex-wrap items-center gap-2">
                       <Stars rating={item.rating} />
@@ -131,7 +131,7 @@ export default function AdminFeedback() {
                     ))}
                   </div>
                   {item.other_text && (
-                    <p className="whitespace-pre-wrap break-words text-sm text-primary">
+                    <p className="whitespace-pre-wrap wrap-break-word text-sm text-primary">
                       "{item.other_text}"
                     </p>
                   )}

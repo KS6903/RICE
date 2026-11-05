@@ -453,7 +453,7 @@ export default function UsersPage() {
                           <button
                             type="button"
                             onClick={() => startEdit(u)}
-                            className="btn-ghost !px-2 !py-1.5 text-xs"
+                            className="btn-ghost px-2! py-1.5! text-xs"
                             title={t("Edit {{username}}", { username: u.username })}
                           >
                             <Pencil size={14} /> {t("Edit")}
@@ -465,7 +465,7 @@ export default function UsersPage() {
                           <button
                             type="button"
                             onClick={() => setTempFor(u)}
-                            className="btn-ghost !px-2 !py-1.5 text-xs"
+                            className="btn-ghost px-2! py-1.5! text-xs"
                             title={t("Give {{username}} a temporary password", {
                               username: u.username,
                             })}
@@ -479,12 +479,12 @@ export default function UsersPage() {
                         {/* Your own account can't be removed or reset; keep their slots so
                             the Edit buttons line up down the column. */}
                         {iAmBoss && u.is_active && isMe && (
-                          <span aria-hidden className="btn-ghost invisible !px-2 !py-1.5 text-xs">
+                          <span aria-hidden className="btn-ghost invisible px-2! py-1.5! text-xs">
                             <KeyRound size={14} /> {t("Temporary password")}
                           </span>
                         )}
                         {u.is_active && isMe && (
-                          <span aria-hidden className="btn-ghost invisible !px-2 !py-1.5 text-xs">
+                          <span aria-hidden className="btn-ghost invisible px-2! py-1.5! text-xs">
                             <Trash2 size={14} /> {t("Remove")}
                           </span>
                         )}
@@ -493,7 +493,7 @@ export default function UsersPage() {
                             type="button"
                             onClick={() => remove(u)}
                             disabled={updateUser.isPending}
-                            className="btn-ghost !px-2 !py-1.5 text-xs text-rose-600 hover:text-rose-700 dark:text-rose-400"
+                            className="btn-ghost px-2! py-1.5! text-xs text-rose-600 hover:text-rose-700 dark:text-rose-400"
                             title={t("Remove {{username}}", { username: u.username })}
                           >
                             <Trash2 size={14} /> {t("Remove")}
@@ -506,7 +506,7 @@ export default function UsersPage() {
                               updateUser.mutate({ id: u.id, body: { is_active: true } })
                             }
                             disabled={updateUser.isPending}
-                            className="btn-ghost !px-2 !py-1.5 text-xs"
+                            className="btn-ghost px-2! py-1.5! text-xs"
                             title={t("Restore {{username}}", { username: u.username })}
                           >
                             <RotateCcw size={14} /> {t("Restore")}

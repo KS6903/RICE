@@ -64,7 +64,7 @@ function MachineCard({ machine, canEdit }: { machine: Machine; canEdit: boolean 
   });
   const status = STATUS[machine.status];
   return (
-    <article aria-labelledby={`machine-${machine.id}`} className="card !p-5 space-y-3">
+    <article aria-labelledby={`machine-${machine.id}`} className="card p-5! space-y-3">
       <div className="flex items-start justify-between gap-3 flex-wrap">
         <h3 id={`machine-${machine.id}`} className="font-bold text-primary">
           {machine.name}
@@ -117,7 +117,7 @@ function MachineCard({ machine, canEdit }: { machine: Machine; canEdit: boolean 
               onChange={setDoneOn}
             />
           </div>
-          <div className="flex-1 min-w-[12rem]">
+          <div className="flex-1 min-w-48">
             <label htmlFor={`what-${machine.id}`} className="form-label">
               {t("What was done")}
             </label>

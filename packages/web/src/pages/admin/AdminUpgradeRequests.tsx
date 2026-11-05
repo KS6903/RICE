@@ -56,7 +56,7 @@ function RequestRow({
       <td>
         <span
           className={clsx(
-            "inline-flex items-center gap-1.5 text-xs font-semibold px-2 py-0.5 rounded",
+            "inline-flex items-center gap-1.5 text-xs font-semibold px-2 py-0.5 rounded-sm",
             isPlanChange
               ? "text-violet-700 dark:text-violet-300 bg-violet-100 dark:bg-violet-900/40"
               : "text-emerald-700 dark:text-emerald-300 bg-emerald-100 dark:bg-emerald-900/40",
@@ -75,7 +75,7 @@ function RequestRow({
           <ArrowRight size={12} className="text-muted" />
           <span className="font-semibold text-primary">{r.requested_plan_name || "—"}</span>
           {r.billing_interval === "annual" && (
-            <span className="badge-green !text-[10px] !py-0.5">{t("Annual")}</span>
+            <span className="badge-green text-[10px]! py-0.5!">{t("Annual")}</span>
           )}
         </div>
       </td>
@@ -216,7 +216,7 @@ export default function AdminUpgradeRequests() {
               ))}
             {!isLoading && requests.length === 0 && (
               <tr>
-                <td colSpan={COLS.length} className="!py-14 text-center">
+                <td colSpan={COLS.length} className="py-14! text-center">
                   <Inbox size={28} className="mx-auto mb-2 text-muted opacity-60" />
                   <p className="text-sm font-medium text-secondary">
                     {t("No")} {filter === "all" ? "" : filter} {t("requests.")}

@@ -31,7 +31,7 @@ const percent = (n: number) => `${n.toFixed(1)}%`;
 /** The two footer buttons share one row on a phone, a little smaller below 360px
  *  wide so "Close calculator" stays on one line there too. */
 const FOOTER_BUTTON =
-  "min-w-0 flex-1 max-sm:!px-3 max-sm:text-sm max-[359px]:!px-2 max-[359px]:text-xs sm:flex-none";
+  "min-w-0 flex-1 max-sm:px-3! max-sm:text-sm max-[359px]:px-2! max-[359px]:text-xs sm:flex-none";
 
 /** A saved record changed: what shows it should be fetched again. */
 function useRefreshPurchases() {
@@ -232,7 +232,7 @@ export default function RecoveryCalculator({
                 type="button"
                 role="radio"
                 aria-checked={unit === u}
-                className={`seg-btn !px-3 ${unit === u ? "is-active" : ""}`}
+                className={`seg-btn px-3! ${unit === u ? "is-active" : ""}`}
                 onClick={() => changeUnit(u)}
               >
                 {u}
@@ -461,7 +461,7 @@ export function RecoveryTests({ purchase, canRemove }: { purchase: any; canRemov
     <section className="mt-4" aria-label={t("Recovery tests")} data-testid="recovery-tests">
       <h4 className="mb-2 text-sm font-bold text-primary">{t("Recovery tests")}</h4>
       <div className="rounded-xl ring-1 ring-soft sm:overflow-x-auto">
-        <table className="stack-table w-full text-sm sm:[overflow-wrap:normal]">
+        <table className="stack-table w-full text-sm sm:wrap-normal">
           <thead className="bg-gray-50 dark:bg-slate-900/50">
             <tr>
               {headings.map((h, i) => (
@@ -506,7 +506,7 @@ export function RecoveryTests({ purchase, canRemove }: { purchase: any; canRemov
                   <td className="px-1 py-1 text-right">
                     <button
                       type="button"
-                      className="btn-ghost !p-1.5"
+                      className="btn-ghost p-1.5!"
                       aria-label={t("Remove recovery test")}
                       onClick={() => setRemoving(x)}
                     >

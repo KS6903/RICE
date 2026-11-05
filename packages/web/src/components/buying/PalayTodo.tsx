@@ -49,7 +49,7 @@ export default function PalayTodo({
         {todos.length > 0 && (
           <span
             aria-label={t("{{total}} waiting", { total: todos.length })}
-            className="ml-1 min-w-[1.25rem] rounded-full bg-brand-600 px-1.5 text-center text-[11px] font-bold leading-5 text-white"
+            className="ml-1 min-w-5 rounded-full bg-brand-600 px-1.5 text-center text-[11px] font-bold leading-5 text-white"
           >
             {todos.length}
           </span>

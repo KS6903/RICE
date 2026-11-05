@@ -520,10 +520,7 @@ export default function SalesPage() {
                   <td className="px-4 py-3">{o.order_date}</td>
                   <td className="px-4 py-3">
                     {o.customer?.name ? (
-                      <TruncatedText
-                        text={o.customer.name}
-                        className="max-w-[10rem] sm:max-w-[16rem]"
-                      />
+                      <TruncatedText text={o.customer.name} className="max-w-40 sm:max-w-[16rem]" />
                     ) : (
                       "—"
                     )}
@@ -543,7 +540,7 @@ export default function SalesPage() {
                           setPreviewOrder(o);
                         }}
                         data-testid={`generate-invoice-${o.id}`}
-                        className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-lg bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700 ring-1 ring-emerald-200 transition hover:bg-emerald-100 hover:ring-emerald-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 dark:bg-emerald-950/30 dark:text-emerald-300 dark:ring-emerald-800/60 dark:hover:bg-emerald-950/50"
+                        className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-lg bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700 ring-1 ring-emerald-200 transition hover:bg-emerald-100 hover:ring-emerald-300 focus:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-500 dark:bg-emerald-950/30 dark:text-emerald-300 dark:ring-emerald-800/60 dark:hover:bg-emerald-950/50"
                       >
                         <FileText size={14} />
                         {t("Generate invoice")}

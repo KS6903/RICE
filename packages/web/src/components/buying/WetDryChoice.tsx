@@ -13,14 +13,14 @@ export default function WetDryChoice({
   /** Tells apart the groups of several lines. */
   name?: string;
 }) {
-  const box = "h-4 w-4 rounded border-soft cursor-pointer";
+  const box = "h-4 w-4 rounded-sm border-soft cursor-pointer";
   const word =
     "flex cursor-pointer select-none items-center gap-2 text-sm font-medium text-primary";
   return (
     <div
       role="group"
       aria-label={name ? t("Condition of {{name}}", { name }) : t("Condition")}
-      className="flex h-[2.75rem] items-center gap-5"
+      className="flex h-11 items-center gap-5"
     >
       <label className={word}>
         <input

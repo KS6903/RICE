@@ -196,14 +196,14 @@ export default function ReportsPage() {
           <h3 className="font-semibold text-gray-900 dark:text-slate-100">{t("Profit & Loss")}</h3>
           <DatePicker
             aria-label={t("From date")}
-            className="!w-44"
+            className="w-44!"
             value={dateRange.start}
             onChange={(v) => setDateRange((r) => ({ ...r, start: v }))}
           />
           <span className="text-gray-400">{t("to")}</span>
           <DatePicker
             aria-label={t("To date")}
-            className="!w-44"
+            className="w-44!"
             value={dateRange.end}
             onChange={(v) => setDateRange((r) => ({ ...r, end: v }))}
           />

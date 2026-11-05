@@ -76,7 +76,7 @@ export default function UpgradeRequestToast() {
     <div className="fixed bottom-6 right-6 z-50 max-w-sm w-full animate-grad-fade-up">
       <div className="panel">
         <div className="flex items-center gap-2 px-4 py-2.5 border-b border-soft">
-          <span className="icon-chip icon-chip-brand !h-7 !w-7 !rounded-lg">
+          <span className="icon-chip icon-chip-brand h-7! w-7! rounded-lg!">
             <ArrowUpCircle size={15} />
           </span>
           <span className="text-xs font-bold uppercase tracking-wide text-secondary flex-1">

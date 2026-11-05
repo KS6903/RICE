@@ -105,7 +105,7 @@ export default function AdminShell() {
         </div>
 
         <nav className="relative flex-1 px-3 py-4 space-y-1 overflow-y-auto">
-          <p className="px-3 pb-2 text-[11px] font-bold uppercase tracking-[0.1em] text-muted">
+          <p className="px-3 pb-2 text-[11px] font-bold uppercase tracking-widest text-muted">
             {t("Manage")}
           </p>
           {NAV.map(({ to, label, icon: Icon, end, withBadge }) => (
@@ -128,7 +128,7 @@ export default function AdminShell() {
                   />
                   <span className="flex-1">{label}</span>
                   {withBadge === "upgrades" && pendingCount > 0 && (
-                    <span className="badge-yellow !px-1.5 !py-0.5 text-[10px] font-bold rounded-full min-w-[18px] justify-center">
+                    <span className="badge-yellow px-1.5! py-0.5! text-[10px] font-bold rounded-full min-w-[18px] justify-center">
                       {pendingCount}
                     </span>
                   )}
@@ -164,7 +164,7 @@ export default function AdminShell() {
                 <BrandLogo width={24} height={11} strokeWidth={10} className="text-white" />
               </div>
               <div className="hidden lg:block leading-tight">
-                <p className="text-sm font-semibold text-primary truncate max-w-[10rem]">
+                <p className="text-sm font-semibold text-primary truncate max-w-40">
                   {user?.full_name}
                 </p>
                 <p className="text-xs text-muted font-medium">{t("BossAdmin")}</p>

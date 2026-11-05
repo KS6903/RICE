@@ -25,7 +25,7 @@ export default function DailyForecastStrip({ daily }: { daily: DailyForecast[] }
         return (
           <div
             key={d.date}
-            className="shrink-0 w-[4.5rem] flex-1 min-w-[4.5rem] rounded-2xl ring-1 ring-soft bg-white/50 dark:bg-slate-800/50 px-2 py-3 flex flex-col items-center gap-1.5"
+            className="shrink-0 w-18 flex-1 min-w-18 rounded-2xl ring-1 ring-soft bg-white/50 dark:bg-slate-800/50 px-2 py-3 flex flex-col items-center gap-1.5"
             title={conditionText(d.condition_code, d.condition)}
           >
             <span className="text-[11px] font-semibold text-muted whitespace-nowrap">

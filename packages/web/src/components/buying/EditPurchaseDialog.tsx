@@ -412,7 +412,7 @@ export default function EditPurchaseDialog({
                   <div className="min-w-0 flex-1">{whatPickers(l, i)}</div>
                   <button
                     type="button"
-                    className="btn-ghost !p-2"
+                    className="btn-ghost p-2!"
                     aria-label={t("Remove line {{value}}", { value: i + 1 })}
                     disabled={lines.length === 1}
                     onClick={() => setLines((ls) => ls.filter((_, j) => j !== i))}
@@ -475,7 +475,7 @@ export default function EditPurchaseDialog({
         <label className="block">
           <span className="block mb-1 text-xs font-medium text-secondary">{t("Remarks")}</span>
           <textarea
-            className="input min-h-[4rem]"
+            className="input min-h-16"
             value={remarks}
             onChange={(e) => setRemarks(e.target.value)}
           />

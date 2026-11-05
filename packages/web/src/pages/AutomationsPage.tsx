@@ -292,7 +292,7 @@ function InfoTip({
         onKeyDown={(e) => {
           if (e.key === "Escape") close();
         }}
-        className={`-m-1 inline-flex shrink-0 rounded-full p-1 transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-500 ${
+        className={`-m-1 inline-flex shrink-0 rounded-full p-1 transition-colors focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-emerald-500 ${
           tone === "alert"
             ? "text-rose-600 hover:text-rose-700 dark:text-rose-400 dark:hover:text-rose-300"
             : "text-muted hover:text-primary"
@@ -319,7 +319,7 @@ function InfoTip({
                 triggerRef.current?.focus();
               }
             }}
-            className="fixed z-[70] cursor-text select-text overflow-y-auto rounded-xl bg-white p-3 text-sm text-secondary shadow-xl outline-none ring-1 ring-soft dark:bg-slate-900"
+            className="fixed z-70 cursor-text select-text overflow-y-auto rounded-xl bg-white p-3 text-sm text-secondary shadow-xl outline-hidden ring-1 ring-soft dark:bg-slate-900"
             style={place ?? { left: 0, top: 0, width: TIP_WIDTH, visibility: "hidden" }}
           >
             {children}
@@ -354,7 +354,7 @@ function Switch({
         aria-label={`${label}: ${checked ? "on" : "off"}`}
         disabled={disabled}
         onClick={onChange}
-        className={`relative h-7 w-12 rounded-full transition-colors disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-500 ${
+        className={`relative h-7 w-12 rounded-full transition-colors disabled:opacity-50 focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-emerald-500 ${
           checked ? "bg-emerald-600" : "bg-slate-300 dark:bg-slate-600"
         }`}
       >
@@ -433,7 +433,7 @@ function FieldInput({
         </label>
         <TimePicker
           id={id}
-          className="max-w-[10rem]"
+          className="max-w-40"
           value={String(value ?? "")}
           disabled={disabled}
           onChange={onChange}
@@ -458,7 +458,7 @@ function FieldInput({
           id={id}
           type="text"
           inputMode="decimal"
-          className="input max-w-[10rem]"
+          className="input max-w-40"
           value={String(value ?? "")}
           disabled={disabled}
           onChange={(e) => onChange(e.target.value.replace(/[,\s₱%]/g, ""))}
@@ -643,7 +643,7 @@ function AutomationCard({
     );
 
   return (
-    <article className="card !p-5 flex flex-col gap-4" aria-labelledby={`title-${automation.code}`}>
+    <article className="card p-5! flex flex-col gap-4" aria-labelledby={`title-${automation.code}`}>
       <div className="flex items-start gap-3">
         <div className="min-w-0 flex-1">
           {/* The (i) is part of the title's own text, glued to its last word: the two
@@ -685,7 +685,7 @@ function AutomationCard({
       {/* Pinned to the bottom, so the footers line up across a row of tiles. While
           a tile is open its neighbours stretch to match, so let go of the bottom
           then, or they'd show a gap. */}
-      <div className="mt-auto group-has-[[aria-expanded=true]]/grid:mt-0 flex items-center justify-between gap-3">
+      <div className="mt-auto group-has-aria-expanded/grid:mt-0 flex items-center justify-between gap-3">
         <div className="min-w-0 flex-1">
           {automation.locked ? (
             <span className="text-sm text-muted">{t("On the Enterprise plan.")}</span>
@@ -843,8 +843,8 @@ function AutomationCard({
             <div className="rounded-xl bg-[rgb(var(--ink)/0.03)] p-3">
               {runs.isLoading ? (
                 <div className="space-y-2" aria-busy="true">
-                  <div className="skeleton h-5 w-2/3 rounded" />
-                  <div className="skeleton h-5 w-1/2 rounded" />
+                  <div className="skeleton h-5 w-2/3 rounded-sm" />
+                  <div className="skeleton h-5 w-1/2 rounded-sm" />
                 </div>
               ) : (runs.data?.runs.length ?? 0) === 0 ? (
                 <p className="text-sm text-secondary">{t("No runs yet.")}</p>
@@ -1173,10 +1173,10 @@ export default function AutomationsPage() {
       {list.isLoading ? (
         <div className={CARD_GRID} aria-busy="true">
           {[0, 1, 2].map((i) => (
-            <div key={i} className="card !p-5 space-y-3">
-              <div className="skeleton h-6 w-2/3 rounded" />
-              <div className="skeleton h-4 w-full rounded" />
-              <div className="skeleton h-4 w-1/2 rounded" />
+            <div key={i} className="card p-5! space-y-3">
+              <div className="skeleton h-6 w-2/3 rounded-sm" />
+              <div className="skeleton h-4 w-full rounded-sm" />
+              <div className="skeleton h-4 w-1/2 rounded-sm" />
             </div>
           ))}
         </div>

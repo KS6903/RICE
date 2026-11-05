@@ -567,7 +567,7 @@ export default function PaddyPage() {
                       role="radio"
                       aria-checked={unit === value}
                       title={label}
-                      className={`seg-btn !px-2.5 ${unit === value ? "is-active" : ""}`}
+                      className={`seg-btn px-2.5! ${unit === value ? "is-active" : ""}`}
                       onClick={() => unit !== value && chooseView.mutate(value)}
                     >
                       <Icon className="h-4 w-4" aria-hidden="true" />
@@ -634,7 +634,7 @@ export default function PaddyPage() {
                       {i.variety?.code || "—"}
                       {phone
                         ? (under || wet) && (
-                            <span className="mt-0.5 flex max-w-[12rem] flex-wrap items-center gap-x-1.5 gap-y-1 text-xs text-muted">
+                            <span className="mt-0.5 flex max-w-48 flex-wrap items-center gap-x-1.5 gap-y-1 text-xs text-muted">
                               {under}
                               {wet}
                             </span>

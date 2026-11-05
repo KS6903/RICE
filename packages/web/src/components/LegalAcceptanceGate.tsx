@@ -76,7 +76,7 @@ export default function LegalAcceptanceGate() {
             type="checkbox"
             checked={checked}
             onChange={(e) => setChecked(e.target.checked)}
-            className="mt-0.5 h-5 w-5 shrink-0 rounded accent-emerald-500"
+            className="mt-0.5 h-5 w-5 shrink-0 rounded-sm accent-emerald-500"
             data-testid="legal-gate-checkbox"
           />
           <span className="text-sm text-secondary leading-snug">

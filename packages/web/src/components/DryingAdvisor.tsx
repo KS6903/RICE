@@ -92,7 +92,7 @@ function CaveatTooltip() {
           <div
             role="tooltip"
             className={clsx(
-              "fixed z-[100] rounded-xl ring-1 ring-soft shadow-xl bg-white dark:bg-slate-800 p-2.5 text-[11px] leading-snug text-secondary transition-opacity motion-reduce:transition-none",
+              "fixed z-100 rounded-xl ring-1 ring-soft shadow-xl bg-white dark:bg-slate-800 p-2.5 text-[11px] leading-snug text-secondary transition-opacity motion-reduce:transition-none",
               shown ? "opacity-100" : "opacity-0 pointer-events-none",
             )}
             style={{ top: pos.top, left: pos.left, width: TOOLTIP_WIDTH }}

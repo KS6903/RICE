@@ -196,7 +196,7 @@ export default function EditOrderDialog({
                 </label>
                 <button
                   type="button"
-                  className="btn-ghost !p-2 mb-0.5"
+                  className="btn-ghost p-2! mb-0.5"
                   aria-label={t("Remove {{l}}", { l: lineName(l) })}
                   disabled={lines.length === 1}
                   onClick={() => setLines((ls) => ls.filter((_, j) => j !== i))}
@@ -214,7 +214,7 @@ export default function EditOrderDialog({
         <label className="block">
           <span className="block mb-1 text-xs font-medium text-secondary">{t("Remarks")}</span>
           <textarea
-            className="input min-h-[4rem]"
+            className="input min-h-16"
             value={remarks}
             onChange={(e) => setRemarks(e.target.value)}
           />

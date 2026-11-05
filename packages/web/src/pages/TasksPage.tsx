@@ -192,7 +192,7 @@ function TaskCard({ task, manager }: { task: Task; manager: boolean }) {
   return (
     <article
       aria-labelledby={`task-${task.id}`}
-      className={`card !p-5 space-y-3 ${task.overdue ? "border border-rose-300 dark:border-rose-800/60" : ""}`}
+      className={`card p-5! space-y-3 ${task.overdue ? "border border-rose-300 dark:border-rose-800/60" : ""}`}
     >
       <div className="flex items-start justify-between gap-3 flex-wrap">
         <h3 id={`task-${task.id}`} className="text-base font-bold text-primary min-w-0">
@@ -313,7 +313,7 @@ function TaskCard({ task, manager }: { task: Task; manager: boolean }) {
           </label>
           <textarea
             id={`note-${task.id}`}
-            className="input min-h-[4.5rem]"
+            className="input min-h-18"
             maxLength={500}
             value={note}
             placeholder={t("e.g. Called Aling Nena: she pays ₱5,000 on Friday.")}

@@ -201,7 +201,7 @@ function WarehousePickerInner({
                       >
                         <input
                           autoFocus
-                          className="input !py-0.5 !px-2 text-sm flex-1"
+                          className="input py-0.5! px-2! text-sm flex-1"
                           value={renameValue}
                           onChange={(e) => setRenameValue(e.target.value)}
                           onKeyDown={(e) => e.key === "Escape" && setRenamingId(null)}
@@ -254,7 +254,7 @@ function WarehousePickerInner({
                           // Always visible (dimmed). Hover only changes the icon
                           // colour — no overlapping background swap with the row
                           // hover bg, which was a flicker source.
-                          className="shrink-0 p-1 rounded text-slate-400 dark:text-slate-500 hover:text-primary"
+                          className="shrink-0 p-1 rounded-sm text-slate-400 dark:text-slate-500 hover:text-primary"
                         >
                           <Pencil size={12} />
                         </button>
@@ -278,7 +278,7 @@ function WarehousePickerInner({
                   >
                     <input
                       autoFocus
-                      className="input !py-1 !px-2 text-sm flex-1"
+                      className="input py-1! px-2! text-sm flex-1"
                       placeholder={t("Branch name…")}
                       value={newName}
                       onChange={(e) => setNewName(e.target.value)}

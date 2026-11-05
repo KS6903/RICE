@@ -377,7 +377,7 @@ function EmployeesPageInner() {
           </div>
           <Select
             aria-label={t("Branch")}
-            className="flex-1 sm:flex-none sm:!w-auto min-w-[10rem]"
+            className="flex-1 sm:flex-none sm:w-auto! min-w-40"
             value={branchFilter}
             onChange={setBranchFilter}
             options={[
@@ -1253,7 +1253,7 @@ function EmployeeProfile({
       <button
         type="button"
         aria-label={t("Close")}
-        className="absolute inset-0 bg-slate-900/45 backdrop-blur-sm"
+        className="absolute inset-0 bg-slate-900/45 backdrop-blur-xs"
         onClick={() => !editing && onClose()}
       />
       <div className="dialog-panel relative flex w-full max-w-2xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl ring-1 ring-soft animate-grad-fade-up dark:bg-slate-800">
@@ -1288,7 +1288,7 @@ function EmployeeProfile({
           </div>
           <div className="flex w-full shrink-0 justify-end items-center gap-1 sm:w-auto">
             {mayEdit && !editing && (
-              <button type="button" onClick={startEdit} className="btn-secondary !py-1.5 text-sm">
+              <button type="button" onClick={startEdit} className="btn-secondary py-1.5! text-sm">
                 <Pencil size={14} /> {t("Edit")}
               </button>
             )}
@@ -1296,7 +1296,7 @@ function EmployeeProfile({
               type="button"
               aria-label={t("Close")}
               onClick={onClose}
-              className="btn-ghost !p-1.5"
+              className="btn-ghost p-1.5!"
             >
               <X size={18} />
             </button>

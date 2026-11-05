@@ -167,7 +167,7 @@ export default function LoginPage() {
           aria-hidden
         />
         <div
-          className="absolute inset-0 pointer-events-none bg-[radial-gradient(ellipse_at_top_right,_rgba(255,255,255,0.18),_transparent_60%)]"
+          className="absolute inset-0 pointer-events-none bg-[radial-gradient(ellipse_at_top_right,rgba(255,255,255,0.18),transparent_60%)]"
           aria-hidden
         />
         {/* Gradients, not blur filters, and still: see SignupPage. */}
@@ -193,7 +193,7 @@ export default function LoginPage() {
           <h2 className="text-4xl xl:text-5xl font-bold leading-[1.05] tracking-tight">
             {t("Run your mill")}
             <br />
-            <span className="bg-gradient-to-r from-white via-cyan-200 to-emerald-200 bg-clip-text text-transparent">
+            <span className="bg-linear-to-r from-white via-cyan-200 to-emerald-200 bg-clip-text text-transparent">
               {t("like the future.")}
             </span>
           </h2>
@@ -234,7 +234,7 @@ export default function LoginPage() {
         <button
           type="button"
           onClick={handleBack}
-          className="btn-back absolute top-5 lg:top-[3.125rem] left-5 z-20"
+          className="btn-back absolute top-5 lg:top-12.5 left-5 z-20"
         >
           <span className="btn-back-icon" aria-hidden="true">
             <ArrowLeft size={18} />
@@ -453,15 +453,15 @@ export default function LoginPage() {
               {googleSignInEnabled() && (
                 <>
                   <div className="relative flex items-center py-2">
-                    <div className="flex-grow border-t border-slate-200 dark:border-slate-800"></div>
-                    <span className="flex-shrink-0 mx-4 text-sm text-secondary">{t("or")}</span>
-                    <div className="flex-grow border-t border-slate-200 dark:border-slate-800"></div>
+                    <div className="grow border-t border-slate-200 dark:border-slate-800"></div>
+                    <span className="shrink-0 mx-4 text-sm text-secondary">{t("or")}</span>
+                    <div className="grow border-t border-slate-200 dark:border-slate-800"></div>
                   </div>
 
                   {/* Custom Google button — visual layer + invisible GIS overlay */}
                   <div className="relative w-full group cursor-pointer rounded-xl">
                     {/* Visual button — pointer-events: none, overlay captures all clicks */}
-                    <div className="pointer-events-none select-none w-full h-11 flex items-center justify-center gap-3 rounded-xl border border-soft bg-white dark:bg-slate-800/60 text-sm font-semibold text-primary shadow-sm group-hover:bg-slate-50 dark:group-hover:bg-slate-800 group-active:scale-[0.98] transition-all">
+                    <div className="pointer-events-none select-none w-full h-11 flex items-center justify-center gap-3 rounded-xl border border-soft bg-white dark:bg-slate-800/60 text-sm font-semibold text-primary shadow-xs group-hover:bg-slate-50 dark:group-hover:bg-slate-800 group-active:scale-[0.98] transition-all">
                       <svg
                         viewBox="0 0 24 24"
                         width="18"

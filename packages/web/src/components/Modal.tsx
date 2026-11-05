@@ -50,7 +50,7 @@ export default function Modal({
     >
       <div
         aria-hidden
-        className="absolute inset-0 bg-slate-900/45 backdrop-blur-sm animate-grad-fade-up"
+        className="absolute inset-0 bg-slate-900/45 backdrop-blur-xs animate-grad-fade-up"
         onClick={onClose}
       />
       <div
@@ -66,7 +66,7 @@ export default function Modal({
           <button
             type="button"
             onClick={onClose}
-            className="btn-ghost !p-1.5 shrink-0"
+            className="btn-ghost p-1.5! shrink-0"
             aria-label={t("Close")}
           >
             <XIcon size={18} />

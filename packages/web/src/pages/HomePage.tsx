@@ -298,7 +298,7 @@ function MockDashboard() {
                     value={18450}
                     unit="kg"
                     icon={Wheat}
-                    iconBg="bg-gradient-to-br from-emerald-400 to-emerald-600"
+                    iconBg="bg-linear-to-br from-emerald-400 to-emerald-600"
                     delay={300}
                   />
                   <MockStat
@@ -306,7 +306,7 @@ function MockDashboard() {
                     value={9320}
                     unit="kg"
                     icon={Boxes}
-                    iconBg="bg-gradient-to-br from-violet-400 to-violet-600"
+                    iconBg="bg-linear-to-br from-violet-400 to-violet-600"
                     delay={450}
                   />
                   <MockStat
@@ -314,7 +314,7 @@ function MockDashboard() {
                     value={42800}
                     unit="₱"
                     icon={CircleDollarSign}
-                    iconBg="bg-gradient-to-br from-cyan-400 to-cyan-600"
+                    iconBg="bg-linear-to-br from-cyan-400 to-cyan-600"
                     delay={600}
                   />
                   <MockStat
@@ -322,7 +322,7 @@ function MockDashboard() {
                     value={12640}
                     unit="₱"
                     icon={TrendingUp}
-                    iconBg="bg-gradient-to-br from-amber-400 to-amber-600"
+                    iconBg="bg-linear-to-br from-amber-400 to-amber-600"
                     delay={750}
                   />
                 </div>
@@ -402,7 +402,7 @@ function MockDashboard() {
                         </div>
                         <p className="text-[10px] text-secondary truncate flex-1">{a.text}</p>
                         <span
-                          className={`${a.badgeClass} hidden md:inline-flex !text-[9px] !px-1.5 !py-0.5`}
+                          className={`${a.badgeClass} hidden md:inline-flex text-[9px]! px-1.5! py-0.5!`}
                         >
                           {a.badge}
                         </span>
@@ -432,7 +432,7 @@ const FEATURES = [
     desc: t(
       "Record paddy intake from farmers and traders with weights, moisture, and pricing, every kilo accounted for.",
     ),
-    iconBg: "bg-gradient-to-br from-emerald-400 to-emerald-600",
+    iconBg: "bg-linear-to-br from-emerald-400 to-emerald-600",
   },
   {
     icon: Factory,
@@ -440,7 +440,7 @@ const FEATURES = [
     desc: t(
       "Track each milling batch from paddy to rice, with recovery rates and by-products computed automatically.",
     ),
-    iconBg: "bg-gradient-to-br from-violet-400 to-violet-600",
+    iconBg: "bg-linear-to-br from-violet-400 to-violet-600",
   },
   {
     icon: Package,
@@ -448,7 +448,7 @@ const FEATURES = [
     desc: t(
       "Live stock levels for paddy, milled rice, and by-products. Know exactly what's in the warehouse at all times.",
     ),
-    iconBg: "bg-gradient-to-br from-cyan-400 to-cyan-600",
+    iconBg: "bg-linear-to-br from-cyan-400 to-cyan-600",
   },
   {
     icon: ShoppingCart,
@@ -456,7 +456,7 @@ const FEATURES = [
     desc: t(
       "Issue sales, generate delivery records, and follow every dispatch from the mill gate to the customer.",
     ),
-    iconBg: "bg-gradient-to-br from-amber-400 to-amber-600",
+    iconBg: "bg-linear-to-br from-amber-400 to-amber-600",
   },
   {
     icon: Wallet,
@@ -464,7 +464,7 @@ const FEATURES = [
     desc: t(
       "Log operating costs and see revenue, cost of goods, and net profit roll up into a clear monthly P&L.",
     ),
-    iconBg: "bg-gradient-to-br from-rose-400 to-rose-600",
+    iconBg: "bg-linear-to-br from-rose-400 to-rose-600",
   },
   {
     icon: BarChart3,
@@ -472,7 +472,7 @@ const FEATURES = [
     desc: t(
       "Production, sales, and financial reports ready when you need them, no spreadsheets required.",
     ),
-    iconBg: "bg-gradient-to-br from-sky-400 to-sky-600",
+    iconBg: "bg-linear-to-br from-sky-400 to-sky-600",
   },
   {
     icon: Users,
@@ -480,7 +480,7 @@ const FEATURES = [
     desc: t(
       "Give your accountant, cashier, encoder, and operators their own logins with just the access they need.",
     ),
-    iconBg: "bg-gradient-to-br from-indigo-400 to-indigo-600",
+    iconBg: "bg-linear-to-br from-indigo-400 to-indigo-600",
   },
   {
     icon: ShieldCheck,
@@ -488,7 +488,7 @@ const FEATURES = [
     desc: t(
       "Sign in with Google, optional two-factor authentication, and your mill's data kept fully separate.",
     ),
-    iconBg: "bg-gradient-to-br from-teal-400 to-teal-600",
+    iconBg: "bg-linear-to-br from-teal-400 to-teal-600",
   },
 ];
 
@@ -549,7 +549,7 @@ function FeatureCard({ f, index }: { f: (typeof FEATURES)[number]; index: number
       className={`hp-reveal h-full ${inView ? "hp-reveal-in" : ""}`}
       style={{ transitionDelay: `${(index % 4) * 60}ms` }}
     >
-      <div className="card hp-card !p-5 h-full">
+      <div className="card hp-card p-5! h-full">
         <div className={`h-11 w-11 rounded-xl ${f.iconBg} grid place-items-center shadow-md mb-4`}>
           <f.icon size={20} className="text-white" />
         </div>
@@ -616,10 +616,10 @@ export default function HomePage() {
             <span className="text-lg font-bold tracking-tight text-primary">{t("Oraiza")}</span>
           </div>
           <div className="flex items-center gap-2 shrink-0">
-            <Link to="/login" className="btn-secondary !py-2 max-sm:!px-3.5">
+            <Link to="/login" className="btn-secondary py-2! max-sm:px-3.5!">
               {t("Log in")}
             </Link>
-            <Link to="/signup" className="btn-primary !py-2 max-sm:!px-3.5">
+            <Link to="/signup" className="btn-primary py-2! max-sm:px-3.5!">
               {t("Sign up")} <ArrowRight size={16} className="max-sm:hidden" />
             </Link>
           </div>
@@ -629,7 +629,7 @@ export default function HomePage() {
       {/* Hero */}
       <main className="flex-1">
         <section className="mx-auto max-w-6xl px-4 sm:px-6 pt-14 lg:pt-20 pb-16">
-          <div className="grid lg:grid-cols-[1fr_1.25fr] gap-10 items-center [&>*]:min-w-0">
+          <div className="grid lg:grid-cols-[1fr_1.25fr] gap-10 items-center *:min-w-0">
             <div className="animate-grad-fade-up">
               <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full glass text-xs font-bold uppercase tracking-wide text-secondary mb-5">
                 <Sparkles size={12} className="text-emerald-500" />
@@ -647,11 +647,11 @@ export default function HomePage() {
               <div className="mt-8 flex flex-wrap items-center gap-3">
                 <Link
                   to="/signup"
-                  className="btn-primary !px-6 !py-3 text-base max-sm:w-full max-sm:!px-4 max-sm:whitespace-normal max-sm:text-center"
+                  className="btn-primary px-6! py-3! text-base max-sm:w-full max-sm:px-4! max-sm:whitespace-normal max-sm:text-center"
                 >
                   {t("Create your mill's account")} <ArrowRight size={18} />
                 </Link>
-                <Link to="/login" className="btn-secondary !px-6 !py-3 text-base max-sm:w-full">
+                <Link to="/login" className="btn-secondary px-6! py-3! text-base max-sm:w-full">
                   {t("Log in")}
                 </Link>
               </div>
@@ -684,7 +684,7 @@ export default function HomePage() {
         <section className="mx-auto max-w-6xl px-4 sm:px-6 pb-20">
           <Reveal className="relative overflow-hidden rounded-3xl p-10 lg:p-14 text-center">
             <div className="absolute inset-0 bg-grad-brand-anim opacity-95" />
-            <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_rgba(255,255,255,0.2),_transparent_55%)]" />
+            <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,rgba(255,255,255,0.2),transparent_55%)]" />
             <div className="relative text-white">
               <h2 className="text-3xl font-extrabold tracking-tight">
                 {t("Ready to modernize your mill?")}

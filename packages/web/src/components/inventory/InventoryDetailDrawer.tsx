@@ -114,7 +114,7 @@ export default function InventoryDetailDrawer({
         type="button"
         aria-label={t("Close details")}
         onClick={onClose}
-        className="absolute inset-0 bg-slate-900/45 backdrop-blur-sm animate-grad-fade-up"
+        className="absolute inset-0 bg-slate-900/45 backdrop-blur-xs animate-grad-fade-up"
         style={{ animationDuration: "180ms" }}
       />
 
@@ -150,7 +150,7 @@ export default function InventoryDetailDrawer({
             ref={closeBtnRef}
             type="button"
             onClick={onClose}
-            className="btn-ghost !p-1.5 shrink-0"
+            className="btn-ghost p-1.5! shrink-0"
             aria-label={t("Close")}
           >
             <XIcon size={18} />
@@ -160,7 +160,7 @@ export default function InventoryDetailDrawer({
         {/* Body */}
         <div className="flex-1 overflow-y-auto p-5 space-y-4">
           {/* Hero quantity */}
-          <div className="rounded-2xl p-5 bg-gradient-to-br from-slate-50 to-white dark:from-slate-800/60 dark:to-slate-900/40 ring-1 ring-soft">
+          <div className="rounded-2xl p-5 bg-linear-to-br from-slate-50 to-white dark:from-slate-800/60 dark:to-slate-900/40 ring-1 ring-soft">
             <p className="text-[10px] font-bold uppercase tracking-wider text-muted">
               {t("On hand")}
             </p>
@@ -176,7 +176,7 @@ export default function InventoryDetailDrawer({
                 aria-valuenow={Math.round(pct)}
                 aria-valuemin={0}
                 aria-valuemax={100}
-                className={`h-full transition-[width] duration-500 ${split ? "" : `bg-gradient-to-r ${theme.bar}`}`}
+                className={`h-full transition-[width] duration-500 ${split ? "" : `bg-linear-to-r ${theme.bar}`}`}
                 style={{ width: `${Math.max(pct, 1.5)}%` }}
               >
                 {split && <LocationSegments item={item} />}
@@ -240,7 +240,7 @@ export default function InventoryDetailDrawer({
                         <button
                           type="button"
                           onClick={() => onViewInWarehouse(l.branchId)}
-                          className="btn-ghost !p-1.5 shrink-0"
+                          className="btn-ghost p-1.5! shrink-0"
                           aria-label={t("Show {{branchName}} in Warehouse", {
                             branchName: l.branchName,
                           })}
@@ -340,14 +340,14 @@ export default function InventoryDetailDrawer({
                     })
                   : undefined
               }
-              className="btn-primary flex-1 !py-2"
+              className="btn-primary flex-1 py-2!"
             >
               <Warehouse size={15} />
               {t("Open in Warehouse")}
               <ArrowRight size={14} className="ml-0.5" />
             </button>
           )}
-          <button type="button" onClick={onClose} className="btn-secondary !py-2">
+          <button type="button" onClick={onClose} className="btn-secondary py-2!">
             {t("Close")}
           </button>
         </footer>

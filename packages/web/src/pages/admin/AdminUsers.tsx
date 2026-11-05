@@ -124,7 +124,7 @@ export default function AdminUsers() {
                       <button
                         type="button"
                         onClick={() => setTempFor(u)}
-                        className="btn-ghost !px-2 !py-1.5 text-xs"
+                        className="btn-ghost px-2! py-1.5! text-xs"
                         title={t("Give {{username}} a temporary password", {
                           username: u.username,
                         })}
@@ -140,7 +140,7 @@ export default function AdminUsers() {
               ))}
             {!isLoading && filtered.length === 0 && (
               <tr>
-                <td colSpan={COLS.length} className="!py-12 text-center">
+                <td colSpan={COLS.length} className="py-12! text-center">
                   <UsersIcon size={24} className="mx-auto mb-2 text-muted opacity-60" />
                   <p className="text-sm font-medium text-secondary">
                     {search ? t("No users match your search.") : t("No users yet.")}

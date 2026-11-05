@@ -89,7 +89,7 @@ export default function RecordHistory({
               {entry.detail && (
                 <ul className="mt-1.5 space-y-1 text-sm text-primary">
                   {entry.detail.split("\n").map((line, i) => (
-                    <li key={i} className="break-words">
+                    <li key={i} className="wrap-break-word">
                       {line}
                     </li>
                   ))}

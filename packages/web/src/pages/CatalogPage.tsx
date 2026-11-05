@@ -163,7 +163,7 @@ export default function CatalogPage() {
             type="button"
             aria-expanded={showOthers}
             onClick={() => setShowOthers((o) => !o)}
-            className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[0.1em] text-muted hover:text-secondary"
+            className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-muted hover:text-secondary"
           >
             {t("More with other plans")}
             <ChevronDown

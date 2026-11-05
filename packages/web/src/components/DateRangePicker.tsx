@@ -154,7 +154,7 @@ export default function DateRangePicker({ start, end, onChange, className, ...ar
         onClick={() => (open ? close() : openPanel())}
         className={clsx(
           "input flex items-center gap-2 text-left",
-          open && "!border-emerald-500 shadow-[0_0_0_3px_rgba(16,185,129,0.22)]",
+          open && "border-emerald-500! shadow-[0_0_0_3px_rgba(16,185,129,0.22)]",
           className,
         )}
       >
@@ -179,7 +179,7 @@ export default function DateRangePicker({ start, end, onChange, className, ...ar
             id={dialogId}
             role="dialog"
             aria-label={t("Choose dates")}
-            className="fixed z-[70] overflow-y-auto overscroll-contain rounded-xl bg-white p-3 shadow-2xl ring-1 ring-soft animate-panel-in dark:bg-slate-900"
+            className="fixed z-70 overflow-y-auto overscroll-contain rounded-xl bg-white p-3 shadow-2xl ring-1 ring-soft animate-panel-in dark:bg-slate-900"
             style={place}
             onKeyDown={onPanelKeyDown}
           >
@@ -188,7 +188,7 @@ export default function DateRangePicker({ start, end, onChange, className, ...ar
                 type="button"
                 aria-label={t("Previous {{unit}}", { unit: "month" })}
                 onClick={() => setMonth((m) => addMonths(m, -1))}
-                className="btn-ghost !p-1.5"
+                className="btn-ghost p-1.5!"
               >
                 <ChevronLeft size={16} />
               </button>
@@ -197,7 +197,7 @@ export default function DateRangePicker({ start, end, onChange, className, ...ar
                 type="button"
                 aria-label={t("Next {{unit}}", { unit: "month" })}
                 onClick={() => setMonth((m) => addMonths(m, 1))}
-                className="btn-ghost !p-1.5"
+                className="btn-ghost p-1.5!"
               >
                 <ChevronRight size={16} />
               </button>
@@ -232,7 +232,7 @@ export default function DateRangePicker({ start, end, onChange, className, ...ar
                     onClick={() => pick(day)}
                     onMouseEnter={() => setHover(day)}
                     className={clsx(
-                      "h-9 text-sm tabular-nums transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400",
+                      "h-9 text-sm tabular-nums transition-colors focus:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-400",
                       isEnd
                         ? "rounded-lg bg-grad-brand font-bold text-white shadow-grad-glow"
                         : inside

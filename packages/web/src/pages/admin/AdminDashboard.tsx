@@ -41,7 +41,7 @@ function StatCard({
   loading?: boolean;
 }) {
   return (
-    <div className="card !p-5 flex items-start gap-4">
+    <div className="card p-5! flex items-start gap-4">
       <div className={tone === "amber" ? "icon-chip icon-chip-amber" : "icon-chip"}>
         <Icon size={18} />
       </div>
@@ -62,7 +62,7 @@ function StatCard({
 
 function GroupLabel({ children }: { children: React.ReactNode }) {
   return (
-    <p className="text-[11px] font-bold uppercase tracking-[0.1em] text-muted mb-2.5">{children}</p>
+    <p className="text-[11px] font-bold uppercase tracking-widest text-muted mb-2.5">{children}</p>
   );
 }
 
@@ -102,7 +102,7 @@ export default function AdminDashboard() {
       {pendingCount > 0 && (
         <Link
           to="/admin/upgrade-requests"
-          className="card !p-4 flex items-center gap-3 group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400"
+          className="card p-4! flex items-center gap-3 group focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-400"
         >
           <div className="icon-chip icon-chip-amber">
             <ArrowUpCircle size={18} />
@@ -173,7 +173,7 @@ export default function AdminDashboard() {
           />
           <Link
             to="/admin/upgrade-requests"
-            className="rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400"
+            className="rounded-2xl focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-400"
           >
             <StatCard
               label={t("Plan requests")}

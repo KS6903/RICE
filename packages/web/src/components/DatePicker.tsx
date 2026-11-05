@@ -237,7 +237,7 @@ export default function DatePicker({
   const unit = view === "days" ? "month" : view === "months" ? "year" : "years";
 
   const cell =
-    "rounded-lg text-sm tabular-nums transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 disabled:cursor-not-allowed disabled:opacity-30";
+    "rounded-lg text-sm tabular-nums transition-colors focus:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-400 disabled:cursor-not-allowed disabled:opacity-30";
   const idle =
     "text-primary hover:bg-slate-100 dark:hover:bg-slate-700/40 disabled:hover:bg-transparent";
   const chosen = "bg-grad-brand font-bold text-white shadow-grad-glow";
@@ -262,7 +262,7 @@ export default function DatePicker({
         onKeyDown={onTriggerKeyDown}
         className={clsx(
           "input flex items-center gap-2 text-left disabled:cursor-not-allowed disabled:opacity-65",
-          open && "!border-emerald-500 shadow-[0_0_0_3px_rgba(16,185,129,0.22)]",
+          open && "border-emerald-500! shadow-[0_0_0_3px_rgba(16,185,129,0.22)]",
           className,
         )}
       >
@@ -287,7 +287,7 @@ export default function DatePicker({
             id={dialogId}
             role="dialog"
             aria-label={t("Choose a date")}
-            className="fixed z-[70] overflow-y-auto overscroll-contain rounded-xl bg-white p-3 shadow-2xl ring-1 ring-soft animate-panel-in dark:bg-slate-900"
+            className="fixed z-70 overflow-y-auto overscroll-contain rounded-xl bg-white p-3 shadow-2xl ring-1 ring-soft animate-panel-in dark:bg-slate-900"
             style={place}
             onKeyDown={onPanelKeyDown}
           >
@@ -296,7 +296,7 @@ export default function DatePicker({
                 type="button"
                 aria-label={t("Previous {{unit}}", { unit })}
                 onClick={stepBack}
-                className="btn-ghost !p-1.5"
+                className="btn-ghost p-1.5!"
               >
                 <ChevronLeft size={16} />
               </button>
@@ -309,7 +309,7 @@ export default function DatePicker({
                   type="button"
                   aria-label={view === "days" ? t("Choose month and year") : t("Choose year")}
                   onClick={() => setView(view === "days" ? "months" : "years")}
-                  className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-sm font-bold text-primary transition-colors hover:bg-slate-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 dark:hover:bg-slate-700/40"
+                  className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-sm font-bold text-primary transition-colors hover:bg-slate-100 focus:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-400 dark:hover:bg-slate-700/40"
                 >
                   {view === "days" ? format(cursor, "MMMM yyyy") : cursorYear}
                   <ChevronDown size={14} aria-hidden className="text-slate-500" />
@@ -319,7 +319,7 @@ export default function DatePicker({
                 type="button"
                 aria-label={t("Next {{unit}}", { unit })}
                 onClick={stepForward}
-                className="btn-ghost !p-1.5"
+                className="btn-ghost p-1.5!"
               >
                 <ChevronRight size={16} />
               </button>
@@ -364,7 +364,7 @@ export default function DatePicker({
                               ? chosen
                               : inMonth
                                 ? idle
-                                : clsx(idle, "!text-muted opacity-60"),
+                                : clsx(idle, "text-muted! opacity-60"),
                             isToday && !isSelected && "ring-1 ring-emerald-400",
                           )}
                         >

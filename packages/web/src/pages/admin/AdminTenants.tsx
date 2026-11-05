@@ -74,7 +74,7 @@ function subStatusPill(status: string | null) {
             : "bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200";
   return (
     <span
-      className={`text-[10px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded ${cls}`}
+      className={`text-[10px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded-sm ${cls}`}
     >
       {status}
     </span>
@@ -255,7 +255,7 @@ export default function AdminTenants() {
           <button
             onClick={() => sweep.mutate()}
             disabled={sweep.isPending}
-            className="btn-secondary !py-2 !text-sm"
+            className="btn-secondary py-2! text-sm!"
             title={t("Mark subscriptions whose expiry has passed as expired")}
           >
             <ShieldOff size={14} />
@@ -277,7 +277,7 @@ export default function AdminTenants() {
       </div>
 
       {missingCount > 0 && (
-        <div className="card !p-4 flex items-center gap-3 border-amber-300/60 dark:border-amber-700/50">
+        <div className="card p-4! flex items-center gap-3 border-amber-300/60 dark:border-amber-700/50">
           <div className="icon-chip icon-chip-amber">
             <AlertCircle size={18} />
           </div>
@@ -328,7 +328,7 @@ export default function AdminTenants() {
               ))}
             {!isLoading && active.length === 0 && (
               <tr>
-                <td colSpan={COLS.length} className="!py-12 text-center">
+                <td colSpan={COLS.length} className="py-12! text-center">
                   <Search size={24} className="mx-auto mb-2 text-muted opacity-60" />
                   <p className="text-sm font-medium text-secondary">
                     {search

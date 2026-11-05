@@ -84,12 +84,12 @@ export default function TemporaryPasswordDialog({
     : "";
 
   return createPortal(
-    <div className="dialog-viewport fixed inset-0 z-[80] grid place-items-center bg-black/40 p-4">
+    <div className="dialog-viewport fixed inset-0 z-80 grid place-items-center bg-black/40 p-4">
       <div
         role="dialog"
         aria-modal="true"
         aria-labelledby="temp-password-title"
-        className="dialog-panel card w-full max-w-md overflow-y-auto space-y-4 !bg-white dark:!bg-slate-900"
+        className="dialog-panel card w-full max-w-md overflow-y-auto space-y-4 bg-white! dark:bg-slate-900!"
       >
         <div className="flex items-center gap-3">
           <div className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-grad-brand shadow-grad-glow">
@@ -145,7 +145,7 @@ export default function TemporaryPasswordDialog({
               <button
                 type="button"
                 onClick={copy}
-                className="btn-secondary !px-3"
+                className="btn-secondary px-3!"
                 aria-label={t("Copy the temporary password")}
               >
                 {copied ? <Check size={16} /> : <Copy size={16} />}

@@ -14,7 +14,7 @@ export default function UpgradeRequired({
   const plan = useCurrentPlan();
   return (
     <div className="flex items-center justify-center py-16">
-      <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-amber-200 dark:border-amber-800 max-w-md w-full p-8 text-center">
+      <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xs border border-amber-200 dark:border-amber-800 max-w-md w-full p-8 text-center">
         <div className="w-14 h-14 mx-auto bg-amber-100 dark:bg-amber-900/40 rounded-full flex items-center justify-center mb-4">
           <Lock size={24} className="text-amber-600 dark:text-amber-400" />
         </div>

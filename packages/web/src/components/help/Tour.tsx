@@ -140,7 +140,7 @@ function TourRun() {
   // Portalled so the overlay and the measured (viewport) coordinates line up
   // even when an ancestor is transformed.
   return createPortal(
-    <div className="fixed inset-0 z-[70]">
+    <div className="fixed inset-0 z-70">
       {/* Swallows clicks so a stray one doesn't wander off mid-tour. */}
       <div className="absolute inset-0" aria-hidden />
       {rect ? (

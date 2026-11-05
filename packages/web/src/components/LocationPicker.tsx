@@ -173,7 +173,7 @@ export default function LocationPicker() {
                   <button
                     type="button"
                     onClick={() => remove.mutate(s.id)}
-                    className="shrink-0 p-1 rounded text-slate-400 hover:text-rose-500 hover:bg-rose-500/10"
+                    className="shrink-0 p-1 rounded-sm text-slate-400 hover:text-rose-500 hover:bg-rose-500/10"
                     title={t("Remove favorite")}
                     data-testid={`delete-${s.id}`}
                     aria-label={t("Remove {{label}}", { label: s.label })}
@@ -192,7 +192,7 @@ export default function LocationPicker() {
                   className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted pointer-events-none"
                 />
                 <input
-                  className="input !py-1.5 !pl-7 !pr-7 text-sm w-full"
+                  className="input py-1.5! pl-7! pr-7! text-sm w-full"
                   placeholder={t("Search a city or place…")}
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
@@ -204,7 +204,7 @@ export default function LocationPicker() {
                   <button
                     type="button"
                     onClick={() => setQuery("")}
-                    className="absolute right-1.5 top-1/2 -translate-y-1/2 text-muted hover:text-primary p-0.5 rounded"
+                    className="absolute right-1.5 top-1/2 -translate-y-1/2 text-muted hover:text-primary p-0.5 rounded-sm"
                     aria-label={t("Clear search")}
                   >
                     <XIcon size={12} />

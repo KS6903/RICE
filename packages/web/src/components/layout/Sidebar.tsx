@@ -112,7 +112,7 @@ function OtherPlans({ items, userId }: { items: NavEntry[]; userId: string }) {
         onClick={toggle}
         aria-expanded={open}
         aria-controls={listId}
-        className="w-full flex items-center gap-2 px-3 py-1.5 rounded-lg text-[11px] font-bold uppercase tracking-[0.1em] text-muted hover:text-secondary"
+        className="w-full flex items-center gap-2 px-3 py-1.5 rounded-lg text-[11px] font-bold uppercase tracking-widest text-muted hover:text-secondary"
       >
         <span className="flex-1 text-left">{t("More with other plans")}</span>
         <ChevronDown
@@ -200,7 +200,7 @@ export default function Sidebar({ open, onClose }: { open: boolean; onClose: () 
         {visibleGroups.map((group) => (
           <div key={group.title ?? "home"} className="space-y-1">
             {group.title && (
-              <p className="px-3 pb-1 text-[11px] font-bold uppercase tracking-[0.1em] text-muted">
+              <p className="px-3 pb-1 text-[11px] font-bold uppercase tracking-widest text-muted">
                 {group.title}
               </p>
             )}

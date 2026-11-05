@@ -337,7 +337,7 @@ export default function RicePurchasesPage() {
                       pulses until it has been tried once. A finger gets a 44px target. */}
                   <button
                     type="button"
-                    className="-mx-2 inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-left font-medium hover:bg-gray-200/70 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-500 dark:hover:bg-slate-700/60 [@media(pointer:coarse)]:min-h-[44px]"
+                    className="-mx-2 inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-left font-medium hover:bg-gray-200/70 focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-emerald-500 dark:hover:bg-slate-700/60 pointer-coarse:min-h-[44px]"
                     title={t("Tap to count in {{kg}} kg sacks", { kg: sack.other })}
                     onClick={sack.toggle}
                   >
@@ -373,9 +373,7 @@ export default function RicePurchasesPage() {
                     <td className={CELL}>
                       {r.variety?.code || "—"}
                       {phone && under && (
-                        <span className="mt-0.5 block max-w-[12rem] text-xs text-muted">
-                          {under}
-                        </span>
+                        <span className="mt-0.5 block max-w-48 text-xs text-muted">{under}</span>
                       )}
                     </td>
                     {!phone && (

@@ -138,7 +138,7 @@ export default function EditExpenseDialog({
         <label className="block">
           <span className="block mb-1 text-xs font-medium text-secondary">{t("Description")}</span>
           <textarea
-            className="input min-h-[4rem]"
+            className="input min-h-16"
             aria-label={t("Description")}
             value={description}
             onChange={(e) => setDescription(e.target.value)}

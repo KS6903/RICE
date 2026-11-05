@@ -131,7 +131,7 @@ export default function SettingsPage() {
                   onClick={() => setTab(key)}
                   className={`group relative flex items-center gap-3 px-3.5 py-2.5 text-sm font-semibold rounded-xl transition-all whitespace-nowrap ${
                     active
-                      ? "glass text-primary shadow-sm"
+                      ? "glass text-primary shadow-xs"
                       : "text-secondary hover:text-primary hover:bg-slate-100/60 dark:hover:bg-slate-600/15"
                   }`}
                 >
@@ -241,7 +241,7 @@ function ResolvedNotice({ request, onDone }: { request: UpgradeRequest; onDone: 
 
   return (
     <div
-      className={`flex items-center gap-3 rounded-2xl px-4 py-3 shadow-sm border transition-all duration-500 ${
+      className={`flex items-center gap-3 rounded-2xl px-4 py-3 shadow-xs border transition-all duration-500 ${
         visible ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-1"
       } ${
         approved
@@ -352,7 +352,7 @@ function BillingTab() {
   return (
     <div className="space-y-5">
       <div
-        className={`relative overflow-hidden rounded-2xl bg-gradient-to-br ${cardGradient} p-6 sm:p-8 text-white shadow-lg`}
+        className={`relative overflow-hidden rounded-2xl bg-linear-to-br ${cardGradient} p-6 sm:p-8 text-white shadow-lg`}
       >
         <div
           className="absolute -top-16 -right-16 w-64 h-64 bg-white dark:bg-slate-800 opacity-10 rounded-full blur-3xl pointer-events-none"
@@ -370,7 +370,7 @@ function BillingTab() {
             </p>
             <div className="flex items-baseline gap-3 mt-1.5 flex-wrap">
               <h3 className="text-3xl font-extrabold tracking-tight">{plan.name}</h3>
-              <span className="text-xs font-bold uppercase tracking-wide px-2.5 py-1 rounded-full bg-white/20 ring-1 ring-white/30 backdrop-blur-sm">
+              <span className="text-xs font-bold uppercase tracking-wide px-2.5 py-1 rounded-full bg-white/20 ring-1 ring-white/30 backdrop-blur-xs">
                 {plan.code}
               </span>
             </div>
@@ -453,7 +453,7 @@ function BillingTab() {
           const isPlanChange = pendingRequest.request_type === "change";
           return (
             <div className="rounded-2xl overflow-hidden shadow-md">
-              <div className="bg-gradient-to-r from-indigo-500 to-violet-500 px-4 py-2.5 flex items-center justify-between gap-3">
+              <div className="bg-linear-to-r from-indigo-500 to-violet-500 px-4 py-2.5 flex items-center justify-between gap-3">
                 <div className="flex items-center gap-2">
                   <Clock size={15} className="text-white" />
                   <span className="text-white text-xs font-bold uppercase tracking-wider">
@@ -483,7 +483,7 @@ function BillingTab() {
                       : tx("Upgrade to {{plan}}", { plan });
                   })()}
                   {pendingRequest.billing_interval === "annual" && (
-                    <span className="badge-green ml-2 !text-[10px] align-middle">
+                    <span className="badge-green ml-2 text-[10px]! align-middle">
                       {t("Annual")}
                     </span>
                   )}
@@ -557,12 +557,12 @@ function BillingTab() {
               enterprise: "border-amber-500 ring-2 ring-amber-400/25",
             };
             const cardBg: Record<string, string> = {
-              free: "bg-gradient-to-br from-sky-50 to-white dark:from-sky-950/30 dark:to-slate-800/80",
+              free: "bg-linear-to-br from-sky-50 to-white dark:from-sky-950/30 dark:to-slate-800/80",
               basic:
-                "bg-gradient-to-br from-cyan-50 to-white dark:from-cyan-950/30 dark:to-slate-800/80",
-              pro: "bg-gradient-to-br from-violet-50 to-white dark:from-violet-950/30 dark:to-slate-800/80",
+                "bg-linear-to-br from-cyan-50 to-white dark:from-cyan-950/30 dark:to-slate-800/80",
+              pro: "bg-linear-to-br from-violet-50 to-white dark:from-violet-950/30 dark:to-slate-800/80",
               enterprise:
-                "bg-gradient-to-br from-amber-50 to-white dark:from-amber-950/30 dark:to-slate-800/80",
+                "bg-linear-to-br from-amber-50 to-white dark:from-amber-950/30 dark:to-slate-800/80",
             };
             const ring = isCurrent
               ? (currentBorder[p.code] ?? "border-emerald-500 ring-2 ring-emerald-400/25")
@@ -770,7 +770,7 @@ function CompanyTab() {
           <label className="flex items-center gap-2.5 text-sm font-medium text-secondary cursor-pointer select-none">
             <input
               type="checkbox"
-              className="h-4 w-4 rounded border-soft accent-emerald-500 cursor-pointer"
+              className="h-4 w-4 rounded-sm border-soft accent-emerald-500 cursor-pointer"
               checked={!!form.is_multi_branch}
               disabled={readOnly}
               onChange={(e) => setForm((f: any) => ({ ...f, is_multi_branch: e.target.checked }))}
@@ -907,7 +907,7 @@ function BranchesTab() {
           <div className="flex items-center gap-2">
             <button
               onClick={() => setSelected(new Set())}
-              className="btn-secondary !py-1.5 !px-3 text-sm"
+              className="btn-secondary py-1.5! px-3! text-sm"
             >
               {t("Clear")}
             </button>
@@ -936,7 +936,7 @@ function BranchesTab() {
             type="button"
             aria-label={t("Dismiss")}
             onClick={() => setSkippedReasons([])}
-            className="btn-ghost !p-1.5 shrink-0"
+            className="btn-ghost p-1.5! shrink-0"
           >
             <XIcon size={14} />
           </button>
@@ -984,7 +984,7 @@ function BranchesTab() {
           <label className="flex items-center gap-2.5 text-sm font-medium text-secondary cursor-pointer select-none">
             <input
               type="checkbox"
-              className="h-4 w-4 rounded border-soft accent-emerald-500 cursor-pointer"
+              className="h-4 w-4 rounded-sm border-soft accent-emerald-500 cursor-pointer"
               checked={form.is_main_branch}
               onChange={(e) => setForm((f) => ({ ...f, is_main_branch: e.target.checked }))}
             />
@@ -1012,13 +1012,13 @@ function BranchesTab() {
 
       <div className="card overflow-hidden p-0">
         <table className="w-full text-sm">
-          <thead className="bg-gradient-to-r from-emerald-50/80 via-cyan-50/60 to-violet-50/80 dark:from-emerald-900/20 dark:via-cyan-900/10 dark:to-violet-900/20 border-b border-soft">
+          <thead className="bg-linear-to-r from-emerald-50/80 via-cyan-50/60 to-violet-50/80 dark:from-emerald-900/20 dark:via-cyan-900/10 dark:to-violet-900/20 border-b border-soft">
             <tr>
               <th className={`${TABLE_HEAD} w-10`}>
                 <input
                   type="checkbox"
                   aria-label={t("Select all branches")}
-                  className="h-4 w-4 rounded border-soft accent-rose-500 cursor-pointer disabled:opacity-40"
+                  className="h-4 w-4 rounded-sm border-soft accent-rose-500 cursor-pointer disabled:opacity-40"
                   disabled={readOnly || selectable.length === 0}
                   checked={selectable.length > 0 && selected.size === selectable.length}
                   ref={(el) => {
@@ -1044,7 +1044,7 @@ function BranchesTab() {
                     <input
                       type="checkbox"
                       aria-label={t("Select {{name}}", { name: b.name })}
-                      className="h-4 w-4 rounded border-soft accent-rose-500 cursor-pointer disabled:opacity-30"
+                      className="h-4 w-4 rounded-sm border-soft accent-rose-500 cursor-pointer disabled:opacity-30"
                       disabled={readOnly || b.is_main_branch}
                       title={b.is_main_branch ? t("The main branch can't be deleted") : undefined}
                       checked={selected.has(b.id)}
@@ -1055,7 +1055,7 @@ function BranchesTab() {
                     {isEditing ? (
                       <input
                         autoFocus
-                        className="input !py-1 text-sm w-full max-w-xs"
+                        className="input py-1! text-sm w-full max-w-xs"
                         value={editValues.name}
                         onChange={(e) => setEditValues((v) => ({ ...v, name: e.target.value }))}
                         onKeyDown={(e) => {
@@ -1075,7 +1075,7 @@ function BranchesTab() {
                   <td className="px-4 py-3 text-secondary">
                     {isEditing ? (
                       <input
-                        className="input !py-1 text-sm w-full max-w-xs"
+                        className="input py-1! text-sm w-full max-w-xs"
                         placeholder={t("Address")}
                         value={editValues.address}
                         onChange={(e) => setEditValues((v) => ({ ...v, address: e.target.value }))}
@@ -1502,9 +1502,9 @@ function ThemePreview({ dark }: { dark: boolean }) {
     >
       <div className={`w-6 border-r ${panel}`} />
       <div className="flex-1 space-y-1.5 p-2">
-        <div className={`h-2 w-1/2 rounded ${line}`} />
+        <div className={`h-2 w-1/2 rounded-sm ${line}`} />
         <div className={`h-8 rounded-md border ${panel}`} />
-        <div className="h-2 w-1/3 rounded bg-emerald-500" />
+        <div className="h-2 w-1/3 rounded-sm bg-emerald-500" />
       </div>
     </div>
   );
@@ -1527,7 +1527,7 @@ function AppearanceTab() {
               return (
                 <label
                   key={value}
-                  className={`cursor-pointer rounded-xl border-2 p-3 transition-colors has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-emerald-500/40 ${
+                  className={`cursor-pointer rounded-xl border-2 p-3 transition-colors has-focus-visible:ring-2 has-focus-visible:ring-emerald-500/40 ${
                     active
                       ? "border-emerald-500"
                       : "border-slate-200 hover:border-slate-300 dark:border-slate-700 dark:hover:border-slate-500"

@@ -80,7 +80,7 @@ export default function SubscriptionGuard({ children }: { children: React.ReactN
 
   return (
     <div className="flex items-center justify-center min-h-[60vh] p-6">
-      <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-rose-200 dark:border-rose-800 max-w-lg w-full p-8 text-center">
+      <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xs border border-rose-200 dark:border-rose-800 max-w-lg w-full p-8 text-center">
         <div className="w-14 h-14 mx-auto bg-rose-100 dark:bg-rose-900/40 rounded-full flex items-center justify-center mb-4">
           <AlertOctagon size={26} className="text-rose-600 dark:text-rose-400" />
         </div>

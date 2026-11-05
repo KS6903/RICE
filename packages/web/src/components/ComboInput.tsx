@@ -156,7 +156,7 @@ export default function ComboInput({
             ref={listRef}
             id={listId}
             role="listbox"
-            className="fixed z-[70] max-h-56 overflow-y-auto rounded-xl bg-white p-1 shadow-2xl ring-1 ring-soft outline-none animate-panel-in dark:bg-slate-900"
+            className="fixed z-70 max-h-56 overflow-y-auto rounded-xl bg-white p-1 shadow-2xl ring-1 ring-soft outline-hidden animate-panel-in dark:bg-slate-900"
             style={place ?? undefined}
           >
             {matches.map((suggestion, i) => (

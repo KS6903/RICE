@@ -234,7 +234,7 @@ export default function InventoryPage() {
                   onSelect={pickBranch}
                 />
                 <Select
-                  className="!w-auto min-w-[13rem]"
+                  className="w-auto! min-w-52"
                   aria-label={t("Sort inventory by")}
                   value={sort}
                   onChange={(v) => isInventorySort(v) && setSort(v)}
@@ -306,7 +306,7 @@ export default function InventoryPage() {
         {/* The list views wait for all three kinds of stock: until then a page that
             is only loading would say the inventory is empty. */}
         {stockLoading && view !== "warehouse" && !counting ? (
-          <div className="card !p-0">
+          <div className="card p-0!">
             <LoadingRows rows={5} />
           </div>
         ) : (
@@ -556,7 +556,7 @@ function SpreadsheetView({ items }: { items: UnifiedItem[] }) {
   );
 
   return (
-    <div className="card !p-0 overflow-hidden">
+    <div className="card p-0! overflow-hidden">
       <div className="p-4 border-b border-slate-200 dark:border-slate-700 flex items-center gap-2">
         <Search size={15} className="text-muted" />
         <input
@@ -715,7 +715,7 @@ function CardsView({
               // One row per kind: the cards sit side by side and the row scrolls sideways.
               <div
                 data-testid={`cards-row-${type}`}
-                className="-mx-1 flex snap-x snap-proximity gap-4 overflow-x-auto px-1 pb-3 pt-1 [scrollbar-width:thin]"
+                className="-mx-1 flex snap-x snap-proximity gap-4 overflow-x-auto px-1 pb-3 pt-1 scrollbar-thin"
               >
                 {list.map((i, idx) => {
                   const pct = totalKg > 0 ? (i.quantity_kg / totalKg) * 100 : 0;
@@ -727,7 +727,7 @@ function CardsView({
                       type="button"
                       data-testid="inventory-card"
                       onClick={() => onSelect(i)}
-                      className={`group card !p-5 w-64 shrink-0 snap-start ring-1 ${c.ring} text-left cursor-pointer transition-transform duration-150 hover:-translate-y-0.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 sm:w-72 ${isStaggered ? "animate-grad-fade-up" : ""}`}
+                      className={`group card p-5! w-64 shrink-0 snap-start ring-1 ${c.ring} text-left cursor-pointer transition-transform duration-150 hover:-translate-y-0.5 focus:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-400 sm:w-72 ${isStaggered ? "animate-grad-fade-up" : ""}`}
                       style={isStaggered ? { animationDelay: `${idx * 30}ms` } : undefined}
                     >
                       {/* Header: dot + type label, pct chip */}
@@ -781,7 +781,7 @@ function CardsView({
                           aria-valuemin={0}
                           aria-valuemax={100}
                           aria-label={t("{{pct}}% of total stock", { pct: pct.toFixed(1) })}
-                          className={`h-full transition-[width] duration-500 ${isSplit(i) ? "" : `bg-gradient-to-r ${grad}`}`}
+                          className={`h-full transition-[width] duration-500 ${isSplit(i) ? "" : `bg-linear-to-r ${grad}`}`}
                           style={{ width: `${Math.max(pct, 1.5)}%` }}
                         >
                           {isSplit(i) && <LocationSegments item={i} />}
@@ -816,9 +816,9 @@ function CardsView({
 
 /* ─── 4. BINS ─── horizontal bar chart, items as labeled bars */
 const SECTION_UNDERLINE: Record<UnifiedItem["type"], string> = {
-  palay: "bg-gradient-to-r from-amber-500 via-orange-400 to-transparent",
-  milled: "bg-gradient-to-r from-emerald-500 via-teal-400 to-transparent",
-  byproduct: "bg-gradient-to-r from-slate-500 via-slate-400 to-transparent",
+  palay: "bg-linear-to-r from-amber-500 via-orange-400 to-transparent",
+  milled: "bg-linear-to-r from-emerald-500 via-teal-400 to-transparent",
+  byproduct: "bg-linear-to-r from-slate-500 via-slate-400 to-transparent",
 };
 
 const SECTION_EMPTY: Record<UnifiedItem["type"], string> = {
@@ -883,7 +883,7 @@ function BinsView({
                       type="button"
                       data-testid="inventory-bin-row"
                       onClick={() => onSelect(i)}
-                      className="group block w-full text-left rounded-lg px-2 -mx-2 py-2 transition-colors hover:bg-slate-100/60 dark:hover:bg-slate-800/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400"
+                      className="group block w-full text-left rounded-lg px-2 -mx-2 py-2 transition-colors hover:bg-slate-100/60 dark:hover:bg-slate-800/40 focus:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-400"
                     >
                       <div className="flex items-end justify-between gap-3 mb-1.5">
                         <div className="min-w-0">
@@ -892,11 +892,11 @@ function BinsView({
                           </span>
                           <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
                             <span
-                              className={`inline-flex items-center text-[10px] font-semibold px-1.5 py-0.5 rounded ${c.fill} ${c.text}`}
+                              className={`inline-flex items-center text-[10px] font-semibold px-1.5 py-0.5 rounded-sm ${c.fill} ${c.text}`}
                             >
                               {i.grade}
                             </span>
-                            <span className="inline-flex items-center gap-1 text-[10px] font-medium text-muted bg-slate-100 dark:bg-slate-800/60 px-1.5 py-0.5 rounded">
+                            <span className="inline-flex items-center gap-1 text-[10px] font-medium text-muted bg-slate-100 dark:bg-slate-800/60 px-1.5 py-0.5 rounded-sm">
                               <Building2 size={9} /> {i.branchName}
                             </span>
                           </div>
@@ -920,7 +920,7 @@ function BinsView({
                           aria-valuenow={Math.round(sectionPct)}
                           aria-valuemin={0}
                           aria-valuemax={100}
-                          className={`h-full transition-[width,filter] duration-500 group-hover:brightness-110 ${isSplit(i) ? "" : `bg-gradient-to-r ${grad}`}`}
+                          className={`h-full transition-[width,filter] duration-500 group-hover:brightness-110 ${isSplit(i) ? "" : `bg-linear-to-r ${grad}`}`}
                           style={{ width: `${Math.max(w, 2)}%` }}
                         >
                           {isSplit(i) && <LocationSegments item={i} />}
@@ -942,8 +942,8 @@ function BinsView({
 /* ─── 5. WAREHOUSE ─── components/warehouse/NewWarehouseView; this is its plan upsell */
 export function CanvaUpsellCard() {
   return (
-    <div className="rounded-2xl overflow-hidden ring-1 ring-slate-200 dark:ring-slate-700 bg-gradient-to-br from-indigo-50 via-violet-50 to-fuchsia-50 dark:from-indigo-950/40 dark:via-violet-950/30 dark:to-fuchsia-950/30 p-8 text-center">
-      <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-white/80 dark:bg-slate-800/80 shadow-sm ring-1 ring-slate-200 dark:ring-slate-700 mb-4">
+    <div className="rounded-2xl overflow-hidden ring-1 ring-slate-200 dark:ring-slate-700 bg-linear-to-br from-indigo-50 via-violet-50 to-fuchsia-50 dark:from-indigo-950/40 dark:via-violet-950/30 dark:to-fuchsia-950/30 p-8 text-center">
+      <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-white/80 dark:bg-slate-800/80 shadow-xs ring-1 ring-slate-200 dark:ring-slate-700 mb-4">
         <Lock size={22} className="text-indigo-500" />
       </div>
       <h3 className="text-xl font-bold text-primary mb-1.5">

@@ -141,7 +141,7 @@ export default function WarehouseStrip({
         >
           <input
             autoFocus
-            className="input !py-1 !px-2 text-sm"
+            className="input py-1! px-2! text-sm"
             aria-label={t("Warehouse name")}
             value={renameValue}
             onChange={(e) => setRenameValue(e.target.value)}
@@ -177,7 +177,7 @@ export default function WarehouseStrip({
           >
             <input
               autoFocus
-              className="input !py-1 !px-2 text-sm"
+              className="input py-1! px-2! text-sm"
               aria-label={t("Warehouse name")}
               placeholder={t("Warehouse {{number}} - {{branch}}", {
                 number: warehouses.length + 1,

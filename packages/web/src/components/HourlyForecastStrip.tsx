@@ -25,7 +25,7 @@ export default function HourlyForecastStrip({ hourly }: { hourly: HourlyForecast
         return (
           <div
             key={h.time}
-            className="shrink-0 w-[4.5rem] rounded-2xl ring-1 ring-soft bg-white/50 dark:bg-slate-800/50 px-2 py-3 flex flex-col items-center gap-1.5"
+            className="shrink-0 w-18 rounded-2xl ring-1 ring-soft bg-white/50 dark:bg-slate-800/50 px-2 py-3 flex flex-col items-center gap-1.5"
             title={conditionText(h.condition_code, h.condition)}
           >
             <span className="text-[11px] font-semibold text-muted whitespace-nowrap">

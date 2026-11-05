@@ -198,7 +198,7 @@ function OrdersTab() {
           {deliverError}
         </div>
       )}
-      <div className="card !p-0 overflow-hidden">
+      <div className="card p-0! overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm" data-testid="dispatch-orders-table">
             <thead className="bg-slate-50 dark:bg-slate-800/60 border-b border-slate-200 dark:border-slate-700">
@@ -435,7 +435,7 @@ function AssignCourierModal({ order, onClose }: { order: DispatchOrder; onClose:
       <button
         type="button"
         aria-label={t("Close")}
-        className="absolute inset-0 bg-slate-900/45 backdrop-blur-sm"
+        className="absolute inset-0 bg-slate-900/45 backdrop-blur-xs"
         onClick={onClose}
       />
       <div
@@ -456,7 +456,7 @@ function AssignCourierModal({ order, onClose }: { order: DispatchOrder; onClose:
             type="button"
             aria-label={t("Close")}
             onClick={onClose}
-            className="btn-ghost !p-1.5"
+            className="btn-ghost p-1.5!"
           >
             <XIcon size={16} />
           </button>
@@ -473,9 +473,9 @@ function AssignCourierModal({ order, onClose }: { order: DispatchOrder; onClose:
                 aria-checked={on}
                 data-testid={`courier-${value}`}
                 onClick={() => setChoice(value)}
-                className={`flex items-start gap-3 rounded-xl px-3.5 py-3 text-left ring-1 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 ${
+                className={`flex items-start gap-3 rounded-xl px-3.5 py-3 text-left ring-1 transition-all focus:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-400 ${
                   on
-                    ? "bg-emerald-500/10 ring-emerald-400 shadow-sm"
+                    ? "bg-emerald-500/10 ring-emerald-400 shadow-xs"
                     : "ring-soft hover:ring-emerald-300 hover:bg-slate-50/60 dark:hover:bg-slate-700/30"
                 }`}
               >
@@ -604,7 +604,7 @@ function AssignCourierModal({ order, onClose }: { order: DispatchOrder; onClose:
             )}
           </div>
           <div className="flex items-center gap-2">
-            <button type="button" onClick={onClose} className="btn-secondary !py-1.5 !px-3 text-sm">
+            <button type="button" onClick={onClose} className="btn-secondary py-1.5! px-3! text-sm">
               {t("Cancel")}
             </button>
             <button
@@ -615,7 +615,7 @@ function AssignCourierModal({ order, onClose }: { order: DispatchOrder; onClose:
               title={
                 ready || !choice ? undefined : t("Enter the plate number and the driver's name")
               }
-              className="btn-primary !py-1.5 !px-3 text-sm disabled:opacity-50"
+              className="btn-primary py-1.5! px-3! text-sm disabled:opacity-50"
             >
               {assign.isPending ? t("Saving…") : t("Save")}
             </button>
@@ -704,7 +704,7 @@ function TripsTab() {
           </p>
         </div>
       ) : (
-        <div className="card !p-0 overflow-hidden">
+        <div className="card p-0! overflow-hidden">
           <table className="w-full text-sm">
             <thead className="bg-slate-50 dark:bg-slate-800/60 border-b border-slate-200 dark:border-slate-700">
               <tr>
@@ -911,7 +911,7 @@ function TripForm({
         <button
           type="button"
           onClick={onClose}
-          className="btn-ghost !p-1.5"
+          className="btn-ghost p-1.5!"
           aria-label={t("Close")}
         >
           <XIcon size={16} />
@@ -1058,7 +1058,7 @@ function FleetTab() {
             onClick={() => setSub(k)}
             className={`px-3 py-1.5 rounded-md text-xs font-semibold capitalize transition-all ${
               sub === k
-                ? "bg-white dark:bg-slate-900 text-primary shadow-sm"
+                ? "bg-white dark:bg-slate-900 text-primary shadow-xs"
                 : "text-secondary hover:text-primary"
             }`}
           >
@@ -1103,7 +1103,7 @@ export function TrucksPanel() {
   return (
     <div className="space-y-4">
       {error && (
-        <div className="card !py-3 bg-rose-50 dark:bg-rose-950/30 ring-1 ring-rose-200 flex items-center gap-2 text-sm">
+        <div className="card py-3! bg-rose-50 dark:bg-rose-950/30 ring-1 ring-rose-200 flex items-center gap-2 text-sm">
           <AlertCircle size={14} className="text-rose-600 dark:text-rose-400" />
           <span className="text-rose-900 dark:text-rose-100">{error}</span>
         </div>
@@ -1140,7 +1140,7 @@ export function TrucksPanel() {
           setError={setError}
         />
       )}
-      <div className="card !p-0 overflow-hidden">
+      <div className="card p-0! overflow-hidden">
         <table className="w-full text-sm">
           <thead className="bg-slate-50 dark:bg-slate-800/60 border-b border-slate-200 dark:border-slate-700">
             <tr>
@@ -1282,7 +1282,7 @@ function TruckForm({
         <button
           type="button"
           onClick={onClose}
-          className="btn-ghost !p-1.5"
+          className="btn-ghost p-1.5!"
           aria-label={t("Close")}
         >
           <XIcon size={16} />
@@ -1381,7 +1381,7 @@ export function DriversPanel() {
   return (
     <div className="space-y-4">
       {error && (
-        <div className="card !py-3 bg-rose-50 dark:bg-rose-950/30 ring-1 ring-rose-200 flex items-center gap-2 text-sm">
+        <div className="card py-3! bg-rose-50 dark:bg-rose-950/30 ring-1 ring-rose-200 flex items-center gap-2 text-sm">
           <AlertCircle size={14} className="text-rose-600 dark:text-rose-400" />
           <span className="text-rose-900 dark:text-rose-100">{error}</span>
         </div>
@@ -1417,7 +1417,7 @@ export function DriversPanel() {
           setError={setError}
         />
       )}
-      <div className="card !p-0 overflow-hidden">
+      <div className="card p-0! overflow-hidden">
         <table className="w-full text-sm">
           <thead className="bg-slate-50 dark:bg-slate-800/60 border-b border-slate-200 dark:border-slate-700">
             <tr>
@@ -1460,7 +1460,7 @@ export function DriversPanel() {
                   </td>
                   <td className="px-4 py-3">
                     <span
-                      className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded ${d.is_payroll ? "bg-violet-100 text-violet-800 dark:bg-violet-950/40 dark:text-violet-200" : "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300"}`}
+                      className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-sm ${d.is_payroll ? "bg-violet-100 text-violet-800 dark:bg-violet-950/40 dark:text-violet-200" : "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300"}`}
                     >
                       {d.is_payroll ? t("Payroll") : t("Independent")}
                     </span>
@@ -1569,7 +1569,7 @@ function DriverForm({
         <button
           type="button"
           onClick={onClose}
-          className="btn-ghost !p-1.5"
+          className="btn-ghost p-1.5!"
           aria-label={t("Close")}
         >
           <XIcon size={16} />
@@ -1592,7 +1592,7 @@ function DriverForm({
               onClick={() => setIsPayroll(val)}
               className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${
                 isPayroll === val
-                  ? "bg-white dark:bg-slate-900 text-primary shadow-sm"
+                  ? "bg-white dark:bg-slate-900 text-primary shadow-xs"
                   : "text-secondary hover:text-primary"
               }`}
             >

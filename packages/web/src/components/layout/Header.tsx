@@ -91,7 +91,7 @@ export default function Header({ menuOpen, onMenu }: { menuOpen: boolean; onMenu
   return (
     <header className="app-header min-h-16 glass-strong border-b border-soft flex flex-wrap sm:flex-nowrap items-center justify-between gap-2 px-3 pb-2 sm:px-6 shrink-0 relative z-10">
       <NavDrawerButton open={menuOpen} onOpen={onMenu} />
-      <BranchPicker className="order-last w-full sm:order-none sm:flex-1 sm:max-w-[16rem]" />
+      <BranchPicker className="order-last w-full sm:order-0 sm:flex-1 sm:max-w-[16rem]" />
       <div className="flex shrink-0 items-center gap-1 sm:gap-2 ml-auto min-w-0">
         {/* Weather + location picker — saved favorites follow the user across
             every page and every login. */}
@@ -115,7 +115,7 @@ export default function Header({ menuOpen, onMenu }: { menuOpen: boolean; onMenu
         <div className="hidden xl:flex items-center gap-2.5 pl-3 border-l border-soft">
           <UserAvatar className="h-9 w-9" name={user?.full_name || user?.username} />
           <div className="hidden 2xl:block leading-tight">
-            <p className="text-sm font-semibold text-primary truncate max-w-[10rem]">
+            <p className="text-sm font-semibold text-primary truncate max-w-40">
               {user?.full_name}
             </p>
             <p className="text-xs text-muted font-medium">

@@ -29,7 +29,7 @@ export default function RecordDialog({
   useEscapeKey(onClose, !busy);
   return createPortal(
     <div
-      className="dialog-viewport fixed inset-0 z-[70] flex items-center justify-center p-4"
+      className="dialog-viewport fixed inset-0 z-70 flex items-center justify-center p-4"
       role="dialog"
       aria-modal="true"
       aria-label={title}
@@ -39,7 +39,7 @@ export default function RecordDialog({
         type="button"
         aria-label={t("Close")}
         tabIndex={-1}
-        className="absolute inset-0 bg-slate-900/50 backdrop-blur-sm"
+        className="absolute inset-0 bg-slate-900/50 backdrop-blur-xs"
         onClick={() => !busy && onClose()}
       />
       <div className="dialog-panel relative flex w-full max-w-xl flex-col overflow-hidden rounded-2xl bg-[rgb(var(--surface-raised))] shadow-2xl ring-1 ring-soft">
@@ -53,7 +53,7 @@ export default function RecordDialog({
             aria-label={t("Close")}
             onClick={onClose}
             disabled={busy}
-            className="btn-ghost !p-1.5"
+            className="btn-ghost p-1.5!"
           >
             <XIcon size={16} />
           </button>

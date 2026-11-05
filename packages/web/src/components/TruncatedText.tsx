@@ -6,7 +6,7 @@ import { clsx } from "clsx";
 type Props = {
   /** The full text. Shown in the cell cut short with "…" when it doesn't fit. */
   text: string;
-  /** Sets the width it may take, e.g. "max-w-[12rem]". */
+  /** Sets the width it may take, e.g. "max-w-48". */
   className?: string;
   children?: ReactNode;
 };
@@ -90,7 +90,7 @@ export default function TruncatedText({ text, className, children }: Props) {
         createPortal(
           <div
             role="tooltip"
-            className="fixed z-[80] break-words rounded-lg bg-slate-900 px-3 py-2 text-xs font-medium text-white shadow-xl dark:bg-slate-700"
+            className="fixed z-80 wrap-break-word rounded-lg bg-slate-900 px-3 py-2 text-xs font-medium text-white shadow-xl dark:bg-slate-700"
             style={{ left: place.left, top: place.top, maxWidth: BUBBLE_WIDTH }}
           >
             {text}

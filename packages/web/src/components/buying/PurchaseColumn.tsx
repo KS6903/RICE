@@ -109,7 +109,7 @@ export default function PurchaseColumn({
                 <button
                   type="button"
                   onClick={() => setOpenId(p.id)}
-                  className="flex w-full items-start justify-between gap-3 px-4 py-3 text-left hover:bg-gray-50 dark:hover:bg-slate-900/50 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-emerald-400"
+                  className="flex w-full items-start justify-between gap-3 px-4 py-3 text-left hover:bg-gray-50 dark:hover:bg-slate-900/50 focus:outline-hidden focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-emerald-400"
                 >
                   <div className="min-w-0">
                     <p className="font-mono text-xs text-muted">{p.reference_no}</p>
@@ -405,7 +405,7 @@ export function PurchaseDetails({
       {/* On a phone each line is a card (see .stack-table), so the Condition cell and
           its Record drying button aren't hidden behind a sideways scroll. */}
       <div className="mt-4 rounded-xl ring-1 ring-soft sm:overflow-x-auto">
-        <table className="stack-table w-full text-sm sm:[overflow-wrap:normal]">
+        <table className="stack-table w-full text-sm sm:wrap-normal">
           <thead className="bg-gray-50 dark:bg-slate-900/50">
             <tr>
               {[...cols, { label: t("Amount"), numeric: true }].map((c) => (

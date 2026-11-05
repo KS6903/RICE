@@ -109,7 +109,7 @@ export default function QuickAdd({
           <button
             type="button"
             aria-label={t("Close")}
-            className="absolute inset-0 bg-slate-900/45 backdrop-blur-sm"
+            className="absolute inset-0 bg-slate-900/45 backdrop-blur-xs"
             onClick={close}
           />
           <form
@@ -128,7 +128,7 @@ export default function QuickAdd({
                 type="button"
                 aria-label={t("Close")}
                 onClick={close}
-                className="btn-ghost !p-1.5"
+                className="btn-ghost p-1.5!"
               >
                 <X size={16} />
               </button>

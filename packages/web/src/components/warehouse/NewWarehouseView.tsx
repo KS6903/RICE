@@ -264,7 +264,7 @@ export default function NewWarehouseView({
         </div>
         <Select
           aria-label={t("Variety")}
-          className="!py-2 !w-auto min-w-[9rem]"
+          className="py-2! w-auto! min-w-36"
           value={variety}
           onChange={setVariety}
           data-testid="new-warehouse-variety"
@@ -275,7 +275,7 @@ export default function NewWarehouseView({
         />
         <Select
           aria-label={t("Age")}
-          className="!py-2 !w-auto min-w-[9rem]"
+          className="py-2! w-auto! min-w-36"
           value={aging}
           onChange={(v) => setAging(v as AgingFilter)}
           data-testid="new-warehouse-aging"
@@ -289,7 +289,7 @@ export default function NewWarehouseView({
         />
         <Select
           aria-label={t("Sort")}
-          className="!py-2 !w-auto min-w-[9rem]"
+          className="py-2! w-auto! min-w-36"
           value={sort}
           onChange={(v) => setSort(v as SortKey)}
           data-testid="new-warehouse-sort"
@@ -458,7 +458,7 @@ function RackCard({
 
   return (
     <div
-      className={`card !p-0 overflow-hidden ${hasHighlight ? "ring-2 ring-amber-400/60" : ""}`}
+      className={`card p-0! overflow-hidden ${hasHighlight ? "ring-2 ring-amber-400/60" : ""}`}
       data-testid={`rack-${rack.zone_id}`}
     >
       <button
@@ -466,7 +466,7 @@ function RackCard({
         onClick={() => setOpen((o) => !o)}
         className="w-full flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-3 hover:bg-slate-50/60 dark:hover:bg-slate-800/40 transition-colors text-left"
       >
-        <span className="w-3 h-3 rounded-sm shrink-0" style={{ backgroundColor: rack.color_hex }} />
+        <span className="w-3 h-3 rounded-xs shrink-0" style={{ backgroundColor: rack.color_hex }} />
         <div className="flex items-center gap-2 min-w-0">
           <Layers size={15} className="text-muted shrink-0" />
           <span className="font-semibold text-primary truncate">{rack.name}</span>
@@ -583,7 +583,7 @@ function PalletDetailPanel({
       data-testid="pallet-detail-panel"
     >
       <div
-        className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm animate-grad-fade-up"
+        className="absolute inset-0 bg-slate-900/40 backdrop-blur-xs animate-grad-fade-up"
         onClick={onClose}
       />
       <div className="dialog-panel relative w-full max-w-md glass-strong rounded-2xl ring-1 ring-soft shadow-2xl flex flex-col overflow-hidden animate-grad-fade-up">
@@ -748,7 +748,7 @@ function FifoPanel({
   // containing block and pull the panel off the centre of the viewport.
   return createPortal(
     <div
-      className="dialog-viewport fixed inset-0 z-50 grid place-items-center bg-slate-900/60 backdrop-blur-sm p-4"
+      className="dialog-viewport fixed inset-0 z-50 grid place-items-center bg-slate-900/60 backdrop-blur-xs p-4"
       data-testid="fifo-panel"
     >
       <div className="dialog-panel glass-strong rounded-2xl shadow-2xl ring-1 ring-soft p-4 sm:p-6 w-[520px] max-w-full overflow-y-auto animate-grad-fade-up">

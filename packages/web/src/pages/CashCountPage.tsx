@@ -58,7 +58,7 @@ function ReviewForm({ count }: { count: CashCount }) {
   });
   return (
     <div className="flex flex-wrap items-end gap-2 mt-2">
-      <div className="flex-1 min-w-[12rem]">
+      <div className="flex-1 min-w-48">
         <label htmlFor={`review-${count.id}`} className="form-label">
           {t("What you found")}
         </label>
@@ -260,7 +260,7 @@ export default function CashCountPage() {
           <p className="text-sm text-secondary">{t("No counts yet.")}</p>
         ) : (
           counts.map((c) => (
-            <article key={c.id} aria-label={day(c.date)} className="card !p-4 space-y-1">
+            <article key={c.id} aria-label={day(c.date)} className="card p-4! space-y-1">
               <div className="flex flex-wrap items-baseline justify-between gap-2">
                 <span className="font-semibold text-primary">{day(c.date)}</span>
                 <Difference value={c.difference} tolerance={tolerance} />
