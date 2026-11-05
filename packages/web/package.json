@@ -15,18 +15,18 @@
   "dependencies": {
     "@react-oauth/google": "^0.13.5",
     "@rice-mill/shared": "*",
-    "@tanstack/react-query": "^5.104.5",
-    "axios": "1.20.0",
+    "@tanstack/react-query": "^5.105.2",
+    "axios": "1.21.0",
     "clsx": "^2.1.1",
     "date-fns": "^4.1.0",
-    "i18next": "26.4.2",
-    "lucide-react": "^1.61.0",
+    "i18next": "26.7.1",
+    "lucide-react": "^1.66.0",
     "qrcode.react": "^4.2.0",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
-    "react-router-dom": "7.18.4",
+    "react-router-dom": "7.18.5",
     "recharts": "^2.14.1",
-    "zustand": "^5.0.3"
+    "zustand": "^5.0.16"
   },
   "devDependencies": {
     "@eslint/js": "^9.17.0",
@@ -41,12 +41,12 @@
     "eslint-plugin-react-hooks": "^5.1.0",
     "eslint-plugin-react-refresh": "^0.5.7",
     "jsdom": "^30.1.3",
-    "postcss": "^8.5.31",
+    "postcss": "^8.5.32",
     "tailwindcss": "^4.3.4",
     "typescript": "^5.7.2",
     "typescript-eslint": "^8.72.0",
-    "vite": "^8.3.4",
+    "vite": "^8.3.5",
     "vite-plugin-pwa": "^1.2.0",
-    "vitest": "^5.0.5"
+    "vitest": "^5.1.0"
   }
 }
