@@ -46,6 +46,13 @@ def varieties(svc: ProfitService = Depends(get_profit_service)):
     return svc.varieties()
 
 
+@router.get("/sale-prices")
+def sale_prices(svc: ProfitService = Depends(get_profit_service)):
+    """The price New Sale fills in, for anyone the Boss opened this page to: the same
+    recommended price staff already see here, with nothing it could be worked back from."""
+    return svc.sale_prices()
+
+
 @router.get("/defaults", dependencies=BOSS_ONLY)
 def defaults(variety_id: uuid.UUID = Query(...), svc: ProfitService = Depends(get_profit_service)):
     return svc.defaults(variety_id)

@@ -15,6 +15,7 @@ def test_pnl_shape(auth_client):
         "period_start",
         "period_end",
         "revenue",
+        "uncosted_sales",
         "cost_of_goods",
         "gross_profit",
         "operating_expenses",

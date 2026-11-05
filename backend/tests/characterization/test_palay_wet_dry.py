@@ -54,6 +54,13 @@ def test_cavans_stand_in_for_kilos_that_were_not_weighed(auth_client):
     assert float(line["sack_count"]) == 30
 
 
+def test_the_cavans_saved_are_the_palay_less_its_tare(auth_client):
+    # An older form sent the cavans of the weight before tare.
+    [line] = _buy(auth_client, gross_weight_kg="1010", tare_weight_kg="10", cavan_count="20.2")["items"]
+    assert float(line["cavan_count"]) == 20
+    assert _stock(auth_client)["quantity_kg"] == 1000.0
+
+
 def test_a_line_needs_sacks_cavans_or_kilos(auth_client):
     res = auth_client.post(
         "/api/paddy/purchases",

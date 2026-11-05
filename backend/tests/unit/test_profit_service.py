@@ -56,6 +56,20 @@ def test_a_market_at_or_below_break_even_is_a_losing_game():
     assert plan["max_palay_price"] == pytest.approx((28 * 650 + 985 - 1000) / 1000)
 
 
+def test_with_no_target_margin_it_recommends_only_what_the_market_pays():
+    plan = price_plan(**{**LOT, "target_margin_pct": None})
+    assert plan["break_even"] == pytest.approx(30.7923, abs=1e-3)
+    assert plan["recommended_price"] is None
+    assert plan["profit"] is None
+    assert plan["verdict"] == "no_target"
+    assert staff_view(plan, 30) == {"recommended_price": None, "estimated_profit_per_kg": None, "verdict": "no_target"}
+
+    at_market = price_plan(**{**LOT, "target_margin_pct": None, "market_price": 42.0})
+    assert at_market["recommended_price"] == 42.0
+    assert at_market["verdict"] == "no_target"
+    assert price_plan(**{**LOT, "target_margin_pct": None, "market_price": 28.0})["verdict"] == "losing"
+
+
 def test_wet_palay_yields_at_14_percent_but_is_paid_for_as_bought():
     plan = price_plan(**{**LOT, "moisture_pct": 22.0, "other_costs": 0.0, "byproducts": []})
     assert plan["total_cost"] == 20000

@@ -52,15 +52,17 @@ Do these in order. Billing starts at step 1.
 
 ### 2. Database (Neon)
 
-1. Create a Neon project in **Singapore** (the closest region to the Philippines). Copy the
-   connection string for its owner role. That is the *provisioner* credential: it can change
-   the database's structure, so only the migrations and the provisioner get it. It must end in
-   `sslmode=require`.
+1. Create a Neon project in **Singapore** (the closest region to the Philippines), on
+   Postgres 16 like CI. Under **Connect**, turn **Connection pooling** off and copy the
+   connection string for its owner role (no `-pooler` in the host): the app sets each tenant's
+   `search_path` per session, which a transaction pooler would mix up. That is the
+   *provisioner* credential: it can change the database's structure, so only the migrations
+   and the provisioner get it. It must include `sslmode=require`.
 2. Create the API's restricted role with the repository's script. From `B:\RICE`, using the
-   `psql` that came with your local PostgreSQL:
+   `psql` that came with your local PostgreSQL (16 or newer):
 
    ```powershell
-   & "C:\Program Files\PostgreSQL\15\bin\psql.exe" "<owner connection string>" `
+   & "C:\Program Files\PostgreSQL\18\bin\psql.exe" "<owner connection string>" `
      -v app_password='<a new strong password>' -f backend/scripts/db_least_privilege.sql
    ```
 

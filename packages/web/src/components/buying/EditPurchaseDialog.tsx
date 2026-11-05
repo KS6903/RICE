@@ -265,11 +265,17 @@ export default function EditPurchaseDialog({
   const setLine = (i: number, patch: Line) =>
     setLines((ls) => ls.map((l, j) => (j === i ? { ...l, ...patch } : l)));
 
-  // The cavans and the kilos of a palay line are the same amount, 50 kg to the cavan.
+  // The cavans and the kilos of a palay line are the same amount, 50 kg to the cavan,
+  // the cavans counted after the tare as the stock counts them.
   const setNumber = (i: number, key: string, value: string) => {
     const patch: Line = { [key]: value };
-    if (kind === "palay" && key === "cavan_count") patch.gross_weight_kg = kilosFromCavans(value);
-    if (kind === "palay" && key === "gross_weight_kg") patch.cavan_count = cavansFromKilos(value);
+    const line = lines[i];
+    if (kind === "palay" && key === "cavan_count")
+      patch.gross_weight_kg = kilosFromCavans(value, line.tare_weight_kg);
+    if (kind === "palay" && key === "gross_weight_kg")
+      patch.cavan_count = cavansFromKilos(value, line.tare_weight_kg);
+    if (kind === "palay" && key === "tare_weight_kg" && line.gross_weight_kg !== "")
+      patch.cavan_count = cavansFromKilos(line.gross_weight_kg, value);
     setLine(i, patch);
   };
 

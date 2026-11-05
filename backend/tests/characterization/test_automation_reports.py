@@ -17,12 +17,13 @@ from app.automations.engine import deliver
 from app.automations.recipes import RECIPES
 from app.automations.recipes.reports import last_month, last_week
 from app.core import mailer as mailer_module
+from app.models.buying import RicePurchase, RicePurchaseItem
 from app.models.company import Company
 from app.models.costs import Expense
 from app.models.employee import Employee
 from app.models.milling import MillingBatch, MillingBatchInput, MillingBatchOutput
 from app.models.notification import Notification, NotificationAttachment
-from app.models.sales import Invoice, Payment, SalesOrder
+from app.models.sales import Invoice, Payment, SalesOrder, SalesOrderItem
 from app.models.supplier_customer import Customer
 from app.services import notification_service
 
@@ -67,21 +68,56 @@ def test_csv_opens_in_excel_and_cannot_smuggle_a_formula():
 
 
 def test_a_weekly_profit_and_loss_covers_last_week(db_session, company):
-    for day, total in ((date(2026, 9, 22), 40_000), (date(2026, 9, 27), 10_000), (date(2026, 9, 28), 99_000)):
-        db_session.add(
-            SalesOrder(
-                company_id=company.id, order_no=f"SO-{day}", order_date=day, total_amount=Decimal(total), status="paid"
-            )
+    # 500 kg of rice bought at ₱30 a kilo is what the rice sold cost.
+    bought = RicePurchase(company_id=company.id, reference_no="RP-1", purchase_date=date(2026, 9, 1))
+    bought.items.append(RicePurchaseItem(sack_count=Decimal(10), kg_per_sack=Decimal(50), price_per_sack=Decimal(1500)))
+    db_session.add(bought)
+    for day, kg in ((date(2026, 9, 22), 1000), (date(2026, 9, 27), 250), (date(2026, 9, 28), 2475)):
+        total = Decimal(kg * 40)
+        order = SalesOrder(
+            company_id=company.id,
+            order_no=f"SO-{day}",
+            order_date=day,
+            subtotal=total,
+            total_amount=total,
+            status="paid",
         )
+        order.items.append(
+            SalesOrderItem(item_type="milled_rice", quantity_kg=Decimal(kg), unit_price_per_kg=Decimal(40))
+        )
+        db_session.add(order)
     db_session.add(Expense(company_id=company.id, expense_date=date(2026, 9, 23), amount=Decimal(5_000)))
     db_session.flush()
     [notice] = _build(db_session, company, "scheduled_report", report="pnl", every="week")
     assert notice.title == "Profit and loss, last week (21–27 Sep)"
-    assert notice.body.splitlines()[0] == "Sales (invoiced and paid orders): ₱50,000"
-    assert notice.body.splitlines()[-1] == "Net profit: ₱45,000"
+    assert notice.body.splitlines() == [
+        "Sales (invoiced and paid orders): ₱50,000",
+        "Cost of what was sold (estimate): ₱37,500",
+        "Gross profit: ₱12,500",
+        "Gross margin: 25%",
+        "Expenses: ₱5,000",
+        "Net profit: ₱7,500",
+    ]
     [sheet] = notice.attachments
     assert sheet.filename == "profit-and-loss-2026-09-21-to-2026-09-27.csv"
     assert _rows(sheet)[1] == ["Sales (invoiced and paid orders)", "50000.0"]
+
+
+def test_sales_with_nothing_to_cost_them_against_are_left_out_of_the_profit(db_session, company):
+    db_session.add(
+        SalesOrder(
+            company_id=company.id,
+            order_no="SO-1",
+            order_date=date(2026, 9, 22),
+            total_amount=Decimal(40_000),
+            status="paid",
+        )
+    )
+    db_session.flush()
+    [notice] = _build(db_session, company, "scheduled_report", report="pnl", every="week")
+    lines = notice.body.splitlines()
+    assert lines[1] == "Sales with no cost on record, left out of the profit: ₱40,000"
+    assert lines[-1] == "Net profit: ₱0"
 
 
 def test_the_receivables_report_lists_every_open_invoice(db_session, company):

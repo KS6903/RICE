@@ -582,8 +582,9 @@ class PaddyService(BaseService):
             item.weighed_at = datetime.now(timezone.utc)
         if settings_for(self.current_user.company)["pay_deductions"] if deduct is None else deduct:
             item.payable_weight_kg = payable_weight(item.net_weight_kg, item.moisture_content_pct, item.impurity_pct)
-        if item.cavan_count is None:
-            item.cavan_count = item.net_weight_kg / KG_PER_CAVAN
+        # The cavans are the palay less its tare, as the stock counts them, whatever
+        # was typed beside the weight.
+        item.cavan_count = (Decimal(item.net_weight_kg) / KG_PER_CAVAN).quantize(Decimal("0.01"))
         if item.dried_weight_kg is not None:
             item.dried_at = datetime.now(timezone.utc)
         self.db.add(item)

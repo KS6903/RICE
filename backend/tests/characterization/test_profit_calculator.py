@@ -190,6 +190,11 @@ def test_the_boss_gets_the_real_figures(make_auth_client, db_session):
     _stock_the_mill(db_session, market_price="40")
     _make_boss(db_session)
 
+    # Until the Boss picks a target margin, nothing is judged against one.
+    assert client.get("/api/profit/varieties").json()[0]["verdict"] == "no_target"
+    _current_user().company.profit_target_margin_pct = Decimal("10")
+    db_session.flush()
+
     row = client.get("/api/profit/varieties").json()[0]
     assert row["recommended_price"] == 40.0
     assert row["verdict"] == "good"
@@ -204,7 +209,8 @@ def test_the_boss_gets_the_real_figures(make_auth_client, db_session):
 def test_the_boss_sets_the_margin_and_the_staff_share(make_auth_client, db_session):
     client = make_auth_client(ALL_FEATURES, role_name="accountant")
     _make_boss(db_session)
-    assert client.get("/api/profit/settings").json() == {"target_margin_pct": 10.0, "staff_profit_pct": 30.0}
+    # No margin is assumed: each Boss picks their own.
+    assert client.get("/api/profit/settings").json() == {"target_margin_pct": None, "staff_profit_pct": 30.0}
 
     saved = client.put("/api/profit/settings", json={"target_margin_pct": 15, "staff_profit_pct": 50})
     assert saved.status_code == 200
@@ -228,3 +234,20 @@ def test_a_period_sets_each_goods_sales_against_its_cost(make_auth_client, db_se
     assert goods["rice"]["cost"] is None
     assert goods["rice"]["profit"] is None
     assert period["overhead"] == 0
+
+
+def test_new_sale_gets_the_recommended_price_only_where_the_page_is_open(make_auth_client, db_session):
+    client = make_auth_client(ALL_FEATURES, role_name="accountant")
+    _stock_the_mill(db_session, market_price="40")
+    assert client.get("/api/profit/sale-prices").status_code == 403
+
+    _open_to("accountant")
+    variety = db_session.query(RiceVariety).filter_by(code="RC222").one()
+    assert client.get("/api/profit/sale-prices").json() == {str(variety.id): 40.0}
+
+
+def test_new_sale_is_given_no_price_on_a_losing_lot(make_auth_client, db_session):
+    client = make_auth_client(ALL_FEATURES, role_name="accountant")
+    _stock_the_mill(db_session, market_price="25")
+    _open_to("accountant")
+    assert client.get("/api/profit/sale-prices").json() == {}

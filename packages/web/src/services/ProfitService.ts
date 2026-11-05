@@ -26,7 +26,8 @@ export type ProfitDefaults = {
   market_source: "variety" | "milled" | "all" | null;
 };
 
-export type ProfitVerdict = "good" | "thin" | "losing" | "no_data";
+/** "no_target": the Boss hasn't picked a target margin, so nothing is judged against one. */
+export type ProfitVerdict = "good" | "thin" | "losing" | "no_data" | "no_target";
 
 /** One variety, as the Boss sees it. */
 export type BossVarietyRow = {
@@ -60,11 +61,13 @@ export type ProfitPeriod = {
     cost: number | null;
     profit: number | null;
   }[];
-  overhead: number;
+  /** Every expense of the period, counted once here and not in the goods' cost. */
+  expenses: number;
   total_profit: number;
 };
 
-export type ProfitSettings = { target_margin_pct: number; staff_profit_pct: number };
+/** The target margin is null until the Boss picks one: none is assumed. */
+export type ProfitSettings = { target_margin_pct: number | null; staff_profit_pct: number };
 
 export class ProfitService {
   constructor(private http = api) {}
@@ -79,6 +82,11 @@ export class ProfitService {
 
   period(start: string, end: string): Promise<ProfitPeriod> {
     return this.http.get(`/profit/period?start=${start}&end=${end}`).then((r) => r.data);
+  }
+
+  /** The recommended price per kg for each rice variety, for New Sale to fill in. */
+  salePrices(): Promise<Record<string, number>> {
+    return this.http.get("/profit/sale-prices").then((r) => r.data);
   }
 
   settings(): Promise<ProfitSettings> {

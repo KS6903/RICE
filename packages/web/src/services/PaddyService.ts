@@ -52,16 +52,19 @@ const KG_PER_CAVAN = 50;
 
 const figure = (v: number, decimals: number) => String(Number(v.toFixed(decimals)));
 
-/** The kilos in a typed number of cavans; blank when nothing is typed. */
-export const kilosFromCavans = (cavans: string): string => {
+/** The kilos on the scale for a typed number of cavans: the cavans are the palay
+ *  itself, so the tare goes on top. Blank when nothing is typed. */
+export const kilosFromCavans = (cavans: string, tare = ""): string => {
   const count = numberOrNull(cavans);
-  return count === null ? "" : figure(count * KG_PER_CAVAN, 3);
+  return count === null ? "" : figure(count * KG_PER_CAVAN + (numberOrNull(tare) ?? 0), 3);
 };
 
-/** The cavans in a typed weight, to the two decimals the server keeps. */
-export const cavansFromKilos = (kilos: string): string => {
+/** The cavans in a weighed amount, less its tare, to the two decimals the server
+ *  keeps: the same cavans the stock table shows for it. */
+export const cavansFromKilos = (kilos: string, tare = ""): string => {
   const weight = numberOrNull(kilos);
-  return weight === null ? "" : figure(weight / KG_PER_CAVAN, 2);
+  if (weight === null) return "";
+  return figure(Math.max(weight - (numberOrNull(tare) ?? 0), 0) / KG_PER_CAVAN, 2);
 };
 
 /** The price per cavan for a price per kilo, to the centavo; null until a price is typed. */

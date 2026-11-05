@@ -55,7 +55,7 @@ beforeEach(() => {
   });
   vi.spyOn(profitService, "period").mockResolvedValue({
     goods: [{ good: "rice", kg_sold: 100, sales: 4000, cost: 3000, profit: 1000 }],
-    overhead: 200,
+    expenses: 200,
     total_profit: 800,
   });
 });

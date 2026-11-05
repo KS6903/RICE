@@ -105,6 +105,12 @@ describe("cavans and kilos", () => {
     expect(kilosFromCavans("")).toBe("");
     expect(cavansFromKilos("")).toBe("");
   });
+
+  it("count the cavans after the tare, as the stock does", () => {
+    expect(cavansFromKilos("1010", "10")).toBe("20");
+    expect(kilosFromCavans("20", "10")).toBe("1010");
+    expect(cavansFromKilos("5", "10")).toBe("0");
+  });
 });
 
 describe("pricePerCavan", () => {

@@ -52,6 +52,7 @@ const verdictText = (v: ProfitVerdict): string =>
     thin: t("Thin"),
     losing: t("Losing game"),
     no_data: t("No figures yet"),
+    no_target: t("No target margin yet"),
   })[v];
 
 const VERDICT_BADGE: Record<ProfitVerdict, string> = {
@@ -59,6 +60,7 @@ const VERDICT_BADGE: Record<ProfitVerdict, string> = {
   thin: "badge-yellow",
   losing: "badge-red",
   no_data: "badge-gray",
+  no_target: "badge-gray",
 };
 
 const sourceText = (d: ProfitDefaults | undefined): string | undefined => {
@@ -191,7 +193,7 @@ function VerdictNote({
   hasMarket,
 }: {
   plan: PricePlan;
-  targetPct: number;
+  targetPct: number | null;
   hasMarket: boolean;
 }) {
   if (plan.verdict === "losing") {
@@ -229,6 +231,18 @@ function VerdictNote({
       </div>
     );
   }
+  if (plan.verdict === "no_target") {
+    return (
+      <p className="mt-3 flex gap-2 rounded-xl bg-gray-50 p-3 text-sm text-secondary dark:bg-slate-900/50">
+        <AlertTriangle size={18} className="mt-0.5 shrink-0" aria-hidden />
+        {plan.recommendedPrice != null
+          ? t(
+              "You won't lose money at what the market pays. Type the margin you want to keep to check it's enough.",
+            )
+          : t("Type the margin you want to keep to see the price to sell at.")}
+      </p>
+    );
+  }
   if (plan.verdict === "thin") {
     return (
       <p className="mt-3 flex gap-2 rounded-xl bg-amber-50 p-3 text-sm text-amber-800 dark:bg-amber-950/40 dark:text-amber-200">
@@ -251,8 +265,18 @@ function VerdictNote({
   );
 }
 
+/** A target margin as typed, or null when it's blank or past the 90% limit. */
+const marginOf = (text: string) => {
+  const pct = parseAmount(text);
+  return pct != null && pct >= 0 && pct <= 90 ? pct : null;
+};
+
 function Calculate({ settings }: { settings: ProfitSettings }) {
   const [varietyId, setVarietyId] = useState("");
+  // The Boss's saved margin, or blank: each mill picks its own, none is assumed.
+  const [target, setTarget] = useState(field(settings.target_margin_pct));
+  useEffect(() => setTarget(field(settings.target_margin_pct)), [settings.target_margin_pct]);
+  const targetPct = marginOf(target);
   const [form, setForm] = useState<Form>(BLANK);
   const [sellAt, setSellAt] = useState("");
   const [showMore, setShowMore] = useState(false);
@@ -293,7 +317,7 @@ function Calculate({ settings }: { settings: ProfitSettings }) {
     otherCosts: palayKg * n(form.otherPerKg),
     byproducts: main.map((b) => ({ pct: shareOf(b.key), price: n(form[b.priceKey]) })),
     extraIncome: more.reduce((sum, b) => sum + n(form[b.kgKey]) * n(form[b.priceKey]), 0),
-    targetMarginPct: settings.target_margin_pct,
+    targetMarginPct: targetPct,
     marketPrice: market,
   });
   // The milling audit, per 100 kg of palay at 14% moisture.
@@ -327,13 +351,24 @@ function Calculate({ settings }: { settings: ProfitSettings }) {
         </p>
       </div>
 
-      <div className="max-w-sm">
-        <span className="mb-1 block text-xs font-medium text-secondary">{t("Variety")}</span>
-        <Select
-          aria-label={t("Variety")}
-          value={varietyId}
-          onChange={setVarietyId}
-          options={varietyOptions(varieties, "palay")}
+      <div className="grid max-w-2xl gap-3 sm:grid-cols-2">
+        <div>
+          <span className="mb-1 block text-xs font-medium text-secondary">{t("Variety")}</span>
+          <Select
+            aria-label={t("Variety")}
+            value={varietyId}
+            onChange={setVarietyId}
+            options={varietyOptions(varieties, "palay")}
+          />
+        </div>
+        <Amount
+          label={t("Target margin %")}
+          value={target}
+          onChange={setTarget}
+          placeholder={example(10)}
+          hint={t(
+            "How much of the selling price you want to keep, up to 90%. Your choice: save it in Your settings below.",
+          )}
         />
       </div>
 
@@ -491,19 +526,23 @@ function Calculate({ settings }: { settings: ProfitSettings }) {
           {plan ? (
             <div data-testid="profit-result">
               <p className="text-[10px] font-bold uppercase tracking-wide text-muted">
-                {t("Recommended selling price")}
+                {plan.recommendedPrice != null
+                  ? t("Recommended selling price")
+                  : t("Break-even price")}
               </p>
               <p className="text-3xl font-extrabold tabular-nums text-primary">
-                {peso(plan.recommendedPrice)}{" "}
+                {peso(plan.recommendedPrice ?? plan.breakEven)}{" "}
                 <span className="text-base font-semibold">{t("per kg")}</span>
               </p>
               <dl className="mt-3 grid grid-cols-2 gap-2">
                 <Stat label={t("Break-even price")} value={peso(plan.breakEven)} />
-                <Stat
-                  label={plan.profit >= 0 ? t("Profit at that price") : t("Loss at that price")}
-                  value={peso(Math.abs(plan.profit))}
-                  sub={t("{{pct}} margin", { pct: percent(plan.marginPct) })}
-                />
+                {plan.profit != null && plan.marginPct != null && (
+                  <Stat
+                    label={plan.profit >= 0 ? t("Profit at that price") : t("Loss at that price")}
+                    value={peso(Math.abs(plan.profit))}
+                    sub={t("{{pct}} margin", { pct: percent(plan.marginPct) })}
+                  />
+                )}
                 <Stat label={t("Rice you get")} value={kilos(plan.riceKg)} />
                 <Stat
                   label={t("By-products bring in")}
@@ -515,11 +554,7 @@ function Calculate({ settings }: { settings: ProfitSettings }) {
                   }
                 />
               </dl>
-              <VerdictNote
-                plan={plan}
-                targetPct={settings.target_margin_pct}
-                hasMarket={market != null}
-              />
+              <VerdictNote plan={plan} targetPct={targetPct} hasMarket={market != null} />
               {(recoveryPct < LOW_RECOVERY_PCT || recoveryPct > HIGH_RECOVERY_PCT) && (
                 <p
                   className="mt-2 text-sm text-amber-700 dark:text-amber-300"
@@ -560,35 +595,40 @@ function Calculate({ settings }: { settings: ProfitSettings }) {
                 </p>
               )}
 
-              <div className="mt-4 rounded-xl ring-1 ring-soft sm:overflow-x-auto">
-                <table className="w-full text-sm" data-testid="price-steps">
-                  <thead className="bg-gray-50 dark:bg-slate-900/50">
-                    <tr>
-                      <th className="px-3 py-2 text-left font-medium text-gray-600 dark:text-slate-300">
-                        {t("If you sell at")}
-                      </th>
-                      <th className="px-3 py-2 text-right font-medium text-gray-600 dark:text-slate-300">
-                        {t("You make")}
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-100 dark:divide-slate-700">
-                    {priceSteps(plan).map((p) => {
-                      const made = profitAt(plan, p);
-                      return (
-                        <tr key={p} className={p === plan.recommendedPrice ? "font-semibold" : ""}>
-                          <td className="px-3 py-2 tabular-nums">{peso(p)}</td>
-                          <td
-                            className={`px-3 py-2 text-right tabular-nums ${made < 0 ? "text-rose-600 dark:text-rose-400" : ""}`}
+              {priceSteps(plan).length > 0 && (
+                <div className="mt-4 rounded-xl ring-1 ring-soft sm:overflow-x-auto">
+                  <table className="w-full text-sm" data-testid="price-steps">
+                    <thead className="bg-gray-50 dark:bg-slate-900/50">
+                      <tr>
+                        <th className="px-3 py-2 text-left font-medium text-gray-600 dark:text-slate-300">
+                          {t("If you sell at")}
+                        </th>
+                        <th className="px-3 py-2 text-right font-medium text-gray-600 dark:text-slate-300">
+                          {t("You make")}
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100 dark:divide-slate-700">
+                      {priceSteps(plan).map((p) => {
+                        const made = profitAt(plan, p);
+                        return (
+                          <tr
+                            key={p}
+                            className={p === plan.recommendedPrice ? "font-semibold" : ""}
                           >
-                            {made < 0 ? `-${peso(-made)}` : peso(made)}
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
+                            <td className="px-3 py-2 tabular-nums">{peso(p)}</td>
+                            <td
+                              className={`px-3 py-2 text-right tabular-nums ${made < 0 ? "text-rose-600 dark:text-rose-400" : ""}`}
+                            >
+                              {made < 0 ? `-${peso(-made)}` : peso(made)}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
           ) : (
             <p className="rounded-xl border border-dashed border-soft p-4 text-sm text-muted">
@@ -773,7 +813,7 @@ function Period() {
           </h3>
           <p className="text-xs text-muted">
             {t(
-              "Invoiced and paid sales. The cost is an estimate: each kilo sold at what that good has cost you lately.",
+              "Invoiced and paid sales. The cost is an estimate: each kilo sold at what that good has cost you lately. Expenses are all of this period's. Reports and the Dashboard show the same profit.",
             )}
           </p>
         </div>
@@ -830,7 +870,7 @@ function Period() {
               ))}
               <tr>
                 <td data-label={headings[0]} className="px-3 py-2">
-                  {t("Overhead")}
+                  {t("Expenses")}
                 </td>
                 <td data-label={headings[1]} className="px-3 py-2 text-right">
                   —
@@ -839,13 +879,13 @@ function Period() {
                   —
                 </td>
                 <td data-label={headings[3]} className="px-3 py-2 text-right tabular-nums">
-                  {peso(data.overhead)}
+                  {peso(data.expenses)}
                 </td>
                 <td
                   data-label={headings[4]}
                   className="px-3 py-2 text-right font-semibold tabular-nums"
                 >
-                  {signed(-data.overhead)}
+                  {signed(-data.expenses)}
                 </td>
               </tr>
               <tr className="bg-gray-50 font-bold dark:bg-slate-900/50" data-testid="period-total">
@@ -872,23 +912,32 @@ function Period() {
           </table>
         )}
       </div>
+      {data?.goods.some((g) => g.cost == null && g.sales > 0) && (
+        <p className="text-xs text-muted" data-testid="period-uncosted">
+          {t(
+            "Sales of a good with no cost on record, nothing bought or milled in the 90 days before, are left out of the profit.",
+          )}
+        </p>
+      )}
     </section>
   );
 }
 
 function SettingsCard({ settings }: { settings: ProfitSettings }) {
   const qc = useQueryClient();
-  const [target, setTarget] = useState(String(settings.target_margin_pct));
+  const [target, setTarget] = useState(field(settings.target_margin_pct));
   const [staff, setStaff] = useState(String(settings.staff_profit_pct));
   const targetPct = parseAmount(target);
   const staffPct = parseAmount(staff);
-  const valid = targetPct != null && targetPct <= 90 && staffPct != null && staffPct <= 100;
+  // The margin is the Boss's to pick: it may stay blank until they do.
+  const valid = (targetPct == null || targetPct <= 90) && staffPct != null && staffPct <= 100;
   const changed =
-    targetPct !== settings.target_margin_pct || staffPct !== settings.staff_profit_pct;
+    (targetPct != null && targetPct !== settings.target_margin_pct) ||
+    staffPct !== settings.staff_profit_pct;
   const save = useMutation({
     mutationFn: () =>
       profitService.saveSettings({
-        target_margin_pct: targetPct as number,
+        ...(targetPct != null && { target_margin_pct: targetPct }),
         staff_profit_pct: staffPct as number,
       }),
     onSuccess: () => {
@@ -908,7 +957,10 @@ function SettingsCard({ settings }: { settings: ProfitSettings }) {
           label={t("Target margin %")}
           value={target}
           onChange={setTarget}
-          hint={t("How much of the selling price you want to keep. Up to 90%.")}
+          placeholder={example(10)}
+          hint={t(
+            "How much of the selling price you want to keep. Up to 90%. None is set for you: pick what suits your mill.",
+          )}
         />
         <Amount
           label={t("Profit shown to staff, % of the real one")}

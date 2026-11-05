@@ -23,10 +23,9 @@ def get_reports_service(
 def profit_and_loss(
     period_start: date = Query(...),
     period_end: date = Query(...),
-    batch_id: str | None = None,
     svc: ReportsService = Depends(get_reports_service),
 ):
-    return svc.profit_and_loss(period_start, period_end, batch_id)
+    return svc.profit_and_loss(period_start, period_end)
 
 
 @router.get("/inventory-valuation", dependencies=[Depends(require_feature("reports_advanced"))])

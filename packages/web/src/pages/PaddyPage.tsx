@@ -416,7 +416,7 @@ export default function PaddyPage() {
                           onChange={(e) =>
                             setItem(idx, {
                               cavan_count: e.target.value,
-                              gross_weight_kg: kilosFromCavans(e.target.value),
+                              gross_weight_kg: kilosFromCavans(e.target.value, item.tare_weight_kg),
                             })
                           }
                         />
@@ -431,7 +431,7 @@ export default function PaddyPage() {
                           onChange={(e) =>
                             setItem(idx, {
                               gross_weight_kg: e.target.value,
-                              cavan_count: cavansFromKilos(e.target.value),
+                              cavan_count: cavansFromKilos(e.target.value, item.tare_weight_kg),
                             })
                           }
                         />
@@ -440,7 +440,7 @@ export default function PaddyPage() {
                           onRead={(kg) =>
                             setItem(idx, {
                               gross_weight_kg: String(kg),
-                              cavan_count: cavansFromKilos(String(kg)),
+                              cavan_count: cavansFromKilos(String(kg), item.tare_weight_kg),
                               weight_source: "scale",
                             })
                           }
@@ -454,7 +454,15 @@ export default function PaddyPage() {
                           type="number"
                           min={0}
                           value={item.tare_weight_kg}
-                          onChange={text(idx, "tare_weight_kg")}
+                          onChange={(e) =>
+                            setItem(idx, {
+                              tare_weight_kg: e.target.value,
+                              // The cavans are the palay less its tare.
+                              ...(item.gross_weight_kg !== "" && {
+                                cavan_count: cavansFromKilos(item.gross_weight_kg, e.target.value),
+                              }),
+                            })
+                          }
                         />
                       </FieldCaption>
                     </div>

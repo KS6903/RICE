@@ -10,7 +10,9 @@
 //  Break-even    = (total cost − by-product income) ÷ rice.
 //  Target price  = break-even ÷ (1 − target margin), rounded up to ₱0.50.
 //  Recommended   = what the market pays when that's above break-even, else the
-//                  target price. At or below break-even it's a losing game.
+//                  target price. At or below break-even it's a losing game. Each
+//                  mill picks its own target margin; until it has, there's no
+//                  target price, and so no price unless the market gives one.
 //  By-products   = estimated from the recovery, until the real ones are typed:
 //                  see estimateByproducts.
 import { BRAN_PCT, HULL_PCT, STANDARD_MOISTURE_PCT } from "./MillingMapper";
@@ -25,11 +27,12 @@ export type ProfitInput = {
   byproducts: { pct: number; price: number }[];
   /** What the by-products counted in kilos bring in, not as a share of the palay. */
   extraIncome?: number;
-  targetMarginPct: number;
+  /** The mill's own target margin; null until it picks one. */
+  targetMarginPct: number | null;
   marketPrice: number | null;
 };
 
-export type Verdict = "good" | "thin" | "losing";
+export type Verdict = "good" | "thin" | "losing" | "no_target";
 
 export type PricePlan = {
   standardKg: number;
@@ -37,10 +40,12 @@ export type PricePlan = {
   totalCost: number;
   byproductIncome: number;
   breakEven: number;
-  targetPrice: number;
-  recommendedPrice: number;
-  marginPct: number;
-  profit: number;
+  /** Null with no target margin. */
+  targetPrice: number | null;
+  /** Null with no target margin and no market above break-even. */
+  recommendedPrice: number | null;
+  marginPct: number | null;
+  profit: number | null;
   verdict: Verdict;
   /** Only when losing: the loss on each kilo at the market price, the recovery that
    *  would break even there, and the most the palay could cost. */
@@ -101,11 +106,20 @@ export function pricePlan(i: ProfitInput): PricePlan | null {
     i.extraIncome ?? 0,
   );
   const breakEven = (totalCost - byproductIncome) / riceKg;
-  const targetPrice = roundUpHalfPeso(breakEven / (1 - i.targetMarginPct / 100));
+  const target = i.targetMarginPct;
+  const targetPrice = target != null ? roundUpHalfPeso(breakEven / (1 - target / 100)) : null;
   const market = i.marketPrice != null && i.marketPrice > 0 ? i.marketPrice : null;
   const losing = market != null && market <= breakEven;
   const recommendedPrice = market != null && !losing ? market : targetPrice;
-  const marginPct = ((recommendedPrice - breakEven) / recommendedPrice) * 100;
+  const marginPct =
+    recommendedPrice != null ? ((recommendedPrice - breakEven) / recommendedPrice) * 100 : null;
+  const verdict: Verdict = losing
+    ? "losing"
+    : marginPct == null || target == null
+      ? "no_target"
+      : marginPct >= target
+        ? "good"
+        : "thin";
 
   return {
     standardKg,
@@ -116,8 +130,9 @@ export function pricePlan(i: ProfitInput): PricePlan | null {
     targetPrice,
     recommendedPrice,
     marginPct,
-    profit: recommendedPrice * riceKg + byproductIncome - totalCost,
-    verdict: losing ? "losing" : marginPct >= i.targetMarginPct ? "good" : "thin",
+    profit:
+      recommendedPrice != null ? recommendedPrice * riceKg + byproductIncome - totalCost : null,
+    verdict,
     lossPerKg: losing ? breakEven - market : null,
     recoveryNeededPct: losing
       ? ((totalCost - byproductIncome) / (market * standardKg)) * 100
@@ -130,9 +145,12 @@ export function pricePlan(i: ProfitInput): PricePlan | null {
 export const profitAt = (plan: PricePlan, price: number) =>
   price * plan.riceKg + plan.byproductIncome - plan.totalCost;
 
-/** The prices to compare: the recommended one, and ₱1 and ₱2 either side. */
+/** The prices to compare: the recommended one, and ₱1 and ₱2 either side; none
+ *  without a recommended price. */
 export const priceSteps = (plan: PricePlan) =>
-  [-2, -1, 0, 1, 2].map((d) => plan.recommendedPrice + d).filter((p) => p > 0);
+  plan.recommendedPrice == null
+    ? []
+    : [-2, -1, 0, 1, 2].map((d) => (plan.recommendedPrice as number) + d).filter((p) => p > 0);
 
 /** The usual share of the palay each part comes to, with paddy at 13–14% moisture. */
 export const BENCHMARKS = {

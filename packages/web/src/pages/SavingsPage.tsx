@@ -567,10 +567,14 @@ function Buying({
         title={t("Highest price to pay for palay")}
         hint={
           data
-            ? t(
-                "Per kg, keeping your {{margin}}% margin at the lower of your rice price and imported rice.",
-                { margin: data.target_margin_pct },
-              )
+            ? data.target_margin_pct != null
+              ? t(
+                  "Per kg, keeping your {{margin}}% margin at the lower of your rice price and imported rice.",
+                  { margin: data.target_margin_pct },
+                )
+              : t(
+                  "Per kg, to break even at the lower of your rice price and imported rice. Set your target margin on the Profit page to keep a margin too.",
+                )
             : undefined
         }
       >

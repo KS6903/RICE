@@ -27,6 +27,10 @@ import { useFeature } from "../hooks/useFeature";
 import { useThemeStore } from "../stores/themeStore";
 import { t } from "../i18n";
 
+/** "₱1,250.50", and "-₱1,250.50" for a loss. */
+const signedPeso = (n: number) =>
+  `${n < 0 ? "-" : ""}₱${Math.abs(n).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
 type ChartView = "bar" | "line";
 
 /** Every chart on this page: one series of pesos, drawn the way the page's switch says. */
@@ -235,10 +239,23 @@ export default function ReportsPage() {
                   className="text-center p-3 bg-gray-50 dark:bg-slate-900/50 rounded-lg"
                 >
                   <p className="text-xs text-gray-500 dark:text-slate-400 mb-1">{label}</p>
-                  <p className={`text-lg font-bold ${color}`}>₱{value.toLocaleString()}</p>
+                  <p className={`text-lg font-bold ${color}`}>{signedPeso(value)}</p>
                 </div>
               ))}
             </div>
+            {pnl.uncosted_sales > 0 && (
+              <p className="text-sm text-gray-500 dark:text-slate-400" data-testid="pnl-uncosted">
+                {t(
+                  "{{amount}} of sales has no cost on record, nothing bought or milled in the 90 days before, so it's left out of the profit.",
+                  { amount: signedPeso(pnl.uncosted_sales) },
+                )}
+              </p>
+            )}
+            <p className="text-xs text-gray-500 dark:text-slate-400">
+              {t(
+                "Cost of goods is what the goods sold cost, an estimate from what each cost you lately. Expenses are all of the period's. The Profit page shows the same figures.",
+              )}
+            </p>
             <div className="text-right text-sm text-gray-500 dark:text-slate-400">
               {t("Gross Margin:")}{" "}
               <span className="font-semibold text-gray-900 dark:text-slate-100">

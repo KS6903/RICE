@@ -99,13 +99,18 @@ def _pnl(ctx: RecipeContext, params: ScheduledReportParams) -> Notice:
     r = _reports(ctx).profit_and_loss(start, end)
     rows = [
         ("Sales (invoiced and paid orders)", r["revenue"]),
-        ("Cost of palay bought", r["cost_of_goods"]),
+        *(
+            [("Sales with no cost on record, left out of the profit", r["uncosted_sales"])]
+            if r["uncosted_sales"]
+            else []
+        ),
+        ("Cost of what was sold (estimate)", r["cost_of_goods"]),
         ("Gross profit", r["gross_profit"]),
         ("Expenses", r["operating_expenses"]),
         ("Net profit", r["net_profit"]),
     ]
     body = [f"{name}: {peso(amount)}" for name, amount in rows]
-    body.insert(3, f"Gross margin: {r['gross_margin_pct']:g}%")
+    body.insert(len(rows) - 2, f"Gross margin: {r['gross_margin_pct']:g}%")
     return Notice(
         title=f"Profit and loss, {label} ({_span(start, end)})",
         body="\n".join(body),

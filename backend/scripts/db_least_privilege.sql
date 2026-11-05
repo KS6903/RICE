@@ -5,7 +5,7 @@
 -- create/drop/alter schema objects — so SQL injection or app compromise can't
 -- escalate to schema changes, extension installs, or file reads.
 --
--- Usage (run as a superuser, against the app database):
+-- Usage (run as a superuser or the database owner, against the app database):
 --   psql -d "Rice Mill System" -v app_password='<strong-random-password>' -f db_least_privilege.sql
 --
 -- Then point DATABASE_URL at ricemill_app:
@@ -19,8 +19,21 @@
 -- 1. Dedicated login role for the API process (idempotent; also rotates its password).
 SELECT format('CREATE ROLE ricemill_app LOGIN PASSWORD %L', :'app_password')
 WHERE NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'ricemill_app') \gexec
-ALTER ROLE ricemill_app LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION
-  PASSWORD :'app_password';
+ALTER ROLE ricemill_app LOGIN NOCREATEDB NOCREATEROLE PASSWORD :'app_password';
+
+-- Only a superuser may set SUPERUSER, REPLICATION or BYPASSRLS, even to "no", and
+-- a managed database's owner (Neon, say) is not one. A role made by CREATE ROLE
+-- starts without all three, so check them instead of setting them.
+DO $attrs$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM pg_roles
+    WHERE rolname = 'ricemill_app' AND (rolsuper OR rolreplication OR rolbypassrls)
+  ) THEN
+    RAISE EXCEPTION 'ricemill_app has SUPERUSER, REPLICATION or BYPASSRLS; a superuser must remove them';
+  END IF;
+END
+$attrs$;
 
 -- 2. Connect + schema usage only (no CREATE on the schema).
 GRANT CONNECT ON DATABASE :"DBNAME" TO ricemill_app;

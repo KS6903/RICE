@@ -27,6 +27,8 @@ import {
 } from "recharts";
 import { format, startOfMonth } from "date-fns";
 import { useThemeStore } from "../stores/themeStore";
+import { useBranchStore } from "../stores/branchStore";
+import { branchesService } from "../services/BranchesService";
 import { useAccess } from "../hooks/useAccess";
 import { t } from "../i18n";
 
@@ -52,7 +54,8 @@ const TONE_STYLES: Record<Tone, { ring: string; iconBg: string }> = {
 };
 
 /** "-₱359,808.02", with the minus ahead of the peso sign. */
-const signedPeso = (n: number) => `${n < 0 ? "-" : ""}₱${Math.abs(n).toLocaleString()}`;
+const signedPeso = (n: number) =>
+  `${n < 0 ? "-" : ""}₱${Math.abs(n).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
 /** The figure's font size: text-3xl, or smaller when the figure is too long for
  *  its card, so a big number never pushes the icon out of place. 0.6em is a
@@ -154,6 +157,16 @@ export default function Dashboard() {
     enabled: canViewReports,
   });
 
+  // The profit is for the branch picked in the top bar, when one is.
+  const branchView = useBranchStore((s) => s.view);
+  const pickedBranch = branchView !== null && branchView !== "all";
+  const { data: branches = [] } = useQuery<any[]>({
+    queryKey: ["branches"],
+    queryFn: () => branchesService.list(),
+    enabled: pickedBranch,
+  });
+  const viewedBranch = pickedBranch ? branches.find((b) => String(b.id) === branchView) : null;
+
   const pnlChart = pnl
     ? [
         { name: t("Revenue"), value: pnl.revenue },
@@ -195,9 +208,14 @@ export default function Dashboard() {
                 {pnl ? signedPeso(Number(pnl.net_profit)) : "—"}
               </h1>
               <p className="mt-1 text-white text-sm font-medium">
-                {t("Net profit · {{format}} · all branches", {
-                  format: format(new Date(), "MMMM yyyy"),
-                })}
+                {viewedBranch
+                  ? t("Net profit · {{format}} · {{branch}}", {
+                      format: format(new Date(), "MMMM yyyy"),
+                      branch: viewedBranch.name,
+                    })
+                  : t("Net profit · {{format}} · all branches", {
+                      format: format(new Date(), "MMMM yyyy"),
+                    })}
               </p>
             </div>
 

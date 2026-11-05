@@ -53,6 +53,21 @@ describe("pricePlan", () => {
     expect(plan.lossPerKg).toBeNull();
   });
 
+  it("recommends only what the market pays until the mill picks a target margin", () => {
+    const plan = pricePlan({ ...lot, targetMarginPct: null })!;
+    expect(plan.breakEven).toBeCloseTo(30.79, 2);
+    expect(plan.targetPrice).toBeNull();
+    expect(plan.recommendedPrice).toBeNull();
+    expect(plan.profit).toBeNull();
+    expect(plan.verdict).toBe("no_target");
+    expect(priceSteps(plan)).toEqual([]);
+
+    const atMarket = pricePlan({ ...lot, targetMarginPct: null, marketPrice: 42 })!;
+    expect(atMarket.recommendedPrice).toBe(42);
+    expect(atMarket.verdict).toBe("no_target");
+    expect(pricePlan({ ...lot, targetMarginPct: null, marketPrice: 28 })!.verdict).toBe("losing");
+  });
+
   it("calls a profit under the target margin thin", () => {
     const plan = pricePlan({ ...lot, marketPrice: 32 })!;
     expect(plan.recommendedPrice).toBe(32);
@@ -123,7 +138,7 @@ describe("estimateByproducts", () => {
 describe("what a price earns", () => {
   it("is a loss below break-even and the plan's profit at the recommended price", () => {
     const plan = pricePlan(lot)!;
-    expect(profitAt(plan, 34.5)).toBeCloseTo(plan.profit);
+    expect(profitAt(plan, 34.5)).toBeCloseTo(plan.profit!);
     expect(profitAt(plan, 30)).toBeLessThan(0);
   });
 

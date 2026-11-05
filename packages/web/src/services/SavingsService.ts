@@ -61,7 +61,12 @@ export type MaxBuyRow = {
   max_at_import: number | null;
   max_buy: number | null;
 };
-export type MaxBuy = { landed_price: number | null; target_margin_pct: number; rows: MaxBuyRow[] };
+export type MaxBuy = {
+  landed_price: number | null;
+  /** Null until the Boss picks a target margin; the most to pay is then break-even. */
+  target_margin_pct: number | null;
+  rows: MaxBuyRow[];
+};
 
 export type MarketPrice = { name: string; per_kg: number; month: string };
 export type MarketPrices = {

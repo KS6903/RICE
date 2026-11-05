@@ -11,6 +11,7 @@ import { salesService } from "../../services/SalesService";
 import { paddyService } from "../../services/PaddyService";
 import { inventoryService } from "../../services/InventoryService";
 import { byproductKindService } from "../../services/ByproductKindService";
+import { profitService } from "../../services/ProfitService";
 import { chooseOption } from "../../test/pickers";
 
 configure({ asyncUtilTimeout: 5000 });
@@ -259,5 +260,42 @@ describe("Purchases and sales while they load", () => {
     const column = screen.getByTestId("sales-column");
     expect(within(column).getByText("Loading…")).toBeInTheDocument();
     expect(within(column).queryByText("No palay sold yet")).toBeNull();
+  });
+});
+
+describe("New Sale's recommended price", () => {
+  beforeEach(() => {
+    vi.spyOn(salesService, "listCustomers").mockResolvedValue([
+      { id: "c1", name: "Aling Nena Store" },
+    ]);
+    vi.spyOn(paddyService, "listVarieties").mockResolvedValue([
+      { id: "v1", code: "RC222", kind: "both" },
+    ]);
+    vi.spyOn(byproductKindService, "list").mockResolvedValue([]);
+    vi.spyOn(salesService, "listOrders").mockResolvedValue([]);
+  });
+
+  it("fills an empty rice price with the Profit calculator's, and says what it is", async () => {
+    vi.spyOn(profitService, "salePrices").mockResolvedValue({ v1: 44.5 });
+    useAuthStore.setState({ user: { ...owner, features: ["paddy", "sales", "profit"] } });
+    draw(<SaleColumn kind="rice" />);
+
+    fireEvent.click(await screen.findByRole("button", { name: /New Sale/ }));
+    const popup = screen.getByTestId("new-sale");
+    await waitFor(() => expect(profitService.salePrices).toHaveBeenCalled());
+    await chooseOption("Variety", "RC222");
+    expect(within(popup).getByPlaceholderText("₱/kg")).toHaveValue(44.5);
+    expect(within(popup).getByTestId("recommended-price")).toHaveTextContent("₱44.50");
+  });
+
+  it("asks for no price on a plan without the Profit calculator", async () => {
+    const prices = vi.spyOn(profitService, "salePrices").mockResolvedValue({ v1: 44.5 });
+    useAuthStore.setState({ user: owner });
+    draw(<SaleColumn kind="rice" />);
+
+    fireEvent.click(await screen.findByRole("button", { name: /New Sale/ }));
+    await chooseOption("Variety", "RC222");
+    expect(within(screen.getByTestId("new-sale")).getByPlaceholderText("₱/kg")).toHaveValue(null);
+    expect(prices).not.toHaveBeenCalled();
   });
 });

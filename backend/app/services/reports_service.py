@@ -16,11 +16,11 @@ from sqlalchemy.orm import Session
 
 from ..core.branch_scope import viewed_branch
 from ..core.timezones import local_today
-from ..models.costs import Expense
 from ..models.milling import ByproductInventory, MilledRiceInventory, MillingBatch
-from ..models.paddy import KG_PER_CAVAN, PalayInventory, PalayPurchase, PalayPurchaseItem
+from ..models.paddy import PalayInventory, PalayPurchase
 from ..models.sales import Invoice, SalesOrder
 from ..services.base import BaseService
+from ..services.profit_service import ProfitService
 
 
 class ReportsService(BaseService):
@@ -36,8 +36,13 @@ class ReportsService(BaseService):
         branch = viewed_branch(self.db)
         return [model.branch_id == branch] if branch is not None else []
 
-    def profit_and_loss(self, period_start: date, period_end: date, batch_id: str | None = None) -> dict:
-        revenue = (
+    def profit_and_loss(self, period_start: date, period_end: date) -> dict:
+        """The Profit page's own figures (ProfitService.period), so the Dashboard, this
+        page and the Profit page never disagree. Cost of goods is what the goods sold
+        cost; expenses are all of the period's. Sales of a good with nothing on record
+        to cost it against (none bought or milled lately) earn no profit here, as on
+        the Profit page, and are shown apart."""
+        revenue = float(
             self.db.query(func.sum(SalesOrder.total_amount))
             .filter(
                 SalesOrder.company_id == self._company_id,
@@ -49,46 +54,23 @@ class ReportsService(BaseService):
             .scalar()
             or 0
         )
-
-        cogs = (
-            self.db.query(
-                func.sum(
-                    PalayPurchaseItem.price_per_cavan
-                    * func.coalesce(PalayPurchaseItem.payable_weight_kg / KG_PER_CAVAN, PalayPurchaseItem.cavan_count)
-                )
-            )
-            .join(PalayPurchase, PalayPurchase.id == PalayPurchaseItem.purchase_id)
-            .filter(
-                PalayPurchase.company_id == self._company_id,
-                PalayPurchase.purchase_date >= period_start,
-                PalayPurchase.purchase_date <= period_end,
-                *self._viewed(PalayPurchase),
-            )
-            .scalar()
-            or 0
-        )
-
-        exp_q = self.db.query(func.sum(Expense.amount)).filter(
-            Expense.company_id == self._company_id,
-            Expense.expense_date >= period_start,
-            Expense.expense_date <= period_end,
-            *self._viewed(Expense),
-        )
-        if batch_id:
-            exp_q = exp_q.filter(Expense.batch_id == batch_id)
-        expenses = exp_q.scalar() or 0
-
-        gross_profit = revenue - cogs
-        net_profit = gross_profit - expenses
+        period = ProfitService(self.db, self.current_user).period(period_start, period_end)
+        costed = [g for g in period["goods"] if g["cost"] is not None]
+        cogs = sum(g["cost"] for g in costed)
+        costed_sales = sum(g["sales"] for g in costed)
+        expenses = period["expenses"]
+        net_profit = period["total_profit"]
+        gross_profit = net_profit + expenses
         return {
             "period_start": period_start,
             "period_end": period_end,
-            "revenue": float(revenue),
-            "cost_of_goods": float(cogs),
-            "gross_profit": float(gross_profit),
-            "operating_expenses": float(expenses),
-            "net_profit": float(net_profit),
-            "gross_margin_pct": round(float(gross_profit / revenue * 100), 2) if revenue else 0,
+            "revenue": revenue,
+            "uncosted_sales": max(round(revenue - costed_sales, 2), 0.0),
+            "cost_of_goods": cogs,
+            "gross_profit": gross_profit,
+            "operating_expenses": expenses,
+            "net_profit": net_profit,
+            "gross_margin_pct": round(gross_profit / costed_sales * 100, 2) if costed_sales else 0,
         }
 
     def inventory_valuation(self) -> dict:

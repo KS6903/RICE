@@ -7,7 +7,10 @@ import { format } from "date-fns";
 import { CUSTOMER_TYPES } from "@rice-mill/shared";
 import { salesService } from "../../services/SalesService";
 import { paddyService } from "../../services/PaddyService";
+import { profitService } from "../../services/ProfitService";
 import { useAuthStore } from "../../stores/authStore";
+import { useAccess } from "../../hooks/useAccess";
+import { useFeature } from "../../hooks/useFeature";
 import { MILLED_GRADES } from "../../mappers/InventoryMapper";
 import { useByproductKinds } from "../../hooks/useByproductKinds";
 import Modal from "../Modal";
@@ -73,6 +76,17 @@ export default function NewSaleModal({ kind, onClose }: { kind: TradeKind; onClo
     queryFn: () => paddyService.listGrades(),
     enabled: kind === "palay",
   });
+  // The Profit calculator's price for each rice, for whoever the Boss opened it to.
+  const { canView } = useAccess();
+  const hasProfit = useFeature("profit");
+  const { data: recommended = {} } = useQuery({
+    queryKey: ["profit-sale-prices"],
+    queryFn: () => profitService.salePrices(),
+    enabled: kind === "rice" && hasProfit && canView("profit"),
+  });
+  const recommendedFor = (varietyId: string): number | undefined =>
+    kind === "rice" && varietyId ? recommended[varietyId] : undefined;
+
   // Ipa, darak, binlid and the ones the mill added on Stock > Catalog.
   const { active: byproductKinds } = useByproductKinds();
 
@@ -240,7 +254,15 @@ export default function NewSaleModal({ kind, onClose }: { kind: TradeKind; onClo
                     <Select
                       aria-label={t("Variety")}
                       value={item.variety_id}
-                      onChange={(v) => setLine(idx, { variety_id: v })}
+                      onChange={(v) => {
+                        // An empty price takes the recommended one; a typed price stays.
+                        const price = recommendedFor(v);
+                        setLine(idx, {
+                          variety_id: v,
+                          ...(item.unit_price_per_kg === "" &&
+                            price != null && { unit_price_per_kg: String(price) }),
+                        });
+                      }}
                       options={varietyOptions(varieties, kind === "palay" ? "palay" : "rice")}
                     />
                   </FieldCaption>
@@ -273,6 +295,13 @@ export default function NewSaleModal({ kind, onClose }: { kind: TradeKind; onClo
                   value={item.unit_price_per_kg}
                   onChange={(e) => setLine(idx, { unit_price_per_kg: e.target.value })}
                 />
+                {recommendedFor(item.variety_id) != null && (
+                  <span className="mt-1 block text-xs text-muted" data-testid="recommended-price">
+                    {t("Recommended: {{price}}", {
+                      price: peso(recommendedFor(item.variety_id) as number),
+                    })}
+                  </span>
+                )}
               </FieldCaption>
             </div>
           ))}

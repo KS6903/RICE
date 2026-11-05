@@ -434,7 +434,8 @@ class SavingsService(BaseService):
                     moisture_pct=d["moisture_pct"],
                     byproducts=[(d[f"{k}_pct"], d[f"{k}_price"] or 0.0) for k in BYPRODUCTS],
                     other_cost_per_kg=d["other_cost_per_kg"],
-                    target_margin_pct=margin,
+                    # With no target margin picked yet, the most to pay is break-even.
+                    target_margin_pct=margin or 0.0,
                 )
 
             market = settings["wholesale_price"] or d["market_price"]

@@ -37,7 +37,6 @@ STANDARD_MOISTURE_PCT = 14.0
 DEFAULT_RECOVERY_PCT = 65.0
 HULL_PCT = 20.0
 BRAN_PCT = 10.0
-DEFAULT_TARGET_MARGIN_PCT = 10.0
 DEFAULT_STAFF_PROFIT_PCT = 30.0
 # How far back the averages that fill the calculator look.
 LOOKBACK_DAYS = 90
@@ -90,11 +89,13 @@ def price_plan(
     recovery_pct: float,
     other_costs: float,
     byproducts: Iterable[tuple[float, float]],
-    target_margin_pct: float,
+    target_margin_pct: float | None,
     market_price: float | None,
 ) -> dict | None:
     """The selling price for a lot of palay, from its recovery. ``byproducts`` is
     (% of the palay, ₱ per kg). None until there's rice to price and a cost to cover.
+    Each mill picks its own target margin; until it has, the price recommended is
+    what the market pays, when that's above break-even, and otherwise none.
 
     Palay wetter than 14% is weighed down to 14% for what it yields, but is paid
     for at the weight it was bought; drier palay is left as weighed.
@@ -109,11 +110,19 @@ def price_plan(
 
     byproduct_income = sum(standard_kg * pct / 100 * price for pct, price in byproducts)
     break_even = (total_cost - byproduct_income) / rice_kg
-    target_price = _round_up_half_peso(break_even / (1 - target_margin_pct / 100))
+    target_price = (
+        _round_up_half_peso(break_even / (1 - target_margin_pct / 100)) if target_margin_pct is not None else None
+    )
     market = market_price if market_price is not None and market_price > 0 else None
     losing = market is not None and market <= break_even
     recommended = market if market is not None and not losing else target_price
-    margin_pct = (recommended - break_even) / recommended * 100
+    margin_pct = (recommended - break_even) / recommended * 100 if recommended is not None else None
+    if losing:
+        verdict = "losing"
+    elif margin_pct is None or target_margin_pct is None:
+        verdict = "no_target"
+    else:
+        verdict = "good" if margin_pct >= target_margin_pct else "thin"
 
     plan = {
         "rice_kg": rice_kg,
@@ -123,8 +132,8 @@ def price_plan(
         "target_price": target_price,
         "recommended_price": recommended,
         "margin_pct": margin_pct,
-        "profit": recommended * rice_kg + byproduct_income - total_cost,
-        "verdict": "losing" if losing else "good" if margin_pct >= target_margin_pct else "thin",
+        "profit": recommended * rice_kg + byproduct_income - total_cost if recommended is not None else None,
+        "verdict": verdict,
         "loss_per_kg": None,
         "recovery_needed_pct": None,
         "max_palay_price": None,
@@ -141,6 +150,8 @@ def staff_view(plan: dict | None, staff_pct: float) -> dict:
     make it look smaller, and it would say how far the price is from break-even."""
     if plan is None:
         return {"recommended_price": None, "estimated_profit_per_kg": None, "verdict": "no_data"}
+    if plan["recommended_price"] is None:
+        return {"recommended_price": None, "estimated_profit_per_kg": None, "verdict": plan["verdict"]}
     per_kg = plan["recommended_price"] - plan["break_even"]
     shown = round(per_kg * staff_pct / 100, 2) if per_kg > 0 and plan["verdict"] != "losing" else None
     return {
@@ -170,7 +181,8 @@ class ProfitService(BaseService):
         target = company.profit_target_margin_pct if company else None
         staff = company.staff_profit_pct if company else None
         return {
-            "target_margin_pct": float(target) if target is not None else DEFAULT_TARGET_MARGIN_PCT,
+            # None until the Boss picks one: no margin is assumed for them.
+            "target_margin_pct": float(target) if target is not None else None,
             "staff_profit_pct": float(staff) if staff is not None else DEFAULT_STAFF_PROFIT_PCT,
         }
 
@@ -453,27 +465,52 @@ class ProfitService(BaseService):
             raise NotFoundError("Variety not found")
         return self._variety_defaults(variety, self._gather())
 
+    def _plans(self, data: dict) -> Iterable[tuple[RiceVariety, dict, dict | None]]:
+        """Each palay variety bought lately, its figures and its price plan."""
+        target = self.get_settings()["target_margin_pct"]
+        for v in self._palay_varieties():
+            d = self._variety_defaults(v, data)
+            if d["palay_price"] is None:
+                continue
+            yield (
+                v,
+                d,
+                price_plan(
+                    palay_kg=d["palay_kg"],
+                    palay_price=d["palay_price"],
+                    moisture_pct=d["moisture_pct"],
+                    recovery_pct=d["recovery_pct"],
+                    other_costs=d["palay_kg"] * d["other_cost_per_kg"],
+                    byproducts=[(d[f"{k}_pct"], d[f"{k}_price"] or 0.0) for k in BYPRODUCTS],
+                    target_margin_pct=target,
+                    market_price=d["market_price"],
+                ),
+            )
+
+    def sale_prices(self) -> dict[str, float]:
+        """The recommended price per kg for each rice the mill sells, for New Sale to
+        fill in: a palay's price goes to the rice its batches were sold as (palay and
+        rice have their own variety lists), and to the variety itself when it's both.
+        Rice made from more than one palay takes the highest, so it's never sold
+        under what any of them needs."""
+        data = self._gather()
+        prices: dict[str, float] = {}
+        for v, _, plan in self._plans(data):
+            if plan is None or plan["recommended_price"] is None or plan["verdict"] == "losing":
+                continue
+            made = data["yields"].get(v.id) or {}
+            for rice in {v.id, *made.get("rice_varieties", ())}:
+                key = str(rice)
+                prices[key] = max(prices.get(key, 0.0), round(plan["recommended_price"], 2))
+        return prices
+
     def varieties(self) -> list[dict]:
         """One row per palay variety bought lately. The Boss gets the real figures;
         anyone else, ``staff_view`` of them. Staff get no costs and no market price."""
         boss = is_boss(self.current_user)
         settings = self.get_settings()
-        data = self._gather()
         rows = []
-        for v in self._palay_varieties():
-            d = self._variety_defaults(v, data)
-            if d["palay_price"] is None:
-                continue
-            plan = price_plan(
-                palay_kg=d["palay_kg"],
-                palay_price=d["palay_price"],
-                moisture_pct=d["moisture_pct"],
-                recovery_pct=d["recovery_pct"],
-                other_costs=d["palay_kg"] * d["other_cost_per_kg"],
-                byproducts=[(d[f"{k}_pct"], d[f"{k}_price"] or 0.0) for k in BYPRODUCTS],
-                target_margin_pct=settings["target_margin_pct"],
-                market_price=d["market_price"],
-            )
+        for v, d, plan in self._plans(self._gather()):
             row = {"variety_id": d["variety_id"], "code": v.code, "name": v.name, "recovery_pct": d["recovery_pct"]}
             if boss:
                 row.update(
@@ -491,10 +528,12 @@ class ProfitService(BaseService):
     # ── this period, by good ──────────────────────────────────────────────────
 
     def period(self, start: date, end: date) -> dict:
-        """What each good earned from start to end. The cost is an estimate: each kilo
-        sold at the average that good cost lately, looking back past the start since
-        stock sold now was often bought earlier. Milled by-products cost nothing here,
-        because the rice carries the whole cost of the palay."""
+        """What each good earned from start to end, less every expense of those days.
+        The cost is an estimate: each kilo sold at the average that good cost lately,
+        looking back past the start since stock sold now was often bought earlier.
+        Milled by-products cost nothing here, because the rice carries the whole cost
+        of the palay. Expenses are counted once, in the period they were spent, not in
+        the goods' cost. The Reports page's profit and loss is these same figures."""
         since = start - timedelta(days=LOOKBACK_DAYS)
         bought = self._palay_bought(since, end)
         palay_kg = sum(r["kg"] for r in bought.values())
@@ -537,11 +576,8 @@ class ProfitService(BaseService):
         milled_rice = sum(float(o.output_weight_kg) for b in own for o in b.outputs if o.output_type == "milled_rice")
         milled_by = sum(float(o.output_weight_kg) for b in own for o in b.outputs if o.output_type != "milled_rice")
 
-        production = self._expenses(since, end, production=True)
         rice_pool_kg = rice_kg + milled_rice
-        rice_cost = (
-            (rice_amount + milled_in * (palay_cost or 0.0) + production) / rice_pool_kg if rice_pool_kg > 0 else None
-        )
+        rice_cost = (rice_amount + milled_in * (palay_cost or 0.0)) / rice_pool_kg if rice_pool_kg > 0 else None
         byproduct_pool_kg = byproduct_kg + milled_by
         byproduct_cost = byproduct_amount / byproduct_pool_kg if byproduct_pool_kg > 0 else None
 
@@ -561,28 +597,21 @@ class ProfitService(BaseService):
             total += profit or 0.0
             goods.append({"good": good, "kg_sold": kg, "sales": sales, "cost": cost, "profit": profit})
 
-        overhead = self._expenses(start, end, production=False)
+        expenses = float(
+            self.db.query(func.sum(Expense.amount))
+            .filter(
+                Expense.company_id == self._company_id,
+                Expense.expense_date >= start,
+                Expense.expense_date <= end,
+                *self._viewed(Expense),
+            )
+            .scalar()
+            or 0
+        )
         return {
             "period_start": start,
             "period_end": end,
             "goods": goods,
-            "overhead": overhead,
-            "total_profit": total - overhead,
+            "expenses": expenses,
+            "total_profit": total - expenses,
         }
-
-    def _expenses(self, since: date, until: date, *, production: bool) -> float:
-        q = (
-            self.db.query(func.sum(Expense.amount))
-            .outerjoin(ExpenseCategory, ExpenseCategory.id == Expense.category_id)
-            .filter(
-                Expense.company_id == self._company_id,
-                Expense.expense_date >= since,
-                Expense.expense_date <= until,
-                *self._viewed(Expense),
-            )
-        )
-        if production:
-            q = q.filter(ExpenseCategory.is_production_cost.is_(True))
-        else:
-            q = q.filter(or_(ExpenseCategory.is_production_cost.is_(False), ExpenseCategory.id.is_(None)))
-        return float(q.scalar() or 0)
