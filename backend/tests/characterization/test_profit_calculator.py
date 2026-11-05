@@ -233,7 +233,7 @@ def test_a_period_sets_each_goods_sales_against_its_cost(make_auth_client, db_se
     # No rice bought or milled yet, so no cost to set against it: no profit claimed.
     assert goods["rice"]["cost"] is None
     assert goods["rice"]["profit"] is None
-    assert period["overhead"] == 0
+    assert period["expenses"] == 0
 
 
 def test_new_sale_gets_the_recommended_price_only_where_the_page_is_open(make_auth_client, db_session):

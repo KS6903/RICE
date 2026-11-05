@@ -130,7 +130,8 @@ describe("Correcting a saved purchase", () => {
             variety_id: "v1",
             grade_id: null,
             sack_count: null,
-            cavan_count: 24,
+            // 1,200 kg less the 50 kg tare: the cavans the stock counts.
+            cavan_count: 23,
             gross_weight_kg: 1200,
             tare_weight_kg: 50,
             moisture_content_pct: 14,
