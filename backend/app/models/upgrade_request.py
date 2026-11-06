@@ -1,6 +1,5 @@
 import uuid
 from datetime import datetime
-
 from decimal import Decimal
 
 from sqlalchemy import DateTime, ForeignKey, Numeric, String, Text

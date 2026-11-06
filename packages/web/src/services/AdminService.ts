@@ -158,9 +158,7 @@ export class AdminService {
   deleteVoucher(id: string): Promise<unknown> {
     return this.http.delete(`/admin/vouchers/${id}`).then((r) => r.data);
   }
-  voucherUses(
-    id: string,
-  ): Promise<
+  voucherUses(id: string): Promise<
     {
       company_id: string | null;
       company_name: string;
