@@ -16,9 +16,15 @@ concurrency:
 
 jobs:
   # The checks themselves live in checks.yml, which deploy.yml also calls, so
-  # the deploy gate and CI cannot drift apart.
+  # the deploy gate and CI cannot drift apart. CI runs only the jobs for what
+  # changed since main's last green run; deploys run them all.
   checks:
+    permissions:
+      contents: read
+      actions: read
     uses: ./.github/workflows/checks.yml
+    with:
+      full: false
 
   # Dependabot's minor/patch PRs merge themselves once every check passes.
   # GitHub's native auto-merge needs branch protection, which this repo's plan

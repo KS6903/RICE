@@ -10,14 +10,84 @@ name: Checks
 # self-hosted runner is reused between jobs, hence the fresh virtualenvs and the
 # API container clean-up. Never point a public repository at one: a pull
 # request from a fork would run on that machine.
+#
+# CI passes full: false, and each job then runs only when the part of the repo it
+# checks changed since the last commit on main whose CI passed (a pull request:
+# since its base). Deploys keep the default and run everything.
 on:
   workflow_call:
+    inputs:
+      full:
+        description: "Run every job, whatever changed"
+        type: boolean
+        default: true
 
 permissions:
   contents: read
+  actions: read # the changes job looks up CI's last green run; callers grant it too
 
 jobs:
+  changes:
+    name: What changed
+    runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
+    outputs:
+      backend: ${{ steps.scope.outputs.backend }}
+      web: ${{ steps.scope.outputs.web }}
+      e2e: ${{ steps.scope.outputs.e2e }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - name: Pick the jobs this change needs
+        id: scope
+        env:
+          FULL: ${{ inputs.full }}
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          PR_BASE: ${{ github.event.pull_request.base.sha }}
+        run: |
+          everything() {
+            echo "$1: every job runs."
+            printf 'backend=true\nweb=true\ne2e=true\n' >> "$GITHUB_OUTPUT"
+            exit 0
+          }
+          [ "$FULL" = "true" ] && everything "full run asked for"
+
+          # The last green commit, not the previous push: a run cancelled by a
+          # newer push, or one that failed, leaves its changes to the next run.
+          base=""
+          if [ -n "$PR_BASE" ]; then
+            base="$PR_BASE"
+          else
+            for sha in $(gh api "repos/$REPO/actions/workflows/ci.yml/runs?branch=main&status=success&per_page=30" \
+                --jq '.workflow_runs[].head_sha' 2>/dev/null); do
+              if git merge-base --is-ancestor "$sha" HEAD 2>/dev/null; then base="$sha"; break; fi
+            done
+          fi
+          [ -z "$base" ] && everything "no green run of main behind this commit"
+          echo "Changes since ${base}:"
+
+          backend=false web=false e2e=false
+          while IFS= read -r f; do
+            [ -z "$f" ] && continue
+            echo "  $f"
+            case "$f" in
+              backend/* | legal/* | .dockerignore | docker-compose.yml) backend=true ;;
+              e2e/* | playwright*.config.ts | tsconfig.e2e.json) e2e=true web=true ;;
+              packages/* | worker/* | scripts/* | package.json | package-lock.json | \
+                tsconfig*.json | wrangler.jsonc | .prettierrc.json | .prettierignore) web=true ;;
+              *.md | .claude/* | .codex/* | .gitignore | .gitattributes | .git-blame-ignore-revs) ;;
+              # Workflows, scanner config and anything unlisted: check it all.
+              *) everything "$f is outside the known areas" ;;
+            esac
+          done < <(git diff --name-only "$base" HEAD)
+          echo "backend=$backend web=$web e2e=$e2e"
+          printf 'backend=%s\nweb=%s\ne2e=%s\n' "$backend" "$web" "$e2e" >> "$GITHUB_OUTPUT"
+
   backend:
+    needs: changes
+    if: needs.changes.outputs.backend == 'true'
     runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
     services:
       postgres:
@@ -84,6 +154,8 @@ jobs:
 
   migrations:
     name: Migrations match the models
+    needs: changes
+    if: needs.changes.outputs.backend == 'true'
     # Two paths on a disposable database: main's schema plus this branch's new
     # migrations (what production goes through), and every migration from
     # empty (a new environment). Each ends with `alembic check`, which fails
@@ -138,6 +210,8 @@ jobs:
           python scripts/check_migrations.py --database-url "$DATABASE_URL" $base
 
   frontend:
+    needs: changes
+    if: needs.changes.outputs.web == 'true'
     runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
@@ -230,6 +304,8 @@ jobs:
 
   docker:
     name: API image
+    needs: changes
+    if: needs.changes.outputs.backend == 'true'
     # wrangler builds this image only at deploy time, so without this job a
     # broken Dockerfile or build context would surface mid-deploy.
     runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
@@ -257,6 +333,8 @@ jobs:
 
   e2e-api:
     name: API end-to-end
+    needs: changes
+    if: needs.changes.outputs.backend == 'true' || needs.changes.outputs.e2e == 'true'
     runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
     services:
       postgres:
@@ -305,6 +383,8 @@ jobs:
 
   e2e-browser:
     name: Browser end-to-end
+    needs: changes
+    if: needs.changes.outputs.backend == 'true' || needs.changes.outputs.web == 'true'
     # The app in a real browser: sign-in and the terms screen, the first-run
     # checklist and guided tour, buying, milling, selling and invoicing,
     # inventory, dispatch and weather. playwright.config.ts starts a disposable

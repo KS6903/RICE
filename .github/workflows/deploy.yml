@@ -42,6 +42,9 @@ jobs:
 
   verify:
     needs: main-only
+    permissions:
+      contents: read
+      actions: read
     uses: ./.github/workflows/checks.yml
 
   readiness:

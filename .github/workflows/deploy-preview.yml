@@ -64,6 +64,9 @@ jobs:
     # After CI the checks have just passed for this commit; the button runs them.
     if: github.event_name == 'workflow_dispatch'
     needs: main-only
+    permissions:
+      contents: read
+      actions: read
     uses: ./.github/workflows/checks.yml
 
   readiness:
