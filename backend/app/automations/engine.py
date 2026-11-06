@@ -20,7 +20,7 @@ from collections.abc import Collection, Sequence
 from datetime import datetime, timedelta
 
 from pydantic import BaseModel, ValidationError
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from ..core.access_policy import access_for_user
 from ..core.exceptions import NotConfiguredError
@@ -65,14 +65,25 @@ def entitled(db: Session, company_id: uuid.UUID, recipe: Recipe | None = None) -
     return covers(features, recipe) if recipe else FEATURE in features
 
 
-def eligible_users(db: Session, company_id: uuid.UUID, recipe: Recipe) -> list[User]:
-    """Active users of the tenant whose role may see what the recipe sends."""
-    users = (
+def active_users(db: Session, company_id: uuid.UUID) -> list[User]:
+    """The tenant's active users with their roles, in one query: what
+    eligible_users picks from. Load it once to check many recipes."""
+    return (
         db.query(User)
+        .options(joinedload(User.role), joinedload(User.custom_role))
         .filter(User.company_id == company_id, User.is_active.is_(True), User.is_platform_admin.is_(False))
         .order_by(User.full_name)
         .all()
     )
+
+
+def eligible_users(
+    db: Session, company_id: uuid.UUID, recipe: Recipe, users: Sequence[User] | None = None
+) -> list[User]:
+    """Active users of the tenant whose role may see what the recipe sends.
+    ``users`` is active_users(), when the caller already has it."""
+    if users is None:
+        users = active_users(db, company_id)
     # What each person can open in this mill, as its Boss has set it (a role
     # made up by the Boss included): someone shut out of a page isn't told what
     # is on it. A recipe for named roles only reaches those built-in roles.
@@ -85,10 +96,16 @@ def eligible_users(db: Session, company_id: uuid.UUID, recipe: Recipe) -> list[U
     ]
 
 
-def recipient_ids(db: Session, company_id: uuid.UUID, recipe: Recipe, chosen: Sequence[str]) -> list[uuid.UUID]:
+def recipient_ids(
+    db: Session,
+    company_id: uuid.UUID,
+    recipe: Recipe,
+    chosen: Sequence[str],
+    users: Sequence[User] | None = None,
+) -> list[uuid.UUID]:
     """The rule's chosen recipients who are still eligible, or, when nobody was
     chosen, everyone eligible in the recipe's default roles."""
-    eligible = {u.id: u for u in eligible_users(db, company_id, recipe)}
+    eligible = {u.id: u for u in eligible_users(db, company_id, recipe, users)}
     picked: list[uuid.UUID] = []
     for raw in chosen:
         try:

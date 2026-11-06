@@ -11,6 +11,8 @@ AI switch on (PUT /ai), which only an owner can flip.
 """
 
 import uuid
+from collections.abc import Iterable
+from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -80,14 +82,16 @@ def _recipe(code: str) -> Recipe:
     return recipe
 
 
-def _last_run(db: Session, company_id: uuid.UUID, recipe: Recipe) -> dict | None:
-    run = db.scalars(
+def _last_runs(db: Session, company_id: uuid.UUID, recipes: Iterable[Recipe]) -> dict[str, dict]:
+    """Each recipe's latest run, by recipe code, in one query."""
+    codes = {engine.job_name(r.code): r.code for r in recipes}
+    runs = db.scalars(
         select(JobRun)
-        .where(JobRun.job == engine.job_name(recipe.code), JobRun.company_id == company_id)
-        .order_by(JobRun.started_at.desc())
-        .limit(1)
-    ).first()
-    return _run_out(run) if run else None
+        .where(JobRun.job.in_(codes), JobRun.company_id == company_id)
+        .order_by(JobRun.job, JobRun.started_at.desc())
+        .distinct(JobRun.job)
+    )
+    return {codes[run.job]: _run_out(run) for run in runs}
 
 
 def _run_out(run: JobRun) -> dict:
@@ -100,17 +104,44 @@ def _run_out(run: JobRun) -> dict:
     }
 
 
-def _tenant_options(db: Session, company_id: uuid.UUID, field: RecipeField) -> list[tuple[str, str]]:
+@dataclass
+class _Lookups:
+    """What every recipe's card reads from the database, fetched once per
+    request: one query per recipe was hundreds of round trips for the page."""
+
+    users: list[User]
+    last_runs: dict[str, dict]
+    locations: list[tuple[str, str]]
+
+
+def _lookups(db: Session, company_id: uuid.UUID, recipes: list[Recipe]) -> _Lookups:
+    needs_locations = any(f.options_from == "saved_locations" for r in recipes for f in r.fields)
+    return _Lookups(
+        users=engine.active_users(db, company_id),
+        last_runs=_last_runs(db, company_id, recipes),
+        locations=[(str(loc.id), loc.label) for loc in saved_locations(db, company_id)] if needs_locations else [],
+    )
+
+
+def _tenant_options(lookups: _Lookups, field: RecipeField) -> list[tuple[str, str]]:
     if field.options_from == "saved_locations":
-        return [(str(loc.id), loc.label) for loc in saved_locations(db, company_id)]
+        return lookups.locations
     return []
 
 
-def _serialize(db: Session, company_id: uuid.UUID, recipe: Recipe, rule: AutomationRule | None, *, full: bool) -> dict:
+def _serialize(
+    db: Session,
+    company_id: uuid.UUID,
+    recipe: Recipe,
+    rule: AutomationRule | None,
+    *,
+    full: bool,
+    lookups: _Lookups,
+) -> dict:
     params = engine.parse_params(recipe, rule.params if rule else None)
-    candidates = engine.eligible_users(db, company_id, recipe)
+    candidates = engine.eligible_users(db, company_id, recipe, lookups.users)
     chosen = [str(x) for x in (rule.recipients if rule else [])]
-    effective = engine.recipient_ids(db, company_id, recipe, chosen)
+    effective = engine.recipient_ids(db, company_id, recipe, chosen, lookups.users)
     return {
         "code": recipe.code,
         "title": recipe.title,
@@ -124,9 +155,7 @@ def _serialize(db: Session, company_id: uuid.UUID, recipe: Recipe, rule: Automat
                 "kind": f.kind,
                 "help": f.help,
                 "unit": f.unit,
-                "options": [
-                    {"value": v, "label": label} for v, label in (*f.options, *_tenant_options(db, company_id, f))
-                ],
+                "options": [{"value": v, "label": label} for v, label in (*f.options, *_tenant_options(lookups, f))],
             }
             for f in recipe.fields
             if full or f.name != "ai_advice"  # AI is Enterprise's
@@ -140,7 +169,7 @@ def _serialize(db: Session, company_id: uuid.UUID, recipe: Recipe, rule: Automat
             {"id": str(u.id), "name": u.full_name or u.username, "role": u.role.name if u.role else None}
             for u in candidates
         ],
-        "last_run": _last_run(db, company_id, recipe),
+        "last_run": lookups.last_runs.get(recipe.code),
         "uses_ai": recipe.uses_ai,
         "locked": recipe.enterprise_only and not full,
         "ai_optional": recipe.ai_optional,
@@ -191,9 +220,10 @@ def _health(db: Session, company_id: uuid.UUID) -> dict:
 def list_automations(current_user=Depends(get_current_user), db: Session = Depends(get_db)):
     rules = {r.recipe: r for r in db.query(AutomationRule).all()}
     full = _has_enterprise(current_user, db)
+    lookups = _lookups(db, current_user.company_id, list(RECIPES.values()))
     return {
         "recipes": [
-            _serialize(db, current_user.company_id, recipe, rules.get(code), full=full)
+            _serialize(db, current_user.company_id, recipe, rules.get(code), full=full, lookups=lookups)
             for code, recipe in RECIPES.items()
         ],
         "ai": _ai_out(db, current_user.company_id),
@@ -299,7 +329,8 @@ def update_automation(
     rule.updated_by = current_user.id
     db.commit()
     db.refresh(rule)
-    return _serialize(db, current_user.company_id, recipe, rule, full=full)
+    lookups = _lookups(db, current_user.company_id, [recipe])
+    return _serialize(db, current_user.company_id, recipe, rule, full=full, lookups=lookups)
 
 
 @router.post("/{code}/test", dependencies=manage)
