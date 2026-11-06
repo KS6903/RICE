@@ -36,7 +36,6 @@ from sqlalchemy.orm import Session
 
 from ..models.base import now_utc
 from .config import settings
-from .cookies import ACCESS_COOKIE
 from .database import Base, ProvisionerSessionLocal, SessionLocal
 
 logger = logging.getLogger("ricemill.tenancy")
@@ -61,7 +60,11 @@ PUBLIC_TABLE_NAMES: frozenset[str] = frozenset(
         "user_locations",  # per-user UI state (FK -> users only)
         "legal_acceptances",  # consent evidence: must outlive a tenant schema
         "job_runs",  # scheduled-job claims; spans tenants
-        "app_feedback",  # ratings of the app; BossAdmin reads every mill's
+        "app_feedback",  # ratings of the app; each also goes to the owner's Discord
+        "vouchers",  # BossAdmin's codes; a mill redeems one through billing
+        "voucher_redemptions",  # one per mill per voucher
+        "admin_audit_log",  # what BossAdmin did; spans tenants
+        "page_releases",  # how far each page is released; spans tenants
     }
 )
 
@@ -158,10 +161,13 @@ def _reapply_search_path(session: Session, transaction, connection) -> None:
 
 
 def _token_from_request(request) -> str | None:
-    auth = request.headers.get("authorization") if request is not None else None
-    if auth and auth.lower().startswith("bearer "):
-        return auth[7:].strip()
-    return request.cookies.get(ACCESS_COOKIE) if request is not None else None
+    """The same token get_token authenticates: a Bearer header, else BossAdmin's
+    "View as" cookie, else the session cookie (core/view_as.py)."""
+    if request is None:
+        return None
+    from .view_as import request_token
+
+    return request_token(request)[0]
 
 
 # ── provisioning ──────────────────────────────────────────────────────────────

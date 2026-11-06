@@ -33,6 +33,9 @@ import {
   ScrollText,
 } from "lucide-react";
 import CodeValue from "../../components/CodeValue";
+import LastSeenCell from "../../components/admin/LastSeenCell";
+import TenantPagesCard from "../../components/admin/TenantPagesCard";
+import ViewAsButton from "../../components/admin/ViewAsButton";
 import { currentLocale, t } from "../../i18n";
 import { tx } from "../../i18n/tx";
 
@@ -885,54 +888,66 @@ export default function AdminTenantDetail() {
                 {t("Users ({{usersCount}})", { usersCount: users.length })}
               </h3>
             </div>
-            <table className="data-table">
-              <thead>
-                <tr>
-                  {[
-                    t("Username"),
-                    t("Full name"),
-                    t("Email"),
-                    t("Role"),
-                    t("Status"),
-                    t("Created"),
-                    t("Last login"),
-                  ].map((h) => (
-                    <th key={h}>{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {users.map((u: any) => (
-                  <tr key={u.id}>
-                    <td className="px-4 py-3 font-mono text-xs">{u.username}</td>
-                    <td className="px-4 py-3">{u.full_name}</td>
-                    <td className="px-4 py-3 text-muted">{u.email || "—"}</td>
-                    <td className="px-4 py-3">{u.role ? t(roleLabel(u.role)) : "—"}</td>
-                    <td className="px-4 py-3">
-                      {u.is_active ? (
-                        <span className="badge-green">{t("Active")}</span>
-                      ) : (
-                        <span className="badge-red">{t("Inactive")}</span>
-                      )}
-                    </td>
-                    <td className="px-4 py-3 text-muted text-xs">
-                      {u.created_at ? format(new Date(u.created_at), "MMM d, yyyy") : "—"}
-                    </td>
-                    <td className="px-4 py-3 text-muted text-xs">
-                      {u.last_login ? format(new Date(u.last_login), "MMM d, HH:mm") : "—"}
-                    </td>
-                  </tr>
-                ))}
-                {users.length === 0 && (
+            <div className="overflow-x-auto">
+              <table className="data-table">
+                <thead>
                   <tr>
-                    <td colSpan={7} className="px-4 py-6 text-center text-muted">
-                      {t("No users yet.")}
-                    </td>
+                    {[
+                      t("Username"),
+                      t("Full name"),
+                      t("Email"),
+                      t("Role"),
+                      t("Status"),
+                      t("Created"),
+                      t("Last seen"),
+                      t("Last signed in"),
+                      "",
+                    ].map((h, i) => (
+                      <th key={h || `c${i}`}>{h}</th>
+                    ))}
                   </tr>
-                )}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {users.map((u: any) => (
+                    <tr key={u.id}>
+                      <td className="px-4 py-3 font-mono text-xs">{u.username}</td>
+                      <td className="px-4 py-3">{u.full_name}</td>
+                      <td className="px-4 py-3 text-muted">{u.email || "—"}</td>
+                      <td className="px-4 py-3">{u.role ? t(roleLabel(u.role)) : "—"}</td>
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        {u.is_active ? (
+                          <span className="badge-green">{t("Active")}</span>
+                        ) : (
+                          <span className="badge-red">{t("Inactive")}</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 text-muted text-xs">
+                        {u.created_at ? format(new Date(u.created_at), "MMM d, yyyy") : "—"}
+                      </td>
+                      <td className="px-4 py-3 text-xs whitespace-nowrap">
+                        <LastSeenCell iso={u.last_seen} />
+                      </td>
+                      <td className="px-4 py-3 text-muted text-xs whitespace-nowrap">
+                        {u.last_login ? format(new Date(u.last_login), "MMM d, yyyy, h:mm a") : "—"}
+                      </td>
+                      <td className="px-4 py-3 text-right">
+                        <ViewAsButton person={u} />
+                      </td>
+                    </tr>
+                  ))}
+                  {users.length === 0 && (
+                    <tr>
+                      <td colSpan={9} className="px-4 py-6 text-center text-muted">
+                        {t("No users yet.")}
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
+
+          <TenantPagesCard tenantId={id!} overrides={data?.page_overrides ?? {}} />
 
           <TenantLegalLedger tenantId={id!} />
 

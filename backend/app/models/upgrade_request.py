@@ -1,7 +1,9 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import DateTime, ForeignKey, String, Text
+from decimal import Decimal
+
+from sqlalchemy import DateTime, ForeignKey, Numeric, String, Text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -32,6 +34,12 @@ class UpgradeRequest(Base, TimestampMixin):
     admin_note: Mapped[str | None] = mapped_column(Text)
     resolved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     resolved_by: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    # A voucher for a bank transfer: what it takes off, and what is left to pay
+    # (pesos), worked out by the server when the request was made.
+    voucher_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("vouchers.id"))
+    discount: Mapped[Decimal] = mapped_column(Numeric(10, 2), default=0, server_default="0", nullable=False)
+    amount_due: Mapped[Decimal | None] = mapped_column(Numeric(10, 2))
 
     requested_plan = relationship("SubscriptionPlan", foreign_keys=[requested_plan_id])
     current_plan = relationship("SubscriptionPlan", foreign_keys=[current_plan_id])
+    voucher = relationship("Voucher", foreign_keys=[voucher_id])

@@ -30,6 +30,9 @@ export class BillingService {
     plan_id: string;
     billing_interval: string;
     provider: string;
+    voucher_code?: string;
+    current_password?: string;
+    mfa_code?: string;
   }): Promise<{ payment_id: string; checkout_url: string }> {
     return this.http.post("/billing/checkout", body).then((r) => r.data);
   }
@@ -41,3 +44,50 @@ export class BillingService {
 }
 
 export const billingService = new BillingService();
+
+/** What a voucher gives, as the server describes it (backend services/vouchers.py). */
+export type VoucherInfo = {
+  code: string;
+  kind: "free_time" | "percent_off" | "amount_off";
+  plan_id: string | null;
+  plan_name: string | null;
+  billing_interval: "monthly" | "annual" | null;
+  percent_off: number | null;
+  amount_off: number | null;
+  amount_off_usd: number | null;
+  free_months: number;
+  free_days: number;
+  expires_at: string | null;
+};
+
+type Totals = { price: number; discount: number; total: number };
+
+export type VoucherCheck = {
+  voucher: VoucherInfo;
+  /** For the plan and interval asked about: the price, what comes off, what is left. */
+  prices: { PHP?: Totals; USD?: Totals } | null;
+};
+
+export class VoucherService {
+  constructor(private http = api) {}
+
+  /** What a code would give this mill. Changes nothing. */
+  check(body: {
+    code: string;
+    plan_id?: string;
+    billing_interval?: string;
+  }): Promise<VoucherCheck> {
+    return this.http.post("/billing/vouchers/check", body).then((r) => r.data);
+  }
+
+  /** Free time on a plan: on at once. The Boss confirms it's them. */
+  redeem(body: {
+    code: string;
+    current_password: string;
+    mfa_code?: string;
+  }): Promise<{ redeemed: { plan_name: string; expires_at: string } }> {
+    return this.http.post("/billing/vouchers/redeem", body).then((r) => r.data);
+  }
+}
+
+export const voucherService = new VoucherService();

@@ -26,6 +26,7 @@ from .config import settings
 from .cookies import ACCESS_COOKIE
 from .csrf import enforce_csrf
 from .database import get_db
+from .view_as import SAFE_METHODS, VIEW_AS_COOKIE
 
 # auto_error=False: a missing Authorization header falls through to the session
 # cookie (web client) inside get_token, instead of an immediate 401.
@@ -42,6 +43,14 @@ def get_token(request: Request, header_token: str | None = Depends(oauth2_scheme
     """
     if header_token:
         return header_token
+    # BossAdmin's "View as" (core/view_as.py): while its cookie is there, the
+    # request runs as the person being viewed. Checked like any other token,
+    # plus the admin's own sign-in behind it.
+    view_token = request.cookies.get(VIEW_AS_COOKIE)
+    if view_token:
+        enforce_csrf(request)
+        request.state.view_as_cookie = True
+        return view_token
     cookie_token = request.cookies.get(ACCESS_COOKIE)
     if cookie_token:
         enforce_csrf(request)
@@ -188,6 +197,17 @@ def authenticate_access_token(token: str, db: Session):
         family_id: uuid.UUID | None = uuid.UUID(str(payload.get("sid")))
     except (TypeError, ValueError):
         family_id = None
+    # A "View as" token lives on the platform admin's own sign-in, not the
+    # viewed person's: that is the session that must still be live.
+    act = payload.get("act")
+    actor_uuid: uuid.UUID | None = None
+    if act is not None:
+        try:
+            actor_uuid = uuid.UUID(str(act.get("sub"))) if isinstance(act, dict) else None
+        except ValueError:
+            actor_uuid = None
+        if actor_uuid is None or payload.get("view_mode") not in ("view", "full"):
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
     # One database round trip for everything below: the user with their company
     # and role (the tenant check, then section access), and whether this
     # sign-in is still live. Each part is matched on this token's own user and
@@ -197,7 +217,7 @@ def authenticate_access_token(token: str, db: Session):
         select(AuthSession.id)
         .where(
             AuthSession.family_id == family_id,
-            AuthSession.user_id == User.id,
+            AuthSession.user_id == (actor_uuid if actor_uuid is not None else User.id),
             AuthSession.revoked_at.is_(None),
             AuthSession.expires_at > datetime.now(timezone.utc),
         )
@@ -231,6 +251,11 @@ def authenticate_access_token(token: str, db: Session):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
     if not live:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Session has been revoked")
+    if actor_uuid is not None:
+        actor = db.get(User, actor_uuid)
+        # Only an active platform admin views, and never another platform admin.
+        if actor is None or not actor.is_active or not actor.is_platform_admin or user.is_platform_admin:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
     return user, payload
 
 
@@ -239,15 +264,74 @@ def get_current_user(
     token: str = Depends(get_token),
     db: Session = Depends(get_db),
 ):
-    user, _payload = authenticate_access_token(token, db)
+    try:
+        user, payload = authenticate_access_token(token, db)
+    except HTTPException as exc:
+        if exc.status_code == status.HTTP_401_UNAUTHORIZED and getattr(request.state, "view_as_cookie", False):
+            # The app reads this to go back to BossAdmin, not to sign out.
+            # The exact words matter: services/api.ts looks for them.
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED, detail="Your view of this account has ended."
+            ) from None
+        raise
+    act = payload.get("act")
+    if act is not None:
+        mode = payload.get("view_mode")
+        if request.method not in SAFE_METHODS:
+            if mode != "full":
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="You're viewing this account as read-only. Changes are turned off.",
+                )
+            if request.url.path.startswith("/api/auth/"):
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="A person's own sign-in can't be changed from BossAdmin.",
+                )
+        request.state.view_as = {
+            "mode": mode,
+            "admin_id": act.get("sub"),
+            "admin_username": act.get("username"),
+            "expires_at": payload.get("exp"),
+            "company_name": user.company.name if user.company is not None else None,
+        }
+        # services/activity.py marks every change made this way as BossAdmin's.
+        db.info["acting_admin"] = act.get("username") or "BossAdmin"
     resolve_request(db, request, user)
     request.state.auth_context = {
         "user_id": user.id,
         "company_id": user.company_id,
         "username": user.username,
         "schema": user.company.schema_name if user.company is not None else None,
+        "platform_admin": bool(user.is_platform_admin),
+        "admin_id": user.id if user.is_platform_admin else (act or {}).get("sub"),
+        "acting_admin": (act or {}).get("username"),
+        # The sign-in (session family) this request runs on: BossAdmin's
+        # confirmation is bound to it (core/admin_guard.py).
+        "sid": payload.get("sid"),
     }
     return user
+
+
+def closed_pages_for(request: Request, user, db: Session) -> set[str]:
+    """The pages the user's mill doesn't get at its release stage (core/releases.py).
+    Worked out once per request."""
+    cached = getattr(request.state, "closed_pages", None)
+    if cached is not None:
+        return cached
+    from . import releases
+
+    if user.is_platform_admin or user.company is None:
+        closed: set[str] = set()
+    else:
+        closed = releases.closed_pages(
+            db,
+            user.company,
+            lambda: releases.plan_code_for(db, user.company_id),
+            bossadmin=getattr(request.state, "view_as", None) is not None,
+        )
+    request.state.closed_pages = closed
+    return closed
 
 
 def mfa_required_for(user) -> bool:
@@ -375,9 +459,14 @@ def require_section_access(section: str, *, write: bool = False):
     if section not in APP_SECTIONS:
         raise ValueError(f"Unknown application section: {section}")
 
-    def checker(current_user=Depends(get_current_user)):
+    # current_user first, so the checker can still be called with just a user
+    # (as the unit tests do); FastAPI fills in the request and the session.
+    def checker(current_user=Depends(get_current_user), request: Request = None, db: Session = Depends(get_db)):
         if getattr(current_user, "is_platform_admin", False):
             return current_user
+        # A page not yet released to this mill, or turned off for it.
+        if request is not None and section in closed_pages_for(request, current_user, db):
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="This page isn't available yet.")
         # The person's role, built in (as this mill's Boss may have changed it)
         # or one the Boss made up.
         level = user_section_level(current_user, section)

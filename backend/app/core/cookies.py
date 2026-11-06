@@ -159,3 +159,5 @@ def clear_auth_cookies(response: Response) -> None:
     response.delete_cookie(ACCESS_COOKIE, path="/", domain=settings.COOKIE_DOMAIN)
     response.delete_cookie(REFRESH_COOKIE, path=REFRESH_COOKIE_PATH, domain=settings.COOKIE_DOMAIN)
     response.delete_cookie(CSRF_COOKIE, path="/", domain=settings.COOKIE_DOMAIN)
+    # Signing out of BossAdmin ends a "View as" visit too (core/view_as.py).
+    response.delete_cookie("view_as", path="/", domain=settings.COOKIE_DOMAIN)

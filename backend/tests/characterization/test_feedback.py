@@ -1,36 +1,65 @@
-"""Settings > Feedback: a rating and why, read by BossAdmin across the mills."""
+"""Settings > Feedback: a rating and why, kept for the sender's tab and posted to
+the platform owner's Discord."""
 
 from __future__ import annotations
 
+from pydantic import SecretStr
 
-def test_a_rating_with_its_reasons_reaches_bossadmin(make_auth_client):
-    # One client underneath: each make_auth_client call signs it in as someone new.
+from app.core import discord
+from app.core.config import settings
+
+WEBHOOK = "https://discord.com/api/webhooks/123/abc"
+
+
+def test_a_rating_with_its_reasons_goes_to_discord(make_auth_client, monkeypatch):
+    sent: list[tuple[str, dict]] = []
+    monkeypatch.setattr(settings, "DISCORD_FEEDBACK_WEBHOOK_URL", SecretStr(WEBHOOK))
+    monkeypatch.setattr(discord, "_post", lambda url, payload: sent.append((url, payload)))
+    monkeypatch.setattr(
+        discord.threading,
+        "Thread",
+        lambda target, args, **_: type("T", (), {"start": lambda self: target(*args)})(),
+    )
     auth_client = make_auth_client(features=[], username="boss")
     assert auth_client.get("/api/feedback").json() is None
 
     res = auth_client.post(
         "/api/feedback",
-        json={"rating": 2, "reasons": ["too_slow", "other"], "other_text": "  Printing the receipt fails.  "},
+        json={"rating": 2, "reasons": ["too_slow", "other"], "other_text": "  Printing the receipt fails. @everyone "},
     )
     assert res.status_code == 201, res.text
     assert auth_client.get("/api/feedback").json()["rating"] == 2
 
-    auth_client.post("/api/feedback", json={"rating": 5, "reasons": ["saves_time"]})
+    assert len(sent) == 1
+    url, payload = sent[0]
+    assert url == WEBHOOK
+    assert payload["allowed_mentions"] == {"parse": []}
+    card = payload["embeds"][0]
+    assert card["title"].endswith("2/5, Poor")
+    fields = {f["name"]: f["value"] for f in card["fields"]}
+    assert "Too slow" in fields["Why"] and "Other" in fields["Why"]
+    assert fields["In their words"] == "Printing the receipt fails. @everyone"
+    assert "@boss" in fields["From"]
 
-    admin_client = make_auth_client(features=[], username="admin", is_platform_admin=True)
-    page = admin_client.get("/api/admin/feedback").json()
-    assert page["summary"]["count"] == 2
-    assert page["summary"]["average"] == 3.5
-    assert page["summary"]["by_rating"] == {"1": 0, "2": 1, "3": 0, "4": 0, "5": 1}
-    assert {r["code"]: r["count"] for r in page["summary"]["reasons"]} == {"too_slow": 1, "other": 1, "saves_time": 1}
-    assert [item["rating"] for item in page["items"]] == [5, 2]
-    assert page["items"][1]["other_text"] == "Printing the receipt fails."
-    assert page["items"][1]["company_name"]
-    assert page["items"][1]["user_name"]
 
-    low = admin_client.get("/api/admin/feedback", params={"rating": 2}).json()
-    assert [item["rating"] for item in low["items"]] == [2]
-    assert low["summary"]["count"] == 2  # the summary stays the whole picture
+def test_no_webhook_means_nothing_is_sent(auth_client, monkeypatch):
+    monkeypatch.setattr(settings, "DISCORD_FEEDBACK_WEBHOOK_URL", None)
+    called = []
+    monkeypatch.setattr(discord, "_post", lambda *a: called.append(a))
+    assert auth_client.post("/api/feedback", json={"rating": 5, "reasons": ["saves_time"]}).status_code == 201
+    assert called == []
+
+
+def test_only_a_discord_address_is_used(monkeypatch):
+    assert discord.webhook_ok(WEBHOOK)
+    for bad in (
+        "http://discord.com/api/webhooks/1/a",
+        "https://evil.example/api/webhooks/1/a",
+        "https://discord.com.evil.example/api/webhooks/1/a",
+        "https://discord.com:8443/api/webhooks/1/a",
+        "https://discord.com/users/1",
+    ):
+        assert not discord.webhook_ok(bad), bad
 
 
 def test_the_reason_must_fit_the_rating_and_other_must_say_why(auth_client):
@@ -44,5 +73,6 @@ def test_the_reason_must_fit_the_rating_and_other_must_say_why(auth_client):
     assert send(rating=3, reasons=["other"], other_text="Needs a Bisaya receipt.") == 201
 
 
-def test_only_bossadmin_reads_everyones_feedback(auth_client):
-    assert auth_client.get("/api/admin/feedback").status_code == 403
+def test_bossadmin_has_no_feedback_page_any_more(make_auth_client):
+    admin_client = make_auth_client(features=[], username="admin", is_platform_admin=True)
+    assert admin_client.get("/api/admin/feedback").status_code == 404

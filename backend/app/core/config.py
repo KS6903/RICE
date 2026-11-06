@@ -208,6 +208,17 @@ class Settings(BaseSettings):
     PLATFORM_ADMIN_USERNAME: str | None = None
     PLATFORM_ADMIN_PASSWORD_HASH: SecretStr | None = None
     PLATFORM_ADMIN_EMAIL: str | None = None
+    # Optional Discord webhooks (core/discord.py). Feedback from Settings >
+    # Feedback goes to the first; BossAdmin sign-ins, failed confirmations and
+    # "View as" visits go to the second. Unset: nothing is sent.
+    DISCORD_FEEDBACK_WEBHOOK_URL: SecretStr | None = None
+    DISCORD_SECURITY_WEBHOOK_URL: SecretStr | None = None
+    # How long one password + authenticator confirmation lets BossAdmin make
+    # changes before it asks again (core/admin_guard.py).
+    ADMIN_CONFIRM_MINUTES: int = 10
+    # How long a "View as" visit lasts before it ends by itself.
+    VIEW_AS_MINUTES: int = 30
+    VIEW_AS_FULL_MINUTES: int = 15
     # Optional Redis cache. When unset (or unreachable), the app runs without
     # caching and reads straight from PostgreSQL — Redis is never required.
     REDIS_URL: str | None = None

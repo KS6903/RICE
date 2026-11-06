@@ -22,7 +22,6 @@ from ..core.security import invalidate_company_features
 from ..core.tenancy import tenant_session
 from ..models.company import Branch, Company
 from ..models.costs import Expense
-from ..models.feedback import AppFeedback
 from ..models.legal import LegalAcceptance
 from ..models.milling import MillingBatch
 from ..models.paddy import PalayPurchase
@@ -49,6 +48,7 @@ from ..services.subscription import (
     sweep_expired,
 )
 from . import data_backup, platform_emails
+from .vouchers import pretty as pretty_code
 
 ALLOWED_SUB_STATUSES = {"active", "trial", "past_due", "cancelled", "expired"}
 
@@ -149,6 +149,11 @@ class AdminService(BaseService):
             "admin_note": r.admin_note,
             "created_at": r.created_at.isoformat() if r.created_at else None,
             "resolved_at": r.resolved_at.isoformat() if r.resolved_at else None,
+            # A voucher on a bank transfer: what it took off, and what the mill
+            # should have sent (worked out by the server when it asked).
+            "voucher_code": pretty_code(r.voucher.code) if r.voucher else None,
+            "discount": float(r.discount or 0),
+            "amount_due": float(r.amount_due) if r.amount_due is not None else None,
         }
 
     # ── plans ─────────────────────────────────────────────────────────────────
@@ -473,6 +478,14 @@ class AdminService(BaseService):
             r[0]: r[1] for r in db.query(Branch.company_id, func.count(Branch.id)).group_by(Branch.company_id).all()
         }
         sub_by_company = {s.company_id: s for s in db.query(Subscription).all()}
+        seen = self._last_seen()
+        mill_seen: dict = {}
+        for uid, cid, last_login in db.query(User.id, User.company_id, User.last_login).filter(
+            User.company_id.isnot(None)
+        ):
+            when = max((t for t in (seen.get(uid), last_login) if t), default=None)
+            if when and (mill_seen.get(cid) is None or when > mill_seen[cid]):
+                mill_seen[cid] = when
         # Per-client domain counts: each tenant's purchases/orders live in its own
         # schema, so visit each schema rather than one group-by over shared tables.
         purchase_counts: dict = {}
@@ -517,6 +530,7 @@ class AdminService(BaseService):
                 "currency": c.currency,
                 "created_at": c.created_at.isoformat() if c.created_at else None,
                 "users_count": user_counts.get(c.id, 0),
+                "last_seen": mill_seen[c.id].isoformat() if mill_seen.get(c.id) else None,
                 "provisioning": provisioning.describe(c),
                 "branches_count": branch_counts.get(c.id, 0),
                 "purchases_count": purchase_counts.get(c.id, 0),
@@ -566,6 +580,7 @@ class AdminService(BaseService):
                     or 0
                 )
 
+        seen = self._last_seen(u.id for u in users)
         return {
             "company": {
                 "id": str(company.id),
@@ -593,10 +608,12 @@ class AdminService(BaseService):
                     "role": u.role.name if u.role else None,
                     "is_active": u.is_active,
                     "last_login": u.last_login.isoformat() if u.last_login else None,
+                    "last_seen": self._seen_at(u, seen),
                     "created_at": u.created_at.isoformat() if u.created_at else None,
                 }
                 for u in users
             ],
+            "page_overrides": company.page_overrides or {},
             "branches": [
                 {"id": str(b.id), "name": b.name, "is_main_branch": b.is_main_branch, "is_active": b.is_active}
                 for b in branches
@@ -758,51 +775,30 @@ class AdminService(BaseService):
         )
         return summary.as_dict()
 
-    def list_feedback(self, rating: int | None = None) -> dict:
-        """What the mills said in Settings > Feedback: the whole picture, and the
-        latest responses (of one rating, when given)."""
-        rows = self.db.query(AppFeedback.rating, AppFeedback.reasons).all()
-        by_rating = {str(n): 0 for n in range(1, 6)}
-        reasons: dict[str, int] = {}
-        for row_rating, row_reasons in rows:
-            by_rating[str(row_rating)] += 1
-            for code in row_reasons:
-                reasons[code] = reasons.get(code, 0) + 1
+    def _last_seen(self, user_ids=None) -> dict:
+        """When each person last used the app: their newest session row. A
+        browser renews its session every ACCESS_TOKEN_EXPIRE_MINUTES while the
+        app is open, and each renewal is a row, so this is right to within that.
+        BossAdmin's "View as" makes no rows, so it never moves it."""
+        from ..models.auth_session import AuthSession
 
-        query = self.db.query(AppFeedback, Company.name, User.full_name, User.username)
-        query = query.join(Company, Company.id == AppFeedback.company_id)
-        query = query.outerjoin(User, User.id == AppFeedback.user_id)
-        if rating is not None:
-            query = query.filter(AppFeedback.rating == rating)
-        items = query.order_by(AppFeedback.created_at.desc()).limit(200).all()
-        return {
-            "summary": {
-                "count": len(rows),
-                "average": round(sum(r for r, _ in rows) / len(rows), 2) if rows else None,
-                "by_rating": by_rating,
-                "reasons": [
-                    {"code": code, "count": count} for code, count in sorted(reasons.items(), key=lambda item: -item[1])
-                ],
-            },
-            "items": [
-                {
-                    "id": str(feedback.id),
-                    "company_id": str(feedback.company_id),
-                    "company_name": company_name,
-                    "user_name": full_name or username,
-                    "rating": feedback.rating,
-                    "reasons": feedback.reasons,
-                    "other_text": feedback.other_text,
-                    "created_at": feedback.created_at.isoformat(),
-                }
-                for feedback, company_name, full_name, username in items
-            ],
-        }
+        query = self.db.query(AuthSession.user_id, func.max(AuthSession.created_at)).group_by(AuthSession.user_id)
+        if user_ids is not None:
+            query = query.filter(AuthSession.user_id.in_(list(user_ids)))
+        return {uid: when for uid, when in query.all()}
+
+    @staticmethod
+    def _seen_at(u: User, seen: dict):
+        last = seen.get(u.id)
+        if u.last_login and (last is None or u.last_login > last):
+            last = u.last_login
+        return last.isoformat() if last else None
 
     def list_all_users(self) -> list[dict]:
         db = self.db
         users = db.query(User).filter(User.is_platform_admin.is_(False)).order_by(User.created_at.desc()).all()
         company_names = {r[0]: r[1] for r in db.query(Company.id, Company.name).all()}
+        seen = self._last_seen()
         return [
             {
                 "id": str(u.id),
@@ -812,6 +808,7 @@ class AdminService(BaseService):
                 "role": u.role.name if u.role else None,
                 "is_active": u.is_active,
                 "last_login": u.last_login.isoformat() if u.last_login else None,
+                "last_seen": self._seen_at(u, seen),
                 "company_id": str(u.company_id) if u.company_id else None,
                 "company_name": company_names.get(u.company_id) if u.company_id else None,
             }
@@ -907,6 +904,21 @@ class AdminService(BaseService):
             r.admin_note = data.admin_note
             r.resolved_at = datetime.now(timezone.utc)
             r.resolved_by = admin_id
+            if r.voucher_id:
+                from .vouchers import record_use
+
+                company = self.db.get(Company, r.company_id)
+                record_use(
+                    self.db,
+                    r.voucher_id,
+                    company_id=r.company_id,
+                    company_name=company.name if company else "",
+                    user_id=r.requested_by,
+                    plan_id=plan.id,
+                    currency="PHP",
+                    discount=r.discount or 0,
+                    upgrade_request_id=r.id,
+                )
             resolve_pending_upgrade_requests(self.db, r.company_id, plan.id, admin_id=admin_id)
         # A plan change waits for the current period to end, unless there was none.
         sub_now = self.subscriptions.get_by_company(r.company_id)

@@ -42,7 +42,9 @@ def test_upgrade_request_lifecycle(auth_client, db_session):
 
     assert auth_client.get("/api/billing/upgrade-requests/mine").json()["request"] is None
 
-    created = auth_client.post("/api/billing/upgrade-requests", json={"plan_id": str(pro.id)})
+    created = auth_client.post(
+        "/api/billing/upgrade-requests", json={"current_password": "Password123", "plan_id": str(pro.id)}
+    )
     assert created.status_code == 201, created.text
     req = created.json()
     assert req["requested_plan_code"] == "pro"
@@ -53,7 +55,9 @@ def test_upgrade_request_lifecycle(auth_client, db_session):
     assert mine["id"] == req["id"]
 
     # A second pending request is rejected.
-    dup = auth_client.post("/api/billing/upgrade-requests", json={"plan_id": str(pro.id)})
+    dup = auth_client.post(
+        "/api/billing/upgrade-requests", json={"current_password": "Password123", "plan_id": str(pro.id)}
+    )
     assert dup.status_code == 409
 
     cancel = auth_client.delete(f"/api/billing/upgrade-requests/{req['id']}")
@@ -68,7 +72,8 @@ def test_upgrade_request_annual_interval(auth_client, db_session):
     db_session.flush()
 
     created = auth_client.post(
-        "/api/billing/upgrade-requests", json={"plan_id": str(pro.id), "billing_interval": "annual"}
+        "/api/billing/upgrade-requests",
+        json={"current_password": "Password123", "plan_id": str(pro.id), "billing_interval": "annual"},
     )
     assert created.status_code == 201, created.text
     assert created.json()["billing_interval"] == "annual"
@@ -82,12 +87,16 @@ def test_cannot_request_free_plan_400(auth_client, db_session):
     free = SubscriptionPlan(code="free", name="Free", features=[], is_active=True)
     db_session.add(free)
     db_session.flush()
-    res = auth_client.post("/api/billing/upgrade-requests", json={"plan_id": str(free.id)})
+    res = auth_client.post(
+        "/api/billing/upgrade-requests", json={"current_password": "Password123", "plan_id": str(free.id)}
+    )
     assert res.status_code == 400
 
 
 def test_cannot_request_current_plan_400(auth_client):
     plans = auth_client.get("/api/billing/plans").json()
     test_plan = next(p for p in plans if p["code"] == "test")
-    res = auth_client.post("/api/billing/upgrade-requests", json={"plan_id": test_plan["id"]})
+    res = auth_client.post(
+        "/api/billing/upgrade-requests", json={"current_password": "Password123", "plan_id": test_plan["id"]}
+    )
     assert res.status_code == 400

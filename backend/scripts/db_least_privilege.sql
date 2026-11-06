@@ -62,6 +62,10 @@ BEGIN
   IF to_regclass('public.legal_acceptances') IS NOT NULL THEN
     REVOKE UPDATE, DELETE ON TABLE public.legal_acceptances FROM ricemill_app;
   END IF;
+  -- What BossAdmin did is append-only too (migration 035).
+  IF to_regclass('public.admin_audit_log') IS NOT NULL THEN
+    REVOKE UPDATE, DELETE, TRUNCATE ON TABLE public.admin_audit_log FROM ricemill_app;
+  END IF;
 END
 $ledger$;
 

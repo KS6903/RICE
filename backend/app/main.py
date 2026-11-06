@@ -13,6 +13,7 @@ from .api import (
     actions,
     activity,
     admin,
+    admin_security,
     auth,
     automations,
     billing,
@@ -50,6 +51,7 @@ from .api import (
     warehouses,
     weather,
 )
+from .api import view_as as view_as_api
 from .core.config import settings
 from .core.database import get_db
 from .core.exceptions import register_exception_handlers
@@ -162,6 +164,10 @@ app.include_router(savings.paddy_router, prefix="/api/savings", tags=["Savings"]
 app.include_router(savings.sensor_router, prefix="/api/sensors", tags=["Savings"])
 app.include_router(sync.router, prefix="/api/sync", tags=["Sync"], dependencies=mfa_gate)
 app.include_router(admin.router, prefix="/api/admin", tags=["Platform Admin"], dependencies=mfa_gate)
+app.include_router(admin_security.unguarded, prefix="/api/admin", tags=["Platform Admin"], dependencies=mfa_gate)
+app.include_router(admin_security.router, prefix="/api/admin", tags=["Platform Admin"], dependencies=mfa_gate)
+# Ending a "View as" visit: no sign-in needed, it only drops the visit's cookie.
+app.include_router(view_as_api.router, prefix="/api/view-as", tags=["View as"])
 app.include_router(employees.router, prefix="/api/employees", tags=["Employees"], dependencies=mfa_gate)
 app.include_router(billing.router, prefix="/api/billing", tags=["Billing"], dependencies=mfa_gate)
 app.include_router(billing.webhooks, prefix="/api/billing/webhooks", tags=["Billing webhooks"])

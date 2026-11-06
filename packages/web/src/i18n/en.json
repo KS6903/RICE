@@ -54,5 +54,11 @@
   "{{count}} warehouses_one": "{{count}} warehouse",
   "{{count}} warehouses_other": "{{count}} warehouses",
   "{{count}} days_one": "{{count}} day",
-  "{{count}} days_other": "{{count}} days"
+  "{{count}} days_other": "{{count}} days",
+  "{{count}} min left_one": "{{count}} min left",
+  "{{count}} min left_other": "{{count}} min left",
+  "{{count}} min ago_one": "{{count}} min ago",
+  "{{count}} min ago_other": "{{count}} min ago",
+  "{{count}} months_one": "{{count}} month",
+  "{{count}} months_other": "{{count}} months"
 }

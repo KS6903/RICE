@@ -9,7 +9,7 @@ from typing import Any
 
 from sqlalchemy.orm import Session
 
-from ..core.exceptions import BadRequestError, ConflictError, NotFoundError
+from ..core.exceptions import BadRequestError, ConflictError, NotFoundError, PermissionDeniedError
 from ..models.subscription import Subscription, SubscriptionPlan
 from ..models.upgrade_request import UpgradeRequest
 from ..repositories.billing import (
@@ -80,6 +80,8 @@ class BillingService(BaseService):
             "admin_note": r.admin_note,
             "created_at": r.created_at.isoformat() if r.created_at else None,
             "resolved_at": r.resolved_at.isoformat() if r.resolved_at else None,
+            "discount": float(r.discount or 0),
+            "amount_due": float(r.amount_due) if r.amount_due is not None else None,
         }
 
     # ── reads ─────────────────────────────────────────────────────────────────
@@ -117,6 +119,20 @@ class BillingService(BaseService):
 
     # ── writes ────────────────────────────────────────────────────────────────
 
+    def confirm_boss(self, data, *, reason: str) -> None:
+        """Only the Boss changes the plan, and only after typing their password
+        (and an authenticator code, with two-factor on) again. Whoever else can
+        open Billing only looks. A wrong password or code counts toward the
+        sign-in lockout (AuthService.confirm_identity)."""
+        from .auth_service import AuthService
+
+        role = getattr(self.current_user, "role", None)
+        if getattr(role, "name", None) != "owner":
+            raise PermissionDeniedError("Only the Boss can change the plan.")
+        AuthService(self.db, self.current_user).confirm_identity(
+            getattr(data, "current_password", None), getattr(data, "mfa_code", None), reason=reason
+        )
+
     def requestable_plan(self, plan_id: uuid.UUID) -> tuple[SubscriptionPlan, Subscription | None]:
         """The plan the mill may ask for or pay for now, and its current
         subscription. Asking (create_upgrade_request) and paying online
@@ -144,7 +160,16 @@ class BillingService(BaseService):
         return plan, current_sub
 
     def create_upgrade_request(self, data) -> dict:
+        from . import vouchers
+        from .payment_service import price_for
+
         plan, current_sub = self.requestable_plan(data.plan_id)
+        interval = data.billing_interval if data.billing_interval == "annual" else "monthly"
+        price = price_for(plan, interval, "PHP")
+        voucher, discount = vouchers.apply_to_payment(
+            self.db, data.voucher_code, self.current_user.company_id, plan, interval, price, "PHP"
+        )
+        self.confirm_boss(data, reason="Asking for a plan")
 
         req = UpgradeRequest(
             company_id=self.current_user.company_id,
@@ -152,9 +177,12 @@ class BillingService(BaseService):
             current_plan_id=current_sub.plan_id if current_sub else None,
             requested_by=self.current_user.id,
             request_type=data.request_type if data.request_type in ("upgrade", "change") else "upgrade",
-            billing_interval=data.billing_interval if data.billing_interval == "annual" else "monthly",
+            billing_interval=interval,
             status="pending",
             note=data.note,
+            voucher_id=voucher.id if voucher else None,
+            discount=discount,
+            amount_due=price - discount,
         )
         with self.transaction():
             self.requests.add(req)

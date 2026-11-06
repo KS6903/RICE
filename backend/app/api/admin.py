@@ -1,6 +1,7 @@
 """Platform-admin HTTP controllers — thin routing over AdminService (Phase 3).
 
-Every endpoint requires is_platform_admin (enforced by the DI factory).
+Every endpoint requires is_platform_admin (enforced by the DI factory), and every
+change a live password + authenticator confirmation (core/admin_guard.py).
 """
 
 import uuid
@@ -11,6 +12,7 @@ from sqlalchemy.orm import Session
 from ..core.config import settings
 from ..core.database import get_db
 from ..core.ratelimit import limiter
+from ..core.admin_guard import require_admin_confirmed
 from ..core.security import require_platform_admin
 from ..repositories.billing import (
     SubscriptionPlanRepository,
@@ -28,7 +30,8 @@ from ..schemas.admin import (
 from ..services.admin_service import QR_MAX_BYTES, AdminService
 from .data_backup import check_upload_size
 
-router = APIRouter()
+# Reads pass; every change needs BossAdmin's live confirmation (core/admin_guard.py).
+router = APIRouter(dependencies=[Depends(require_admin_confirmed)])
 
 
 def get_admin_service(
@@ -223,11 +226,6 @@ def missing_subscription_count(svc: AdminService = Depends(get_admin_service)):
 
 
 # ── Upgrade-request inbox ─────────────────────────────────────────────────────
-
-
-@router.get("/feedback")
-def list_feedback(rating: int | None = None, svc: AdminService = Depends(get_admin_service)):
-    return svc.list_feedback(rating)
 
 
 @router.get("/upgrade-requests")

@@ -88,13 +88,17 @@ _ensure_test_database_exists()
 
 # Now it's safe to import the app — Settings reads the overridden env.
 import app.models  # noqa: E402,F401  — register every table on Base.metadata
-from app.core.database import Base, engine, get_db  # noqa: E402
-from app.core.security import get_current_user, hash_password  # noqa: E402
+from app.core import releases  # noqa: E402
+from app.core import admin_guard  # noqa: E402
+from app.core.admin_guard import require_admin_confirmed  # noqa: E402
+from app.core.database import Base, SessionLocal, engine, get_db  # noqa: E402
+from app.core.security import get_current_user, hash_password, require_platform_admin  # noqa: E402
 from app.core.tenancy import provision_tenant, public_tables, set_search_path  # noqa: E402
 from app.main import app  # noqa: E402
 from app.models.company import Branch, Company  # noqa: E402
 from app.models.subscription import Subscription, SubscriptionPlan  # noqa: E402
 from app.models.user import Role, User  # noqa: E402
+from fastapi import Depends  # noqa: E402
 from fastapi.testclient import TestClient  # noqa: E402
 from sqlalchemy.orm import Session  # noqa: E402
 
@@ -179,12 +183,17 @@ def client(db_session: Session) -> TestClient:
         yield db_session
 
     app.dependency_overrides[get_db] = _override_get_db
+    # BossAdmin's audit rows go on their own connection in the app; here, into
+    # the test's transaction, so they roll back with it and tests can read them.
+    connection = db_session.get_bind()
+    admin_guard._new_session = lambda: Session(bind=connection, join_transaction_mode="create_savepoint")
     try:
         # Plain TestClient (no context manager) so startup events (canva loop
         # capture, Redis probe) don't fire — tests don't need them.
         yield TestClient(app)
     finally:
         app.dependency_overrides.clear()
+        admin_guard._new_session = SessionLocal
 
 
 @pytest.fixture
@@ -232,6 +241,30 @@ def seed_owner(db_session: Session) -> User:
     db_session.add(user)
     db_session.flush()
     return user
+
+
+def _platform_admin_only(admin=Depends(require_platform_admin)):
+    return admin
+
+
+@pytest.fixture(autouse=True)
+def _bossadmin_counts_as_confirmed():
+    """Most tests stand in for the signed-in user (get_current_user is
+    overridden), so there is no sign-in to bind BossAdmin's password + code
+    confirmation to: here it is only the platform-admin check it always was.
+    test_bossadmin_security.py takes this away to test the confirmation itself."""
+    app.dependency_overrides[require_admin_confirmed] = _platform_admin_only
+    yield
+    app.dependency_overrides.pop(require_admin_confirmed, None)
+
+
+@pytest.fixture(autouse=True)
+def _fresh_release_stages():
+    """Each API process keeps the page release stages for a few seconds
+    (core/releases.py); a test's rolled-back stages must not reach the next."""
+    releases.forget_cached()
+    yield
+    releases.forget_cached()
 
 
 @pytest.fixture

@@ -14,6 +14,7 @@ import {
   Loader2,
   Lock,
   ShieldCheck,
+  Ticket,
   Wallet,
   XCircle,
 } from "lucide-react";
@@ -25,7 +26,9 @@ import type {
 } from "@rice-mill/shared";
 import { billingService } from "../services/BillingService";
 import { useCurrentPlan } from "../hooks/useFeature";
-import { useAccess } from "../hooks/useAccess";
+import { useAuthStore } from "../stores/authStore";
+import ConfirmItsYou, { type Proof } from "../components/ConfirmItsYou";
+import { voucherService, type VoucherCheck } from "../services/BillingService";
 import { mediaUrl } from "../utils/media";
 import { redirectTo } from "../utils/redirect";
 import { t } from "../i18n";
@@ -103,8 +106,21 @@ export default function CheckoutPage() {
     params.get("interval") === "annual" ? "annual" : "monthly",
   );
   const current = useCurrentPlan();
-  const canRequest = useAccess().canEdit("settings");
+  const user = useAuthStore((s) => s.user);
+  // Only the Boss changes the plan, and confirms it's them each time (the
+  // server checks both: services/billing_service.py confirm_boss).
+  const canRequest = user?.role === "owner";
+  const usesCode = !!user?.mfa_enabled;
   const [reference, setReference] = useState("");
+  const [voucherCode, setVoucherCode] = useState("");
+  const [voucher, setVoucher] = useState<VoucherCheck | null>(null);
+  const [voucherError, setVoucherError] = useState<string | null>(null);
+  // What is waiting for "confirm it's you": the bank-transfer request, or a
+  // payment online, and why the last try was refused.
+  const [asking, setAsking] = useState<{
+    action: "submit" | PaymentProvider;
+    error?: string;
+  } | null>(null);
   const cancelled = params.get("cancelled") === "1";
 
   const plansQuery = useQuery<SubscriptionPlan[]>({
@@ -130,8 +146,45 @@ export default function CheckoutPage() {
     (current.status === "active" || current.status === "trial");
   const pending = requestData?.request?.status === "pending" ? requestData.request : null;
 
+  const proofFields = (proof: Proof) => ({
+    current_password: proof.password,
+    mfa_code: proof.code || undefined,
+    voucher_code: voucher?.voucher.code ?? undefined,
+  });
+  // A refused confirmation (a wrong password, a code that ran out) asks again.
+  const askAgain = (e: any, action: "submit" | PaymentProvider) => {
+    if (e?.response?.data?.code !== "confirm_failed") return;
+    const detail = e?.response?.data?.detail;
+    setAsking({ action, error: typeof detail === "string" ? detail : t("That didn't work.") });
+  };
+
+  const applyVoucher = useMutation({
+    mutationFn: () =>
+      voucherService.check({ code: voucherCode, plan_id: planId, billing_interval: interval }),
+    onSuccess: (result) => {
+      setVoucherError(null);
+      if (result.voucher.kind === "free_time") {
+        setVoucher(null);
+        setVoucherError(t("This voucher gives free time on a plan. Redeem it in Billing instead."));
+        return;
+      }
+      setVoucher(result);
+    },
+    onError: (e: any) => {
+      setVoucher(null);
+      const detail = e?.response?.data?.detail;
+      setVoucherError(typeof detail === "string" ? detail : t("That voucher code isn't valid."));
+    },
+  });
+  // A voucher is checked for one interval: picking the other one asks again.
+  const pickInterval = (iv: BillingInterval) => {
+    setBillingInterval(iv);
+    setVoucher(null);
+    setVoucherError(null);
+  };
+
   const submit = useMutation({
-    mutationFn: () => {
+    mutationFn: (proof: Proof) => {
       const ref = reference.trim();
       const note =
         paymentReady && plan
@@ -144,19 +197,27 @@ export default function CheckoutPage() {
         request_type: isOnPaidPlan ? "change" : "upgrade",
         billing_interval: interval,
         note,
+        ...proofFields(proof),
       });
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["billing-my-request"] });
     },
+    onError: (e) => askAgain(e, "submit"),
   });
 
   // Paying online: the provider's page takes over, and sends the mill back to
   // /settings/checkout/return, which confirms the payment (CheckoutReturnPage).
   const payOnline = useMutation({
-    mutationFn: (provider: PaymentProvider) =>
-      billingService.startCheckout({ plan_id: planId, billing_interval: interval, provider }),
+    mutationFn: ({ provider, proof }: { provider: PaymentProvider; proof: Proof }) =>
+      billingService.startCheckout({
+        plan_id: planId,
+        billing_interval: interval,
+        provider,
+        ...proofFields(proof),
+      }),
     onSuccess: ({ checkout_url }) => redirectTo(checkout_url),
+    onError: (e, { provider }) => askAgain(e, provider),
   });
 
   const errorMessage =
@@ -247,7 +308,7 @@ export default function CheckoutPage() {
 
   if (!canRequest) {
     return notice(
-      t("Only the Boss or an admin can change the plan"),
+      t("Only the Boss can change the plan"),
       t("Ask the mill's owner to pick a plan in Settings."),
     );
   }
@@ -273,7 +334,12 @@ export default function CheckoutPage() {
   }
 
   const { price, savingsPct } = priceFor(plan, interval);
-  const usdPrice = usdPriceFor(plan, interval);
+  const listUsdPrice = usdPriceFor(plan, interval);
+  // With a voucher, the totals are the server's (vouchers/check); the server
+  // works them out again when the payment starts, whatever is shown here.
+  const phpTotal = voucher?.prices?.PHP?.total ?? price;
+  const phpOff = voucher?.prices?.PHP?.discount ?? 0;
+  const usdPrice = voucher ? (voucher.prices?.USD?.total ?? 0) : listUsdPrice;
   const offerPaypal = online.paypal && usdPrice > 0;
   const anyOnline = online.paymongo || offerPaypal;
   const needsReference = paymentReady;
@@ -306,17 +372,17 @@ export default function CheckoutPage() {
                 {online.paymongo && (
                   <button
                     type="button"
-                    onClick={() => payOnline.mutate("paymongo")}
+                    onClick={() => setAsking({ action: "paymongo" })}
                     disabled={leaving}
                     className="btn-primary h-auto! py-3! flex-col items-start! text-left"
                   >
                     <span className="flex items-center gap-2 text-base">
-                      {payOnline.isPending && payOnline.variables === "paymongo" ? (
+                      {payOnline.isPending && payOnline.variables?.provider === "paymongo" ? (
                         <Loader2 size={16} className="animate-spin" />
                       ) : (
                         <Wallet size={16} />
                       )}
-                      {t("Pay {{price}}", { price: peso(price) })}
+                      {t("Pay {{price}}", { price: peso(phpTotal) })}
                     </span>
                     <span className="text-xs font-medium opacity-90">
                       {t("GCash, Maya, QR Ph, card or online banking")}
@@ -326,12 +392,12 @@ export default function CheckoutPage() {
                 {offerPaypal && (
                   <button
                     type="button"
-                    onClick={() => payOnline.mutate("paypal")}
+                    onClick={() => setAsking({ action: "paypal" })}
                     disabled={leaving}
                     className="btn-secondary h-auto! py-3! flex-col items-start! text-left"
                   >
                     <span className="flex items-center gap-2 text-base">
-                      {payOnline.isPending && payOnline.variables === "paypal" ? (
+                      {payOnline.isPending && payOnline.variables?.provider === "paypal" ? (
                         <Loader2 size={16} className="animate-spin" />
                       ) : (
                         <Globe size={16} />
@@ -371,9 +437,9 @@ export default function CheckoutPage() {
                 {paymentReady
                   ? t(
                       "Send {{price}} to this account, then enter the reference from your receipt.",
-                      { price: peso(price) },
+                      { price: peso(phpTotal) },
                     )
-                  : t("Total to pay: {{price}}.", { price: peso(price) })}
+                  : t("Total to pay: {{price}}.", { price: peso(phpTotal) })}
               </p>
             </div>
 
@@ -405,7 +471,7 @@ export default function CheckoutPage() {
                         />
                       </dd>
                       <dt className="text-secondary">{t("Amount")}</dt>
-                      <dd className="font-semibold text-primary">{peso(price)}</dd>
+                      <dd className="font-semibold text-primary">{peso(phpTotal)}</dd>
                     </dl>
                   </div>
                   {plan.payment_qr_key && (
@@ -470,7 +536,7 @@ export default function CheckoutPage() {
             )}
 
             <button
-              onClick={() => submit.mutate()}
+              onClick={() => setAsking({ action: "submit" })}
               disabled={!canSubmit}
               className={
                 anyOnline
@@ -505,7 +571,7 @@ export default function CheckoutPage() {
               <button
                 key={iv}
                 type="button"
-                onClick={() => setBillingInterval(iv)}
+                onClick={() => pickInterval(iv)}
                 aria-pressed={interval === iv}
                 className={`seg-btn flex-1 ${interval === iv ? "is-active" : ""}`}
               >
@@ -545,10 +611,61 @@ export default function CheckoutPage() {
             </ul>
           )}
 
+          <form
+            className="space-y-1.5"
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (voucherCode.trim()) applyVoucher.mutate();
+            }}
+          >
+            <label htmlFor="voucher-code" className={LABEL}>
+              {t("Voucher code")}
+            </label>
+            <div className="flex gap-2">
+              <input
+                id="voucher-code"
+                className="input font-mono uppercase flex-1"
+                value={voucherCode}
+                maxLength={60}
+                autoComplete="off"
+                onChange={(e) => {
+                  setVoucherCode(e.target.value.toUpperCase());
+                  setVoucher(null);
+                  setVoucherError(null);
+                }}
+                placeholder="ABCD-EFGH-JKMN"
+              />
+              <button
+                type="submit"
+                className="btn-secondary"
+                disabled={!voucherCode.trim() || applyVoucher.isPending}
+              >
+                {applyVoucher.isPending ? (
+                  <Loader2 size={14} className="animate-spin" />
+                ) : (
+                  <Ticket size={14} />
+                )}{" "}
+                {t("Apply")}
+              </button>
+            </div>
+            {voucherError && (
+              <p className="text-xs font-medium text-rose-600 dark:text-rose-400">{voucherError}</p>
+            )}
+          </form>
+
+          {voucher && phpOff > 0 && (
+            <div className="flex items-center justify-between text-sm text-emerald-700 dark:text-emerald-400">
+              <span className="inline-flex items-center gap-1.5">
+                <Ticket size={14} /> {t("Voucher {{code}}", { code: voucher.voucher.code })}
+              </span>
+              <span className="font-semibold">−{peso(phpOff)}</span>
+            </div>
+          )}
+
           <div className="border-t border-slate-200 dark:border-slate-700 pt-3 flex items-baseline justify-between">
             <span className="text-sm font-semibold text-secondary">{t("Total due")}</span>
             <span className="text-2xl font-extrabold text-primary">
-              {peso(price)}
+              {peso(phpTotal)}
               <span className="text-sm font-semibold text-secondary">
                 {interval === "annual" ? "/yr" : "/mo"}
               </span>
@@ -575,6 +692,21 @@ export default function CheckoutPage() {
           )}
         </aside>
       </div>
+
+      <ConfirmItsYou
+        key={asking?.error ?? "first"}
+        open={!!asking}
+        usesCode={usesCode}
+        reason={t("Changing the plan needs you to confirm it's you.")}
+        error={asking?.error}
+        onConfirm={(proof) => {
+          const action = asking?.action;
+          setAsking(null);
+          if (action === "submit") submit.mutate(proof);
+          else if (action) payOnline.mutate({ provider: action, proof });
+        }}
+        onCancel={() => setAsking(null)}
+      />
     </div>
   );
 }

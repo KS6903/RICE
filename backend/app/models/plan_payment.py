@@ -41,6 +41,9 @@ class PlanPayment(Base, TimestampMixin):
     provider_payment_id: Mapped[str | None] = mapped_column(String(100))
     checkout_url: Mapped[str | None] = mapped_column(String(1000))
     paid_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # A voucher taken off the price (services/vouchers.py), and how much it took.
+    voucher_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("vouchers.id"))
+    discount: Mapped[Decimal] = mapped_column(Numeric(10, 2), default=0, server_default="0", nullable=False)
     created_by: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL")
     )

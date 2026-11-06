@@ -271,6 +271,8 @@ class AuthService(BaseService):
         log credentials or tokens here. Does NOT commit — call inside a
         transaction (or wrap in one for failure paths that raise afterwards)."""
         logger.info("security event %s user=%s", action, user.username)
+        if user.is_platform_admin:
+            self._bossadmin_event(user, action, detail)
         if user.company_id:
             # Auth flows (login/logout/reset) run on a public-scoped session, but
             # activity_logs is a per-client table — point the session at the user's
@@ -288,6 +290,46 @@ class AuthService(BaseService):
                 entity_label=user.username,
                 detail=detail,
             )
+
+    # BossAdmin's security events that go to the owner's Discord, and how loud.
+    _BOSSADMIN_ALERTS = {
+        "auth.login": ("BossAdmin signed in", "amber"),
+        "auth.google_login": ("BossAdmin signed in with Google", "red"),
+        "auth.login_failed": ("Wrong password for BossAdmin", "red"),
+        "auth.mfa_failed": ("Wrong authenticator code for BossAdmin", "red"),
+        "auth.confirm_failed": ("A BossAdmin confirmation failed", "red"),
+        "auth.mfa_disabled": ("Two-factor turned off on BossAdmin", "red"),
+        "auth.mfa_enabled": ("Two-factor turned on for BossAdmin", "green"),
+        "auth.mfa_backup_regenerated": ("BossAdmin backup codes regenerated", "amber"),
+        "auth.password_changed": ("BossAdmin password changed", "red"),
+        "auth.password_reset": ("BossAdmin password reset", "red"),
+        "auth.password_reset_requested": ("BossAdmin password reset requested", "red"),
+        "auth.sessions_revoked_others": ("BossAdmin signed out its other devices", "amber"),
+        "auth.session_revoked": ("A BossAdmin device was signed out", "amber"),
+    }
+
+    def _bossadmin_event(self, user: User, action: str, detail: str | None) -> None:
+        """BossAdmin has no mill to log to: its events go on admin_audit_log, and
+        the ones above to Discord (core/admin_guard.py). Never raises."""
+        from ..core import admin_guard, discord
+
+        where = f"{self._ip or '?'} · {(self._client or '?')[:200]}"
+        admin_guard.record(
+            admin_id=user.id,
+            admin_username=user.username,
+            action=action,
+            detail=detail,
+            ip=self._ip,
+            user_agent=self._client,
+        )
+        alert = self._BOSSADMIN_ALERTS.get(action)
+        if alert:
+            title, tone = alert
+            color = {"red": discord.RED, "green": discord.GREEN}.get(tone, discord.AMBER)
+            fields = [("Account", user.username), ("From", where)]
+            if detail:
+                fields.append(("Detail", detail))
+            discord.security(discord.embed(title, fields=fields, color=color))
 
     def _revoke_family(self, family_id: uuid.UUID) -> None:
         """Revoke every live session in a refresh chain. Flush only."""
@@ -423,6 +465,9 @@ class AuthService(BaseService):
         raises — a bad/expired token just means 'not trusted', so login falls back
         to the MFA challenge."""
         if not tokens or not settings.MFA_TRUST_ENABLED:
+            return False
+        # BossAdmin types the authenticator code at every sign-in, on any device.
+        if user.is_platform_admin:
             return False
         if isinstance(tokens, str):
             tokens = (tokens,)

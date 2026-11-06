@@ -25,6 +25,7 @@ import {
   Landmark,
 } from "lucide-react";
 import PaymentAccountsTab from "./PaymentAccountsTab";
+import VouchersSection from "../../components/admin/VouchersSection";
 import { t } from "../../i18n";
 import { tx } from "../../i18n/tx";
 
@@ -537,6 +538,8 @@ function PlansTab() {
           </table>
         )}
       </div>
+
+      <VouchersSection />
     </div>
   );
 }

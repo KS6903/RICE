@@ -48,27 +48,139 @@ export type TenantLegalAcceptances = {
   not_accepted_current: LedgerUser[];
 };
 
-export type AdminFeedbackPage = {
-  summary: {
-    count: number;
-    average: number | null;
-    by_rating: Record<string, number>;
-    reasons: { code: string; count: number }[];
-  };
-  items: {
-    id: string;
-    company_id: string;
-    company_name: string;
-    user_name: string | null;
-    rating: number;
-    reasons: string[];
-    other_text: string | null;
-    created_at: string;
+export type ViewAsMode = "view" | "full";
+
+export type ReleaseStage = "bossadmin" | "enterprise" | "pro" | "basic" | "everyone";
+
+export type PageDirectory = {
+  stages: ReleaseStage[];
+  always_on: string[];
+  pages: {
+    section: string;
+    stage: ReleaseStage;
+    code_stage: ReleaseStage;
+    turned_on_for: { id: string; name: string }[];
+    turned_off_for: { id: string; name: string }[];
   }[];
+};
+
+export type VoucherKind = "free_time" | "percent_off" | "amount_off";
+
+export type AdminVoucher = {
+  id: string;
+  code: string;
+  raw_code: string;
+  kind: VoucherKind;
+  plan_id: string | null;
+  plan_name: string | null;
+  billing_interval: "monthly" | "annual" | null;
+  percent_off: number | null;
+  amount_off: number | null;
+  amount_off_usd: number | null;
+  free_months: number;
+  free_days: number;
+  company_id: string | null;
+  company_name: string | null;
+  max_uses: number | null;
+  uses: number;
+  starts_at: string | null;
+  expires_at: string | null;
+  is_active: boolean;
+  note: string | null;
+  created_at: string | null;
+};
+
+export type AuditRow = {
+  id: string;
+  admin_username: string;
+  action: string;
+  method: string | null;
+  path: string | null;
+  company_id: string | null;
+  company_name: string | null;
+  detail: string | null;
+  ip_address: string | null;
+  user_agent: string | null;
+  created_at: string;
 };
 
 export class AdminService {
   constructor(private http = api) {}
+
+  // ── confirming before changes, and "View as" ────────────────────────────────
+  confirmStatus(): Promise<{
+    confirmed_until: string | null;
+    uses_code: boolean;
+    minutes: number;
+  }> {
+    return this.http.get("/admin/confirm").then((r) => r.data);
+  }
+  /** Close the confirmation window now. */
+  endConfirmation(): Promise<unknown> {
+    return this.http.delete("/admin/confirm").then((r) => r.data);
+  }
+  startViewAs(body: {
+    user_id: string;
+    mode: ViewAsMode;
+    current_password?: string;
+    mfa_code?: string;
+  }): Promise<{ mode: ViewAsMode; expires_at: string; company_name: string }> {
+    return this.http.post("/admin/view-as", body).then((r) => r.data);
+  }
+
+  // ── page directory: release stages and per-mill switches ────────────────────
+  getPages(): Promise<PageDirectory> {
+    return this.http.get("/admin/pages").then((r) => r.data);
+  }
+  setPageStage(section: string, stage: ReleaseStage): Promise<PageDirectory> {
+    return this.http.put(`/admin/pages/${section}`, { stage }).then((r) => r.data);
+  }
+  setTenantPage(
+    tenantId: string,
+    section: string,
+    value: "on" | "off" | "default",
+  ): Promise<{ page_overrides: Record<string, "on" | "off"> }> {
+    return this.http
+      .put(`/admin/tenants/${tenantId}/pages`, { section, value })
+      .then((r) => r.data);
+  }
+
+  // ── vouchers ────────────────────────────────────────────────────────────────
+  listVouchers(): Promise<AdminVoucher[]> {
+    return this.http.get("/admin/vouchers").then((r) => r.data);
+  }
+  createVoucher(body: Record<string, unknown>): Promise<AdminVoucher> {
+    return this.http.post("/admin/vouchers", body).then((r) => r.data);
+  }
+  updateVoucher(id: string, body: Record<string, unknown>): Promise<AdminVoucher> {
+    return this.http.patch(`/admin/vouchers/${id}`, body).then((r) => r.data);
+  }
+  deleteVoucher(id: string): Promise<unknown> {
+    return this.http.delete(`/admin/vouchers/${id}`).then((r) => r.data);
+  }
+  voucherUses(
+    id: string,
+  ): Promise<
+    {
+      company_id: string | null;
+      company_name: string;
+      currency: string | null;
+      discount: number;
+      created_at: string;
+    }[]
+  > {
+    return this.http.get(`/admin/vouchers/${id}/uses`).then((r) => r.data);
+  }
+  tenantNames(): Promise<{ id: string; name: string }[]> {
+    return this.http.get("/admin/tenant-names").then((r) => r.data);
+  }
+
+  // ── BossAdmin's own audit log ───────────────────────────────────────────────
+  auditLog(companyId?: string): Promise<AuditRow[]> {
+    return this.http
+      .get("/admin/audit-log", { params: companyId ? { company_id: companyId } : {} })
+      .then((r) => r.data);
+  }
 
   // ── dashboard / stats ───────────────────────────────────────────────────────
   getStats(): Promise<any> {
@@ -175,13 +287,6 @@ export class AdminService {
   }
   rejectRequest(id: string, body: Record<string, unknown> = {}): Promise<any> {
     return this.http.post(`/admin/upgrade-requests/${id}/reject`, body).then((r) => r.data);
-  }
-
-  // ── feedback ────────────────────────────────────────────────────────────────
-  listFeedback(rating: number | null): Promise<AdminFeedbackPage> {
-    return this.http
-      .get("/admin/feedback", { params: rating ? { rating } : {} })
-      .then((r) => r.data);
   }
 
   // ── users ───────────────────────────────────────────────────────────────────

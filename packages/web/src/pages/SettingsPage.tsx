@@ -51,6 +51,7 @@ import BackupCodes from "../components/BackupCodes";
 import TotpSetup from "../components/TotpSetup";
 import DataExport from "../components/DataExport";
 import FeedbackTab from "../components/FeedbackTab";
+import RedeemVoucherCard from "../components/RedeemVoucherCard";
 import ConfirmDialog from "../components/ConfirmDialog";
 import DeviceSessionCard from "../components/DeviceSessionCard";
 import AccountClosureCard from "../components/AccountClosureCard";
@@ -278,7 +279,8 @@ function BillingTab() {
   const plan = useCurrentPlan();
   const user = useAuthStore((s) => s.user);
   const features = (user?.features as string[] | undefined) || [];
-  const canRequest = useAccess().canEdit("settings");
+  // Only the Boss changes the plan (the server checks it: confirm_boss).
+  const canRequest = user?.role === "owner";
   const isOnPaidPlan =
     !!plan && plan.monthly_price > 0 && (plan.status === "active" || plan.status === "trial");
   const [dismissedIds, setDismissedIds] = useState<string[]>(() => getSeenRequests());
@@ -510,13 +512,15 @@ function BillingTab() {
         <ResolvedNotice request={recentResolved} onDone={dismissResolved} />
       )}
 
+      {canRequest && <RedeemVoucherCard />}
+
       <div className="card">
         <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
           <h3 className="text-lg font-bold text-primary">{t("Available plans")}</h3>
           <div className="flex items-center gap-3 flex-wrap">
             {!canRequest && (
               <span className="text-xs font-medium text-muted">
-                {t("Only owners/admins can request upgrades")}
+                {t("Only the Boss can change the plan")}
               </span>
             )}
             <div className="seg" role="group" aria-label={t("Billing interval")}>

@@ -38,6 +38,9 @@ export interface Env {
   GOOGLE_CLIENT_ID?: string;
   GOOGLE_WEATHER_API_KEY?: string;
   DEEPSEEK_API_KEY?: string;
+  /** Discord webhooks: app feedback, and BossAdmin security alerts (backend/app/core/discord.py). */
+  DISCORD_FEEDBACK_WEBHOOK_URL?: string;
+  DISCORD_SECURITY_WEBHOOK_URL?: string;
   DEEPSEEK_AUTOMATIONS_API_KEY?: string;
   PAYMONGO_SECRET_KEY?: string;
   PAYMONGO_WEBHOOK_SECRET?: string;

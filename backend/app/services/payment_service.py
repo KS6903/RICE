@@ -80,6 +80,7 @@ def serialize(p: PlanPayment) -> dict:
         "provider": p.provider,
         "currency": p.currency,
         "amount": float(p.amount),
+        "discount": float(p.discount or 0),
         "status": p.status,
         "paid_at": p.paid_at.isoformat() if p.paid_at else None,
     }
@@ -88,7 +89,17 @@ def serialize(p: PlanPayment) -> dict:
 # ── the mill's side ──────────────────────────────────────────────────────────
 
 
-def start_checkout(billing: BillingService, *, plan_id: uuid.UUID, interval: str, provider: str) -> dict:
+def start_checkout(
+    billing: BillingService,
+    *,
+    plan_id: uuid.UUID,
+    interval: str,
+    provider: str,
+    voucher_code: str | None = None,
+    proof=None,
+) -> dict:
+    from . import vouchers
+
     if provider not in PROVIDERS:
         raise BadRequestError("Pick PayMongo or PayPal.")
     if provider == "paymongo" and not providers.paymongo_enabled():
@@ -98,13 +109,20 @@ def start_checkout(billing: BillingService, *, plan_id: uuid.UUID, interval: str
     interval = "annual" if interval == "annual" else "monthly"
     plan, _ = billing.requestable_plan(plan_id)
     currency = "USD" if provider == "paypal" else "PHP"
-    amount = price_for(plan, interval, currency)
-    if amount <= 0:
+    price = price_for(plan, interval, currency)
+    if price <= 0:
         raise BadRequestError(
             f"The {plan.name} plan has no price in US dollars yet. Pay in pesos instead."
             if currency == "USD"
             else f"The {plan.name} plan has no price set."
         )
+    # The price is the plan's, less a voucher's discount, worked out here from
+    # the plan and the voucher rows: nothing the browser sends sets it.
+    voucher, discount = vouchers.apply_to_payment(
+        billing.db, voucher_code, billing.current_user.company_id, plan, interval, price, currency
+    )
+    amount = price - discount
+    billing.confirm_boss(proof, reason="Paying for a plan")
 
     user = billing.current_user
     company = billing.db.get(Company, user.company_id)
@@ -120,12 +138,23 @@ def start_checkout(billing: BillingService, *, plan_id: uuid.UUID, interval: str
         amount=amount,
         status="pending",
         created_by=user.id,
+        voucher_id=voucher.id if voucher else None,
+        discount=discount,
     )
     base = settings.FRONTEND_BASE_URL.rstrip("/")
     back = f"{base}/settings/checkout/return?{urlencode({'payment': str(payment.id)})}"
     cancel = f"{base}/settings/checkout?{urlencode({'plan': str(plan.id), 'interval': interval, 'cancelled': '1'})}"
     label = f"Oraiza {plan.name} plan, {'1 year' if interval == 'annual' else '1 month'}"
     description = f"{label} for {payment.company_name}".strip()
+
+    if amount <= 0:
+        # The voucher covers the whole price: nothing to pay, the plan goes on.
+        payment.provider = "voucher"
+        payment.provider_ref = f"voucher:{payment.id}"
+        with billing.transaction():
+            billing.db.add(payment)
+        fulfil(billing.db, payment.id, provider_payment_id=None)
+        return {"payment_id": str(payment.id), "checkout_url": back}
 
     if provider == "paymongo":
         checkout = providers.paymongo_create_checkout(
@@ -230,7 +259,7 @@ def fulfil(db: Session, payment_id: uuid.UUID, *, provider_payment_id: str | Non
     )
     expires_at = _add_months(start, months)
     amount = _money(payment.currency, Decimal(payment.amount))
-    provider_name = "PayPal" if payment.provider == "paypal" else "PayMongo"
+    provider_name = {"paypal": "PayPal", "voucher": "a voucher"}.get(payment.provider, "PayMongo")
 
     payment.status = "paid"
     payment.paid_at = now
@@ -253,6 +282,24 @@ def fulfil(db: Session, payment_id: uuid.UUID, *, provider_payment_id: str | Non
             resolved_at=now,
         )
         db.add(record)
+        if payment.voucher_id:
+            from . import vouchers
+
+            record.voucher_id = payment.voucher_id
+            record.discount = payment.discount or 0
+            db.flush()
+            vouchers.record_use(
+                db,
+                payment.voucher_id,
+                company_id=payment.company_id,
+                company_name=payment.company_name,
+                user_id=payment.created_by,
+                plan_id=payment.plan_id,
+                currency=payment.currency,
+                discount=Decimal(payment.discount or 0),
+                plan_payment_id=payment.id,
+                upgrade_request_id=record.id,
+            )
         activate_subscription(
             db,
             company_id=payment.company_id,

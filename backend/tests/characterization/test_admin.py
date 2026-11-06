@@ -120,7 +120,7 @@ def test_tenants_list_and_detail(admin_client):
     assert len(tenants) >= 1
     tid = tenants[0]["id"]
     detail = admin_client.get(f"/api/admin/tenants/{tid}").json()
-    assert set(detail.keys()) == {"company", "users", "branches", "metrics"}
+    assert set(detail.keys()) == {"company", "users", "branches", "metrics", "page_overrides"}
 
 
 def test_tenant_legal_acceptance_ledger(admin_client, db_session):

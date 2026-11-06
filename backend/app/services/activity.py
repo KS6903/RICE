@@ -53,7 +53,12 @@ def log_activity(
     entity_label: str | None = None,
     detail: str | None = None,
 ) -> ActivityLog:
-    """Append an audit row. Does NOT commit — the caller owns the transaction."""
+    """Append an audit row. Does NOT commit — the caller owns the transaction.
+    A change BossAdmin made through "View as" (core/view_as.py) says so."""
+    acting = db.info.get("acting_admin")
+    if acting:
+        note = f"Done by BossAdmin ({acting}) through View as."
+        detail = f"{detail} {note}" if detail else note
     row = ActivityLog(
         company_id=company_id,
         user_id=user_id,

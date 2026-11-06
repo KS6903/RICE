@@ -1,5 +1,5 @@
 // FeedbackService — typed API client for Settings > Feedback: a rating of the app
-// and why it was given. BossAdmin reads them through AdminService.
+// and why it was given. Each one goes to the platform owner's Discord.
 import api from "./api";
 
 export type Feedback = {

@@ -21,12 +21,14 @@ import {
   Infinity as InfinityIcon,
 } from "lucide-react";
 import { t } from "../../i18n";
+import LastSeenCell from "../../components/admin/LastSeenCell";
 
 const COLS = [
   t("Company"),
   t("Plan"),
   t("Signed up"),
   t("Users"),
+  t("Last seen"),
   t("Branches"),
   t("Activity"),
   t("Status"),
@@ -126,6 +128,9 @@ function TenantRow({
       </td>
       <td>{tenant.created_at ? format(new Date(tenant.created_at), "MMM d, yyyy") : "—"}</td>
       <td className="font-medium text-primary tabular-nums">{tenant.users_count}</td>
+      <td className="text-xs whitespace-nowrap">
+        <LastSeenCell iso={tenant.last_seen} />
+      </td>
       <td className="font-medium text-primary tabular-nums">{tenant.branches_count}</td>
       <td>
         <span className="text-xs tabular-nums">

@@ -110,6 +110,8 @@ wrangler secret put SMTP_PASSWORD
 wrangler secret put GOOGLE_CLIENT_ID
 wrangler secret put GOOGLE_WEATHER_API_KEY
 wrangler secret put DEEPSEEK_API_KEY
+wrangler secret put DISCORD_FEEDBACK_WEBHOOK_URL   # app feedback to your Discord
+wrangler secret put DISCORD_SECURITY_WEBHOOK_URL   # BossAdmin security alerts
 ```
 
 ### 4. Domain

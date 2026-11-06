@@ -73,6 +73,11 @@ class User(Base, TimestampMixin):
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     is_platform_admin: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     last_login: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # BossAdmin only: until when, and on which sign-in (auth_sessions.family_id),
+    # the platform admin's last password + authenticator confirmation lets it
+    # make changes (core/admin_guard.py).
+    admin_confirmed_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    admin_confirmed_sid: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True))
     # Set when the Boss (or the platform admin) gives the user a temporary password
     # after a lockout. Until the user chooses their own, the API blocks data
     # endpoints; the temporary one stops working at temp_password_expires_at.

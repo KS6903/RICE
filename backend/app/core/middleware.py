@@ -135,6 +135,8 @@ class MutationAuditMiddleware(BaseHTTPMiddleware):
 
                 with SessionLocal() as db:
                     set_search_path(db, context["schema"])
+                    if context.get("acting_admin"):
+                        db.info["acting_admin"] = context["acting_admin"]
                     path_parts = [p for p in request.url.path.split("/") if p]
                     entity_type = (path_parts[1] if len(path_parts) > 1 else "api")[:40]
                     log_activity(
@@ -149,4 +151,26 @@ class MutationAuditMiddleware(BaseHTTPMiddleware):
                     db.commit()
             except Exception:
                 audit_logger.exception("durable mutation audit failed request_id=%s", request_id)
+
+        # Every change by BossAdmin, in the console or through a full-control
+        # "View as", goes on its own append-only log (core/admin_guard.py).
+        # (The confirmation and "View as" write their own, fuller rows.)
+        if (context.get("platform_admin") or context.get("acting_admin")) and request.url.path not in (
+            "/api/admin/confirm",
+            "/api/admin/view-as",
+        ):
+            from starlette.concurrency import run_in_threadpool
+
+            from .admin_guard import record
+
+            await run_in_threadpool(
+                record,
+                admin_id=context.get("admin_id"),
+                admin_username=context.get("acting_admin") or context.get("username") or "?",
+                action="view_as.change" if context.get("acting_admin") else "admin.change",
+                request=request,
+                company_id=context.get("company_id"),
+                detail=f"status={response.status_code}"
+                + (f"; as {context.get('username')}" if context.get("acting_admin") else ""),
+            )
         return response

@@ -43,7 +43,9 @@ from .subscription import Subscription, SubscriptionPlan
 from .supplier_customer import AdvanceSettlement, Customer, PalayPayment, Supplier, SupplierAdvance
 from .sync import SyncConflict, SyncLog
 from .upgrade_request import UpgradeRequest
+from .platform import AdminAuditLog, PageRelease
 from .user import CompanyRole, Role, User
+from .voucher import Voucher, VoucherRedemption
 from .user_location import UserLocation
 from .warehouse import (
     Pallet,
@@ -58,6 +60,10 @@ from .warehouse import (
 )
 
 __all__ = [
+    "AdminAuditLog",
+    "PageRelease",
+    "Voucher",
+    "VoucherRedemption",
     "AppFeedback",
     "ActionItem",
     "AutomationRule",

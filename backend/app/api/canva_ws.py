@@ -103,13 +103,20 @@ async def canva_ws(websocket: WebSocket, layout_id: uuid.UUID):
                     reason="Origin not allowed",
                 )
                 return
-            raw_token = websocket.cookies.get(ACCESS_COOKIE)
+            from ..core.view_as import VIEW_AS_COOKIE
+
+            raw_token = websocket.cookies.get(VIEW_AS_COOKIE) or websocket.cookies.get(ACCESS_COOKIE)
 
         authenticated = _authenticate_ws(raw_token, db)
         if not authenticated:
             await websocket.close(code=http_status.WS_1008_POLICY_VIOLATION, reason="Invalid token")
             return
         user, payload = authenticated
+        # BossAdmin's read-only "View as" can watch the floor plan over HTTP but
+        # can't hold the socket that moves pallets.
+        if payload.get("act") is not None and payload.get("view_mode") != "full":
+            await websocket.close(code=http_status.WS_1008_POLICY_VIOLATION, reason="Read-only view")
+            return
 
         if mfa_enrollment_pending(user):
             await websocket.close(code=http_status.WS_1008_POLICY_VIOLATION, reason="MFA setup required")

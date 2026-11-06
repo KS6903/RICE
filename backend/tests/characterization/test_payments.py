@@ -84,14 +84,22 @@ def test_options_follow_the_keys(auth_client, keys, monkeypatch):
 
 
 def test_checkout_is_refused_without_keys(auth_client, basic):
-    res = auth_client.post("/api/billing/checkout", json={"plan_id": str(basic.id), "provider": "paymongo"})
+    res = auth_client.post(
+        "/api/billing/checkout",
+        json={"current_password": "Password123", "plan_id": str(basic.id), "provider": "paymongo"},
+    )
     assert res.status_code == 501, res.text
 
 
 def test_paymongo_checkout_charges_the_plans_price(auth_client, db_session, basic, keys, made):
     res = auth_client.post(
         "/api/billing/checkout",
-        json={"plan_id": str(basic.id), "provider": "paymongo", "billing_interval": "annual"},
+        json={
+            "current_password": "Password123",
+            "plan_id": str(basic.id),
+            "provider": "paymongo",
+            "billing_interval": "annual",
+        },
     )
     assert res.status_code == 201, res.text
     assert res.json()["checkout_url"] == "https://checkout.paymongo.com/cs_test_1"
@@ -103,21 +111,28 @@ def test_paymongo_checkout_charges_the_plans_price(auth_client, db_session, basi
 
 
 def test_paypal_charges_dollars_and_needs_a_dollar_price(auth_client, db_session, basic, keys, made):
-    res = auth_client.post("/api/billing/checkout", json={"plan_id": str(basic.id), "provider": "paypal"})
+    res = auth_client.post(
+        "/api/billing/checkout",
+        json={"current_password": "Password123", "plan_id": str(basic.id), "provider": "paypal"},
+    )
     assert res.status_code == 201, res.text
     assert made[-1]["amount"] == 20
 
     basic.monthly_price_usd = 0
     db_session.flush()
-    res = auth_client.post("/api/billing/checkout", json={"plan_id": str(basic.id), "provider": "paypal"})
+    res = auth_client.post(
+        "/api/billing/checkout",
+        json={"current_password": "Password123", "plan_id": str(basic.id), "provider": "paypal"},
+    )
     assert res.status_code == 400
     assert "US dollars" in res.json()["detail"]
 
 
 def test_a_paid_checkout_turns_the_plan_on_once(auth_client, db_session, seed_owner, basic, keys, made, monkeypatch):
-    pid = auth_client.post("/api/billing/checkout", json={"plan_id": str(basic.id), "provider": "paymongo"}).json()[
-        "payment_id"
-    ]
+    pid = auth_client.post(
+        "/api/billing/checkout",
+        json={"current_password": "Password123", "plan_id": str(basic.id), "provider": "paymongo"},
+    ).json()["payment_id"]
 
     _paid(monkeypatch, paymongo=False)
     assert auth_client.post(f"/api/billing/payments/{pid}/confirm").json()["status"] == "pending"
@@ -144,7 +159,10 @@ def test_a_paid_checkout_turns_the_plan_on_once(auth_client, db_session, seed_ow
 
 
 def test_paymongo_webhook_needs_its_signature(auth_client, db_session, seed_owner, basic, keys, made, monkeypatch):
-    auth_client.post("/api/billing/checkout", json={"plan_id": str(basic.id), "provider": "paymongo"})
+    auth_client.post(
+        "/api/billing/checkout",
+        json={"current_password": "Password123", "plan_id": str(basic.id), "provider": "paymongo"},
+    )
     _paid(monkeypatch)
     event = {"data": {"attributes": {"type": "checkout_session.payment.paid", "data": {"id": "cs_test_1"}}}}
     raw = json.dumps(event).encode()
@@ -163,7 +181,10 @@ def test_paymongo_webhook_needs_its_signature(auth_client, db_session, seed_owne
 
 
 def test_paypal_webhook_only_prompts_a_lookup(auth_client, db_session, basic, keys, made, monkeypatch):
-    auth_client.post("/api/billing/checkout", json={"plan_id": str(basic.id), "provider": "paypal"})
+    auth_client.post(
+        "/api/billing/checkout",
+        json={"current_password": "Password123", "plan_id": str(basic.id), "provider": "paypal"},
+    )
     event = {"event_type": "CHECKOUT.ORDER.APPROVED", "resource": {"id": "ORDER1"}}
 
     # PayPal says not paid: the event alone changes nothing.

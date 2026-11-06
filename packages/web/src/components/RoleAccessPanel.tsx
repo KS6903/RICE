@@ -34,7 +34,7 @@ const EXTRA: Record<string, { label: string; also: string[] }> = {
 
 /** What a page is called, and the other pages that open with it (Collections and
  *  Cash count go with Sales), as the sidebar has them. */
-function describeSection(section: string): { label: string; also: string[] } {
+export function describeSection(section: string): { label: string; also: string[] } {
   if (EXTRA[section]) return EXTRA[section];
   const items = NAV_GROUPS.flatMap((g) => g.items).filter((i) => i.section === section);
   return { label: items[0]?.label ?? section, also: items.slice(1).map((i) => i.label) };

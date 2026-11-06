@@ -58,6 +58,10 @@ class Company(Base, TimestampMixin):
     # {role: {page: "full" | "view" | "none"}}: only the cells that differ from
     # the default matrix (core/access_policy.py). NULL when nothing was changed.
     role_access: Mapped[dict | None] = mapped_column(JSONB)
+    # {page: "on" | "off"}, set by BossAdmin: a page turned on for this mill
+    # before its release stage reaches it, or turned off whatever the stage
+    # (core/releases.py). NULL when nothing was changed.
+    page_overrides: Mapped[dict | None] = mapped_column(JSONB)
     # How the Palay page counts the palay in stock, as the Boss chose: sacks,
     # cavans, kilos or all three. NULL until chosen, which shows all three.
     palay_stock_view: Mapped[str | None] = mapped_column(String(10))

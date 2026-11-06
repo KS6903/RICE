@@ -78,6 +78,15 @@ function RequestRow({
             <span className="badge-green text-[10px]! py-0.5!">{t("Annual")}</span>
           )}
         </div>
+        {r.voucher_code && (
+          <div className="mt-1 text-xs text-secondary">
+            {t("Voucher {{code}}: ₱{{off}} off, ₱{{due}} to pay", {
+              code: r.voucher_code,
+              off: (r.discount ?? 0).toLocaleString(),
+              due: (r.amount_due ?? 0).toLocaleString(),
+            })}
+          </div>
+        )}
       </td>
       <td className="text-xs text-muted whitespace-nowrap">
         {r.created_at ? format(new Date(r.created_at), "MMM d, yyyy HH:mm") : "—"}

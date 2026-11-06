@@ -21,6 +21,14 @@ export interface User {
   access?: Record<string, "full" | "view" | "none">;
   /** Can correct saved records (the Boss, or a role given edit power). */
   edit_power?: boolean;
+  /** Set while BossAdmin is viewing this person's mill through "View as":
+   *  read-only, or full control, and when the visit ends by itself. */
+  viewing_as?: {
+    mode: "view" | "full";
+    admin_username: string;
+    company_name: string | null;
+    expires_at: string | null;
+  } | null;
   mfa_enabled?: boolean;
   mfa_backup_codes_remaining?: number;
   mfa_setup_recommended?: boolean;
@@ -299,6 +307,8 @@ export interface PlanPayment {
   amount: number;
   status: "pending" | "paid" | "failed";
   paid_at: string | null;
+  /** What a voucher took off. */
+  discount?: number;
 }
 
 export type UpgradeRequestStatus = "pending" | "approved" | "rejected" | "cancelled";
@@ -323,4 +333,9 @@ export interface UpgradeRequest {
   admin_note: string | null;
   created_at: string | null;
   resolved_at: string | null;
+  /** A voucher on a bank transfer: its code (BossAdmin's view), what it took
+   *  off, and what was left to pay, in pesos. */
+  voucher_code?: string | null;
+  discount?: number;
+  amount_due?: number | null;
 }

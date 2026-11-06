@@ -8,6 +8,8 @@ import { format } from "date-fns";
 import { roleLabel } from "@rice-mill/shared";
 import { useAuthStore } from "../../stores/authStore";
 import { t } from "../../i18n";
+import LastSeenCell from "../../components/admin/LastSeenCell";
+import ViewAsButton from "../../components/admin/ViewAsButton";
 
 const COLS = [
   t("Username"),
@@ -16,7 +18,8 @@ const COLS = [
   t("Tenant"),
   t("Role"),
   t("Status"),
-  t("Last login"),
+  t("Last seen"),
+  t("Last signed in"),
   "",
 ];
 
@@ -68,7 +71,7 @@ export default function AdminUsers() {
         </div>
       </div>
 
-      <div className="panel">
+      <div className="panel overflow-x-auto">
         <table className="data-table">
           <thead>
             <tr>
@@ -109,17 +112,23 @@ export default function AdminUsers() {
                     )}
                   </td>
                   <td>{u.role ? t(roleLabel(u.role)) : "—"}</td>
-                  <td>
+                  <td className="whitespace-nowrap">
                     {u.is_active ? (
                       <span className="badge-green">{t("Active")}</span>
                     ) : (
                       <span className="badge-gray">{t("Inactive")}</span>
                     )}
                   </td>
-                  <td className="text-xs text-muted">
-                    {u.last_login ? format(new Date(u.last_login), "MMM d, HH:mm") : t("Never")}
+                  <td className="text-xs whitespace-nowrap">
+                    <LastSeenCell iso={u.last_seen} />
                   </td>
-                  <td className="text-right">
+                  <td className="text-xs text-muted whitespace-nowrap" title={u.last_login ?? ""}>
+                    {u.last_login
+                      ? format(new Date(u.last_login), "MMM d, yyyy, h:mm a")
+                      : t("Never")}
+                  </td>
+                  <td className="text-right whitespace-nowrap">
+                    {u.company_id && <ViewAsButton person={u} compact />}
                     {u.is_active && (
                       <button
                         type="button"

@@ -5,6 +5,32 @@ import { useBillingNoticeStore } from "../stores/billingNoticeStore";
 import { isElectronRuntime } from "./runtime";
 import { createSingleFlight } from "./singleFlight";
 import { t } from "../i18n";
+import { useAdminConfirmStore } from "../stores/adminConfirmStore";
+
+/** What the server says when BossAdmin's "View as" visit has run out or was
+ *  ended elsewhere (backend core/view_as.py). */
+const VIEW_ENDED = t("Your view of this account has ended.");
+
+/** After "View as" starts or ends, who is signed in has changed: load them
+ *  before the page does, so its routes don't act on the one before. */
+export async function reloadAs(path: string): Promise<void> {
+  try {
+    const { data } = await axios.get("/api/auth/me", { withCredentials: true });
+    useAuthStore.getState().setUser(data);
+  } catch {
+    // The page load sorts it out.
+  }
+  window.location.assign(path);
+}
+
+/** End BossAdmin's "View as" visit: drops its cookie, nothing else. */
+export async function stopViewAs(): Promise<void> {
+  try {
+    await axios.post("/api/view-as/stop", {}, { withCredentials: true, headers: csrfHeaders() });
+  } catch {
+    // Nothing to end, or the network is down: the next page load decides.
+  }
+}
 
 /** Only the non-httpOnly CSRF cookie is intentionally visible to JavaScript. */
 function getCookie(name: string): string | null {
@@ -13,7 +39,7 @@ function getCookie(name: string): string | null {
   return match ? decodeURIComponent(match[1]) : null;
 }
 
-function csrfHeaders(): Record<string, string> {
+export function csrfHeaders(): Record<string, string> {
   const csrf = getCookie("csrf_token");
   return csrf ? { "X-CSRF-Token": csrf } : {};
 }
@@ -93,8 +119,27 @@ api.interceptors.response.use(
       data.detail = t(data.detail);
     }
 
-    const original = error.config as (AxiosRequestConfig & { _retry?: boolean }) | undefined;
+    const original = error.config as
+      (AxiosRequestConfig & { _retry?: boolean; _confirmed?: boolean }) | undefined;
     const isSessionEstablishment = NO_REFRESH_PATHS.some((path) => original?.url?.includes(path));
+
+    // BossAdmin's visit to a mill is over: back to BossAdmin, still signed in.
+    if (error.response?.status === 401 && data?.detail_en === VIEW_ENDED) {
+      await stopViewAs();
+      await reloadAs("/admin");
+      return Promise.reject(error);
+    }
+
+    // A BossAdmin change that needs a fresh confirmation: ask, then send it again.
+    if (
+      error.response?.status === 403 &&
+      data?.code === "confirm_required" &&
+      original &&
+      !original._confirmed
+    ) {
+      original._confirmed = true;
+      if (await useAdminConfirmStore.getState().ask()) return api(original);
+    }
 
     if (error.response?.status === 401 && original && !original._retry && !isSessionEstablishment) {
       original._retry = true;

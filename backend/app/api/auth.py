@@ -7,11 +7,13 @@ inject the authenticated user.
 
 import secrets
 import uuid
+from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, Request, Response, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 
+from ..core import releases
 from ..core.access_policy import access_for_user, edit_power_for_user
 from ..core.config import settings
 from ..core.cookies import (
@@ -26,7 +28,7 @@ from ..core.csrf import enforce_csrf
 from ..core.database import get_db
 from ..core.exceptions import UnauthorizedError
 from ..core.ratelimit import AUTH_RATE_LIMIT, client_ip, limiter
-from ..core.security import get_access_token_payload, get_current_user
+from ..core.security import closed_pages_for, get_access_token_payload, get_current_user
 from ..schemas.auth import (
     BrowserAuthResponse,
     ChangePasswordRequest,
@@ -415,12 +417,28 @@ def logout(
 # otherwise spend Redis commands (Upstash bills per command) on every poll.
 @router.get("/me")
 @limiter.exempt
-def me(svc: AuthService = Depends(get_auth_service)):
+def me(request: Request, svc: AuthService = Depends(get_auth_service)):
     result = svc.me()
     # Every page's level for this person, with the changes their mill's Boss has
-    # made to the role matrix. Polled with the rest, so a change reaches an open
-    # tab without a sign-in.
-    result["access"] = access_for_user(svc.current_user)
+    # made to the role matrix, less the pages not yet released to their mill
+    # (core/releases.py). Polled with the rest, so a change reaches an open tab
+    # without a sign-in.
+    closed = closed_pages_for(request, svc.current_user, svc.db)
+    result["access"] = releases.apply(access_for_user(svc.current_user), closed)
+    # BossAdmin's "View as" (core/view_as.py): the app shows a banner and a way back.
+    visit = getattr(request.state, "view_as", None)
+    result["viewing_as"] = (
+        {
+            "mode": visit["mode"],
+            "admin_username": visit["admin_username"],
+            "company_name": visit.get("company_name"),
+            "expires_at": datetime.fromtimestamp(visit["expires_at"], tz=timezone.utc).isoformat()
+            if visit.get("expires_at")
+            else None,
+        }
+        if visit
+        else None
+    )
     # Whether they can correct saved records (the Boss, or a role with edit power).
     result["edit_power"] = edit_power_for_user(svc.current_user)
     return result

@@ -164,7 +164,10 @@ def test_platform_admins_hear_of_a_new_upgrade_request(auth_client, db_session, 
     pro = SubscriptionPlan(code="pro-y", name="Pro Y", features=[], monthly_price=Decimal(2000), is_active=True)
     db_session.add(pro)
     db_session.flush()
-    res = auth_client.post("/api/billing/upgrade-requests", json={"plan_id": str(pro.id), "note": "Need reports"})
+    res = auth_client.post(
+        "/api/billing/upgrade-requests",
+        json={"current_password": "Password123", "plan_id": str(pro.id), "note": "Need reports"},
+    )
     assert res.status_code == 201, res.text
     [mail] = sent
     assert mail["to"] == "ops@test.local"

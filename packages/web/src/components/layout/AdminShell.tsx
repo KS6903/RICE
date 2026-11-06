@@ -8,11 +8,11 @@ import useScrollTopOnPageChange from "../../hooks/useScrollTopOnPageChange";
 import { adminService } from "../../services/AdminService";
 import {
   LayoutDashboard,
+  LayoutGrid,
   Building2,
   Users,
   LogOut,
   ArrowUpCircle,
-  MessageSquare,
   Settings,
   ShieldCheck,
   Sun,
@@ -35,7 +35,8 @@ const NAV = [
     withBadge: "upgrades" as const,
   },
   { to: "/admin/users", label: t("All Users"), icon: Users },
-  { to: "/admin/feedback", label: t("Feedback"), icon: MessageSquare },
+  { to: "/admin/pages", label: t("Pages"), icon: LayoutGrid },
+  { to: "/admin/security", label: t("Security log"), icon: ShieldCheck },
   { to: "/admin/settings", label: t("Settings"), icon: Settings },
 ];
 

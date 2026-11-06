@@ -5,7 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { SubscriptionPlan, User } from "@rice-mill/shared";
 import CheckoutPage from "./CheckoutPage";
 import { useAuthStore } from "../stores/authStore";
-import { billingService } from "../services/BillingService";
+import { billingService, voucherService } from "../services/BillingService";
 import { redirectTo } from "../utils/redirect";
 
 vi.mock("../utils/redirect", () => ({ redirectTo: vi.fn() }));
@@ -48,6 +48,12 @@ const basic: SubscriptionPlan = {
   payment_account_number: "0000 1111 2222",
 };
 
+/** Changing the plan asks the Boss to confirm it's them (ConfirmItsYou). */
+const confirmItsMe = async () => {
+  fireEvent.change(await screen.findByLabelText("Your password"), { target: { value: "pw" } });
+  fireEvent.click(screen.getByRole("button", { name: "Confirm" }));
+};
+
 const draw = (entry = "/settings/checkout?plan=basic&interval=monthly") =>
   render(
     <QueryClientProvider
@@ -88,6 +94,8 @@ describe("Checkout", () => {
       target: { value: "1234567890123" },
     });
     fireEvent.click(send);
+    expect(billingService.createUpgradeRequest).not.toHaveBeenCalled();
+    await confirmItsMe();
 
     await waitFor(() =>
       expect(billingService.createUpgradeRequest).toHaveBeenCalledWith({
@@ -95,6 +103,7 @@ describe("Checkout", () => {
         request_type: "upgrade",
         billing_interval: "monthly",
         note: "Paid to Test Bank, reference 1234567890123",
+        current_password: "pw",
       }),
     );
     expect(await screen.findByText("Request sent")).toBeInTheDocument();
@@ -117,6 +126,7 @@ describe("Checkout", () => {
       await screen.findByText(/Payment details for Basic are coming soon/),
     ).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Send request" }));
+    await confirmItsMe();
 
     await waitFor(() =>
       expect(billingService.createUpgradeRequest).toHaveBeenCalledWith(
@@ -151,12 +161,14 @@ describe("Checkout", () => {
     expect(await screen.findByText("Or pay by bank transfer")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Pay \$20 USD/ })).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: /Pay ₱999/ }));
+    await confirmItsMe();
 
     await waitFor(() =>
       expect(billingService.startCheckout).toHaveBeenCalledWith({
         plan_id: "basic",
         billing_interval: "monthly",
         provider: "paymongo",
+        current_password: "pw",
       }),
     );
     await waitFor(() =>
@@ -172,6 +184,51 @@ describe("Checkout", () => {
     draw();
     expect(await screen.findByRole("button", { name: /Pay ₱999/ })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /USD/ })).not.toBeInTheDocument();
+  });
+
+  it("takes a voucher off the price the server worked out", async () => {
+    vi.spyOn(voucherService, "check").mockResolvedValue({
+      voucher: {
+        code: "ABCD-EFGH-JKMN",
+        kind: "percent_off",
+        plan_id: null,
+        plan_name: null,
+        billing_interval: null,
+        percent_off: 20,
+        amount_off: null,
+        amount_off_usd: null,
+        free_months: 0,
+        free_days: 0,
+        expires_at: null,
+      },
+      prices: { PHP: { price: 999, discount: 199.8, total: 799.2 } },
+    });
+    draw();
+    fireEvent.change(await screen.findByLabelText("Voucher code"), {
+      target: { value: "abcd-efgh-jkmn" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /Apply/ }));
+    expect(await screen.findByText("Voucher ABCD-EFGH-JKMN")).toBeInTheDocument();
+    expect(voucherService.check).toHaveBeenCalledWith({
+      code: "ABCD-EFGH-JKMN",
+      plan_id: "basic",
+      billing_interval: "monthly",
+    });
+
+    fireEvent.change(screen.getByLabelText("Payment reference"), { target: { value: "99" } });
+    fireEvent.click(screen.getByRole("button", { name: "I've paid, send for confirmation" }));
+    await confirmItsMe();
+    await waitFor(() =>
+      expect(billingService.createUpgradeRequest).toHaveBeenCalledWith(
+        expect.objectContaining({ voucher_code: "ABCD-EFGH-JKMN", current_password: "pw" }),
+      ),
+    );
+  });
+
+  it("is only for the Boss", async () => {
+    useAuthStore.setState({ user: { ...owner, role: "admin" } });
+    draw();
+    expect(await screen.findByText("Only the Boss can change the plan")).toBeInTheDocument();
   });
 
   it("says so when the payment was cancelled", async () => {
