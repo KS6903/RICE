@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime, timedelta, timezone
+from decimal import Decimal
 from typing import IO, Any
 
 from sqlalchemy import func, true
@@ -916,7 +917,7 @@ class AdminService(BaseService):
                     user_id=r.requested_by,
                     plan_id=plan.id,
                     currency="PHP",
-                    discount=r.discount or 0,
+                    discount=Decimal(r.discount or 0),
                     upgrade_request_id=r.id,
                 )
             resolve_pending_upgrade_requests(self.db, r.company_id, plan.id, admin_id=admin_id)

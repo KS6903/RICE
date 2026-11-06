@@ -207,12 +207,14 @@ def redeem_free_time(db: Session, user, code: str | None) -> dict:
         raise BadRequestError("The plan on this voucher isn't offered any more.", code="voucher_invalid")
     now = datetime.now(timezone.utc)
     sub = db.query(Subscription).filter(Subscription.company_id == company_id).with_for_update().first()
-    same_plan = sub is not None and sub.plan_id == plan.id
-    if same_plan and sub.expires_at is None and sub.status in ("active", "trial"):
-        raise BadRequestError(
-            f"Your {plan.name} plan has no end date, so there's no time to add.", code="voucher_no_end"
-        )
-    start = sub.expires_at if same_plan and sub.expires_at and sub.expires_at > now else now
+    start = now
+    if sub is not None and sub.plan_id == plan.id:
+        if sub.expires_at is None and sub.status in ("active", "trial"):
+            raise BadRequestError(
+                f"Your {plan.name} plan has no end date, so there's no time to add.", code="voucher_no_end"
+            )
+        if sub.expires_at and sub.expires_at > now:
+            start = sub.expires_at
     expires_at = _add_months(start, voucher.free_months) + timedelta(days=voucher.free_days)
     company = user.company
     record = UpgradeRequest(

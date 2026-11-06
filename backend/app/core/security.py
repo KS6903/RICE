@@ -461,7 +461,12 @@ def require_section_access(section: str, *, write: bool = False):
 
     # current_user first, so the checker can still be called with just a user
     # (as the unit tests do); FastAPI fills in the request and the session.
-    def checker(current_user=Depends(get_current_user), request: Request = None, db: Session = Depends(get_db)):
+    # (Annotated as plain Request: FastAPI injects it by that type.)
+    def checker(
+        current_user=Depends(get_current_user),
+        request: Request = None,  # type: ignore[assignment]
+        db: Session = Depends(get_db),
+    ):
         if getattr(current_user, "is_platform_admin", False):
             return current_user
         # A page not yet released to this mill, or turned off for it.

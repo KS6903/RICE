@@ -134,7 +134,7 @@ def start_view_as(
     set_search_path(db, schema_name_for(target.company))
     log_activity(
         db,
-        company_id=target.company_id,
+        company_id=target.company.id,
         user_id=None,
         action="bossadmin.view_as",
         entity_type="user",

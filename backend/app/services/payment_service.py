@@ -286,7 +286,7 @@ def fulfil(db: Session, payment_id: uuid.UUID, *, provider_payment_id: str | Non
             from . import vouchers
 
             record.voucher_id = payment.voucher_id
-            record.discount = payment.discount or 0
+            record.discount = Decimal(payment.discount or 0)
             db.flush()
             vouchers.record_use(
                 db,
