@@ -5,11 +5,11 @@
 #   .venv/Scripts/python -m pip install --require-hashes -r requirements-dev.txt
 -r requirements.in
 
-pytest==9.1.1
+pytest==9.2.0
 pytest-asyncio==1.4.1
 coverage==7.17.0
 ruff==0.17.3
-mypy==2.4.0
+mypy==2.4.1
 bandit==1.9.4
 pip-audit==2.10.1
 pip-tools==7.6.2
