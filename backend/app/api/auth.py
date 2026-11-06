@@ -417,7 +417,7 @@ def logout(
 # otherwise spend Redis commands (Upstash bills per command) on every poll.
 @router.get("/me")
 @limiter.exempt
-def me(request: Request, svc: AuthService = Depends(get_auth_service)):
+def me(request: Request, response: Response, svc: AuthService = Depends(get_auth_service)):
     result = svc.me()
     # Every page's level for this person, with the changes their mill's Boss has
     # made to the role matrix, less the pages not yet released to their mill

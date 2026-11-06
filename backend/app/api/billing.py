@@ -2,7 +2,7 @@
 
 import uuid
 
-from fastapi import APIRouter, Depends, Request, status
+from fastapi import APIRouter, Depends, Request, Response, status
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 
@@ -60,7 +60,7 @@ def my_latest_request(svc: BillingService = Depends(get_billing_service)):
 @router.post("/upgrade-requests", status_code=status.HTTP_201_CREATED, dependencies=SETTINGS_WRITE)
 @limiter.limit("10/hour")
 def create_upgrade_request(
-    request: Request, body: UpgradeRequestCreate, svc: BillingService = Depends(get_billing_service)
+    request: Request, response: Response, body: UpgradeRequestCreate, svc: BillingService = Depends(get_billing_service)
 ):
     return svc.create_upgrade_request(body)
 
@@ -80,7 +80,9 @@ def payment_options():
 
 @router.post("/checkout", status_code=status.HTTP_201_CREATED, dependencies=SETTINGS_WRITE)
 @limiter.limit("10/hour")
-def start_checkout(request: Request, body: CheckoutCreate, svc: BillingService = Depends(get_billing_service)):
+def start_checkout(
+    request: Request, response: Response, body: CheckoutCreate, svc: BillingService = Depends(get_billing_service)
+):
     return payment_service.start_checkout(
         svc,
         plan_id=body.plan_id,
@@ -97,7 +99,9 @@ def start_checkout(request: Request, body: CheckoutCreate, svc: BillingService =
 
 @router.post("/vouchers/check", dependencies=SETTINGS_WRITE)
 @limiter.limit("20/hour")
-def check_voucher(request: Request, body: VoucherCheck, svc: BillingService = Depends(get_billing_service)):
+def check_voucher(
+    request: Request, response: Response, body: VoucherCheck, svc: BillingService = Depends(get_billing_service)
+):
     """What a code would give this mill, and for a plan, the price after it.
     Changes nothing."""
     if not svc.current_user.company_id:
@@ -125,7 +129,9 @@ def check_voucher(request: Request, body: VoucherCheck, svc: BillingService = De
 
 @router.post("/vouchers/redeem", dependencies=SETTINGS_WRITE)
 @limiter.limit("10/hour")
-def redeem_voucher(request: Request, body: VoucherRedeem, svc: BillingService = Depends(get_billing_service)):
+def redeem_voucher(
+    request: Request, response: Response, body: VoucherRedeem, svc: BillingService = Depends(get_billing_service)
+):
     """Free time on a plan: on at once."""
     if not svc.current_user.company_id:
         return {"redeemed": None}

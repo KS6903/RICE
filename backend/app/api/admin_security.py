@@ -63,7 +63,13 @@ def confirm_status(request: Request, admin=Depends(require_platform_admin)):
 
 @unguarded.post("/confirm")
 @limiter.limit("10/15minutes")
-def confirm(request: Request, body: Proof, db: Session = Depends(get_db), admin=Depends(require_platform_admin)):
+def confirm(
+    request: Request,
+    response: Response,
+    body: Proof,
+    db: Session = Depends(get_db),
+    admin=Depends(require_platform_admin),
+):
     """The password, and the authenticator code with two-factor on: opens the
     window for changes on this sign-in only."""
     sid = admin_guard.request_sid(request)
