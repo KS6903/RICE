@@ -14,16 +14,16 @@
     "smoke": "node scripts/run-smoke.cjs"
   },
   "dependencies": {
-    "axios": "1.20.0",
-    "electron-updater": "^6.8.9"
+    "axios": "1.21.0",
+    "electron-updater": "^6.8.11"
   },
   "devDependencies": {
     "@types/node": "^22.10.2",
     "concurrently": "^10.0.6",
     "electron": "44.9.1",
-    "electron-builder": "^26.15.3",
+    "electron-builder": "^26.18.0",
     "typescript": "^5.7.2",
-    "vitest": "^5.0.5",
+    "vitest": "^5.1.0",
     "wait-on": "^8.0.1"
   },
   "build": {
