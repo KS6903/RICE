@@ -1,7 +1,7 @@
 import { useId, useState } from "react";
 import { NavLink } from "react-router-dom";
 import { ChevronDown, Settings, Lock, X } from "lucide-react";
-import oraizaLogo from "../../assets/Oraiza_Logo.svg";
+import oraizaLogo from "../../assets/Oraiza_Mark.png";
 import { clsx } from "clsx";
 import { planHas } from "../../hooks/useFeature";
 import { useAccess } from "../../hooks/useAccess";

@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, useLocation, useParams } from "react-router-dom";
 import { ArrowLeft, ArrowUp } from "lucide-react";
 import Markdown from "../components/Markdown";
-import oraizaLogo from "../assets/Oraiza_Logo.svg";
+import oraizaLogo from "../assets/Oraiza_Mark.png";
 import { legalService, type LegalDocument, type LegalIndex } from "../services/LegalService";
 import { t } from "../i18n";
 

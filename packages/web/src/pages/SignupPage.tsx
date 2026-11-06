@@ -6,7 +6,7 @@ import PasswordInput from "../components/PasswordInput";
 import { Building2, Building, AlertCircle, ArrowRight, ArrowLeft, Check } from "lucide-react";
 import { GoogleLogin } from "@react-oauth/google";
 import { googleSignInEnabled } from "../utils/googleSignIn";
-import oraizaLogo from "../assets/Oraiza_Logo.svg";
+import oraizaLogo from "../assets/Oraiza_Mark.png";
 import { legalService } from "../services/LegalService";
 import TurnstileWidget, { type TurnstileHandle } from "../components/TurnstileWidget";
 import { enterApp, safeNext, withNext } from "../utils/next";

@@ -18,7 +18,7 @@ import {
   CircleDollarSign,
   Boxes,
 } from "lucide-react";
-import oraizaLogo from "../assets/Oraiza_Logo.svg";
+import oraizaLogo from "../assets/Oraiza_Mark.png";
 import { warmUpApi } from "../services/warmUp";
 import { t } from "../i18n";
 

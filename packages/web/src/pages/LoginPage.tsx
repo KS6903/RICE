@@ -14,7 +14,7 @@ import {
 } from "lucide-react";
 import { GoogleLogin } from "@react-oauth/google";
 import { googleSignInEnabled } from "../utils/googleSignIn";
-import oraizaLogo from "../assets/Oraiza_Logo.svg";
+import oraizaLogo from "../assets/Oraiza_Mark.png";
 import { enterApp, safeNext, withNext } from "../utils/next";
 import { serverUnreachableMessage, warmUpApi } from "../services/warmUp";
 import AuthLoadingScreen from "../components/AuthLoadingScreen";
