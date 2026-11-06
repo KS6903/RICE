@@ -1,3 +1,4 @@
+import { useRef } from "react";
 import { Outlet } from "react-router-dom";
 import Sidebar from "./Sidebar";
 import Header from "./Header";
@@ -6,12 +7,15 @@ import VerifyEmailBanner from "../VerifyEmailBanner";
 import SubscriptionGuard from "../SubscriptionGuard";
 import Tour from "../help/Tour";
 import { useAccountTheme } from "../../hooks/useAccountTheme";
+import useScrollTopOnPageChange from "../../hooks/useScrollTopOnPageChange";
 import { useNavDrawer } from "./NavDrawer";
 import PageLoadingBar from "./PageLoadingBar";
 
 export default function AppShell() {
   useAccountTheme();
   const nav = useNavDrawer();
+  const mainRef = useRef<HTMLElement>(null);
+  useScrollTopOnPageChange(mainRef);
   return (
     <div className="app-viewport flex overflow-hidden">
       <PageLoadingBar />
@@ -20,7 +24,7 @@ export default function AppShell() {
         <Header menuOpen={nav.open} onMenu={() => nav.setOpen(true)} />
         <VerifyEmailBanner />
         <BillingNoticeBanner />
-        <main className="app-main flex-1 overflow-y-auto py-5 sm:py-6 lg:py-8">
+        <main ref={mainRef} className="app-main flex-1 overflow-y-auto py-5 sm:py-6 lg:py-8">
           <div className="mx-auto max-w-7xl animate-grad-fade-up">
             <SubscriptionGuard>
               <Outlet />

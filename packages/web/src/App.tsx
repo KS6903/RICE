@@ -3,7 +3,7 @@ import { lazy, Suspense, useEffect, type ComponentType } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useAuthStore } from "./stores/authStore";
 import { idleSigningOut, useIdleLogout } from "./hooks/useIdleLogout";
-import useReloadOnPageChange from "./hooks/useReloadOnPageChange";
+import useReloadOnSamePageLink from "./hooks/useReloadOnSamePageLink";
 import { useVisualViewport } from "./hooks/useVisualViewport";
 import { authService } from "./services/AuthService";
 import AppShell from "./components/layout/AppShell";
@@ -147,8 +147,8 @@ function AdminRoute({ children }: { children: React.ReactNode }) {
  *  relevant mandatory screen. The /verify-email link route stays reachable so a
  *  user can complete verification from the gate. */
 function AppRoutes() {
-  const location = useReloadOnPageChange();
-  const { pathname } = location;
+  useReloadOnSamePageLink();
+  const { pathname } = useLocation();
   const mustChangePassword = useAuthStore((s) => !!s.user?.password_change_required);
   const mustEnroll = useAuthStore((s) => !!s.user?.mfa_enrollment_required);
   const mustVerify = useAuthStore((s) => !!s.user?.email_verification_required);
@@ -168,7 +168,7 @@ function AppRoutes() {
   if (mustVerify && pathname !== "/verify-email" && !onLegalPage) return <EmailVerificationGate />;
   if (mustAccept && !onLegalPage) return <LegalAcceptanceGate />;
   return (
-    <Routes location={location}>
+    <Routes>
       <Route path="/login" element={<LazyPage component={LoginPage} />} />
       <Route path="/signup" element={<LazyPage component={SignupPage} />} />
       <Route path="/forgot-password" element={<LazyPage component={ForgotPasswordPage} />} />
