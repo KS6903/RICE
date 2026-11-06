@@ -22,7 +22,8 @@ describe("returning to a page", () => {
     const client = createSessionQueryClient();
     const fetchSales = vi.fn(async () => ["sale"]);
     const leave = open(client, "sales", fetchSales);
-    await vi.waitFor(() => expect(fetchSales).toHaveBeenCalledTimes(1));
+    // Leave once the data is in, as a person does after the page has drawn.
+    await vi.waitFor(() => expect(client.getQueryData(["sales"])).toEqual(["sale"]));
     leave();
 
     open(client, "sales", fetchSales);
@@ -35,7 +36,7 @@ describe("returning to a page", () => {
     const client = createSessionQueryClient();
     const fetchWeather = vi.fn(async () => ({ rain: false }));
     const leave = open(client, "weather", fetchWeather, 30 * 60 * 1000);
-    await vi.waitFor(() => expect(fetchWeather).toHaveBeenCalledTimes(1));
+    await vi.waitFor(() => expect(client.getQueryData(["weather"])).toEqual({ rain: false }));
     leave();
 
     open(client, "weather", fetchWeather, 30 * 60 * 1000);
