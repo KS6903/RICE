@@ -115,7 +115,7 @@ export default function LegalPage() {
       <header className="sticky top-0 z-10 border-b border-soft bg-[rgb(var(--surface))]">
         <div className="mx-auto max-w-3xl px-6 py-4 flex items-center justify-between gap-4">
           <Link to="/" className="flex items-center gap-2.5" aria-label={t("Back to Oraiza")}>
-            <div className="h-9 w-9">
+            <div className="h-11.25 w-11.25">
               <img src={oraizaLogo} alt={t("Oraiza")} className="h-full w-full object-contain" />
             </div>
             <span className="text-lg font-bold tracking-tight text-primary">{t("Oraiza")}</span>

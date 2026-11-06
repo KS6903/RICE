@@ -610,7 +610,7 @@ export default function HomePage() {
       <header className="sticky top-0 z-20 glass-strong border-b border-soft">
         <div className="mx-auto max-w-6xl px-4 sm:px-6 h-16 flex items-center justify-between gap-3">
           <div className="flex items-center gap-2.5 min-w-0">
-            <div className="h-9 w-9 shrink-0 max-[314px]:hidden">
+            <div className="h-11.25 w-11.25 shrink-0 max-[314px]:hidden">
               <img src={oraizaLogo} alt={t("Oraiza")} className="h-full w-full object-contain" />
             </div>
             <span className="text-lg font-bold tracking-tight text-primary">{t("Oraiza")}</span>

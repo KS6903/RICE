@@ -182,7 +182,7 @@ export default function LoginPage() {
 
         <div className="relative flex items-center gap-3 text-white">
           <Link to="/" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
-            <div className="h-12 w-12">
+            <div className="h-15 w-15">
               <img src={oraizaLogo} alt={t("Oraiza")} className="h-full w-full object-contain" />
             </div>
             <p className="text-lg font-bold tracking-tight">{t("Oraiza")}</p>
@@ -245,7 +245,7 @@ export default function LoginPage() {
 
         <div className="w-full max-w-sm animate-grad-fade-up">
           <div className="lg:hidden flex items-center gap-3 mb-8">
-            <Link to="/" className="h-12 w-12">
+            <Link to="/" className="h-15 w-15">
               <img src={oraizaLogo} alt={t("Oraiza")} className="h-full w-full object-contain" />
             </Link>
             <p className="text-lg font-bold tracking-tight text-primary">{t("Oraiza")}</p>

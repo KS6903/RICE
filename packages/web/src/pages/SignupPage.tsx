@@ -216,7 +216,7 @@ export default function SignupPage() {
 
         <div className="relative flex items-center gap-3 text-white">
           <Link to="/" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
-            <div className="h-11 w-11">
+            <div className="h-13.75 w-13.75">
               <img src={oraizaLogo} alt={t("Oraiza")} className="h-full w-full object-contain" />
             </div>
             <p className="text-lg font-bold tracking-tight">{t("Oraiza")}</p>
@@ -270,7 +270,7 @@ export default function SignupPage() {
             to="/"
             className="lg:hidden flex items-center gap-3 mb-6 hover:opacity-80 transition-opacity"
           >
-            <div className="h-11 w-11">
+            <div className="h-13.75 w-13.75">
               <img src={oraizaLogo} alt={t("Oraiza")} className="h-full w-full object-contain" />
             </div>
             <p className="text-lg font-bold tracking-tight text-primary">{t("Oraiza")}</p>
