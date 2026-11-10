@@ -27,6 +27,8 @@ import type {
 import { billingService } from "../services/BillingService";
 import { useCurrentPlan } from "../hooks/useFeature";
 import { useAuthStore } from "../stores/authStore";
+import ComboInput from "../components/ComboInput";
+import { PH_BANKS, PH_EWALLETS } from "../utils/phPaymentProviders";
 import ConfirmItsYou, { type Proof } from "../components/ConfirmItsYou";
 import { voucherService, type VoucherCheck } from "../services/BillingService";
 import { mediaUrl } from "../utils/media";
@@ -35,6 +37,12 @@ import { t } from "../i18n";
 import { tx } from "../i18n/tx";
 
 const LABEL = "block text-sm font-semibold text-secondary mb-1.5";
+
+// The server refuses a bigger screenshot too (services/payment_notices.py).
+const RECEIPT_MAX_BYTES = 5 * 1024 * 1024;
+// Where a transfer comes from: the e-wallets most mills use first, then every
+// bank and e-wallet the BSP lists. Anything else can still be typed.
+const PAID_FROM_SUGGESTIONS = Array.from(new Set(["GCash", "Maya", ...PH_EWALLETS, ...PH_BANKS]));
 
 const peso = (n: number) => `₱${n.toLocaleString()}`;
 const dollars = (n: number) =>
@@ -112,6 +120,10 @@ export default function CheckoutPage() {
   const canRequest = user?.role === "owner";
   const usesCode = !!user?.mfa_enabled;
   const [reference, setReference] = useState("");
+  // A bank transfer: the bank or e-wallet it came from, and a screenshot of it.
+  const [paidFrom, setPaidFrom] = useState("");
+  const [receipt, setReceipt] = useState<File | null>(null);
+  const [receiptError, setReceiptError] = useState<string | null>(null);
   const [voucherCode, setVoucherCode] = useState("");
   const [voucher, setVoucher] = useState<VoucherCheck | null>(null);
   const [voucherError, setVoucherError] = useState<string | null>(null);
@@ -186,6 +198,21 @@ export default function CheckoutPage() {
   const submit = useMutation({
     mutationFn: (proof: Proof) => {
       const ref = reference.trim();
+      // The plan has an account to pay into: the transfer goes with its
+      // screenshot, and the server writes the note from these fields.
+      if (paymentReady && receipt) {
+        const form = new FormData();
+        form.append("plan_id", planId);
+        form.append("billing_interval", interval);
+        form.append("request_type", isOnPaidPlan ? "change" : "upgrade");
+        form.append("reference", ref);
+        form.append("paid_from", paidFrom.trim());
+        form.append("current_password", proof.password);
+        if (proof.code) form.append("mfa_code", proof.code);
+        if (voucher) form.append("voucher_code", voucher.voucher.code);
+        form.append("receipt", receipt);
+        return billingService.createUpgradeRequestWithReceipt(form);
+      }
       const note =
         paymentReady && plan
           ? `Paid to ${plan.payment_bank || "the bank account"}, reference ${ref}`
@@ -343,7 +370,9 @@ export default function CheckoutPage() {
   const offerPaypal = online.paypal && usdPrice > 0;
   const anyOnline = online.paymongo || offerPaypal;
   const needsReference = paymentReady;
-  const canSubmit = !submit.isPending && (!needsReference || reference.trim() !== "");
+  const canSubmit =
+    !submit.isPending &&
+    (!needsReference || (reference.trim() !== "" && paidFrom.trim() !== "" && !!receipt));
   const leaving = payOnline.isPending || payOnline.isSuccess;
 
   return (
@@ -530,6 +559,59 @@ export default function CheckoutPage() {
                 {t("The reference or confirmation number on your transfer receipt")}
               </p>
             </div>
+
+            {paymentReady && (
+              <>
+                <div>
+                  <label htmlFor="paid-from" className={LABEL}>
+                    {t("Paid from")}
+                  </label>
+                  <ComboInput
+                    id="paid-from"
+                    value={paidFrom}
+                    onChange={setPaidFrom}
+                    suggestions={PAID_FROM_SUGGESTIONS}
+                    maxLength={100}
+                    placeholder={t("GCash, Maya, BDO, BPI…")}
+                    aria-label={t("Paid from")}
+                  />
+                  <p className="text-xs text-muted mt-1">
+                    {t("The bank or e-wallet you sent the money from")}
+                  </p>
+                </div>
+
+                <div>
+                  <label htmlFor="payment-receipt" className={LABEL}>
+                    {t("Screenshot of your payment")}
+                  </label>
+                  <input
+                    id="payment-receipt"
+                    type="file"
+                    accept="image/png,image/jpeg,image/webp"
+                    className="input py-2!"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0] ?? null;
+                      setReceiptError(null);
+                      if (file && file.size > RECEIPT_MAX_BYTES) {
+                        setReceipt(null);
+                        setReceiptError(t("The screenshot is over 5 MB. Use a smaller one."));
+                        return;
+                      }
+                      setReceipt(file);
+                    }}
+                  />
+                  <p className="text-xs text-muted mt-1">
+                    {receiptError ? (
+                      <span className="text-rose-600 dark:text-rose-400">{receiptError}</span>
+                    ) : (
+                      t(
+                        "A screenshot or photo of the confirmation, showing the amount and reference",
+                      )
+                    )}
+                  </p>
+                </div>
+              </>
+            )}
 
             {errorMessage && (
               <p className="text-sm font-medium text-rose-600 dark:text-rose-400">{errorMessage}</p>

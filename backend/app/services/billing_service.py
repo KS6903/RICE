@@ -82,6 +82,9 @@ class BillingService(BaseService):
             "resolved_at": r.resolved_at.isoformat() if r.resolved_at else None,
             "discount": float(r.discount or 0),
             "amount_due": float(r.amount_due) if r.amount_due is not None else None,
+            "paid_from": r.paid_from,
+            "reference": r.reference,
+            "has_receipt": bool(r.receipt_key),
         }
 
     # ── reads ─────────────────────────────────────────────────────────────────
@@ -159,10 +162,15 @@ class BillingService(BaseService):
             raise BadRequestError("You are already on this plan.")
         return plan, current_sub
 
-    def create_upgrade_request(self, data) -> dict:
-        from . import vouchers
+    def create_upgrade_request(self, data, receipt: bytes | None = None) -> dict:
+        """Ask for a plan, usually after a bank transfer: with the reference on
+        its receipt, the bank or e-wallet it came from, and (``receipt``) the
+        screenshot of it. It goes to BossAdmin to check, and to the owner's
+        Discord payments channel (services/payment_notices.py)."""
+        from . import payment_notices, vouchers
         from .payment_service import price_for
 
+        receipt_ext = payment_notices.check_receipt(receipt) if receipt is not None else None
         plan, current_sub = self.requestable_plan(data.plan_id)
         interval = data.billing_interval if data.billing_interval == "annual" else "monthly"
         price = price_for(plan, interval, "PHP")
@@ -171,7 +179,19 @@ class BillingService(BaseService):
         )
         self.confirm_boss(data, reason="Asking for a plan")
 
+        reference = (getattr(data, "reference", None) or "").strip() or None
+        paid_from = (getattr(data, "paid_from", None) or "").strip() or None
+        note = data.note
+        if note is None and reference:
+            note = f"Paid {'from ' + paid_from + ' ' if paid_from else ''}to {plan.payment_bank or 'the bank account'}, reference {reference}"
+        request_id = uuid.uuid4()
+        key = None
+        if receipt is not None and receipt_ext is not None:
+            key = payment_notices.receipt_key(self.current_user.company_id, request_id, receipt_ext)
+            payment_notices.store_receipt(key, receipt, receipt_ext)
+
         req = UpgradeRequest(
+            id=request_id,
             company_id=self.current_user.company_id,
             requested_plan_id=plan.id,
             current_plan_id=current_sub.plan_id if current_sub else None,
@@ -179,17 +199,43 @@ class BillingService(BaseService):
             request_type=data.request_type if data.request_type in ("upgrade", "change") else "upgrade",
             billing_interval=interval,
             status="pending",
-            note=data.note,
+            note=note,
             voucher_id=voucher.id if voucher else None,
             discount=discount,
             amount_due=price - discount,
+            paid_from=paid_from,
+            reference=reference,
+            receipt_key=key,
         )
-        with self.transaction():
-            self.requests.add(req)
+        try:
+            with self.transaction():
+                self.requests.add(req)
+        except Exception:
+            if key:
+                from ..core import media_store
+
+                media_store.delete(key)
+            raise
         self.db.refresh(req)
         company = self.current_user.company
-        platform_emails.upgrade_request_filed(
-            self.db, req, company=company.name if company else "A mill", plan=plan.name
+        company_name = company.name if company else "A mill"
+        platform_emails.upgrade_request_filed(self.db, req, company=company_name, plan=plan.name)
+        user = self.current_user
+        payment_notices.bank_transfer(
+            company=company_name,
+            requested_by=f"{user.full_name or user.username} (@{user.username})",
+            plan=plan.name,
+            interval=interval,
+            amount_due=req.amount_due,
+            discount=req.discount,
+            voucher_code=vouchers.pretty(voucher.code) if voucher else None,
+            reference=reference,
+            paid_from=paid_from,
+            paid_to=" · ".join(
+                x for x in (plan.payment_bank, plan.payment_account_name, plan.payment_account_number) if x
+            )
+            or None,
+            receipt=(receipt, receipt_ext) if receipt is not None and receipt_ext else None,
         )
         return self._serialize_request(req)
 

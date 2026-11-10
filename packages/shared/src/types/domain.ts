@@ -338,4 +338,9 @@ export interface UpgradeRequest {
   voucher_code?: string | null;
   discount?: number;
   amount_due?: number | null;
+  /** A bank transfer: where it came from, its reference, and whether a
+   *  screenshot came with it (BossAdmin opens it from the request). */
+  paid_from?: string | null;
+  reference?: string | null;
+  has_receipt?: boolean;
 }

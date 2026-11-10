@@ -2,7 +2,7 @@
 
 import uuid
 
-from fastapi import APIRouter, Depends, Request, Response, status
+from fastapi import APIRouter, Depends, File, Form, Request, Response, UploadFile, status
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 
@@ -16,7 +16,7 @@ from ..repositories.billing import (
     UpgradeRequestRepository,
 )
 from ..schemas.billing import CheckoutCreate, UpgradeRequestCreate, VoucherCheck, VoucherRedeem
-from ..services import payment_service, vouchers
+from ..services import payment_notices, payment_service, vouchers
 from ..services.billing_service import BillingService
 
 # Billing is part of the mill's settings: whoever the Boss opened Settings to
@@ -63,6 +63,37 @@ def create_upgrade_request(
     request: Request, response: Response, body: UpgradeRequestCreate, svc: BillingService = Depends(get_billing_service)
 ):
     return svc.create_upgrade_request(body)
+
+
+@router.post("/upgrade-requests/with-receipt", status_code=status.HTTP_201_CREATED, dependencies=SETTINGS_WRITE)
+@limiter.limit("10/hour")
+def create_upgrade_request_with_receipt(
+    request: Request,
+    response: Response,
+    plan_id: uuid.UUID = Form(...),
+    billing_interval: str = Form("monthly"),
+    request_type: str = Form("upgrade"),
+    reference: str = Form(..., min_length=1, max_length=100),
+    paid_from: str = Form(..., min_length=1, max_length=100),
+    voucher_code: str | None = Form(None, max_length=60),
+    current_password: str | None = Form(None, max_length=72),
+    mfa_code: str | None = Form(None, max_length=12),
+    receipt: UploadFile = File(...),
+    svc: BillingService = Depends(get_billing_service),
+):
+    """A bank transfer sent for checking, with the screenshot of the payment."""
+    body = UpgradeRequestCreate(
+        plan_id=plan_id,
+        billing_interval=billing_interval,
+        request_type=request_type,
+        reference=reference,
+        paid_from=paid_from,
+        voucher_code=voucher_code,
+        current_password=current_password,
+        mfa_code=mfa_code,
+    )
+    # One byte over the limit is enough to refuse it, without reading a huge file.
+    return svc.create_upgrade_request(body, receipt=receipt.file.read(payment_notices.RECEIPT_MAX_BYTES + 1))
 
 
 @router.delete("/upgrade-requests/{request_id}", dependencies=SETTINGS_WRITE)

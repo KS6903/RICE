@@ -112,6 +112,7 @@ wrangler secret put GOOGLE_WEATHER_API_KEY
 wrangler secret put DEEPSEEK_API_KEY
 wrangler secret put DISCORD_FEEDBACK_WEBHOOK_URL   # app feedback to your Discord
 wrangler secret put DISCORD_SECURITY_WEBHOOK_URL   # BossAdmin security alerts
+wrangler secret put DISCORD_PAYMENTS_WEBHOOK_URL   # every plan payment, with the transfer screenshot
 ```
 
 ### 4. Domain

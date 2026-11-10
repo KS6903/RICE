@@ -235,6 +235,34 @@ def list_upgrade_requests(status_filter: str | None = "pending", svc: AdminServi
 
 # Polled by every open tab: exempt from the per-IP default limit, which would
 # otherwise spend Redis commands (Upstash bills per command) on every poll.
+@router.get("/upgrade-requests/{request_id}/receipt")
+def upgrade_request_receipt(
+    request_id: uuid.UUID, db: Session = Depends(get_db), _admin=Depends(require_platform_admin)
+):
+    """The screenshot a mill sent with its bank transfer: BossAdmin only, never
+    cached, never on the public media route."""
+    from ..core import media_store
+    from ..core.exceptions import NotFoundError
+    from ..models.upgrade_request import UpgradeRequest
+    from ..services.payment_notices import RECEIPT_TYPES
+
+    req = db.get(UpgradeRequest, request_id)
+    key = req.receipt_key if req is not None else None
+    ext = key.rsplit(".", 1)[-1] if key else ""
+    data = media_store.get(key) if key and ext in RECEIPT_TYPES else None
+    if data is None:
+        raise NotFoundError("No screenshot for this request")
+    return Response(
+        data,
+        media_type=RECEIPT_TYPES[ext],
+        headers={
+            "Cache-Control": "private, no-store",
+            "Content-Disposition": f'inline; filename="payment-{request_id}.{ext}"',
+            "X-Content-Type-Options": "nosniff",
+        },
+    )
+
+
 @router.get("/upgrade-requests/pending-count")
 @limiter.exempt
 def pending_upgrade_request_count(svc: AdminService = Depends(get_admin_service)):

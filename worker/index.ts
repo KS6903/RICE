@@ -41,6 +41,7 @@ export interface Env {
   /** Discord webhooks: app feedback, and BossAdmin security alerts (backend/app/core/discord.py). */
   DISCORD_FEEDBACK_WEBHOOK_URL?: string;
   DISCORD_SECURITY_WEBHOOK_URL?: string;
+  DISCORD_PAYMENTS_WEBHOOK_URL?: string;
   DEEPSEEK_AUTOMATIONS_API_KEY?: string;
   PAYMONGO_SECRET_KEY?: string;
   PAYMONGO_WEBHOOK_SECRET?: string;

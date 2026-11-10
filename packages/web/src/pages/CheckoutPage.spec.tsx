@@ -48,6 +48,24 @@ const basic: SubscriptionPlan = {
   payment_account_number: "0000 1111 2222",
 };
 
+/** A bank transfer's details: the reference, where it came from, the screenshot. */
+const fillTransfer = (reference: string) => {
+  fireEvent.change(screen.getByLabelText("Payment reference"), { target: { value: reference } });
+  fireEvent.change(screen.getByLabelText("Paid from"), { target: { value: "GCash" } });
+  const shot = new File([new Uint8Array([0x89, 0x50, 0x4e, 0x47])], "paid.png", {
+    type: "image/png",
+  });
+  fireEvent.change(screen.getByLabelText("Screenshot of your payment"), {
+    target: { files: [shot] },
+  });
+  return shot;
+};
+
+/** What went to the server in the multipart form. */
+const sentForm = () =>
+  (billingService.createUpgradeRequestWithReceipt as unknown as { mock: { calls: [FormData][] } })
+    .mock.calls[0][0];
+
 /** Changing the plan asks the Boss to confirm it's them (ConfirmItsYou). */
 const confirmItsMe = async () => {
   fireEvent.change(await screen.findByLabelText("Your password"), { target: { value: "pw" } });
@@ -71,6 +89,7 @@ describe("Checkout", () => {
     vi.spyOn(billingService, "getPlans").mockResolvedValue([basic]);
     vi.spyOn(billingService, "getMyRequest").mockResolvedValue({ request: null });
     vi.spyOn(billingService, "createUpgradeRequest").mockResolvedValue({});
+    vi.spyOn(billingService, "createUpgradeRequestWithReceipt").mockResolvedValue({});
     vi.spyOn(billingService, "getPaymentOptions").mockResolvedValue({
       paymongo: false,
       paypal: false,
@@ -82,7 +101,7 @@ describe("Checkout", () => {
     useAuthStore.setState({ user: null });
   });
 
-  it("shows the account to pay and needs a reference before sending", async () => {
+  it("shows the account to pay and needs the transfer's details before sending", async () => {
     draw();
     expect(await screen.findByText("0000 1111 2222")).toBeInTheDocument();
     expect(screen.getByText("Test Bank")).toBeInTheDocument();
@@ -93,19 +112,21 @@ describe("Checkout", () => {
     fireEvent.change(screen.getByLabelText("Payment reference"), {
       target: { value: "1234567890123" },
     });
+    expect(send).toBeDisabled(); // still needs where it came from, and the screenshot
+    const shot = fillTransfer("1234567890123");
+    expect(send).toBeEnabled();
     fireEvent.click(send);
-    expect(billingService.createUpgradeRequest).not.toHaveBeenCalled();
+    expect(billingService.createUpgradeRequestWithReceipt).not.toHaveBeenCalled();
     await confirmItsMe();
 
-    await waitFor(() =>
-      expect(billingService.createUpgradeRequest).toHaveBeenCalledWith({
-        plan_id: "basic",
-        request_type: "upgrade",
-        billing_interval: "monthly",
-        note: "Paid to Test Bank, reference 1234567890123",
-        current_password: "pw",
-      }),
-    );
+    await waitFor(() => expect(billingService.createUpgradeRequestWithReceipt).toHaveBeenCalled());
+    const form = sentForm();
+    expect(form.get("plan_id")).toBe("basic");
+    expect(form.get("reference")).toBe("1234567890123");
+    expect(form.get("paid_from")).toBe("GCash");
+    expect(form.get("current_password")).toBe("pw");
+    expect(form.get("receipt")).toBe(shot);
+    expect(billingService.createUpgradeRequest).not.toHaveBeenCalled();
     expect(await screen.findByText("Request sent")).toBeInTheDocument();
   });
 
@@ -215,14 +236,11 @@ describe("Checkout", () => {
       billing_interval: "monthly",
     });
 
-    fireEvent.change(screen.getByLabelText("Payment reference"), { target: { value: "99" } });
+    fillTransfer("99");
     fireEvent.click(screen.getByRole("button", { name: "I've paid, send for confirmation" }));
     await confirmItsMe();
-    await waitFor(() =>
-      expect(billingService.createUpgradeRequest).toHaveBeenCalledWith(
-        expect.objectContaining({ voucher_code: "ABCD-EFGH-JKMN", current_password: "pw" }),
-      ),
-    );
+    await waitFor(() => expect(billingService.createUpgradeRequestWithReceipt).toHaveBeenCalled());
+    expect(sentForm().get("voucher_code")).toBe("ABCD-EFGH-JKMN");
   });
 
   it("is only for the Boss", async () => {

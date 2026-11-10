@@ -38,6 +38,11 @@ class UpgradeRequest(Base, TimestampMixin):
     voucher_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("vouchers.id"))
     discount: Mapped[Decimal] = mapped_column(Numeric(10, 2), default=0, server_default="0", nullable=False)
     amount_due: Mapped[Decimal | None] = mapped_column(Numeric(10, 2))
+    # A bank transfer: the bank or e-wallet it was sent from, the reference on
+    # its receipt, and the screenshot of it (services/payment_notices.py).
+    paid_from: Mapped[str | None] = mapped_column(String(100))
+    reference: Mapped[str | None] = mapped_column(String(100))
+    receipt_key: Mapped[str | None] = mapped_column(String(200))
 
     requested_plan = relationship("SubscriptionPlan", foreign_keys=[requested_plan_id])
     current_plan = relationship("SubscriptionPlan", foreign_keys=[current_plan_id])

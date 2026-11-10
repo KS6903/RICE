@@ -16,6 +16,15 @@ export class BillingService {
     return this.http.post("/billing/upgrade-requests", body).then((r) => r.data);
   }
 
+  /** A bank transfer sent with its screenshot (multipart: the fields and "receipt"). */
+  createUpgradeRequestWithReceipt(form: FormData): Promise<any> {
+    return this.http
+      .post("/billing/upgrade-requests/with-receipt", form, {
+        headers: { "Content-Type": "multipart/form-data" },
+      })
+      .then((r) => r.data);
+  }
+
   cancelUpgradeRequest(id: string): Promise<any> {
     return this.http.delete(`/billing/upgrade-requests/${id}`).then((r) => r.data);
   }

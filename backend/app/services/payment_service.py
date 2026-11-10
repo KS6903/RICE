@@ -314,4 +314,15 @@ def fulfil(db: Session, payment_id: uuid.UUID, *, provider_payment_id: str | Non
     logger.info("plan payment %s paid: %s, %s %s", payment.id, payment.company_name, payment.plan_name, amount)
     until = f"{expires_at:%B} {expires_at.day}, {expires_at.year}"
     platform_emails.plan_payment_received(db, payment, amount=amount, until=until)
+    if payment.provider != "voucher":
+        from . import payment_notices
+
+        payment_notices.paid_online(
+            company=payment.company_name or "A mill",
+            plan=payment.plan_name,
+            interval=payment.billing_interval,
+            amount=amount,
+            provider=provider_name,
+            reference=provider_payment_id or payment.provider_ref or str(payment.id),
+        )
     return True

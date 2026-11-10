@@ -210,9 +210,14 @@ class Settings(BaseSettings):
     PLATFORM_ADMIN_EMAIL: str | None = None
     # Optional Discord webhooks (core/discord.py). Feedback from Settings >
     # Feedback goes to the first; BossAdmin sign-ins, failed confirmations and
-    # "View as" visits go to the second. Unset: nothing is sent.
+    # "View as" visits go to the second; payments to the third. Unset: nothing
+    # is sent.
     DISCORD_FEEDBACK_WEBHOOK_URL: SecretStr | None = None
     DISCORD_SECURITY_WEBHOOK_URL: SecretStr | None = None
+    # Every payment a mill sends for a plan: a bank transfer with its reference,
+    # the bank or e-wallet it came from and the screenshot, or an online payment
+    # once the provider says it's paid (services/payment_notices.py).
+    DISCORD_PAYMENTS_WEBHOOK_URL: SecretStr | None = None
     # How long one password + authenticator confirmation lets BossAdmin make
     # changes before it asks again (core/admin_guard.py).
     ADMIN_CONFIRM_MINUTES: int = 10

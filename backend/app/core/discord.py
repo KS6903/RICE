@@ -1,7 +1,8 @@
 """Messages to the platform owner's Discord, through webhooks.
 
-Two channels, each its own webhook (core/config.py): feedback from Settings >
-Feedback, and security alerts about the BossAdmin account. Sending never holds
+Three channels, each its own webhook (core/config.py): feedback from Settings >
+Feedback, security alerts about the BossAdmin account, and every payment a mill
+sends for a plan (with the screenshot of a bank transfer attached). Sending never holds
 up the request that caused it and never fails it: the post runs on a thread of
 its own, and a Discord that is down or refuses is only logged.
 
@@ -11,6 +12,7 @@ the app's data anywhere else. Nothing sent can ping anyone (allowed_mentions).
 
 from __future__ import annotations
 
+import json
 import logging
 import threading
 from datetime import datetime, timezone
@@ -81,19 +83,33 @@ def embed(
     return out
 
 
-def _post(url: str, payload: dict) -> None:
+# A file sent with a message: (file name, bytes, media type).
+Attachment = tuple[str, bytes, str]
+
+
+def _post(url: str, payload: dict, files: list[Attachment] | None = None) -> None:
     try:
         with httpx.Client(timeout=TIMEOUT_SECONDS, follow_redirects=False) as client:
-            response = client.post(url, json=payload)
+            if files:
+                # Discord takes files as multipart, with the message as payload_json.
+                response = client.post(
+                    url,
+                    data={"payload_json": json.dumps(payload)},
+                    files={f"files[{i}]": f for i, f in enumerate(files)},
+                )
+            else:
+                response = client.post(url, json=payload)
         if response.status_code >= 400:
             logger.warning("Discord refused a message: HTTP %s", response.status_code)
     except httpx.HTTPError as exc:
         logger.warning("Discord unreachable: %s", type(exc).__name__)
 
 
-def send(webhook: SecretStr | None, *embeds: dict, wait: bool = False) -> bool:
-    """Post the embeds to the webhook. False when there's no usable webhook.
-    ``wait`` sends on this thread (tests, scripts); otherwise on its own."""
+def send(webhook: SecretStr | None, *embeds: dict, files: list[Attachment] | None = None, wait: bool = False) -> bool:
+    """Post the embeds to the webhook, with any files. False when there's no
+    usable webhook. ``wait`` sends on this thread (tests, scripts); otherwise on
+    its own. An embed shows an attached picture with image.url
+    "attachment://<file name>"."""
     if webhook is None:
         return False
     url = webhook.get_secret_value().strip()
@@ -106,10 +122,11 @@ def send(webhook: SecretStr | None, *embeds: dict, wait: bool = False) -> bool:
         # Text people typed can't ping @everyone, a role or a person.
         "allowed_mentions": {"parse": []},
     }
+    args = (url, payload, files) if files else (url, payload)
     if wait:
-        _post(url, payload)
+        _post(*args)
     else:
-        threading.Thread(target=_post, args=(url, payload), name="discord-post", daemon=True).start()
+        threading.Thread(target=_post, args=args, name="discord-post", daemon=True).start()
     return True
 
 
@@ -119,3 +136,7 @@ def feedback(*embeds: dict) -> bool:
 
 def security(*embeds: dict) -> bool:
     return send(settings.DISCORD_SECURITY_WEBHOOK_URL, *embeds)
+
+
+def payments(*embeds: dict, files: list[Attachment] | None = None) -> bool:
+    return send(settings.DISCORD_PAYMENTS_WEBHOOK_URL, *embeds, files=files)

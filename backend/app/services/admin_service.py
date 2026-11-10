@@ -155,6 +155,9 @@ class AdminService(BaseService):
             "voucher_code": pretty_code(r.voucher.code) if r.voucher else None,
             "discount": float(r.discount or 0),
             "amount_due": float(r.amount_due) if r.amount_due is not None else None,
+            "paid_from": r.paid_from,
+            "reference": r.reference,
+            "has_receipt": bool(r.receipt_key),
         }
 
     # ── plans ─────────────────────────────────────────────────────────────────

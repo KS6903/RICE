@@ -16,6 +16,9 @@ class _Proof(BaseModel):
 class UpgradeRequestCreate(_Proof):
     plan_id: uuid.UUID
     note: str | None = Field(None, max_length=500)
+    # A bank transfer: the reference on the receipt, and where it was sent from.
+    reference: str | None = Field(None, max_length=100)
+    paid_from: str | None = Field(None, max_length=100)
     request_type: str = "upgrade"  # "upgrade" or "change"
     billing_interval: str = "monthly"  # "monthly" or "annual"
     voucher_code: str | None = Field(None, max_length=60)

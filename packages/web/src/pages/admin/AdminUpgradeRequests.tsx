@@ -78,6 +78,26 @@ function RequestRow({
             <span className="badge-green text-[10px]! py-0.5!">{t("Annual")}</span>
           )}
         </div>
+        {(r.reference || r.paid_from || r.has_receipt) && (
+          <div className="mt-1 text-xs text-secondary flex flex-wrap items-center gap-x-2 gap-y-0.5">
+            {r.reference && (
+              <span>
+                {t("Ref")} <span className="font-mono font-semibold">{r.reference}</span>
+              </span>
+            )}
+            {r.paid_from && <span>{t("from {{bank}}", { bank: r.paid_from })}</span>}
+            {r.has_receipt && (
+              <a
+                href={`/api/admin/upgrade-requests/${r.id}/receipt`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="link font-semibold"
+              >
+                {t("View screenshot")}
+              </a>
+            )}
+          </div>
+        )}
         {r.voucher_code && (
           <div className="mt-1 text-xs text-secondary">
             {t("Voucher {{code}}: ₱{{off}} off, ₱{{due}} to pay", {
